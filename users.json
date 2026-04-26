@@ -1,0 +1,23 @@
+{"users": [
+{
+  "localId": "USER_ID_1",
+  "email": "user1@example.com",
+  "emailVerified": false,
+  "passwordHash": "YOUR_MOCK_PASSWORD_HASH_1",
+  "salt": "YOUR_MOCK_SALT_1",
+  "displayName": "Test User 1",
+  "lastSignedInAt": "0",
+  "createdAt": "0",
+  "providerUserInfo": []
+},
+{
+  "localId": "USER_ID_2",
+  "email": "user2@example.com",
+  "emailVerified": false,
+  "passwordHash": "YOUR_MOCK_PASSWORD_HASH_2",
+  "salt": "YOUR_MOCK_SALT_2",
+  "displayName": "Test User 2",
+  "lastSignedInAt": "0",
+  "createdAt": "0",
+  "providerUserInfo": []
+}]}
