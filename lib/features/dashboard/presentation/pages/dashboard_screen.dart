@@ -1,25 +1,68 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
+import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
+import 'package:autodoc/core/models/vehicle_model.dart';
+import 'package:autodoc/core/widgets/vehicle_image_widget.dart';
+import 'package:uuid/uuid.dart';
+import '../widgets/add_vehicle_form.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
   @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  bool _isInitialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isInitialized) {
+      final authProvider = context.read<AuthProvider>();
+      if (authProvider.user != null) {
+        final vehicleProvider = context.read<VehicleProvider>();
+        vehicleProvider.fetchVehicles(authProvider.user!.uid).then((_) {
+          if (mounted && vehicleProvider.selectedVehicle != null) {
+            context.read<AlertProvider>().fetchAlerts(
+              vehicleProvider.selectedVehicle!.idVehiculo,
+              vehicleProvider.selectedVehicle!,
+            );
+          }
+        });
+      }
+      _isInitialized = true;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    const primaryPurple = Color(0xFF522C81);
-    const accentColor = Color(0xFF98FFD9);
-    const bgColorStart = Color(0xFFF7F6F8);
-    const bgColorEnd = Color(0xFFECE9F1);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
+    final primaryPurple = theme.colorScheme.primary;
+    final bgColorStart = isDark ? const Color(0xFF1E293B) : const Color(0xFFF7F6F8);
+    final bgColorEnd = isDark ? const Color(0xFF0F172A) : const Color(0xFFECE9F1);
+    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subTextColor = isDark ? Colors.grey[400]! : const Color(0xFF64748B);
+
+    final vehicleProvider = context.watch<VehicleProvider>();
+    final alertProvider = context.watch<AlertProvider>();
+    final vehicle = vehicleProvider.selectedVehicle;
+    final isLoading = vehicleProvider.isLoading;
 
     return Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -34,13 +77,21 @@ class DashboardScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeader(context),
+                    _buildHeader(context, isDark, textColor, subTextColor),
                     const SizedBox(height: 8),
-                    _buildVehicleCard(primaryPurple),
+                    if (isLoading)
+                      const Center(child: Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: CircularProgressIndicator(),
+                      ))
+                    else if (vehicle == null)
+                      _buildEmptyVehicleState(context, primaryPurple, isDark, textColor, subTextColor)
+                    else
+                      _buildVehicleCard(primaryPurple, vehicle, isDark, textColor, subTextColor),
                     const SizedBox(height: 32),
-                    _buildActiveAlerts(primaryPurple),
+                    _buildActiveAlerts(primaryPurple, alertProvider, isDark, subTextColor),
                     const SizedBox(height: 32),
-                    _buildNearbyServices(primaryPurple),
+                    _buildNearbyServices(primaryPurple, isDark, subTextColor),
                   ],
                 ),
               ),
@@ -51,9 +102,9 @@ class DashboardScreen extends StatelessWidget {
               bottom: 100,
               right: 24,
               child: FloatingActionButton(
-                onPressed: () {},
-                backgroundColor: accentColor,
-                foregroundColor: primaryPurple,
+                onPressed: () => _showAddVehicleDialog(context, primaryPurple),
+                backgroundColor: isDark ? const Color(0xFF98FFD9) : primaryPurple,
+                foregroundColor: isDark ? primaryPurple : Colors.white,
                 elevation: 8,
                 shape: const CircleBorder(),
                 child: const Icon(Icons.add, size: 32),
@@ -65,7 +116,7 @@ class DashboardScreen extends StatelessWidget {
               bottom: 0,
               left: 0,
               right: 0,
-              child: _buildBottomNav(primaryPurple),
+              child: _buildBottomNav(primaryPurple, isDark),
             ),
           ],
         ),
@@ -73,7 +124,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, bool isDark, Color textColor, Color subTextColor) {
     final authProvider = context.watch<AuthProvider>();
     final userName = authProvider.user?.displayName?.split(' ').first ?? 'Usuario';
 
@@ -88,60 +139,119 @@ class DashboardScreen extends StatelessWidget {
               Text(
                 'Hola, $userName 👋',
                 style: GoogleFonts.inter(
-                  fontSize: 24,
+                  fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF0F172A),
+                  color: textColor,
                   letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
-                'Ready for the road today?',
+                '¿Listo para la carretera hoy?',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: const Color(0xFF64748B),
+                  color: subTextColor,
                 ),
               ),
             ],
           ),
-          Stack(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                  image: const DecorationImage(
-                    image: CachedNetworkImageProvider(
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuD0YgONMD3ig8OWg11ut7qrjemal7ddK52I0zakoj2wNo9J0iJbkSznASIucbVVeqAukBpm769g55N-tfBYMVzQmbb1uHDXTXY_N_Db6_5FaVAgSSDNi8waLzWV46nRB0PGRsVSfTXzyKny7vf9-Sl8eYPTAE5pSG8blUWTWwo02udYdMyGVJ5Pf-MIRYhzMTS-O_7dskKJnqONXU0FR_qio-ZLi60A0KfUd-jLymK9_U3y7fOqdFi7l9XslnBHrnFfw4TOwION8mA',
-                    ),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  width: 12,
-                  height: 12,
+          GestureDetector(
+            onTap: () => context.push('/user_profile'),
+            child: Stack(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
-                    color: Colors.green,
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2),
+                    image: DecorationImage(
+                      image: CachedNetworkImageProvider(
+                        authProvider.userData?.fotoPerfilUrl ?? 'https://www.w3schools.com/howto/img_avatar.png',
+                      ),
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
-              ),
-            ],
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildVehicleCard(Color primary) {
+  Widget _buildEmptyVehicleState(BuildContext context, Color primary, bool isDark, Color textColor, Color subTextColor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.directions_car_filled_outlined, size: 48, color: primary),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'No hay vehiculos registrados',
+              style: GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Añade tu primer vehículo para empezar a controlar su mantenimiento y estado.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: subTextColor, fontSize: 14),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: () => _showAddVehicleDialog(context, primary),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
+                ),
+                child: const Text('Registrar Vehiculo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVehicleCard(Color primary, VehicleModel vehicle, bool isDark, Color textColor, Color subTextColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: ClipRRect(
@@ -151,9 +261,9 @@ class DashboardScreen extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.7),
+              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+              border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.3)),
               boxShadow: [
                 BoxShadow(
                   color: primary.withValues(alpha: 0.05),
@@ -168,39 +278,45 @@ class DashboardScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            'PRIMARY VEHICLE',
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: primary,
-                              letterSpacing: 1,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'VEHICULO PRINCIPAL',
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: primary,
+                                letterSpacing: 1,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Toyota Corolla 2022',
-                          style: GoogleFonts.inter(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF0F172A),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${vehicle.marca ?? ''} ${vehicle.modelo ?? ''} ${vehicle.anio ?? ''}',
+                            style: GoogleFonts.inter(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        const Text(
-                          'Plate: ABC-1234',
-                          style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
-                        ),
-                      ],
+                          Text(
+                            'Placa: ${vehicle.placa}',
+                            style: TextStyle(color: subTextColor, fontSize: 13),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
                     Container(
                       padding: const EdgeInsets.all(8),
@@ -215,8 +331,8 @@ class DashboardScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: CachedNetworkImage(
-                    imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCf_-qNzXyWUDec9NdFiFZIJSL15V__wcwkhtXsBkZOTOB6-KlT255xd0ZjFE48o2B8T_2F_FcNX9RLf5IotvVzulD5z1BI6vES96kzTn-JFS4CCsEu92TdL9mEHNLgZL3rQqP5gwNgoRKVOW2nXmbKLx-jS08W_4yCBO-s--L2vhbIh71uls8ABTRoXlHFn0x29SPS5OfZYA_dfWORLptAYZsYB67CqGdYwMUbuM2sB85viqSKTsPvetfvCkgiyMTbg1F-uQtlmyo',
+                  child: VehicleImageWidget(
+                    imageUrl: vehicle.fotoUrl,
                     height: 140,
                     width: double.infinity,
                     fit: BoxFit.cover,
@@ -225,9 +341,9 @@ class DashboardScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 Row(
                   children: [
-                    _buildStatItem('MILEAGE', '15,400', 'mi', primary),
+                    _buildStatItem('KILOMETRAJE', vehicle.kilometrajeActual.toString(), 'km', primary, isDark, subTextColor),
                     const SizedBox(width: 16),
-                    _buildStatItem('FUEL LEVEL', '78', '%', primary),
+                    _buildStatItem('NIVEL DE COMBUSTIBLE', '78', '%', primary, isDark, subTextColor), // Hardcoded for now as it's not in model
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -235,7 +351,7 @@ class DashboardScreen extends StatelessWidget {
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: () => context.push('/vehicle_profile', extra: vehicle),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primary,
                       foregroundColor: Colors.white,
@@ -246,7 +362,7 @@ class DashboardScreen extends StatelessWidget {
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('View Vehicle Status', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('Ver Estado del Vehiculo', style: TextStyle(fontWeight: FontWeight.bold)),
                         SizedBox(width: 8),
                         Icon(Icons.arrow_forward_rounded, size: 16),
                       ],
@@ -261,18 +377,58 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatItem(String label, String value, String unit, Color color) {
+  void _showAddVehicleDialog(BuildContext context, Color primary) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AddVehicleForm(
+        primaryColor: primary,
+        onFinish: (vehicle) async {
+          final authProvider = context.read<AuthProvider>();
+          final vehicleProvider = context.read<VehicleProvider>();
+          
+          final newVehicle = vehicle.copyWith(
+            idVehiculo: Uuid().v4(),
+            idPropietario: authProvider.user!.uid,
+          );
+
+          final success = await vehicleProvider.addVehicle(newVehicle);
+          if (success) {
+            // Crear tareas de mantenimiento predeterminadas
+            if (context.mounted) {
+              await context.read<AlertProvider>().createDefaultTasks(
+                newVehicle.idVehiculo,
+                newVehicle.kilometrajeActual,
+              );
+            }
+            if (context.mounted) Navigator.pop(context);
+          } else {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(vehicleProvider.error ?? 'Error al agregar vehiculo')),
+              );
+            }
+          }
+        },
+      ),
+    );
+  }
+
+
+
+  Widget _buildStatItem(String label, String value, String unit, Color color, bool isDark, Color subTextColor) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.4),
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
+            Text(label, style: TextStyle(fontSize: 10, color: subTextColor, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
             RichText(
               text: TextSpan(
@@ -288,7 +444,7 @@ class DashboardScreen extends StatelessWidget {
                   const TextSpan(text: ' '),
                   TextSpan(
                     text: unit,
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    style: TextStyle(fontSize: 12, color: subTextColor),
                   ),
                 ],
               ),
@@ -299,7 +455,9 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActiveAlerts(Color primary) {
+  Widget _buildActiveAlerts(Color primary, AlertProvider provider, bool isDark, Color subTextColor) {
+    final activeAlerts = provider.activeAlerts;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -309,42 +467,58 @@ class DashboardScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Active Alerts',
+                'Alertas Activas',
                 style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              Text(
-                'View All',
-                style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: primary),
+              GestureDetector(
+                onTap: () => context.push('/alerts'),
+                child: Text(
+                  'Ver Todas',
+                  style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: primary),
+                ),
               ),
             ],
           ),
         ),
         const SizedBox(height: 16),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Row(
-            children: [
-              _buildAlertCard(Icons.oil_barrel, 'Engine Oil', 'Status: OK', Colors.green),
-              const SizedBox(width: 16),
-              _buildAlertCard(Icons.verified_user, 'Insurance', 'Expires in 5d', Colors.red),
-              const SizedBox(width: 16),
-              _buildAlertCard(Icons.tire_repair, 'Tire Pressure', 'Check Required', Colors.orange),
-            ],
+        if (activeAlerts.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24),
+            child: Text('¡Excelente! No tienes alertas pendientes.', style: TextStyle(color: Colors.green, fontWeight: FontWeight.w500)),
+          )
+        else
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Row(
+              children: activeAlerts.map((alert) {
+                Color color;
+                IconData icon;
+                switch (alert.tipoAlerta) {
+                  case 'Aceite': icon = Icons.oil_barrel; color = Colors.orange; break;
+                  case 'SOAT': icon = Icons.verified_user; color = Colors.red; break;
+                  case 'Llantas': icon = Icons.tire_repair; color = Colors.blue; break;
+                  default: icon = Icons.notifications; color = primary;
+                }
+                return Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: _buildAlertCard(icon, alert.titulo, alert.descripcion, color, isDark, subTextColor),
+                );
+              }).toList(),
+            ),
           ),
-        ),
       ],
     );
   }
 
-  Widget _buildAlertCard(IconData icon, String title, String status, Color statusColor) {
+  Widget _buildAlertCard(IconData icon, String title, String status, Color statusColor, bool isDark, Color subTextColor) {
     return Container(
       width: 150,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.7),
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -358,7 +532,7 @@ class DashboardScreen extends StatelessWidget {
             child: Icon(icon, color: statusColor, size: 24),
           ),
           const SizedBox(height: 12),
-          Text(title, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+          Text(title, style: TextStyle(fontSize: 12, color: subTextColor, fontWeight: FontWeight.w500)),
           const SizedBox(height: 2),
           Text(
             status,
@@ -369,7 +543,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildNearbyServices(Color primary) {
+  Widget _buildNearbyServices(Color primary, bool isDark, Color subTextColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -380,21 +554,21 @@ class DashboardScreen extends StatelessWidget {
             style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          _buildServiceTile(Icons.ev_station, 'Shell Station', '0.8 miles away • Open now', primary),
+          _buildServiceTile(Icons.ev_station, 'Shell Station', '0.8 miles away • Open now', primary, isDark, subTextColor),
           const SizedBox(height: 12),
-          _buildServiceTile(Icons.build, 'AutoFix Workshop', '2.4 miles away • Closes 6 PM', primary),
+          _buildServiceTile(Icons.build, 'AutoFix Workshop', '2.4 miles away • Closes 6 PM', primary, isDark, subTextColor),
         ],
       ),
     );
   }
 
-  Widget _buildServiceTile(IconData icon, String title, String subtitle, Color primary) {
+  Widget _buildServiceTile(IconData icon, String title, String subtitle, Color primary, bool isDark, Color subTextColor) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.7),
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -414,7 +588,7 @@ class DashboardScreen extends StatelessWidget {
               children: [
                 Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(color: Color(0xFF64748B), fontSize: 12)),
+                Text(subtitle, style: TextStyle(color: subTextColor, fontSize: 12)),
               ],
             ),
           ),
@@ -424,7 +598,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomNav(Color primary) {
+  Widget _buildBottomNav(Color primary, bool isDark) {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       child: BackdropFilter(
@@ -433,15 +607,15 @@ class DashboardScreen extends StatelessWidget {
           height: 80,
           padding: const EdgeInsets.symmetric(horizontal: 24),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.7),
+            color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.7),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(Icons.home, 'Home', true, primary),
-              _buildNavItem(Icons.garage, 'Garage', false, primary),
-              _buildNavItem(Icons.analytics, 'Logs', false, primary),
-              _buildNavItem(Icons.person, 'Profile', false, primary),
+              _buildNavItem(Icons.home, 'Home', true, primary, () => context.go('/dashboard')),
+              _buildNavItem(Icons.garage, 'Garage', false, primary, () => context.push('/garage')),
+              _buildNavItem(Icons.analytics, 'Logs', false, primary, () {}),
+              _buildNavItem(Icons.person, 'Profile', false, primary, () => context.push('/user_profile')),
             ],
           ),
         ),
@@ -449,25 +623,29 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, bool isActive, Color primary) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          icon,
-          color: isActive ? primary : const Color(0xFFCBD5E1),
-          size: 24,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            color: isActive ? primary : const Color(0xFF94A3B8),
+  Widget _buildNavItem(IconData icon, String label, bool isActive, Color primary, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            color: isActive ? primary : const Color(0xFFCBD5E1),
+            size: 24,
           ),
-        ),
-      ],
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: isActive ? primary : const Color(0xFF94A3B8),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

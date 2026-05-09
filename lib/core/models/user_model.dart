@@ -6,6 +6,7 @@ class UserModel {
   final String correo;
   final String rol;
   final DateTime fechaRegistro;
+  final String? fotoPerfilUrl;
 
   UserModel({
     required this.idUsuario,
@@ -13,6 +14,7 @@ class UserModel {
     required this.correo,
     required this.rol,
     required this.fechaRegistro,
+    this.fotoPerfilUrl,
   });
 
   UserModel copyWith({
@@ -21,6 +23,7 @@ class UserModel {
     String? correo,
     String? rol,
     DateTime? fechaRegistro,
+    String? fotoPerfilUrl,
   }) {
     return UserModel(
       idUsuario: idUsuario ?? this.idUsuario,
@@ -28,6 +31,7 @@ class UserModel {
       correo: correo ?? this.correo,
       rol: rol ?? this.rol,
       fechaRegistro: fechaRegistro ?? this.fechaRegistro,
+      fotoPerfilUrl: fotoPerfilUrl ?? this.fotoPerfilUrl,
     );
   }
 
@@ -38,6 +42,7 @@ class UserModel {
       'correo': correo,
       'rol': rol,
       'fecha_registro': Timestamp.fromDate(fechaRegistro),
+      'foto_perfil_url': fotoPerfilUrl,
     };
   }
 
@@ -48,6 +53,7 @@ class UserModel {
       correo: map['correo'] ?? '',
       rol: map['rol'] ?? 'Propietario',
       fechaRegistro: (map['fecha_registro'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      fotoPerfilUrl: map['foto_perfil_url'],
     );
   }
 }

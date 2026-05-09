@@ -4,9 +4,10 @@ import 'dart:ui';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -19,6 +20,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final TextEditingController _nameController = TextEditingController();
   String _selectedRole = 'Usuario'; // 'Usuario' or 'Taller'
   bool _notificationsEnabled = true;
+  File? _imageFile;
+  bool _isLoading = false;
+  final _picker = ImagePicker();
 
   @override
   void dispose() {
@@ -150,6 +154,55 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                               style: GoogleFonts.inter(
                                 fontSize: 14,
                                 color: Colors.grey[700],
+                              ),
+                            ),
+                            const SizedBox(height: 32),
+                            
+                            // Foto de Perfil
+                            Center(
+                              child: Stack(
+                                children: [
+                                  Container(
+                                    width: 100,
+                                    height: 100,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: primaryPurple.withValues(alpha: 0.1),
+                                      border: Border.all(color: Colors.white, width: 3),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.1),
+                                          blurRadius: 10,
+                                        ),
+                                      ],
+                                    ),
+                                    child: ClipOval(
+                                      child: _imageFile != null
+                                          ? Image.file(_imageFile!, fit: BoxFit.cover)
+                                          : Icon(Icons.person, size: 50, color: primaryPurple.withValues(alpha: 0.5)),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    bottom: 0,
+                                    right: 0,
+                                    child: GestureDetector(
+                                      onTap: () async {
+                                        final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+                                        if (pickedFile != null) {
+                                          setState(() => _imageFile = File(pickedFile.path));
+                                        }
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: const BoxDecoration(
+                                          color: primaryPurple,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             const SizedBox(height: 32),
@@ -350,8 +403,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 }
 
                 try {
+                  setState(() => _isLoading = true); // Need to add _isLoading state if not present, or use authProvider.isLoading
+                  
                   // Save to Firestore
-                  final userModel = UserModel(
+                  UserModel userModel = UserModel(
                     idUsuario: user.uid,
                     nombreCompleto: name,
                     correo: user.email ?? '',
@@ -359,17 +414,24 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     fechaRegistro: DateTime.now(),
                   );
                   
-                  await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(user.uid)
-                      .set(userModel.toMap());
-                      
-                  // Update Firebase Auth displayName
-                  await user.updateDisplayName(name);
-                  await authProvider.reloadUser();
+                  // Use AuthProvider.updateProfile to handle image upload and Firestore update
+                  final success = await authProvider.updateProfile(userModel, imageFile: _imageFile);
                   
-                  if (context.mounted) {
-                    context.go('/dashboard');
+                  if (success) {
+                    // Update Firebase Auth displayName if needed
+                    await user.updateDisplayName(name);
+                    await authProvider.reloadUser();
+                    
+                    if (context.mounted) {
+                      final role = _selectedRole.trim().toLowerCase();
+                      if (role == 'taller' || role == 'mecanico') {
+                        context.go('/mechanic_search');
+                      } else {
+                        context.go('/dashboard');
+                      }
+                    }
+                  } else {
+                    throw authProvider.error ?? 'Error desconocido al guardar el perfil';
                   }
                 } catch (e) {
                   if (context.mounted) {
@@ -380,6 +442,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       ),
                     );
                   }
+                } finally {
+                  if (mounted) setState(() => _isLoading = false);
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -392,17 +456,36 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Finalizar Configuración',
-                    style: GoogleFonts.montserrat(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                children: _isLoading 
+                ? [
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: primaryPurple,
+                        strokeWidth: 2,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.check_circle),
-                ],
+                    const SizedBox(width: 12),
+                    Text(
+                      'Guardando...',
+                      style: GoogleFonts.montserrat(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ]
+                : [
+                    Text(
+                      'Finalizar Configuración',
+                      style: GoogleFonts.montserrat(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.check_circle),
+                  ],
               ),
             ),
           ),

@@ -12,6 +12,7 @@ class VehicleModel {
   final DateTime? vencimientoTarjeta;
   final DateTime? vencimientoSoat;
   final String? fotoUrl;
+  final bool isPrimary;
 
   VehicleModel({
     required this.idVehiculo,
@@ -25,6 +26,7 @@ class VehicleModel {
     this.vencimientoTarjeta,
     this.vencimientoSoat,
     this.fotoUrl,
+    this.isPrimary = false,
   });
 
   VehicleModel copyWith({
@@ -39,6 +41,7 @@ class VehicleModel {
     DateTime? vencimientoTarjeta,
     DateTime? vencimientoSoat,
     String? fotoUrl,
+    bool? isPrimary,
   }) {
     return VehicleModel(
       idVehiculo: idVehiculo ?? this.idVehiculo,
@@ -52,6 +55,7 @@ class VehicleModel {
       vencimientoTarjeta: vencimientoTarjeta ?? this.vencimientoTarjeta,
       vencimientoSoat: vencimientoSoat ?? this.vencimientoSoat,
       fotoUrl: fotoUrl ?? this.fotoUrl,
+      isPrimary: isPrimary ?? this.isPrimary,
     );
   }
 
@@ -68,6 +72,7 @@ class VehicleModel {
       'vencimiento_tarjeta': vencimientoTarjeta != null ? Timestamp.fromDate(vencimientoTarjeta!) : null,
       'vencimiento_soat': vencimientoSoat != null ? Timestamp.fromDate(vencimientoSoat!) : null,
       'foto_url': fotoUrl,
+      'es_principal': isPrimary,
     };
   }
 
@@ -84,6 +89,7 @@ class VehicleModel {
       vencimientoTarjeta: (map['vencimiento_tarjeta'] as Timestamp?)?.toDate(),
       vencimientoSoat: (map['vencimiento_soat'] as Timestamp?)?.toDate(),
       fotoUrl: map['foto_url'],
+      isPrimary: map['es_principal'] ?? false,
     );
   }
 }

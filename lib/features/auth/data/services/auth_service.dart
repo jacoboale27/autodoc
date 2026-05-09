@@ -66,6 +66,19 @@ class AuthService {
     await _auth.signOut();
   }
 
+  // Verify Password
+  Future<bool> verifyPassword(String password) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null || user.email == null) return false;
+      final credential = EmailAuthProvider.credential(email: user.email!, password: password);
+      await user.reauthenticateWithCredential(credential);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   // Password Reset
   Future<void> sendPasswordReset(String email) async {
     try {

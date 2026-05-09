@@ -1,0 +1,179 @@
+import 'package:flutter/material.dart';
+import '../../../../core/models/vehicle_model.dart';
+import '../../../../core/services/vehicle_image_service.dart';
+import '../../data/services/vehicle_service.dart';
+
+class VehicleProvider with ChangeNotifier {
+  final VehicleService _vehicleService = VehicleService();
+  final VehicleImageService _imageService = VehicleImageService();
+  List<VehicleModel> _vehicles = [];
+  VehicleModel? _selectedVehicle;
+   bool _isLoading = false;
+   String? _error;
+   final List<VehicleModel> _recentSearches = [];
+ 
+   List<VehicleModel> get vehicles => _vehicles;
+   VehicleModel? get selectedVehicle => _selectedVehicle;
+   bool get isLoading => _isLoading;
+   String? get error => _error;
+   List<VehicleModel> get recentSearches => _recentSearches;
+ 
+   void addRecentSearch(VehicleModel vehicle) {
+     _recentSearches.removeWhere((v) => v.placa == vehicle.placa);
+     _recentSearches.insert(0, vehicle);
+     if (_recentSearches.length > 5) {
+       _recentSearches.removeLast();
+     }
+     notifyListeners();
+   }
+
+  void _setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
+
+  void _setError(String? value) {
+    _error = value;
+    notifyListeners();
+  }
+
+  Future<void> fetchVehicles(String ownerId) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      _vehicles = await _vehicleService.getVehiclesByOwner(ownerId);
+      if (_vehicles.isNotEmpty) {
+        // Try to find the primary vehicle
+        try {
+          _selectedVehicle = _vehicles.firstWhere((v) => v.isPrimary);
+        } catch (_) {
+          // If none is primary, just pick the first one
+          _selectedVehicle = _vehicles.first;
+        }
+      } else {
+        _selectedVehicle = null;
+      }
+      _setLoading(false);
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> addVehicle(VehicleModel vehicle) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      // If it's the first vehicle, make it primary automatically
+      if (_vehicles.isEmpty) {
+        vehicle = vehicle.copyWith(isPrimary: true);
+      } else if (vehicle.isPrimary) {
+        // If adding a primary, demote the current primary (if exists)
+        await _demoteCurrentPrimary(vehicle.idPropietario);
+      }
+
+      // Obtener imagen automáticamente antes de guardar
+      final imageUrl = await _imageService.getVehicleImage(
+        vehicleId: vehicle.idVehiculo,
+        brand: vehicle.marca ?? '',
+        model: vehicle.modelo ?? '',
+        year: vehicle.anio ?? 0,
+        color: vehicle.color ?? '',
+      );
+      
+      vehicle = vehicle.copyWith(fotoUrl: imageUrl);
+
+      await _vehicleService.addVehicle(vehicle);
+      await fetchVehicles(vehicle.idPropietario);
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  Future<bool> updateVehicle(VehicleModel vehicle) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      if (vehicle.isPrimary) {
+        await _demoteCurrentPrimary(vehicle.idPropietario, excludeId: vehicle.idVehiculo);
+      }
+      await _vehicleService.updateVehicle(vehicle);
+      await fetchVehicles(vehicle.idPropietario);
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  Future<void> setAsPrimary(VehicleModel vehicle) async {
+    final updatedVehicle = vehicle.copyWith(isPrimary: true);
+    await updateVehicle(updatedVehicle);
+    selectVehicle(updatedVehicle);
+  }
+
+  Future<void> _demoteCurrentPrimary(String ownerId, {String? excludeId}) async {
+    final currentPrimary = _vehicles.where((v) => v.isPrimary && v.idVehiculo != excludeId).toList();
+    for (var v in currentPrimary) {
+      await _vehicleService.updateVehicle(v.copyWith(isPrimary: false));
+    }
+  }
+
+  void selectVehicle(VehicleModel vehicle) {
+    _selectedVehicle = vehicle;
+    notifyListeners();
+  }
+
+  Future<bool> deleteVehicle(String vehicleId, String ownerId) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _vehicleService.deleteVehicle(vehicleId);
+      await fetchVehicles(ownerId);
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  Future<void> updateVehicleMileage(String vehicleId, int newMileage) async {
+    _setLoading(true);
+    try {
+      if (_selectedVehicle != null && _selectedVehicle!.idVehiculo == vehicleId) {
+        final updatedVehicle = _selectedVehicle!.copyWith(kilometrajeActual: newMileage);
+        await _vehicleService.updateVehicle(updatedVehicle);
+        await fetchVehicles(_selectedVehicle!.idPropietario);
+      }
+      _setLoading(false);
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+    }
+  }
+
+  Future<VehicleModel?> findVehicleByPlate(String plate) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final vehicle = await _vehicleService.getVehicleByPlate(plate);
+      if (vehicle == null) {
+        _setError("No se encontró el vehículo con placa $plate");
+      }
+      _setLoading(false);
+      return vehicle;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return null;
+    }
+  }
+}

@@ -24,15 +24,35 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     )..repeat();
 
     // Navigate after checking auth state
-    Future.delayed(const Duration(seconds: 3), () {
+    Future.delayed(const Duration(seconds: 3), () async {
       if (mounted) {
         final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        final user = authProvider.user;
         
-        if (user != null) {
-          context.go('/dashboard');
-        } else {
-          context.go('/onboarding');
+        // Esperar un poco más si está cargando
+        int attempts = 0;
+        while (authProvider.user != null && authProvider.userData == null && attempts < 10) {
+          await Future.delayed(const Duration(milliseconds: 500));
+          attempts++;
+        }
+
+        if (mounted) {
+          final user = authProvider.user;
+          if (user != null) {
+            final userData = authProvider.userData;
+            if (userData != null) {
+              final role = userData.rol.trim().toLowerCase();
+              if (role == 'taller' || role == 'mecanico') {
+                context.go('/mechanic_search');
+              } else {
+                context.go('/dashboard');
+              }
+            } else {
+              // Si no tiene datos de perfil aún, enviarlo a completar perfil
+              context.go('/profile_setup');
+            }
+          } else {
+            context.go('/onboarding');
+          }
         }
       }
     });
