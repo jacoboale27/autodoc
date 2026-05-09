@@ -13,6 +13,7 @@ class VehicleModel {
   final DateTime? vencimientoSoat;
   final String? fotoUrl;
   final bool isPrimary;
+  final List<String> sharedWith; // UIDs de usuarios con acceso
 
   VehicleModel({
     required this.idVehiculo,
@@ -27,6 +28,7 @@ class VehicleModel {
     this.vencimientoSoat,
     this.fotoUrl,
     this.isPrimary = false,
+    this.sharedWith = const [],
   });
 
   VehicleModel copyWith({
@@ -42,6 +44,7 @@ class VehicleModel {
     DateTime? vencimientoSoat,
     String? fotoUrl,
     bool? isPrimary,
+    List<String>? sharedWith,
   }) {
     return VehicleModel(
       idVehiculo: idVehiculo ?? this.idVehiculo,
@@ -56,6 +59,7 @@ class VehicleModel {
       vencimientoSoat: vencimientoSoat ?? this.vencimientoSoat,
       fotoUrl: fotoUrl ?? this.fotoUrl,
       isPrimary: isPrimary ?? this.isPrimary,
+      sharedWith: sharedWith ?? this.sharedWith,
     );
   }
 
@@ -73,6 +77,7 @@ class VehicleModel {
       'vencimiento_soat': vencimientoSoat != null ? Timestamp.fromDate(vencimientoSoat!) : null,
       'foto_url': fotoUrl,
       'es_principal': isPrimary,
+      'shared_with': sharedWith,
     };
   }
 
@@ -90,6 +95,7 @@ class VehicleModel {
       vencimientoSoat: (map['vencimiento_soat'] as Timestamp?)?.toDate(),
       fotoUrl: map['foto_url'],
       isPrimary: map['es_principal'] ?? false,
+      sharedWith: List<String>.from(map['shared_with'] ?? []),
     );
   }
 }

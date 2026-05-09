@@ -58,4 +58,19 @@ class VehicleService {
       throw 'Error al buscar vehículo por placa: $e';
     }
   }
+
+  Future<List<VehicleModel>> getSharedVehicles(String userId) async {
+    try {
+      final snapshot = await _firestore
+          .collection(_collection)
+          .where('shared_with', arrayContains: userId)
+          .get();
+      
+      return snapshot.docs
+          .map((doc) => VehicleModel.fromMap(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      throw 'Error al obtener vehículos compartidos: $e';
+    }
+  }
 }

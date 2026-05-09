@@ -8,6 +8,7 @@ import '../providers/vehicle_provider.dart';
 import '../widgets/license_plate_widget.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import '../widgets/share_vehicle_sheet.dart';
 
 class VehicleProfileScreen extends StatefulWidget {
   final VehicleModel vehicle;
@@ -111,9 +112,31 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
               onSelected: (value) {
                 if (value == 'delete') {
                   _showDeleteConfirmationDialog(context, _currentVehicle, primary, isDark, textColor, subTextColor);
+                } else if (value == 'share') {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => ShareVehicleSheet(
+                      vehicle: _currentVehicle,
+                      onUpdated: (updated) {
+                        setState(() => _currentVehicle = updated);
+                      },
+                    ),
+                  );
                 }
               },
               itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'share',
+                  child: Row(
+                    children: [
+                      Icon(Icons.people_outline, color: Colors.blueGrey, size: 20),
+                      SizedBox(width: 8),
+                      Text('Compartir Vehículo'),
+                    ],
+                  ),
+                ),
                 const PopupMenuItem(
                   value: 'delete',
                   child: Row(

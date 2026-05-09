@@ -41,13 +41,23 @@ class VehicleProvider with ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
-      _vehicles = await _vehicleService.getVehiclesByOwner(ownerId);
+      final owned = await _vehicleService.getVehiclesByOwner(ownerId);
+      final shared = await _vehicleService.getSharedVehicles(ownerId);
+      
+      // Merge: owned first, then shared (avoiding duplicates)
+      final allIds = owned.map((v) => v.idVehiculo).toSet();
+      final merged = [...owned];
+      for (var v in shared) {
+        if (!allIds.contains(v.idVehiculo)) {
+          merged.add(v);
+        }
+      }
+      _vehicles = merged;
+
       if (_vehicles.isNotEmpty) {
-        // Try to find the primary vehicle
         try {
           _selectedVehicle = _vehicles.firstWhere((v) => v.isPrimary);
         } catch (_) {
-          // If none is primary, just pick the first one
           _selectedVehicle = _vehicles.first;
         }
       } else {
