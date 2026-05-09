@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -225,7 +227,143 @@ class AlertProvider extends ChangeNotifier {
     }
   }
 
-  // --- LÓGICA DE TALLER ---
+  // --- LÓGICA DE USUARIO PARA TAREAS ---
+
+  Future<void> userCompleteTask({
+    required String taskId, 
+    required int currentKm,
+    required double cost,
+    required String notes,
+    File? receiptImage,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final now = DateTime.now();
+      String? receiptUrl;
+      
+      // Actualizar la tarea
+      await _firestore.collection('mantenimientos').doc(taskId).update({
+        'ultimo_km': currentKm,
+        'fecha_ultimo_servicio': Timestamp.fromDate(now),
+      });
+
+      // Actualizar localmente
+      final taskIndex = _maintenanceTasks.indexWhere((t) => t.id == taskId);
+      final task = taskIndex != -1 ? _maintenanceTasks[taskIndex] : null;
+      if (task != null) {
+        _maintenanceTasks[taskIndex] = MaintenanceTask(
+          id: task.id,
+          vehicleId: task.vehicleId,
+          nombre: task.nombre,
+          ultimoKm: currentKm,
+          fechaUltimoServicio: now,
+          frecuenciaKm: task.frecuenciaKm,
+          frecuenciaMeses: task.frecuenciaMeses,
+        );
+        
+        if (receiptImage != null) {
+          final ref = FirebaseStorage.instance
+              .ref()
+              .child('facturas')
+              .child(task.vehicleId)
+              .child('${DateTime.now().millisecondsSinceEpoch}.jpg');
+          await ref.putFile(receiptImage);
+          receiptUrl = await ref.getDownloadURL();
+        }
+
+        // Registrar como un servicio hecho manualmente
+        await _firestore.collection('servicios').add({
+          'id_vehiculo': task.vehicleId,
+          'id_taller': 'Manual (Propietario)',
+          'tipo_servicio': task.nombre,
+          'fecha': Timestamp.fromDate(now),
+          'kilometraje_servicio': currentKm,
+          'descripcion': notes.isNotEmpty ? notes : 'Mantenimiento registrado manualmente por el propietario',
+          'costo': cost,
+          if (receiptUrl != null) 'foto_factura_url': receiptUrl,
+        });
+      }
+
+      // Limpiar también cualquier alerta activa relacionada a este task
+      final alertIndex = _alerts.indexWhere((a) => a.idAlerta == 'task_$taskId');
+      if (alertIndex != -1) {
+        _alerts.removeAt(alertIndex);
+      }
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> userUpdateTask(String taskId, int newFrecuenciaKm) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _firestore.collection('mantenimientos').doc(taskId).update({
+        'frecuencia_km': newFrecuenciaKm,
+      });
+
+      final taskIndex = _maintenanceTasks.indexWhere((t) => t.id == taskId);
+      if (taskIndex != -1) {
+        final task = _maintenanceTasks[taskIndex];
+        _maintenanceTasks[taskIndex] = MaintenanceTask(
+          id: task.id,
+          vehicleId: task.vehicleId,
+          nombre: task.nombre,
+          ultimoKm: task.ultimoKm,
+          fechaUltimoServicio: task.fechaUltimoServicio,
+          frecuenciaKm: newFrecuenciaKm,
+          frecuenciaMeses: task.frecuenciaMeses,
+        );
+      }
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> userUpdateTaskFull(String taskId, int newFrecuenciaKm, int newFrecuenciaMeses) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _firestore.collection('mantenimientos').doc(taskId).update({
+        'frecuencia_km': newFrecuenciaKm,
+        'frecuencia_meses': newFrecuenciaMeses,
+      });
+
+      final taskIndex = _maintenanceTasks.indexWhere((t) => t.id == taskId);
+      if (taskIndex != -1) {
+        final task = _maintenanceTasks[taskIndex];
+        _maintenanceTasks[taskIndex] = MaintenanceTask(
+          id: task.id,
+          vehicleId: task.vehicleId,
+          nombre: task.nombre,
+          ultimoKm: task.ultimoKm,
+          fechaUltimoServicio: task.fechaUltimoServicio,
+          frecuenciaKm: newFrecuenciaKm,
+          frecuenciaMeses: newFrecuenciaMeses,
+        );
+      }
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    }
+  }
   
   Future<void> tallerUpdateService({
     required String taskId,

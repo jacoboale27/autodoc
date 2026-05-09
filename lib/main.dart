@@ -13,14 +13,21 @@ import 'package:autodoc/features/profile/presentation/pages/profile_setup_screen
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
 import 'package:autodoc/features/profile/presentation/pages/user_profile_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/garage_screen.dart';
+import 'package:autodoc/features/dashboard/presentation/pages/service_history_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/alerts_screen.dart';
+import 'package:autodoc/features/dashboard/presentation/pages/workshop_directory_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/vehicle_profile_screen.dart';
+import 'package:autodoc/features/mechanic/presentation/pages/mechanic_dashboard_screen.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/vehicle_search_screen.dart';
+import 'package:autodoc/features/mechanic/presentation/pages/workshop_settings_screen.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
+import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/initiate_service_screen.dart';
+import 'package:autodoc/features/dashboard/presentation/pages/task_config_screen.dart';
+import 'package:autodoc/features/dashboard/presentation/pages/task_complete_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -88,14 +95,50 @@ final GoRouter _router = GoRouter(
       builder: (context, state) => const AlertsScreen(),
     ),
     GoRoute(
+      path: '/service_history',
+      builder: (context, state) {
+        final vehicleId = state.extra as String;
+        return ServiceHistoryScreen(vehicleId: vehicleId);
+      },
+    ),
+    GoRoute(
       path: '/mechanic_search',
       builder: (context, state) => const VehicleSearchScreen(),
+    ),
+    GoRoute(
+      path: '/mechanic_dashboard',
+      builder: (context, state) => const MechanicDashboardScreen(),
+    ),
+    GoRoute(
+      path: '/workshop_settings',
+      builder: (context, state) => const WorkshopSettingsScreen(),
+    ),
+    GoRoute(
+      path: '/workshop_directory',
+      builder: (context, state) => const WorkshopDirectoryScreen(),
     ),
     GoRoute(
       path: '/initiate_service',
       builder: (context, state) {
         final vehicle = state.extra as VehicleModel;
         return InitiateServiceScreen(vehicle: vehicle);
+      },
+    ),
+    GoRoute(
+      path: '/task_config',
+      builder: (context, state) {
+        final task = state.extra as MaintenanceTask;
+        return TaskConfigScreen(task: task);
+      },
+    ),
+    GoRoute(
+      path: '/task_complete',
+      builder: (context, state) {
+        final data = state.extra as Map<String, dynamic>;
+        return TaskCompleteScreen(
+          task: data['task'] as MaintenanceTask,
+          currentKm: data['currentKm'] as int,
+        );
       },
     ),
   ],

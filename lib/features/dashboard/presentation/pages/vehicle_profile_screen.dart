@@ -71,7 +71,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                     _buildVehicleIdentity(_currentVehicle, primaryPurple, textColor, subTextColor),
                     _buildTechnicalDetails(_currentVehicle, primaryPurple, isDark, cardColor, textColor, subTextColor),
                     _buildDocumentationStatus(_currentVehicle, primaryPurple, isDark, cardColor, textColor, subTextColor),
-                    _buildQuickActions(primaryPurple, isDark, cardColor, textColor),
+                    _buildQuickActions(_currentVehicle, primaryPurple, isDark, cardColor, textColor),
                   ],
                 ),
               ),
@@ -315,6 +315,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
             primary,
             cardColor,
             textColor,
+            () => _showUpdateDateDialog(context, vehicle, true),
           ),
           const SizedBox(height: 12),
           _buildDocumentationStatusItem(
@@ -323,13 +324,14 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
             primary,
             cardColor,
             textColor,
+            () => _showUpdateDateDialog(context, vehicle, false),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDocumentationStatusItem(String title, DateTime? expiryDate, Color primary, Color cardColor, Color textColor) {
+  Widget _buildDocumentationStatusItem(String title, DateTime? expiryDate, Color primary, Color cardColor, Color textColor, VoidCallback onUpdate) {
     if (expiryDate == null) {
       return _buildStatusAlert(
         icon: Icons.help_outline,
@@ -339,6 +341,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
         cardColor: cardColor,
         textColor: textColor,
         actionLabel: 'Actualizar',
+        onActionPressed: onUpdate,
       );
     }
 
@@ -373,6 +376,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
       textColor: textColor,
       isVerified: difference >= 30,
       actionLabel: difference < 30 ? 'Renovar' : null,
+      onActionPressed: onUpdate,
     );
   }
 
@@ -385,6 +389,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     required Color textColor,
     bool isVerified = false,
     String? actionLabel,
+    VoidCallback? onActionPressed,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -415,7 +420,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
           ),
           if (actionLabel != null)
             ElevatedButton(
-              onPressed: () {},
+              onPressed: onActionPressed ?? () {},
               style: ElevatedButton.styleFrom(
                 backgroundColor: color,
                 foregroundColor: Colors.white,
@@ -432,7 +437,48 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     );
   }
 
-  Widget _buildQuickActions(Color primary, bool isDark, Color cardColor, Color textColor) {
+  Future<void> _showUpdateDateDialog(BuildContext context, VehicleModel vehicle, bool isTarjeta) async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 3650)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedDate != null && mounted) {
+      final updatedVehicle = isTarjeta 
+        ? vehicle.copyWith(vencimientoTarjeta: pickedDate)
+        : vehicle.copyWith(vencimientoSoat: pickedDate);
+        
+      final vehicleProvider = context.read<VehicleProvider>();
+      final messenger = ScaffoldMessenger.of(context);
+      final success = await vehicleProvider.updateVehicle(updatedVehicle);
+      
+      if (mounted) {
+        if (success) {
+          messenger.showSnackBar(
+            const SnackBar(content: Text('Fecha actualizada correctamente')),
+          );
+        } else {
+          messenger.showSnackBar(
+            SnackBar(content: Text(vehicleProvider.error ?? 'Error al actualizar fecha')),
+          );
+        }
+      }
+    }
+  }
+
+  Widget _buildQuickActions(VehicleModel vehicle, Color primary, bool isDark, Color cardColor, Color textColor) {
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -445,11 +491,17 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
           const SizedBox(height: 16),
           Row(
             children: [
-              _buildActionButton(Icons.history, 'Historial', Colors.blue, primary, cardColor, textColor, isDark),
+              _buildActionButton(Icons.history, 'Historial', Colors.blue, primary, cardColor, textColor, isDark, onTap: () {
+                context.push('/service_history', extra: vehicle.idVehiculo);
+              }),
               const SizedBox(width: 12),
-              _buildActionButton(Icons.build, 'Servicios', Colors.orange, primary, cardColor, textColor, isDark),
+              _buildActionButton(Icons.build, 'Servicios', Colors.orange, primary, cardColor, textColor, isDark, onTap: () {
+                context.push('/workshop_directory');
+              }),
               const SizedBox(width: 12),
-              _buildActionButton(Icons.description, 'Papeles', Colors.green, primary, cardColor, textColor, isDark),
+              _buildActionButton(Icons.description, 'Papeles', Colors.green, primary, cardColor, textColor, isDark, onTap: () {
+                context.push('/alerts');
+              }),
             ],
           ),
         ],
@@ -457,10 +509,10 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label, Color color, Color primary, Color cardColor, Color textColor, bool isDark) {
+  Widget _buildActionButton(IconData icon, String label, Color color, Color primary, Color cardColor, Color textColor, bool isDark, {VoidCallback? onTap}) {
     return Expanded(
       child: InkWell(
-        onTap: () {},
+        onTap: onTap ?? () {},
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(

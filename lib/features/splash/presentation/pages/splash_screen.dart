@@ -42,7 +42,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             if (userData != null) {
               final role = userData.rol.trim().toLowerCase();
               if (role == 'taller' || role == 'mecanico') {
-                context.go('/mechanic_search');
+                context.go('/mechanic_dashboard');
               } else {
                 context.go('/dashboard');
               }

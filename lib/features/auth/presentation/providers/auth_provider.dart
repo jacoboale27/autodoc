@@ -76,7 +76,12 @@ class AuthProvider with ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
-      await _authService.signInWithEmail(email, password);
+      final credential = await _authService.signInWithEmail(email, password);
+      _user = credential?.user;
+      if (_user != null) {
+        _userData = null; // Clear stale data
+        await fetchUserData(_user!.uid);
+      }
       _setLoading(false);
       return true;
     } catch (e) {
@@ -91,8 +96,15 @@ class AuthProvider with ChangeNotifier {
     _setError(null);
     try {
       final credential = await _authService.signInWithGoogle();
+      if (credential?.user != null) {
+        _user = credential!.user;
+        _userData = null; // Clear stale data
+        await fetchUserData(_user!.uid);
+        _setLoading(false);
+        return true;
+      }
       _setLoading(false);
-      return credential != null;
+      return false;
     } catch (e) {
       _setError(e.toString());
       _setLoading(false);
@@ -115,6 +127,9 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    _userData = null;
+    _user = null;
+    notifyListeners();
     await _authService.signOut();
   }
 

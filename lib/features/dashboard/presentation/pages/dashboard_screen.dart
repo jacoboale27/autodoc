@@ -549,14 +549,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Nearby Services',
-            style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Talleres Cercanos',
+                style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              TextButton(
+                onPressed: () => context.push('/workshop_directory'),
+                child: Text('Ver todos', style: TextStyle(color: primary, fontWeight: FontWeight.w600)),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
-          _buildServiceTile(Icons.ev_station, 'Shell Station', '0.8 miles away • Open now', primary, isDark, subTextColor),
-          const SizedBox(height: 12),
-          _buildServiceTile(Icons.build, 'AutoFix Workshop', '2.4 miles away • Closes 6 PM', primary, isDark, subTextColor),
+          InkWell(
+            onTap: () => context.push('/workshop_directory'),
+            child: _buildServiceTile(Icons.build, 'AutoFix Workshop', 'Especialidad: Motor • 4.8★', primary, isDark, subTextColor),
+          ),
         ],
       ),
     );
@@ -614,7 +624,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               _buildNavItem(Icons.home, 'Home', true, primary, () => context.go('/dashboard')),
               _buildNavItem(Icons.garage, 'Garage', false, primary, () => context.push('/garage')),
-              _buildNavItem(Icons.analytics, 'Logs', false, primary, () {}),
+              _buildNavItem(Icons.analytics, 'Logs', false, primary, () {
+                final vehicle = context.read<VehicleProvider>().selectedVehicle;
+                if (vehicle != null) {
+                  context.push('/service_history', extra: vehicle.idVehiculo);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Seleccione un vehículo primero')));
+                }
+              }),
               _buildNavItem(Icons.person, 'Profile', false, primary, () => context.push('/user_profile')),
             ],
           ),

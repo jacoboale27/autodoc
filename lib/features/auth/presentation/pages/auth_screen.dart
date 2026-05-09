@@ -330,27 +330,16 @@ class _AuthScreenState extends State<AuthScreen> {
               _passwordController.text,
             );
             if (success && mounted) {
-              // Esperar a que userData se cargue
-              int attempts = 0;
-              while (authProvider.userData == null && attempts < 10) {
-                await Future.delayed(const Duration(milliseconds: 500));
-                attempts++;
-              }
-              
-              if (mounted) {
-                final currentAuthProvider = context.read<AuthProvider>();
-                final userData = currentAuthProvider.userData;
-                if (userData != null) {
-                  final role = userData.rol.trim().toLowerCase();
-                  if (role == 'taller' || role == 'mecanico') {
-                    context.go('/mechanic_search');
-                  } else {
-                    context.go('/dashboard');
-                  }
+              final userData = authProvider.userData;
+              if (userData != null) {
+                final role = userData.rol.trim().toLowerCase();
+                if (role == 'taller' || role == 'mecanico') {
+                  context.go('/mechanic_dashboard');
                 } else {
-                  // Si no tiene perfil, enviarlo a completar
-                  context.go('/profile_setup');
+                  context.go('/dashboard');
                 }
+              } else {
+                context.go('/profile_setup');
               }
             }
           } else {
@@ -387,27 +376,16 @@ class _AuthScreenState extends State<AuthScreen> {
       onPressed: () async {
         final success = await authProvider.signInWithGoogle();
         if (success && mounted) {
-          // Esperar a que userData se cargue
-          int attempts = 0;
-          while (authProvider.userData == null && attempts < 10) {
-            await Future.delayed(const Duration(milliseconds: 500));
-            attempts++;
-          }
-          
-          if (mounted) {
-            final currentAuthProvider = context.read<AuthProvider>();
-            final userData = currentAuthProvider.userData;
-            if (userData != null) {
-              final role = userData.rol.trim().toLowerCase();
-              if (role == 'taller' || role == 'mecanico') {
-                context.go('/mechanic_search');
-              } else {
-                context.go('/dashboard');
-              }
+          final userData = authProvider.userData;
+          if (userData != null) {
+            final role = userData.rol.trim().toLowerCase();
+            if (role == 'taller' || role == 'mecanico') {
+              context.go('/mechanic_dashboard');
             } else {
-              // Si no tiene perfil (usuario nuevo de Google), enviarlo a completar
-              context.go('/profile_setup');
+              context.go('/dashboard');
             }
+          } else {
+            context.go('/profile_setup');
           }
         } else if (mounted && authProvider.error != null) {
           ScaffoldMessenger.of(context).showSnackBar(
