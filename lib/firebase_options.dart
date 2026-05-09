@@ -4,6 +4,8 @@ import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
+import 'package:autodoc/config/secrets.dart';
+
 /// Default [FirebaseOptions] for use with your Firebase apps.
 ///
 /// Example:
@@ -47,33 +49,33 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: String.fromEnvironment('FIREBASE_WEB_API_KEY', defaultValue: 'YOUR_WEB_API_KEY'),
-    appId: String.fromEnvironment('FIREBASE_WEB_APP_ID', defaultValue: 'YOUR_WEB_APP_ID'),
-    messagingSenderId: String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID', defaultValue: 'YOUR_SENDER_ID'),
-    projectId: String.fromEnvironment('FIREBASE_PROJECT_ID', defaultValue: 'YOUR_PROJECT_ID'),
-    authDomain: String.fromEnvironment('FIREBASE_AUTH_DOMAIN', defaultValue: 'YOUR_AUTH_DOMAIN'),
-    databaseURL: String.fromEnvironment('FIREBASE_DATABASE_URL', defaultValue: 'YOUR_DATABASE_URL'),
-    storageBucket: String.fromEnvironment('FIREBASE_STORAGE_BUCKET', defaultValue: 'YOUR_STORAGE_BUCKET'),
-    measurementId: String.fromEnvironment('FIREBASE_MEASUREMENT_ID', defaultValue: 'YOUR_MEASUREMENT_ID'),
+    apiKey: AppSecrets.firebaseWebApiKey,
+    appId: AppSecrets.firebaseAppIdWeb,
+    messagingSenderId: AppSecrets.firebaseMessagingSenderId,
+    projectId: AppSecrets.firebaseProjectId,
+    authDomain: AppSecrets.firebaseAuthDomain,
+    databaseURL: AppSecrets.firebaseDatabaseUrl,
+    storageBucket: AppSecrets.firebaseStorageBucket,
+    measurementId: AppSecrets.firebaseMeasurementId,
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: String.fromEnvironment('FIREBASE_ANDROID_API_KEY', defaultValue: 'YOUR_ANDROID_API_KEY'),
-    appId: String.fromEnvironment('FIREBASE_ANDROID_APP_ID', defaultValue: 'YOUR_ANDROID_APP_ID'),
-    messagingSenderId: String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID', defaultValue: 'YOUR_SENDER_ID'),
-    projectId: String.fromEnvironment('FIREBASE_PROJECT_ID', defaultValue: 'YOUR_PROJECT_ID'),
-    databaseURL: String.fromEnvironment('FIREBASE_DATABASE_URL', defaultValue: 'YOUR_DATABASE_URL'),
-    storageBucket: String.fromEnvironment('FIREBASE_STORAGE_BUCKET', defaultValue: 'YOUR_STORAGE_BUCKET'),
+    apiKey: AppSecrets.firebaseAndroidApiKey,
+    appId: AppSecrets.firebaseAppIdAndroid,
+    messagingSenderId: AppSecrets.firebaseMessagingSenderId,
+    projectId: AppSecrets.firebaseProjectId,
+    databaseURL: AppSecrets.firebaseDatabaseUrl,
+    storageBucket: AppSecrets.firebaseStorageBucket,
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: String.fromEnvironment('FIREBASE_IOS_API_KEY', defaultValue: 'YOUR_IOS_API_KEY'),
-    appId: String.fromEnvironment('FIREBASE_IOS_APP_ID', defaultValue: 'YOUR_IOS_APP_ID'),
-    messagingSenderId: String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID', defaultValue: 'YOUR_SENDER_ID'),
-    projectId: String.fromEnvironment('FIREBASE_PROJECT_ID', defaultValue: 'YOUR_PROJECT_ID'),
-    databaseURL: String.fromEnvironment('FIREBASE_DATABASE_URL', defaultValue: 'YOUR_DATABASE_URL'),
-    storageBucket: String.fromEnvironment('FIREBASE_STORAGE_BUCKET', defaultValue: 'YOUR_STORAGE_BUCKET'),
-    iosClientId: String.fromEnvironment('FIREBASE_IOS_CLIENT_ID', defaultValue: 'YOUR_IOS_CLIENT_ID'),
-    iosBundleId: String.fromEnvironment('FIREBASE_IOS_BUNDLE_ID', defaultValue: 'com.example.autodoc'),
+    apiKey: AppSecrets.firebaseIosApiKey,
+    appId: AppSecrets.firebaseAppIdIos,
+    messagingSenderId: AppSecrets.firebaseMessagingSenderId,
+    projectId: AppSecrets.firebaseProjectId,
+    databaseURL: AppSecrets.firebaseDatabaseUrl,
+    storageBucket: AppSecrets.firebaseStorageBucket,
+    iosClientId: AppSecrets.firebaseIosClientId,
+    iosBundleId: AppSecrets.firebaseIosBundleId,
   );
 }
