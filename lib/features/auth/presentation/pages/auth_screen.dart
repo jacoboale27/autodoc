@@ -335,6 +335,8 @@ class _AuthScreenState extends State<AuthScreen> {
                 final role = userData.rol.trim().toLowerCase();
                 if (role == 'taller' || role == 'mecanico') {
                   context.go('/mechanic_dashboard');
+                } else if (role == 'admin' || role == 'administrador') {
+                  context.go('/admin/dashboard');
                 } else {
                   context.go('/dashboard');
                 }

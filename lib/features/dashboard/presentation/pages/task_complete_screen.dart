@@ -153,7 +153,7 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
-                                _infoItem('Km Actual', '${NumberFormat('#,###').format(widget.currentKm)}', textColor, subTextColor),
+                                _infoItem('Km Actual', NumberFormat('#,###').format(widget.currentKm), textColor, subTextColor),
                                 Container(width: 1, height: 30, color: subTextColor.withValues(alpha: 0.2)),
                                 _infoItem('Último', '${NumberFormat('#,###').format(widget.task.ultimoKm)} km', textColor, subTextColor),
                                 Container(width: 1, height: 30, color: subTextColor.withValues(alpha: 0.2)),

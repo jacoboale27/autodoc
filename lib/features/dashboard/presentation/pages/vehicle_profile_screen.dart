@@ -459,8 +459,10 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
       ),
     );
   }
-
   Future<void> _showUpdateDateDialog(BuildContext context, VehicleModel vehicle, bool isTarjeta) async {
+    final vehicleProvider = context.read<VehicleProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
     final DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
@@ -483,8 +485,6 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
         ? vehicle.copyWith(vencimientoTarjeta: pickedDate)
         : vehicle.copyWith(vencimientoSoat: pickedDate);
         
-      final vehicleProvider = context.read<VehicleProvider>();
-      final messenger = ScaffoldMessenger.of(context);
       final success = await vehicleProvider.updateVehicle(updatedVehicle);
       
       if (mounted) {
@@ -612,12 +612,13 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                 final updatedVehicle = vehicle.copyWith(kilometrajeActual: newMileage);
                 
                 final vehicleProvider = context.read<VehicleProvider>();
+                final messenger = ScaffoldMessenger.of(context);
                 final success = await vehicleProvider.updateVehicle(updatedVehicle);
                 
                 if (context.mounted) {
                   if (success) {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       const SnackBar(content: Text('Kilometraje actualizado correctamente')),
                     );
                   } else {
@@ -708,9 +709,10 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                     if (context.mounted) {
                       setState(() => isVerifying = false);
                       if (success) {
+                        final messenger = ScaffoldMessenger.of(context);
                         Navigator.pop(context); // Close dialog
                         context.pop(); // Go back to previous screen
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           const SnackBar(content: Text('Vehículo eliminado correctamente')),
                         );
                       } else {

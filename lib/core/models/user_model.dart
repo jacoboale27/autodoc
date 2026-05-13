@@ -10,6 +10,7 @@ class UserModel {
   final String? especialidad;
   final String? ubicacionMunicipio;
   final String? telefono;
+  final String estado;
 
   UserModel({
     required this.idUsuario,
@@ -21,6 +22,7 @@ class UserModel {
     this.especialidad,
     this.ubicacionMunicipio,
     this.telefono,
+    this.estado = 'activo',
   });
 
   UserModel copyWith({
@@ -33,6 +35,7 @@ class UserModel {
     String? especialidad,
     String? ubicacionMunicipio,
     String? telefono,
+    String? estado,
   }) {
     return UserModel(
       idUsuario: idUsuario ?? this.idUsuario,
@@ -44,6 +47,7 @@ class UserModel {
       especialidad: especialidad ?? this.especialidad,
       ubicacionMunicipio: ubicacionMunicipio ?? this.ubicacionMunicipio,
       telefono: telefono ?? this.telefono,
+      estado: estado ?? this.estado,
     );
   }
 
@@ -58,6 +62,7 @@ class UserModel {
       if (especialidad != null) 'especialidad': especialidad,
       if (ubicacionMunicipio != null) 'ubicacion_municipio': ubicacionMunicipio,
       if (telefono != null) 'telefono': telefono,
+      'estado': estado,
     };
   }
 
@@ -72,6 +77,7 @@ class UserModel {
       especialidad: map['especialidad'],
       ubicacionMunicipio: map['ubicacion_municipio'],
       telefono: map['telefono'],
+      estado: map['estado'] ?? 'activo',
     );
   }
 }

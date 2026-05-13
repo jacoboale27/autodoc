@@ -28,6 +28,12 @@ import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/initiate_service_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/task_config_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/task_complete_screen.dart';
+import 'package:autodoc/features/admin/presentation/providers/admin_provider.dart';
+import 'package:autodoc/features/admin/presentation/providers/admin_dashboard_provider.dart';
+import 'package:autodoc/features/admin/presentation/pages/admin_dashboard_screen.dart';
+import 'package:autodoc/features/admin/presentation/pages/admin_usuarios_screen.dart';
+import 'package:autodoc/features/admin/presentation/pages/admin_talleres_screen.dart';
+import 'package:autodoc/features/admin/presentation/pages/admin_resenias_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +48,8 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => VehicleProvider()),
         ChangeNotifierProvider(create: (_) => AlertProvider()),
+        ChangeNotifierProvider(create: (_) => AdminProvider()),
+        ChangeNotifierProvider(create: (_) => AdminDashboardProvider()),
       ],
       child: const MyApp(),
     ),
@@ -140,6 +148,22 @@ final GoRouter _router = GoRouter(
           currentKm: data['currentKm'] as int,
         );
       },
+    ),
+    GoRoute(
+      path: '/admin/dashboard',
+      builder: (context, state) => const AdminDashboardScreen(),
+    ),
+    GoRoute(
+      path: '/admin/usuarios',
+      builder: (context, state) => const AdminUsuariosScreen(),
+    ),
+    GoRoute(
+      path: '/admin/talleres',
+      builder: (context, state) => const AdminTalleresScreen(),
+    ),
+    GoRoute(
+      path: '/admin/resenias',
+      builder: (context, state) => const AdminReseniasScreen(),
     ),
   ],
 );

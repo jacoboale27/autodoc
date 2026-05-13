@@ -282,7 +282,7 @@ class AlertProvider extends ChangeNotifier {
           'kilometraje_servicio': currentKm,
           'descripcion': notes.isNotEmpty ? notes : 'Mantenimiento registrado manualmente por el propietario',
           'costo': cost,
-          if (receiptUrl != null) 'foto_factura_url': receiptUrl,
+          'foto_factura_url' :? receiptUrl,
         });
       }
 

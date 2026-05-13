@@ -4,10 +4,12 @@ import 'dart:io';
 import '../../data/services/auth_service.dart';
 import '../../../../core/models/user_model.dart';
 import '../../../profile/data/services/user_service.dart';
+import '../../admin/data/services/admin_auth_service.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
   final UserService _userService = UserService();
+  final AdminAuthService _adminAuthService = AdminAuthService();
   User? _user;
   UserModel? _userData;
   bool _isLoading = false;
@@ -34,7 +36,12 @@ class AuthProvider with ChangeNotifier {
     debugPrint('Fetching user data for: $userId');
     _setLoading(true);
     try {
-      _userData = await _userService.getUserData(userId);
+      // Intentar obtener de administradores hardcoded primero
+      _userData = _adminAuthService.getHardcodedAdminByUid(userId);
+      
+      if (_userData == null) {
+        _userData = await _userService.getUserData(userId);
+      }
       _setLoading(false);
     } catch (e) {
       _setError(e.toString());
@@ -72,14 +79,24 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> signIn(String email, String password) async {
+  Future<bool> signIn(String emailOrUsername, String password) async {
     _setLoading(true);
     _setError(null);
     try {
-      final credential = await _authService.signInWithEmail(email, password);
+      // 1. Verificar si es un administrador hardcoded
+      final adminUser = await _adminAuthService.loginAsAdmin(emailOrUsername, password);
+      if (adminUser != null) {
+        _userData = adminUser;
+        _user = null; // No hay usuario de Firebase para administradores hardcoded
+        _setLoading(false);
+        return true;
+      }
+
+      // 2. Intento normal con Firebase
+      final credential = await _authService.signInWithEmail(emailOrUsername, password);
       _user = credential?.user;
       if (_user != null) {
-        _userData = null; // Clear stale data
+        _userData = null; // Limpiar datos antiguos
         await fetchUserData(_user!.uid);
       }
       _setLoading(false);

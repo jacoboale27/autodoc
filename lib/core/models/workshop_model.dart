@@ -5,6 +5,7 @@ class WorkshopModel {
   final String? especialidad;
   final String? telefono;
   final double calificacionPromedio;
+  final String estado;
 
   WorkshopModel({
     required this.idTaller,
@@ -13,6 +14,7 @@ class WorkshopModel {
     this.especialidad,
     this.telefono,
     this.calificacionPromedio = 0.0,
+    this.estado = 'pendiente',
   });
 
   WorkshopModel copyWith({
@@ -22,6 +24,7 @@ class WorkshopModel {
     String? especialidad,
     String? telefono,
     double? calificacionPromedio,
+    String? estado,
   }) {
     return WorkshopModel(
       idTaller: idTaller ?? this.idTaller,
@@ -30,6 +33,7 @@ class WorkshopModel {
       especialidad: especialidad ?? this.especialidad,
       telefono: telefono ?? this.telefono,
       calificacionPromedio: calificacionPromedio ?? this.calificacionPromedio,
+      estado: estado ?? this.estado,
     );
   }
 
@@ -41,6 +45,7 @@ class WorkshopModel {
       'especialidad': especialidad,
       'telefono': telefono,
       'calificacion_promedio': calificacionPromedio,
+      'estado': estado,
     };
   }
 
@@ -52,6 +57,7 @@ class WorkshopModel {
       especialidad: map['especialidad'],
       telefono: map['telefono'],
       calificacionPromedio: (map['calificacion_promedio'] ?? 0.0).toDouble(),
+      estado: map['estado'] ?? 'pendiente',
     );
   }
 }
