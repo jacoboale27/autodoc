@@ -34,6 +34,8 @@ import 'package:autodoc/features/admin/presentation/pages/admin_dashboard_screen
 import 'package:autodoc/features/admin/presentation/pages/admin_usuarios_screen.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_talleres_screen.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_resenias_screen.dart';
+import 'package:autodoc/features/admin/presentation/pages/admin_logs_screen.dart';
+import 'package:autodoc/features/admin/presentation/pages/admin_seed_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -164,6 +166,14 @@ final GoRouter _router = GoRouter(
     GoRoute(
       path: '/admin/resenias',
       builder: (context, state) => const AdminReseniasScreen(),
+    ),
+    GoRoute(
+      path: '/admin/logs',
+      builder: (context, state) => const AdminLogsScreen(),
+    ),
+    GoRoute(
+      path: '/admin/seed',
+      builder: (context, state) => const AdminSeedScreen(),
     ),
   ],
 );

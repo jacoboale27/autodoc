@@ -54,6 +54,17 @@ class AdminRepository {
     await _firestore.collection('admin_logs').doc(log.idLog).set(log.toMap());
   }
 
+  Future<List<AdminLogModel>> getLogs({int limit = 50}) async {
+    final snapshot = await _firestore
+        .collection('admin_logs')
+        .orderBy('fecha', descending: true)
+        .limit(limit)
+        .get();
+    return snapshot.docs
+        .map((doc) => AdminLogModel.fromMap(doc.data(), doc.id))
+        .toList();
+  }
+
   // Métricas (Dashboard)
   Future<int> countCollection(String collectionPath) async {
     final aggregateQuery = await _firestore.collection(collectionPath).count().get();

@@ -81,6 +81,12 @@ class AdminSidebar extends StatelessWidget {
               label: 'Reseñas',
               route: '/admin/resenias',
             ),
+            _buildDrawerItem(
+              context,
+              icon: Icons.history_outlined,
+              label: 'Registro de Actividad',
+              route: '/admin/logs',
+            ),
             const Spacer(),
             const Divider(indent: 20, endIndent: 20),
             _buildDrawerItem(

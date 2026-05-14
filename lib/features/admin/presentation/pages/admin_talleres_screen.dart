@@ -46,7 +46,7 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AdminProvider>();
-    final currentUser = context.read<AuthProvider>().user;
+    final adminUid = context.read<AuthProvider>().adminUid;
 
     final talleresFiltrados = provider.talleres.where((t) {
       if (_filterStatus == 'todos') return true;
@@ -94,7 +94,7 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                                     context,
                                     'Aprobar Taller',
                                     '¿Estás seguro de que quieres aprobar este taller?',
-                                    () => provider.aprobarTaller(currentUser?.uid ?? 'admin', taller.idTaller),
+                                    () => provider.aprobarTaller(adminUid, taller.idTaller),
                                   );
                                 },
                                 onRechazar: () {
@@ -102,7 +102,7 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                                     context,
                                     'Rechazar Taller',
                                     '¿Estás seguro de que quieres rechazar este taller?',
-                                    () => provider.rechazarTaller(currentUser?.uid ?? 'admin', taller.idTaller),
+                                    () => provider.rechazarTaller(adminUid, taller.idTaller),
                                   );
                                 },
                                 onSuspender: () {
@@ -110,7 +110,7 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                                     context,
                                     'Suspender Taller',
                                     '¿Estás seguro de que quieres suspender este taller?',
-                                    () => provider.suspenderTaller(currentUser?.uid ?? 'admin', taller.idTaller, 'Suspensión administrativa'),
+                                    () => provider.suspenderTaller(adminUid, taller.idTaller, 'Suspensión administrativa'),
                                   );
                                 },
                               );

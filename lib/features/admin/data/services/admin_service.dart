@@ -72,6 +72,11 @@ class AdminService {
     await _logAction(adminUid, 'ELIMINAR_RESENIA', 'Resenias', idResenia, motivo);
   }
 
+  // Logs
+  Future<List<AdminLogModel>> fetchLogs({int limit = 50}) async {
+    return await _repository.getLogs(limit: limit);
+  }
+
   // Métricas
   Future<Map<String, int>> fetchDashboardMetrics() async {
     final totalUsuarios = await _repository.countCollection('Usuarios');

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:io';
-import '../../data/services/auth_service.dart';
-import '../../../../core/models/user_model.dart';
-import '../../../profile/data/services/user_service.dart';
-import '../../admin/data/services/admin_auth_service.dart';
+import 'package:autodoc/features/auth/data/services/auth_service.dart';
+import 'package:autodoc/core/models/user_model.dart';
+import 'package:autodoc/features/profile/data/services/user_service.dart';
+import 'package:autodoc/features/admin/data/services/admin_auth_service.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -14,11 +14,17 @@ class AuthProvider with ChangeNotifier {
   UserModel? _userData;
   bool _isLoading = false;
   String? _error;
+  bool _isAdminSession = false;
 
   User? get user => _user;
   UserModel? get userData => _userData;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  bool get isAdminSession => _isAdminSession;
+
+  /// The admin UID for use in admin operations.
+  /// Uses the Firebase Auth UID since admins are now real Firebase users.
+  String get adminUid => _user?.uid ?? _userData?.idUsuario ?? '';
 
   AuthProvider() {
     _authService.user.listen((User? user) async {
@@ -27,6 +33,7 @@ class AuthProvider with ChangeNotifier {
         await fetchUserData(user.uid);
       } else {
         _userData = null;
+        _isAdminSession = false;
       }
       notifyListeners();
     });
@@ -36,12 +43,14 @@ class AuthProvider with ChangeNotifier {
     debugPrint('Fetching user data for: $userId');
     _setLoading(true);
     try {
-      // Intentar obtener de administradores hardcoded primero
-      _userData = _adminAuthService.getHardcodedAdminByUid(userId);
-      
-      if (_userData == null) {
-        _userData = await _userService.getUserData(userId);
+      _userData = await _userService.getUserData(userId);
+
+      // Check if this user is an admin
+      if (_userData != null) {
+        final rol = _userData!.rol.trim().toLowerCase();
+        _isAdminSession = (rol == 'administrador' || rol == 'admin');
       }
+
       _setLoading(false);
     } catch (e) {
       _setError(e.toString());
@@ -83,20 +92,30 @@ class AuthProvider with ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
-      // 1. Verificar si es un administrador hardcoded
-      final adminUser = await _adminAuthService.loginAsAdmin(emailOrUsername, password);
-      if (adminUser != null) {
-        _userData = adminUser;
-        _user = null; // No hay usuario de Firebase para administradores hardcoded
+      String email = emailOrUsername.trim();
+
+      // If not an email, attempt to resolve as admin username
+      if (!email.contains('@')) {
+        final adminUser = await _adminAuthService.loginAsAdmin(email, password);
+        if (adminUser != null) {
+          // loginAsAdmin already signed us in via Firebase Auth
+          _user = FirebaseAuth.instance.currentUser;
+          _userData = adminUser;
+          _isAdminSession = true;
+          _setLoading(false);
+          return true;
+        }
+        // If not an admin username, fail
+        _setError('No se encontró un usuario con ese nombre.');
         _setLoading(false);
-        return true;
+        return false;
       }
 
-      // 2. Intento normal con Firebase
-      final credential = await _authService.signInWithEmail(emailOrUsername, password);
+      // Standard email sign in via Firebase Auth
+      final credential = await _authService.signInWithEmail(email, password);
       _user = credential?.user;
       if (_user != null) {
-        _userData = null; // Limpiar datos antiguos
+        _userData = null; // Clear stale data
         await fetchUserData(_user!.uid);
       }
       _setLoading(false);
@@ -146,6 +165,7 @@ class AuthProvider with ChangeNotifier {
   Future<void> signOut() async {
     _userData = null;
     _user = null;
+    _isAdminSession = false;
     notifyListeners();
     await _authService.signOut();
   }

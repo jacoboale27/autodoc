@@ -50,7 +50,7 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
             onPressed: () {
               Navigator.pop(context);
               adminProvider.eliminarResenia(
-                authProvider.user?.uid ?? 'admin',
+                authProvider.adminUid,
                 idResenia,
                 controller.text.isEmpty ? 'Incumplimiento de normas' : controller.text,
               );

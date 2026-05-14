@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/models/user_model.dart';
 import '../../../../core/models/workshop_model.dart';
 import '../../../../core/models/review_model.dart';
+import '../../../../core/models/admin_log_model.dart';
 import '../../data/services/admin_service.dart';
 
 class AdminProvider with ChangeNotifier {
@@ -10,15 +11,19 @@ class AdminProvider with ChangeNotifier {
   List<UserModel> _usuarios = [];
   List<WorkshopModel> _talleres = [];
   List<ReviewModel> _resenias = [];
+  List<AdminLogModel> _logs = [];
 
   bool _isLoading = false;
   String? _error;
+  String? _successMessage;
 
   List<UserModel> get usuarios => _usuarios;
   List<WorkshopModel> get talleres => _talleres;
   List<ReviewModel> get resenias => _resenias;
+  List<AdminLogModel> get logs => _logs;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  String? get successMessage => _successMessage;
 
   void _setLoading(bool value) {
     _isLoading = value;
@@ -27,6 +32,19 @@ class AdminProvider with ChangeNotifier {
 
   void _setError(String? value) {
     _error = value;
+    _successMessage = null;
+    notifyListeners();
+  }
+
+  void _setSuccess(String message) {
+    _successMessage = message;
+    _error = null;
+    notifyListeners();
+  }
+
+  void clearMessages() {
+    _error = null;
+    _successMessage = null;
     notifyListeners();
   }
 
@@ -52,6 +70,8 @@ class AdminProvider with ChangeNotifier {
     }
   }
 
+  // --- USUARIOS ---
+
   Future<void> fetchUsuarios() async {
     _setLoading(true);
     try {
@@ -67,6 +87,7 @@ class AdminProvider with ChangeNotifier {
     _setLoading(true);
     try {
       await _adminService.suspenderUsuario(adminUid, targetUid, motivo);
+      _setSuccess('Usuario suspendido correctamente');
       await fetchUsuarios();
     } catch (e) {
       _setError(e.toString());
@@ -79,6 +100,7 @@ class AdminProvider with ChangeNotifier {
     _setLoading(true);
     try {
       await _adminService.reactivarUsuario(adminUid, targetUid);
+      _setSuccess('Usuario reactivado correctamente');
       await fetchUsuarios();
     } catch (e) {
       _setError(e.toString());
@@ -87,10 +109,26 @@ class AdminProvider with ChangeNotifier {
     }
   }
 
+  Future<void> cambiarRolUsuario(String adminUid, String targetUid, String nuevoRol) async {
+    _setLoading(true);
+    try {
+      await _adminService.cambiarRolUsuario(adminUid, targetUid, nuevoRol);
+      _setSuccess('Rol cambiado a $nuevoRol correctamente');
+      await fetchUsuarios();
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // --- TALLERES ---
+
   Future<void> aprobarTaller(String adminUid, String idTaller) async {
     _setLoading(true);
     try {
       await _adminService.aprobarTaller(adminUid, idTaller);
+      _setSuccess('Taller aprobado correctamente');
       _talleres = await _adminService.fetchTalleres();
     } catch (e) {
       _setError(e.toString());
@@ -103,6 +141,7 @@ class AdminProvider with ChangeNotifier {
     _setLoading(true);
     try {
       await _adminService.rechazarTaller(adminUid, idTaller);
+      _setSuccess('Taller rechazado');
       _talleres = await _adminService.fetchTalleres();
     } catch (e) {
       _setError(e.toString());
@@ -115,6 +154,7 @@ class AdminProvider with ChangeNotifier {
     _setLoading(true);
     try {
       await _adminService.suspenderTaller(adminUid, idTaller, motivo);
+      _setSuccess('Taller suspendido');
       _talleres = await _adminService.fetchTalleres();
     } catch (e) {
       _setError(e.toString());
@@ -127,6 +167,7 @@ class AdminProvider with ChangeNotifier {
     _setLoading(true);
     try {
       await _adminService.aprobarTaller(adminUid, idTaller);
+      _setSuccess('Taller reactivado');
       _talleres = await _adminService.fetchTalleres();
     } catch (e) {
       _setError(e.toString());
@@ -135,11 +176,27 @@ class AdminProvider with ChangeNotifier {
     }
   }
 
+  // --- RESEÑAS ---
+
   Future<void> eliminarResenia(String adminUid, String idResenia, String motivo) async {
     _setLoading(true);
     try {
       await _adminService.eliminarResenia(adminUid, idResenia, motivo);
+      _setSuccess('Reseña eliminada');
       _resenias = await _adminService.fetchResenias();
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // --- LOGS ---
+
+  Future<void> fetchLogs() async {
+    _setLoading(true);
+    try {
+      _logs = await _adminService.fetchLogs();
     } catch (e) {
       _setError(e.toString());
     } finally {

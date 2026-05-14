@@ -49,7 +49,6 @@ app.*.map.json
 .env*
 DEV_SETUP.md
 lib/config/secrets.dart
-lib/core/config/admin_secrets.dart
 ios/Runner/GoogleService-Info.plist
 android/app/google-services.json
 
@@ -68,3 +67,4 @@ users.json
 .pub/
 /build/
 /coverage/
+.firebase/

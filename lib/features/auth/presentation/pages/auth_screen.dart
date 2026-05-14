@@ -183,8 +183,8 @@ class _AuthScreenState extends State<AuthScreen> {
               
               // Form Fields
               _buildTextField(
-                label: 'Correo electrónico',
-                hint: 'nombre@ejemplo.com',
+                label: _isLoginMode ? 'Correo o usuario' : 'Correo electrónico',
+                hint: _isLoginMode ? 'nombre@ejemplo.com o usuario' : 'nombre@ejemplo.com',
                 icon: Icons.mail_outline,
                 mint: mint,
                 controller: _emailController,
@@ -383,6 +383,8 @@ class _AuthScreenState extends State<AuthScreen> {
             final role = userData.rol.trim().toLowerCase();
             if (role == 'taller' || role == 'mecanico') {
               context.go('/mechanic_dashboard');
+            } else if (role == 'admin' || role == 'administrador') {
+              context.go('/admin/dashboard');
             } else {
               context.go('/dashboard');
             }
