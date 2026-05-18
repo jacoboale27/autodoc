@@ -6,7 +6,7 @@ import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/features/profile/data/services/user_service.dart';
 import 'package:autodoc/features/admin/data/services/admin_auth_service.dart';
 import 'package:autodoc/features/auth/data/services/auth_preferences_service.dart';
-
+import 'package:autodoc/core/services/notification_service.dart';
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
   final UserService _userService = UserService();
@@ -56,6 +56,14 @@ class AuthProvider with ChangeNotifier {
       if (_userData != null) {
         final rol = _userData!.rol.trim().toLowerCase();
         _isAdminSession = (rol == 'administrador' || rol == 'admin');
+        
+        // Save FCM token for the current user
+        try {
+          // Import should be handled at the top, let's just make sure we call it
+          await NotificationService().saveUserToken();
+        } catch (e) {
+          debugPrint("Failed to save FCM token: $e");
+        }
       }
 
       _setLoading(false);

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:ui';
+import 'package:autodoc/features/auth/data/services/auth_preferences_service.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -84,8 +85,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       ),
                     ),
                     TextButton(
-                      onPressed: () {
-                        context.go('/login');
+                      onPressed: () async {
+                        await AuthPreferencesService().setOnboardingCompleted(true);
+                        if (context.mounted) {
+                          context.go('/login');
+                        }
                       },
                       child: Text(
                         'Saltar',
@@ -261,7 +265,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
                 child: GestureDetector(
-                  onTap: () {
+                  onTap: () async {
                     if (_currentPage < _contents.length - 1) {
                       _pageController.nextPage(
                         duration: const Duration(milliseconds: 300),
@@ -269,7 +273,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       );
                     } else {
                       // Final Action: Navigate to Login
-                      context.go('/login');
+                      await AuthPreferencesService().setOnboardingCompleted(true);
+                      if (context.mounted) {
+                        context.go('/login');
+                      }
                     }
                   },
                   child: AnimatedContainer(

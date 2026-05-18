@@ -11,6 +11,7 @@ class UserModel {
   final String? ubicacionMunicipio;
   final String? telefono;
   final String estado;
+  final String? fcmToken;
 
   UserModel({
     required this.idUsuario,
@@ -23,6 +24,7 @@ class UserModel {
     this.ubicacionMunicipio,
     this.telefono,
     this.estado = 'activo',
+    this.fcmToken,
   });
 
   UserModel copyWith({
@@ -36,6 +38,7 @@ class UserModel {
     String? ubicacionMunicipio,
     String? telefono,
     String? estado,
+    String? fcmToken,
   }) {
     return UserModel(
       idUsuario: idUsuario ?? this.idUsuario,
@@ -48,6 +51,7 @@ class UserModel {
       ubicacionMunicipio: ubicacionMunicipio ?? this.ubicacionMunicipio,
       telefono: telefono ?? this.telefono,
       estado: estado ?? this.estado,
+      fcmToken: fcmToken ?? this.fcmToken,
     );
   }
 
@@ -63,6 +67,7 @@ class UserModel {
       if (ubicacionMunicipio != null) 'ubicacion_municipio': ubicacionMunicipio,
       if (telefono != null) 'telefono': telefono,
       'estado': estado,
+      if (fcmToken != null) 'fcmToken': fcmToken,
     };
   }
 
@@ -78,6 +83,7 @@ class UserModel {
       ubicacionMunicipio: map['ubicacion_municipio'],
       telefono: map['telefono'],
       estado: map['estado'] ?? 'activo',
+      fcmToken: map['fcmToken'],
     );
   }
 }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
+
 import 'package:autodoc/firebase_options.dart';
 import 'package:autodoc/core/router/app_router.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
@@ -11,12 +13,31 @@ import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/theme/app_theme.dart';
 import 'package:autodoc/features/admin/presentation/providers/admin_provider.dart';
 import 'package:autodoc/features/admin/presentation/providers/admin_dashboard_provider.dart';
+import 'package:autodoc/core/services/notification_service.dart';
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  debugPrint("Manejando mensaje en background: ${message.messageId}");
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  
+  final messaging = FirebaseMessaging.instance;
+  await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  // Inicializar notificaciones locales y foreground FCM
+  await NotificationService().initialize();
   
   runApp(
     MultiProvider(

@@ -135,10 +135,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               right: 24,
               child: FloatingActionButton(
                 onPressed: () => _showAddVehicleDialog(context, primaryPurple),
-                backgroundColor: isDark
-                    ? const Color(0xFF98FFD9)
-                    : primaryPurple,
-                foregroundColor: isDark ? primaryPurple : Colors.white,
+                backgroundColor: colors.primary,
+                foregroundColor: isDark ? colors.secondary : Colors.white,
                 elevation: 8,
                 shape: const CircleBorder(),
                 child: const Icon(Icons.add, size: 32),
@@ -840,7 +838,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: Color(0xFFCBD5E1)),
+          Icon(Icons.chevron_right, color: context.appColors.textSecondary),
         ],
       ),
     );
@@ -917,7 +915,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           Icon(
             icon,
-            color: isActive ? primary : const Color(0xFFCBD5E1),
+            color: isActive ? primary : context.appColors.textSecondary,
             size: 24,
           ),
           const SizedBox(height: 4),
@@ -926,7 +924,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             style: GoogleFonts.inter(
               fontSize: 10,
               fontWeight: FontWeight.bold,
-              color: isActive ? primary : const Color(0xFF94A3B8),
+              color: isActive ? primary : context.appColors.textSecondary,
             ),
           ),
         ],

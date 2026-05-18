@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AuthPreferencesService {
   static const String _keyRememberMe = 'auth_remember_me';
   static const String _keySavedEmail = 'auth_saved_email';
+  static const String _keyOnboardingCompleted = 'auth_onboarding_completed';
 
   Future<bool> getRememberMe() async {
     final prefs = await SharedPreferences.getInstance();
@@ -28,9 +29,20 @@ class AuthPreferencesService {
     await prefs.setString(_keySavedEmail, email.trim());
   }
 
+  Future<bool> isOnboardingCompleted() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyOnboardingCompleted) ?? false;
+  }
+
+  Future<void> setOnboardingCompleted(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyOnboardingCompleted, value);
+  }
+
   Future<void> clearSavedCredentials() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keySavedEmail);
     await prefs.setBool(_keyRememberMe, false);
   }
 }
+

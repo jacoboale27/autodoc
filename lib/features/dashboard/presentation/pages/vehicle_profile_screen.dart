@@ -176,7 +176,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF22C55E),
+                            color: colors.secondary,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Text(
@@ -359,7 +359,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
       icon = Icons.warning_amber_rounded;
       statusText = 'Vence en $difference días ($formattedDate)';
     } else {
-      statusColor = Colors.green;
+      statusColor = colors.secondary;
       icon = Icons.verified_user_outlined;
       statusText = 'Vence en $difference días ($formattedDate)';
     }
@@ -476,15 +476,15 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
           const SizedBox(height: 16),
           Row(
             children: [
-              _buildActionButton(Icons.history, 'Historial', Colors.blue, colors, onTap: () {
+              _buildActionButton(Icons.history, 'Historial', colors.primary, colors, onTap: () {
                 context.push('/service_history', extra: vehicle.idVehiculo);
               }),
               const SizedBox(width: 12),
-              _buildActionButton(Icons.build, 'Servicios', Colors.orange, colors, onTap: () {
+              _buildActionButton(Icons.build, 'Servicios', colors.secondary, colors, onTap: () {
                 context.push('/workshop_directory');
               }),
               const SizedBox(width: 12),
-              _buildActionButton(Icons.description, 'Papeles', Colors.green, colors, onTap: () {
+              _buildActionButton(Icons.description, 'Papeles', colors.warning, colors, onTap: () {
                 context.push('/alerts');
               }),
             ],

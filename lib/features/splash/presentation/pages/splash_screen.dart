@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/features/auth/data/services/auth_preferences_service.dart';
 import 'dart:math' as math;
 
 class SplashScreen extends StatefulWidget {
@@ -53,7 +54,16 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               context.go('/profile_setup');
             }
           } else {
-            context.go('/onboarding');
+            final authPrefs = AuthPreferencesService();
+            final rememberMe = await authPrefs.getRememberMe();
+            final onboardingCompleted = await authPrefs.isOnboardingCompleted();
+            if (mounted) {
+              if (rememberMe || onboardingCompleted) {
+                context.go('/login');
+              } else {
+                context.go('/onboarding');
+              }
+            }
           }
         }
       }
