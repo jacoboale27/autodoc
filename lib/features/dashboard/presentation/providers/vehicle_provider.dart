@@ -122,10 +122,23 @@ class VehicleProvider with ChangeNotifier {
     }
   }
 
-  Future<void> setAsPrimary(VehicleModel vehicle) async {
-    final updatedVehicle = vehicle.copyWith(isPrimary: true);
-    await updateVehicle(updatedVehicle);
-    selectVehicle(updatedVehicle);
+  /// Marca un vehículo como principal en Firestore y degrada el anterior.
+  Future<bool> setAsPrimary(VehicleModel vehicle) async {
+    if (vehicle.isPrimary) return true;
+
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _demoteCurrentPrimary(vehicle.idPropietario, excludeId: vehicle.idVehiculo);
+      await _vehicleService.updateVehicle(vehicle.copyWith(isPrimary: true));
+      await fetchVehicles(vehicle.idPropietario);
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
   }
 
   Future<void> _demoteCurrentPrimary(String ownerId, {String? excludeId}) async {
@@ -144,8 +157,19 @@ class VehicleProvider with ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
+      final wasPrimary = _vehicles.any((v) => v.idVehiculo == vehicleId && v.isPrimary);
       await _vehicleService.deleteVehicle(vehicleId);
       await fetchVehicles(ownerId);
+
+      // Si se eliminó el principal, promover el primero restante del dueño
+      if (wasPrimary && _vehicles.isNotEmpty) {
+        final owned = _vehicles.where((v) => v.idPropietario == ownerId).toList();
+        if (owned.isNotEmpty && !owned.any((v) => v.isPrimary)) {
+          await _vehicleService.updateVehicle(owned.first.copyWith(isPrimary: true));
+          await fetchVehicles(ownerId);
+        }
+      }
+
       _setLoading(false);
       return true;
     } catch (e) {

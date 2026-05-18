@@ -43,68 +43,67 @@ class ElSalvadorLicensePlate extends StatelessWidget {
             
             // Text Layer
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+              padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 6),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Top text
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'EL SALVADOR',
-                        style: GoogleFonts.inter(
-                          fontSize: height * 0.08,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.black,
-                          letterSpacing: 1,
-                        ),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'EL SALVADOR',
+                      maxLines: 1,
+                      style: GoogleFonts.inter(
+                        fontSize: height * 0.08,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.black,
+                        letterSpacing: 1,
+                        height: 1,
                       ),
-                    ],
+                    ),
                   ),
-                  
-                  // Plate number
                   Expanded(
                     child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            placa,
-                            style: GoogleFonts.inter(
-                              fontSize: height * 0.35,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF1E293B),
-                              letterSpacing: 2,
-                            ),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          placa,
+                          maxLines: 1,
+                          style: GoogleFonts.inter(
+                            fontSize: height * 0.35,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1E293B),
+                            letterSpacing: 2,
+                            height: 1,
                           ),
                         ),
                       ),
                     ),
                   ),
-                  
-                  // Bottom text
-                  Text(
-                    'CENTRO AMERICA',
-                    style: GoogleFonts.inter(
-                      fontSize: height * 0.07,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                      letterSpacing: 1.5,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'CENTRO AMERICA',
+                      maxLines: 1,
+                      style: GoogleFonts.inter(
+                        fontSize: height * 0.07,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                        letterSpacing: 1.5,
+                        height: 1,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            
-            // Seal (center icon)
+
+            // Seal decorativo (sin red — evita HTTP 400 de Wikimedia)
             Center(
               child: Opacity(
-                opacity: 0.2,
-                child: Image.network(
-                  'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Coat_of_arms_of_El_Salvador.svg/1024px-Coat_of_arms_of_El_Salvador.svg.png',
-                  height: height * 0.25,
+                opacity: 0.15,
+                child: Icon(
+                  Icons.shield_outlined,
+                  size: height * 0.28,
+                  color: const Color(0xFF0047AB),
                 ),
               ),
             ),

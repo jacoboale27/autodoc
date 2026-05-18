@@ -3,11 +3,15 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:autodoc/core/widgets/vehicle_image_widget.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../../../../core/models/vehicle_model.dart';
+import 'package:autodoc/core/models/vehicle_model.dart';
 import '../providers/vehicle_provider.dart';
 import '../widgets/license_plate_widget.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/widgets/app_scaffold.dart';
+import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
 import '../widgets/share_vehicle_sheet.dart';
 
 class VehicleProfileScreen extends StatefulWidget {
@@ -30,95 +34,77 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final primaryPurple = theme.colorScheme.primary;
-    final bgColorStart = isDark ? const Color(0xFF1E293B) : const Color(0xFFF7F6F8);
-    final bgColorEnd = isDark ? const Color(0xFF0F172A) : const Color(0xFFECE9F1);
-    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final subTextColor = isDark ? Colors.grey[400]! : const Color(0xFF64748B);
-    final cardColor = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white;
+    final colors = context.appColors;
 
     final vehicleProvider = context.watch<VehicleProvider>();
-    // Update local vehicle if provider has new data
-    final updatedVehicle = vehicleProvider.vehicles.firstWhere(
+    final vehicle = vehicleProvider.vehicles.firstWhere(
       (v) => v.idVehiculo == _currentVehicle.idVehiculo,
       orElse: () => _currentVehicle,
     );
-    _currentVehicle = updatedVehicle;
 
-    return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [bgColorStart, bgColorEnd],
-          ),
-        ),
-        child: Column(
-          children: [
-            _buildHeader(context, primaryPurple, isDark, textColor, subTextColor),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 100),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeroImage(_currentVehicle, isDark),
-                    _buildVehicleIdentity(_currentVehicle, primaryPurple, textColor, subTextColor),
-                    _buildTechnicalDetails(_currentVehicle, primaryPurple, isDark, cardColor, textColor, subTextColor),
-                    _buildDocumentationStatus(_currentVehicle, primaryPurple, isDark, cardColor, textColor, subTextColor),
-                    _buildQuickActions(_currentVehicle, primaryPurple, isDark, cardColor, textColor),
-                  ],
-                ),
+    return AppScaffold(
+      useGradient: true,
+      body: Column(
+        children: [
+          _buildHeader(context, colors, vehicle),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 100),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeroImage(vehicle, colors),
+                  _buildVehicleIdentity(vehicle, colors),
+                  _buildTechnicalDetails(vehicle, colors),
+                  _buildDocumentationStatus(vehicle, colors),
+                  _buildQuickActions(vehicle, colors),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, Color primary, bool isDark, Color textColor, Color subTextColor) {
+  Widget _buildHeader(BuildContext context, AppColors colors, VehicleModel vehicle) {
     return SafeArea(
       bottom: false,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         decoration: BoxDecoration(
-          color: isDark ? Colors.transparent : Colors.white,
-          border: Border(bottom: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey[200]!, width: 1)),
+          color: colors.surfaceContainer.withValues(alpha: 0.8),
+          border: Border(
+            bottom: BorderSide(color: colors.primary.withValues(alpha: 0.1)),
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             IconButton(
-              onPressed: () => Navigator.pop(context),
-              icon: Icon(Icons.arrow_back_ios_new, color: isDark ? Colors.white : primary, size: 20),
+              onPressed: () => context.pop(),
+              icon: Icon(Icons.arrow_back_ios_new, color: colors.primary, size: 20),
             ),
             Text(
               'Perfil del Vehículo',
               style: GoogleFonts.inter(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: textColor,
+                color: colors.textPrimary,
               ),
             ),
             PopupMenuButton<String>(
-              icon: Icon(Icons.more_horiz, color: primary, size: 24),
+              icon: Icon(Icons.more_horiz, color: colors.primary, size: 24),
               onSelected: (value) {
                 if (value == 'delete') {
-                  _showDeleteConfirmationDialog(context, _currentVehicle, primary, isDark, textColor, subTextColor);
+                  _showDeleteConfirmationDialog(context, vehicle, colors);
                 } else if (value == 'share') {
                   showModalBottomSheet(
                     context: context,
                     isScrollControlled: true,
                     backgroundColor: Colors.transparent,
                     builder: (_) => ShareVehicleSheet(
-                      vehicle: _currentVehicle,
+                      vehicle: vehicle,
                       onUpdated: (updated) {
                         setState(() => _currentVehicle = updated);
                       },
@@ -127,13 +113,13 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                 }
               },
               itemBuilder: (context) => [
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'share',
                   child: Row(
                     children: [
-                      Icon(Icons.people_outline, color: Colors.blueGrey, size: 20),
-                      SizedBox(width: 8),
-                      Text('Compartir Vehículo'),
+                      Icon(Icons.people_outline, color: colors.textSecondary, size: 20),
+                      const SizedBox(width: 8),
+                      const Text('Compartir Vehículo'),
                     ],
                   ),
                 ),
@@ -155,70 +141,62 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     );
   }
 
-  Widget _buildHeroImage(VehicleModel vehicle, bool isDark) {
+  Widget _buildHeroImage(VehicleModel vehicle, AppColors colors) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: Container(
-        height: 220,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
-          boxShadow: isDark ? null : [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
+      child: AppCard(
+        padding: EdgeInsets.zero,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              VehicleImageWidget(
-                imageUrl: vehicle.fotoUrl,
-                fit: BoxFit.cover,
-              ),
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
+          borderRadius: BorderRadius.circular(16),
+          child: SizedBox(
+            height: 220,
+            width: double.infinity,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                VehicleImageWidget(
+                  imageUrl: vehicle.fotoUrl,
+                  fit: BoxFit.cover,
+                ),
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF22C55E),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'ACTIVO',
+                            style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF22C55E),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'ACTIVO',
-                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildVehicleIdentity(VehicleModel vehicle, Color primary, Color textColor, Color subTextColor) {
+  Widget _buildVehicleIdentity(VehicleModel vehicle, AppColors colors) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
@@ -234,7 +212,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                   style: GoogleFonts.inter(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: textColor,
+                    color: colors.textPrimary,
                   ),
                 ),
                 Text(
@@ -242,7 +220,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: subTextColor,
+                    color: colors.textSecondary,
                   ),
                 ),
               ],
@@ -258,7 +236,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     );
   }
 
-  Widget _buildTechnicalDetails(VehicleModel vehicle, Color primary, bool isDark, Color cardColor, Color textColor, Color subTextColor) {
+  Widget _buildTechnicalDetails(VehicleModel vehicle, AppColors colors) {
     return Padding(
       padding: const EdgeInsets.all(20),
       child: GridView.count(
@@ -267,61 +245,62 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
         physics: const NeverScrollableScrollPhysics(),
         mainAxisSpacing: 16,
         crossAxisSpacing: 16,
-        childAspectRatio: 1.5,
+        childAspectRatio: 1.25,
         children: [
-          _buildDetailItem(Icons.calendar_today, 'Año', vehicle.anio?.toString() ?? 'N/A', primary, cardColor, textColor, subTextColor),
-          _buildDetailItem(Icons.palette, 'Color', vehicle.color ?? 'N/A', primary, cardColor, textColor, subTextColor),
+          _buildDetailItem(Icons.calendar_today, 'Año', vehicle.anio?.toString() ?? 'N/A', colors),
+          _buildDetailItem(Icons.palette, 'Color', vehicle.color ?? 'N/A', colors),
           _buildDetailItem(
             Icons.speed, 
             'Kilometraje', 
             '${vehicle.kilometrajeActual} km', 
-            primary,
-            cardColor,
-            textColor,
-            subTextColor,
-            onTap: () => _showEditMileageDialog(context, _currentVehicle, primary, isDark, textColor, subTextColor),
+            colors,
+            onTap: () => _showEditMileageDialog(context, vehicle, colors),
           ),
-          _buildDetailItem(Icons.directions_car, 'Marca', vehicle.marca ?? 'N/A', primary, cardColor, textColor, subTextColor),
+          _buildDetailItem(Icons.directions_car, 'Marca', vehicle.marca ?? 'N/A', colors),
         ],
       ),
     );
   }
-
-  Widget _buildDetailItem(IconData icon, String label, String value, Color primary, Color cardColor, Color textColor, Color subTextColor, {VoidCallback? onTap}) {
-    return InkWell(
+ 
+  Widget _buildDetailItem(IconData icon, String label, String value, AppColors colors, {VoidCallback? onTap}) {
+    return AppCard(
+      padding: EdgeInsets.zero,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-          boxShadow: onTap != null ? [
-            BoxShadow(color: primary.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
-          ] : null,
-        ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(icon, color: primary, size: 20),
-                if (onTap != null) Icon(Icons.edit, color: primary.withValues(alpha: 0.5), size: 14),
+                Icon(icon, color: colors.primary, size: 20),
+                if (onTap != null) Icon(Icons.edit, color: colors.primary.withValues(alpha: 0.5), size: 14),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(label, style: TextStyle(fontSize: 11, color: subTextColor, fontWeight: FontWeight.w500)),
-            Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textColor)),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 11, color: colors.textSecondary, fontWeight: FontWeight.w500, height: 1.2),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: colors.textPrimary, height: 1.2),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildDocumentationStatus(VehicleModel vehicle, Color primary, bool isDark, Color cardColor, Color textColor, Color subTextColor) {
+  Widget _buildDocumentationStatus(VehicleModel vehicle, AppColors colors) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
@@ -329,59 +308,54 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
         children: [
           Text(
             'Documentación y Alertas',
-            style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
+            style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: colors.textPrimary),
           ),
           const SizedBox(height: 12),
           _buildDocumentationStatusItem(
             'Tarjeta de Circulación',
             vehicle.vencimientoTarjeta,
-            primary,
-            cardColor,
-            textColor,
+            colors,
             () => _showUpdateDateDialog(context, vehicle, true),
           ),
           const SizedBox(height: 12),
           _buildDocumentationStatusItem(
             'Seguro SOAT',
             vehicle.vencimientoSoat,
-            primary,
-            cardColor,
-            textColor,
+            colors,
             () => _showUpdateDateDialog(context, vehicle, false),
           ),
         ],
       ),
     );
   }
-
-  Widget _buildDocumentationStatusItem(String title, DateTime? expiryDate, Color primary, Color cardColor, Color textColor, VoidCallback onUpdate) {
+ 
+  Widget _buildDocumentationStatusItem(String title, DateTime? expiryDate, AppColors colors, VoidCallback onUpdate) {
     if (expiryDate == null) {
       return _buildStatusAlert(
         icon: Icons.help_outline,
         title: title,
         subtitle: 'Fecha no registrada',
         color: Colors.grey,
-        cardColor: cardColor,
-        textColor: textColor,
+        colors: colors,
         actionLabel: 'Actualizar',
         onActionPressed: onUpdate,
       );
     }
-
+ 
     final now = DateTime.now();
     final difference = expiryDate.difference(now).inDays;
     final formattedDate = DateFormat('dd MMM yyyy').format(expiryDate);
-
+ 
     Color statusColor;
     IconData icon;
     String statusText;
-
+ 
     if (difference < 0) {
-      statusColor = Colors.red;
+      statusColor = colors.error;
       icon = Icons.error_outline;
       statusText = 'Vencido el $formattedDate';
     } else if (difference < 30) {
-      statusColor = Colors.orange;
+      statusColor = colors.warning;
       icon = Icons.warning_amber_rounded;
       statusText = 'Vence en $difference días ($formattedDate)';
     } else {
@@ -389,14 +363,13 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
       icon = Icons.verified_user_outlined;
       statusText = 'Vence en $difference días ($formattedDate)';
     }
-
+ 
     return _buildStatusAlert(
       icon: icon,
       title: title,
       subtitle: statusText,
       color: statusColor,
-      cardColor: cardColor,
-      textColor: textColor,
+      colors: colors,
       isVerified: difference >= 30,
       actionLabel: difference < 30 ? 'Renovar' : null,
       onActionPressed: onUpdate,
@@ -408,19 +381,13 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     required String title,
     required String subtitle,
     required Color color,
-    required Color cardColor,
-    required Color textColor,
+    required AppColors colors,
     bool isVerified = false,
     String? actionLabel,
     VoidCallback? onActionPressed,
   }) {
-    return Container(
+    return AppCard(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isVerified ? color.withValues(alpha: 0.1) : color.withValues(alpha: 0.2)),
-      ),
       child: Row(
         children: [
           Container(
@@ -436,22 +403,17 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textColor)),
+                Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: colors.textPrimary)),
                 Text(subtitle, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w500)),
               ],
             ),
           ),
           if (actionLabel != null)
-            ElevatedButton(
-              onPressed: onActionPressed ?? () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: color,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: Text(actionLabel, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            AppButton(
+              text: actionLabel,
+              onPressed: onActionPressed,
+              type: AppButtonType.primary,
+              // Overriding theme primary color if necessary, but AppButton uses colors.primary
             )
           else if (isVerified)
             Icon(Icons.check_circle, color: color, size: 20),
@@ -501,7 +463,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     }
   }
 
-  Widget _buildQuickActions(VehicleModel vehicle, Color primary, bool isDark, Color cardColor, Color textColor) {
+  Widget _buildQuickActions(VehicleModel vehicle, AppColors colors) {
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -509,20 +471,20 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
         children: [
           Text(
             'Acciones Rápidas',
-            style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
+            style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: colors.textPrimary),
           ),
           const SizedBox(height: 16),
           Row(
             children: [
-              _buildActionButton(Icons.history, 'Historial', Colors.blue, primary, cardColor, textColor, isDark, onTap: () {
+              _buildActionButton(Icons.history, 'Historial', Colors.blue, colors, onTap: () {
                 context.push('/service_history', extra: vehicle.idVehiculo);
               }),
               const SizedBox(width: 12),
-              _buildActionButton(Icons.build, 'Servicios', Colors.orange, primary, cardColor, textColor, isDark, onTap: () {
+              _buildActionButton(Icons.build, 'Servicios', Colors.orange, colors, onTap: () {
                 context.push('/workshop_directory');
               }),
               const SizedBox(width: 12),
-              _buildActionButton(Icons.description, 'Papeles', Colors.green, primary, cardColor, textColor, isDark, onTap: () {
+              _buildActionButton(Icons.description, 'Papeles', Colors.green, colors, onTap: () {
                 context.push('/alerts');
               }),
             ],
@@ -531,23 +493,19 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
       ),
     );
   }
-
-  Widget _buildActionButton(IconData icon, String label, Color color, Color primary, Color cardColor, Color textColor, bool isDark, {VoidCallback? onTap}) {
+ 
+  Widget _buildActionButton(IconData icon, String label, Color color, AppColors colors, {VoidCallback? onTap}) {
     return Expanded(
-      child: InkWell(
-        onTap: onTap ?? () {},
-        child: Container(
+      child: AppCard(
+        padding: EdgeInsets.zero,
+        onTap: onTap,
+        child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey[200]!),
-          ),
           child: Column(
             children: [
               Icon(icon, color: color, size: 24),
               const SizedBox(height: 8),
-              Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textColor)),
+              Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.textPrimary)),
             ],
           ),
         ),
@@ -555,15 +513,15 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     );
   }
 
-  void _showEditMileageDialog(BuildContext context, VehicleModel vehicle, Color primary, bool isDark, Color textColor, Color subTextColor) {
+  void _showEditMileageDialog(BuildContext context, VehicleModel vehicle, AppColors colors) {
     final controller = TextEditingController(text: vehicle.kilometrajeActual.toString());
     final formKey = GlobalKey<FormState>();
-
+ 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-        title: Text('Actualizar Kilometraje', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: textColor)),
+        backgroundColor: colors.surface,
+        title: Text('Actualizar Kilometraje', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: colors.textPrimary)),
         content: Form(
           key: formKey,
           child: Column(
@@ -571,7 +529,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
             children: [
               Text(
                 'Ingresa el kilometraje actual. Debe ser mayor a ${vehicle.kilometrajeActual} km.',
-                style: TextStyle(fontSize: 13, color: subTextColor),
+                style: TextStyle(fontSize: 13, color: colors.textSecondary),
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -580,13 +538,13 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                 autofocus: true,
                 decoration: InputDecoration(
                   labelText: 'Nuevo Kilometraje',
-                  labelStyle: TextStyle(color: subTextColor),
+                  labelStyle: TextStyle(color: colors.textSecondary),
                   suffixText: 'km',
-                  suffixStyle: TextStyle(color: subTextColor),
+                  suffixStyle: TextStyle(color: colors.textSecondary),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: Icon(Icons.speed, color: primary),
+                  prefixIcon: Icon(Icons.speed, color: colors.primary),
                 ),
-                style: TextStyle(color: textColor),
+                style: TextStyle(color: colors.textPrimary),
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Ingresa un valor';
                   final newMileage = int.tryParse(value);
@@ -602,10 +560,11 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => context.pop(),
             child: const Text('Cancelar'),
           ),
-          ElevatedButton(
+          AppButton(
+            text: 'Guardar',
             onPressed: () async {
               if (formKey.currentState!.validate()) {
                 final newMileage = int.parse(controller.text);
@@ -617,41 +576,35 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                 
                 if (context.mounted) {
                   if (success) {
-                    Navigator.pop(context);
+                    context.pop();
                     messenger.showSnackBar(
                       const SnackBar(content: Text('Kilometraje actualizado correctamente')),
                     );
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       SnackBar(content: Text(vehicleProvider.error ?? 'Error al actualizar')),
                     );
                   }
                 }
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('Guardar'),
           ),
         ],
       ),
     );
   }
 
-  void _showDeleteConfirmationDialog(BuildContext context, VehicleModel vehicle, Color primary, bool isDark, Color textColor, Color subTextColor) {
+  void _showDeleteConfirmationDialog(BuildContext context, VehicleModel vehicle, AppColors colors) {
     final passwordController = TextEditingController();
     final formKey = GlobalKey<FormState>();
     bool isVerifying = false;
-
+ 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-          title: Text('Eliminar Vehículo', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.red)),
+          backgroundColor: colors.surface,
+          title: Text('Eliminar Vehículo', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: colors.error)),
           content: Form(
             key: formKey,
             child: Column(
@@ -659,7 +612,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
               children: [
                 Text(
                   '¿Estás seguro que deseas eliminar el ${vehicle.marca} ${vehicle.modelo}? Esta acción no se puede deshacer.',
-                  style: TextStyle(fontSize: 14, color: textColor),
+                  style: TextStyle(fontSize: 14, color: colors.textPrimary),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -667,11 +620,11 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                   obscureText: true,
                   decoration: InputDecoration(
                     labelText: 'Ingresa tu contraseña',
-                    labelStyle: TextStyle(color: subTextColor),
+                    labelStyle: TextStyle(color: colors.textSecondary),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    prefixIcon: Icon(Icons.lock, color: primary),
+                    prefixIcon: Icon(Icons.lock, color: colors.primary),
                   ),
-                  style: TextStyle(color: textColor),
+                  style: TextStyle(color: colors.textPrimary),
                   validator: (value) {
                     if (value == null || value.isEmpty) return 'Ingresa tu contraseña';
                     return null;
@@ -682,11 +635,13 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: isVerifying ? null : () => Navigator.pop(context),
+              onPressed: isVerifying ? null : () => context.pop(),
               child: const Text('Cancelar'),
             ),
-            ElevatedButton(
-              onPressed: isVerifying ? null : () async {
+            AppButton(
+              text: 'Eliminar',
+              isLoading: isVerifying,
+              onPressed: () async {
                 if (formKey.currentState!.validate()) {
                   setState(() => isVerifying = true);
                   
@@ -710,7 +665,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                       setState(() => isVerifying = false);
                       if (success) {
                         final messenger = ScaffoldMessenger.of(context);
-                        Navigator.pop(context); // Close dialog
+                        context.pop(); // Close dialog
                         context.pop(); // Go back to previous screen
                         messenger.showSnackBar(
                           const SnackBar(content: Text('Vehículo eliminado correctamente')),
@@ -724,13 +679,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                   }
                 }
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
-              child: isVerifying 
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('Eliminar'),
+              // type: AppButtonType.primary, // Default is primary
             ),
           ],
         ),

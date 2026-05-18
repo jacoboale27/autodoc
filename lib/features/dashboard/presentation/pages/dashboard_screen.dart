@@ -8,7 +8,12 @@ import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart'
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
+import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:autodoc/core/widgets/vehicle_image_widget.dart';
+import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:uuid/uuid.dart';
 import '../widgets/add_vehicle_form.dart';
 
@@ -46,12 +51,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
-    final primaryPurple = theme.colorScheme.primary;
-    final bgColorStart = isDark ? const Color(0xFF1E293B) : const Color(0xFFF7F6F8);
-    final bgColorEnd = isDark ? const Color(0xFF0F172A) : const Color(0xFFECE9F1);
-    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final subTextColor = isDark ? Colors.grey[400]! : const Color(0xFF64748B);
+    final colors = context.appColors;
+
+    final primaryPurple = colors.primary;
+    final bgColorStart = isDark ? colors.surfaceContainer : colors.surface;
+    final bgColorEnd = isDark ? colors.surface : colors.surfaceContainer;
+    final textColor = colors.textPrimary;
+    final subTextColor = colors.textSecondary;
 
     final vehicleProvider = context.watch<VehicleProvider>();
     final alertProvider = context.watch<AlertProvider>();
@@ -73,44 +79,72 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 120), // For bottom nav and FAB
+                padding: const EdgeInsets.only(
+                  bottom: 120,
+                ), // For bottom nav and FAB
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildHeader(context, isDark, textColor, subTextColor),
                     const SizedBox(height: 8),
                     if (isLoading)
-                      const Center(child: Padding(
-                        padding: EdgeInsets.all(32.0),
-                        child: CircularProgressIndicator(),
-                      ))
+                      AppSkeletonLayouts.dashboard()
                     else if (vehicle == null)
-                      _buildEmptyVehicleState(context, primaryPurple, isDark, textColor, subTextColor)
+                      _buildEmptyVehicleState(
+                        context,
+                        primaryPurple,
+                        isDark,
+                        textColor,
+                        subTextColor,
+                      )
                     else
-                      _buildVehicleCard(primaryPurple, vehicle, isDark, textColor, subTextColor),
-                    const SizedBox(height: 32),
-                    _buildActiveAlerts(primaryPurple, alertProvider, isDark, subTextColor),
+                       _buildVehicleCard(
+                        primaryPurple,
+                        vehicle,
+                        isDark,
+                        textColor,
+                        subTextColor,
+                      ),
+                    const SizedBox(height: 16),
+                    if (vehicle != null) ...[
+                      _buildMaintenanceSemaphore(
+                        context.watch<AlertProvider>(),
+                        vehicle,
+                        colors,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    const SizedBox(height: 16),
+                    _buildActiveAlerts(
+                      primaryPurple,
+                      alertProvider,
+                      isDark,
+                      subTextColor,
+                      colors,
+                    ),
                     const SizedBox(height: 32),
                     _buildNearbyServices(primaryPurple, isDark, subTextColor),
                   ],
                 ),
               ),
             ),
-            
+
             // FAB
             Positioned(
               bottom: 100,
               right: 24,
               child: FloatingActionButton(
                 onPressed: () => _showAddVehicleDialog(context, primaryPurple),
-                backgroundColor: isDark ? const Color(0xFF98FFD9) : primaryPurple,
+                backgroundColor: isDark
+                    ? const Color(0xFF98FFD9)
+                    : primaryPurple,
                 foregroundColor: isDark ? primaryPurple : Colors.white,
                 elevation: 8,
                 shape: const CircleBorder(),
                 child: const Icon(Icons.add, size: 32),
               ),
             ),
-            
+
             // Bottom Navbar
             Positioned(
               bottom: 0,
@@ -124,9 +158,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, bool isDark, Color textColor, Color subTextColor) {
+  Widget _buildHeader(
+    BuildContext context,
+    bool isDark,
+    Color textColor,
+    Color subTextColor,
+  ) {
     final authProvider = context.watch<AuthProvider>();
-    final userName = authProvider.user?.displayName?.split(' ').first ?? 'Usuario';
+    final userName =
+        authProvider.user?.displayName?.split(' ').first ?? 'Usuario';
 
     return Padding(
       padding: const EdgeInsets.all(24.0),
@@ -168,7 +208,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     border: Border.all(color: Colors.white, width: 2),
                     image: DecorationImage(
                       image: CachedNetworkImageProvider(
-                        authProvider.userData?.fotoPerfilUrl ?? 'https://www.w3schools.com/howto/img_avatar.png',
+                        authProvider.userData?.fotoPerfilUrl ??
+                            'https://www.w3schools.com/howto/img_avatar.png',
                       ),
                       fit: BoxFit.cover,
                     ),
@@ -181,7 +222,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     width: 12,
                     height: 12,
                     decoration: BoxDecoration(
-                      color: Colors.green,
+                      color: context.appColors.secondary,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
                     ),
@@ -195,16 +236,133 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildEmptyVehicleState(BuildContext context, Color primary, bool isDark, Color textColor, Color subTextColor) {
+  Widget _buildMaintenanceSemaphore(
+    AlertProvider provider,
+    VehicleModel vehicle,
+    AppColors colors,
+  ) {
+    final tasks = provider.maintenanceTasks;
+    if (tasks.isEmpty) return const SizedBox.shrink();
+
+    // Aggregate worst status across all tasks
+    MaintenanceStatus worstStatus = MaintenanceStatus.optimal;
+    for (final task in tasks) {
+      final s = task.getStatus(vehicle.kilometrajeActual);
+      if (s == MaintenanceStatus.critical) {
+        worstStatus = MaintenanceStatus.critical;
+        break;
+      } else if (s == MaintenanceStatus.preventive) {
+        worstStatus = MaintenanceStatus.preventive;
+      }
+    }
+
+    final Color semColor;
+    final IconData semIcon;
+    final String semLabel;
+    switch (worstStatus) {
+      case MaintenanceStatus.critical:
+        semColor = colors.error;
+        semIcon = Icons.error_rounded;
+        semLabel = 'Mantenimiento vencido — atención inmediata';
+        break;
+      case MaintenanceStatus.preventive:
+        semColor = colors.warning;
+        semIcon = Icons.warning_rounded;
+        semLabel = 'Mantenimiento próximo — revisa las alertas';
+        break;
+      case MaintenanceStatus.optimal:
+        semColor = colors.secondary;
+        semIcon = Icons.check_circle_rounded;
+        semLabel = 'Vehículo en buen estado';
+        break;
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Container(
-        padding: const EdgeInsets.all(32),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.3)),
+      child: AppCard(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        margin: EdgeInsets.zero,
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: semColor.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(semIcon, color: semColor, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Estado de Mantenimiento',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: colors.textSecondary,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    semLabel,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: semColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Three-dot semaphore dots
+            Row(
+              children: [
+                _semDot(MaintenanceStatus.optimal, worstStatus, colors),
+                const SizedBox(width: 4),
+                _semDot(MaintenanceStatus.preventive, worstStatus, colors),
+                const SizedBox(width: 4),
+                _semDot(MaintenanceStatus.critical, worstStatus, colors),
+              ],
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _semDot(MaintenanceStatus dot, MaintenanceStatus current, AppColors colors) {
+    final bool active = dot.index >= current.index;
+    final Color c = dot == MaintenanceStatus.critical
+        ? colors.error
+        : dot == MaintenanceStatus.preventive
+            ? colors.warning
+            : colors.secondary;
+    return Container(
+      width: 10,
+      height: 10,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: active ? c : c.withValues(alpha: 0.2),
+      ),
+    );
+  }
+
+  Widget _buildEmptyVehicleState(
+    BuildContext context,
+    Color primary,
+    bool isDark,
+    Color textColor,
+    Color subTextColor,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: AppCard(
+        padding: const EdgeInsets.all(32),
+        margin: EdgeInsets.zero,
         child: Column(
           children: [
             Container(
@@ -213,7 +371,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 color: primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.directions_car_filled_outlined, size: 48, color: primary),
+              child: Icon(
+                Icons.directions_car_filled_outlined,
+                size: 48,
+                color: primary,
+              ),
             ),
             const SizedBox(height: 24),
             Text(
@@ -233,16 +395,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
+              child: AppButton(
+                text: 'Registrar Vehículo',
                 onPressed: () => _showAddVehicleDialog(context, primary),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 0,
-                ),
-                child: const Text('Registrar Vehiculo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
             ),
           ],
@@ -251,127 +406,119 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildVehicleCard(Color primary, VehicleModel vehicle, bool isDark, Color textColor, Color subTextColor) {
+  Widget _buildVehicleCard(
+    Color primary,
+    VehicleModel vehicle,
+    bool isDark,
+    Color textColor,
+    Color subTextColor,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.3)),
-              boxShadow: [
-                BoxShadow(
-                  color: primary.withValues(alpha: 0.05),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
+      child: AppCard(
+        padding: const EdgeInsets.all(24),
+        margin: EdgeInsets.zero,
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: primary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              'VEHICULO PRINCIPAL',
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: primary,
-                                letterSpacing: 1,
-                              ),
-                            ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'VEHICULO PRINCIPAL',
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: primary,
+                            letterSpacing: 1,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '${vehicle.marca ?? ''} ${vehicle.modelo ?? ''} ${vehicle.anio ?? ''}',
-                            style: GoogleFonts.inter(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: textColor,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            'Placa: ${vehicle.placa}',
-                            style: TextStyle(color: subTextColor, fontSize: 13),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(10),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${vehicle.marca ?? ''} ${vehicle.modelo ?? ''} ${vehicle.anio ?? ''}',
+                        style: GoogleFonts.inter(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      child: Icon(Icons.directions_car, color: primary),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: VehicleImageWidget(
-                    imageUrl: vehicle.fotoUrl,
-                    height: 140,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
+                      Text(
+                        'Placa: ${vehicle.placa}',
+                        style: TextStyle(color: subTextColor, fontSize: 13),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    _buildStatItem('KILOMETRAJE', vehicle.kilometrajeActual.toString(), 'km', primary, isDark, subTextColor),
-                    const SizedBox(width: 16),
-                    _buildStatItem('NIVEL DE COMBUSTIBLE', '78', '%', primary, isDark, subTextColor), // Hardcoded for now as it's not in model
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: () => context.push('/vehicle_profile', extra: vehicle),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      elevation: 4,
-                      shadowColor: primary.withValues(alpha: 0.3),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('Ver Estado del Vehiculo', style: TextStyle(fontWeight: FontWeight.bold)),
-                        SizedBox(width: 8),
-                        Icon(Icons.arrow_forward_rounded, size: 16),
-                      ],
-                    ),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(10),
                   ),
+                  child: Icon(Icons.directions_car, color: primary),
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 24),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: VehicleImageWidget(
+                imageUrl: vehicle.fotoUrl,
+                height: 140,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                _buildStatItem(
+                  'KILOMETRAJE',
+                  vehicle.kilometrajeActual.toString(),
+                  'km',
+                  primary,
+                  isDark,
+                  subTextColor,
+                ),
+                const SizedBox(width: 16),
+                _buildStatItem(
+                  'NIVEL DE COMBUSTIBLE',
+                  '78',
+                  '%',
+                  primary,
+                  isDark,
+                  subTextColor,
+                ), // Hardcoded for now as it's not in model
+              ],
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: AppButton(
+                text: 'Ver Estado del Vehículo',
+                onPressed: () => context.push('/vehicle_profile', extra: vehicle),
+                icon: const Icon(Icons.arrow_forward_rounded, size: 16, color: Colors.white),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -387,7 +534,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onFinish: (vehicle) async {
           final authProvider = context.read<AuthProvider>();
           final vehicleProvider = context.read<VehicleProvider>();
-          
+
           final newVehicle = vehicle.copyWith(
             idVehiculo: Uuid().v4(),
             idPropietario: authProvider.user!.uid,
@@ -406,7 +553,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           } else {
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(vehicleProvider.error ?? 'Error al agregar vehiculo')),
+                SnackBar(
+                  content: Text(
+                    vehicleProvider.error ?? 'Error al agregar vehiculo',
+                  ),
+                ),
               );
             }
           }
@@ -415,20 +566,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-
-
-  Widget _buildStatItem(String label, String value, String unit, Color color, bool isDark, Color subTextColor) {
+  Widget _buildStatItem(
+    String label,
+    String value,
+    String unit,
+    Color color,
+    bool isDark,
+    Color subTextColor,
+  ) {
     return Expanded(
-      child: Container(
+      child: AppCard(
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(12),
-        ),
+        margin: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: TextStyle(fontSize: 10, color: subTextColor, fontWeight: FontWeight.bold)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                color: subTextColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 4),
             RichText(
               text: TextSpan(
@@ -455,9 +615,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildActiveAlerts(Color primary, AlertProvider provider, bool isDark, Color subTextColor) {
+  Widget _buildActiveAlerts(
+    Color primary,
+    AlertProvider provider,
+    bool isDark,
+    Color subTextColor,
+    AppColors colors,
+  ) {
     final activeAlerts = provider.activeAlerts;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -468,13 +634,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               Text(
                 'Alertas Activas',
-                style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold),
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               GestureDetector(
                 onTap: () => context.push('/alerts'),
                 child: Text(
                   'Ver Todas',
-                  style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: primary),
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: primary,
+                  ),
                 ),
               ),
             ],
@@ -482,9 +655,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 16),
         if (activeAlerts.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24),
-            child: Text('¡Excelente! No tienes alertas pendientes.', style: TextStyle(color: Colors.green, fontWeight: FontWeight.w500)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              '¡Excelente! No tienes alertas pendientes.',
+              style: TextStyle(
+                color: colors.secondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           )
         else
           SingleChildScrollView(
@@ -495,14 +674,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Color color;
                 IconData icon;
                 switch (alert.tipoAlerta) {
-                  case 'Aceite': icon = Icons.oil_barrel; color = Colors.orange; break;
-                  case 'SOAT': icon = Icons.verified_user; color = Colors.red; break;
-                  case 'Llantas': icon = Icons.tire_repair; color = Colors.blue; break;
-                  default: icon = Icons.notifications; color = primary;
+                  case 'Aceite':
+                    icon = Icons.oil_barrel;
+                    color = colors.warning;
+                    break;
+                  case 'SOAT':
+                    icon = Icons.verified_user;
+                    color = colors.error;
+                    break;
+                  case 'Llantas':
+                    icon = Icons.tire_repair;
+                    color = colors.primary;
+                    break;
+                  default:
+                    icon = Icons.notifications;
+                    color = primary;
                 }
                 return Padding(
                   padding: const EdgeInsets.only(right: 16),
-                  child: _buildAlertCard(icon, alert.titulo, alert.descripcion, color, isDark, subTextColor),
+                  child: _buildAlertCard(
+                    icon,
+                    alert.titulo,
+                    alert.descripcion,
+                    color,
+                    isDark,
+                    subTextColor,
+                  ),
                 );
               }).toList(),
             ),
@@ -511,34 +708,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildAlertCard(IconData icon, String title, String status, Color statusColor, bool isDark, Color subTextColor) {
-    return Container(
-      width: 150,
+  Widget _buildAlertCard(
+    IconData icon,
+    String title,
+    String status,
+    Color statusColor,
+    bool isDark,
+    Color subTextColor,
+  ) {
+    return AppCard(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
+      margin: EdgeInsets.zero,
+      child: SizedBox(
+        width: 150,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: statusColor, size: 24),
             ),
-            child: Icon(icon, color: statusColor, size: 24),
-          ),
-          const SizedBox(height: 12),
-          Text(title, style: TextStyle(fontSize: 12, color: subTextColor, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 2),
-          Text(
-            status,
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: statusColor),
-          ),
-        ],
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                color: subTextColor,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              status,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: statusColor,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -554,32 +767,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               Text(
                 'Talleres Cercanos',
-                style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold),
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               TextButton(
                 onPressed: () => context.push('/workshop_directory'),
-                child: Text('Ver todos', style: TextStyle(color: primary, fontWeight: FontWeight.w600)),
+                child: Text(
+                  'Ver todos',
+                  style: TextStyle(color: primary, fontWeight: FontWeight.w600),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 16),
           InkWell(
             onTap: () => context.push('/workshop_directory'),
-            child: _buildServiceTile(Icons.build, 'AutoFix Workshop', 'Especialidad: Motor • 4.8★', primary, isDark, subTextColor),
+            child: _buildServiceTile(
+              Icons.build,
+              'AutoFix Workshop',
+              'Especialidad: Motor • 4.8★',
+              primary,
+              isDark,
+              subTextColor,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildServiceTile(IconData icon, String title, String subtitle, Color primary, bool isDark, Color subTextColor) {
-    return Container(
+  Widget _buildServiceTile(
+    IconData icon,
+    String title,
+    String subtitle,
+    Color primary,
+    bool isDark,
+    Color subTextColor,
+  ) {
+    return AppCard(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.3)),
-      ),
+      margin: EdgeInsets.zero,
       child: Row(
         children: [
           Container(
@@ -596,9 +825,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(subtitle, style: TextStyle(color: subTextColor, fontSize: 12)),
+                Text(
+                  subtitle,
+                  style: TextStyle(color: subTextColor, fontSize: 12),
+                ),
               ],
             ),
           ),
@@ -617,22 +855,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
           height: 80,
           padding: const EdgeInsets.symmetric(horizontal: 24),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.7),
+            color: isDark
+                ? context.appColors.surfaceContainer.withValues(alpha: 0.9)
+                : context.appColors.surfaceContainer.withValues(alpha: 0.85),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(Icons.home, 'Home', true, primary, () => context.go('/dashboard')),
-              _buildNavItem(Icons.garage, 'Garage', false, primary, () => context.push('/garage')),
+              _buildNavItem(
+                Icons.home,
+                'Home',
+                true,
+                primary,
+                () => context.go('/dashboard'),
+              ),
+              _buildNavItem(
+                Icons.garage,
+                'Garage',
+                false,
+                primary,
+                () => context.push('/garage'),
+              ),
               _buildNavItem(Icons.analytics, 'Logs', false, primary, () {
                 final vehicle = context.read<VehicleProvider>().selectedVehicle;
                 if (vehicle != null) {
                   context.push('/service_history', extra: vehicle.idVehiculo);
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Seleccione un vehículo primero')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Seleccione un vehículo primero'),
+                    ),
+                  );
                 }
               }),
-              _buildNavItem(Icons.person, 'Profile', false, primary, () => context.push('/user_profile')),
+              _buildNavItem(
+                Icons.person,
+                'Profile',
+                false,
+                primary,
+                () => context.push('/user_profile'),
+              ),
             ],
           ),
         ),
@@ -640,7 +902,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, bool isActive, Color primary, VoidCallback onTap) {
+  Widget _buildNavItem(
+    IconData icon,
+    String label,
+    bool isActive,
+    Color primary,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,

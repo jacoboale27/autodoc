@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../providers/admin_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../widgets/admin_sidebar.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/widgets/app_card.dart';
 
 class AdminReseniasScreen extends StatefulWidget {
   const AdminReseniasScreen({super.key});
@@ -28,44 +30,51 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Eliminar Reseña'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('¿Estás seguro de que quieres eliminar esta reseña? Esta acción no se puede deshacer.'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                labelText: 'Motivo de eliminación',
-                hintText: 'Ej: Contenido ofensivo',
+      builder: (ctx) {
+        final colors = ctx.appColors;
+        return AlertDialog(
+          title: const Text('Eliminar Reseña'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('¿Estás seguro de que quieres eliminar esta reseña? Esta acción no se puede deshacer.'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  labelText: 'Motivo de eliminación',
+                  hintText: 'Ej: Contenido ofensivo',
+                ),
               ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                adminProvider.eliminarResenia(
+                  authProvider.adminUid,
+                  idResenia,
+                  controller.text.isEmpty ? 'Incumplimiento de normas' : controller.text,
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.error,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Eliminar'),
             ),
           ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              adminProvider.eliminarResenia(
-                authProvider.adminUid,
-                idResenia,
-                controller.text.isEmpty ? 'Incumplimiento de normas' : controller.text,
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: const Text('Eliminar'),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AdminProvider>();
+    final colors = context.appColors;
 
     return Scaffold(
       appBar: AppBar(
@@ -74,68 +83,79 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
       ),
       drawer: const AdminSidebar(),
       body: provider.isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: colors.primary))
           : RefreshIndicator(
+              color: colors.primary,
               onRefresh: provider.fetchAllData,
               child: provider.resenias.isEmpty
-                  ? const Center(child: Text('No hay reseñas registradas'))
+                  ? Center(
+                      child: Text(
+                        'No hay reseñas registradas',
+                        style: TextStyle(color: colors.textSecondary),
+                      ),
+                    )
                   : ListView.separated(
                       padding: const EdgeInsets.all(16),
                       itemCount: provider.resenias.length,
                       separatorBuilder: (context, index) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final resenia = provider.resenias[index];
-                        return Card(
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
-                                      children: List.generate(5, (i) {
-                                        return Icon(
-                                          Icons.star,
-                                          size: 18,
-                                          color: i < resenia.estrellas ? Colors.amber : Colors.grey[300],
-                                        );
-                                      }),
-                                    ),
-                                    Text(
-                                      DateFormat('dd/MM/yyyy').format(resenia.fechaResenia),
-                                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  resenia.comentario ?? 'Sin comentario',
-                                  style: const TextStyle(fontSize: 15),
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text('ID Taller: ${resenia.idTaller}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                        Text('ID Usuario: ${resenia.idUsuario}', style: const TextStyle(fontSize: 12)),
-                                      ],
-                                    ),
-                                    IconButton(
-                                      onPressed: () => _mostrarConfirmarEliminar(context, resenia.idResenia),
-                                      icon: const Icon(Icons.delete_outline, color: Colors.red),
-                                      tooltip: 'Eliminar reseña',
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                        return AppCard(
+                          padding: const EdgeInsets.all(16),
+                          margin: EdgeInsets.zero,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: List.generate(5, (i) {
+                                      return Icon(
+                                        Icons.star,
+                                        size: 18,
+                                        color: i < resenia.estrellas
+                                            ? colors.warning
+                                            : colors.textSecondary.withValues(alpha: 0.2),
+                                      );
+                                    }),
+                                  ),
+                                  Text(
+                                    DateFormat('dd/MM/yyyy').format(resenia.fechaResenia),
+                                    style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                resenia.comentario ?? 'Sin comentario',
+                                style: const TextStyle(fontSize: 15),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Taller: ${provider.nombreTaller(resenia.idTaller)}',
+                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: colors.textPrimary),
+                                      ),
+                                      Text(
+                                        'Cliente: ${provider.nombreUsuario(resenia.idUsuario)}',
+                                        style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                                      ),
+                                    ],
+                                  ),
+                                  IconButton(
+                                    onPressed: () => _mostrarConfirmarEliminar(context, resenia.idResenia),
+                                    icon: Icon(Icons.delete_outline, color: colors.error),
+                                    tooltip: 'Eliminar reseña',
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         );
                       },

@@ -85,10 +85,36 @@ class AuthService {
   // Password Reset
   Future<void> sendPasswordReset(String email) async {
     try {
-      await _auth.sendPasswordResetEmail(email: email);
+      await _auth.sendPasswordResetEmail(email: email.trim());
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     }
+  }
+
+  Future<void> sendEmailVerification() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw 'No hay una sesión activa.';
+    }
+    if (user.emailVerified) return;
+    try {
+      await user.sendEmailVerification();
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    }
+  }
+
+  Future<void> reloadCurrentUser() async {
+    await _auth.currentUser?.reload();
+  }
+
+  bool get isCurrentUserEmailVerified =>
+      _auth.currentUser?.emailVerified ?? false;
+
+  bool get isEmailPasswordUser {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+    return user.providerData.any((info) => info.providerId == 'password');
   }
 
   String _handleAuthException(FirebaseAuthException e) {
@@ -103,6 +129,14 @@ class AuthService {
         return 'La contraseña es demasiado débil.';
       case 'invalid-email':
         return 'El correo electrónico no es válido.';
+      case 'too-many-requests':
+        return 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.';
+      case 'user-disabled':
+        return 'Esta cuenta ha sido deshabilitada.';
+      case 'invalid-credential':
+        return 'Correo o contraseña incorrectos.';
+      case 'operation-not-allowed':
+        return 'Esta operación no está habilitada. Contacta a soporte.';
       default:
         return 'Ocurrió un error inesperado: ${e.message}';
     }

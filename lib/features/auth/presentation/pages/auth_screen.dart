@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:go_router/go_router.dart';
@@ -14,7 +15,10 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
+  static const String _supportEmail = 'soporte@autodoc.app';
+
   late bool _isLoginMode;
+  bool _rememberMe = false;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -22,6 +26,32 @@ class _AuthScreenState extends State<AuthScreen> {
   void initState() {
     super.initState();
     _isLoginMode = widget.isLogin;
+    _loadRememberMePreferences();
+  }
+
+  Future<void> _loadRememberMePreferences() async {
+    final authProvider = context.read<AuthProvider>();
+    final remember = await authProvider.loadRememberMe();
+    final savedEmail = await authProvider.loadSavedEmail();
+    if (!mounted) return;
+    setState(() {
+      _rememberMe = remember;
+      if (savedEmail != null && savedEmail.isNotEmpty) {
+        _emailController.text = savedEmail;
+      }
+    });
+  }
+
+  bool _isValidEmail(String value) {
+    final email = value.trim();
+    return RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email);
+  }
+
+  Future<void> _persistRememberMe() async {
+    await context.read<AuthProvider>().persistRememberMe(
+      remember: _rememberMe,
+      email: _emailController.text,
+    );
   }
 
   @override
@@ -214,14 +244,22 @@ class _AuthScreenState extends State<AuthScreen> {
                         width: 20,
                         height: 20,
                         child: Checkbox(
-                          value: true,
-                          onChanged: (_) {},
+                          value: _rememberMe,
+                          onChanged: (value) {
+                            setState(() => _rememberMe = value ?? false);
+                          },
                           activeColor: primary,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Text('Recordarme', style: TextStyle(color: Color(0xFF475569), fontSize: 12)),
+                      GestureDetector(
+                        onTap: () => setState(() => _rememberMe = !_rememberMe),
+                        child: const Text(
+                          'Recordarme',
+                          style: TextStyle(color: Color(0xFF475569), fontSize: 12),
+                        ),
+                      ),
                     ],
                   ),
                   if (_isLoginMode)
@@ -231,7 +269,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      onPressed: () {},
+                      onPressed: _showForgotPasswordDialog,
                       child: Text(
                         '¿Olvidaste tu contraseña?',
                         style: GoogleFonts.inter(
@@ -316,6 +354,94 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
+  Future<void> _navigateAfterAuth(AuthProvider authProvider) async {
+    if (authProvider.needsEmailVerification) {
+      final canContinue = await _showEmailVerificationDialog(
+        isRegistration: false,
+        email: _emailController.text.trim(),
+      );
+      if (!canContinue || !mounted) return;
+    }
+
+    final userData = authProvider.userData;
+    if (userData != null) {
+      final role = userData.rol.trim().toLowerCase();
+      if (role == 'taller' || role == 'mecanico') {
+        context.go('/mechanic_dashboard');
+      } else if (role == 'admin' || role == 'administrador') {
+        context.go('/admin/dashboard');
+      } else {
+        context.go('/dashboard');
+      }
+    } else {
+      context.go('/profile_setup');
+    }
+  }
+
+  Future<void> _handleEmailSignIn(AuthProvider authProvider) async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      HapticFeedback.heavyImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Completa correo y contraseña.')),
+      );
+      return;
+    }
+
+    final success = await authProvider.signIn(email, password);
+    if (!mounted) return;
+
+    if (success) {
+      HapticFeedback.lightImpact();
+      await _persistRememberMe();
+      await _navigateAfterAuth(authProvider);
+    } else if (authProvider.error != null) {
+      HapticFeedback.heavyImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(authProvider.error!)),
+      );
+    }
+  }
+
+  Future<void> _handleEmailRegister(AuthProvider authProvider) async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (!_isValidEmail(email)) {
+      HapticFeedback.heavyImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresa un correo electrónico válido.')),
+      );
+      return;
+    }
+    if (password.length < 6) {
+      HapticFeedback.heavyImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('La contraseña debe tener al menos 6 caracteres.')),
+      );
+      return;
+    }
+
+    final success = await authProvider.register(email, password);
+    if (!mounted) return;
+
+    if (success) {
+      HapticFeedback.lightImpact();
+      await _showEmailVerificationDialog(
+        isRegistration: true,
+        email: email,
+      );
+      if (mounted) context.go('/profile_setup');
+    } else if (authProvider.error != null) {
+      HapticFeedback.heavyImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(authProvider.error!)),
+      );
+    }
+  }
+
   Widget _buildSubmitButton(Color primary, Color mint, Color blue) {
     final authProvider = context.watch<AuthProvider>();
     
@@ -323,41 +449,15 @@ class _AuthScreenState extends State<AuthScreen> {
       width: double.infinity,
       height: 54,
       child: ElevatedButton(
-        onPressed: authProvider.isLoading ? null : () async {
-          if (_isLoginMode) {
-            final success = await authProvider.signIn(
-              _emailController.text,
-              _passwordController.text,
-            );
-            if (success && mounted) {
-              final userData = authProvider.userData;
-              if (userData != null) {
-                final role = userData.rol.trim().toLowerCase();
-                if (role == 'taller' || role == 'mecanico') {
-                  context.go('/mechanic_dashboard');
-                } else if (role == 'admin' || role == 'administrador') {
-                  context.go('/admin/dashboard');
+        onPressed: authProvider.isLoading
+            ? null
+            : () async {
+                if (_isLoginMode) {
+                  await _handleEmailSignIn(authProvider);
                 } else {
-                  context.go('/dashboard');
+                  await _handleEmailRegister(authProvider);
                 }
-              } else {
-                context.go('/profile_setup');
-              }
-            }
-          } else {
-            final success = await authProvider.register(
-              _emailController.text,
-              _passwordController.text,
-            );
-            if (success && mounted) context.go('/profile_setup');
-          }
-          
-          if (!authProvider.isLoading && authProvider.error != null && mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(authProvider.error!)),
-            );
-          }
-        },
+              },
         style: ElevatedButton.styleFrom(
           backgroundColor: mint,
           foregroundColor: blue,
@@ -378,6 +478,7 @@ class _AuthScreenState extends State<AuthScreen> {
       onPressed: () async {
         final success = await authProvider.signInWithGoogle();
         if (success && mounted) {
+          HapticFeedback.lightImpact();
           final userData = authProvider.userData;
           if (userData != null) {
             final role = userData.rol.trim().toLowerCase();
@@ -392,6 +493,7 @@ class _AuthScreenState extends State<AuthScreen> {
             context.go('/profile_setup');
           }
         } else if (mounted && authProvider.error != null) {
+          HapticFeedback.heavyImpact();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(authProvider.error!)),
           );
@@ -440,7 +542,7 @@ class _AuthScreenState extends State<AuthScreen> {
             children: [
               Expanded(child: _buildNavItem(Icons.login, 'Login', _isLoginMode, primary, () => setState(() => _isLoginMode = true))),
               Expanded(child: _buildNavItem(Icons.person_add_outlined, 'Registro', !_isLoginMode, primary, () => setState(() => _isLoginMode = false))),
-              Expanded(child: _buildNavItem(Icons.help_outline, 'Soporte', false, primary, () {})),
+              Expanded(child: _buildNavItem(Icons.help_outline, 'Soporte', false, primary, _showSupportSheet)),
             ],
           ),
         ),
@@ -468,6 +570,304 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _showForgotPasswordDialog() async {
+    const primaryPurple = Color(0xFF522C81);
+    final resetEmailController = TextEditingController(
+      text: _isValidEmail(_emailController.text) ? _emailController.text.trim() : '',
+    );
+
+    final sent = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Recuperar contraseña',
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Te enviaremos un enlace a tu correo para restablecer la contraseña.',
+              style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: resetEmailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                labelText: 'Correo electrónico',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                prefixIcon: const Icon(Icons.mail_outline),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: primaryPurple),
+            onPressed: () async {
+              final email = resetEmailController.text.trim();
+              if (!_isValidEmail(email)) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(content: Text('Ingresa un correo válido.')),
+                );
+                return;
+              }
+              final authProvider = ctx.read<AuthProvider>();
+              final success = await authProvider.sendPasswordReset(email);
+              if (!ctx.mounted) return;
+              if (success) {
+                Navigator.pop(ctx, true);
+              } else {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  SnackBar(content: Text(authProvider.error ?? 'No se pudo enviar el correo.')),
+                );
+              }
+            },
+            child: const Text('Enviar enlace'),
+          ),
+        ],
+        );
+      },
+    );
+
+    final emailSentTo = resetEmailController.text.trim();
+    resetEmailController.dispose();
+
+    if (sent == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Revisa tu bandeja de entrada en ${emailSentTo.isNotEmpty ? emailSentTo : "tu correo"} (y la carpeta de spam).',
+          ),
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    }
+  }
+
+  /// Retorna true si puede continuar (correo verificado o usuario eligió continuar).
+  Future<bool> _showEmailVerificationDialog({
+    required bool isRegistration,
+    required String email,
+  }) async {
+    const primaryPurple = Color(0xFF522C81);
+    final authProvider = context.read<AuthProvider>();
+
+    return await showDialog<bool>(
+          context: context,
+          barrierDismissible: !isRegistration,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Icon(Icons.mark_email_unread_outlined, color: primaryPurple),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Verifica tu correo',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isRegistration
+                      ? 'Enviamos un enlace de verificación a:'
+                      : 'Tu cuenta aún no está verificada. Revisa el correo enviado a:',
+                  style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF64748B)),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  email,
+                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: primaryPurple),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Abre el enlace del correo y luego pulsa "Ya verifiqué" para continuar.',
+                  style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF94A3B8)),
+                ),
+              ],
+            ),
+            actions: [
+              if (isRegistration)
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: primaryPurple),
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Entendido'),
+                )
+              else
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Continuar sin verificar'),
+                ),
+              TextButton(
+                onPressed: () async {
+                  final ok = await authProvider.sendEmailVerification();
+                  if (!ctx.mounted) return;
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        ok
+                            ? 'Correo de verificación reenviado.'
+                            : (authProvider.error ?? 'No se pudo reenviar.'),
+                      ),
+                    ),
+                  );
+                },
+                child: const Text('Reenviar correo'),
+              ),
+              if (!isRegistration)
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: primaryPurple),
+                  onPressed: () async {
+                    final verified = await authProvider.refreshEmailVerificationStatus();
+                    if (!ctx.mounted) return;
+                    if (verified) {
+                      Navigator.pop(ctx, true);
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        const SnackBar(
+                          content: Text('¡Correo verificado correctamente!'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Aún no detectamos la verificación. Abre el enlace del correo e inténtalo de nuevo.',
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Ya verifiqué'),
+                ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  void _showSupportSheet() {
+    const primaryPurple = Color(0xFF522C81);
+
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Centro de soporte',
+                style: GoogleFonts.inter(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: primaryPurple,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '¿Necesitas ayuda con tu cuenta, verificación de correo o acceso?',
+                style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 20),
+              _supportTile(
+                icon: Icons.email_outlined,
+                title: 'Correo de soporte',
+                subtitle: _supportEmail,
+                onTap: () {
+                  Clipboard.setData(const ClipboardData(text: _supportEmail));
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(content: Text('Correo copiado al portapapeles')),
+                  );
+                },
+              ),
+              _supportTile(
+                icon: Icons.mark_email_read_outlined,
+                title: 'Verificación de correo',
+                subtitle: 'No llegó el correo → revisa spam o reenvía desde login',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  if (_isLoginMode && _isValidEmail(_emailController.text)) {
+                    _showEmailVerificationDialog(
+                      isRegistration: false,
+                      email: _emailController.text.trim(),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Inicia sesión con tu correo para reenviar la verificación.'),
+                      ),
+                    );
+                  }
+                },
+              ),
+              _supportTile(
+                icon: Icons.lock_reset,
+                title: 'Olvidé mi contraseña',
+                subtitle: 'Recibe un enlace de recuperación por correo',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showForgotPasswordDialog();
+                },
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Horario de atención: Lun–Vie 8:00–18:00',
+                style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF94A3B8)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _supportTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: const Color(0xFF522C81)),
+      title: Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14)),
+      subtitle: Text(subtitle, style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B))),
+      trailing: const Icon(Icons.chevron_right, size: 20),
+      onTap: onTap,
     );
   }
 }

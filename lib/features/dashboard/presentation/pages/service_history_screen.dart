@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:autodoc/core/widgets/review_sheet.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 import 'package:autodoc/core/models/service_record_model.dart';
-import 'package:autodoc/core/providers/theme_provider.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/widgets/app_scaffold.dart';
+import 'package:go_router/go_router.dart';
+import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 
 class ServiceHistoryScreen extends StatefulWidget {
   final String vehicleId;
@@ -19,29 +23,22 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = context.watch<ThemeProvider>().isDarkMode;
-    final primary = theme.primaryColor;
-    final bgLight = const Color(0xFFF7F6F8);
-    final bgDark = const Color(0xFF18141E);
-    final bgColor = isDark ? bgDark : bgLight;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final subTextColor = isDark ? Colors.white54 : Colors.black54;
+    final colors = context.appColors;
 
-    return Scaffold(
-      backgroundColor: bgColor,
+    return AppScaffold(
+      useGradient: true,
       appBar: AppBar(
-        backgroundColor: bgColor.withValues(alpha: 0.8),
+        backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: primary),
-          onPressed: () => Navigator.pop(context),
+          icon: Icon(Icons.arrow_back, color: colors.primary),
+          onPressed: () => context.pop(),
         ),
         title: Text(
           'Historial de Servicios',
           style: GoogleFonts.inter(
-            color: textColor,
+            color: colors.textPrimary,
             fontWeight: FontWeight.bold,
             fontSize: 18,
           ),
@@ -55,19 +52,19 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: primary.withValues(alpha: 0.1),
+                color: colors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: [
-                  _buildFilterTab('Todos', primary, isDark),
-                  _buildFilterTab('Manual', primary, isDark),
-                  _buildFilterTab('Taller', primary, isDark),
+                  _buildFilterTab('Todos', colors),
+                  _buildFilterTab('Manual', colors),
+                  _buildFilterTab('Taller', colors),
                 ],
               ),
             ),
           ),
-          
+
           // List
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
@@ -77,20 +74,35 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return AppSkeletonLayouts.listCards(
+                    itemCount: 5,
+                    cardHeight: 96,
+                  );
                 }
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}', style: TextStyle(color: textColor)));
+                  return Center(
+                    child: Text(
+                      'Error: ${snapshot.error}',
+                      style: TextStyle(color: colors.textPrimary),
+                    ),
+                  );
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return _buildEmptyState(primary, subTextColor);
+                  return _buildEmptyState(colors);
                 }
 
                 final docs = snapshot.data!.docs;
-                final allRecords = docs.map((doc) => ServiceRecordModel.fromMap(doc.data() as Map<String, dynamic>, doc.id)).toList();
+                final allRecords = docs
+                    .map(
+                      (doc) => ServiceRecordModel.fromMap(
+                        doc.data() as Map<String, dynamic>,
+                        doc.id,
+                      ),
+                    )
+                    .toList();
                 allRecords.sort((a, b) => b.fecha.compareTo(a.fecha));
-                
+
                 final filteredRecords = allRecords.where((record) {
                   if (_filter == 'Todos') return true;
                   final isManual = record.idTaller == 'Manual (Propietario)';
@@ -100,15 +112,18 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                 }).toList();
 
                 if (filteredRecords.isEmpty) {
-                  return _buildEmptyState(primary, subTextColor);
+                  return _buildEmptyState(colors);
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   itemCount: filteredRecords.length,
                   itemBuilder: (context, index) {
                     final record = filteredRecords[index];
-                    return _buildServiceCard(record, primary, isDark, textColor, subTextColor, context);
+                    return _buildServiceCard(record, colors, context);
                   },
                 );
               },
@@ -119,28 +134,36 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
     );
   }
 
-  Widget _buildEmptyState(Color primary, Color subTextColor) {
+  Widget _buildEmptyState(AppColors colors) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.history_toggle_off, size: 64, color: primary.withValues(alpha: 0.5)),
+          Icon(
+            Icons.history_toggle_off,
+            size: 64,
+            color: colors.primary.withValues(alpha: 0.5),
+          ),
           const SizedBox(height: 16),
           Text(
             'No hay servicios registrados',
-            style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: primary),
+            style: GoogleFonts.inter(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: colors.primary,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             'Los mantenimientos aparecerán aquí',
-            style: TextStyle(color: subTextColor),
+            style: TextStyle(color: colors.textSecondary),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildFilterTab(String title, Color primary, bool isDark) {
+  Widget _buildFilterTab(String title, AppColors colors) {
     final isSelected = _filter == title;
     return Expanded(
       child: GestureDetector(
@@ -148,9 +171,17 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? primary : Colors.transparent,
+            color: isSelected ? colors.primary : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
-            boxShadow: isSelected ? [const BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))] : null,
+            boxShadow: isSelected
+                ? [
+                    const BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
           alignment: Alignment.center,
           child: Text(
@@ -158,7 +189,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
             style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-              color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black54),
+              color: isSelected ? Colors.white : colors.textSecondary,
             ),
           ),
         ),
@@ -166,39 +197,36 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
     );
   }
 
-  Widget _buildServiceCard(ServiceRecordModel record, Color primary, bool isDark, Color textColor, Color subTextColor, BuildContext context) {
+  Widget _buildServiceCard(
+    ServiceRecordModel record,
+    AppColors colors,
+    BuildContext context,
+  ) {
     final isManual = record.idTaller == 'Manual (Propietario)';
-    
+
     // Select Icon based on service type
     IconData serviceIcon = Icons.build;
     final lowerName = record.tipoServicio?.toLowerCase() ?? '';
     if (lowerName.contains('aceite')) {
       serviceIcon = Icons.oil_barrel_outlined;
-    } else if (lowerName.contains('llanta') || lowerName.contains('neumático') || lowerName.contains('alineación') || lowerName.contains('balanceo')) {
+    } else if (lowerName.contains('llanta') ||
+        lowerName.contains('neumático') ||
+        lowerName.contains('alineación') ||
+        lowerName.contains('balanceo')) {
       serviceIcon = Icons.tire_repair_outlined;
     } else if (lowerName.contains('freno') || lowerName.contains('pastilla')) {
       serviceIcon = Icons.stop_circle_outlined;
     } else if (lowerName.contains('batería')) {
       serviceIcon = Icons.battery_charging_full_outlined;
-    } else if (lowerName.contains('líquido') || lowerName.contains('refrigerante') || lowerName.contains('anticongelante')) {
+    } else if (lowerName.contains('líquido') ||
+        lowerName.contains('refrigerante') ||
+        lowerName.contains('anticongelante')) {
       serviceIcon = Icons.water_drop_outlined;
     }
-    
-    return Container(
+
+    return AppCard(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF282032).withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: isDark ? 0.05 : 0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -208,10 +236,10 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: primary.withValues(alpha: 0.1),
+                  color: colors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(serviceIcon, color: primary, size: 28),
+                child: Icon(serviceIcon, color: colors.primary, size: 28),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -221,7 +249,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                     Text(
                       record.tipoServicio ?? 'Servicio',
                       style: GoogleFonts.inter(
-                        color: textColor,
+                        color: colors.textPrimary,
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
@@ -229,7 +257,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                     Text(
                       '${DateFormat('dd MMM yyyy').format(record.fecha)} • ${record.kilometrajeServicio ?? '--'} km',
                       style: TextStyle(
-                        color: subTextColor,
+                        color: colors.textSecondary,
                         fontSize: 13,
                       ),
                     ),
@@ -240,7 +268,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                 Text(
                   '\$${record.costo!.toStringAsFixed(2)}',
                   style: GoogleFonts.inter(
-                    color: primary,
+                    color: colors.primary,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
@@ -254,7 +282,9 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isManual ? Colors.blueGrey.withValues(alpha: 0.1) : primary.withValues(alpha: 0.1),
+                  color: isManual
+                      ? Colors.blueGrey.withValues(alpha: 0.1)
+                      : colors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -263,7 +293,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                     Icon(
                       isManual ? Icons.person : Icons.store,
                       size: 14,
-                      color: isManual ? Colors.blueGrey : primary,
+                      color: isManual ? Colors.blueGrey : colors.primary,
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -271,17 +301,22 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: isManual ? Colors.blueGrey : primary,
+                        color: isManual ? Colors.blueGrey : colors.primary,
                       ),
                     ),
                   ],
                 ),
               ),
-              if (record.fotoFacturaUrl != null && record.fotoFacturaUrl!.isNotEmpty)
+              if (record.fotoFacturaUrl != null &&
+                  record.fotoFacturaUrl!.isNotEmpty)
                 GestureDetector(
-                  onTap: () => _showImageDialog(context, record.fotoFacturaUrl!),
+                  onTap: () =>
+                      _showImageDialog(context, record.fotoFacturaUrl!),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.green.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
@@ -289,9 +324,20 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.receipt_long, size: 14, color: Colors.green),
+                        const Icon(
+                          Icons.receipt_long,
+                          size: 14,
+                          color: Colors.green,
+                        ),
                         const SizedBox(width: 4),
-                        const Text('Evidencia', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green)),
+                        const Text(
+                          'Evidencia',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -302,11 +348,54 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
             const SizedBox(height: 8),
             Text(
               record.descripcion!,
-              style: TextStyle(color: subTextColor, fontSize: 13, fontStyle: FontStyle.italic),
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 13,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+          if (!isManual &&
+              record.idTaller != null &&
+              record.idTaller!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () => _resenarTaller(context, record),
+                icon: Icon(Icons.star_outline, size: 18, color: colors.warning),
+                label: Text(
+                  'Reseñar taller',
+                  style: TextStyle(
+                    color: colors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ),
           ],
         ],
       ),
+    );
+  }
+
+  Future<void> _resenarTaller(
+    BuildContext context,
+    ServiceRecordModel record,
+  ) async {
+    final tallerId = record.idTaller!;
+    final snap = await FirebaseFirestore.instance
+        .collection('Usuarios')
+        .doc(tallerId)
+        .get();
+    final nombre =
+        snap.data()?['nombre_completo'] as String? ?? 'Taller';
+    if (!context.mounted) return;
+    await showReviewBottomSheet(
+      context,
+      tallerId: tallerId,
+      tallerNombre: nombre,
+      idServicio: record.idServicio,
     );
   }
 

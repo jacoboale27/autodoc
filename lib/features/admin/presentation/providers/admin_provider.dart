@@ -3,7 +3,9 @@ import '../../../../core/models/user_model.dart';
 import '../../../../core/models/workshop_model.dart';
 import '../../../../core/models/review_model.dart';
 import '../../../../core/models/admin_log_model.dart';
+import '../../../../core/utils/role_utils.dart';
 import '../../data/services/admin_service.dart';
+import '../../../reviews/data/services/review_service.dart';
 
 class AdminProvider with ChangeNotifier {
   final AdminService _adminService = AdminService();
@@ -18,7 +20,26 @@ class AdminProvider with ChangeNotifier {
   String? _successMessage;
 
   List<UserModel> get usuarios => _usuarios;
+  List<UserModel> get mecanicos =>
+      _usuarios.where((u) => isMechanicRole(u.rol)).toList();
   List<WorkshopModel> get talleres => _talleres;
+
+  String nombreUsuario(String id) {
+    for (final u in _usuarios) {
+      if (u.idUsuario == id) return u.nombreCompleto;
+    }
+    return 'Usuario';
+  }
+
+  String nombreTaller(String id) {
+    for (final u in mecanicos) {
+      if (u.idUsuario == id) return u.nombreCompleto;
+    }
+    for (final t in _talleres) {
+      if (t.idTaller == id) return t.nombre;
+    }
+    return 'Mecánico';
+  }
   List<ReviewModel> get resenias => _resenias;
   List<AdminLogModel> get logs => _logs;
   bool get isLoading => _isLoading;
@@ -181,7 +202,11 @@ class AdminProvider with ChangeNotifier {
   Future<void> eliminarResenia(String adminUid, String idResenia, String motivo) async {
     _setLoading(true);
     try {
-      await _adminService.eliminarResenia(adminUid, idResenia, motivo);
+      final idTaller =
+          await _adminService.eliminarResenia(adminUid, idResenia, motivo);
+      if (idTaller != null && idTaller.isNotEmpty) {
+        await ReviewService().recalculateTallerRating(idTaller);
+      }
       _setSuccess('Reseña eliminada');
       _resenias = await _adminService.fetchResenias();
     } catch (e) {

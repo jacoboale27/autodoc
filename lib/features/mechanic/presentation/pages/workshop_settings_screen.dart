@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
 
 class WorkshopSettingsScreen extends StatefulWidget {
   const WorkshopSettingsScreen({super.key});
@@ -17,7 +19,7 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
   late TextEditingController _phoneController;
   late TextEditingController _specialtyController;
   late TextEditingController _municipalityController;
-  
+
   bool _isLoading = false;
 
   @override
@@ -27,7 +29,8 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
     _nameController = TextEditingController(text: user?.nombreCompleto ?? '');
     _phoneController = TextEditingController(text: user?.telefono ?? '');
     _specialtyController = TextEditingController(text: user?.especialidad ?? '');
-    _municipalityController = TextEditingController(text: user?.ubicacionMunicipio ?? '');
+    _municipalityController =
+        TextEditingController(text: user?.ubicacionMunicipio ?? '');
   }
 
   @override
@@ -47,7 +50,7 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
     try {
       final authProvider = context.read<AuthProvider>();
       final currentUser = authProvider.userData;
-      
+
       if (currentUser != null) {
         final updatedUser = currentUser.copyWith(
           nombreCompleto: _nameController.text.trim(),
@@ -60,7 +63,10 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
 
         if (success && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Perfil de taller actualizado exitosamente'), backgroundColor: Colors.green),
+            SnackBar(
+              content: const Text('Perfil de taller actualizado exitosamente'),
+              backgroundColor: context.appColors.secondary,
+            ),
           );
         } else {
           throw authProvider.error ?? 'Error desconocido al actualizar perfil';
@@ -69,7 +75,10 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: context.appColors.error,
+          ),
         );
       }
     } finally {
@@ -80,150 +89,236 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = context.appColors;
     final isDark = context.watch<ThemeProvider>().isDarkMode;
-    
+    final isMobile = MediaQuery.of(context).size.width < 700;
+
     final primary = theme.colorScheme.primary;
-    final bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF9F9FF);
-    final surfaceColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final subTextColor = isDark ? Colors.grey[400]! : Colors.blueGrey[500]!;
 
     return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: surfaceColor,
-        elevation: 0,
-        centerTitle: true,
-        iconTheme: IconThemeData(color: textColor),
-        title: Text(
-          'Configuración del Taller',
-          style: GoogleFonts.inter(
-            color: textColor,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
+      backgroundColor: colors.surface,
+      appBar: isMobile
+          ? AppBar(
+              backgroundColor: colors.surfaceContainer,
+              elevation: 0,
+              title: Text(
+                'Panel de Taller',
+                style: GoogleFonts.montserrat(
+                  color: colors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              iconTheme: IconThemeData(color: colors.textPrimary),
+            )
+          : null,
+      drawer: isMobile ? const Drawer(child: MechanicSidebar()) : null,
+      body: Row(
+        children: [
+          if (!isMobile) const MechanicSidebar(),
+          Expanded(
+            child: Column(
+              children: [
+                if (!isMobile) _buildTopBar(isDark, colors),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(isMobile ? 16 : 32),
+                    child: Center(
+                      child: Container(
+                        constraints: const BoxConstraints(maxWidth: 800),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (isMobile) ...[
+                                Text(
+                                  'Configuración del Taller',
+                                  style: GoogleFonts.montserrat(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: colors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+                              Container(
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: colors.surfaceContainer,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: isDark
+                                        ? Colors.white10
+                                        : Colors.grey[200]!,
+                                  ),
+                                  boxShadow: [
+                                    if (!isDark)
+                                      BoxShadow(
+                                        color: Colors.black
+                                            .withValues(alpha: 0.05),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: primary.withValues(
+                                                alpha: 0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(Icons.store,
+                                              color: primary),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Información Pública',
+                                                style: GoogleFonts.montserrat(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: colors.textPrimary,
+                                                ),
+                                              ),
+                                              Text(
+                                                'Estos datos serán visibles en el directorio de talleres.',
+                                                style: TextStyle(
+                                                  color: colors.textSecondary,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 32),
+                                    _buildInputField(
+                                      label: 'Nombre del Taller',
+                                      controller: _nameController,
+                                      icon: Icons.business,
+                                      colors: colors,
+                                      isDark: isDark,
+                                      validator: (value) =>
+                                          value == null || value.isEmpty
+                                              ? 'Requerido'
+                                              : null,
+                                    ),
+                                    const SizedBox(height: 20),
+                                    _buildInputField(
+                                      label: 'Especialidad',
+                                      controller: _specialtyController,
+                                      icon: Icons.build_circle,
+                                      hint:
+                                          'Ej: Mecánica General, Frenos, Transmisión...',
+                                      colors: colors,
+                                      isDark: isDark,
+                                    ),
+                                    const SizedBox(height: 20),
+                                    _buildInputField(
+                                      label: 'Municipio / Ubicación',
+                                      controller: _municipalityController,
+                                      icon: Icons.location_on,
+                                      hint: 'Ej: Bogotá, Medellín...',
+                                      colors: colors,
+                                      isDark: isDark,
+                                    ),
+                                    const SizedBox(height: 20),
+                                    _buildInputField(
+                                      label: 'Teléfono de Contacto',
+                                      controller: _phoneController,
+                                      icon: Icons.phone,
+                                      keyboardType: TextInputType.phone,
+                                      hint: 'Ej: +57 300 000 0000',
+                                      colors: colors,
+                                      isDark: isDark,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 32),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 54,
+                                child: ElevatedButton(
+                                  onPressed: _isLoading ? null : _saveSettings,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: primary,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                  child: _isLoading
+                                      ? const SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : Text(
+                                          'Guardar Cambios',
+                                          style: GoogleFonts.montserrat(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopBar(bool isDark, AppColors colors) {
+    return Container(
+      height: 64,
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainer,
+        border: Border(
+          bottom: BorderSide(
+            color: isDark
+                ? Colors.white10
+                : colors.surfaceContainer.withValues(alpha: 0.4),
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Center(
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 800),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: surfaceColor,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: isDark ? Colors.white10 : Colors.grey[200]!),
-                      boxShadow: [
-                        if (!isDark)
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: primary.withValues(alpha: 0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(Icons.store, color: primary),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Información Pública', style: GoogleFonts.montserrat(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
-                                  Text('Estos datos serán visibles en el directorio de talleres.', style: TextStyle(color: subTextColor, fontSize: 13)),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 32),
-                        
-                        _buildInputField(
-                          label: 'Nombre del Taller',
-                          controller: _nameController,
-                          icon: Icons.business,
-                          textColor: textColor,
-                          subTextColor: subTextColor,
-                          isDark: isDark,
-                          validator: (value) => value == null || value.isEmpty ? 'Requerido' : null,
-                        ),
-                        const SizedBox(height: 20),
-                        
-                        _buildInputField(
-                          label: 'Especialidad',
-                          controller: _specialtyController,
-                          icon: Icons.build_circle,
-                          hint: 'Ej: Mecánica General, Frenos, Transmisión...',
-                          textColor: textColor,
-                          subTextColor: subTextColor,
-                          isDark: isDark,
-                        ),
-                        const SizedBox(height: 20),
-                        
-                        _buildInputField(
-                          label: 'Municipio / Ubicación',
-                          controller: _municipalityController,
-                          icon: Icons.location_on,
-                          hint: 'Ej: Bogotá, Medellín...',
-                          textColor: textColor,
-                          subTextColor: subTextColor,
-                          isDark: isDark,
-                        ),
-                        const SizedBox(height: 20),
-                        
-                        _buildInputField(
-                          label: 'Teléfono de Contacto',
-                          controller: _phoneController,
-                          icon: Icons.phone,
-                          keyboardType: TextInputType.phone,
-                          hint: 'Ej: +57 300 000 0000',
-                          textColor: textColor,
-                          subTextColor: subTextColor,
-                          isDark: isDark,
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 32),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 54,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _saveSettings,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : Text('Guardar Cambios', style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 16)),
-                    ),
-                  ),
-                ],
-              ),
+      child: Row(
+        children: [
+          Text(
+            'CONFIGURACIÓN',
+            style: GoogleFonts.montserrat(
+              fontWeight: FontWeight.w900,
+              fontSize: 20,
+              color: colors.textPrimary,
+              letterSpacing: -0.5,
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -234,8 +329,7 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
     required IconData icon,
     String? hint,
     TextInputType? keyboardType,
-    required Color textColor,
-    required Color subTextColor,
+    required AppColors colors,
     required bool isDark,
     String? Function(String?)? validator,
   }) {
@@ -247,32 +341,38 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
           style: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: textColor,
+            color: colors.textPrimary,
           ),
         ),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
           keyboardType: keyboardType,
-          style: TextStyle(color: textColor),
+          style: TextStyle(color: colors.textPrimary),
           validator: validator,
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: subTextColor.withValues(alpha: 0.5)),
-            prefixIcon: Icon(icon, color: subTextColor),
+            hintStyle:
+                TextStyle(color: colors.textSecondary.withValues(alpha: 0.5)),
+            prefixIcon: Icon(icon, color: colors.textSecondary),
             filled: true,
-            fillColor: isDark ? const Color(0xFF0F172A) : Colors.grey[50],
+            fillColor: colors.surface,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: isDark ? Colors.white10 : Colors.grey[300]!),
+              borderSide: BorderSide(
+                color: isDark ? Colors.white10 : Colors.grey[300]!,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: isDark ? Colors.white10 : Colors.grey[300]!),
+              borderSide: BorderSide(
+                color: isDark ? Colors.white10 : Colors.grey[300]!,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+              borderSide: BorderSide(
+                  color: Theme.of(context).colorScheme.primary, width: 2),
             ),
           ),
         ),

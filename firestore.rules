@@ -13,8 +13,11 @@ service cloud.firestore {
       allow read: if request.auth != null;
       // Solo el dueño puede editar su perfil básico
       // Solo un admin puede editar el campo 'rol' o 'estado'
+      // Cualquier usuario autenticado puede actualizar solo métricas de reseñas
       allow update: if (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['rol', 'estado']))
-                    || isAdmin();
+                    || isAdmin()
+                    || (request.auth != null
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['calificacion_promedio', 'total_resenias']));
       allow create: if request.auth != null;
       allow delete: if isAdmin();
     }
@@ -30,7 +33,7 @@ service cloud.firestore {
     // Reglas para Reseñas
     match /Resenias/{reseniaId} {
       allow read: if true;
-      allow create: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.id_usuario == request.auth.uid;
       // Solo el autor puede editar su reseña, solo admin puede borrarla
       allow update: if request.auth != null && resource.data.id_usuario == request.auth.uid;
       allow delete: if isAdmin();

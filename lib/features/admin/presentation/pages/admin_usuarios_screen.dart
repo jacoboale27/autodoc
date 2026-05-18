@@ -4,6 +4,7 @@ import '../providers/admin_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../widgets/admin_sidebar.dart';
 import '../widgets/account_row.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
 
 class AdminUsuariosScreen extends StatefulWidget {
   const AdminUsuariosScreen({super.key});
@@ -120,6 +121,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
     final provider = context.watch<AdminProvider>();
     final authProvider = context.watch<AuthProvider>();
     final adminUid = authProvider.adminUid;
+    final colors = context.appColors;
 
     // Show success/error snackbar
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -127,7 +129,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(provider.successMessage!),
-            backgroundColor: Colors.green,
+            backgroundColor: colors.secondary,
           ),
         );
         provider.clearMessages();
@@ -136,7 +138,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(provider.error!),
-            backgroundColor: Colors.red,
+            backgroundColor: colors.error,
           ),
         );
         provider.clearMessages();
@@ -179,19 +181,20 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
           ),
           Expanded(
             child: provider.isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? Center(child: CircularProgressIndicator(color: colors.primary))
                 : RefreshIndicator(
+                    color: colors.primary,
                     onRefresh: provider.fetchUsuarios,
                     child: usuariosFiltrados.isEmpty
                         ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.person_search, size: 64, color: Colors.grey[300]),
+                                Icon(Icons.person_search, size: 64, color: colors.textSecondary.withValues(alpha: 0.3)),
                                 const SizedBox(height: 16),
                                 Text(
                                   _searchQuery.isEmpty ? 'No hay usuarios registrados' : 'Sin resultados para "$_searchQuery"',
-                                  style: TextStyle(color: Colors.grey[500]),
+                                  style: TextStyle(color: colors.textSecondary),
                                 ),
                               ],
                             ),

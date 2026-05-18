@@ -67,9 +67,10 @@ class AdminService {
     return await _repository.getResenias();
   }
 
-  Future<void> eliminarResenia(String adminUid, String idResenia, String motivo) async {
-    await _repository.deleteResenia(idResenia);
+  Future<String?> eliminarResenia(String adminUid, String idResenia, String motivo) async {
+    final idTaller = await _repository.deleteResenia(idResenia);
     await _logAction(adminUid, 'ELIMINAR_RESENIA', 'Resenias', idResenia, motivo);
+    return idTaller;
   }
 
   // Logs

@@ -18,7 +18,7 @@ class ProfileSetupScreen extends StatefulWidget {
 
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final TextEditingController _nameController = TextEditingController();
-  String _selectedRole = 'Propietario'; // 'Propietario' or 'Taller'
+  String _selectedRole = 'Propietario'; // 'Propietario' or 'Mecanico'
   bool _notificationsEnabled = true;
   File? _imageFile;
   bool _isLoading = false;
@@ -263,10 +263,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: _buildRoleCard(
-                                    title: 'Taller',
+                                    title: 'Mecánico',
                                     icon: Icons.build_circle_outlined,
-                                    isSelected: _selectedRole == 'Taller',
-                                    onTap: () => setState(() => _selectedRole = 'Taller'),
+                                    isSelected: _selectedRole == 'Mecanico',
+                                    onTap: () => setState(() => _selectedRole = 'Mecanico'),
                                   ),
                                 ),
                               ],
@@ -424,7 +424,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     
                     if (context.mounted) {
                       final role = _selectedRole.trim().toLowerCase();
-                      if (role == 'taller' || role == 'mecanico') {
+                      if (role == 'mecanico') {
                         context.go('/mechanic_dashboard');
                       } else {
                         context.go('/dashboard');

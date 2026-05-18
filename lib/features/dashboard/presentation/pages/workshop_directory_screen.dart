@@ -2,9 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/app_scaffold.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/widgets/app_text_field.dart';
+import 'package:autodoc/core/widgets/app_skeleton.dart';
+import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
+import 'package:autodoc/core/utils/role_utils.dart';
+import 'package:autodoc/core/widgets/review_sheet.dart';
+import 'package:flutter/services.dart';
 
 class WorkshopDirectoryScreen extends StatefulWidget {
   const WorkshopDirectoryScreen({super.key});
@@ -31,46 +40,34 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final primary = theme.colorScheme.primary;
-    final bgColorStart = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final bgColorEnd = isDark ? const Color(0xFF0F172A) : const Color(0xFFF0F4F8);
-    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final subTextColor = isDark ? Colors.grey[400]! : Colors.blueGrey[500]!;
-    final cardColor = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7);
+    final colors = context.appColors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter, end: Alignment.bottomCenter,
-            colors: [bgColorStart, bgColorEnd],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              _buildHeader(isDark, primary, textColor, cardColor),
-              // Search Bar
-              _buildSearchBar(isDark, textColor, subTextColor),
-              // Filters
-              _buildFilters(isDark, textColor),
-              const SizedBox(height: 8),
-              // Content: List or Map
+    return AppScaffold(
+      useGradient: true,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            _buildHeader(colors, isDark),
+            // Search Bar
+            _buildSearchBar(colors, isDark),
+            // Filters
+            _buildFilters(colors, isDark),
+            const SizedBox(height: 8),
+            // Content: List or Map
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection('Usuarios')
-                      .where('rol', isEqualTo: 'Taller')
+                      .where('rol', whereIn: mechanicFirestoreRoles)
                       .snapshots(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
+                      return AppSkeletonLayouts.workshopList();
                     }
                     if (snapshot.hasError) {
-                      return Center(child: Text('Error al cargar talleres', style: TextStyle(color: textColor)));
+                      return Center(child: Text('Error al cargar talleres', style: TextStyle(color: colors.textPrimary)));
                     }
 
                     var docs = snapshot.data?.docs ?? [];
@@ -85,7 +82,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                     }
 
                     if (_showMap) {
-                      return _buildMapView(docs, isDark, primary, textColor, subTextColor, cardColor);
+                      return _buildMapView(docs, colors, isDark);
                     }
 
                     if (docs.isEmpty) {
@@ -93,10 +90,10 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.search_off, size: 48, color: subTextColor.withValues(alpha: 0.4)),
+                            Icon(Icons.search_off, size: 48, color: colors.textSecondary.withValues(alpha: 0.4)),
                             const SizedBox(height: 12),
                             Text('No se encontraron talleres',
-                                style: TextStyle(color: subTextColor, fontSize: 16)),
+                                style: TextStyle(color: colors.textSecondary, fontSize: 16)),
                           ],
                         ),
                       );
@@ -106,11 +103,13 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                       padding: const EdgeInsets.all(16).copyWith(bottom: 100),
                       itemCount: docs.length,
                       itemBuilder: (context, index) {
-                        final data = docs[index].data() as Map<String, dynamic>;
+                        final doc = docs[index];
+                        final data = doc.data() as Map<String, dynamic>;
                         return _buildWorkshopCard(
+                          tallerId: doc.id,
                           data: data,
-                          isDark: isDark, primary: primary,
-                          textColor: textColor, subTextColor: subTextColor, cardColor: cardColor,
+                          colors: colors,
+                          isDark: isDark,
                         );
                       },
                     );
@@ -120,37 +119,36 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 
-  Widget _buildHeader(bool isDark, Color primary, Color textColor, Color cardColor) {
+  Widget _buildHeader(AppColors colors, bool isDark) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.8),
-        border: Border(bottom: BorderSide(color: primary.withValues(alpha: 0.1))),
+        border: Border(bottom: BorderSide(color: colors.primary.withValues(alpha: 0.1))),
       ),
       child: Row(
         children: [
           IconButton(
-            icon: Icon(Icons.arrow_back, color: textColor),
+            icon: Icon(Icons.arrow_back, color: colors.textPrimary),
             onPressed: () => context.pop(),
           ),
           Text('Directorio de Talleres',
-              style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: textColor)),
+              style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: colors.textPrimary)),
           const Spacer(),
           // Toggle Map/List
           Container(
             decoration: BoxDecoration(
-              color: primary.withValues(alpha: isDark ? 0.15 : 0.08),
+              color: colors.primary.withValues(alpha: isDark ? 0.15 : 0.08),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _viewToggle(Icons.list, !_showMap, primary, isDark),
-                _viewToggle(Icons.map_outlined, _showMap, primary, isDark),
+                _viewToggle(Icons.list, !_showMap, colors.primary, isDark),
+                _viewToggle(Icons.map_outlined, _showMap, colors.primary, isDark),
               ],
             ),
           ),
@@ -175,7 +173,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
     );
   }
 
-  Widget _buildSearchBar(bool isDark, Color textColor, Color subTextColor) {
+  Widget _buildSearchBar(AppColors colors, bool isDark) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Container(
@@ -185,33 +183,27 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
           border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey[200]!),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 2))],
         ),
-        child: TextField(
+        child: AppTextField(
           controller: _searchController,
           onChanged: (value) => setState(() => _searchQuery = value),
-          style: TextStyle(color: textColor),
-          decoration: InputDecoration(
-            hintText: 'Buscar mecánicos o servicios...',
-            hintStyle: TextStyle(color: subTextColor),
-            prefixIcon: Icon(Icons.search, color: subTextColor),
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          ),
+          hintText: 'Buscar mecánicos o servicios...',
+          prefixIcon: const Icon(Icons.search),
         ),
       ),
     );
   }
 
-  Widget _buildFilters(bool isDark, Color textColor) {
+  Widget _buildFilters(AppColors colors, bool isDark) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          _buildFilterChip('Municipio', Icons.location_on, isDark, textColor),
+          _buildFilterChip('Municipio', Icons.location_on, isDark, colors.textPrimary),
           const SizedBox(width: 12),
-          _buildFilterChip('Especialidad', Icons.build, isDark, textColor),
+          _buildFilterChip('Especialidad', Icons.build, isDark, colors.textPrimary),
           const SizedBox(width: 12),
-          _buildFilterChip('Rating', Icons.star, isDark, textColor),
+          _buildFilterChip('Rating', Icons.star, isDark, colors.textPrimary),
         ],
       ),
     );
@@ -240,8 +232,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
   }
 
   // ======= MAP VIEW =======
-  Widget _buildMapView(List<QueryDocumentSnapshot> docs, bool isDark,
-      Color primary, Color textColor, Color subTextColor, Color cardColor) {
+  Widget _buildMapView(List<QueryDocumentSnapshot> docs, AppColors colors, bool isDark) {
     final markers = <Marker>{};
 
     for (var doc in docs) {
@@ -296,14 +287,14 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
             ),
             child: Row(
               children: [
-                Icon(Icons.location_on, color: primary, size: 18),
+                Icon(Icons.location_on, color: colors.primary, size: 18),
                 const SizedBox(width: 8),
                 Text('${markers.length} talleres en el mapa',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13, color: textColor)),
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13, color: colors.textPrimary)),
                 if (workshopsWithoutCoords > 0) ...[
                   const Spacer(),
                   Text('$workshopsWithoutCoords sin ubicación',
-                      style: GoogleFonts.inter(fontSize: 11, color: subTextColor)),
+                      style: GoogleFonts.inter(fontSize: 11, color: colors.textSecondary)),
                 ],
               ],
             ),
@@ -321,7 +312,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                 itemCount: docs.length,
                 itemBuilder: (context, i) {
                   final data = docs[i].data() as Map<String, dynamic>;
-                  return _buildMapCard(data, isDark, primary, textColor, subTextColor);
+                  return _buildMapCard(data, colors, isDark);
                 },
               ),
             ),
@@ -330,8 +321,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
     );
   }
 
-  Widget _buildMapCard(Map<String, dynamic> data, bool isDark,
-      Color primary, Color textColor, Color subTextColor) {
+  Widget _buildMapCard(Map<String, dynamic> data, AppColors colors, bool isDark) {
     final name = data['nombre_completo'] ?? 'Taller';
     final spec = data['especialidad'] ?? 'Mecánica General';
     final rating = data['calificacion_promedio']?.toDouble() ?? 5.0;
@@ -347,24 +337,20 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
           );
         }
       },
-      child: Container(
+      child: SizedBox(
         width: 240,
-        margin: const EdgeInsets.only(right: 12),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1B2E).withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10)],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
+        child: AppCard(
+          margin: const EdgeInsets.only(right: 12),
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
               children: [
                 Expanded(
                   child: Text(name,
-                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: textColor),
+                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: colors.textPrimary),
                       maxLines: 1, overflow: TextOverflow.ellipsis),
                 ),
                 Container(
@@ -380,50 +366,75 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
               ],
             ),
             const SizedBox(height: 6),
-            Text(spec, style: TextStyle(fontSize: 12, color: subTextColor), maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(spec, style: TextStyle(fontSize: 12, color: colors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 4),
             Row(
               children: [
-                Icon(Icons.location_on, size: 13, color: subTextColor),
+                Icon(Icons.location_on, size: 13, color: colors.textSecondary),
                 const SizedBox(width: 4),
-                Expanded(child: Text(location, style: TextStyle(fontSize: 11, color: subTextColor), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                Expanded(child: Text(location, style: TextStyle(fontSize: 11, color: colors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis)),
               ],
             ),
           ],
+        ),
         ),
       ),
     );
   }
 
   // ======= LIST VIEW CARD =======
+  void _mostrarContacto(BuildContext context, String? telefono, String nombre) {
+    if (telefono == null || telefono.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Este taller no tiene teléfono registrado')),
+      );
+      return;
+    }
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Contactar a $nombre'),
+        content: SelectableText(telefono),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: telefono));
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Teléfono copiado al portapapeles')),
+              );
+            },
+            child: const Text('Copiar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildWorkshopCard({
+    required String tallerId,
     required Map<String, dynamic> data,
+    required AppColors colors,
     required bool isDark,
-    required Color primary,
-    required Color textColor,
-    required Color subTextColor,
-    required Color cardColor,
   }) {
     final name = data['nombre_completo'] ?? 'Taller Sin Nombre';
+    final telefono = data['telefono'] as String?;
     final imageUrl = data['foto_url'] ?? data['foto_perfil_url'];
     final specialty = data['especialidad'] ?? 'Mecánica General';
     final rating = data['calificacion_promedio']?.toDouble() ?? 5.0;
     final reviewsCount = data['total_resenias'] ?? 0;
     final location = data['ubicacion_municipio'] ?? 'Ubicación no especificada';
 
-    return Container(
+    return AppCard(
       margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.3)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
-      ),
+      padding: EdgeInsets.zero,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Column(
+        child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
@@ -432,10 +443,10 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                 child: imageUrl != null && imageUrl.toString().isNotEmpty
                     ? CachedNetworkImage(
                         imageUrl: imageUrl, fit: BoxFit.cover,
-                        placeholder: (ctx, url) => const Center(child: CircularProgressIndicator()),
-                        errorWidget: (ctx, url, err) => Icon(Icons.build, size: 48, color: subTextColor),
+                        placeholder: (ctx, url) => AppSkeleton.card(height: 160),
+                        errorWidget: (ctx, url, err) => Icon(Icons.build, size: 48, color: colors.textSecondary),
                       )
-                    : Icon(Icons.build, size: 48, color: subTextColor),
+                    : Icon(Icons.build, size: 48, color: colors.textSecondary),
               ),
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -446,7 +457,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(child: Text(name,
-                            style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: textColor))),
+                            style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: colors.textPrimary))),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(color: Colors.yellow[100], borderRadius: BorderRadius.circular(4)),
@@ -461,17 +472,17 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                     ),
                     const SizedBox(height: 8),
                     Row(children: [
-                      Icon(Icons.verified, size: 16, color: subTextColor),
+                      Icon(Icons.verified, size: 16, color: colors.textSecondary),
                       const SizedBox(width: 4),
                       Expanded(child: Text('Especialidad: $specialty',
-                          style: TextStyle(color: subTextColor, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                          style: TextStyle(color: colors.textSecondary, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     ]),
                     const SizedBox(height: 4),
                     Row(children: [
-                      Icon(Icons.location_on, size: 16, color: subTextColor),
+                      Icon(Icons.location_on, size: 16, color: colors.textSecondary),
                       const SizedBox(width: 4),
                       Expanded(child: Text(location,
-                          style: TextStyle(color: subTextColor, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                          style: TextStyle(color: colors.textSecondary, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     ]),
                     const SizedBox(height: 16),
                     Container(
@@ -482,18 +493,26 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text('$reviewsCount reseñas', style: TextStyle(fontSize: 12, color: subTextColor)),
-                            const SizedBox(height: 2),
-                            Text('Abierto • Cierra 18:00', style: TextStyle(fontSize: 12, color: subTextColor)),
+                            Text('$reviewsCount reseña${reviewsCount == 1 ? '' : 's'}',
+                                style: TextStyle(fontSize: 12, color: colors.textSecondary)),
                           ]),
-                          ElevatedButton(
-                            onPressed: () {},
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: primary, foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                            ),
-                            child: const Text('Contactar', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              TextButton.icon(
+                                onPressed: () => showReviewBottomSheet(
+                                  context,
+                                  tallerId: tallerId,
+                                  tallerNombre: name,
+                                ),
+                                icon: const Icon(Icons.star_outline, size: 18),
+                                label: const Text('Reseñar'),
+                              ),
+                              AppButton(
+                                onPressed: () => _mostrarContacto(context, telefono, name),
+                                text: 'Contactar',
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -503,7 +522,6 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
               ),
             ],
           ),
-        ),
       ),
     );
   }

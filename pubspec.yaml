@@ -54,6 +54,15 @@ dependencies:
   intl: ^0.20.2
   http: ^1.6.0
   shared_preferences: ^2.5.5
+  shimmer: ^3.0.0
+  flutter_native_splash: ^2.4.7
+
+flutter_native_splash:
+  color: "#522C81"
+  android: true
+  ios: true
+  web: false
+
 
 dev_dependencies:
   flutter_test:

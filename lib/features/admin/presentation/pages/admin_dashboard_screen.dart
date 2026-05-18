@@ -7,6 +7,8 @@ import '../providers/admin_provider.dart';
 import '../widgets/admin_sidebar.dart';
 import '../widgets/metric_card.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:intl/intl.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -31,6 +33,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final provider = context.watch<AdminDashboardProvider>();
     final adminProvider = context.watch<AdminProvider>();
     final authProvider = context.watch<AuthProvider>();
+    final colors = context.appColors;
 
     return Scaffold(
       appBar: AppBar(
@@ -39,10 +42,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
       drawer: const AdminSidebar(),
       body: provider.isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: colors.primary))
           : provider.error != null
               ? Center(child: Text('Error: ${provider.error}'))
               : RefreshIndicator(
+                  color: colors.primary,
                   onRefresh: () async {
                     await provider.fetchMetrics();
                     await adminProvider.fetchLogs();
@@ -53,26 +57,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Welcome header
-                        _buildWelcomeHeader(context, authProvider),
+                        _buildWelcomeHeader(context, authProvider, colors),
                         const SizedBox(height: 32),
-
-                        // Metrics section
                         _buildSectionTitle(context, 'Métricas Globales'),
                         const SizedBox(height: 16),
-                        _buildMetricsGrid(context, provider),
+                        _buildMetricsGrid(context, provider, colors),
                         const SizedBox(height: 32),
-
-                        // Quick Actions
                         _buildSectionTitle(context, 'Acciones Rápidas'),
                         const SizedBox(height: 16),
-                        _buildQuickActions(context),
+                        _buildQuickActions(context, colors),
                         const SizedBox(height: 32),
-
-                        // Recent Activity
                         _buildSectionTitle(context, 'Actividad Reciente'),
                         const SizedBox(height: 16),
-                        _buildRecentActivity(context, adminProvider),
+                        _buildRecentActivity(context, adminProvider, colors),
                       ],
                     ),
                   ),
@@ -80,7 +77,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildWelcomeHeader(BuildContext context, AuthProvider authProvider) {
+  Widget _buildWelcomeHeader(BuildContext context, AuthProvider authProvider, AppColors colors) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -89,50 +86,52 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Theme.of(context).colorScheme.primary,
-            Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
+            colors.primary,
+            colors.primary.withValues(alpha: 0.75),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: colors.primary.withValues(alpha: 0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(14),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.admin_panel_settings, color: Colors.white, size: 28),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '¡Bienvenido, ${authProvider.userData?.nombreCompleto ?? 'Admin'}!',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    fontSize: 20,
+                  ),
                 ),
-                child: const Icon(Icons.admin_panel_settings, color: Colors.white, size: 28),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '¡Bienvenido, ${authProvider.userData?.nombreCompleto ?? 'Admin'}!',
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        fontSize: 20,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Panel de control administrativo',
-                      style: GoogleFonts.inter(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 4),
+                Text(
+                  'Panel de control administrativo',
+                  style: GoogleFonts.inter(
+                    color: Colors.white.withValues(alpha: 0.8),
+                    fontSize: 14,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -149,7 +148,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildMetricsGrid(BuildContext context, AdminDashboardProvider provider) {
+  Widget _buildMetricsGrid(BuildContext context, AdminDashboardProvider provider, AppColors colors) {
     final screenWidth = MediaQuery.of(context).size.width;
     final crossAxisCount = screenWidth > 900 ? 3 : (screenWidth > 600 ? 2 : 1);
 
@@ -165,43 +164,43 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           title: 'Usuarios',
           value: '${provider.metrics['usuarios']}',
           icon: Icons.people,
-          color: Colors.blue,
+          color: colors.primary,
         ),
         MetricCard(
           title: 'Talleres',
           value: '${provider.metrics['talleres']}',
           icon: Icons.build,
-          color: Colors.orange,
+          color: colors.warning,
         ),
         MetricCard(
           title: 'Vehículos',
           value: '${provider.metrics['vehiculos']}',
           icon: Icons.directions_car,
-          color: Colors.purple,
+          color: colors.secondary,
         ),
         MetricCard(
           title: 'Servicios',
           value: '${provider.metrics['servicios']}',
           icon: Icons.miscellaneous_services,
-          color: Colors.green,
+          color: colors.secondary,
         ),
         MetricCard(
           title: 'Alertas',
           value: '${provider.metrics['alertas']}',
           icon: Icons.warning,
-          color: Colors.red,
+          color: colors.error,
         ),
         MetricCard(
           title: 'Reseñas',
           value: '${provider.metrics['resenias']}',
           icon: Icons.rate_review,
-          color: Colors.teal,
+          color: colors.primary,
         ),
       ],
     );
   }
 
-  Widget _buildQuickActions(BuildContext context) {
+  Widget _buildQuickActions(BuildContext context, AppColors colors) {
     return Wrap(
       spacing: 12,
       runSpacing: 12,
@@ -210,28 +209,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           context,
           icon: Icons.people_outline,
           label: 'Gestionar Usuarios',
-          color: Colors.blue,
+          color: colors.primary,
           onTap: () => context.go('/admin/usuarios'),
         ),
         _buildActionChip(
           context,
           icon: Icons.build_circle_outlined,
           label: 'Gestionar Talleres',
-          color: Colors.orange,
+          color: colors.warning,
           onTap: () => context.go('/admin/talleres'),
         ),
         _buildActionChip(
           context,
           icon: Icons.rate_review_outlined,
           label: 'Moderar Reseñas',
-          color: Colors.teal,
+          color: colors.secondary,
           onTap: () => context.go('/admin/resenias'),
         ),
         _buildActionChip(
           context,
           icon: Icons.history_outlined,
           label: 'Ver Actividad',
-          color: Colors.deepPurple,
+          color: colors.primary,
           onTap: () => context.go('/admin/logs'),
         ),
       ],
@@ -279,25 +278,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildRecentActivity(BuildContext context, AdminProvider adminProvider) {
+  Widget _buildRecentActivity(BuildContext context, AdminProvider adminProvider, AppColors colors) {
     final recentLogs = adminProvider.logs.take(5).toList();
 
     if (recentLogs.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)),
-        ),
+      return AppCard(
+        padding: const EdgeInsets.all(32),
         child: Center(
           child: Column(
             children: [
-              Icon(Icons.history, size: 40, color: Colors.grey[300]),
+              Icon(Icons.history, size: 40, color: colors.textSecondary.withValues(alpha: 0.4)),
               const SizedBox(height: 12),
               Text(
                 'Sin actividad reciente',
-                style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                style: TextStyle(color: colors.textSecondary, fontSize: 14),
               ),
             ],
           ),
@@ -305,29 +299,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       );
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)),
-      ),
+    return AppCard(
+      padding: EdgeInsets.zero,
       child: Column(
         children: [
           ...recentLogs.map((log) {
             final isDestructive = log.accion.contains('SUSPENDER') ||
                 log.accion.contains('ELIMINAR') ||
                 log.accion.contains('RECHAZAR');
+            final accentColor = isDestructive ? colors.error : colors.secondary;
 
             return ListTile(
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: (isDestructive ? Colors.red : Colors.green).withValues(alpha: 0.1),
+                  color: accentColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   isDestructive ? Icons.warning_amber : Icons.check_circle_outline,
-                  color: isDestructive ? Colors.red : Colors.green,
+                  color: accentColor,
                   size: 20,
                 ),
               ),
@@ -337,23 +328,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               subtitle: Text(
                 log.detalle,
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                style: TextStyle(fontSize: 12, color: colors.textSecondary),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               trailing: Text(
                 DateFormat('dd/MM HH:mm').format(log.fecha),
-                style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                style: TextStyle(fontSize: 11, color: colors.textSecondary.withValues(alpha: 0.6)),
               ),
             );
           }),
-          // See all button
           Padding(
             padding: const EdgeInsets.all(12),
             child: TextButton.icon(
               onPressed: () => context.go('/admin/logs'),
-              icon: const Icon(Icons.arrow_forward, size: 16),
-              label: const Text('Ver todo el registro'),
+              icon: Icon(Icons.arrow_forward, size: 16, color: colors.primary),
+              label: Text(
+                'Ver todo el registro',
+                style: TextStyle(color: colors.primary),
+              ),
             ),
           ),
         ],

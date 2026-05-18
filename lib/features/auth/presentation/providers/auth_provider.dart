@@ -5,11 +5,13 @@ import 'package:autodoc/features/auth/data/services/auth_service.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/features/profile/data/services/user_service.dart';
 import 'package:autodoc/features/admin/data/services/admin_auth_service.dart';
+import 'package:autodoc/features/auth/data/services/auth_preferences_service.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
   final UserService _userService = UserService();
   final AdminAuthService _adminAuthService = AdminAuthService();
+  final AuthPreferencesService _authPreferences = AuthPreferencesService();
   User? _user;
   UserModel? _userData;
   bool _isLoading = false;
@@ -21,6 +23,11 @@ class AuthProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isAdminSession => _isAdminSession;
+
+  bool get needsEmailVerification {
+    if (_user == null || _isAdminSession) return false;
+    return _authService.isEmailPasswordUser && !_authService.isCurrentUserEmailVerified;
+  }
 
   /// The admin UID for use in admin operations.
   /// Uses the Firebase Auth UID since admins are now real Firebase users.
@@ -152,7 +159,11 @@ class AuthProvider with ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
-      await _authService.registerWithEmail(email, password);
+      final credential = await _authService.registerWithEmail(email, password);
+      _user = credential?.user;
+      if (_user != null) {
+        await _authService.sendEmailVerification();
+      }
       _setLoading(false);
       return true;
     } catch (e) {
@@ -161,6 +172,61 @@ class AuthProvider with ChangeNotifier {
       return false;
     }
   }
+
+  Future<bool> sendPasswordReset(String email) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _authService.sendPasswordReset(email);
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  Future<bool> sendEmailVerification() async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _authService.sendEmailVerification();
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  Future<bool> refreshEmailVerificationStatus() async {
+    try {
+      await _authService.reloadCurrentUser();
+      _user = FirebaseAuth.instance.currentUser;
+      notifyListeners();
+      return _authService.isCurrentUserEmailVerified;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> persistRememberMe({
+    required bool remember,
+    required String email,
+  }) async {
+    await _authPreferences.setRememberMe(remember);
+    if (remember && email.contains('@')) {
+      await _authPreferences.saveEmail(email);
+    } else if (!remember) {
+      await _authPreferences.clearSavedCredentials();
+    }
+  }
+
+  Future<bool> loadRememberMe() => _authPreferences.getRememberMe();
+
+  Future<String?> loadSavedEmail() => _authPreferences.getSavedEmail();
 
   Future<void> signOut() async {
     _userData = null;

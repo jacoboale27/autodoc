@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../providers/admin_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../widgets/admin_sidebar.dart';
 import '../widgets/taller_admin_card.dart';
+import '../widgets/mecanico_admin_card.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
 
 class AdminTalleresScreen extends StatefulWidget {
   const AdminTalleresScreen({super.key});
@@ -23,7 +26,12 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
     });
   }
 
-  void _mostrarConfirmacion(BuildContext context, String title, String content, VoidCallback onConfirm) {
+  void _mostrarConfirmacion(
+    BuildContext context,
+    String title,
+    String content,
+    VoidCallback onConfirm,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -47,6 +55,8 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<AdminProvider>();
     final adminUid = context.read<AuthProvider>().adminUid;
+    final colors = context.appColors;
+    final mecanicos = provider.mecanicos;
 
     final talleresFiltrados = provider.talleres.where((t) {
       if (_filterStatus == 'todos') return true;
@@ -59,67 +69,167 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
         centerTitle: true,
       ),
       drawer: const AdminSidebar(),
-      body: Column(
-        children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                _buildFilterChip('todos', 'Todos'),
-                const SizedBox(width: 8),
-                _buildFilterChip('pendiente', 'Pendientes'),
-                const SizedBox(width: 8),
-                _buildFilterChip('aprobado', 'Aprobados'),
-                const SizedBox(width: 8),
-                _buildFilterChip('suspendido', 'Suspendidos'),
-              ],
-            ),
-          ),
-          Expanded(
-            child: provider.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : RefreshIndicator(
-                    onRefresh: provider.fetchAllData,
-                    child: talleresFiltrados.isEmpty
-                        ? const Center(child: Text('No hay talleres con este filtro'))
-                        : ListView.builder(
-                            itemCount: talleresFiltrados.length,
-                            itemBuilder: (context, index) {
-                              final taller = talleresFiltrados[index];
-                              return TallerAdminCard(
-                                taller: taller,
-                                onAprobar: () {
-                                  _mostrarConfirmacion(
-                                    context,
-                                    'Aprobar Taller',
-                                    '¿Estás seguro de que quieres aprobar este taller?',
-                                    () => provider.aprobarTaller(adminUid, taller.idTaller),
-                                  );
-                                },
-                                onRechazar: () {
-                                  _mostrarConfirmacion(
-                                    context,
-                                    'Rechazar Taller',
-                                    '¿Estás seguro de que quieres rechazar este taller?',
-                                    () => provider.rechazarTaller(adminUid, taller.idTaller),
-                                  );
-                                },
-                                onSuspender: () {
-                                  _mostrarConfirmacion(
-                                    context,
-                                    'Suspender Taller',
-                                    '¿Estás seguro de que quieres suspender este taller?',
-                                    () => provider.suspenderTaller(adminUid, taller.idTaller, 'Suspensión administrativa'),
-                                  );
-                                },
+      body: provider.isLoading
+          ? Center(child: CircularProgressIndicator(color: colors.primary))
+          : RefreshIndicator(
+              color: colors.primary,
+              onRefresh: provider.fetchAllData,
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Mecánicos registrados',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${mecanicos.length} usuario${mecanicos.length == 1 ? '' : 's'} con rol Taller o Mecánico',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (mecanicos.isEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                        child: Center(
+                          child: Text(
+                            'No hay mecánicos registrados en la plataforma',
+                            style: TextStyle(color: colors.textSecondary),
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final mecanico = mecanicos[index];
+                          return StreamBuilder<DocumentSnapshot>(
+                            stream: FirebaseFirestore.instance
+                                .collection('Usuarios')
+                                .doc(mecanico.idUsuario)
+                                .snapshots(),
+                            builder: (context, snap) {
+                              final data =
+                                  snap.data?.data() as Map<String, dynamic>?;
+                              return MecanicoAdminCard(
+                                usuario: mecanico,
+                                calificacionPromedio:
+                                    data?['calificacion_promedio']?.toDouble(),
+                                totalResenias: data?['total_resenias'] ?? 0,
                               );
                             },
+                          );
+                        },
+                        childCount: mecanicos.length,
+                      ),
+                    ),
+                  if (provider.talleres.isNotEmpty) ...[
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Solicitudes formales (colección Talleres)',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: colors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  _buildFilterChip('todos', 'Todos'),
+                                  const SizedBox(width: 8),
+                                  _buildFilterChip('pendiente', 'Pendientes'),
+                                  const SizedBox(width: 8),
+                                  _buildFilterChip('aprobado', 'Aprobados'),
+                                  const SizedBox(width: 8),
+                                  _buildFilterChip('suspendido', 'Suspendidos'),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (talleresFiltrados.isEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Center(
+                            child: Text(
+                              'No hay talleres con este filtro',
+                              style: TextStyle(color: colors.textSecondary),
+                            ),
                           ),
-                  ),
-          ),
-        ],
-      ),
+                        ),
+                      )
+                    else
+                      SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final taller = talleresFiltrados[index];
+                            return TallerAdminCard(
+                              taller: taller,
+                              onAprobar: () {
+                                _mostrarConfirmacion(
+                                  context,
+                                  'Aprobar Taller',
+                                  '¿Estás seguro de que quieres aprobar este taller?',
+                                  () => provider.aprobarTaller(adminUid, taller.idTaller),
+                                );
+                              },
+                              onRechazar: () {
+                                _mostrarConfirmacion(
+                                  context,
+                                  'Rechazar Taller',
+                                  '¿Estás seguro de que quieres rechazar este taller?',
+                                  () => provider.rechazarTaller(adminUid, taller.idTaller),
+                                );
+                              },
+                              onSuspender: () {
+                                _mostrarConfirmacion(
+                                  context,
+                                  'Suspender Taller',
+                                  '¿Estás seguro de que quieres suspender este taller?',
+                                  () => provider.suspenderTaller(
+                                    adminUid,
+                                    taller.idTaller,
+                                    'Suspensión administrativa',
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                          childCount: talleresFiltrados.length,
+                        ),
+                      ),
+                  ],
+                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                ],
+              ),
+            ),
     );
   }
 

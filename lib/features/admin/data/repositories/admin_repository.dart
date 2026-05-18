@@ -45,8 +45,11 @@ class AdminRepository {
     return snapshot.docs.map((doc) => ReviewModel.fromMap(doc.data(), doc.id)).toList();
   }
 
-  Future<void> deleteResenia(String idResenia) async {
+  Future<String?> deleteResenia(String idResenia) async {
+    final doc = await _firestore.collection('Resenias').doc(idResenia).get();
+    final idTaller = doc.data()?['id_taller'] as String?;
     await _firestore.collection('Resenias').doc(idResenia).delete();
+    return idTaller;
   }
 
   // Logs
