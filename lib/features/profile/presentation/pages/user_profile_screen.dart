@@ -127,10 +127,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               ),
               TextButton(
                 onPressed: () async {
+                  final router = GoRouter.of(context);
                   await authProvider.signOut();
-                  if (context.mounted) {
-                    context.go('/login');
-                  }
+                  router.go('/login');
                 },
                 child: const Text('Sign Out', style: TextStyle(color: Colors.red)),
               ),
@@ -506,10 +505,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     return TextButton.icon(
       onPressed: () async {
         final authProvider = context.read<AuthProvider>();
+        final router = GoRouter.of(context);
         await authProvider.signOut();
-        if (context.mounted) {
-          context.go('/login');
-        }
+        router.go('/login');
       },
       icon: const Icon(Icons.logout, color: Colors.red),
       label: const Text('Sign Out', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),

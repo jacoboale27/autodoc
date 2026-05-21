@@ -57,6 +57,12 @@ dependencies:
   shimmer: ^3.0.0
   flutter_native_splash: ^2.4.7
   flutter_local_notifications: ^21.0.0
+  flutter_animate: ^4.5.2
+  animations: ^2.2.0
+  flutter_svg: ^2.3.0
+  lottie: ^3.3.3
+  responsive_framework: ^1.5.1
+  flutter_staggered_animations: ^1.1.1
 
 flutter_native_splash:
   color: "#522C81"

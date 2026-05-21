@@ -14,6 +14,7 @@ import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 import '../widgets/add_vehicle_form.dart';
 import 'package:uuid/uuid.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
 class GarageScreen extends StatelessWidget {
   const GarageScreen({super.key});
@@ -40,19 +41,30 @@ class GarageScreen extends StatelessWidget {
                     )
                   : vehicles.isEmpty
                   ? _buildEmptyState(context, colors)
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: vehicles.length,
-                      itemBuilder: (context, index) {
-                        final vehicle = vehicles[index];
-                        return _buildVehicleCard(
-                          context,
-                          vehicle,
-                          colors,
-                          vehicleProvider,
-                          currentUserId,
-                        );
-                      },
+                  : AnimationLimiter(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: vehicles.length,
+                        itemBuilder: (context, index) {
+                          final vehicle = vehicles[index];
+                          return AnimationConfiguration.staggeredList(
+                            position: index,
+                            duration: const Duration(milliseconds: 375),
+                            child: SlideAnimation(
+                              verticalOffset: 50.0,
+                              child: FadeInAnimation(
+                                child: _buildVehicleCard(
+                                  context,
+                                  vehicle,
+                                  colors,
+                                  vehicleProvider,
+                                  currentUserId,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
             ),
           ],
@@ -162,9 +174,12 @@ class GarageScreen extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  VehicleImageWidget(
-                    imageUrl: vehicle.fotoUrl,
-                    fit: BoxFit.cover,
+                  Hero(
+                    tag: 'vehicle_image_${vehicle.idVehiculo}',
+                    child: VehicleImageWidget(
+                      imageUrl: vehicle.fotoUrl,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                   // Status Badge
                   Positioned(

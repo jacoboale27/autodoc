@@ -7,8 +7,15 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color surfaceContainer;
   final Color error;
   final Color warning;
+  final Color success;
   final Color textPrimary;
   final Color textSecondary;
+  final Color onPrimary;
+  final Color onSecondary;
+  final Color surfaceVariant;
+  final Color outline;
+  final Color shimmerBase;
+  final Color shimmerHighlight;
 
   const AppColors({
     required this.primary,
@@ -17,8 +24,15 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.surfaceContainer,
     required this.error,
     required this.warning,
+    required this.success,
     required this.textPrimary,
     required this.textSecondary,
+    required this.onPrimary,
+    required this.onSecondary,
+    required this.surfaceVariant,
+    required this.outline,
+    required this.shimmerBase,
+    required this.shimmerHighlight,
   });
 
   @override
@@ -29,8 +43,15 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? surfaceContainer,
     Color? error,
     Color? warning,
+    Color? success,
     Color? textPrimary,
     Color? textSecondary,
+    Color? onPrimary,
+    Color? onSecondary,
+    Color? surfaceVariant,
+    Color? outline,
+    Color? shimmerBase,
+    Color? shimmerHighlight,
   }) {
     return AppColors(
       primary: primary ?? this.primary,
@@ -39,8 +60,15 @@ class AppColors extends ThemeExtension<AppColors> {
       surfaceContainer: surfaceContainer ?? this.surfaceContainer,
       error: error ?? this.error,
       warning: warning ?? this.warning,
+      success: success ?? this.success,
       textPrimary: textPrimary ?? this.textPrimary,
       textSecondary: textSecondary ?? this.textSecondary,
+      onPrimary: onPrimary ?? this.onPrimary,
+      onSecondary: onSecondary ?? this.onSecondary,
+      surfaceVariant: surfaceVariant ?? this.surfaceVariant,
+      outline: outline ?? this.outline,
+      shimmerBase: shimmerBase ?? this.shimmerBase,
+      shimmerHighlight: shimmerHighlight ?? this.shimmerHighlight,
     );
   }
 
@@ -56,8 +84,15 @@ class AppColors extends ThemeExtension<AppColors> {
       surfaceContainer: Color.lerp(surfaceContainer, other.surfaceContainer, t)!,
       error: Color.lerp(error, other.error, t)!,
       warning: Color.lerp(warning, other.warning, t)!,
+      success: Color.lerp(success, other.success, t)!,
       textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
       textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
+      onPrimary: Color.lerp(onPrimary, other.onPrimary, t)!,
+      onSecondary: Color.lerp(onSecondary, other.onSecondary, t)!,
+      surfaceVariant: Color.lerp(surfaceVariant, other.surfaceVariant, t)!,
+      outline: Color.lerp(outline, other.outline, t)!,
+      shimmerBase: Color.lerp(shimmerBase, other.shimmerBase, t)!,
+      shimmerHighlight: Color.lerp(shimmerHighlight, other.shimmerHighlight, t)!,
     );
   }
 }
@@ -71,19 +106,33 @@ class AppPalette {
   static const Color lightPrimary = Color(0xFF522C81);
   static const Color lightSecondary = Color(0xFF81E6D9);
   static const Color lightSurface = Color(0xFFF7F6F8);
-  static const Color lightSurfaceContainer = Color(0xFFF2F2F2); // ~95% white
-  static const Color lightError = Color(0xFFEF4444);
-  static const Color lightWarning = Color(0xFFF59E0B);
+  static const Color lightSurfaceContainer = Color(0xFFEEEDF0);
+  static const Color lightError = Color(0xFFFC8181);
+  static const Color lightWarning = Color(0xFFF6AD55);
+  static const Color lightSuccess = Color(0xFF48BB78);
   static const Color lightTextPrimary = Color(0xFF0F172A);
   static const Color lightTextSecondary = Color(0xFF64748B);
+  static const Color lightOnPrimary = Colors.white;
+  static const Color lightOnSecondary = Color(0xFF0F172A);
+  static const Color lightSurfaceVariant = Color(0xFFE2E8F0);
+  static const Color lightOutline = Color(0xFFCBD5E1);
+  static const Color lightShimmerBase = Color(0xFFE2E8F0);
+  static const Color lightShimmerHighlight = Color(0xFFF1F5F9);
 
   // Dark Mode Colors
   static const Color darkPrimary = Color(0xFF81E6D9);
   static const Color darkSecondary = Color(0xFF522C81);
   static const Color darkSurface = Color(0xFF0F172A);
-  static const Color darkSurfaceContainer = Color(0xFF141E36); // ~8% white overlaid on surface
-  static const Color darkError = Color(0xFFEF4444);
-  static const Color darkWarning = Color(0xFFF59E0B);
+  static const Color darkSurfaceContainer = Color(0xFF141E36);
+  static const Color darkError = Color(0xFFFC8181);
+  static const Color darkWarning = Color(0xFFF6AD55);
+  static const Color darkSuccess = Color(0xFF48BB78);
   static const Color darkTextPrimary = Colors.white;
   static const Color darkTextSecondary = Colors.white60;
+  static const Color darkOnPrimary = Color(0xFF0F172A);
+  static const Color darkOnSecondary = Colors.white;
+  static const Color darkSurfaceVariant = Color(0xFF1E293B);
+  static const Color darkOutline = Color(0xFF334155);
+  static const Color darkShimmerBase = Color(0xFF1E293B);
+  static const Color darkShimmerHighlight = Color(0xFF334155);
 }

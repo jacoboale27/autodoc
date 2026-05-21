@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
@@ -15,6 +14,7 @@ import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:uuid/uuid.dart';
+import 'package:autodoc/core/widgets/app_bottom_nav_bar.dart';
 import '../widgets/add_vehicle_form.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -148,7 +148,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
               bottom: 0,
               left: 0,
               right: 0,
-              child: _buildBottomNav(primaryPurple, isDark),
+              child: AppBottomNavBar(
+                currentIndex: 0,
+                onTap: (index) {
+                  switch (index) {
+                    case 0:
+                      context.go('/dashboard');
+                      break;
+                    case 1:
+                      context.push('/garage');
+                      break;
+                    case 2:
+                      context.push('/workshop_directory');
+                      break;
+                    case 3:
+                      context.push('/user_profile');
+                      break;
+                  }
+                },
+              ),
             ),
           ],
         ),
@@ -496,15 +514,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   isDark,
                   subTextColor,
                 ),
-                const SizedBox(width: 16),
-                _buildStatItem(
-                  'NIVEL DE COMBUSTIBLE',
-                  '78',
-                  '%',
-                  primary,
-                  isDark,
-                  subTextColor,
-                ), // Hardcoded for now as it's not in model
               ],
             ),
             const SizedBox(height: 16),
@@ -844,91 +853,4 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildBottomNav(Color primary, bool isDark) {
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          height: 80,
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          decoration: BoxDecoration(
-            color: isDark
-                ? context.appColors.surfaceContainer.withValues(alpha: 0.9)
-                : context.appColors.surfaceContainer.withValues(alpha: 0.85),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(
-                Icons.home,
-                'Home',
-                true,
-                primary,
-                () => context.go('/dashboard'),
-              ),
-              _buildNavItem(
-                Icons.garage,
-                'Garage',
-                false,
-                primary,
-                () => context.push('/garage'),
-              ),
-              _buildNavItem(Icons.analytics, 'Logs', false, primary, () {
-                final vehicle = context.read<VehicleProvider>().selectedVehicle;
-                if (vehicle != null) {
-                  context.push('/service_history', extra: vehicle.idVehiculo);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Seleccione un vehículo primero'),
-                    ),
-                  );
-                }
-              }),
-              _buildNavItem(
-                Icons.person,
-                'Profile',
-                false,
-                primary,
-                () => context.push('/user_profile'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(
-    IconData icon,
-    String label,
-    bool isActive,
-    Color primary,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            color: isActive ? primary : context.appColors.textSecondary,
-            size: 24,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: isActive ? primary : context.appColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:ui';
 import 'package:autodoc/features/auth/data/services/auth_preferences_service.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -39,23 +41,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const primaryPurple = Color(0xFF522C81);
-    const customMint = Color(0xFF81E6D9);
-    const customBlue = Color(0xFF2C5282);
-    const bgColorStart = Colors.white;
-    const bgColorEnd = Color(0xFFF0F4F8);
+    final colors = context.appColors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      body: Container(
+      backgroundColor: colors.surface,
+      body: SizedBox(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [bgColorStart, bgColorEnd],
-          ),
-        ),
         child: SafeArea(
           child: Column(
             children: [
@@ -74,16 +67,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           );
                         }
                       },
-                      icon: const Icon(Icons.arrow_back, color: Color(0xFF1E293B)),
+                      icon: Icon(Icons.arrow_back, color: _currentPage > 0 ? colors.textPrimary : Colors.transparent),
                     ),
                     Text(
                       'AutoDoc',
-                      style: GoogleFonts.inter(
-                        fontSize: 18,
+                      style: AppTextStyles.titleLarge.copyWith(
+                        color: colors.textPrimary,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFF0F172A),
                       ),
-                    ),
+                    ).animate().fadeIn(duration: 500.ms),
                     TextButton(
                       onPressed: () async {
                         await AuthPreferencesService().setOnboardingCompleted(true);
@@ -93,9 +85,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       },
                       child: Text(
                         'Saltar',
-                        style: GoogleFonts.inter(
-                          color: primaryPurple,
-                          fontWeight: FontWeight.w600,
+                        style: AppTextStyles.labelLarge.copyWith(
+                          color: colors.primary,
                         ),
                       ),
                     ),
@@ -139,11 +130,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                       width: 100,
                                       height: 100,
                                       decoration: BoxDecoration(
-                                        color: primaryPurple.withValues(alpha: 0.1),
+                                        color: colors.primary.withValues(alpha: 0.2),
                                         shape: BoxShape.circle,
                                       ),
                                     ).withBlur(30),
-                                  ),
+                                  ).animate(target: _currentPage == index ? 1 : 0).scale(duration: 600.ms),
                                   Positioned(
                                     bottom: 20,
                                     left: 20,
@@ -151,11 +142,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                       width: 120,
                                       height: 120,
                                       decoration: BoxDecoration(
-                                        color: customMint.withValues(alpha: 0.2),
+                                        color: colors.secondary.withValues(alpha: 0.2),
                                         shape: BoxShape.circle,
                                       ),
                                     ).withBlur(40),
-                                  ),
+                                  ).animate(target: _currentPage == index ? 1 : 0).scale(duration: 800.ms),
                                   // Glass Panel
                                   LayoutBuilder(
                                     builder: (context, constraints) {
@@ -167,10 +158,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                             width: 280,
                                             height: constraints.maxHeight,
                                             decoration: BoxDecoration(
-                                              color: Colors.white.withValues(alpha: 0.4),
+                                              color: colors.surfaceContainer.withValues(alpha: isDark ? 0.6 : 0.8),
                                               borderRadius: BorderRadius.circular(24),
                                               border: Border.all(
-                                                color: Colors.white.withValues(alpha: 0.3),
+                                                color: colors.outline.withValues(alpha: 0.3),
                                                 width: 1.5,
                                               ),
                                             ),
@@ -183,23 +174,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                                     child: CachedNetworkImage(
                                                       imageUrl: content.imageUrl,
                                                       fit: BoxFit.cover,
-                                                      placeholder: (context, url) => Container(color: Colors.white24),
+                                                      placeholder: (context, url) => Container(color: colors.surfaceContainer),
                                                     ),
                                                   ),
                                                 ),
                                                 const SizedBox(height: 16),
                                                 Row(
                                                   children: [
-                                                    _buildFeatureItem(content.features[0], Icons.check_circle, primaryPurple),
+                                                    _buildFeatureItem(content.features[0], Icons.check_circle, colors),
                                                     const SizedBox(width: 8),
-                                                    _buildFeatureItem(content.features[1], index == 2 ? Icons.battery_full : Icons.speed, primaryPurple),
+                                                    _buildFeatureItem(content.features[1], index == 2 ? Icons.battery_full : Icons.speed, colors),
                                                   ],
                                                 ),
                                               ],
                                             ),
                                           ),
                                         ),
-                                      );
+                                      ).animate(target: _currentPage == index ? 1 : 0).slideY(begin: 0.2, end: 0, duration: 500.ms).fadeIn();
                                     }
                                   ),
                                 ],
@@ -211,26 +202,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             Text(
                               content.title,
                               textAlign: TextAlign.center,
-                              style: GoogleFonts.inter(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                height: 1.1,
-                                color: const Color(0xFF0F172A),
+                              style: AppTextStyles.headlineMedium.copyWith(
+                                color: colors.textPrimary,
                               ),
-                            ),
+                            ).animate(target: _currentPage == index ? 1 : 0).slideY(begin: 0.5, end: 0, duration: 600.ms).fadeIn(),
                             const SizedBox(height: 16),
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 20),
                               child: Text(
                                 content.description,
                                 textAlign: TextAlign.center,
-                                style: GoogleFonts.inter(
-                                  fontSize: 15,
-                                  color: const Color(0xFF475569),
-                                  height: 1.5,
+                                style: AppTextStyles.bodyLarge.copyWith(
+                                  color: colors.textSecondary,
                                 ),
                               ),
-                            ),
+                            ).animate(target: _currentPage == index ? 1 : 0).slideY(begin: 0.5, end: 0, duration: 700.ms).fadeIn(),
                             const SizedBox(height: 20),
                           ],
                         ),
@@ -253,7 +239,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       height: 8,
                       width: _currentPage == index ? 32 : 8,
                       decoration: BoxDecoration(
-                        color: _currentPage == index ? primaryPurple : const Color(0xFFCBD5E1),
+                        color: _currentPage == index ? colors.primary : colors.outline.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
@@ -284,11 +270,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     width: double.infinity,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: customMint,
+                      color: colors.primary,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: customMint.withValues(alpha: 0.3),
+                          color: colors.primary.withValues(alpha: 0.3),
                           blurRadius: 15,
                           offset: const Offset(0, 8),
                         ),
@@ -300,14 +286,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         children: [
                           Text(
                             _currentPage == _contents.length - 1 ? 'Comenzar ahora' : 'Siguiente',
-                            style: GoogleFonts.inter(
-                              color: customBlue,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                            style: AppTextStyles.titleMedium.copyWith(
+                              color: colors.onPrimary,
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Icon(Icons.chevron_right, color: customBlue),
+                          Icon(Icons.chevron_right, color: colors.onPrimary),
                         ],
                       ),
                     ),
@@ -321,26 +305,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _buildFeatureItem(String text, IconData icon, Color color) {
+  Widget _buildFeatureItem(String text, IconData icon, AppColors colors) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.6),
+          color: colors.surfaceContainer,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+          border: Border.all(color: colors.outline.withValues(alpha: 0.5)),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 14, color: color),
+            Icon(icon, size: 14, color: colors.primary),
             const SizedBox(width: 4),
             Expanded(
               child: Text(
                 text,
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF334155),
+                style: AppTextStyles.labelSmall.copyWith(
+                  color: colors.textPrimary,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

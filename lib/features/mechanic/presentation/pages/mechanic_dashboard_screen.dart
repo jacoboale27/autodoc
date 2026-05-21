@@ -26,7 +26,14 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
     final theme = Theme.of(context);
     final authProvider = context.watch<AuthProvider>();
     final userData = authProvider.userData;
-    final mechanicName = userData?.nombreCompleto ?? 'Mecánico';
+    
+    if (userData == null || userData.idUsuario.isEmpty) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final mechanicName = userData.nombreCompleto;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -68,9 +75,9 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                             const SizedBox(height: 24),
                             _buildQuickActions(colors, isMobile),
                             const SizedBox(height: 32),
-                            _buildDashboardMetrics(colors, isMobile, userData?.idUsuario ?? ''),
+                            _buildDashboardMetrics(colors, isMobile, userData.idUsuario),
                             const SizedBox(height: 32),
-                            _buildRecentServices(colors, userData?.idUsuario ?? ''),
+                            _buildRecentServices(colors, userData.idUsuario),
                           ],
                         ),
                       ),

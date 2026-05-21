@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'dart:ui';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
 
 class AuthScreen extends StatefulWidget {
   final bool isLogin;
@@ -69,25 +71,42 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const primaryPurple = Color(0xFF522C81);
-    const mintColor = Color(0xFF81E6D9);
-    const customBlue = Color(0xFF1E3A8A);
-    const bgColorStart = Colors.white;
-    const bgColorEnd = Color(0xFFF0F4F8);
+    final colors = context.appColors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [bgColorStart, bgColorEnd],
-          ),
-        ),
+        color: colors.surface,
         child: Stack(
           children: [
+            // Decorative blobs (theme aware)
+            Positioned(
+              top: -100,
+              left: -50,
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: colors.primary.withValues(alpha: isDark ? 0.1 : 0.05),
+                ),
+              ).animate().scale(duration: 2.seconds, curve: Curves.easeOut),
+            ),
+            Positioned(
+              bottom: -50,
+              right: -100,
+              child: Container(
+                width: 400,
+                height: 400,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: colors.secondary.withValues(alpha: isDark ? 0.1 : 0.05),
+                ),
+              ).animate().scale(delay: 500.ms, duration: 2.seconds, curve: Curves.easeOut),
+            ),
+            
             // Main Content
             Center(
               child: SingleChildScrollView(
@@ -96,11 +115,14 @@ class _AuthScreenState extends State<AuthScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // Logo Section
-                    _buildLogoSection(primaryPurple),
+                    _buildLogoSection(colors),
                     const SizedBox(height: 32),
                     
                     // Central Glassmorphism Card
-                    _buildGlassCard(primaryPurple, mintColor, customBlue),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: _buildGlassCard(colors, isDark, key: ValueKey(_isLoginMode)),
+                    ),
                     
                     const SizedBox(height: 32),
                     // Bottom Switch Link
@@ -108,13 +130,13 @@ class _AuthScreenState extends State<AuthScreen> {
                       onPressed: _toggleMode,
                       child: RichText(
                         text: TextSpan(
-                          style: GoogleFonts.inter(color: const Color(0xFF475569), fontSize: 14),
+                          style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
                           children: [
                             TextSpan(text: _isLoginMode ? '¿No tienes una cuenta? ' : '¿Ya tienes una cuenta? '),
                             TextSpan(
                               text: _isLoginMode ? 'Regístrate gratis' : 'Inicia sesión',
-                              style: GoogleFonts.inter(
-                                color: primaryPurple,
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: colors.primary,
                                 fontWeight: FontWeight.bold,
                                 decoration: TextDecoration.underline,
                               ),
@@ -133,7 +155,7 @@ class _AuthScreenState extends State<AuthScreen> {
               bottom: 0,
               left: 0,
               right: 0,
-              child: _buildBottomNav(primaryPurple),
+              child: _buildBottomNav(colors, isDark),
             ),
           ],
         ),
@@ -141,54 +163,53 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _buildLogoSection(Color primary) {
+  Widget _buildLogoSection(AppColors colors) {
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: primary.withValues(alpha: 0.1),
+            color: colors.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(20),
           ),
-          child: Icon(Icons.directions_car, color: primary, size: 48),
+          child: Icon(Icons.directions_car, color: colors.primary, size: 48),
         ),
         const SizedBox(height: 16),
         Text(
           'AutoDoc',
-          style: GoogleFonts.inter(
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF0F172A),
+          style: AppTextStyles.headlineLarge.copyWith(
+            color: colors.textPrimary,
             letterSpacing: -1,
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Tu copiloto para el control total de tu vehículo',
-          style: TextStyle(color: Color(0xFF64748B), fontSize: 14),
+          style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
         ),
       ],
-    );
+    ).animate().fadeIn(duration: 800.ms).slideY(begin: -0.2, end: 0);
   }
 
-  Widget _buildGlassCard(Color primary, Color mint, Color blue) {
+  Widget _buildGlassCard(AppColors colors, bool isDark, {Key? key}) {
     return ClipRRect(
+      key: key,
       borderRadius: BorderRadius.circular(24),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // Reduced blur for performance
         child: Container(
           width: double.infinity,
           constraints: const BoxConstraints(maxWidth: 450),
           padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.4),
+            color: colors.surfaceContainer.withValues(alpha: isDark ? 0.7 : 0.8),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+            border: Border.all(color: colors.outline.withValues(alpha: 0.5)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 30,
-                offset: const Offset(0, 15),
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
@@ -197,17 +218,15 @@ class _AuthScreenState extends State<AuthScreen> {
             children: [
               Text(
                 _isLoginMode ? 'Bienvenido de nuevo' : 'Crea tu cuenta',
-                style: GoogleFonts.inter(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1E293B),
+                style: AppTextStyles.headlineSmall.copyWith(
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 _isLoginMode ? 'Ingresa tus credenciales para acceder' : 'Regístrate para comenzar a gestionar tus documentos',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFF475569), fontSize: 13),
+                style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
               ),
               const SizedBox(height: 32),
               
@@ -216,7 +235,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 label: _isLoginMode ? 'Correo o usuario' : 'Correo electrónico',
                 hint: _isLoginMode ? 'nombre@ejemplo.com o usuario' : 'nombre@ejemplo.com',
                 icon: Icons.mail_outline,
-                mint: mint,
+                colors: colors,
                 controller: _emailController,
               ),
               const SizedBox(height: 20),
@@ -225,7 +244,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 hint: '••••••••',
                 icon: Icons.lock_outline,
                 isPassword: true,
-                mint: mint,
+                colors: colors,
                 controller: _passwordController,
               ),
               
@@ -248,16 +267,16 @@ class _AuthScreenState extends State<AuthScreen> {
                           onChanged: (value) {
                             setState(() => _rememberMe = value ?? false);
                           },
-                          activeColor: primary,
+                          activeColor: colors.primary,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                         ),
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
                         onTap: () => setState(() => _rememberMe = !_rememberMe),
-                        child: const Text(
+                        child: Text(
                           'Recordarme',
-                          style: TextStyle(color: Color(0xFF475569), fontSize: 12),
+                          style: AppTextStyles.labelMedium.copyWith(color: colors.textSecondary),
                         ),
                       ),
                     ],
@@ -272,10 +291,8 @@ class _AuthScreenState extends State<AuthScreen> {
                       onPressed: _showForgotPasswordDialog,
                       child: Text(
                         '¿Olvidaste tu contraseña?',
-                        style: GoogleFonts.inter(
-                          color: primary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                        style: AppTextStyles.labelMedium.copyWith(
+                          color: colors.primary,
                         ),
                       ),
                     ),
@@ -284,24 +301,24 @@ class _AuthScreenState extends State<AuthScreen> {
               
               const SizedBox(height: 24),
               // Submit Button
-              _buildSubmitButton(primary, mint, blue),
+              _buildSubmitButton(colors),
               
               const SizedBox(height: 24),
               // Divider
               Row(
                 children: [
-                  Expanded(child: Divider(color: const Color(0xFFCBD5E1).withValues(alpha: 0.5))),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Text('O CONTINUAR CON', style: TextStyle(color: Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.bold)),
+                  Expanded(child: Divider(color: colors.outline.withValues(alpha: 0.5))),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text('O CONTINUAR CON', style: AppTextStyles.labelSmall.copyWith(color: colors.textSecondary)),
                   ),
-                  Expanded(child: Divider(color: const Color(0xFFCBD5E1).withValues(alpha: 0.5))),
+                  Expanded(child: Divider(color: colors.outline.withValues(alpha: 0.5))),
                 ],
               ),
               
               const SizedBox(height: 24),
               // Google Button
-              _buildGoogleButton(blue),
+              _buildGoogleButton(colors),
             ],
           ),
         ),
@@ -313,7 +330,7 @@ class _AuthScreenState extends State<AuthScreen> {
     required String label,
     required String hint,
     required IconData icon,
-    required Color mint,
+    required AppColors colors,
     required TextEditingController controller,
     bool isPassword = false,
   }) {
@@ -324,27 +341,26 @@ class _AuthScreenState extends State<AuthScreen> {
           padding: const EdgeInsets.only(left: 4, bottom: 6),
           child: Text(
             label,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF334155),
+            style: AppTextStyles.labelMedium.copyWith(
+              color: colors.textPrimary,
             ),
           ),
         ),
         Container(
           height: 52,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.6),
+            color: colors.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: colors.outline.withValues(alpha: 0.5)),
           ),
           child: TextField(
             controller: controller,
             obscureText: isPassword,
+            style: AppTextStyles.bodyLarge.copyWith(color: colors.textPrimary),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-              prefixIcon: Icon(icon, color: const Color(0xFF94A3B8), size: 20),
+              hintStyle: AppTextStyles.bodyLarge.copyWith(color: colors.textSecondary),
+              prefixIcon: Icon(icon, color: colors.textSecondary, size: 20),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(vertical: 15),
             ),
@@ -442,7 +458,7 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-  Widget _buildSubmitButton(Color primary, Color mint, Color blue) {
+  Widget _buildSubmitButton(AppColors colors) {
     final authProvider = context.watch<AuthProvider>();
     
     return SizedBox(
@@ -459,19 +475,23 @@ class _AuthScreenState extends State<AuthScreen> {
                 }
               },
         style: ElevatedButton.styleFrom(
-          backgroundColor: mint,
-          foregroundColor: blue,
-          elevation: 8,
-          shadowColor: mint.withValues(alpha: 0.4),
+          backgroundColor: colors.primary,
+          foregroundColor: colors.onPrimary,
+          elevation: 4,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          textStyle: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+          textStyle: AppTextStyles.titleMedium,
         ),
-        child: Text(_isLoginMode ? 'Iniciar Sesión' : 'Registrarse'),
+        child: authProvider.isLoading 
+          ? SizedBox(
+              width: 24, height: 24, 
+              child: CircularProgressIndicator(color: colors.onPrimary, strokeWidth: 2)
+            ) 
+          : Text(_isLoginMode ? 'Iniciar Sesión' : 'Registrarse'),
       ),
     );
   }
 
-  Widget _buildGoogleButton(Color blue) {
+  Widget _buildGoogleButton(AppColors colors) {
     final authProvider = context.read<AuthProvider>();
     
     return OutlinedButton(
@@ -501,9 +521,9 @@ class _AuthScreenState extends State<AuthScreen> {
       },
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(double.infinity, 54),
-        side: BorderSide(color: blue, width: 2),
+        side: BorderSide(color: colors.outline, width: 1.5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        foregroundColor: blue,
+        foregroundColor: colors.textPrimary,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -518,7 +538,7 @@ class _AuthScreenState extends State<AuthScreen> {
           Flexible(
             child: Text(
               'Entrar con Google',
-              style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 15),
+              style: AppTextStyles.titleSmall,
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -527,22 +547,22 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _buildBottomNav(Color primary) {
+  Widget _buildBottomNav(AppColors colors, bool isDark) {
     return ClipRRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.4),
-            border: const Border(top: BorderSide(color: Colors.white24)),
+            color: colors.surfaceContainer.withValues(alpha: isDark ? 0.8 : 0.9),
+            border: Border(top: BorderSide(color: colors.outline.withValues(alpha: 0.2))),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              Expanded(child: _buildNavItem(Icons.login, 'Login', _isLoginMode, primary, () => setState(() => _isLoginMode = true))),
-              Expanded(child: _buildNavItem(Icons.person_add_outlined, 'Registro', !_isLoginMode, primary, () => setState(() => _isLoginMode = false))),
-              Expanded(child: _buildNavItem(Icons.help_outline, 'Soporte', false, primary, _showSupportSheet)),
+              Expanded(child: _buildNavItem(Icons.login, 'Login', _isLoginMode, colors, () => setState(() => _isLoginMode = true))),
+              Expanded(child: _buildNavItem(Icons.person_add_outlined, 'Registro', !_isLoginMode, colors, () => setState(() => _isLoginMode = false))),
+              Expanded(child: _buildNavItem(Icons.help_outline, 'Soporte', false, colors, _showSupportSheet)),
             ],
           ),
         ),
@@ -550,8 +570,8 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, bool isActive, Color primary, VoidCallback onTap) {
-    final color = isActive ? primary : const Color(0xFF64748B);
+  Widget _buildNavItem(IconData icon, String label, bool isActive, AppColors colors, VoidCallback onTap) {
+    final color = isActive ? colors.primary : colors.textSecondary;
     return InkWell(
       onTap: onTap,
       child: Column(
@@ -561,12 +581,7 @@ class _AuthScreenState extends State<AuthScreen> {
           const SizedBox(height: 4),
           Text(
             label.toUpperCase(),
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: color,
-              letterSpacing: 0.5,
-            ),
+            style: AppTextStyles.labelSmall.copyWith(color: color),
           ),
         ],
       ),
@@ -574,7 +589,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _showForgotPasswordDialog() async {
-    const primaryPurple = Color(0xFF522C81);
+    final colors = context.appColors;
     final resetEmailController = TextEditingController(
       text: _isValidEmail(_emailController.text) ? _emailController.text.trim() : '',
     );
@@ -586,7 +601,7 @@ class _AuthScreenState extends State<AuthScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Recuperar contraseña',
-          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+          style: AppTextStyles.titleLarge,
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -594,7 +609,7 @@ class _AuthScreenState extends State<AuthScreen> {
           children: [
             Text(
               'Te enviaremos un enlace a tu correo para restablecer la contraseña.',
-              style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF64748B)),
+              style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -614,7 +629,7 @@ class _AuthScreenState extends State<AuthScreen> {
             child: const Text('Cancelar'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: primaryPurple),
+            style: FilledButton.styleFrom(backgroundColor: colors.primary),
             onPressed: () async {
               final email = resetEmailController.text.trim();
               if (!_isValidEmail(email)) {
@@ -661,7 +676,7 @@ class _AuthScreenState extends State<AuthScreen> {
     required bool isRegistration,
     required String email,
   }) async {
-    const primaryPurple = Color(0xFF522C81);
+    final colors = context.appColors;
     final authProvider = context.read<AuthProvider>();
 
     return await showDialog<bool>(
@@ -671,12 +686,12 @@ class _AuthScreenState extends State<AuthScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: Row(
               children: [
-                Icon(Icons.mark_email_unread_outlined, color: primaryPurple),
+                Icon(Icons.mark_email_unread_outlined, color: colors.primary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Verifica tu correo',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
+                    style: AppTextStyles.titleLarge,
                   ),
                 ),
               ],
@@ -689,24 +704,24 @@ class _AuthScreenState extends State<AuthScreen> {
                   isRegistration
                       ? 'Enviamos un enlace de verificación a:'
                       : 'Tu cuenta aún no está verificada. Revisa el correo enviado a:',
-                  style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF64748B)),
+                  style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   email,
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: primaryPurple),
+                  style: AppTextStyles.titleMedium.copyWith(color: colors.primary),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   'Abre el enlace del correo y luego pulsa "Ya verifiqué" para continuar.',
-                  style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF94A3B8)),
+                  style: AppTextStyles.bodySmall.copyWith(color: colors.textSecondary),
                 ),
               ],
             ),
             actions: [
               if (isRegistration)
                 FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: primaryPurple),
+                  style: FilledButton.styleFrom(backgroundColor: colors.primary),
                   onPressed: () => Navigator.pop(ctx, true),
                   child: const Text('Entendido'),
                 )
@@ -733,7 +748,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               if (!isRegistration)
                 FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: primaryPurple),
+                  style: FilledButton.styleFrom(backgroundColor: colors.primary),
                   onPressed: () async {
                     final verified = await authProvider.refreshEmailVerificationStatus();
                     if (!ctx.mounted) return;
@@ -764,13 +779,14 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   void _showSupportSheet() {
-    const primaryPurple = Color(0xFF522C81);
+    final colors = context.appColors;
 
     showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
+      backgroundColor: colors.surfaceContainer,
       builder: (ctx) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
@@ -783,7 +799,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey[300],
+                    color: colors.outline,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -791,22 +807,19 @@ class _AuthScreenState extends State<AuthScreen> {
               const SizedBox(height: 16),
               Text(
                 'Centro de soporte',
-                style: GoogleFonts.inter(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: primaryPurple,
-                ),
+                style: AppTextStyles.titleLarge.copyWith(color: colors.primary),
               ),
               const SizedBox(height: 8),
               Text(
                 '¿Necesitas ayuda con tu cuenta, verificación de correo o acceso?',
-                style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF64748B)),
+                style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
               ),
               const SizedBox(height: 20),
               _supportTile(
                 icon: Icons.email_outlined,
                 title: 'Correo de soporte',
                 subtitle: _supportEmail,
+                colors: colors,
                 onTap: () {
                   Clipboard.setData(const ClipboardData(text: _supportEmail));
                   ScaffoldMessenger.of(ctx).showSnackBar(
@@ -818,6 +831,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 icon: Icons.mark_email_read_outlined,
                 title: 'Verificación de correo',
                 subtitle: 'No llegó el correo → revisa spam o reenvía desde login',
+                colors: colors,
                 onTap: () {
                   Navigator.pop(ctx);
                   if (_isLoginMode && _isValidEmail(_emailController.text)) {
@@ -838,6 +852,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 icon: Icons.lock_reset,
                 title: 'Olvidé mi contraseña',
                 subtitle: 'Recibe un enlace de recuperación por correo',
+                colors: colors,
                 onTap: () {
                   Navigator.pop(ctx);
                   _showForgotPasswordDialog();
@@ -846,7 +861,7 @@ class _AuthScreenState extends State<AuthScreen> {
               const SizedBox(height: 8),
               Text(
                 'Horario de atención: Lun–Vie 8:00–18:00',
-                style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF94A3B8)),
+                style: AppTextStyles.labelSmall.copyWith(color: colors.textSecondary),
               ),
             ],
           ),
@@ -859,14 +874,15 @@ class _AuthScreenState extends State<AuthScreen> {
     required IconData icon,
     required String title,
     required String subtitle,
+    required AppColors colors,
     required VoidCallback onTap,
   }) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: const Color(0xFF522C81)),
-      title: Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14)),
-      subtitle: Text(subtitle, style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B))),
-      trailing: const Icon(Icons.chevron_right, size: 20),
+      leading: Icon(icon, color: colors.primary),
+      title: Text(title, style: AppTextStyles.titleSmall),
+      subtitle: Text(subtitle, style: AppTextStyles.bodySmall.copyWith(color: colors.textSecondary)),
+      trailing: Icon(Icons.chevron_right, size: 20, color: colors.textSecondary),
       onTap: onTap,
     );
   }

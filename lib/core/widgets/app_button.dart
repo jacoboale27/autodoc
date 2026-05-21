@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
 
 enum AppButtonType { primary, secondary, text }
+enum AppButtonSize { small, medium, large }
 
 class AppButton extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
   final AppButtonType type;
+  final AppButtonSize size;
   final bool isLoading;
   final bool hapticFeedback;
   final Widget? icon;
@@ -18,6 +22,7 @@ class AppButton extends StatelessWidget {
     required this.text,
     this.onPressed,
     this.type = AppButtonType.primary,
+    this.size = AppButtonSize.medium,
     this.isLoading = false,
     this.hapticFeedback = true,
     this.icon,
@@ -37,15 +42,17 @@ class AppButton extends StatelessWidget {
 
     Color backgroundColor;
     Color foregroundColor;
+    List<Color>? gradientColors;
 
     switch (type) {
       case AppButtonType.primary:
         backgroundColor = colors.primary;
-        foregroundColor = Colors.white;
+        foregroundColor = colors.onPrimary;
+        gradientColors = [colors.primary, colors.primary.withValues(alpha: 0.85)];
         break;
       case AppButtonType.secondary:
         backgroundColor = colors.secondary;
-        foregroundColor = colors.primary;
+        foregroundColor = colors.onSecondary;
         break;
       case AppButtonType.text:
         backgroundColor = Colors.transparent;
@@ -53,47 +60,86 @@ class AppButton extends StatelessWidget {
         break;
     }
 
-    final buttonStyle = ElevatedButton.styleFrom(
-      backgroundColor: backgroundColor,
-      foregroundColor: foregroundColor,
-      elevation: type == AppButtonType.text ? 0 : 2,
-      shadowColor: type == AppButtonType.text ? Colors.transparent : colors.primary.withValues(alpha: 0.3),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+    // Determine padding and text style based on size
+    EdgeInsets padding;
+    TextStyle textStyle;
+    double iconSize;
+
+    switch (size) {
+      case AppButtonSize.small:
+        padding = const EdgeInsets.symmetric(vertical: 8, horizontal: 16);
+        textStyle = AppTextStyles.labelMedium;
+        iconSize = 16;
+        break;
+      case AppButtonSize.medium:
+        padding = const EdgeInsets.symmetric(vertical: 14, horizontal: 24);
+        textStyle = AppTextStyles.titleSmall;
+        iconSize = 20;
+        break;
+      case AppButtonSize.large:
+        padding = const EdgeInsets.symmetric(vertical: 18, horizontal: 32);
+        textStyle = AppTextStyles.titleMedium;
+        iconSize = 24;
+        break;
+    }
+
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppRadius.full),
     );
 
     final textWidget = Text(
       text,
-      style: GoogleFonts.inter(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-      ),
+      style: textStyle.copyWith(color: foregroundColor),
     );
 
-    Widget child;
+    Widget childContent;
     if (isLoading) {
-      child = SizedBox(
-        height: 20,
-        width: 20,
+      childContent = SizedBox(
+        height: iconSize,
+        width: iconSize,
         child: CircularProgressIndicator(
           strokeWidth: 2,
           valueColor: AlwaysStoppedAnimation<Color>(foregroundColor),
         ),
       );
     } else if (icon != null) {
-      child = Row(
+      childContent = Row(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          icon!,
+          IconTheme(
+            data: IconThemeData(size: iconSize, color: foregroundColor),
+            child: icon!,
+          ),
           const SizedBox(width: 8),
           textWidget,
         ],
       );
     } else {
-      child = textWidget;
+      childContent = textWidget;
+    }
+
+    Widget buttonContent = Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: gradientColors == null ? backgroundColor : null,
+        gradient: gradientColors != null
+            ? LinearGradient(
+                colors: gradientColors,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : null,
+      ),
+      alignment: Alignment.center,
+      child: childContent,
+    );
+
+    if (isLoading && type != AppButtonType.text) {
+      buttonContent = buttonContent.animate(onPlay: (c) => c.repeat()).shimmer(
+            duration: 1500.ms,
+            color: Colors.white.withValues(alpha: 0.2),
+          );
     }
 
     if (type == AppButtonType.text) {
@@ -101,19 +147,29 @@ class AppButton extends StatelessWidget {
         onPressed: _handlePress,
         style: TextButton.styleFrom(
           foregroundColor: foregroundColor,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+          padding: EdgeInsets.zero,
+          shape: shape,
         ),
-        child: child,
+        child: buttonContent,
       );
     }
 
     return ElevatedButton(
       onPressed: _handlePress,
-      style: buttonStyle,
-      child: child,
+      style: ElevatedButton.styleFrom(
+        foregroundColor: foregroundColor,
+        backgroundColor: Colors.transparent,
+        shadowColor: type == AppButtonType.text ? Colors.transparent : colors.primary.withValues(alpha: 0.3),
+        elevation: type == AppButtonType.text ? 0 : 0, // Let hover elevation do the work if needed
+        padding: EdgeInsets.zero,
+        shape: shape,
+      ),
+      child: Ink(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.full),
+        ),
+        child: buttonContent,
+      ),
     );
   }
 }

@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
 import 'package:autodoc/features/auth/data/services/auth_preferences_service.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'dart:math' as math;
 
 class SplashScreen extends StatefulWidget {
@@ -78,9 +81,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    const primaryColor = Color(0xFF2C5282);
-    const secondaryColor = Color(0xFF48BB78);
-    const accentBlue = Color(0xFF4299E1);
+    final colors = context.appColors;
+    final primaryColor = colors.primary;
+    final secondaryColor = colors.secondary;
+    final accentColor = colors.success;
 
     return Scaffold(
       backgroundColor: primaryColor,
@@ -97,14 +101,14 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    accentBlue.withValues(alpha: 0.15),
-                    accentBlue.withValues(alpha: 0.01),
+                    accentColor.withValues(alpha: 0.15),
+                    accentColor.withValues(alpha: 0.01),
                     Colors.transparent,
                   ],
                 ),
               ),
             ),
-          ),
+          ).animate().fadeIn(duration: 1.seconds),
           Positioned(
             bottom: -200,
             right: -200,
@@ -122,7 +126,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 ),
               ),
             ),
-          ),
+          ).animate().fadeIn(duration: 1.seconds),
 
           SafeArea(
             child: Padding(
@@ -192,7 +196,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                   ),
                                 ],
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.verified,
                                 color: primaryColor,
                                 size: 50,
@@ -200,7 +204,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                             ),
                           ],
                         ),
-                      ),
+                      ).animate().scale(delay: 200.ms, duration: 600.ms, curve: Curves.easeOutBack),
                       const SizedBox(height: 32),
                       // App Name
                       RichText(
@@ -209,8 +213,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                             TextSpan(
                               text: 'Auto',
                               style: GoogleFonts.montserratAlternates(
-                                textStyle: const TextStyle(
-                                  color: accentBlue,
+                                textStyle: TextStyle(
+                                  color: accentColor,
                                   fontSize: 48,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: -1,
@@ -220,7 +224,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                             TextSpan(
                               text: 'Doc',
                               style: GoogleFonts.montserratAlternates(
-                                textStyle: const TextStyle(
+                                textStyle: TextStyle(
                                   color: secondaryColor,
                                   fontSize: 48,
                                   fontWeight: FontWeight.bold,
@@ -230,19 +234,15 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                             ),
                           ],
                         ),
-                      ),
+                      ).animate().fadeIn(delay: 400.ms, duration: 600.ms).slideY(begin: 0.2, end: 0),
                       const SizedBox(height: 8),
                       Text(
                         'DIAGNÓSTICO PROFESIONAL',
-                        style: GoogleFonts.inter(
-                          textStyle: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.6),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 4,
-                          ),
+                        style: AppTextStyles.labelMedium.copyWith(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          letterSpacing: 4,
                         ),
-                      ),
+                      ).animate().fadeIn(delay: 600.ms),
                     ],
                   ),
 
@@ -265,13 +265,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                   width: 4,
                                 ),
                               ),
-                              child: const CircularProgressIndicator(
+                              child: CircularProgressIndicator(
                                 valueColor: AlwaysStoppedAnimation<Color>(secondaryColor),
                                 strokeWidth: 4,
                               ),
                             ),
                           ),
-                          const Icon(
+                          Icon(
                             Icons.directions_car,
                             color: secondaryColor,
                             size: 14,
@@ -280,13 +280,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                       ),
                       const SizedBox(height: 24),
                       Text(
-                        'Cargando datos de tu vehículo...',
-                        style: GoogleFonts.inter(
-                          textStyle: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        'Cargando datos...',
+                        style: AppTextStyles.titleMedium.copyWith(
+                          color: Colors.white,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -300,18 +296,24 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                         ),
                         child: Align(
                           alignment: Alignment.centerLeft,
-                          child: Container(
-                            width: 64, // 1/3 of 192
-                            decoration: BoxDecoration(
-                              color: secondaryColor,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
+                          child: TweenAnimationBuilder<double>(
+                            tween: Tween(begin: 0.0, end: 1.0),
+                            duration: const Duration(seconds: 3),
+                            builder: (context, value, child) {
+                              return Container(
+                                width: 192 * value,
+                                decoration: BoxDecoration(
+                                  color: secondaryColor,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ),
                       const SizedBox(height: 48),
                     ],
-                  ),
+                  ).animate().fadeIn(delay: 800.ms),
                 ],
               ),
             ),

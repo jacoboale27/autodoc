@@ -154,9 +154,12 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                VehicleImageWidget(
-                  imageUrl: vehicle.fotoUrl,
-                  fit: BoxFit.cover,
+                Hero(
+                  tag: 'vehicle_image_${vehicle.idVehiculo}',
+                  child: VehicleImageWidget(
+                    imageUrl: vehicle.fotoUrl,
+                    fit: BoxFit.cover,
+                  ),
                 ),
                 Positioned(
                   bottom: 0,

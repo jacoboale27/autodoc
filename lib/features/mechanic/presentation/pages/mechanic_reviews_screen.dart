@@ -18,7 +18,16 @@ class MechanicReviewsScreen extends StatelessWidget {
     final isMobile = MediaQuery.of(context).size.width < 700;
     final colors = context.appColors;
     final theme = Theme.of(context);
-    final tallerId = context.watch<AuthProvider>().userData?.idUsuario ?? '';
+    final authProvider = context.watch<AuthProvider>();
+    final userData = authProvider.userData;
+
+    if (userData == null || userData.idUsuario.isEmpty) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final tallerId = userData.idUsuario;
     final reviewService = ReviewService();
 
     return Scaffold(

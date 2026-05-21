@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
 
 class AppTextField extends StatelessWidget {
   final String? label;
@@ -44,15 +45,15 @@ class AppTextField extends StatelessWidget {
     final colors = context.appColors;
 
     final border = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppRadius.lg),
       borderSide: BorderSide(
-        color: colors.primary.withValues(alpha: 0.1),
+        color: colors.outline.withValues(alpha: 0.3),
         width: 1,
       ),
     );
 
     final focusedBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppRadius.lg),
       borderSide: BorderSide(
         color: colors.primary,
         width: 2,
@@ -60,7 +61,7 @@ class AppTextField extends StatelessWidget {
     );
 
     final errorBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppRadius.lg),
       borderSide: BorderSide(
         color: colors.error,
         width: 1,
@@ -75,10 +76,9 @@ class AppTextField extends StatelessWidget {
             padding: const EdgeInsets.only(left: 4, bottom: 8),
             child: Text(
               label!,
-              style: GoogleFonts.inter(
-                fontSize: 14,
+              style: AppTextStyles.labelLarge.copyWith(
+                color: colors.textSecondary,
                 fontWeight: FontWeight.w600,
-                color: colors.primary.withValues(alpha: 0.8),
               ),
             ),
           ),
@@ -93,26 +93,24 @@ class AppTextField extends StatelessWidget {
           textCapitalization: textCapitalization,
           readOnly: readOnly,
           onTap: onTap,
-          style: GoogleFonts.inter(
-            fontSize: 16,
-            color: colors.surface == const Color(0xFF0F172A) ? Colors.white : Colors.black87,
+          style: AppTextStyles.bodyLarge.copyWith(
+            color: colors.textPrimary,
           ),
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: GoogleFonts.inter(
-              color: colors.primary.withValues(alpha: 0.3),
+            hintStyle: AppTextStyles.bodyLarge.copyWith(
+              color: colors.textSecondary.withValues(alpha: 0.6),
             ),
             prefixIcon: prefixIcon != null
                 ? IconTheme(
-                    data: IconThemeData(color: colors.primary.withValues(alpha: 0.6)),
+                    data: IconThemeData(color: colors.textSecondary),
                     child: prefixIcon!,
                   )
                 : null,
             suffixIcon: suffixIcon,
             suffixText: suffixText,
-            suffixStyle: GoogleFonts.inter(
-              color: colors.primary.withValues(alpha: 0.6),
-              fontWeight: FontWeight.w500,
+            suffixStyle: AppTextStyles.labelLarge.copyWith(
+              color: colors.textSecondary,
             ),
             filled: true,
             fillColor: colors.surfaceContainer,

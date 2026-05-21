@@ -1,4 +1,6 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:animations/animations.dart';
 import 'package:autodoc/features/splash/presentation/pages/splash_screen.dart';
 import 'package:autodoc/features/onboarding/presentation/pages/onboarding_screen.dart';
 import 'package:autodoc/features/auth/presentation/pages/auth_screen.dart';
@@ -26,6 +28,24 @@ import 'package:autodoc/features/admin/presentation/pages/admin_resenias_screen.
 import 'package:autodoc/features/admin/presentation/pages/admin_logs_screen.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_seed_screen.dart';
 
+CustomTransitionPage<T> buildPageWithFadeThrough<T>({
+  required BuildContext context,
+  required GoRouterState state,
+  required Widget child,
+}) {
+  return CustomTransitionPage<T>(
+    key: state.pageKey,
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeThroughTransition(
+        animation: animation,
+        secondaryAnimation: secondaryAnimation,
+        child: child,
+      );
+    },
+  );
+}
+
 /// App Router Definition
 ///
 /// Route expectations (extra parameters):
@@ -39,121 +59,125 @@ final GoRouter appRouter = GoRouter(
   routes: [
     GoRoute(
       path: '/',
-      builder: (context, state) => const SplashScreen(),
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const SplashScreen()),
     ),
     GoRoute(
       path: '/onboarding',
-      builder: (context, state) => const OnboardingScreen(),
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const OnboardingScreen()),
     ),
     GoRoute(
       path: '/login',
-      builder: (context, state) => const AuthScreen(isLogin: true),
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const AuthScreen(isLogin: true)),
     ),
     GoRoute(
       path: '/register',
-      builder: (context, state) => const AuthScreen(isLogin: false),
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const AuthScreen(isLogin: false)),
     ),
     GoRoute(
       path: '/profile_setup',
-      builder: (context, state) => const ProfileSetupScreen(),
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const ProfileSetupScreen()),
     ),
     GoRoute(
       path: '/dashboard',
-      builder: (context, state) => const DashboardScreen(),
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const DashboardScreen()),
     ),
     GoRoute(
       path: '/vehicle_profile',
-      builder: (context, state) {
+      pageBuilder: (context, state) {
         final vehicle = state.extra as VehicleModel;
-        return VehicleProfileScreen(vehicle: vehicle);
+        return buildPageWithFadeThrough(context: context, state: state, child: VehicleProfileScreen(vehicle: vehicle));
       },
     ),
     GoRoute(
       path: '/user_profile',
-      builder: (context, state) => const UserProfileScreen(),
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const UserProfileScreen()),
     ),
     GoRoute(
       path: '/garage',
-      builder: (context, state) => const GarageScreen(),
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const GarageScreen()),
     ),
     GoRoute(
       path: '/alerts',
-      builder: (context, state) => const AlertsScreen(),
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const AlertsScreen()),
     ),
     GoRoute(
       path: '/service_history',
-      builder: (context, state) {
+      pageBuilder: (context, state) {
         final vehicleId = state.extra as String;
-        return ServiceHistoryScreen(vehicleId: vehicleId);
+        return buildPageWithFadeThrough(context: context, state: state, child: ServiceHistoryScreen(vehicleId: vehicleId));
       },
     ),
     GoRoute(
       path: '/mechanic_search',
-      builder: (context, state) => const VehicleSearchScreen(),
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const VehicleSearchScreen()),
     ),
     GoRoute(
       path: '/mechanic_dashboard',
-      builder: (context, state) => const MechanicDashboardScreen(),
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const MechanicDashboardScreen()),
     ),
     GoRoute(
       path: '/workshop_settings',
-      builder: (context, state) => const WorkshopSettingsScreen(),
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const WorkshopSettingsScreen()),
     ),
     GoRoute(
       path: '/mechanic_reviews',
-      builder: (context, state) => const MechanicReviewsScreen(),
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const MechanicReviewsScreen()),
     ),
     GoRoute(
       path: '/workshop_directory',
-      builder: (context, state) => const WorkshopDirectoryScreen(),
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const WorkshopDirectoryScreen()),
     ),
     GoRoute(
       path: '/initiate_service',
-      builder: (context, state) {
+      pageBuilder: (context, state) {
         final vehicle = state.extra as VehicleModel;
-        return InitiateServiceScreen(vehicle: vehicle);
+        return buildPageWithFadeThrough(context: context, state: state, child: InitiateServiceScreen(vehicle: vehicle));
       },
     ),
     GoRoute(
       path: '/task_config',
-      builder: (context, state) {
+      pageBuilder: (context, state) {
         final task = state.extra as MaintenanceTask;
-        return TaskConfigScreen(task: task);
+        return buildPageWithFadeThrough(context: context, state: state, child: TaskConfigScreen(task: task));
       },
     ),
     GoRoute(
       path: '/task_complete',
-      builder: (context, state) {
+      pageBuilder: (context, state) {
         final data = state.extra as Map<String, dynamic>;
-        return TaskCompleteScreen(
-          task: data['task'] as MaintenanceTask,
-          currentKm: data['currentKm'] as int,
+        return buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: TaskCompleteScreen(
+            task: data['task'] as MaintenanceTask,
+            currentKm: data['currentKm'] as int,
+          ),
         );
       },
     ),
     GoRoute(
       path: '/admin/dashboard',
-      builder: (context, state) => const AdminDashboardScreen(),
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const AdminDashboardScreen()),
     ),
     GoRoute(
       path: '/admin/usuarios',
-      builder: (context, state) => const AdminUsuariosScreen(),
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const AdminUsuariosScreen()),
     ),
     GoRoute(
       path: '/admin/talleres',
-      builder: (context, state) => const AdminTalleresScreen(),
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const AdminTalleresScreen()),
     ),
     GoRoute(
       path: '/admin/resenias',
-      builder: (context, state) => const AdminReseniasScreen(),
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const AdminReseniasScreen()),
     ),
     GoRoute(
       path: '/admin/logs',
-      builder: (context, state) => const AdminLogsScreen(),
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const AdminLogsScreen()),
     ),
     GoRoute(
       path: '/admin/seed',
-      builder: (context, state) => const AdminSeedScreen(),
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const AdminSeedScreen()),
     ),
   ],
 );

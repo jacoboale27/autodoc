@@ -19,13 +19,12 @@ class MechanicSidebar extends StatelessWidget {
   }
 
   Future<void> _signOut(BuildContext context) async {
+    final router = GoRouter.of(context);
     if (Scaffold.maybeOf(context)?.isDrawerOpen ?? false) {
       Navigator.pop(context);
     }
     await context.read<AuthProvider>().signOut();
-    if (context.mounted) {
-      context.go('/login');
-    }
+    router.go('/login');
   }
 
   @override

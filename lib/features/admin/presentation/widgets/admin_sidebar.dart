@@ -96,8 +96,9 @@ class AdminSidebar extends StatelessWidget {
               route: '/login',
               isDestructive: true,
               onTap: () async {
+                final router = GoRouter.of(context);
                 await authProvider.signOut();
-                if (context.mounted) context.go('/login');
+                router.go('/login');
               },
             ),
             const SizedBox(height: 16),

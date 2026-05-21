@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_shadows.dart';
 
 class AppCard extends StatelessWidget {
   final Widget child;
@@ -18,21 +20,16 @@ class AppCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final card = Container(
       margin: margin,
       decoration: BoxDecoration(
         color: colors.surfaceContainer,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: colors.primary.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: isDark ? AppShadows.darkSm : AppShadows.lightSm,
         border: Border.all(
-          color: colors.primary.withValues(alpha: 0.05),
+          color: colors.outline.withValues(alpha: isDark ? 0.2 : 0.4),
           width: 1,
         ),
       ),
@@ -40,7 +37,7 @@ class AppCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
           child: Padding(
             padding: padding,
             child: child,
