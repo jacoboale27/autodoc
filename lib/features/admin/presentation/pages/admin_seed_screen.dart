@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:autodoc/core/utils/responsive.dart';
 
 /// Pantalla que indicaba el estado de la migración de cuentas.
 /// La semilla fue ejecutada con éxito y los secretos fueron eliminados por seguridad.
@@ -15,21 +16,21 @@ class AdminSeedScreen extends StatelessWidget {
       ),
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: EdgeInsets.all(Responsive.padding(context, 24.0)),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.security, size: 80, color: Colors.green),
+              Icon(Icons.security, size: Responsive.iconSize(context, 80), color: Colors.green),
               const SizedBox(height: 24),
               Text(
                 'Migración Completada',
-                style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold),
+                style: GoogleFonts.inter(fontSize: Responsive.fontSize(context, 24), fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               Text(
                 'Las cuentas administrativas ya fueron configuradas y los secretos se eliminaron del código fuente por motivos de seguridad.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(fontSize: 16, color: Colors.grey[700]),
+                style: GoogleFonts.inter(fontSize: Responsive.fontSize(context, 16), color: Colors.grey[700]),
               ),
             ],
           ),

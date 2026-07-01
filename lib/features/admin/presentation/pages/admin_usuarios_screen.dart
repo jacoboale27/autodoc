@@ -5,6 +5,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../widgets/admin_sidebar.dart';
 import '../widgets/account_row.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/utils/responsive.dart';
 
 class AdminUsuariosScreen extends StatefulWidget {
   const AdminUsuariosScreen({super.key});
@@ -35,13 +36,13 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
           decoration: const InputDecoration(labelText: 'Motivo / Detalle'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancelar')),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               onConfirm(controller.text.isEmpty ? 'Sin motivo' : controller.text);
             },
-            child: const Text('Confirmar'),
+            child: Text('Confirmar'),
           ),
         ],
       ),
@@ -57,21 +58,21 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            title: const Text('Cambiar Rol de Usuario'),
+            title: Text('Cambiar Rol de Usuario'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Rol actual: $rolActual',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  style: TextStyle(color: Colors.grey[600], fontSize: Responsive.fontSize(context, 13)),
                 ),
                 const SizedBox(height: 16),
-                const Text('Selecciona el nuevo rol:', style: TextStyle(fontWeight: FontWeight.w600)),
+                Text('Selecciona el nuevo rol:', style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 12),
                 ...roles.where((r) => r != rolActual).map((rol) => ListTile(
                   title: Text(rol),
-                  subtitle: Text(_descRol(rol), style: const TextStyle(fontSize: 12)),
+                  subtitle: Text(_descRol(rol), style: TextStyle(fontSize: Responsive.fontSize(context, 12))),
                   trailing: selectedRol == rol
                       ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
                       : const Icon(Icons.circle_outlined, color: Colors.grey),
@@ -82,7 +83,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
               ],
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+              TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancelar')),
               ElevatedButton(
                 onPressed: selectedRol == null
                     ? null
@@ -94,7 +95,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                               selectedRol!,
                             );
                       },
-                child: const Text('Confirmar'),
+                child: Text('Confirmar'),
               ),
             ],
           );
@@ -152,13 +153,13 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Gestión de Usuarios'),
+        title: Text('Gestión de Usuarios'),
         centerTitle: true,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Chip(
-              avatar: const Icon(Icons.people, size: 16),
+              avatar: Icon(Icons.people, size: Responsive.iconSize(context, 16)),
               label: Text('${provider.usuarios.length}'),
               backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
             ),
@@ -169,7 +170,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(Responsive.padding(context, 16.0)),
             child: TextField(
               decoration: InputDecoration(
                 labelText: 'Buscar usuario...',
@@ -190,7 +191,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.person_search, size: 64, color: colors.textSecondary.withValues(alpha: 0.3)),
+                                Icon(Icons.person_search, size: Responsive.iconSize(context, 64), color: colors.textSecondary.withValues(alpha: 0.3)),
                                 const SizedBox(height: 16),
                                 Text(
                                   _searchQuery.isEmpty ? 'No hay usuarios registrados' : 'Sin resultados para "$_searchQuery"',
@@ -200,7 +201,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                             ),
                           )
                         : ListView.separated(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 16)),
                             itemCount: usuariosFiltrados.length,
                             separatorBuilder: (context, index) => const SizedBox(height: 8),
                             itemBuilder: (context, index) {

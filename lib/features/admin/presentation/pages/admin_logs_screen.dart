@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/admin_provider.dart';
 import '../widgets/admin_sidebar.dart';
+import 'package:autodoc/core/utils/responsive.dart';
 
 class AdminLogsScreen extends StatefulWidget {
   const AdminLogsScreen({super.key});
@@ -73,17 +74,17 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.history, size: 64, color: Colors.grey[300]),
+                          Icon(Icons.history, size: Responsive.iconSize(context, 64), color: Colors.grey[300]),
                           const SizedBox(height: 16),
                           Text(
                             'No hay registros de actividad',
-                            style: TextStyle(color: Colors.grey[500], fontSize: 16),
+                            style: TextStyle(color: Colors.grey[500], fontSize: Responsive.fontSize(context, 16)),
                           ),
                         ],
                       ),
                     )
                   : ListView.separated(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(Responsive.padding(context, 16)),
                       itemCount: provider.logs.length,
                       separatorBuilder: (context, i) => const SizedBox(height: 8),
                       itemBuilder: (context, index) {
@@ -97,12 +98,12 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
                             side: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)),
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.all(16),
+                            padding: EdgeInsets.all(Responsive.padding(context, 16)),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.all(10),
+                                  padding: EdgeInsets.all(Responsive.padding(context, 10)),
                                   decoration: BoxDecoration(
                                     color: actionColor.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(12),
@@ -126,21 +127,21 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
                                               log.accion.replaceAll('_', ' '),
                                               style: TextStyle(
                                                 fontWeight: FontWeight.bold,
-                                                fontSize: 14,
+                                                fontSize: Responsive.fontSize(context, 14),
                                                 color: actionColor,
                                               ),
                                             ),
                                           ),
                                           Text(
                                             DateFormat('dd/MM/yy HH:mm').format(log.fecha),
-                                            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                                            style: TextStyle(fontSize: Responsive.fontSize(context, 11), color: Colors.grey[500]),
                                           ),
                                         ],
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
                                         log.detalle,
-                                        style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                                        style: TextStyle(fontSize: Responsive.fontSize(context, 13), color: Colors.grey[700]),
                                       ),
                                       const SizedBox(height: 6),
                                       Row(
@@ -167,7 +168,7 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
 
   Widget _buildTag(IconData icon, String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 8), vertical: Responsive.padding(context, 3)),
       decoration: BoxDecoration(
         color: Colors.grey.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6),
@@ -175,9 +176,9 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: Colors.grey[600]),
+          Icon(icon, size: Responsive.iconSize(context, 12), color: Colors.grey[600]),
           const SizedBox(width: 4),
-          Text(text, style: TextStyle(fontSize: 11, color: Colors.grey[700])),
+          Text(text, style: TextStyle(fontSize: Responsive.fontSize(context, 11), color: Colors.grey[700])),
         ],
       ),
     );

@@ -9,6 +9,7 @@ import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
 import 'package:autodoc/features/reviews/data/services/review_service.dart';
+import 'package:autodoc/core/utils/responsive.dart';
 
 class MechanicReviewsScreen extends StatelessWidget {
   const MechanicReviewsScreen({super.key});
@@ -54,7 +55,7 @@ class MechanicReviewsScreen extends StatelessWidget {
                 if (!isMobile)
                   Container(
                     height: 64,
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 32)),
                     alignment: Alignment.centerLeft,
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surface,
@@ -68,7 +69,7 @@ class MechanicReviewsScreen extends StatelessWidget {
                       'MIS RESEÑAS',
                       style: GoogleFonts.inter(
                         fontWeight: FontWeight.w900,
-                        fontSize: 20,
+                        fontSize: Responsive.fontSize(context, 20),
                         color: colors.primary,
                       ),
                     ),
@@ -89,14 +90,14 @@ class MechanicReviewsScreen extends StatelessWidget {
                       return Column(
                         children: [
                           Padding(
-                            padding: const EdgeInsets.all(24),
+                            padding: EdgeInsets.all(Responsive.padding(context, 24)),
                             child: AppCard(
                               margin: EdgeInsets.zero,
-                              padding: const EdgeInsets.all(24),
+                              padding: EdgeInsets.all(Responsive.padding(context, 24)),
                               child: Row(
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.all(16),
+                                    padding: EdgeInsets.all(Responsive.padding(context, 16)),
                                     decoration: BoxDecoration(
                                       color: colors.warning.withValues(alpha: 0.15),
                                       borderRadius: BorderRadius.circular(16),
@@ -104,7 +105,7 @@ class MechanicReviewsScreen extends StatelessWidget {
                                     child: Icon(
                                       Icons.star_rounded,
                                       color: colors.warning,
-                                      size: 40,
+                                      size: Responsive.iconSize(context, 40),
                                     ),
                                   ),
                                   const SizedBox(width: 20),
@@ -117,7 +118,7 @@ class MechanicReviewsScreen extends StatelessWidget {
                                               ? promedio.toStringAsFixed(1)
                                               : '—',
                                           style: GoogleFonts.inter(
-                                            fontSize: 32,
+                                            fontSize: Responsive.fontSize(context, 32),
                                             fontWeight: FontWeight.bold,
                                             color: colors.primary,
                                           ),
@@ -152,13 +153,13 @@ class MechanicReviewsScreen extends StatelessWidget {
                                 if (reviews.isEmpty) {
                                   return Center(
                                     child: Padding(
-                                      padding: const EdgeInsets.all(32),
+                                      padding: EdgeInsets.all(Responsive.padding(context, 32)),
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Icon(
                                             Icons.rate_review_outlined,
-                                            size: 56,
+                                            size: Responsive.iconSize(context, 56),
                                             color: colors.textSecondary
                                                 .withValues(alpha: 0.4),
                                           ),
@@ -193,7 +194,7 @@ class MechanicReviewsScreen extends StatelessWidget {
                                     final r = reviews[index];
                                     return AppCard(
                                       margin: EdgeInsets.zero,
-                                      padding: const EdgeInsets.all(16),
+                                      padding: EdgeInsets.all(Responsive.padding(context, 16)),
                                       child: Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
@@ -206,7 +207,7 @@ class MechanicReviewsScreen extends StatelessWidget {
                                                 children: List.generate(5, (i) {
                                                   return Icon(
                                                     Icons.star,
-                                                    size: 16,
+                                                    size: Responsive.iconSize(context, 16),
                                                     color: i < r.estrellas
                                                         ? colors.warning
                                                         : colors.textSecondary
@@ -219,7 +220,7 @@ class MechanicReviewsScreen extends StatelessWidget {
                                                 DateFormat('dd MMM yyyy')
                                                     .format(r.fechaResenia),
                                                 style: TextStyle(
-                                                  fontSize: 12,
+                                                  fontSize: Responsive.fontSize(context, 12),
                                                   color: colors.textSecondary,
                                                 ),
                                               ),

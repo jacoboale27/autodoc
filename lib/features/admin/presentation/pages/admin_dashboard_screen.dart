@@ -10,6 +10,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:intl/intl.dart';
+import 'package:autodoc/core/utils/responsive.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -37,7 +38,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard Administrador'),
+        title: Text('Dashboard Administrador'),
         centerTitle: true,
       ),
       drawer: const AdminSidebar(),
@@ -53,7 +54,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   },
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(24.0),
+                    padding: EdgeInsets.all(Responsive.padding(context, 24.0)),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -80,7 +81,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget _buildWelcomeHeader(BuildContext context, AuthProvider authProvider, AppColors colors) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(Responsive.padding(context, 24)),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -102,12 +103,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(Responsive.padding(context, 12)),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(Icons.admin_panel_settings, color: Colors.white, size: 28),
+            child: Icon(Icons.admin_panel_settings, color: Colors.white, size: Responsive.iconSize(context, 28)),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -119,7 +120,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: Responsive.fontSize(context, 20),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -127,7 +128,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   'Panel de control administrativo',
                   style: GoogleFonts.inter(
                     color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 14,
+                    fontSize: Responsive.fontSize(context, 14),
                   ),
                 ),
               ],
@@ -250,7 +251,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 16), vertical: Responsive.padding(context, 12)),
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(14),
@@ -259,18 +260,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: color, size: 20),
+              Icon(icon, color: color, size: Responsive.iconSize(context, 20)),
               const SizedBox(width: 10),
               Text(
                 label,
                 style: TextStyle(
                   color: color,
                   fontWeight: FontWeight.w600,
-                  fontSize: 13,
+                  fontSize: Responsive.fontSize(context, 13),
                 ),
               ),
               const SizedBox(width: 6),
-              Icon(Icons.arrow_forward_ios, color: color, size: 12),
+              Icon(Icons.arrow_forward_ios, color: color, size: Responsive.iconSize(context, 12)),
             ],
           ),
         ),
@@ -283,15 +284,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     if (recentLogs.isEmpty) {
       return AppCard(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(Responsive.padding(context, 32)),
         child: Center(
           child: Column(
             children: [
-              Icon(Icons.history, size: 40, color: colors.textSecondary.withValues(alpha: 0.4)),
+              Icon(Icons.history, size: Responsive.iconSize(context, 40), color: colors.textSecondary.withValues(alpha: 0.4)),
               const SizedBox(height: 12),
               Text(
                 'Sin actividad reciente',
-                style: TextStyle(color: colors.textSecondary, fontSize: 14),
+                style: TextStyle(color: colors.textSecondary, fontSize: Responsive.fontSize(context, 14)),
               ),
             ],
           ),
@@ -311,7 +312,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
             return ListTile(
               leading: Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(Responsive.padding(context, 8)),
                 decoration: BoxDecoration(
                   color: accentColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
@@ -319,30 +320,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 child: Icon(
                   isDestructive ? Icons.warning_amber : Icons.check_circle_outline,
                   color: accentColor,
-                  size: 20,
+                  size: Responsive.iconSize(context, 20),
                 ),
               ),
               title: Text(
                 log.accion.replaceAll('_', ' '),
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: Responsive.fontSize(context, 13), fontWeight: FontWeight.w600),
               ),
               subtitle: Text(
                 log.detalle,
-                style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                style: TextStyle(fontSize: Responsive.fontSize(context, 12), color: colors.textSecondary),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               trailing: Text(
                 DateFormat('dd/MM HH:mm').format(log.fecha),
-                style: TextStyle(fontSize: 11, color: colors.textSecondary.withValues(alpha: 0.6)),
+                style: TextStyle(fontSize: Responsive.fontSize(context, 11), color: colors.textSecondary.withValues(alpha: 0.6)),
               ),
             );
           }),
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(Responsive.padding(context, 12)),
             child: TextButton.icon(
               onPressed: () => context.go('/admin/logs'),
-              icon: Icon(Icons.arrow_forward, size: 16, color: colors.primary),
+              icon: Icon(Icons.arrow_forward, size: Responsive.iconSize(context, 16), color: colors.primary),
               label: Text(
                 'Ver todo el registro',
                 style: TextStyle(color: colors.primary),

@@ -8,6 +8,7 @@ import 'package:autodoc/core/models/user_model.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:autodoc/core/utils/responsive.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -56,7 +57,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     style: GoogleFonts.montserratAlternates(
                       color: primaryPurple,
                       fontWeight: FontWeight.bold,
-                      fontSize: 18,
+                      fontSize: Responsive.fontSize(context, 18),
                     ),
                   ),
                 ],
@@ -71,7 +72,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       Text(
                         'PASO 1 DE 1',
                         style: GoogleFonts.inter(
-                          fontSize: 10,
+                          fontSize: Responsive.fontSize(context, 10),
                           fontWeight: FontWeight.bold,
                           color: Colors.grey[600],
                           letterSpacing: 1.5,
@@ -136,14 +137,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                       child: Padding(
-                        padding: const EdgeInsets.all(32.0),
+                        padding: EdgeInsets.all(Responsive.padding(context, 32.0)),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               '¡Bienvenido a AutoDoc!',
                               style: GoogleFonts.montserrat(
-                                fontSize: 24,
+                                fontSize: Responsive.fontSize(context, 24),
                                 fontWeight: FontWeight.bold,
                                 color: primaryPurple,
                               ),
@@ -152,7 +153,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                             Text(
                               'Configura tu perfil para obtener diagnósticos personalizados y alertas precisas para tu vehículo.',
                               style: GoogleFonts.inter(
-                                fontSize: 14,
+                                fontSize: Responsive.fontSize(context, 14),
                                 color: Colors.grey[700],
                               ),
                             ),
@@ -179,7 +180,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                     child: ClipOval(
                                       child: _imageFile != null
                                           ? Image.file(_imageFile!, fit: BoxFit.cover)
-                                          : Icon(Icons.person, size: 50, color: primaryPurple.withValues(alpha: 0.5)),
+                                          : Icon(Icons.person, size: Responsive.iconSize(context, 50), color: primaryPurple.withValues(alpha: 0.5)),
                                     ),
                                   ),
                                   Positioned(
@@ -193,12 +194,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                         }
                                       },
                                       child: Container(
-                                        padding: const EdgeInsets.all(8),
+                                        padding: EdgeInsets.all(Responsive.padding(context, 8)),
                                         decoration: const BoxDecoration(
                                           color: primaryPurple,
                                           shape: BoxShape.circle,
                                         ),
-                                        child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
+                                        child: Icon(Icons.camera_alt, color: Colors.white, size: Responsive.iconSize(context, 16)),
                                       ),
                                     ),
                                   ),
@@ -211,7 +212,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                             Text(
                               'NOMBRE COMPLETO',
                               style: GoogleFonts.inter(
-                                fontSize: 12,
+                                fontSize: Responsive.fontSize(context, 12),
                                 fontWeight: FontWeight.bold,
                                 color: Colors.grey[700],
                               ),
@@ -244,7 +245,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                             Text(
                               'SELECCIONA TU ROL',
                               style: GoogleFonts.inter(
-                                fontSize: 12,
+                                fontSize: Responsive.fontSize(context, 12),
                                 fontWeight: FontWeight.bold,
                                 color: Colors.grey[700],
                               ),
@@ -275,7 +276,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
                             // Notificaciones
                             Container(
-                              padding: const EdgeInsets.all(16),
+                              padding: EdgeInsets.all(Responsive.padding(context, 16)),
                               decoration: BoxDecoration(
                                 color: Colors.white.withValues(alpha: 0.4),
                                 borderRadius: BorderRadius.circular(16),
@@ -301,13 +302,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                           'Notificaciones de mantenimiento',
                                           style: GoogleFonts.inter(
                                             fontWeight: FontWeight.bold,
-                                            fontSize: 14,
+                                            fontSize: Responsive.fontSize(context, 14),
                                           ),
                                         ),
                                         Text(
                                           'Alertas sobre cambios de aceite, frenos y más.',
                                           style: GoogleFonts.inter(
-                                            fontSize: 12,
+                                            fontSize: Responsive.fontSize(context, 12),
                                             color: Colors.grey[600],
                                           ),
                                         ),
@@ -366,7 +367,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         ),
       ),
       bottomSheet: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 24), vertical: Responsive.padding(context, 16)),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.8),
           border: Border(top: BorderSide(color: Colors.grey[200]!)),
@@ -471,7 +472,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       'Guardando...',
                       style: GoogleFonts.montserrat(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: Responsive.fontSize(context, 16),
                       ),
                     ),
                   ]
@@ -480,7 +481,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       'Finalizar Configuración',
                       style: GoogleFonts.montserrat(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: Responsive.fontSize(context, 16),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -521,14 +522,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             Icon(
               icon,
               color: primaryPurple,
-              size: 32,
+              size: Responsive.iconSize(context, 32),
             ),
             const SizedBox(height: 8),
             Text(
               title,
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.bold,
-                fontSize: 14,
+                fontSize: Responsive.fontSize(context, 14),
                 color: Colors.grey[800],
               ),
             ),

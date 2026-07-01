@@ -1,0 +1,24 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Función auxiliar para verificar si el usuario está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Reglas para fotos de perfil
+    // Cualquier usuario de la app puede leer las fotos de perfil
+    // Solo el propietario puede subir o modificar su propia foto de perfil
+    match /perfiles/{fileId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (fileId == request.auth.uid || fileId == request.auth.uid + '.jpg');
+    }
+
+    // Reglas para facturas y recibos de mantenimiento
+    // Propietarios y mecánicos pueden subir y leer las facturas
+    match /facturas/{vehicleId}/{fileName} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}

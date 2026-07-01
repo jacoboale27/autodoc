@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_scaffold.dart';
@@ -14,6 +16,7 @@ import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 import 'package:autodoc/core/utils/role_utils.dart';
 import 'package:autodoc/core/widgets/review_sheet.dart';
 import 'package:flutter/services.dart';
+import 'package:autodoc/core/utils/responsive.dart';
 
 class WorkshopDirectoryScreen extends StatefulWidget {
   const WorkshopDirectoryScreen({super.key});
@@ -27,9 +30,38 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
   String _searchQuery = '';
   bool _showMap = false;
   GoogleMapController? _mapController;
+  Position? _userPosition;
 
-  // Default center (Colombia - can be adjusted)
-  static const LatLng _defaultCenter = LatLng(4.7110, -74.0721);
+  // Default center (El Salvador)
+  static const LatLng _defaultCenter = LatLng(13.6929, -89.2182);
+
+  @override
+  void initState() {
+    super.initState();
+    _requestLocationPermission();
+  }
+
+  Future<void> _requestLocationPermission() async {
+    try {
+      final status = await Permission.locationWhenInUse.request();
+      if (status.isGranted) {
+        final pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.medium,
+        );
+        setState(() {
+          _userPosition = pos;
+        });
+        
+        if (_mapController != null) {
+          _mapController!.animateCamera(
+            CameraUpdate.newLatLng(LatLng(pos.latitude, pos.longitude)),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Error requesting location permission: $e");
+    }
+  }
 
   @override
   void dispose() {
@@ -71,45 +103,80 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                     }
 
                     var docs = snapshot.data?.docs ?? [];
+                    List<Map<String, dynamic>> items = [];
+
+                    for (var doc in docs) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      double? distance;
+                      final lat = data['latitud']?.toDouble();
+                      final lng = data['longitud']?.toDouble();
+
+                      if (_userPosition != null && lat != null && lng != null) {
+                        final distInMeters = Geolocator.distanceBetween(
+                          _userPosition!.latitude,
+                          _userPosition!.longitude,
+                          lat,
+                          lng,
+                        );
+                        distance = distInMeters / 1000.0;
+                      }
+
+                      items.add({
+                        'id': doc.id,
+                        'data': data,
+                        'distance': distance,
+                      });
+                    }
+
+                    // Sort: closer first
+                    items.sort((a, b) {
+                      final distA = a['distance'] as double?;
+                      final distB = b['distance'] as double?;
+                      if (distA != null && distB != null) return distA.compareTo(distB);
+                      if (distA != null) return -1;
+                      if (distB != null) return 1;
+                      return 0;
+                    });
+
                     if (_searchQuery.isNotEmpty) {
-                      docs = docs.where((doc) {
-                        final data = doc.data() as Map<String, dynamic>;
+                      final q = _searchQuery.toLowerCase();
+                      items = items.where((item) {
+                        final data = item['data'] as Map<String, dynamic>;
                         final name = (data['nombre_completo'] as String?)?.toLowerCase() ?? '';
                         final spec = (data['especialidad'] as String?)?.toLowerCase() ?? '';
-                        final q = _searchQuery.toLowerCase();
                         return name.contains(q) || spec.contains(q);
                       }).toList();
                     }
 
                     if (_showMap) {
-                      return _buildMapView(docs, colors, isDark);
+                      return _buildMapView(items, colors, isDark);
                     }
 
-                    if (docs.isEmpty) {
+                    if (items.isEmpty) {
                       return Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.search_off, size: 48, color: colors.textSecondary.withValues(alpha: 0.4)),
+                            Icon(Icons.search_off, size: Responsive.iconSize(context, 48), color: colors.textSecondary.withValues(alpha: 0.4)),
                             const SizedBox(height: 12),
                             Text('No se encontraron talleres',
-                                style: TextStyle(color: colors.textSecondary, fontSize: 16)),
+                                style: TextStyle(color: colors.textSecondary, fontSize: Responsive.fontSize(context, 16))),
                           ],
                         ),
                       );
                     }
 
                     return ListView.builder(
-                      padding: const EdgeInsets.all(16).copyWith(bottom: 100),
-                      itemCount: docs.length,
+                      padding: EdgeInsets.all(Responsive.padding(context, 16)).copyWith(bottom: 100),
+                      itemCount: items.length,
                       itemBuilder: (context, index) {
-                        final doc = docs[index];
-                        final data = doc.data() as Map<String, dynamic>;
+                        final item = items[index];
                         return _buildWorkshopCard(
-                          tallerId: doc.id,
-                          data: data,
+                          tallerId: item['id'],
+                          data: item['data'],
                           colors: colors,
                           isDark: isDark,
+                          distance: item['distance'],
                         );
                       },
                     );
@@ -124,7 +191,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
 
   Widget _buildHeader(AppColors colors, bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(Responsive.padding(context, 16)),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.8),
         border: Border(bottom: BorderSide(color: colors.primary.withValues(alpha: 0.1))),
@@ -136,7 +203,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
             onPressed: () => context.pop(),
           ),
           Text('Directorio de Talleres',
-              style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: colors.textPrimary)),
+              style: GoogleFonts.inter(fontSize: Responsive.fontSize(context, 20), fontWeight: FontWeight.bold, color: colors.textPrimary)),
           const Spacer(),
           // Toggle Map/List
           Container(
@@ -162,12 +229,12 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
       onTap: () => setState(() => _showMap = icon == Icons.map_outlined),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(8),
+        padding: EdgeInsets.all(Responsive.padding(context, 8)),
         decoration: BoxDecoration(
           color: isActive ? primary : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(icon, size: 20,
+        child: Icon(icon, size: Responsive.iconSize(context, 20),
             color: isActive ? Colors.white : (isDark ? Colors.white54 : Colors.grey)),
       ),
     );
@@ -175,7 +242,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
 
   Widget _buildSearchBar(AppColors colors, bool isDark) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(Responsive.padding(context, 16)),
       child: Container(
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF0F172A) : Colors.white,
@@ -196,7 +263,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
   Widget _buildFilters(AppColors colors, bool isDark) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 16)),
       child: Row(
         children: [
           _buildFilterChip('Municipio', Icons.location_on, isDark, colors.textPrimary),
@@ -211,7 +278,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
 
   Widget _buildFilterChip(String label, IconData icon, bool isDark, Color textColor) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 16), vertical: Responsive.padding(context, 8)),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -221,33 +288,48 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: textColor),
+          Icon(icon, size: Responsive.iconSize(context, 16), color: textColor),
           const SizedBox(width: 8),
-          Text(label, style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600)),
+          Text(label, style: TextStyle(color: textColor, fontSize: Responsive.fontSize(context, 14), fontWeight: FontWeight.w600)),
           const SizedBox(width: 4),
-          Icon(Icons.keyboard_arrow_down, size: 16, color: textColor),
+          Icon(Icons.keyboard_arrow_down, size: Responsive.iconSize(context, 16), color: textColor),
         ],
       ),
     );
   }
 
   // ======= MAP VIEW =======
-  Widget _buildMapView(List<QueryDocumentSnapshot> docs, AppColors colors, bool isDark) {
+  Widget _buildMapView(List<Map<String, dynamic>> items, AppColors colors, bool isDark) {
     final markers = <Marker>{};
 
-    for (var doc in docs) {
-      final data = doc.data() as Map<String, dynamic>;
+    // Marcador de la ubicación del usuario
+    if (_userPosition != null) {
+      markers.add(Marker(
+        markerId: const MarkerId('user_location'),
+        position: LatLng(_userPosition!.latitude, _userPosition!.longitude),
+        infoWindow: const InfoWindow(title: 'Tu Ubicación'),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
+      ));
+    }
+
+    for (var item in items) {
+      final data = item['data'] as Map<String, dynamic>;
       final lat = data['latitud']?.toDouble();
       final lng = data['longitud']?.toDouble();
       final name = data['nombre_completo'] ?? 'Taller';
 
       if (lat != null && lng != null) {
+        final dist = item['distance'] as double?;
+        final snippet = dist != null
+            ? '${data['especialidad'] ?? 'Mecánica'} - A ${dist.toStringAsFixed(1)} km'
+            : data['especialidad'] ?? 'Mecánica General';
+
         markers.add(Marker(
-          markerId: MarkerId(doc.id),
+          markerId: MarkerId(item['id']),
           position: LatLng(lat, lng),
           infoWindow: InfoWindow(
             title: name,
-            snippet: data['especialidad'] ?? 'Mecánica General',
+            snippet: snippet,
           ),
           icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet),
         ));
@@ -255,8 +337,8 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
     }
 
     // Info card for workshops without coordinates
-    final workshopsWithoutCoords = docs.where((d) {
-      final data = d.data() as Map<String, dynamic>;
+    final workshopsWithoutCoords = items.where((d) {
+      final data = d['data'] as Map<String, dynamic>;
       return data['latitud'] == null || data['longitud'] == null;
     }).length;
 
@@ -264,7 +346,9 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
       children: [
         GoogleMap(
           initialCameraPosition: CameraPosition(
-            target: markers.isNotEmpty ? markers.first.position : _defaultCenter,
+            target: _userPosition != null
+                ? LatLng(_userPosition!.latitude, _userPosition!.longitude)
+                : (markers.isNotEmpty ? markers.first.position : _defaultCenter),
             zoom: 12,
           ),
           markers: markers,
@@ -279,7 +363,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
         Positioned(
           top: 12, left: 16, right: 16,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 14), vertical: Responsive.padding(context, 10)),
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF1E1B2E).withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.9),
               borderRadius: BorderRadius.circular(12),
@@ -287,32 +371,32 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
             ),
             child: Row(
               children: [
-                Icon(Icons.location_on, color: colors.primary, size: 18),
+                Icon(Icons.location_on, color: colors.primary, size: Responsive.iconSize(context, 18)),
                 const SizedBox(width: 8),
-                Text('${markers.length} talleres en el mapa',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13, color: colors.textPrimary)),
+                Text('${markers.length - (_userPosition != null ? 1 : 0)} talleres en el mapa',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: Responsive.fontSize(context, 13), color: colors.textPrimary)),
                 if (workshopsWithoutCoords > 0) ...[
                   const Spacer(),
                   Text('$workshopsWithoutCoords sin ubicación',
-                      style: GoogleFonts.inter(fontSize: 11, color: colors.textSecondary)),
+                      style: GoogleFonts.inter(fontSize: Responsive.fontSize(context, 11), color: colors.textSecondary)),
                 ],
               ],
             ),
           ),
         ),
         // Bottom list peek
-        if (docs.isNotEmpty)
+        if (items.isNotEmpty)
           Positioned(
             bottom: 16, left: 0, right: 0,
             child: SizedBox(
               height: 120,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: docs.length,
+                padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 16)),
+                itemCount: items.length,
                 itemBuilder: (context, i) {
-                  final data = docs[i].data() as Map<String, dynamic>;
-                  return _buildMapCard(data, colors, isDark);
+                  final item = items[i];
+                  return _buildMapCard(item['data'], colors, isDark);
                 },
               ),
             ),
@@ -341,7 +425,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
         width: 240,
         child: AppCard(
           margin: const EdgeInsets.only(right: 12),
-          padding: const EdgeInsets.all(14),
+          padding: EdgeInsets.all(Responsive.padding(context, 14)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
@@ -350,29 +434,29 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
               children: [
                 Expanded(
                   child: Text(name,
-                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: colors.textPrimary),
+                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: Responsive.fontSize(context, 14), color: colors.textPrimary),
                       maxLines: 1, overflow: TextOverflow.ellipsis),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 5), vertical: Responsive.padding(context, 1)),
                   decoration: BoxDecoration(color: Colors.amber[100], borderRadius: BorderRadius.circular(4)),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.star, size: 12, color: Colors.amber[700]),
+                    Icon(Icons.star, size: Responsive.iconSize(context, 12), color: Colors.amber[700]),
                     const SizedBox(width: 2),
                     Text(rating.toStringAsFixed(1),
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber[700])),
+                        style: TextStyle(fontSize: Responsive.fontSize(context, 11), fontWeight: FontWeight.bold, color: Colors.amber[700])),
                   ]),
                 ),
               ],
             ),
             const SizedBox(height: 6),
-            Text(spec, style: TextStyle(fontSize: 12, color: colors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(spec, style: TextStyle(fontSize: Responsive.fontSize(context, 12), color: colors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 4),
             Row(
               children: [
-                Icon(Icons.location_on, size: 13, color: colors.textSecondary),
+                Icon(Icons.location_on, size: Responsive.iconSize(context, 13), color: colors.textSecondary),
                 const SizedBox(width: 4),
-                Expanded(child: Text(location, style: TextStyle(fontSize: 11, color: colors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                Expanded(child: Text(location, style: TextStyle(fontSize: Responsive.fontSize(context, 11), color: colors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis)),
               ],
             ),
           ],
@@ -381,6 +465,8 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
       ),
     );
   }
+
+
 
   // ======= LIST VIEW CARD =======
   void _mostrarContacto(BuildContext context, String? telefono, String nombre) {
@@ -420,6 +506,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
     required Map<String, dynamic> data,
     required AppColors colors,
     required bool isDark,
+    double? distance,
   }) {
     final name = data['nombre_completo'] ?? 'Taller Sin Nombre';
     final telefono = data['telefono'] as String?;
@@ -444,12 +531,12 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                     ? CachedNetworkImage(
                         imageUrl: imageUrl, fit: BoxFit.cover,
                         placeholder: (ctx, url) => AppSkeleton.card(height: 160),
-                        errorWidget: (ctx, url, err) => Icon(Icons.build, size: 48, color: colors.textSecondary),
+                        errorWidget: (ctx, url, err) => Icon(Icons.build, size: Responsive.iconSize(context, 48), color: colors.textSecondary),
                       )
-                    : Icon(Icons.build, size: 48, color: colors.textSecondary),
+                    : Icon(Icons.build, size: Responsive.iconSize(context, 48), color: colors.textSecondary),
               ),
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(Responsive.padding(context, 16)),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -457,32 +544,46 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(child: Text(name,
-                            style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: colors.textPrimary))),
+                            style: GoogleFonts.inter(fontSize: Responsive.fontSize(context, 18), fontWeight: FontWeight.bold, color: colors.textPrimary))),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 6), vertical: Responsive.padding(context, 2)),
                           decoration: BoxDecoration(color: Colors.yellow[100], borderRadius: BorderRadius.circular(4)),
                           child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            Icon(Icons.star, size: 14, color: Colors.yellow[700]),
+                            Icon(Icons.star, size: Responsive.iconSize(context, 14), color: Colors.yellow[700]),
                             const SizedBox(width: 4),
                             Text(rating.toStringAsFixed(1),
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.yellow[700])),
+                                style: TextStyle(fontSize: Responsive.fontSize(context, 12), fontWeight: FontWeight.bold, color: Colors.yellow[700])),
                           ]),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Row(children: [
-                      Icon(Icons.verified, size: 16, color: colors.textSecondary),
+                      Icon(Icons.verified, size: Responsive.iconSize(context, 16), color: colors.textSecondary),
                       const SizedBox(width: 4),
                       Expanded(child: Text('Especialidad: $specialty',
-                          style: TextStyle(color: colors.textSecondary, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                          style: TextStyle(color: colors.textSecondary, fontSize: Responsive.fontSize(context, 14)), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     ]),
                     const SizedBox(height: 4),
                     Row(children: [
-                      Icon(Icons.location_on, size: 16, color: colors.textSecondary),
+                      Icon(Icons.location_on, size: Responsive.iconSize(context, 16), color: colors.textSecondary),
                       const SizedBox(width: 4),
                       Expanded(child: Text(location,
-                          style: TextStyle(color: colors.textSecondary, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                          style: TextStyle(color: colors.textSecondary, fontSize: Responsive.fontSize(context, 14)), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                      if (distance != null) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 8), vertical: Responsive.padding(context, 4)),
+                          decoration: BoxDecoration(
+                            color: colors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${distance.toStringAsFixed(1)} km',
+                            style: TextStyle(color: colors.primary, fontSize: Responsive.fontSize(context, 12), fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
                     ]),
                     const SizedBox(height: 16),
                     Container(
@@ -494,7 +595,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                         children: [
                           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Text('$reviewsCount reseña${reviewsCount == 1 ? '' : 's'}',
-                                style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+                                style: TextStyle(fontSize: Responsive.fontSize(context, 12), color: colors.textSecondary)),
                           ]),
                           Row(
                             mainAxisSize: MainAxisSize.min,
@@ -505,7 +606,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                                   tallerId: tallerId,
                                   tallerNombre: name,
                                 ),
-                                icon: const Icon(Icons.star_outline, size: 18),
+                                icon: Icon(Icons.star_outline, size: Responsive.iconSize(context, 18)),
                                 label: const Text('Reseñar'),
                               ),
                               AppButton(

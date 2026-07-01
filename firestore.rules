@@ -2,54 +2,124 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Función auxiliar para verificar si el usuario es administrador
+    // --- FUNCIONES AUXILIARES ---
+    
+    // Verifica si el usuario está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Verifica si el usuario actual es dueño del documento por UID
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Obtiene los datos del perfil del usuario actual de la colección 'Usuarios'
+    function getUserData() {
+      return get(/databases/$(database)/documents/Usuarios/$(request.auth.uid)).data;
+    }
+
+    // Verifica si el usuario actual tiene rol de Administrador o Propietario principal
     function isAdmin() {
-      return request.auth != null && 
-        get(/databases/$(database)/documents/Usuarios/$(request.auth.uid)).data.rol in ['Administrador', 'admin'];
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/Usuarios/$(request.auth.uid)) &&
+        getUserData().rol in ['Administrador', 'admin', 'Propietario'];
     }
 
-    // Reglas para Usuarios
+    // Verifica si el usuario actual tiene rol de Mecánico
+    function isMecanico() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/Usuarios/$(request.auth.uid)) &&
+        getUserData().rol == 'Mecanico';
+    }
+
+
+    // --- REGLAS POR COLECCIÓN ---
+
+    // 1. Tabla de Usuarios
     match /Usuarios/{userId} {
-      allow read: if request.auth != null;
-      // Solo el dueño puede editar su perfil básico
-      // Solo un admin puede editar el campo 'rol' o 'estado'
-      // Cualquier usuario autenticado puede actualizar solo métricas de reseñas
-      allow update: if (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['rol', 'estado']))
-                    || isAdmin()
-                    || (request.auth != null
-                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['calificacion_promedio', 'total_resenias']));
-      allow create: if request.auth != null;
+      allow read: if isAuthenticated();
+      
+      // Permitir la creación de su propio perfil de usuario durante registro/onboarding
+      allow create: if isOwner(userId);
+      
+      // El usuario puede editar su propio perfil básico (excepto el campo 'rol' para evitar escalamiento de privilegios)
+      // Los administradores tienen acceso completo para cambiar roles o estados
+      allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['rol']))
+                    || isAdmin();
+      
       allow delete: if isAdmin();
     }
 
-    // Reglas para Talleres
+    // 2. Tabla de Talleres
     match /Talleres/{tallerId} {
+      // El directorio de talleres es de lectura pública
       allow read: if true;
-      allow create: if request.auth != null;
-      // Solo admins pueden aprobar/suspender (cambiar estado)
-      allow update, delete: if isAdmin();
-    }
-
-    // Reglas para Reseñas
-    match /Resenias/{reseniaId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.resource.data.id_usuario == request.auth.uid;
-      // Solo el autor puede editar su reseña, solo admin puede borrarla
-      allow update: if request.auth != null && resource.data.id_usuario == request.auth.uid;
+      
+      // Mecánicos y Administradores pueden registrar talleres
+      allow create: if isAuthenticated() && (isMecanico() || isAdmin());
+      
+      // Mecánicos pueden actualizar la información de su taller; los admins tienen acceso total
+      allow update: if isAuthenticated() && (isMecanico() || isAdmin());
+      
       allow delete: if isAdmin();
     }
 
-    // Reglas para Logs Administrativos
-    match /admin_logs/{logId} {
-      allow read: if isAdmin();
-      // Solo el sistema (vía app) puede crear logs si el usuario es admin
-      allow create: if isAdmin();
-      allow update, delete: if false; // Los logs son inmutables
+    // 3. Tabla de Vehículos
+    match /Vehiculos/{vehiculoId} {
+      allow read: if isAuthenticated();
+      
+      // Solo el propietario registrado del vehículo puede crearlo o eliminarlo
+      allow create: if isAuthenticated() && request.resource.data.id_propietario == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.id_propietario == request.auth.uid;
+      
+      // El propietario puede modificar todo su vehículo. 
+      // Un Mecánico puede actualizar el vehículo únicamente para reportar el 'kilometraje_actual'
+      allow update: if isAuthenticated() && (
+        resource.data.id_propietario == request.auth.uid 
+        || (isMecanico() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['kilometraje_actual']))
+        || isAdmin()
+      );
     }
 
-    // Reglas generales para el resto de colecciones (Vehiculos, Servicios, Alertas)
+    // 4. Tabla de Servicios (Historial de Mantenimiento)
+    match /Servicios/{servicioId} {
+      allow read: if isAuthenticated();
+      
+      // Solo mecánicos y administradores pueden registrar nuevos servicios/mantenimientos
+      allow create: if isAuthenticated() && (isMecanico() || isAdmin());
+      
+      allow update: if isAuthenticated() && (isMecanico() || isAdmin());
+      
+      allow delete: if isAdmin();
+    }
+
+    // 5. Tabla de Alertas y Recordatorios
+    match /Alertas/{alertaId} {
+      allow read: if isAuthenticated();
+      
+      // Cualquier usuario autenticado (dueños o mecánicos autorizados) puede gestionar alertas
+      allow create, update, delete: if isAuthenticated();
+    }
+
+    // 6. Tabla de Reseñas
+    match /Resenias/{reseniaId} {
+      // Las reseñas son de lectura pública para alimentar el directorio de talleres
+      allow read: if true;
+      
+      // Solo el usuario autor de la reseña puede crearla
+      allow create: if isAuthenticated() && request.resource.data.id_usuario == request.auth.uid;
+      
+      // Solo el autor original puede editar su comentario/estrellas
+      allow update: if isAuthenticated() && resource.data.id_usuario == request.auth.uid;
+      
+      // El autor original o el administrador (moderación de comentarios ofensivos) pueden eliminarla
+      allow delete: if isAuthenticated() && (resource.data.id_usuario == request.auth.uid || isAdmin());
+    }
+
+    // Regla de respaldo
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAdmin();
     }
   }
 }

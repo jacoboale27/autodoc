@@ -6,6 +6,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../widgets/admin_sidebar.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/utils/responsive.dart';
 
 class AdminReseniasScreen extends StatefulWidget {
   const AdminReseniasScreen({super.key});
@@ -33,11 +34,11 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
       builder: (ctx) {
         final colors = ctx.appColors;
         return AlertDialog(
-          title: const Text('Eliminar Reseña'),
+          title: Text('Eliminar Reseña'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('¿Estás seguro de que quieres eliminar esta reseña? Esta acción no se puede deshacer.'),
+              Text('¿Estás seguro de que quieres eliminar esta reseña? Esta acción no se puede deshacer.'),
               const SizedBox(height: 16),
               TextField(
                 controller: controller,
@@ -49,7 +50,7 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancelar')),
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(ctx);
@@ -63,7 +64,7 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
                 backgroundColor: colors.error,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Eliminar'),
+              child: Text('Eliminar'),
             ),
           ],
         );
@@ -78,7 +79,7 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Moderación de Reseñas'),
+        title: Text('Moderación de Reseñas'),
         centerTitle: true,
       ),
       drawer: const AdminSidebar(),
@@ -95,13 +96,13 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
                       ),
                     )
                   : ListView.separated(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(Responsive.padding(context, 16)),
                       itemCount: provider.resenias.length,
                       separatorBuilder: (context, index) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final resenia = provider.resenias[index];
                         return AppCard(
-                          padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.all(Responsive.padding(context, 16)),
                           margin: EdgeInsets.zero,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,7 +114,7 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
                                     children: List.generate(5, (i) {
                                       return Icon(
                                         Icons.star,
-                                        size: 18,
+                                        size: Responsive.iconSize(context, 18),
                                         color: i < resenia.estrellas
                                             ? colors.warning
                                             : colors.textSecondary.withValues(alpha: 0.2),
@@ -122,14 +123,14 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
                                   ),
                                   Text(
                                     DateFormat('dd/MM/yyyy').format(resenia.fechaResenia),
-                                    style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                                    style: TextStyle(fontSize: Responsive.fontSize(context, 12), color: colors.textSecondary),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 12),
                               Text(
                                 resenia.comentario ?? 'Sin comentario',
-                                style: const TextStyle(fontSize: 15),
+                                style: TextStyle(fontSize: Responsive.fontSize(context, 15)),
                               ),
                               const SizedBox(height: 12),
                               Row(
@@ -140,11 +141,11 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
                                     children: [
                                       Text(
                                         'Taller: ${provider.nombreTaller(resenia.idTaller)}',
-                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: colors.textPrimary),
+                                        style: TextStyle(fontSize: Responsive.fontSize(context, 12), fontWeight: FontWeight.bold, color: colors.textPrimary),
                                       ),
                                       Text(
                                         'Cliente: ${provider.nombreUsuario(resenia.idUsuario)}',
-                                        style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                                        style: TextStyle(fontSize: Responsive.fontSize(context, 12), color: colors.textSecondary),
                                       ),
                                     ],
                                   ),

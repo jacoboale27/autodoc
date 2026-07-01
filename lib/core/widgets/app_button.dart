@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/utils/responsive.dart';
 
 enum AppButtonType { primary, secondary, text }
 enum AppButtonSize { small, medium, large }
@@ -60,26 +61,26 @@ class AppButton extends StatelessWidget {
         break;
     }
 
-    // Determine padding and text style based on size
-    EdgeInsets padding;
+    // Determine padding and text style based on size (responsive)
+    EdgeInsets btnPadding;
     TextStyle textStyle;
-    double iconSize;
+    double btnIconSize;
 
     switch (size) {
       case AppButtonSize.small:
-        padding = const EdgeInsets.symmetric(vertical: 8, horizontal: 16);
+        btnPadding = EdgeInsets.symmetric(vertical: Responsive.padding(context, 8), horizontal: Responsive.padding(context, 16));
         textStyle = AppTextStyles.labelMedium;
-        iconSize = 16;
+        btnIconSize = Responsive.iconSize(context, 16);
         break;
       case AppButtonSize.medium:
-        padding = const EdgeInsets.symmetric(vertical: 14, horizontal: 24);
+        btnPadding = EdgeInsets.symmetric(vertical: Responsive.padding(context, 14), horizontal: Responsive.padding(context, 24));
         textStyle = AppTextStyles.titleSmall;
-        iconSize = 20;
+        btnIconSize = Responsive.iconSize(context, 20);
         break;
       case AppButtonSize.large:
-        padding = const EdgeInsets.symmetric(vertical: 18, horizontal: 32);
+        btnPadding = EdgeInsets.symmetric(vertical: Responsive.padding(context, 18), horizontal: Responsive.padding(context, 32));
         textStyle = AppTextStyles.titleMedium;
-        iconSize = 24;
+        btnIconSize = Responsive.iconSize(context, 24);
         break;
     }
 
@@ -95,8 +96,8 @@ class AppButton extends StatelessWidget {
     Widget childContent;
     if (isLoading) {
       childContent = SizedBox(
-        height: iconSize,
-        width: iconSize,
+        height: btnIconSize,
+        width: btnIconSize,
         child: CircularProgressIndicator(
           strokeWidth: 2,
           valueColor: AlwaysStoppedAnimation<Color>(foregroundColor),
@@ -108,7 +109,7 @@ class AppButton extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           IconTheme(
-            data: IconThemeData(size: iconSize, color: foregroundColor),
+            data: IconThemeData(size: btnIconSize, color: foregroundColor),
             child: icon!,
           ),
           const SizedBox(width: 8),
@@ -120,7 +121,7 @@ class AppButton extends StatelessWidget {
     }
 
     Widget buttonContent = Container(
-      padding: padding,
+      padding: btnPadding,
       decoration: BoxDecoration(
         color: gradientColors == null ? backgroundColor : null,
         gradient: gradientColors != null

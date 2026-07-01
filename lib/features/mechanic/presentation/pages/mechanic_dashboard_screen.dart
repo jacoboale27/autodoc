@@ -10,6 +10,7 @@ import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:intl/intl.dart';
+import 'package:autodoc/core/utils/responsive.dart';
 
 class MechanicDashboardScreen extends StatefulWidget {
   const MechanicDashboardScreen({super.key});
@@ -45,7 +46,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                 'Panel de Taller',
                 style: GoogleFonts.inter(
                   color: colors.primary,
-                  fontSize: 16,
+                  fontSize: Responsive.fontSize(context, 16),
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -95,7 +96,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
   Widget _buildTopBar(AppColors colors, ThemeData theme, String mechanicName) {
     return Container(
       height: 64,
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+      padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 32)),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         border: Border(
@@ -109,7 +110,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
             'DASHBOARD',
             style: GoogleFonts.inter(
               fontWeight: FontWeight.w900,
-              fontSize: 20,
+              fontSize: Responsive.fontSize(context, 20),
               color: colors.primary,
               letterSpacing: -0.5,
             ),
@@ -123,9 +124,9 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                 backgroundColor: colors.primary,
                 child: Text(
                   mechanicName.isNotEmpty ? mechanicName[0].toUpperCase() : 'M',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 12,
+                    fontSize: Responsive.fontSize(context, 12),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -144,7 +145,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
         Text(
           'Hola, $mechanicName 👋',
           style: GoogleFonts.inter(
-            fontSize: 28,
+            fontSize: Responsive.fontSize(context, 28),
             fontWeight: FontWeight.bold,
             color: colors.primary,
           ),
@@ -153,7 +154,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
         Text(
           'Aquí tienes un resumen de la actividad de tu taller.',
           style: GoogleFonts.inter(
-            fontSize: 14,
+            fontSize: Responsive.fontSize(context, 14),
             color: colors.textSecondary,
           ),
         ),
@@ -163,7 +164,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
 
   Widget _buildQuickActions(AppColors colors, bool isMobile) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(Responsive.padding(context, 24)),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [colors.primary, colors.primary.withValues(alpha: 0.8)],
@@ -191,7 +192,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                   style: GoogleFonts.inter(
                     color: colors.secondary,
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: Responsive.fontSize(context, 14),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -209,7 +210,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
           AppButton(
             text: 'Buscar',
             onPressed: () => context.push('/mechanic_search'),
-            icon: const Icon(Icons.search, size: 18, color: Colors.white),
+            icon: Icon(Icons.search, size: Responsive.iconSize(context, 18), color: Colors.white),
           ),
         ],
       ),
@@ -287,7 +288,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
     VoidCallback? onTap,
   }) {
     return AppCard(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(Responsive.padding(context, 24)),
       margin: EdgeInsets.zero,
       onTap: onTap,
       child: SizedBox(
@@ -295,12 +296,12 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(Responsive.padding(context, 16)),
               decoration: BoxDecoration(
                 color: accentColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(icon, color: accentColor, size: 32),
+              child: Icon(icon, color: accentColor, size: Responsive.iconSize(context, 32)),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -311,7 +312,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                     title,
                     style: GoogleFonts.inter(
                       color: colors.textSecondary,
-                      fontSize: 14,
+                      fontSize: Responsive.fontSize(context, 14),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -319,7 +320,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                     value,
                     style: GoogleFonts.inter(
                       color: colors.primary,
-                      fontSize: 24,
+                      fontSize: Responsive.fontSize(context, 24),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -334,7 +335,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
 
   Widget _buildRecentServices(AppColors colors, String tallerId) {
     return AppCard(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(Responsive.padding(context, 24)),
       margin: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -346,7 +347,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                 'Servicios Recientes',
                 style: GoogleFonts.inter(
                   fontWeight: FontWeight.bold,
-                  fontSize: 18,
+                  fontSize: Responsive.fontSize(context, 18),
                   color: colors.primary,
                 ),
               ),
@@ -397,7 +398,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
   Widget _buildServiceTile(ServiceRecordModel record, AppColors colors) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(Responsive.padding(context, 16)),
       decoration: BoxDecoration(
         color: colors.surfaceContainer,
         borderRadius: BorderRadius.circular(16),
@@ -406,12 +407,12 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(Responsive.padding(context, 12)),
             decoration: BoxDecoration(
               color: colors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(Icons.build_circle, color: colors.primary, size: 24),
+            child: Icon(Icons.build_circle, color: colors.primary, size: Responsive.iconSize(context, 24)),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -423,14 +424,14 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.bold,
                     color: colors.primary,
-                    fontSize: 16,
+                    fontSize: Responsive.fontSize(context, 16),
                   ),
                 ),
                 Text(
                   DateFormat('dd MMM yyyy').format(record.fecha),
                   style: GoogleFonts.inter(
                     color: colors.textSecondary,
-                    fontSize: 12,
+                    fontSize: Responsive.fontSize(context, 12),
                   ),
                 ),
               ],
@@ -442,7 +443,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.bold,
                 color: colors.secondary,
-                fontSize: 16,
+                fontSize: Responsive.fontSize(context, 16),
               ),
             ),
         ],

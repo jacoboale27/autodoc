@@ -7,6 +7,7 @@ import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
+import 'package:autodoc/core/utils/responsive.dart';
 
 class VehicleSearchScreen extends StatefulWidget {
   const VehicleSearchScreen({super.key});
@@ -78,7 +79,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
                 'Panel de Taller',
                 style: GoogleFonts.inter(
                   color: colors.primary,
-                  fontSize: 16,
+                  fontSize: Responsive.fontSize(context, 16),
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -129,7 +130,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
   Widget _buildTopBar(AppColors colors, ThemeData theme) {
     return Container(
       height: 64,
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+      padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 32)),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         border: Border(
@@ -143,7 +144,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
             'BUSCAR VEHÍCULO',
             style: GoogleFonts.inter(
               fontWeight: FontWeight.w900,
-              fontSize: 20,
+              fontSize: Responsive.fontSize(context, 20),
               color: colors.primary,
               letterSpacing: -0.5,
             ),
@@ -155,11 +156,11 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
               CircleAvatar(
                 radius: 18,
                 backgroundColor: colors.primary,
-                child: const Text(
+                child: Text(
                   'ML',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 12,
+                    fontSize: Responsive.fontSize(context, 12),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -196,7 +197,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
           ),
           SizedBox(height: isMobile ? 24 : 40),
           Container(
-            padding: const EdgeInsets.all(4),
+            padding: EdgeInsets.all(Responsive.padding(context, 4)),
             decoration: BoxDecoration(
               color: colors.surfaceContainer,
               borderRadius: BorderRadius.circular(100),
@@ -266,7 +267,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
     final recentSearches = vehicleProvider.recentSearches;
 
     return AppCard(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(Responsive.padding(context, 24)),
       margin: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -279,10 +280,10 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
                 style: GoogleFonts.inter(
                   fontWeight: FontWeight.bold,
                   color: colors.primary,
-                  fontSize: 16,
+                  fontSize: Responsive.fontSize(context, 16),
                 ),
               ),
-              Icon(Icons.history, size: 20, color: colors.primary),
+              Icon(Icons.history, size: Responsive.iconSize(context, 20), color: colors.primary),
             ],
           ),
           const SizedBox(height: 16),
@@ -294,7 +295,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
                   'No hay búsquedas recientes',
                   style: GoogleFonts.inter(
                     color: colors.textSecondary.withValues(alpha: 0.5),
-                    fontSize: 13,
+                    fontSize: Responsive.fontSize(context, 13),
                   ),
                 ),
               ),
@@ -317,12 +318,12 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: EdgeInsets.all(Responsive.padding(context, 10)),
               decoration: BoxDecoration(
                 color: colors.surfaceContainer,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(Icons.directions_car, size: 20, color: colors.primary),
+              child: Icon(Icons.directions_car, size: Responsive.iconSize(context, 20), color: colors.primary),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -333,14 +334,14 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
                     vehicle.placa,
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.bold,
-                      fontSize: 15,
+                      fontSize: Responsive.fontSize(context, 15),
                       color: colors.primary,
                     ),
                   ),
                   Text(
                     '${vehicle.marca} ${vehicle.modelo} • ${vehicle.anio}',
                     style: GoogleFonts.inter(
-                      fontSize: 11,
+                      fontSize: Responsive.fontSize(context, 11),
                       color: colors.textSecondary,
                     ),
                   ),
@@ -349,7 +350,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
             ),
             Icon(
               Icons.arrow_forward_ios,
-              size: 14,
+              size: Responsive.iconSize(context, 14),
               color: colors.primary.withValues(alpha: 0.3),
             ),
           ],
@@ -360,7 +361,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
 
   Widget _buildAssistantCard(bool isMobile, AppColors colors) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(Responsive.padding(context, 20)),
       decoration: BoxDecoration(
         color: colors.primary.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(20),
@@ -370,7 +371,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.info_outline, color: colors.secondary, size: 24),
+              Icon(Icons.info_outline, color: colors.secondary, size: Responsive.iconSize(context, 24)),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -378,7 +379,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.bold,
                     color: colors.primary,
-                    fontSize: 14,
+                    fontSize: Responsive.fontSize(context, 14),
                   ),
                 ),
               ),
@@ -387,7 +388,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
           const SizedBox(height: 8),
           Text(
             'Escanee el VIN en el marco de la puerta del conductor para resultados automáticos.',
-            style: GoogleFonts.inter(fontSize: 12, color: colors.textSecondary),
+            style: GoogleFonts.inter(fontSize: Responsive.fontSize(context, 12), color: colors.textSecondary),
           ),
           const SizedBox(height: 12),
           Align(
@@ -397,7 +398,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
               child: Text(
                 'SABER MÁS',
                 style: GoogleFonts.inter(
-                  fontSize: 12,
+                  fontSize: Responsive.fontSize(context, 12),
                   fontWeight: FontWeight.bold,
                   color: colors.secondary,
                 ),

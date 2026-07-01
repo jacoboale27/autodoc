@@ -9,6 +9,7 @@ import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/widgets/app_scaffold.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:go_router/go_router.dart';
+import 'package:autodoc/core/utils/responsive.dart';
 
 class TaskConfigScreen extends StatefulWidget {
   final MaintenanceTask task;
@@ -66,13 +67,13 @@ class _TaskConfigScreenState extends State<TaskConfigScreen> {
 
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(Responsive.padding(context, 20)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Task info card
                   AppCard(
-                    padding: const EdgeInsets.all(20),
+                    padding: EdgeInsets.all(Responsive.padding(context, 20)),
                     child: Row(
                       children: [
                         Container(
@@ -83,7 +84,7 @@ class _TaskConfigScreenState extends State<TaskConfigScreen> {
                             borderRadius: BorderRadius.circular(14),
                           ),
                           child: Icon(Icons.build_circle_outlined,
-                              color: primary, size: 28),
+                              color: primary, size: Responsive.iconSize(context, 28)),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -93,13 +94,13 @@ class _TaskConfigScreenState extends State<TaskConfigScreen> {
                               Text(widget.task.nombre,
                                   style: GoogleFonts.inter(
                                       fontWeight: FontWeight.w700,
-                                      fontSize: 17,
+                                      fontSize: Responsive.fontSize(context, 17),
                                       color: textColor)),
                               const SizedBox(height: 4),
                               Text(
                                 'Último servicio: ${widget.task.ultimoKm} km',
                                 style: TextStyle(
-                                    fontSize: 13, color: subTextColor),
+                                    fontSize: Responsive.fontSize(context, 13), color: subTextColor),
                               ),
                             ],
                           ),
@@ -111,11 +112,11 @@ class _TaskConfigScreenState extends State<TaskConfigScreen> {
                   const SizedBox(height: 28),
                   Text('FRECUENCIA DE MANTENIMIENTO',
                       style: GoogleFonts.inter(
-                          fontSize: 11, fontWeight: FontWeight.w700,
+                          fontSize: Responsive.fontSize(context, 11), fontWeight: FontWeight.w700,
                           letterSpacing: 1.2, color: subTextColor)),
                   const SizedBox(height: 4),
                   Text('Ajusta cada cuántos kilómetros y meses se debe realizar este servicio.',
-                      style: GoogleFonts.inter(fontSize: 13, color: subTextColor)),
+                      style: GoogleFonts.inter(fontSize: Responsive.fontSize(context, 13), color: subTextColor)),
                   const SizedBox(height: 20),
 
                   AppTextField(
@@ -138,7 +139,7 @@ class _TaskConfigScreenState extends State<TaskConfigScreen> {
                   // Quick presets
                   Text('PREAJUSTES RÁPIDOS',
                       style: GoogleFonts.inter(
-                          fontSize: 11, fontWeight: FontWeight.w700,
+                          fontSize: Responsive.fontSize(context, 11), fontWeight: FontWeight.w700,
                           letterSpacing: 1.2, color: subTextColor)),
                   const SizedBox(height: 12),
                   Wrap(
@@ -172,7 +173,7 @@ class _TaskConfigScreenState extends State<TaskConfigScreen> {
 
   Widget _presetChip(String label, int km, int months, Color primary) {
     return ActionChip(
-      label: Text(label, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600)),
+      label: Text(label, style: GoogleFonts.inter(fontSize: Responsive.fontSize(context, 12), fontWeight: FontWeight.w600)),
       backgroundColor: primary.withValues(alpha: 0.1),
       labelStyle: TextStyle(color: primary),
       side: BorderSide(color: primary.withValues(alpha: 0.2)),

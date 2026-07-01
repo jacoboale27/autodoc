@@ -7,6 +7,7 @@ import '../widgets/admin_sidebar.dart';
 import '../widgets/taller_admin_card.dart';
 import '../widgets/mecanico_admin_card.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/utils/responsive.dart';
 
 class AdminTalleresScreen extends StatefulWidget {
   const AdminTalleresScreen({super.key});
@@ -85,7 +86,7 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                           Text(
                             'Mecánicos registrados',
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: Responsive.fontSize(context, 18),
                               fontWeight: FontWeight.bold,
                               color: colors.textPrimary,
                             ),
@@ -94,7 +95,7 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                           Text(
                             '${mecanicos.length} usuario${mecanicos.length == 1 ? '' : 's'} con rol Taller o Mecánico',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: Responsive.fontSize(context, 13),
                               color: colors.textSecondary,
                             ),
                           ),
@@ -105,7 +106,7 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                   if (mecanicos.isEmpty)
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                        padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 16), vertical: Responsive.padding(context, 24)),
                         child: Center(
                           child: Text(
                             'No hay mecánicos registrados en la plataforma',
@@ -149,7 +150,7 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                             Text(
                               'Solicitudes formales (colección Talleres)',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: Responsive.fontSize(context, 16),
                                 fontWeight: FontWeight.bold,
                                 color: colors.textPrimary,
                               ),
@@ -176,7 +177,7 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                     if (talleresFiltrados.isEmpty)
                       SliverToBoxAdapter(
                         child: Padding(
-                          padding: const EdgeInsets.all(24),
+                          padding: EdgeInsets.all(Responsive.padding(context, 24)),
                           child: Center(
                             child: Text(
                               'No hay talleres con este filtro',

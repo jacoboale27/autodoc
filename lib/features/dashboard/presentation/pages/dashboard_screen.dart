@@ -15,6 +15,8 @@ import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:uuid/uuid.dart';
 import 'package:autodoc/core/widgets/app_bottom_nav_bar.dart';
+import 'package:autodoc/core/widgets/app_top_nav_bar.dart';
+import 'package:autodoc/core/utils/responsive.dart';
 import '../widgets/add_vehicle_form.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -79,9 +81,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.only(
-                  bottom: 120,
-                ), // For bottom nav and FAB
+                padding: EdgeInsets.only(
+                  bottom: Responsive.isDesktop(context) ? Responsive.padding(context, 24) : Responsive.padding(context, 120),
+                  top: Responsive.isDesktop(context) ? Responsive.size(context, 100) : 0,
+                ), // Adjust padding based on navbars
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -139,35 +142,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 foregroundColor: isDark ? colors.secondary : Colors.white,
                 elevation: 8,
                 shape: const CircleBorder(),
-                child: const Icon(Icons.add, size: 32),
+                child: Icon(Icons.add, size: Responsive.iconSize(context, 32)),
               ),
             ),
 
-            // Bottom Navbar
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: AppBottomNavBar(
-                currentIndex: 0,
-                onTap: (index) {
-                  switch (index) {
-                    case 0:
-                      context.go('/dashboard');
-                      break;
-                    case 1:
-                      context.push('/garage');
-                      break;
-                    case 2:
-                      context.push('/workshop_directory');
-                      break;
-                    case 3:
-                      context.push('/user_profile');
-                      break;
-                  }
-                },
+            // Bottom Navbar (Only on mobile)
+            if (!Responsive.isDesktop(context))
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: AppBottomNavBar(
+                  currentIndex: 0,
+                  onTap: (index) {
+                    switch (index) {
+                      case 0:
+                        context.go('/dashboard');
+                        break;
+                      case 1:
+                        context.push('/garage');
+                        break;
+                      case 2:
+                        context.push('/workshop_directory');
+                        break;
+                      case 3:
+                        context.push('/user_profile');
+                        break;
+                    }
+                  },
+                ),
               ),
-            ),
+              
+            // Top Navbar (Only on desktop)
+            if (Responsive.isDesktop(context))
+              const Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: AppTopNavBar(),
+              ),
           ],
         ),
       ),
@@ -185,7 +198,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         authProvider.user?.displayName?.split(' ').first ?? 'Usuario';
 
     return Padding(
-      padding: const EdgeInsets.all(24.0),
+      padding: EdgeInsets.all(Responsive.padding(context, 24.0)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -195,7 +208,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Text(
                 'Hola, $userName 👋',
                 style: GoogleFonts.inter(
-                  fontSize: 28,
+                  fontSize: Responsive.fontSize(context, 28),
                   fontWeight: FontWeight.bold,
                   color: textColor,
                   letterSpacing: -0.5,
@@ -205,7 +218,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Text(
                 '¿Listo para la carretera hoy?',
                 style: GoogleFonts.inter(
-                  fontSize: 14,
+                  fontSize: Responsive.fontSize(context, 14),
                   fontWeight: FontWeight.w500,
                   color: subTextColor,
                 ),
@@ -217,8 +230,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Stack(
               children: [
                 Container(
-                  width: 48,
-                  height: 48,
+                  width: Responsive.size(context, 48),
+                  height: Responsive.size(context, 48),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2),
@@ -235,8 +248,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   bottom: 0,
                   right: 0,
                   child: Container(
-                    width: 12,
-                    height: 12,
+                    width: Responsive.size(context, 12),
+                    height: Responsive.size(context, 12),
                     decoration: BoxDecoration(
                       color: context.appColors.secondary,
                       shape: BoxShape.circle,
@@ -294,7 +307,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 24)),
       child: AppCard(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         margin: EdgeInsets.zero,
@@ -306,7 +319,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 color: semColor.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
-              child: Icon(semIcon, color: semColor, size: 22),
+              child: Icon(semIcon, color: semColor, size: Responsive.iconSize(context, 22)),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -316,7 +329,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Text(
                     'Estado de Mantenimiento',
                     style: GoogleFonts.inter(
-                      fontSize: 11,
+                      fontSize: Responsive.fontSize(context, 11),
                       fontWeight: FontWeight.bold,
                       color: colors.textSecondary,
                       letterSpacing: 0.8,
@@ -326,7 +339,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Text(
                     semLabel,
                     style: GoogleFonts.inter(
-                      fontSize: 13,
+                      fontSize: Responsive.fontSize(context, 13),
                       fontWeight: FontWeight.w600,
                       color: semColor,
                     ),
@@ -389,7 +402,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               child: Icon(
                 Icons.directions_car_filled_outlined,
-                size: 48,
+                size: Responsive.iconSize(context, 48),
                 color: primary,
               ),
             ),
@@ -397,7 +410,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Text(
               'No hay vehiculos registrados',
               style: GoogleFonts.inter(
-                fontSize: 20,
+                fontSize: Responsive.fontSize(context, 20),
                 fontWeight: FontWeight.bold,
                 color: textColor,
               ),
@@ -456,7 +469,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         child: Text(
                           'VEHICULO PRINCIPAL',
                           style: GoogleFonts.inter(
-                            fontSize: 10,
+                            fontSize: Responsive.fontSize(context, 10),
                             fontWeight: FontWeight.bold,
                             color: primary,
                             letterSpacing: 1,
@@ -467,7 +480,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Text(
                         '${vehicle.marca ?? ''} ${vehicle.modelo ?? ''} ${vehicle.anio ?? ''}',
                         style: GoogleFonts.inter(
-                          fontSize: 20,
+                          fontSize: Responsive.fontSize(context, 20),
                           fontWeight: FontWeight.bold,
                           color: textColor,
                         ),
@@ -498,7 +511,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               borderRadius: BorderRadius.circular(12),
               child: VehicleImageWidget(
                 imageUrl: vehicle.fotoUrl,
-                height: 140,
+                height: Responsive.heroHeight(context, 140),
                 width: double.infinity,
                 fit: BoxFit.cover,
               ),
@@ -635,14 +648,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 24)),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'Alertas Activas',
                 style: GoogleFonts.inter(
-                  fontSize: 18,
+                  fontSize: Responsive.fontSize(context, 18),
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -737,7 +750,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 color: statusColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: statusColor, size: 24),
+              child: Icon(icon, color: statusColor, size: Responsive.iconSize(context, 24)),
             ),
             const SizedBox(height: 12),
             Text(
@@ -819,13 +832,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Row(
         children: [
           Container(
-            width: 48,
-            height: 48,
+            width: Responsive.size(context, 48),
+            height: Responsive.size(context, 48),
             decoration: BoxDecoration(
               color: primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(Responsive.size(context, 12)),
             ),
-            child: Icon(icon, color: primary),
+            child: Icon(icon, color: primary, size: Responsive.iconSize(context, 24)),
           ),
           const SizedBox(width: 16),
           Expanded(

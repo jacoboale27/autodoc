@@ -9,6 +9,7 @@ import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_scaffold.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
+import 'package:autodoc/core/utils/responsive.dart';
 
 class ServiceHistoryScreen extends StatefulWidget {
   final String vehicleId;
@@ -40,7 +41,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
           style: GoogleFonts.inter(
             color: colors.textPrimary,
             fontWeight: FontWeight.bold,
-            fontSize: 18,
+            fontSize: Responsive.fontSize(context, 18),
           ),
         ),
       ),
@@ -48,7 +49,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
         children: [
           // Filter Tabs
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(Responsive.padding(context, 16.0)),
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(

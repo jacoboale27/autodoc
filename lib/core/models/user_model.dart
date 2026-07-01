@@ -12,6 +12,10 @@ class UserModel {
   final String? telefono;
   final String estado;
   final String? fcmToken;
+  final String? departamento;
+  final String? municipio;
+  final double? latitud;
+  final double? longitud;
 
   UserModel({
     required this.idUsuario,
@@ -25,6 +29,10 @@ class UserModel {
     this.telefono,
     this.estado = 'activo',
     this.fcmToken,
+    this.departamento,
+    this.municipio,
+    this.latitud,
+    this.longitud,
   });
 
   UserModel copyWith({
@@ -39,6 +47,10 @@ class UserModel {
     String? telefono,
     String? estado,
     String? fcmToken,
+    String? departamento,
+    String? municipio,
+    double? latitud,
+    double? longitud,
   }) {
     return UserModel(
       idUsuario: idUsuario ?? this.idUsuario,
@@ -52,6 +64,10 @@ class UserModel {
       telefono: telefono ?? this.telefono,
       estado: estado ?? this.estado,
       fcmToken: fcmToken ?? this.fcmToken,
+      departamento: departamento ?? this.departamento,
+      municipio: municipio ?? this.municipio,
+      latitud: latitud ?? this.latitud,
+      longitud: longitud ?? this.longitud,
     );
   }
 
@@ -68,6 +84,10 @@ class UserModel {
       if (telefono != null) 'telefono': telefono,
       'estado': estado,
       if (fcmToken != null) 'fcmToken': fcmToken,
+      if (departamento != null) 'departamento': departamento,
+      if (municipio != null) 'municipio': municipio,
+      if (latitud != null) 'latitud': latitud,
+      if (longitud != null) 'longitud': longitud,
     };
   }
 
@@ -84,6 +104,10 @@ class UserModel {
       telefono: map['telefono'],
       estado: map['estado'] ?? 'activo',
       fcmToken: map['fcmToken'],
+      departamento: map['departamento'],
+      municipio: map['municipio'],
+      latitud: (map['latitud'] as num?)?.toDouble(),
+      longitud: (map['longitud'] as num?)?.toDouble(),
     );
   }
 }

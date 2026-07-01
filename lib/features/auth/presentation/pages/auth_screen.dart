@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/utils/responsive.dart';
 
 class AuthScreen extends StatefulWidget {
   final bool isLogin;
@@ -86,8 +87,8 @@ class _AuthScreenState extends State<AuthScreen> {
               top: -100,
               left: -50,
               child: Container(
-                width: 300,
-                height: 300,
+                width: Responsive.size(context, 300),
+                height: Responsive.size(context, 300),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: colors.primary.withValues(alpha: isDark ? 0.1 : 0.05),
@@ -98,8 +99,8 @@ class _AuthScreenState extends State<AuthScreen> {
               bottom: -50,
               right: -100,
               child: Container(
-                width: 400,
-                height: 400,
+                width: Responsive.size(context, 400),
+                height: Responsive.size(context, 400),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: colors.secondary.withValues(alpha: isDark ? 0.1 : 0.05),
@@ -110,7 +111,12 @@ class _AuthScreenState extends State<AuthScreen> {
             // Main Content
             Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 60, 24, 100),
+                padding: EdgeInsets.fromLTRB(
+                  Responsive.padding(context, 24), 
+                  Responsive.padding(context, 60), 
+                  Responsive.padding(context, 24), 
+                  Responsive.padding(context, 100),
+                ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -172,7 +178,7 @@ class _AuthScreenState extends State<AuthScreen> {
             color: colors.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(20),
           ),
-          child: Icon(Icons.directions_car, color: colors.primary, size: 48),
+          child: Icon(Icons.directions_car, color: colors.primary, size: Responsive.iconSize(context, 48)),
         ),
         const SizedBox(height: 16),
         Text(
@@ -199,8 +205,8 @@ class _AuthScreenState extends State<AuthScreen> {
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // Reduced blur for performance
         child: Container(
           width: double.infinity,
-          constraints: const BoxConstraints(maxWidth: 450),
-          padding: const EdgeInsets.all(32),
+          constraints: BoxConstraints(maxWidth: Responsive.size(context, 450)),
+          padding: EdgeInsets.all(Responsive.padding(context, 32)),
           decoration: BoxDecoration(
             color: colors.surfaceContainer.withValues(alpha: isDark ? 0.7 : 0.8),
             borderRadius: BorderRadius.circular(24),
@@ -347,7 +353,7 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
         ),
         Container(
-          height: 52,
+          height: Responsive.size(context, 52),
           decoration: BoxDecoration(
             color: colors.surface,
             borderRadius: BorderRadius.circular(12),
@@ -360,7 +366,7 @@ class _AuthScreenState extends State<AuthScreen> {
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: AppTextStyles.bodyLarge.copyWith(color: colors.textSecondary),
-              prefixIcon: Icon(icon, color: colors.textSecondary, size: 20),
+              prefixIcon: Icon(icon, color: colors.textSecondary, size: Responsive.iconSize(context, 20)),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(vertical: 15),
             ),

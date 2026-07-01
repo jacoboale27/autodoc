@@ -370,6 +370,7 @@ class AlertProvider extends ChangeNotifier {
     required int nuevoKilometraje,
     required String tallerId,
     required String descripcion,
+    File? receiptImage,
   }) async {
     _isLoading = true;
     notifyListeners();
@@ -388,6 +389,17 @@ class AlertProvider extends ChangeNotifier {
       final task = taskIndex != -1 ? _maintenanceTasks[taskIndex] : null;
       final vehicleId = task?.vehicleId ?? 'desconocido';
 
+      String? receiptUrl;
+      if (receiptImage != null) {
+        final ref = FirebaseStorage.instance
+            .ref()
+            .child('facturas')
+            .child(vehicleId)
+            .child('${DateTime.now().millisecondsSinceEpoch}.jpg');
+        await ref.putFile(receiptImage);
+        receiptUrl = await ref.getDownloadURL();
+      }
+
       // 3. Registrar en colección servicios (tabla Servicios del esquema)
       await _firestore.collection('servicios').add({
         'id_vehiculo': vehicleId,
@@ -397,7 +409,7 @@ class AlertProvider extends ChangeNotifier {
         'kilometraje_servicio': nuevoKilometraje,
         'descripcion': descripcion,
         'costo': null,
-        'foto_factura_url': null,
+        'foto_factura_url': receiptUrl,
       });
 
       // 4. Registrar en historial_mantenimientos

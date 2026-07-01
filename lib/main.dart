@@ -3,7 +3,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
+import 'package:autodoc/core/providers/language_provider.dart';
+import 'package:autodoc/core/services/translation_service.dart';
 import 'package:autodoc/firebase_options.dart';
 import 'package:autodoc/core/router/app_router.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
@@ -23,26 +26,75 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
   
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  
-  final messaging = FirebaseMessaging.instance;
-  await messaging.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
+  // 1. Inicializar Firebase
+  try {
+    debugPrint("=== [AutoDoc Init] Inicializando Firebase ===");
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    debugPrint("=== [AutoDoc Init] Firebase inicializado con éxito ===");
+  } catch (e, stack) {
+    debugPrint("=== [AutoDoc Init] ERROR al inicializar Firebase: $e ===");
+    debugPrint(stack.toString());
+  }
 
-  // Inicializar notificaciones locales y foreground FCM
-  await NotificationService().initialize();
+  // 2. Configurar Firebase Messaging y permisos de notificaciones
+  try {
+    debugPrint("=== [AutoDoc Init] Configurando Firebase Messaging ===");
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    
+    final messaging = FirebaseMessaging.instance;
+    await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    ).timeout(
+      const Duration(seconds: 5),
+    );
+    debugPrint("=== [AutoDoc Init] Permisos de notificación configurados ===");
+  } catch (e, stack) {
+    debugPrint("=== [AutoDoc Init] ERROR en Firebase Messaging: $e ===");
+    debugPrint(stack.toString());
+  }
+
+  // 3. Inicializar Local Notifications y FCM en foreground
+  try {
+    debugPrint("=== [AutoDoc Init] Inicializando NotificationService ===");
+    await NotificationService().initialize().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        debugPrint("=== [AutoDoc Init] TIMEOUT en NotificationService.initialize(). Continuando... ===");
+      },
+    );
+    debugPrint("=== [AutoDoc Init] NotificationService inicializado ===");
+  } catch (e, stack) {
+    debugPrint("=== [AutoDoc Init] ERROR al inicializar NotificationService: $e ===");
+    debugPrint(stack.toString());
+  }
+
+  // 4. Inicializar Hive y cache de traducción
+  try {
+    debugPrint("=== [AutoDoc Init] Inicializando Hive y TranslationService ===");
+    await Hive.initFlutter(); // ¡IMPORTANTE! Inicializa Hive para Flutter antes de abrir boxes.
+    await TranslationService().initialize().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        debugPrint("=== [AutoDoc Init] TIMEOUT al inicializar TranslationService. Continuando... ===");
+      },
+    );
+    debugPrint("=== [AutoDoc Init] TranslationService inicializado con éxito ===");
+  } catch (e, stack) {
+    debugPrint("=== [AutoDoc Init] ERROR al inicializar Hive/TranslationService: $e ===");
+    debugPrint(stack.toString());
+  }
   
+  debugPrint("=== [AutoDoc Init] Inicialización completa. Lanzando runApp ===");
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => VehicleProvider()),
         ChangeNotifierProvider(create: (_) => AlertProvider()),

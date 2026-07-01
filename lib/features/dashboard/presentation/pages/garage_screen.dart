@@ -15,6 +15,7 @@ import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 import '../widgets/add_vehicle_form.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:autodoc/core/utils/responsive.dart';
 
 class GarageScreen extends StatelessWidget {
   const GarageScreen({super.key});
@@ -43,7 +44,7 @@ class GarageScreen extends StatelessWidget {
                   ? _buildEmptyState(context, colors)
                   : AnimationLimiter(
                       child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
+                        padding: EdgeInsets.all(Responsive.padding(context, 16)),
                         itemCount: vehicles.length,
                         itemBuilder: (context, index) {
                           final vehicle = vehicles[index];
@@ -75,7 +76,7 @@ class GarageScreen extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context, AppColors colors) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(Responsive.padding(context, 16)),
       decoration: BoxDecoration(
         color: colors.surfaceContainer.withValues(alpha: 0.8),
         border: Border(
@@ -93,7 +94,7 @@ class GarageScreen extends StatelessWidget {
           Text(
             'Mis Vehículos',
             style: GoogleFonts.inter(
-              fontSize: 18,
+              fontSize: Responsive.fontSize(context, 18),
               fontWeight: FontWeight.bold,
               color: colors.textPrimary,
             ),
@@ -129,14 +130,14 @@ class GarageScreen extends StatelessWidget {
         children: [
           Icon(
             Icons.directions_car_outlined,
-            size: 64,
+            size: Responsive.iconSize(context, 64),
             color: colors.primary.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
             'No tienes vehículos en tu garaje',
             style: GoogleFonts.inter(
-              fontSize: 16,
+              fontSize: Responsive.fontSize(context, 16),
               fontWeight: FontWeight.w500,
               color: colors.textSecondary,
             ),
@@ -170,7 +171,7 @@ class GarageScreen extends StatelessWidget {
           children: [
             // Image Section
             SizedBox(
-              height: 192,
+              height: Responsive.heroHeight(context, 192),
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -266,7 +267,7 @@ class GarageScreen extends StatelessWidget {
                         Text(
                           '${vehicle.marca ?? ''} ${vehicle.modelo ?? ''}',
                           style: GoogleFonts.inter(
-                            fontSize: 20,
+                            fontSize: Responsive.fontSize(context, 20),
                             fontWeight: FontWeight.bold,
                             color: colors.primary,
                           ),

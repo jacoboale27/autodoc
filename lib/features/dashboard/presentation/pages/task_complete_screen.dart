@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:intl/intl.dart';
+import 'package:autodoc/core/utils/responsive.dart';
 
 class TaskCompleteScreen extends StatefulWidget {
   final MaintenanceTask task;
@@ -95,14 +96,14 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
 
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(Responsive.padding(context, 20)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Task summary card
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(20),
+                    padding: EdgeInsets.all(Responsive.padding(context, 20)),
                     decoration: BoxDecoration(
                       color: cardColor,
                       borderRadius: BorderRadius.circular(16),
@@ -145,7 +146,7 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
                           ),
                           const SizedBox(height: 16),
                           Container(
-                            padding: const EdgeInsets.all(12),
+                            padding: EdgeInsets.all(Responsive.padding(context, 12)),
                             decoration: BoxDecoration(
                               color: primary.withValues(alpha: isDark ? 0.1 : 0.05),
                               borderRadius: BorderRadius.circular(10),
@@ -247,7 +248,7 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
                           child: GestureDetector(
                             onTap: () => setState(() => _receiptImage = null),
                             child: Container(
-                              padding: const EdgeInsets.all(6),
+                              padding: EdgeInsets.all(Responsive.padding(context, 6)),
                               decoration: const BoxDecoration(
                                 color: Colors.black54,
                                 shape: BoxShape.circle,
@@ -259,7 +260,7 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
                         Positioned(
                           bottom: 8, left: 8,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 10), vertical: Responsive.padding(context, 4)),
                             decoration: BoxDecoration(
                               color: Colors.green,
                               borderRadius: BorderRadius.circular(8),
@@ -363,7 +364,7 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
     required Color borderColor,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(Responsive.padding(context, 16)),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(14),

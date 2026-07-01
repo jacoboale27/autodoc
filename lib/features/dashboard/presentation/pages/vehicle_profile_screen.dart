@@ -13,6 +13,7 @@ import 'package:autodoc/core/widgets/app_scaffold.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import '../widgets/share_vehicle_sheet.dart';
+import 'package:autodoc/core/utils/responsive.dart';
 
 class VehicleProfileScreen extends StatefulWidget {
   final VehicleModel vehicle;
@@ -88,7 +89,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
             Text(
               'Perfil del Vehículo',
               style: GoogleFonts.inter(
-                fontSize: 18,
+                fontSize: Responsive.fontSize(context, 18),
                 fontWeight: FontWeight.bold,
                 color: colors.textPrimary,
               ),
@@ -241,14 +242,14 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
 
   Widget _buildTechnicalDetails(VehicleModel vehicle, AppColors colors) {
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(Responsive.padding(context, 20)),
       child: GridView.count(
-        crossAxisCount: 2,
+        crossAxisCount: Responsive.isDesktop(context) ? 4 : 2,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        mainAxisSpacing: 16,
-        crossAxisSpacing: 16,
-        childAspectRatio: 1.25,
+        mainAxisSpacing: Responsive.padding(context, 16),
+        crossAxisSpacing: Responsive.padding(context, 16),
+        childAspectRatio: Responsive.isDesktop(context) ? 2.0 : 1.25,
         children: [
           _buildDetailItem(Icons.calendar_today, 'Año', vehicle.anio?.toString() ?? 'N/A', colors),
           _buildDetailItem(Icons.palette, 'Color', vehicle.color ?? 'N/A', colors),
@@ -270,7 +271,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
       padding: EdgeInsets.zero,
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(Responsive.padding(context, 12)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -279,23 +280,23 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(icon, color: colors.primary, size: 20),
-                if (onTap != null) Icon(Icons.edit, color: colors.primary.withValues(alpha: 0.5), size: 14),
+                Icon(icon, color: colors.primary, size: Responsive.iconSize(context, 20)),
+                if (onTap != null) Icon(Icons.edit, color: colors.primary.withValues(alpha: 0.5), size: Responsive.iconSize(context, 14)),
               ],
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: Responsive.padding(context, 6)),
             Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 11, color: colors.textSecondary, fontWeight: FontWeight.w500, height: 1.2),
+              style: TextStyle(fontSize: Responsive.fontSize(context, 11), color: colors.textSecondary, fontWeight: FontWeight.w500, height: 1.2),
             ),
-            const SizedBox(height: 2),
+            SizedBox(height: Responsive.padding(context, 2)),
             Text(
               value,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: colors.textPrimary, height: 1.2),
+              style: TextStyle(fontSize: Responsive.fontSize(context, 14), fontWeight: FontWeight.bold, color: colors.textPrimary, height: 1.2),
             ),
           ],
         ),

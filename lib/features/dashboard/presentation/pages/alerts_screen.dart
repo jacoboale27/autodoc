@@ -13,6 +13,7 @@ import 'package:autodoc/core/widgets/app_scaffold.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
+import 'package:autodoc/core/utils/responsive.dart';
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
@@ -98,7 +99,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
               Text(
                 'Alertas',
                 style: GoogleFonts.inter(
-                  fontSize: 20,
+                  fontSize: Responsive.fontSize(context, 20),
                   fontWeight: FontWeight.bold,
                   color: primary,
                 ),
@@ -149,7 +150,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 child: Text(
                   tabs[i],
                   style: GoogleFonts.inter(
-                    fontSize: 14,
+                    fontSize: Responsive.fontSize(context, 14),
                     fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
                     color: isActive ? primary : subTextColor,
                   ),
@@ -219,14 +220,14 @@ class _AlertsScreenState extends State<AlertsScreen> {
           children: [
             Icon(
               Icons.verified_outlined,
-              size: 56,
+              size: Responsive.iconSize(context, 56),
               color: Colors.green.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
               '¡Todo al día!',
               style: GoogleFonts.inter(
-                fontSize: 18,
+                fontSize: Responsive.fontSize(context, 18),
                 fontWeight: FontWeight.bold,
                 color: textColor,
               ),
@@ -242,7 +243,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
     }
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(Responsive.padding(context, 16)),
       children: [
         // Mileage indicator
         _buildMileageChip(currentKm, primary, isDark),
@@ -359,7 +360,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
       ),
       child: Row(
         children: [
-          Icon(Icons.speed, color: primary, size: 20),
+          Icon(Icons.speed, color: primary, size: Responsive.iconSize(context, 20)),
           const SizedBox(width: 10),
           Text(
             'Kilometraje actual: ',
@@ -472,10 +473,10 @@ class _AlertsScreenState extends State<AlertsScreen> {
                           ),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Icon(
+              child: Icon(
                           Icons.build_circle_outlined,
                           color: accentColor,
-                          size: 24,
+                          size: Responsive.iconSize(context, 24),
                         ),
                       ),
                       const SizedBox(width: 12),

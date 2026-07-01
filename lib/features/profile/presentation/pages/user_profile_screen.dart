@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
+import 'package:autodoc/core/utils/responsive.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({super.key});
@@ -110,20 +111,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
     if (user == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Profile')),
+        appBar: AppBar(title: Text('Profile')),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.person_off_outlined, size: 64, color: Colors.grey),
+              Icon(Icons.person_off_outlined, size: Responsive.iconSize(context, 64), color: Colors.grey),
               const SizedBox(height: 16),
-              const Text('Profile data not found', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('Profile data not found', style: TextStyle(fontSize: Responsive.fontSize(context, 18), fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Text(authProvider.error ?? 'Please complete your profile setup.', textAlign: TextAlign.center),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () => context.go('/profile_setup'),
-                child: const Text('Setup Profile'),
+                child: Text('Setup Profile'),
               ),
               TextButton(
                 onPressed: () async {
@@ -131,7 +132,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   await authProvider.signOut();
                   router.go('/login');
                 },
-                child: const Text('Sign Out', style: TextStyle(color: Colors.red)),
+                child: Text('Sign Out', style: TextStyle(color: Colors.red)),
               ),
             ],
           ),
@@ -156,7 +157,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               _buildAppBar(context, primaryPurple, textColor),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24.0),
+                  padding: EdgeInsets.all(Responsive.padding(context, 24.0)),
                   child: Column(
                     children: [
                       _buildProfileHeader(user, primaryPurple, accentColor, textColor),
@@ -184,7 +185,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       height: 20,
                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                     )
-                  : const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                  : Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
               icon: isLoading ? null : const Icon(Icons.check, color: Colors.white),
             )
           : null,
@@ -193,18 +194,18 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Widget _buildAppBar(BuildContext context, Color primary, Color textColor) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 16.0), vertical: Responsive.padding(context, 8.0)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+            icon: Icon(Icons.arrow_back_ios_new, size: Responsive.iconSize(context, 20)),
           ),
           Text(
             'My Profile',
             style: GoogleFonts.inter(
-              fontSize: 18,
+              fontSize: Responsive.fontSize(context, 18),
               fontWeight: FontWeight.bold,
               color: textColor,
             ),
@@ -248,7 +249,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         placeholder: (context, url) => Container(color: Colors.grey[200]),
                         errorWidget: (context, url, error) => Container(
                           color: primary.withValues(alpha: 0.1),
-                          child: Icon(Icons.person, size: 60, color: primary),
+                          child: Icon(Icons.person, size: Responsive.iconSize(context, 60), color: primary),
                         ),
                       ),
               ),
@@ -260,13 +261,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 child: GestureDetector(
                   onTap: _pickImage,
                   child: Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: EdgeInsets.all(Responsive.padding(context, 8)),
                     decoration: BoxDecoration(
                       color: primary,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
                     ),
-                    child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                    child: Icon(Icons.camera_alt, color: Colors.white, size: Responsive.iconSize(context, 20)),
                   ),
                 ),
               ),
@@ -276,7 +277,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         Text(
           user.nombreCompleto,
           style: GoogleFonts.inter(
-            fontSize: 24,
+            fontSize: Responsive.fontSize(context, 24),
             fontWeight: FontWeight.bold,
             color: textColor,
           ),
@@ -284,7 +285,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         Text(
           user.rol,
           style: GoogleFonts.inter(
-            fontSize: 14,
+            fontSize: Responsive.fontSize(context, 14),
             fontWeight: FontWeight.w600,
             color: primary,
           ),
@@ -295,7 +296,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Widget _buildInfoSection(UserModel user, Color primary, bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(Responsive.padding(context, 24)),
       decoration: BoxDecoration(
         color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(24),
@@ -324,7 +325,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final themeProvider = context.watch<ThemeProvider>();
     
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(Responsive.padding(context, 24)),
       decoration: BoxDecoration(
         color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(24),
@@ -336,7 +337,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           Text(
             'Settings',
             style: GoogleFonts.inter(
-              fontSize: 14,
+              fontSize: Responsive.fontSize(context, 14),
               fontWeight: FontWeight.bold,
               color: primary,
               letterSpacing: 0.5,
@@ -383,12 +384,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(Responsive.padding(context, 8)),
           decoration: BoxDecoration(
             color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey[100],
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, size: 20, color: isDark ? Colors.white70 : Colors.grey[700]),
+          child: Icon(icon, size: Responsive.iconSize(context, 20), color: isDark ? Colors.white70 : Colors.grey[700]),
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -398,7 +399,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               Text(
                 title,
                 style: GoogleFonts.inter(
-                  fontSize: 16,
+                  fontSize: Responsive.fontSize(context, 16),
                   fontWeight: FontWeight.w600,
                   color: isDark ? Colors.white : const Color(0xFF1E293B),
                 ),
@@ -406,7 +407,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               Text(
                 subtitle,
                 style: GoogleFonts.inter(
-                  fontSize: 12,
+                  fontSize: Responsive.fontSize(context, 12),
                   color: isDark ? Colors.white54 : const Color(0xFF64748B),
                 ),
               ),
@@ -429,7 +430,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         Text(
           label,
           style: GoogleFonts.inter(
-            fontSize: 12,
+            fontSize: Responsive.fontSize(context, 12),
             fontWeight: FontWeight.bold,
             color: const Color(0xFF64748B),
             letterSpacing: 0.5,
@@ -440,7 +441,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           controller: controller,
           enabled: enabled,
           style: GoogleFonts.inter(
-            fontSize: 16,
+            fontSize: Responsive.fontSize(context, 16),
             fontWeight: FontWeight.w600,
             color: isDark ? Colors.white : const Color(0xFF1E293B),
           ),
@@ -448,7 +449,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             prefixIcon: Icon(icon, color: enabled ? primary : const Color(0xFF94A3B8), size: 20),
             filled: true,
             fillColor: enabled ? Colors.white : Colors.transparent,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 12),
+            contentPadding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 0), vertical: Responsive.padding(context, 12)),
             border: enabled
                 ? OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -476,7 +477,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         Text(
           label,
           style: GoogleFonts.inter(
-            fontSize: 12,
+            fontSize: Responsive.fontSize(context, 12),
             fontWeight: FontWeight.bold,
             color: const Color(0xFF64748B),
             letterSpacing: 0.5,
@@ -490,7 +491,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             Text(
               value,
               style: GoogleFonts.inter(
-                fontSize: 16,
+                fontSize: Responsive.fontSize(context, 16),
                 fontWeight: FontWeight.w600,
                 color: isDark ? Colors.white : const Color(0xFF1E293B),
               ),
@@ -510,9 +511,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         router.go('/login');
       },
       icon: const Icon(Icons.logout, color: Colors.red),
-      label: const Text('Sign Out', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+      label: Text('Sign Out', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
       style: TextButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 24), vertical: Responsive.padding(context, 12)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
