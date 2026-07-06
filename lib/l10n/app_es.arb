@@ -1,0 +1,444 @@
+{
+  "@@locale": "es",
+  "appName": "AutoDoc",
+  "@appName": {
+    "description": "El nombre de la aplicación"
+  },
+  "navPlatform": "Plataforma",
+  "navOwners": "Para Dueños",
+  "navWorkshops": "Talleres",
+  "navLogin": "Login",
+  "navTryFree": "Probar Gratis",
+  "authNoAccount": "¿No tienes una cuenta? ",
+  "authHaveAccount": "¿Ya tienes una cuenta? ",
+  "authRegisterFree": "Regístrate gratis",
+  "authLogin": "Inicia sesión",
+  "authCopilotSubtitle": "Tu copiloto para el control total de tu vehículo",
+  "authWelcomeBack": "Bienvenido de nuevo",
+  "authCreateAccount": "Crea tu cuenta",
+  "authEnterCredentials": "Ingresa tus credenciales para acceder",
+  "authRegisterToManage": "Regístrate para comenzar a gestionar tus documentos",
+  "authEmailOrUserLabel": "Correo o usuario",
+  "authEmailLabel": "Correo electrónico",
+  "authEmailOrUserHint": "nombre@ejemplo.com o usuario",
+  "authEmailHint": "nombre@ejemplo.com",
+  "authPasswordLabel": "Contraseña",
+  "authPasswordHint": "••••••••",
+  "authRememberMe": "Recordarme",
+  "authForgotPassword": "¿Olvidaste tu contraseña?",
+  "authLoginButton": "Iniciar Sesión",
+  "authRegisterButton": "Registrarse",
+  "authOrContinueWith": "O CONTINUAR CON",
+  "authGoogleLogin": "Entrar con Google",
+  "authTabLogin": "Login",
+  "authTabRegister": "Registro",
+  "authTabSupport": "Soporte",
+  "authForgotPassTitle": "Recuperar contraseña",
+  "authForgotPassDesc": "Te enviaremos un enlace a tu correo para restablecer la contraseña.",
+  "authCancel": "Cancelar",
+  "authSendLink": "Enviar enlace",
+  "authInvalidEmail": "Ingresa un correo válido.",
+  "authSendEmailError": "No se pudo enviar el correo.",
+  "authCheckInbox": "Revisa tu bandeja de entrada en ",
+  "authAndSpam": " (y la carpeta de spam).",
+  "authVerifyEmailTitle": "Verifica tu correo",
+  "authSentLinkTo": "Enviamos un enlace de verificación a:",
+  "authAccountNotVerified": "Tu cuenta aún no está verificada. Revisa el correo enviado a:",
+  "authOpenLinkThenVerify": "Abre el enlace del correo y luego pulsa \"Ya verifiqué\" para continuar.",
+  "authUnderstood": "Entendido",
+  "authContinueWithoutVerify": "Continuar sin verificar",
+  "authResendEmail": "Reenviar correo",
+  "authEmailResent": "Correo de verificación reenviado.",
+  "authResendError": "No se pudo reenviar.",
+  "authAlreadyVerified": "Ya verifiqué",
+  "authEmailVerifiedSuccess": "¡Correo verificado correctamente!",
+  "authVerificationNotDetected": "Aún no detectamos la verificación. Abre el enlace del correo e inténtalo de nuevo.",
+  "authSupportCenter": "Centro de soporte",
+  "authSupportDesc": "¿Necesitas ayuda con tu cuenta, verificación de correo o acceso?",
+  "authSupportEmail": "Correo de soporte",
+  "authEmailCopied": "Correo copiado al portapapeles",
+  "authEmailVerification": "Verificación de correo",
+  "authEmailNotReceived": "No llegó el correo → revisa spam o reenvía desde login",
+  "authLoginToResend": "Inicia sesión con tu correo para reenviar la verificación.",
+  "authForgotPassTileTitle": "Olvidé mi contraseña",
+  "authReceiveRecoveryLink": "Recibe un enlace de recuperación por correo",
+  "authSupportHours": "Horario de atención: Lun–Vie 8:00–18:00",
+  "heroBadge": "CONTROL TOTAL EN TU MANO",
+  "heroTitle": "Tu Garaje Virtual,\nElevado",
+  "heroSubtitle": "Digitaliza tu vehículo hoy. Historial clínico certificado, alertas inteligentes de SOAT y mantenimientos, conectado con los mejores talleres.",
+  "heroStartGarage": "Comenzar mi Garaje",
+  "heroViewDirectory": "Ver Directorio",
+  "commandCenterTitle": "Digital Command Center",
+  "commandCenterSubtitle": "Toma el mando de tu experiencia automotriz con herramientas diseñadas para tu tranquilidad.",
+  "tabGarageTitle": "Garaje Virtual",
+  "tabGarageSubtitle": "Centraliza la información de todos tus vehículos en un solo panel interactivo.",
+  "tabHistoryTitle": "Historial Digital",
+  "tabHistorySubtitle": "Cada servicio, factura y foto guardada de forma segura para siempre.",
+  "tabAlertsTitle": "Alertas Proactivas",
+  "tabAlertsSubtitle": "SOAT, seguros y cambios de aceite. Te avisamos antes de que sea tarde.",
+  "tabSyncTitle": "Conexión con Talleres",
+  "tabSyncSubtitle": "Sincronización directa con mecánicos para validación de servicios real.",
+  "valuePropTitle": "Tranquilidad para el conductor, eficiencia para el experto.",
+  "valuePropSubtitle": "Diseñamos una plataforma que rompe la barrera de desconfianza entre dueños y talleres. Con AutoDoc, cada intervención es clara, cada costo es justificado y cada vehículo mantiene su valor de reventa.",
+  "statSatisfaction": "Satisfacción del Usuario",
+  "statWorkshops": "Talleres Verificados",
+  "footerDesc": "Transformando la gestión automotriz a través de tecnología inteligente y transparencia garantizada.",
+  "footerOwners": "Para Dueños",
+  "footerWorkshops": "Para Talleres",
+  "footerSocial": "Social",
+  "footerCopyright": "© 2026 AutoDoc Technology. Hecho para conductores inteligentes.",
+  "dashHello": "Hola, {userName} 👋",
+  "@dashHello": {
+    "placeholders": {
+      "userName": {
+        "type": "String"
+      }
+    }
+  },
+  "dashReadyForRoad": "¿Listo para la carretera hoy?",
+  "dashMaintCritical": "Mantenimiento vencido — atención inmediata",
+  "dashMaintWarning": "Mantenimiento próximo — revisa las alertas",
+  "dashMaintOptimal": "Vehículo en buen estado",
+  "dashMaintStatusLabel": "Estado de Mantenimiento",
+  "dashNoVehicles": "No hay vehiculos registrados",
+  "dashNoVehiclesDesc": "Añade tu primer vehículo para empezar a controlar su mantenimiento y estado.",
+  "dashRegisterVehicle": "Registrar Vehículo",
+  "dashMainVehicle": "VEHICULO PRINCIPAL",
+  "dashLicensePlate": "Placa: {placa}",
+  "@dashLicensePlate": {
+    "placeholders": {
+      "placa": {
+        "type": "String"
+      }
+    }
+  },
+  "dashMileage": "KILOMETRAJE",
+  "dashKm": "km",
+  "dashViewVehicleState": "Ver Estado del Vehículo",
+  "dashAddVehicleError": "Error al agregar vehiculo",
+  "dashActiveAlerts": "Alertas Activas",
+  "dashViewAll": "Ver Todas",
+  "dashNoAlertsPending": "¡Excelente! No tienes alertas pendientes.",
+  "dashNearbyWorkshops": "Talleres Cercanos",
+  "dashViewAllWorkshops": "Ver todos",
+  "garageMyVehicles": "Mis Vehículos",
+  "garageNoVehicles": "No tienes vehículos en tu garaje",
+  "garageOptimal": "Óptimo",
+  "garageSuggestedReview": "Revisión Sugerida",
+  "garageMakePrimary": "Hacer Principal",
+  "garageNowPrimary": "{vehicleName} es ahora tu vehículo principal",
+  "@garageNowPrimary": {
+    "placeholders": {
+      "vehicleName": {
+        "type": "String"
+      }
+    }
+  },
+  "garageMakePrimaryError": "No se pudo establecer el vehículo principal",
+  "garageAddVehicleError": "Error al agregar vehiculo",
+  "vpProfileTitle": "Perfil del Vehículo",
+  "vpShareVehicle": "Compartir Vehículo",
+  "vpDeleteVehicle": "Eliminar Vehículo",
+  "vpActiveStatus": "ACTIVO",
+  "vpOwnerPersonal": "Propietario: Personal",
+  "vpYear": "Año",
+  "vpColor": "Color",
+  "vpMileage": "Kilometraje",
+  "vpKm": "km",
+  "vpBrand": "Marca",
+  "vpDocAndAlerts": "Documentación y Alertas",
+  "vpCirculationCard": "Tarjeta de Circulación",
+  "vpSoatInsurance": "Seguro SOAT",
+  "vpDateNotRegistered": "Fecha no registrada",
+  "vpUpdate": "Actualizar",
+  "vpExpiredOn": "Vencido el {date}",
+  "@vpExpiredOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "vpExpiresInDays": "Vence en {days} días ({date})",
+  "@vpExpiresInDays": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "vpRenew": "Renovar",
+  "vpUpdateMileage": "Actualizar Kilometraje",
+  "vpEnterNewMileage": "Ingresa el kilometraje actual. Debe ser mayor a {km} km.",
+  "@vpEnterNewMileage": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "vpNewMileageLabel": "Nuevo Kilometraje",
+  "vpEnterValue": "Ingresa un valor",
+  "vpEnterValidNumber": "Ingresa un número válido",
+  "vpMustBeGreaterThan": "Debe ser mayor a {km}",
+  "@vpMustBeGreaterThan": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "vpSave": "Guardar",
+  "vpMileageUpdatedSuccess": "Kilometraje actualizado correctamente",
+  "vpUpdateError": "Error al actualizar",
+  "vpConfirmDelete": "¿Estás seguro que deseas eliminar el {brand} {model}? Esta acción no se puede deshacer.",
+  "@vpConfirmDelete": {
+    "placeholders": {
+      "brand": {
+        "type": "String"
+      },
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "vpEnterPassword": "Ingresa tu contraseña",
+  "vpIncorrectPassword": "Contraseña incorrecta",
+  "vpDeleteSuccess": "Vehículo eliminado correctamente",
+  "vpDeleteError": "Error al eliminar",
+  "vpQuickActions": "Acciones Rápidas",
+  "vpHistory": "Historial",
+  "vpServices": "Servicios",
+  "vpPapers": "Papeles",
+  "vpDateUpdatedSuccess": "Fecha actualizada correctamente",
+  "vpDateUpdateError": "Error al actualizar fecha",
+  "alertsSelectVehicle": "Selecciona un vehículo primero",
+  "alertsTitle": "Alertas",
+  "alertsUpdateMileage": "Actualizar Kilometraje",
+  "alertsTabAll": "Todas",
+  "alertsTabUrgent": "Urgentes",
+  "alertsTabUpcoming": "Próximas",
+  "alertsAllGood": "¡Todo al día!",
+  "alertsNoAlertsInCategory": "No hay alertas en esta categoría.",
+  "alertsHighPriority": "Prioridad Alta",
+  "alertsPendingCount": "{count} pendientes",
+  "@alertsPendingCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "alertsUpcomingExpirations": "Próximos Vencimientos",
+  "alertsEventsCount": "{count} eventos",
+  "@alertsEventsCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "alertsSuggestions": "Sugerencias",
+  "alertsCurrentMileage": "Kilometraje actual: ",
+  "alertsOverdue": "Superado por {km} km. ¡Atención inmediata!",
+  "@alertsOverdue": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "alertsMissingKm": "Faltan {km} km para la revisión programada.",
+  "@alertsMissingKm": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "alertsNextServiceApprox": "Próximo servicio en {km} km aprox.",
+  "@alertsNextServiceApprox": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "alertsLastKm": "Último: {km} km",
+  "@alertsLastKm": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "alertsEveryKm": "Cada {km} km",
+  "@alertsEveryKm": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "alertsConfig": "Configurar",
+  "alertsComplete": "Completar",
+  "alertsSave": "Guardar",
+  "alertsCancel": "Cancelar",
+  "alertsNewMileage": "Nuevo Kilometraje",
+  "histTitle": "Historial de Servicios",
+  "histTabAll": "Todos",
+  "histTabManual": "Manual",
+  "histTabWorkshop": "Taller",
+  "histNoServices": "No hay servicios registrados",
+  "histNoServicesDesc": "Los mantenimientos aparecerán aquí",
+  "histOwner": "Propietario",
+  "histWorkshop": "Taller",
+  "histEvidence": "Evidencia",
+  "histReviewWorkshop": "Reseñar taller",
+  "wdErrorLoading": "Error al cargar talleres",
+  "wdNoWorkshopsFound": "No se encontraron talleres",
+  "wdTitle": "Directorio de Talleres",
+  "wdSearchHint": "Buscar mecánicos o servicios...",
+  "wdFilterMunicipality": "Municipio",
+  "wdFilterSpecialty": "Especialidad",
+  "wdFilterRating": "Rating",
+  "wdYourLocation": "Tu Ubicación",
+  "wdWorkshop": "Taller",
+  "wdGeneralMechanics": "Mecánica General",
+  "wdMechanics": "Mecánica",
+  "wdDistanceKm": "A {km} km",
+  "@wdDistanceKm": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "wdWorkshopsOnMap": "{count} talleres en el mapa",
+  "@wdWorkshopsOnMap": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "wdNoLocationCount": "{count} sin ubicación",
+  "@wdNoLocationCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "wdNoPhoneRegistered": "Este taller no tiene teléfono registrado",
+  "wdContactName": "Contactar a {name}",
+  "@wdContactName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "wdCopy": "Copiar",
+  "wdClose": "Cerrar",
+  "wdPhoneCopied": "Teléfono copiado al portapapeles",
+  "wdNamelessWorkshop": "Taller Sin Nombre",
+  "wdLocationNotSpecified": "Ubicación no especificada",
+  "wdSpecialtyIs": "Especialidad: {specialty}",
+  "@wdSpecialtyIs": {
+    "placeholders": {
+      "specialty": {
+        "type": "String"
+      }
+    }
+  },
+  "wdReviewsCount": "{count} reseñas",
+  "@wdReviewsCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "wdReviewCount": "{count} reseña",
+  "@wdReviewCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "wdReview": "Reseñar",
+  "wdContact": "Contactar",
+  "upErrorUploadingImage": "Error uploading image: {error}",
+  "@upErrorUploadingImage": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "upProfileUpdatedSuccess": "Perfil actualizado correctamente",
+  "upProfileTitle": "Perfil",
+  "upProfileDataNotFound": "Datos de perfil no encontrados",
+  "upPleaseCompleteSetup": "Por favor completa la configuración de tu perfil.",
+  "upSetupProfile": "Configurar Perfil",
+  "upSignOut": "Cerrar Sesión",
+  "upSaveChanges": "Guardar Cambios",
+  "upMyProfile": "Mi Perfil",
+  "upFullName": "Nombre Completo",
+  "upEmailAddress": "Correo Electrónico",
+  "upMemberSince": "Miembro desde",
+  "upSettings": "Ajustes",
+  "upDarkMode": "Modo Oscuro",
+  "upSwitchTheme": "Alternar entre modo claro y oscuro",
+  "upFollowSystem": "Seguir el Sistema",
+  "upUseSystemTheme": "Usar el tema predeterminado del sistema",
+  "adminDashboardTitle": "Dashboard Administrador",
+  "adminDashboardWelcome": "¡Bienvenido, {name}!",
+  "@adminDashboardWelcome": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminDashboardSubtitle": "Panel de control administrativo",
+  "adminGlobalMetricsTitle": "Métricas Globales",
+  "adminMetricsUsers": "Usuarios",
+  "adminMetricsWorkshops": "Talleres",
+  "adminMetricsVehicles": "Vehículos",
+  "adminMetricsServices": "Servicios",
+  "adminMetricsAlerts": "Alertas",
+  "adminMetricsReviews": "Reseñas",
+  "adminQuickActionsTitle": "Acciones Rápidas",
+  "adminQuickActionManageUsers": "Gestionar Usuarios",
+  "adminQuickActionManageWorkshops": "Gestionar Talleres",
+  "adminQuickActionModerateReviews": "Moderar Reseñas",
+  "adminQuickActionViewLogs": "Ver Actividad",
+  "adminRecentActivityTitle": "Actividad Reciente",
+  "adminNoRecentActivity": "Sin actividad reciente",
+  "adminViewAllLogs": "Ver todo el registro",
+  "commandCenterTitle": "Centro de Control",
+  "commandCenterSubtitle": "Todo lo que necesitas en un solo lugar",
+  "tabGarageTitle": "Garaje",
+  "tabGarageSubtitle": "Tus vehículos",
+  "tabHistoryTitle": "Historial",
+  "tabHistorySubtitle": "Servicios",
+  "tabAlertsTitle": "Alertas",
+  "tabAlertsSubtitle": "Recordatorios",
+  "tabSyncTitle": "Sincronizar",
+  "tabSyncSubtitle": "Datos",
+  "footerDesc": "La mejor app para el cuidado de tu vehículo",
+  "footerOwners": "Para Propietarios",
+  "footerWorkshops": "Para Talleres",
+  "footerSocial": "Redes Sociales",
+  "footerCopyright": "© 2026 AutoDoc. Todos los derechos reservados.",
+  "valuePropTitle": "Por qué elegir AutoDoc",
+  "valuePropSubtitle": "Beneficios exclusivos",
+  "statSatisfaction": "99% Satisfacción",
+  "statWorkshops": "+500 Talleres"
+}

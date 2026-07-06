@@ -1,5 +1,17 @@
 {
   "projects": {
     "default": "autodoc-6ef5a"
+  },
+  "targets": {
+    "autodoc-6ef5a": {
+      "hosting": {
+        "app": [
+          "autodoc-6ef5a"
+        ],
+        "landing": [
+          "autodoc-landing-6ef5a"
+        ]
+      }
+    }
   }
 }

@@ -1,9 +1,9 @@
-/*
 
 import 'package:flutter/material.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class ValuePropSection extends StatelessWidget {
   const ValuePropSection({super.key});
@@ -30,20 +30,20 @@ class ValuePropSection extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Tranquilidad para el conductor, eficiencia para el experto.',
+                      context.l10n.valuePropTitle,
                       style: AppTextStyles.headlineLarge.copyWith(fontSize: isDesktop ? 40 : 28),
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'Diseñamos una plataforma que rompe la barrera de desconfianza entre dueños y talleres. Con AutoDoc, cada intervención es clara, cada costo es justificado y cada vehículo mantiene su valor de reventa.',
+                      context.l10n.valuePropSubtitle,
                       style: AppTextStyles.bodyLarge.copyWith(color: colors.textSecondary, height: 1.6),
                     ),
                     const SizedBox(height: 48),
                     Row(
                       children: [
-                        _StatItem(value: '98%', label: 'Satisfacción del Usuario'),
+                        _StatItem(value: '98%', label: context.l10n.statSatisfaction),
                         const SizedBox(width: 48),
-                        _StatItem(value: '+500', label: 'Talleres Verificados'),
+                        _StatItem(value: '+500', label: context.l10n.statWorkshops),
                       ],
                     ),
                   ],
@@ -107,5 +107,3 @@ class _StatItem extends StatelessWidget {
     );
   }
 }
-
-*/

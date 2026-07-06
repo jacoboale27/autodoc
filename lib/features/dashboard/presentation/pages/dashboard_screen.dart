@@ -17,6 +17,7 @@ import 'package:uuid/uuid.dart';
 import 'package:autodoc/core/widgets/app_bottom_nav_bar.dart';
 import 'package:autodoc/core/widgets/app_top_nav_bar.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 import '../widgets/add_vehicle_form.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -206,7 +207,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Hola, $userName 👋',
+                context.l10n.dashHello(userName),
                 style: GoogleFonts.inter(
                   fontSize: Responsive.fontSize(context, 28),
                   fontWeight: FontWeight.bold,
@@ -216,7 +217,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                '¿Listo para la carretera hoy?',
+                context.l10n.dashReadyForRoad,
                 style: GoogleFonts.inter(
                   fontSize: Responsive.fontSize(context, 14),
                   fontWeight: FontWeight.w500,
@@ -292,17 +293,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case MaintenanceStatus.critical:
         semColor = colors.error;
         semIcon = Icons.error_rounded;
-        semLabel = 'Mantenimiento vencido — atención inmediata';
+        semLabel = context.l10n.dashMaintCritical;
         break;
       case MaintenanceStatus.preventive:
         semColor = colors.warning;
         semIcon = Icons.warning_rounded;
-        semLabel = 'Mantenimiento próximo — revisa las alertas';
+        semLabel = context.l10n.dashMaintWarning;
         break;
       case MaintenanceStatus.optimal:
         semColor = colors.secondary;
         semIcon = Icons.check_circle_rounded;
-        semLabel = 'Vehículo en buen estado';
+        semLabel = context.l10n.dashMaintOptimal;
         break;
     }
 
@@ -327,7 +328,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Estado de Mantenimiento',
+                    context.l10n.dashMaintStatusLabel,
                     style: GoogleFonts.inter(
                       fontSize: Responsive.fontSize(context, 11),
                       fontWeight: FontWeight.bold,
@@ -408,7 +409,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              'No hay vehiculos registrados',
+              context.l10n.dashNoVehicles,
               style: GoogleFonts.inter(
                 fontSize: Responsive.fontSize(context, 20),
                 fontWeight: FontWeight.bold,
@@ -417,7 +418,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Añade tu primer vehículo para empezar a controlar su mantenimiento y estado.',
+              context.l10n.dashNoVehiclesDesc,
               textAlign: TextAlign.center,
               style: TextStyle(color: subTextColor, fontSize: 14),
             ),
@@ -425,7 +426,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             SizedBox(
               width: double.infinity,
               child: AppButton(
-                text: 'Registrar Vehículo',
+                text: context.l10n.dashRegisterVehicle,
                 onPressed: () => _showAddVehicleDialog(context, primary),
               ),
             ),
@@ -467,7 +468,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          'VEHICULO PRINCIPAL',
+                          context.l10n.dashMainVehicle,
                           style: GoogleFonts.inter(
                             fontSize: Responsive.fontSize(context, 10),
                             fontWeight: FontWeight.bold,
@@ -488,7 +489,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        'Placa: ${vehicle.placa}',
+                        context.l10n.dashLicensePlate(vehicle.placa),
                         style: TextStyle(color: subTextColor, fontSize: 13),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -520,9 +521,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Row(
               children: [
                 _buildStatItem(
-                  'KILOMETRAJE',
+                  context.l10n.dashMileage,
                   vehicle.kilometrajeActual.toString(),
-                  'km',
+                  context.l10n.dashKm,
                   primary,
                   isDark,
                   subTextColor,
@@ -533,7 +534,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             SizedBox(
               width: double.infinity,
               child: AppButton(
-                text: 'Ver Estado del Vehículo',
+                text: context.l10n.dashViewVehicleState,
                 onPressed: () => context.push('/vehicle_profile', extra: vehicle),
                 icon: const Icon(Icons.arrow_forward_rounded, size: 16, color: Colors.white),
               ),
@@ -575,7 +576,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    vehicleProvider.error ?? 'Error al agregar vehiculo',
+                    vehicleProvider.error ?? context.l10n.dashAddVehicleError,
                   ),
                 ),
               );
@@ -653,7 +654,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Alertas Activas',
+                context.l10n.dashActiveAlerts,
                 style: GoogleFonts.inter(
                   fontSize: Responsive.fontSize(context, 18),
                   fontWeight: FontWeight.bold,
@@ -662,7 +663,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               GestureDetector(
                 onTap: () => context.push('/alerts'),
                 child: Text(
-                  'Ver Todas',
+                  context.l10n.dashViewAll,
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -678,7 +679,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
-              '¡Excelente! No tienes alertas pendientes.',
+              context.l10n.dashNoAlertsPending,
               style: TextStyle(
                 color: colors.secondary,
                 fontWeight: FontWeight.w500,
@@ -786,7 +787,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Talleres Cercanos',
+                context.l10n.dashNearbyWorkshops,
                 style: GoogleFonts.inter(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -795,7 +796,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               TextButton(
                 onPressed: () => context.push('/workshop_directory'),
                 child: Text(
-                  'Ver todos',
+                  context.l10n.dashViewAllWorkshops,
                   style: TextStyle(color: primary, fontWeight: FontWeight.w600),
                 ),
               ),

@@ -1,0 +1,444 @@
+{
+  "@@locale": "en",
+  "appName": "AutoDoc",
+  "@appName": {
+    "description": "The name of the application"
+  },
+  "navPlatform": "Platform",
+  "navOwners": "For Owners",
+  "navWorkshops": "Workshops",
+  "navLogin": "Log In",
+  "navTryFree": "Try for Free",
+  "authNoAccount": "Don't have an account? ",
+  "authHaveAccount": "Already have an account? ",
+  "authRegisterFree": "Sign up for free",
+  "authLogin": "Log in",
+  "authCopilotSubtitle": "Your copilot for total vehicle control",
+  "authWelcomeBack": "Welcome back",
+  "authCreateAccount": "Create your account",
+  "authEnterCredentials": "Enter your credentials to access",
+  "authRegisterToManage": "Sign up to start managing your documents",
+  "authEmailOrUserLabel": "Email or Username",
+  "authEmailLabel": "Email",
+  "authEmailOrUserHint": "name@example.com or username",
+  "authEmailHint": "name@example.com",
+  "authPasswordLabel": "Password",
+  "authPasswordHint": "••••••••",
+  "authRememberMe": "Remember me",
+  "authForgotPassword": "Forgot your password?",
+  "authLoginButton": "Log In",
+  "authRegisterButton": "Sign Up",
+  "authOrContinueWith": "OR CONTINUE WITH",
+  "authGoogleLogin": "Log in with Google",
+  "authTabLogin": "Log In",
+  "authTabRegister": "Sign Up",
+  "authTabSupport": "Support",
+  "authForgotPassTitle": "Recover Password",
+  "authForgotPassDesc": "We will send a link to your email to reset your password.",
+  "authCancel": "Cancel",
+  "authSendLink": "Send link",
+  "authInvalidEmail": "Enter a valid email.",
+  "authSendEmailError": "Could not send the email.",
+  "authCheckInbox": "Check your inbox at ",
+  "authAndSpam": " (and the spam folder).",
+  "authVerifyEmailTitle": "Verify your email",
+  "authSentLinkTo": "We sent a verification link to:",
+  "authAccountNotVerified": "Your account is not verified yet. Check the email sent to:",
+  "authOpenLinkThenVerify": "Open the link in the email and then press \"I already verified\" to continue.",
+  "authUnderstood": "Understood",
+  "authContinueWithoutVerify": "Continue without verifying",
+  "authResendEmail": "Resend email",
+  "authEmailResent": "Verification email resent.",
+  "authResendError": "Could not resend.",
+  "authAlreadyVerified": "I already verified",
+  "authEmailVerifiedSuccess": "Email verified successfully!",
+  "authVerificationNotDetected": "We still don't detect the verification. Open the link in the email and try again.",
+  "authSupportCenter": "Support Center",
+  "authSupportDesc": "Need help with your account, email verification, or access?",
+  "authSupportEmail": "Support email",
+  "authEmailCopied": "Email copied to clipboard",
+  "authEmailVerification": "Email verification",
+  "authEmailNotReceived": "Email didn't arrive → check spam or resend from login",
+  "authLoginToResend": "Log in with your email to resend verification.",
+  "authForgotPassTileTitle": "I forgot my password",
+  "authReceiveRecoveryLink": "Receive a recovery link by email",
+  "authSupportHours": "Support hours: Mon–Fri 8:00–18:00",
+  "heroBadge": "TOTAL CONTROL IN YOUR HANDS",
+  "heroTitle": "Your Virtual Garage,\nElevated",
+  "heroSubtitle": "Digitize your vehicle today. Certified clinical history, smart SOAT and maintenance alerts, connected with the best workshops.",
+  "heroStartGarage": "Start my Garage",
+  "heroViewDirectory": "View Directory",
+  "commandCenterTitle": "Digital Command Center",
+  "commandCenterSubtitle": "Take control of your automotive experience with tools designed for your peace of mind.",
+  "tabGarageTitle": "Virtual Garage",
+  "tabGarageSubtitle": "Centralize information for all your vehicles in a single interactive panel.",
+  "tabHistoryTitle": "Digital History",
+  "tabHistorySubtitle": "Every service, invoice, and photo saved securely forever.",
+  "tabAlertsTitle": "Proactive Alerts",
+  "tabAlertsSubtitle": "SOAT, insurance, and oil changes. We notify you before it's too late.",
+  "tabSyncTitle": "Workshop Connection",
+  "tabSyncSubtitle": "Direct synchronization with mechanics for real service validation.",
+  "valuePropTitle": "Peace of mind for the driver, efficiency for the expert.",
+  "valuePropSubtitle": "We designed a platform that breaks the barrier of distrust between owners and workshops. With AutoDoc, every intervention is clear, every cost is justified, and every vehicle maintains its resale value.",
+  "statSatisfaction": "User Satisfaction",
+  "statWorkshops": "Verified Workshops",
+  "footerDesc": "Transforming automotive management through intelligent technology and guaranteed transparency.",
+  "footerOwners": "For Owners",
+  "footerWorkshops": "For Workshops",
+  "footerSocial": "Social",
+  "footerCopyright": "© 2026 AutoDoc Technology. Made for smart drivers.",
+  "dashHello": "Hello, {userName} 👋",
+  "@dashHello": {
+    "placeholders": {
+      "userName": {
+        "type": "String"
+      }
+    }
+  },
+  "dashReadyForRoad": "Ready for the road today?",
+  "dashMaintCritical": "Maintenance overdue — immediate attention",
+  "dashMaintWarning": "Upcoming maintenance — check alerts",
+  "dashMaintOptimal": "Vehicle in good condition",
+  "dashMaintStatusLabel": "Maintenance Status",
+  "dashNoVehicles": "No vehicles registered",
+  "dashNoVehiclesDesc": "Add your first vehicle to start tracking its maintenance and status.",
+  "dashRegisterVehicle": "Register Vehicle",
+  "dashMainVehicle": "MAIN VEHICLE",
+  "dashLicensePlate": "License plate: {placa}",
+  "@dashLicensePlate": {
+    "placeholders": {
+      "placa": {
+        "type": "String"
+      }
+    }
+  },
+  "dashMileage": "MILEAGE",
+  "dashKm": "km",
+  "dashViewVehicleState": "View Vehicle Status",
+  "dashAddVehicleError": "Error adding vehicle",
+  "dashActiveAlerts": "Active Alerts",
+  "dashViewAll": "View All",
+  "dashNoAlertsPending": "Excellent! You have no pending alerts.",
+  "dashNearbyWorkshops": "Nearby Workshops",
+  "dashViewAllWorkshops": "View all",
+  "garageMyVehicles": "My Vehicles",
+  "garageNoVehicles": "You don't have vehicles in your garage",
+  "garageOptimal": "Optimal",
+  "garageSuggestedReview": "Suggested Review",
+  "garageMakePrimary": "Make Primary",
+  "garageNowPrimary": "{vehicleName} is now your primary vehicle",
+  "@garageNowPrimary": {
+    "placeholders": {
+      "vehicleName": {
+        "type": "String"
+      }
+    }
+  },
+  "garageMakePrimaryError": "Could not set primary vehicle",
+  "garageAddVehicleError": "Error adding vehicle",
+  "vpProfileTitle": "Vehicle Profile",
+  "vpShareVehicle": "Share Vehicle",
+  "vpDeleteVehicle": "Delete Vehicle",
+  "vpActiveStatus": "ACTIVE",
+  "vpOwnerPersonal": "Owner: Personal",
+  "vpYear": "Year",
+  "vpColor": "Color",
+  "vpMileage": "Mileage",
+  "vpKm": "km",
+  "vpBrand": "Brand",
+  "vpDocAndAlerts": "Documentation and Alerts",
+  "vpCirculationCard": "Circulation Card",
+  "vpSoatInsurance": "SOAT Insurance",
+  "vpDateNotRegistered": "Date not registered",
+  "vpUpdate": "Update",
+  "vpExpiredOn": "Expired on {date}",
+  "@vpExpiredOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "vpExpiresInDays": "Expires in {days} days ({date})",
+  "@vpExpiresInDays": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "vpRenew": "Renew",
+  "vpUpdateMileage": "Update Mileage",
+  "vpEnterNewMileage": "Enter the current mileage. It must be greater than {km} km.",
+  "@vpEnterNewMileage": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "vpNewMileageLabel": "New Mileage",
+  "vpEnterValue": "Enter a value",
+  "vpEnterValidNumber": "Enter a valid number",
+  "vpMustBeGreaterThan": "Must be greater than {km}",
+  "@vpMustBeGreaterThan": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "vpSave": "Save",
+  "vpMileageUpdatedSuccess": "Mileage updated successfully",
+  "vpUpdateError": "Update error",
+  "vpConfirmDelete": "Are you sure you want to delete the {brand} {model}? This action cannot be undone.",
+  "@vpConfirmDelete": {
+    "placeholders": {
+      "brand": {
+        "type": "String"
+      },
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "vpEnterPassword": "Enter your password",
+  "vpIncorrectPassword": "Incorrect password",
+  "vpDeleteSuccess": "Vehicle deleted successfully",
+  "vpDeleteError": "Error deleting vehicle",
+  "vpQuickActions": "Quick Actions",
+  "vpHistory": "History",
+  "vpServices": "Services",
+  "vpPapers": "Papers",
+  "vpDateUpdatedSuccess": "Date updated successfully",
+  "vpDateUpdateError": "Error updating date",
+  "alertsSelectVehicle": "Select a vehicle first",
+  "alertsTitle": "Alerts",
+  "alertsUpdateMileage": "Update Mileage",
+  "alertsTabAll": "All",
+  "alertsTabUrgent": "Urgent",
+  "alertsTabUpcoming": "Upcoming",
+  "alertsAllGood": "All up to date!",
+  "alertsNoAlertsInCategory": "No alerts in this category.",
+  "alertsHighPriority": "High Priority",
+  "alertsPendingCount": "{count} pending",
+  "@alertsPendingCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "alertsUpcomingExpirations": "Upcoming Expirations",
+  "alertsEventsCount": "{count} events",
+  "@alertsEventsCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "alertsSuggestions": "Suggestions",
+  "alertsCurrentMileage": "Current mileage: ",
+  "alertsOverdue": "Overdue by {km} km. Immediate attention!",
+  "@alertsOverdue": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "alertsMissingKm": "{km} km left for scheduled review.",
+  "@alertsMissingKm": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "alertsNextServiceApprox": "Next service in approx {km} km.",
+  "@alertsNextServiceApprox": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "alertsLastKm": "Last: {km} km",
+  "@alertsLastKm": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "alertsEveryKm": "Every {km} km",
+  "@alertsEveryKm": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "alertsConfig": "Configure",
+  "alertsComplete": "Complete",
+  "alertsSave": "Save",
+  "alertsCancel": "Cancel",
+  "alertsNewMileage": "New Mileage",
+  "histTitle": "Service History",
+  "histTabAll": "All",
+  "histTabManual": "Manual",
+  "histTabWorkshop": "Workshop",
+  "histNoServices": "No services registered",
+  "histNoServicesDesc": "Maintenances will appear here",
+  "histOwner": "Owner",
+  "histWorkshop": "Workshop",
+  "histEvidence": "Evidence",
+  "histReviewWorkshop": "Review workshop",
+  "wdErrorLoading": "Error loading workshops",
+  "wdNoWorkshopsFound": "No workshops found",
+  "wdTitle": "Workshop Directory",
+  "wdSearchHint": "Search mechanics or services...",
+  "wdFilterMunicipality": "Municipality",
+  "wdFilterSpecialty": "Specialty",
+  "wdFilterRating": "Rating",
+  "wdYourLocation": "Your Location",
+  "wdWorkshop": "Workshop",
+  "wdGeneralMechanics": "General Mechanics",
+  "wdMechanics": "Mechanics",
+  "wdDistanceKm": "{km} km away",
+  "@wdDistanceKm": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "wdWorkshopsOnMap": "{count} workshops on map",
+  "@wdWorkshopsOnMap": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "wdNoLocationCount": "{count} without location",
+  "@wdNoLocationCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "wdNoPhoneRegistered": "This workshop has no registered phone",
+  "wdContactName": "Contact {name}",
+  "@wdContactName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "wdCopy": "Copy",
+  "wdClose": "Close",
+  "wdPhoneCopied": "Phone copied to clipboard",
+  "wdNamelessWorkshop": "Nameless Workshop",
+  "wdLocationNotSpecified": "Location not specified",
+  "wdSpecialtyIs": "Specialty: {specialty}",
+  "@wdSpecialtyIs": {
+    "placeholders": {
+      "specialty": {
+        "type": "String"
+      }
+    }
+  },
+  "wdReviewsCount": "{count} reviews",
+  "@wdReviewsCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "wdReviewCount": "{count} review",
+  "@wdReviewCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "wdReview": "Review",
+  "wdContact": "Contact",
+  "upErrorUploadingImage": "Error uploading image: {error}",
+  "@upErrorUploadingImage": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "upProfileUpdatedSuccess": "Profile updated successfully",
+  "upProfileTitle": "Profile",
+  "upProfileDataNotFound": "Profile data not found",
+  "upPleaseCompleteSetup": "Please complete your profile setup.",
+  "upSetupProfile": "Setup Profile",
+  "upSignOut": "Sign Out",
+  "upSaveChanges": "Save Changes",
+  "upMyProfile": "My Profile",
+  "upFullName": "Full Name",
+  "upEmailAddress": "Email Address",
+  "upMemberSince": "Member Since",
+  "upSettings": "Settings",
+  "upDarkMode": "Dark Mode",
+  "upSwitchTheme": "Switch between light and dark theme",
+  "upFollowSystem": "Follow System",
+  "upUseSystemTheme": "Use system default theme",
+  "adminDashboardTitle": "Admin Dashboard",
+  "adminDashboardWelcome": "Welcome, {name}!",
+  "@adminDashboardWelcome": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminDashboardSubtitle": "Administrative control panel",
+  "adminGlobalMetricsTitle": "Global Metrics",
+  "adminMetricsUsers": "Users",
+  "adminMetricsWorkshops": "Workshops",
+  "adminMetricsVehicles": "Vehicles",
+  "adminMetricsServices": "Services",
+  "adminMetricsAlerts": "Alerts",
+  "adminMetricsReviews": "Reviews",
+  "adminQuickActionsTitle": "Quick Actions",
+  "adminQuickActionManageUsers": "Manage Users",
+  "adminQuickActionManageWorkshops": "Manage Workshops",
+  "adminQuickActionModerateReviews": "Moderate Reviews",
+  "adminQuickActionViewLogs": "View Activity",
+  "adminRecentActivityTitle": "Recent Activity",
+  "adminNoRecentActivity": "No recent activity",
+  "adminViewAllLogs": "View all logs",
+  "commandCenterTitle": "Command Center",
+  "commandCenterSubtitle": "Everything you need in one place",
+  "tabGarageTitle": "Garage",
+  "tabGarageSubtitle": "Your vehicles",
+  "tabHistoryTitle": "History",
+  "tabHistorySubtitle": "Services",
+  "tabAlertsTitle": "Alerts",
+  "tabAlertsSubtitle": "Reminders",
+  "tabSyncTitle": "Sync",
+  "tabSyncSubtitle": "Data",
+  "footerDesc": "The best app for your vehicle care",
+  "footerOwners": "For Owners",
+  "footerWorkshops": "For Workshops",
+  "footerSocial": "Social Media",
+  "footerCopyright": "© 2026 AutoDoc. All rights reserved.",
+  "valuePropTitle": "Why choose AutoDoc",
+  "valuePropSubtitle": "Exclusive benefits",
+  "statSatisfaction": "99% Satisfaction",
+  "statWorkshops": "+500 Workshops"
+}

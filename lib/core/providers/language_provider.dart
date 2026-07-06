@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LanguageProvider extends ChangeNotifier {
-  String _currentLocale = 'es';
+  Locale _currentLocale = const Locale('es');
   
-  String get currentLocale => _currentLocale;
+  Locale get currentLocale => _currentLocale;
+  String get currentLanguageCode => _currentLocale.languageCode;
 
   LanguageProvider() {
     _loadLocale();
@@ -13,7 +14,8 @@ class LanguageProvider extends ChangeNotifier {
   Future<void> _loadLocale() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _currentLocale = prefs.getString('app_locale') ?? 'es';
+      final code = prefs.getString('app_locale') ?? 'es';
+      _currentLocale = Locale(code);
       notifyListeners();
     } catch (e) {
       debugPrint("Error loading app locale: $e");
@@ -22,9 +24,9 @@ class LanguageProvider extends ChangeNotifier {
 
   Future<void> changeLanguage(String localeCode) async {
     final cleanCode = localeCode.trim().toLowerCase();
-    if (_currentLocale == cleanCode) return;
+    if (_currentLocale.languageCode == cleanCode) return;
     
-    _currentLocale = cleanCode;
+    _currentLocale = Locale(cleanCode);
     notifyListeners();
     
     try {

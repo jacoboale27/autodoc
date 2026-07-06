@@ -1,10 +1,10 @@
-/*
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 enum CommandCenterTab { garage, history, alerts, sync }
 
@@ -29,17 +29,17 @@ class _CommandCenterSectionState extends State<CommandCenterSection> {
       child: Column(
         children: [
           Text(
-            'Digital Command Center',
+            context.l10n.commandCenterTitle,
             style: AppTextStyles.headlineLarge.copyWith(fontSize: isDesktop ? 48 : 32),
           ),
           const SizedBox(height: 16),
           Text(
-            'Toma el mando de tu experiencia automotriz con herramientas diseñadas para tu tranquilidad.',
+            context.l10n.commandCenterSubtitle,
             textAlign: TextAlign.center,
             style: AppTextStyles.bodyLarge.copyWith(color: colors.textSecondary),
           ),
           const SizedBox(height: 64),
-          
+
           Container(
             constraints: const BoxConstraints(maxWidth: 1200),
             child: Flex(
@@ -52,32 +52,32 @@ class _CommandCenterSectionState extends State<CommandCenterSection> {
                   child: Column(
                     children: [
                       _TabCard(
-                        title: 'Garaje Virtual',
-                        subtitle: 'Centraliza la información de todos tus vehículos en un solo panel interactivo.',
+                        title: context.l10n.tabGarageTitle,
+                        subtitle: context.l10n.tabGarageSubtitle,
                         icon: Icons.directions_car,
                         isActive: _activeTab == CommandCenterTab.garage,
                         onTap: () => setState(() => _activeTab = CommandCenterTab.garage),
                       ),
                       const SizedBox(height: 16),
                       _TabCard(
-                        title: 'Historial Digital',
-                        subtitle: 'Cada servicio, factura y foto guardada de forma segura para siempre.',
+                        title: context.l10n.tabHistoryTitle,
+                        subtitle: context.l10n.tabHistorySubtitle,
                         icon: Icons.history,
                         isActive: _activeTab == CommandCenterTab.history,
                         onTap: () => setState(() => _activeTab = CommandCenterTab.history),
                       ),
                       const SizedBox(height: 16),
                       _TabCard(
-                        title: 'Alertas Proactivas',
-                        subtitle: 'SOAT, seguros y cambios de aceite. Te avisamos antes de que sea tarde.',
+                        title: context.l10n.tabAlertsTitle,
+                        subtitle: context.l10n.tabAlertsSubtitle,
                         icon: Icons.notifications_active,
                         isActive: _activeTab == CommandCenterTab.alerts,
                         onTap: () => setState(() => _activeTab = CommandCenterTab.alerts),
                       ),
                       const SizedBox(height: 16),
                       _TabCard(
-                        title: 'Conexión con Talleres',
-                        subtitle: 'Sincronización directa con mecánicos para validación de servicios real.',
+                        title: context.l10n.tabSyncTitle,
+                        subtitle: context.l10n.tabSyncSubtitle,
                         icon: Icons.sync,
                         isActive: _activeTab == CommandCenterTab.sync,
                         onTap: () => setState(() => _activeTab = CommandCenterTab.sync),
@@ -501,4 +501,3 @@ class _SyncNode extends StatelessWidget {
     );
   }
 }
-*/

@@ -4,6 +4,8 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/providers/theme_provider.dart';
+import 'package:autodoc/core/providers/language_provider.dart';
 import 'package:provider/provider.dart';
 
 class AppTopNavBar extends StatelessWidget {
@@ -84,6 +86,44 @@ class AppTopNavBar extends StatelessWidget {
           ),
           
           const Spacer(),
+          
+          // Theme & Language Toggles
+          Consumer2<ThemeProvider, LanguageProvider>(
+            builder: (context, themeProvider, languageProvider, _) {
+              final isDark = themeProvider.themeMode == ThemeMode.dark;
+              final isEnglish = languageProvider.currentLocale.languageCode == 'en';
+              return Row(
+                children: [
+                  IconButton(
+                    icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined, color: colors.textSecondary),
+                    onPressed: () {
+                      themeProvider.setThemeMode(isDark ? ThemeMode.light : ThemeMode.dark);
+                    },
+                    tooltip: 'Theme',
+                  ),
+                  SizedBox(width: Responsive.padding(context, 8)),
+                  InkWell(
+                    onTap: () {
+                      languageProvider.changeLanguage(isEnglish ? 'es' : 'en');
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: colors.outline.withValues(alpha: 0.5)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        isEnglish ? 'EN' : 'ES',
+                        style: TextStyle(fontWeight: FontWeight.bold, color: colors.textSecondary, fontSize: Responsive.fontSize(context, 12)),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: Responsive.padding(context, 16)),
+                ],
+              );
+            },
+          ),
           
           // Profile Action
           Consumer<AuthProvider>(

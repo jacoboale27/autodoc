@@ -7,6 +7,7 @@ import '../widgets/admin_sidebar.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/widgets/translated_text.dart';
 
 class AdminReseniasScreen extends StatefulWidget {
   const AdminReseniasScreen({super.key});
@@ -128,7 +129,7 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
                                 ],
                               ),
                               const SizedBox(height: 12),
-                              Text(
+                              TranslatedText(
                                 resenia.comentario ?? 'Sin comentario',
                                 style: TextStyle(fontSize: Responsive.fontSize(context, 15)),
                               ),

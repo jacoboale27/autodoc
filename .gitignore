@@ -68,3 +68,4 @@ users.json
 /build/
 /coverage/
 .firebase/
+node_modules/

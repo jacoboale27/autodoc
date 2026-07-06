@@ -8,6 +8,7 @@ import '../providers/auth_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class AuthScreen extends StatefulWidget {
   final bool isLogin;
@@ -138,9 +139,9 @@ class _AuthScreenState extends State<AuthScreen> {
                         text: TextSpan(
                           style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
                           children: [
-                            TextSpan(text: _isLoginMode ? '¿No tienes una cuenta? ' : '¿Ya tienes una cuenta? '),
+                            TextSpan(text: _isLoginMode ? context.l10n.authNoAccount : context.l10n.authHaveAccount),
                             TextSpan(
-                              text: _isLoginMode ? 'Regístrate gratis' : 'Inicia sesión',
+                              text: _isLoginMode ? context.l10n.authRegisterFree : context.l10n.authLogin,
                               style: AppTextStyles.bodyMedium.copyWith(
                                 color: colors.primary,
                                 fontWeight: FontWeight.bold,
@@ -190,7 +191,7 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Tu copiloto para el control total de tu vehículo',
+          context.l10n.authCopilotSubtitle,
           style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
         ),
       ],
@@ -223,14 +224,14 @@ class _AuthScreenState extends State<AuthScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
-                _isLoginMode ? 'Bienvenido de nuevo' : 'Crea tu cuenta',
+                _isLoginMode ? context.l10n.authWelcomeBack : context.l10n.authCreateAccount,
                 style: AppTextStyles.headlineSmall.copyWith(
                   color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                _isLoginMode ? 'Ingresa tus credenciales para acceder' : 'Regístrate para comenzar a gestionar tus documentos',
+                _isLoginMode ? context.l10n.authEnterCredentials : context.l10n.authRegisterToManage,
                 textAlign: TextAlign.center,
                 style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
               ),
@@ -238,16 +239,16 @@ class _AuthScreenState extends State<AuthScreen> {
               
               // Form Fields
               _buildTextField(
-                label: _isLoginMode ? 'Correo o usuario' : 'Correo electrónico',
-                hint: _isLoginMode ? 'nombre@ejemplo.com o usuario' : 'nombre@ejemplo.com',
+                label: _isLoginMode ? context.l10n.authEmailOrUserLabel : context.l10n.authEmailLabel,
+                hint: _isLoginMode ? context.l10n.authEmailOrUserHint : context.l10n.authEmailHint,
                 icon: Icons.mail_outline,
                 colors: colors,
                 controller: _emailController,
               ),
               const SizedBox(height: 20),
               _buildTextField(
-                label: 'Contraseña',
-                hint: '••••••••',
+                label: context.l10n.authPasswordLabel,
+                hint: context.l10n.authPasswordHint,
                 icon: Icons.lock_outline,
                 isPassword: true,
                 colors: colors,
@@ -281,7 +282,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       GestureDetector(
                         onTap: () => setState(() => _rememberMe = !_rememberMe),
                         child: Text(
-                          'Recordarme',
+                          context.l10n.authRememberMe,
                           style: AppTextStyles.labelMedium.copyWith(color: colors.textSecondary),
                         ),
                       ),
@@ -296,7 +297,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                       onPressed: _showForgotPasswordDialog,
                       child: Text(
-                        '¿Olvidaste tu contraseña?',
+                        context.l10n.authForgotPassword,
                         style: AppTextStyles.labelMedium.copyWith(
                           color: colors.primary,
                         ),
@@ -316,7 +317,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   Expanded(child: Divider(color: colors.outline.withValues(alpha: 0.5))),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text('O CONTINUAR CON', style: AppTextStyles.labelSmall.copyWith(color: colors.textSecondary)),
+                    child: Text(context.l10n.authOrContinueWith, style: AppTextStyles.labelSmall.copyWith(color: colors.textSecondary)),
                   ),
                   Expanded(child: Divider(color: colors.outline.withValues(alpha: 0.5))),
                 ],
@@ -492,7 +493,7 @@ class _AuthScreenState extends State<AuthScreen> {
               width: 24, height: 24, 
               child: CircularProgressIndicator(color: colors.onPrimary, strokeWidth: 2)
             ) 
-          : Text(_isLoginMode ? 'Iniciar Sesión' : 'Registrarse'),
+          : Text(_isLoginMode ? context.l10n.authLoginButton : context.l10n.authRegisterButton),
       ),
     );
   }
@@ -543,7 +544,7 @@ class _AuthScreenState extends State<AuthScreen> {
           const SizedBox(width: 12),
           Flexible(
             child: Text(
-              'Entrar con Google',
+              context.l10n.authGoogleLogin,
               style: AppTextStyles.titleSmall,
               overflow: TextOverflow.ellipsis,
             ),
@@ -566,9 +567,9 @@ class _AuthScreenState extends State<AuthScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              Expanded(child: _buildNavItem(Icons.login, 'Login', _isLoginMode, colors, () => setState(() => _isLoginMode = true))),
-              Expanded(child: _buildNavItem(Icons.person_add_outlined, 'Registro', !_isLoginMode, colors, () => setState(() => _isLoginMode = false))),
-              Expanded(child: _buildNavItem(Icons.help_outline, 'Soporte', false, colors, _showSupportSheet)),
+              Expanded(child: _buildNavItem(Icons.login, context.l10n.authTabLogin, _isLoginMode, colors, () => setState(() => _isLoginMode = true))),
+              Expanded(child: _buildNavItem(Icons.person_add_outlined, context.l10n.authTabRegister, !_isLoginMode, colors, () => setState(() => _isLoginMode = false))),
+              Expanded(child: _buildNavItem(Icons.help_outline, context.l10n.authTabSupport, false, colors, _showSupportSheet)),
             ],
           ),
         ),
@@ -606,7 +607,7 @@ class _AuthScreenState extends State<AuthScreen> {
         return AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
-          'Recuperar contraseña',
+          context.l10n.authForgotPassTitle,
           style: AppTextStyles.titleLarge,
         ),
         content: Column(
@@ -614,7 +615,7 @@ class _AuthScreenState extends State<AuthScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Te enviaremos un enlace a tu correo para restablecer la contraseña.',
+              context.l10n.authForgotPassDesc,
               style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
             ),
             const SizedBox(height: 16),
@@ -622,7 +623,7 @@ class _AuthScreenState extends State<AuthScreen> {
               controller: resetEmailController,
               keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
-                labelText: 'Correo electrónico',
+                labelText: context.l10n.authEmailLabel,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 prefixIcon: const Icon(Icons.mail_outline),
               ),
@@ -632,7 +633,7 @@ class _AuthScreenState extends State<AuthScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
+            child: Text(context.l10n.authCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: colors.primary),
@@ -640,7 +641,7 @@ class _AuthScreenState extends State<AuthScreen> {
               final email = resetEmailController.text.trim();
               if (!_isValidEmail(email)) {
                 ScaffoldMessenger.of(ctx).showSnackBar(
-                  const SnackBar(content: Text('Ingresa un correo válido.')),
+                  SnackBar(content: Text(context.l10n.authInvalidEmail)),
                 );
                 return;
               }
@@ -651,11 +652,11 @@ class _AuthScreenState extends State<AuthScreen> {
                 Navigator.pop(ctx, true);
               } else {
                 ScaffoldMessenger.of(ctx).showSnackBar(
-                  SnackBar(content: Text(authProvider.error ?? 'No se pudo enviar el correo.')),
+                  SnackBar(content: Text(authProvider.error ?? ctx.l10n.authSendEmailError)),
                 );
               }
             },
-            child: const Text('Enviar enlace'),
+            child: Text(context.l10n.authSendLink),
           ),
         ],
         );
@@ -669,7 +670,7 @@ class _AuthScreenState extends State<AuthScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Revisa tu bandeja de entrada en ${emailSentTo.isNotEmpty ? emailSentTo : "tu correo"} (y la carpeta de spam).',
+            '${context.l10n.authCheckInbox}${emailSentTo.isNotEmpty ? emailSentTo : ""}${context.l10n.authAndSpam}',
           ),
           duration: const Duration(seconds: 5),
         ),
@@ -696,7 +697,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Verifica tu correo',
+                    context.l10n.authVerifyEmailTitle,
                     style: AppTextStyles.titleLarge,
                   ),
                 ),
@@ -708,8 +709,8 @@ class _AuthScreenState extends State<AuthScreen> {
               children: [
                 Text(
                   isRegistration
-                      ? 'Enviamos un enlace de verificación a:'
-                      : 'Tu cuenta aún no está verificada. Revisa el correo enviado a:',
+                      ? context.l10n.authSentLinkTo
+                      : context.l10n.authAccountNotVerified,
                   style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
                 ),
                 const SizedBox(height: 8),
@@ -719,7 +720,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Abre el enlace del correo y luego pulsa "Ya verifiqué" para continuar.',
+                  context.l10n.authOpenLinkThenVerify,
                   style: AppTextStyles.bodySmall.copyWith(color: colors.textSecondary),
                 ),
               ],
@@ -729,12 +730,12 @@ class _AuthScreenState extends State<AuthScreen> {
                 FilledButton(
                   style: FilledButton.styleFrom(backgroundColor: colors.primary),
                   onPressed: () => Navigator.pop(ctx, true),
-                  child: const Text('Entendido'),
+                  child: Text(context.l10n.authUnderstood),
                 )
               else
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, true),
-                  child: const Text('Continuar sin verificar'),
+                  child: Text(context.l10n.authContinueWithoutVerify),
                 ),
               TextButton(
                 onPressed: () async {
@@ -744,13 +745,13 @@ class _AuthScreenState extends State<AuthScreen> {
                     SnackBar(
                       content: Text(
                         ok
-                            ? 'Correo de verificación reenviado.'
-                            : (authProvider.error ?? 'No se pudo reenviar.'),
+                            ? ctx.l10n.authEmailResent
+                            : (authProvider.error ?? ctx.l10n.authResendError),
                       ),
                     ),
                   );
                 },
-                child: const Text('Reenviar correo'),
+                child: Text(context.l10n.authResendEmail),
               ),
               if (!isRegistration)
                 FilledButton(
@@ -761,22 +762,20 @@ class _AuthScreenState extends State<AuthScreen> {
                     if (verified) {
                       Navigator.pop(ctx, true);
                       ScaffoldMessenger.of(ctx).showSnackBar(
-                        const SnackBar(
-                          content: Text('¡Correo verificado correctamente!'),
+                        SnackBar(
+                          content: Text(ctx.l10n.authEmailVerifiedSuccess),
                           backgroundColor: Colors.green,
                         ),
                       );
                     } else {
                       ScaffoldMessenger.of(ctx).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Aún no detectamos la verificación. Abre el enlace del correo e inténtalo de nuevo.',
-                          ),
+                        SnackBar(
+                          content: Text(ctx.l10n.authVerificationNotDetected),
                         ),
                       );
                     }
                   },
-                  child: const Text('Ya verifiqué'),
+                  child: Text(context.l10n.authAlreadyVerified),
                 ),
             ],
           ),
@@ -812,31 +811,31 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Centro de soporte',
+                context.l10n.authSupportCenter,
                 style: AppTextStyles.titleLarge.copyWith(color: colors.primary),
               ),
               const SizedBox(height: 8),
               Text(
-                '¿Necesitas ayuda con tu cuenta, verificación de correo o acceso?',
+                context.l10n.authSupportDesc,
                 style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
               ),
               const SizedBox(height: 20),
               _supportTile(
                 icon: Icons.email_outlined,
-                title: 'Correo de soporte',
+                title: context.l10n.authSupportEmail,
                 subtitle: _supportEmail,
                 colors: colors,
                 onTap: () {
                   Clipboard.setData(const ClipboardData(text: _supportEmail));
                   ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(content: Text('Correo copiado al portapapeles')),
+                    SnackBar(content: Text(context.l10n.authEmailCopied)),
                   );
                 },
               ),
               _supportTile(
                 icon: Icons.mark_email_read_outlined,
-                title: 'Verificación de correo',
-                subtitle: 'No llegó el correo → revisa spam o reenvía desde login',
+                title: context.l10n.authEmailVerification,
+                subtitle: context.l10n.authEmailNotReceived,
                 colors: colors,
                 onTap: () {
                   Navigator.pop(ctx);
@@ -847,8 +846,8 @@ class _AuthScreenState extends State<AuthScreen> {
                     );
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Inicia sesión con tu correo para reenviar la verificación.'),
+                      SnackBar(
+                        content: Text(context.l10n.authLoginToResend),
                       ),
                     );
                   }
@@ -856,8 +855,8 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               _supportTile(
                 icon: Icons.lock_reset,
-                title: 'Olvidé mi contraseña',
-                subtitle: 'Recibe un enlace de recuperación por correo',
+                title: context.l10n.authForgotPassTileTitle,
+                subtitle: context.l10n.authReceiveRecoveryLink,
                 colors: colors,
                 onTap: () {
                   Navigator.pop(ctx);
@@ -866,7 +865,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Horario de atención: Lun–Vie 8:00–18:00',
+                context.l10n.authSupportHours,
                 style: AppTextStyles.labelSmall.copyWith(color: colors.textSecondary),
               ),
             ],

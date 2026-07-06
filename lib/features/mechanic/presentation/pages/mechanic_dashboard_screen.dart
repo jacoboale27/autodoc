@@ -11,6 +11,8 @@ import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:intl/intl.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/providers/theme_provider.dart';
+import 'package:autodoc/core/providers/language_provider.dart';
 
 class MechanicDashboardScreen extends StatefulWidget {
   const MechanicDashboardScreen({super.key});
@@ -51,6 +53,28 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                 ),
               ),
               iconTheme: IconThemeData(color: colors.primary),
+              actions: [
+                Consumer2<ThemeProvider, LanguageProvider>(
+                  builder: (context, themeProvider, languageProvider, _) {
+                    final isDark = themeProvider.themeMode == ThemeMode.dark;
+                    final isEnglish = languageProvider.currentLocale.languageCode == 'en';
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined, color: colors.primary),
+                          onPressed: () => themeProvider.setThemeMode(isDark ? ThemeMode.light : ThemeMode.dark),
+                        ),
+                        TextButton(
+                          onPressed: () => languageProvider.changeLanguage(isEnglish ? 'es' : 'en'),
+                          child: Text(isEnglish ? 'EN' : 'ES', style: TextStyle(fontWeight: FontWeight.bold, color: colors.primary)),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                    );
+                  },
+                ),
+              ],
             )
           : null,
       drawer: isMobile ? const Drawer(child: MechanicSidebar()) : null,
@@ -117,6 +141,26 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
           ),
           Row(
             children: [
+              Consumer2<ThemeProvider, LanguageProvider>(
+                builder: (context, themeProvider, languageProvider, _) {
+                  final isDark = themeProvider.themeMode == ThemeMode.dark;
+                  final isEnglish = languageProvider.currentLocale.languageCode == 'en';
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined, color: colors.textSecondary),
+                        onPressed: () => themeProvider.setThemeMode(isDark ? ThemeMode.light : ThemeMode.dark),
+                      ),
+                      TextButton(
+                        onPressed: () => languageProvider.changeLanguage(isEnglish ? 'es' : 'en'),
+                        child: Text(isEnglish ? 'EN' : 'ES', style: TextStyle(fontWeight: FontWeight.bold, color: colors.textSecondary)),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(width: 16),
               Icon(Icons.notifications_none, color: colors.textSecondary),
               const SizedBox(width: 16),
               CircleAvatar(

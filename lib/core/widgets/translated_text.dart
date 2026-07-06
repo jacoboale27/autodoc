@@ -22,7 +22,7 @@ class TranslatedText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final languageProvider = context.watch<LanguageProvider>();
-    final targetLang = languageProvider.currentLocale;
+    final targetLang = languageProvider.currentLanguageCode;
 
     // 1. If base language is selected, display text immediately
     if (targetLang == 'es') {

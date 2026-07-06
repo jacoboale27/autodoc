@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
 import 'package:autodoc/features/auth/data/services/auth_preferences_service.dart';
+import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -64,7 +65,11 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               if (rememberMe || onboardingCompleted) {
                 context.go('/login');
               } else {
-                context.go('/onboarding');
+                if (Responsive.isDesktop(context)) {
+                  context.go('/landing');
+                } else {
+                  context.go('/onboarding');
+                }
               }
             }
           }

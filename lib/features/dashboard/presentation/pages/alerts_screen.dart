@@ -14,6 +14,7 @@ import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
@@ -47,7 +48,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
             child: vehicle == null
                 ? Center(
                     child: Text(
-                      'Selecciona un vehículo primero',
+                      context.l10n.alertsSelectVehicle,
                       style: TextStyle(color: colors.textSecondary),
                     ),
                   )
@@ -97,7 +98,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 onPressed: () => context.pop(),
               ),
               Text(
-                'Alertas',
+                context.l10n.alertsTitle,
                 style: GoogleFonts.inter(
                   fontSize: Responsive.fontSize(context, 20),
                   fontWeight: FontWeight.bold,
@@ -107,7 +108,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
               const Spacer(),
               IconButton(
                 icon: Icon(Icons.update, color: primary),
-                tooltip: 'Actualizar Kilometraje',
+                tooltip: context.l10n.alertsUpdateMileage,
                 onPressed: () => _showUpdateMileageDialog(context),
               ),
             ],
@@ -121,7 +122,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
     Color subTextColor,
     Color cardColor,
   ) {
-    final tabs = ['Todas', 'Urgentes', 'Próximas'];
+    final tabs = [context.l10n.alertsTabAll, context.l10n.alertsTabUrgent, context.l10n.alertsTabUpcoming];
     return Container(
       decoration: BoxDecoration(
         color: cardColor,
@@ -225,7 +226,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              '¡Todo al día!',
+              context.l10n.alertsAllGood,
               style: GoogleFonts.inter(
                 fontSize: Responsive.fontSize(context, 18),
                 fontWeight: FontWeight.bold,
@@ -234,7 +235,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              'No hay alertas en esta categoría.',
+              context.l10n.alertsNoAlertsInCategory,
               style: TextStyle(color: subTextColor, fontSize: 13),
             ),
           ],
@@ -253,9 +254,9 @@ class _AlertsScreenState extends State<AlertsScreen> {
         if (showCritical &&
             (criticalTasks.isNotEmpty || highAlerts.isNotEmpty)) ...[
           _buildSectionHeader(
-            'Prioridad Alta',
+            context.l10n.alertsHighPriority,
             Colors.red,
-            '${criticalTasks.length + highAlerts.length} pendientes',
+            context.l10n.alertsPendingCount((criticalTasks.length + highAlerts.length).toString()),
           ),
           const SizedBox(height: 12),
           ...criticalTasks.map(
@@ -287,9 +288,9 @@ class _AlertsScreenState extends State<AlertsScreen> {
         if (showPreventive &&
             (preventiveTasks.isNotEmpty || medAlerts.isNotEmpty)) ...[
           _buildSectionHeader(
-            'Próximos Vencimientos',
+            context.l10n.alertsUpcomingExpirations,
             Colors.amber[700]!,
-            '${preventiveTasks.length + medAlerts.length} eventos',
+            context.l10n.alertsEventsCount((preventiveTasks.length + medAlerts.length).toString()),
           ),
           const SizedBox(height: 12),
           ...preventiveTasks.map(
@@ -320,7 +321,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
         // Optimal / Suggestions
         if (showOptimal &&
             (optimalTasks.isNotEmpty || lowAlerts.isNotEmpty)) ...[
-          _buildSectionHeader('Sugerencias', primary, null),
+          _buildSectionHeader(context.l10n.alertsSuggestions, primary, null),
           const SizedBox(height: 12),
           ...optimalTasks.map(
             (t) => _buildTaskCard(
@@ -363,14 +364,14 @@ class _AlertsScreenState extends State<AlertsScreen> {
           Icon(Icons.speed, color: primary, size: Responsive.iconSize(context, 20)),
           const SizedBox(width: 10),
           Text(
-            'Kilometraje actual: ',
+            context.l10n.alertsCurrentMileage,
             style: GoogleFonts.inter(
               fontSize: 13,
               color: primary.withValues(alpha: 0.7),
             ),
           ),
           Text(
-            '${NumberFormat('#,###').format(km)} km',
+            '${NumberFormat('#,###').format(km)} ${context.l10n.vpKm}',
             style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.bold,
@@ -436,11 +437,11 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
     String subtitle;
     if (status == MaintenanceStatus.critical) {
-      subtitle = 'Superado por ${(-kmLeft).abs()} km. ¡Atención inmediata!';
+      subtitle = context.l10n.alertsOverdue((-kmLeft).abs().toString());
     } else if (status == MaintenanceStatus.preventive) {
-      subtitle = 'Faltan $kmLeft km para la revisión programada.';
+      subtitle = context.l10n.alertsMissingKm(kmLeft.toString());
     } else {
-      subtitle = 'Próximo servicio en $kmLeft km aprox.';
+      subtitle = context.l10n.alertsNextServiceApprox(kmLeft.toString());
     }
 
     return AppCard(
@@ -548,11 +549,11 @@ class _AlertsScreenState extends State<AlertsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Último: ${NumberFormat('#,###').format(task.ultimoKm)} km',
+                        context.l10n.alertsLastKm(NumberFormat('#,###').format(task.ultimoKm)),
                         style: TextStyle(fontSize: 10, color: subTextColor),
                       ),
                       Text(
-                        'Cada ${NumberFormat('#,###').format(task.frecuenciaKm)} km',
+                        context.l10n.alertsEveryKm(NumberFormat('#,###').format(task.frecuenciaKm)),
                         style: TextStyle(fontSize: 10, color: subTextColor),
                       ),
                     ],
@@ -563,7 +564,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                     children: [
                       Expanded(
                         child: _buildCompactActionButton(
-                          label: 'Configurar',
+                          label: context.l10n.alertsConfig,
                           icon: Icons.settings,
                           accentColor: primary,
                           onPressed: () => context.push('/task_config', extra: task),
@@ -573,7 +574,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: _buildCompactActionButton(
-                          label: 'Completar',
+                          label: context.l10n.alertsComplete,
                           icon: Icons.check,
                           accentColor: accentColor,
                           onPressed: () => context.push(
@@ -751,19 +752,19 @@ class _AlertsScreenState extends State<AlertsScreen> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          'Actualizar Kilometraje',
+          context.l10n.alertsUpdateMileage,
           style: GoogleFonts.inter(fontWeight: FontWeight.bold),
         ),
         content: AppTextField(
           controller: controller,
           keyboardType: TextInputType.number,
-          label: 'Nuevo Kilometraje',
-          suffixText: 'km',
+          label: context.l10n.alertsNewMileage,
+          suffixText: context.l10n.vpKm,
         ),
         actions: [
           AppButton(
             onPressed: () => Navigator.pop(ctx),
-            text: 'Cancelar',
+            text: context.l10n.alertsCancel,
             type: AppButtonType.text,
           ),
           AppButton(
@@ -783,7 +784,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 }
               }
             },
-            text: 'Guardar',
+            text: context.l10n.alertsSave,
           ),
         ],
       ),

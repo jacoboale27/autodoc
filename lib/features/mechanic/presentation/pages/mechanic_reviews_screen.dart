@@ -10,6 +10,7 @@ import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart'
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
 import 'package:autodoc/features/reviews/data/services/review_service.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/widgets/translated_text.dart';
 
 class MechanicReviewsScreen extends StatelessWidget {
   const MechanicReviewsScreen({super.key});
@@ -229,7 +230,7 @@ class MechanicReviewsScreen extends StatelessWidget {
                                           if (r.comentario != null &&
                                               r.comentario!.isNotEmpty) ...[
                                             const SizedBox(height: 12),
-                                            Text(
+                                            TranslatedText(
                                               r.comentario!,
                                               style: GoogleFonts.inter(
                                                 color: colors.textPrimary,

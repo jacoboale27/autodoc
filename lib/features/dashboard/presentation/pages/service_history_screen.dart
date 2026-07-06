@@ -10,6 +10,7 @@ import 'package:autodoc/core/widgets/app_scaffold.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class ServiceHistoryScreen extends StatefulWidget {
   final String vehicleId;
@@ -37,7 +38,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
           onPressed: () => context.pop(),
         ),
         title: Text(
-          'Historial de Servicios',
+          context.l10n.histTitle,
           style: GoogleFonts.inter(
             color: colors.textPrimary,
             fontWeight: FontWeight.bold,
@@ -58,9 +59,9 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
               ),
               child: Row(
                 children: [
-                  _buildFilterTab('Todos', colors),
-                  _buildFilterTab('Manual', colors),
-                  _buildFilterTab('Taller', colors),
+                  _buildFilterTab(context.l10n.histTabAll, colors),
+                  _buildFilterTab(context.l10n.histTabManual, colors),
+                  _buildFilterTab(context.l10n.histTabWorkshop, colors),
                 ],
               ),
             ),
@@ -105,10 +106,10 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                 allRecords.sort((a, b) => b.fecha.compareTo(a.fecha));
 
                 final filteredRecords = allRecords.where((record) {
-                  if (_filter == 'Todos') return true;
+                  if (_filter == context.l10n.histTabAll || _filter == 'Todos') return true;
                   final isManual = record.idTaller == 'Manual (Propietario)';
-                  if (_filter == 'Manual') return isManual;
-                  if (_filter == 'Taller') return !isManual;
+                  if (_filter == context.l10n.histTabManual || _filter == 'Manual') return isManual;
+                  if (_filter == context.l10n.histTabWorkshop || _filter == 'Taller') return !isManual;
                   return true;
                 }).toList();
 
@@ -147,7 +148,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'No hay servicios registrados',
+            context.l10n.histNoServices,
             style: GoogleFonts.inter(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -156,7 +157,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Los mantenimientos aparecerán aquí',
+            context.l10n.histNoServicesDesc,
             style: TextStyle(color: colors.textSecondary),
           ),
         ],
@@ -256,7 +257,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                       ),
                     ),
                     Text(
-                      '${DateFormat('dd MMM yyyy').format(record.fecha)} • ${record.kilometrajeServicio ?? '--'} km',
+                      '${DateFormat('dd MMM yyyy').format(record.fecha)} • ${record.kilometrajeServicio ?? '--'} ${context.l10n.vpKm}',
                       style: TextStyle(
                         color: colors.textSecondary,
                         fontSize: 13,
@@ -298,7 +299,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      isManual ? 'Propietario' : 'Taller',
+                      isManual ? context.l10n.histOwner : context.l10n.histWorkshop,
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -331,8 +332,8 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                           color: Colors.green,
                         ),
                         const SizedBox(width: 4),
-                        const Text(
-                          'Evidencia',
+                        Text(
+                          context.l10n.histEvidence,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -366,7 +367,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                 onPressed: () => _resenarTaller(context, record),
                 icon: Icon(Icons.star_outline, size: 18, color: colors.warning),
                 label: Text(
-                  'Reseñar taller',
+                  context.l10n.histReviewWorkshop,
                   style: TextStyle(
                     color: colors.primary,
                     fontWeight: FontWeight.w600,

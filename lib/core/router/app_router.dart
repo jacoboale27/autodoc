@@ -4,6 +4,7 @@ import 'package:animations/animations.dart';
 import 'package:autodoc/features/splash/presentation/pages/splash_screen.dart';
 import 'package:autodoc/features/onboarding/presentation/pages/onboarding_screen.dart';
 import 'package:autodoc/features/auth/presentation/pages/auth_screen.dart';
+import 'package:autodoc/features/landing/presentation/pages/landing_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/dashboard_screen.dart';
 import 'package:autodoc/features/profile/presentation/pages/profile_setup_screen.dart';
 import 'package:autodoc/features/profile/presentation/pages/user_profile_screen.dart';
@@ -55,11 +56,15 @@ CustomTransitionPage<T> buildPageWithFadeThrough<T>({
 /// - /task_config: expects `MaintenanceTask`
 /// - /task_complete: expects `Map<String, dynamic>` with keys 'task' (MaintenanceTask) and 'currentKm' (int)
 final GoRouter appRouter = GoRouter(
-  initialLocation: '/',
+  initialLocation: '/login',
   routes: [
     GoRoute(
       path: '/',
       pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const SplashScreen()),
+    ),
+    GoRoute(
+      path: '/landing',
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const LandingScreen()),
     ),
     GoRoute(
       path: '/onboarding',

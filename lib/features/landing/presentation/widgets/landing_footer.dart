@@ -1,8 +1,8 @@
-/*
 import 'package:flutter/material.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class LandingFooter extends StatelessWidget {
   const LandingFooter({super.key});
@@ -48,7 +48,7 @@ class LandingFooter extends StatelessWidget {
                         ),
                         const SizedBox(height: 20),
                         Text(
-                          'Transformando la gestión automotriz a través de tecnología inteligente y transparencia garantizada.',
+                          context.l10n.footerDesc,
                           style: AppTextStyles.bodySmall.copyWith(color: colors.textSecondary),
                         ),
                       ],
@@ -57,17 +57,17 @@ class LandingFooter extends StatelessWidget {
                   const Spacer(),
                   // Links
                   _FooterColumn(
-                    title: 'Para Dueños',
+                    title: context.l10n.footerOwners,
                     links: ['Mi Garaje', 'Alertas SOAT', 'Mantenimientos'],
                   ),
                   const SizedBox(width: 60),
                   _FooterColumn(
-                    title: 'Para Talleres',
+                    title: context.l10n.footerWorkshops,
                     links: ['Gestión Digital', 'Reputación', 'Evidence Upload'],
                   ),
                   const SizedBox(width: 60),
                   _FooterColumn(
-                    title: 'Social',
+                    title: context.l10n.footerSocial,
                     isSocial: true,
                     links: ['Instagram', 'LinkedIn'],
                   ),
@@ -76,12 +76,12 @@ class LandingFooter extends StatelessWidget {
               const SizedBox(height: 80),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.top(32),
+                padding: const EdgeInsets.only(top: 24),
                 decoration: BoxDecoration(
                   border: Border(top: BorderSide(color: colors.outline.withValues(alpha: 0.1))),
                 ),
                 child: Text(
-                  '© 2026 AutoDoc Technology. Hecho para conductores inteligentes.',
+                  context.l10n.footerCopyright,
                   textAlign: TextAlign.center,
                   style: AppTextStyles.bodySmall.copyWith(color: colors.textSecondary.withValues(alpha: 0.5)),
                 ),
@@ -122,4 +122,3 @@ class _FooterColumn extends StatelessWidget {
     );
   }
 }
-*/

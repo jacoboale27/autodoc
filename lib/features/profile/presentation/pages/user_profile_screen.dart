@@ -9,7 +9,9 @@ import 'package:intl/intl.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
+import 'package:autodoc/core/providers/language_provider.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({super.key});
@@ -56,37 +58,23 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final currentUser = authProvider.userData;
     if (currentUser == null) return;
 
-
-    if (_imageFile != null) {
-      // In a real app, we would upload to Firebase Storage here
-      // For now, we'll simulate the update or just keep the local path if possible
-      // (UserService has the upload method, but let's assume we use it)
-      try {
-        // This would require UserService, which we have.
-        // We'll call updateProfile in AuthProvider which should handle the logic.
-        // For simplicity in this demo, let's just update the name and photoUrl if uploaded.
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error uploading image: $e')),
-          );
-        }
-      }
-    }
-
     final updatedUser = currentUser.copyWith(
       nombreCompleto: _nameController.text,
-      // We don't usually allow email change easily in Firebase without re-auth
     );
 
     final success = await authProvider.updateProfile(updatedUser, imageFile: _imageFile);
+    
+    if (!mounted) return;
+    
     if (success) {
       setState(() => _isEditing = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.upProfileUpdatedSuccess)),
+      );
+    } else if (authProvider.error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.upErrorUploadingImage(authProvider.error!))),
+      );
     }
   }
 
@@ -111,20 +99,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
     if (user == null) {
       return Scaffold(
-        appBar: AppBar(title: Text('Profile')),
+        appBar: AppBar(title: Text(context.l10n.upProfileTitle)),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.person_off_outlined, size: Responsive.iconSize(context, 64), color: Colors.grey),
               const SizedBox(height: 16),
-              Text('Profile data not found', style: TextStyle(fontSize: Responsive.fontSize(context, 18), fontWeight: FontWeight.bold)),
+              Text(context.l10n.upProfileDataNotFound, style: TextStyle(fontSize: Responsive.fontSize(context, 18), fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              Text(authProvider.error ?? 'Please complete your profile setup.', textAlign: TextAlign.center),
+              Text(authProvider.error ?? context.l10n.upPleaseCompleteSetup, textAlign: TextAlign.center),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () => context.go('/profile_setup'),
-                child: Text('Setup Profile'),
+                child: Text(context.l10n.upSetupProfile),
               ),
               TextButton(
                 onPressed: () async {
@@ -132,7 +120,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   await authProvider.signOut();
                   router.go('/login');
                 },
-                child: Text('Sign Out', style: TextStyle(color: Colors.red)),
+                child: Text(context.l10n.upSignOut, style: const TextStyle(color: Colors.red)),
               ),
             ],
           ),
@@ -185,7 +173,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       height: 20,
                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                     )
-                  : Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                  : Text(context.l10n.upSaveChanges, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
               icon: isLoading ? null : const Icon(Icons.check, color: Colors.white),
             )
           : null,
@@ -203,7 +191,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             icon: Icon(Icons.arrow_back_ios_new, size: Responsive.iconSize(context, 20)),
           ),
           Text(
-            'My Profile',
+            context.l10n.upMyProfile,
             style: GoogleFonts.inter(
               fontSize: Responsive.fontSize(context, 18),
               fontWeight: FontWeight.bold,
@@ -305,12 +293,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildInfoField('Full Name', _nameController, Icons.person_outline, primary, _isEditing, isDark),
+          _buildInfoField(context.l10n.upFullName, _nameController, Icons.person_outline, primary, _isEditing, isDark),
           const SizedBox(height: 24),
-          _buildInfoField('Email Address', _emailController, Icons.email_outlined, primary, false, isDark), // Email usually not editable here
+          _buildInfoField(context.l10n.upEmailAddress, _emailController, Icons.email_outlined, primary, false, isDark), // Email usually not editable here
           const SizedBox(height: 24),
           _buildStaticField(
-            'Member Since',
+            context.l10n.upMemberSince,
             DateFormat('MMM yyyy').format(user.fechaRegistro),
             Icons.calendar_today_outlined,
             primary,
@@ -323,6 +311,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Widget _buildSettingsSection(BuildContext context, Color primary, bool isDark) {
     final themeProvider = context.watch<ThemeProvider>();
+    final languageProvider = context.watch<LanguageProvider>();
     
     return Container(
       padding: EdgeInsets.all(Responsive.padding(context, 24)),
@@ -335,7 +324,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Settings',
+            context.l10n.upSettings,
             style: GoogleFonts.inter(
               fontSize: Responsive.fontSize(context, 14),
               fontWeight: FontWeight.bold,
@@ -346,8 +335,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           const SizedBox(height: 16),
           _buildThemeOption(
             context,
-            'Dark Mode',
-            'Switch between light and dark theme',
+            context.l10n.upDarkMode,
+            context.l10n.upSwitchTheme,
             Icons.dark_mode_outlined,
             themeProvider.themeMode == ThemeMode.dark,
             (value) {
@@ -358,12 +347,24 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           const Divider(height: 32),
           _buildThemeOption(
             context,
-            'Follow System',
-            'Use system default theme',
+            context.l10n.upFollowSystem,
+            context.l10n.upUseSystemTheme,
             Icons.settings_brightness_outlined,
             themeProvider.themeMode == ThemeMode.system,
             (value) {
               themeProvider.setThemeMode(value ? ThemeMode.system : (isDark ? ThemeMode.dark : ThemeMode.light));
+            },
+            isDark,
+          ),
+          const Divider(height: 32),
+          _buildThemeOption(
+            context,
+            'Idioma / Language',
+            'EN (Activado) / ES (Desactivado)',
+            Icons.language_outlined,
+            languageProvider.currentLocale.languageCode == 'en',
+            (value) {
+              languageProvider.changeLanguage(value ? 'en' : 'es');
             },
             isDark,
           ),
@@ -511,7 +512,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         router.go('/login');
       },
       icon: const Icon(Icons.logout, color: Colors.red),
-      label: Text('Sign Out', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+      label: Text(context.l10n.upSignOut, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
       style: TextButton.styleFrom(
         padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 24), vertical: Responsive.padding(context, 12)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

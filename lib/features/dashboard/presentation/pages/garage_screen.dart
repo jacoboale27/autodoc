@@ -16,6 +16,7 @@ import '../widgets/add_vehicle_form.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class GarageScreen extends StatelessWidget {
   const GarageScreen({super.key});
@@ -92,7 +93,7 @@ class GarageScreen extends StatelessWidget {
             onPressed: () => context.pop(),
           ),
           Text(
-            'Mis Vehículos',
+            context.l10n.garageMyVehicles,
             style: GoogleFonts.inter(
               fontSize: Responsive.fontSize(context, 18),
               fontWeight: FontWeight.bold,
@@ -135,7 +136,7 @@ class GarageScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'No tienes vehículos en tu garaje',
+            context.l10n.garageNoVehicles,
             style: GoogleFonts.inter(
               fontSize: Responsive.fontSize(context, 16),
               fontWeight: FontWeight.w500,
@@ -158,7 +159,7 @@ class GarageScreen extends StatelessWidget {
     // For now, let's just make it "Óptimo" if kilometraje < 10000
     final isOptimo = vehicle.kilometrajeActual < 10000;
     final statusColor = isOptimo ? Colors.green : Colors.yellow[700]!;
-    final statusText = isOptimo ? 'Óptimo' : 'Revisión Sugerida';
+    final statusText = isOptimo ? context.l10n.garageOptimal : context.l10n.garageSuggestedReview;
 
     return AppCard(
       onTap: () => context.push('/vehicle_profile', extra: vehicle),
@@ -294,7 +295,7 @@ class GarageScreen extends StatelessWidget {
                           onPressed: provider.isLoading
                               ? null
                               : () => _setVehicleAsPrimary(context, vehicle, provider),
-                          text: 'Hacer Principal',
+                          text: context.l10n.garageMakePrimary,
                           type: AppButtonType.text,
                           icon: const Icon(Icons.star_border),
                         ),
@@ -332,8 +333,7 @@ class GarageScreen extends StatelessWidget {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            '${vehicle.marca ?? ''} ${vehicle.modelo ?? ''} es ahora tu vehículo principal'
-              .trim(),
+            context.l10n.garageNowPrimary('${vehicle.marca ?? ''} ${vehicle.modelo ?? ''}'.trim()),
           ),
         ),
       );
@@ -341,7 +341,7 @@ class GarageScreen extends StatelessWidget {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            provider.error ?? 'No se pudo establecer el vehículo principal',
+            provider.error ?? context.l10n.garageMakePrimaryError,
           ),
         ),
       );
@@ -379,7 +379,7 @@ class GarageScreen extends StatelessWidget {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    vehicleProvider.error ?? 'Error al agregar vehiculo',
+                    vehicleProvider.error ?? context.l10n.garageAddVehicleError,
                   ),
                 ),
               );

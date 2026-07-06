@@ -14,6 +14,7 @@ import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import '../widgets/share_vehicle_sheet.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class VehicleProfileScreen extends StatefulWidget {
   final VehicleModel vehicle;
@@ -87,7 +88,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
               icon: Icon(Icons.arrow_back_ios_new, color: colors.primary, size: 20),
             ),
             Text(
-              'Perfil del Vehículo',
+              context.l10n.vpProfileTitle,
               style: GoogleFonts.inter(
                 fontSize: Responsive.fontSize(context, 18),
                 fontWeight: FontWeight.bold,
@@ -120,17 +121,17 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                     children: [
                       Icon(Icons.people_outline, color: colors.textSecondary, size: 20),
                       const SizedBox(width: 8),
-                      const Text('Compartir Vehículo'),
+                      Text(context.l10n.vpShareVehicle),
                     ],
                   ),
                 ),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'delete',
                   child: Row(
                     children: [
-                      Icon(Icons.delete, color: Colors.red, size: 20),
-                      SizedBox(width: 8),
-                      Text('Eliminar Vehículo', style: TextStyle(color: Colors.red)),
+                      const Icon(Icons.delete, color: Colors.red, size: 20),
+                      const SizedBox(width: 8),
+                      Text(context.l10n.vpDeleteVehicle, style: const TextStyle(color: Colors.red)),
                     ],
                   ),
                 ),
@@ -183,9 +184,9 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                             color: colors.secondary,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Text(
-                            'ACTIVO',
-                            style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          child: Text(
+                            context.l10n.vpActiveStatus,
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ],
@@ -220,7 +221,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                   ),
                 ),
                 Text(
-                  'Propietario: Personal',
+                  context.l10n.vpOwnerPersonal,
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
@@ -251,16 +252,16 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
         crossAxisSpacing: Responsive.padding(context, 16),
         childAspectRatio: Responsive.isDesktop(context) ? 2.0 : 1.25,
         children: [
-          _buildDetailItem(Icons.calendar_today, 'Año', vehicle.anio?.toString() ?? 'N/A', colors),
-          _buildDetailItem(Icons.palette, 'Color', vehicle.color ?? 'N/A', colors),
+          _buildDetailItem(Icons.calendar_today, context.l10n.vpYear, vehicle.anio?.toString() ?? 'N/A', colors),
+          _buildDetailItem(Icons.palette, context.l10n.vpColor, vehicle.color ?? 'N/A', colors),
           _buildDetailItem(
             Icons.speed, 
-            'Kilometraje', 
-            '${vehicle.kilometrajeActual} km', 
+            context.l10n.vpMileage, 
+            '${vehicle.kilometrajeActual} ${context.l10n.vpKm}', 
             colors,
             onTap: () => _showEditMileageDialog(context, vehicle, colors),
           ),
-          _buildDetailItem(Icons.directions_car, 'Marca', vehicle.marca ?? 'N/A', colors),
+          _buildDetailItem(Icons.directions_car, context.l10n.vpBrand, vehicle.marca ?? 'N/A', colors),
         ],
       ),
     );
@@ -311,19 +312,19 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Documentación y Alertas',
+            context.l10n.vpDocAndAlerts,
             style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: colors.textPrimary),
           ),
           const SizedBox(height: 12),
           _buildDocumentationStatusItem(
-            'Tarjeta de Circulación',
+            context.l10n.vpCirculationCard,
             vehicle.vencimientoTarjeta,
             colors,
             () => _showUpdateDateDialog(context, vehicle, true),
           ),
           const SizedBox(height: 12),
           _buildDocumentationStatusItem(
-            'Seguro SOAT',
+            context.l10n.vpSoatInsurance,
             vehicle.vencimientoSoat,
             colors,
             () => _showUpdateDateDialog(context, vehicle, false),
@@ -338,10 +339,10 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
       return _buildStatusAlert(
         icon: Icons.help_outline,
         title: title,
-        subtitle: 'Fecha no registrada',
+        subtitle: context.l10n.vpDateNotRegistered,
         color: Colors.grey,
         colors: colors,
-        actionLabel: 'Actualizar',
+        actionLabel: context.l10n.vpUpdate,
         onActionPressed: onUpdate,
       );
     }
@@ -357,15 +358,15 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     if (difference < 0) {
       statusColor = colors.error;
       icon = Icons.error_outline;
-      statusText = 'Vencido el $formattedDate';
+      statusText = context.l10n.vpExpiredOn(formattedDate);
     } else if (difference < 30) {
       statusColor = colors.warning;
       icon = Icons.warning_amber_rounded;
-      statusText = 'Vence en $difference días ($formattedDate)';
+      statusText = context.l10n.vpExpiresInDays(difference.toString(), formattedDate);
     } else {
       statusColor = colors.secondary;
       icon = Icons.verified_user_outlined;
-      statusText = 'Vence en $difference días ($formattedDate)';
+      statusText = context.l10n.vpExpiresInDays(difference.toString(), formattedDate);
     }
  
     return _buildStatusAlert(
@@ -375,7 +376,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
       color: statusColor,
       colors: colors,
       isVerified: difference >= 30,
-      actionLabel: difference < 30 ? 'Renovar' : null,
+      actionLabel: difference < 30 ? context.l10n.vpRenew : null,
       onActionPressed: onUpdate,
     );
   }
@@ -428,6 +429,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
   Future<void> _showUpdateDateDialog(BuildContext context, VehicleModel vehicle, bool isTarjeta) async {
     final vehicleProvider = context.read<VehicleProvider>();
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
 
     final DateTime? pickedDate = await showDatePicker(
       context: context,
@@ -456,11 +458,11 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
       if (mounted) {
         if (success) {
           messenger.showSnackBar(
-            const SnackBar(content: Text('Fecha actualizada correctamente')),
+            SnackBar(content: Text(l10n.vpDateUpdatedSuccess)),
           );
         } else {
           messenger.showSnackBar(
-            SnackBar(content: Text(vehicleProvider.error ?? 'Error al actualizar fecha')),
+            SnackBar(content: Text(vehicleProvider.error ?? l10n.vpDateUpdateError)),
           );
         }
       }
@@ -474,21 +476,21 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Acciones Rápidas',
+            context.l10n.vpQuickActions,
             style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: colors.textPrimary),
           ),
           const SizedBox(height: 16),
           Row(
             children: [
-              _buildActionButton(Icons.history, 'Historial', colors.primary, colors, onTap: () {
+              _buildActionButton(Icons.history, context.l10n.vpHistory, colors.primary, colors, onTap: () {
                 context.push('/service_history', extra: vehicle.idVehiculo);
               }),
               const SizedBox(width: 12),
-              _buildActionButton(Icons.build, 'Servicios', colors.secondary, colors, onTap: () {
+              _buildActionButton(Icons.build, context.l10n.vpServices, colors.secondary, colors, onTap: () {
                 context.push('/workshop_directory');
               }),
               const SizedBox(width: 12),
-              _buildActionButton(Icons.description, 'Papeles', colors.warning, colors, onTap: () {
+              _buildActionButton(Icons.description, context.l10n.vpPapers, colors.warning, colors, onTap: () {
                 context.push('/alerts');
               }),
             ],
@@ -525,14 +527,14 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: colors.surface,
-        title: Text('Actualizar Kilometraje', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: colors.textPrimary)),
+        title: Text(context.l10n.vpUpdateMileage, style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: colors.textPrimary)),
         content: Form(
           key: formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Ingresa el kilometraje actual. Debe ser mayor a ${vehicle.kilometrajeActual} km.',
+                context.l10n.vpEnterNewMileage(vehicle.kilometrajeActual.toString()),
                 style: TextStyle(fontSize: 13, color: colors.textSecondary),
               ),
               const SizedBox(height: 16),
@@ -541,20 +543,20 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                 keyboardType: TextInputType.number,
                 autofocus: true,
                 decoration: InputDecoration(
-                  labelText: 'Nuevo Kilometraje',
+                  labelText: context.l10n.vpNewMileageLabel,
                   labelStyle: TextStyle(color: colors.textSecondary),
-                  suffixText: 'km',
+                  suffixText: context.l10n.vpKm,
                   suffixStyle: TextStyle(color: colors.textSecondary),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   prefixIcon: Icon(Icons.speed, color: colors.primary),
                 ),
                 style: TextStyle(color: colors.textPrimary),
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Ingresa un valor';
+                  if (value == null || value.isEmpty) return context.l10n.vpEnterValue;
                   final newMileage = int.tryParse(value);
-                  if (newMileage == null) return 'Ingresa un número válido';
+                  if (newMileage == null) return context.l10n.vpEnterValidNumber;
                   if (newMileage <= vehicle.kilometrajeActual) {
-                    return 'Debe ser mayor a ${vehicle.kilometrajeActual}';
+                    return context.l10n.vpMustBeGreaterThan(vehicle.kilometrajeActual.toString());
                   }
                   return null;
                 },
@@ -565,10 +567,10 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
         actions: [
           TextButton(
             onPressed: () => context.pop(),
-            child: const Text('Cancelar'),
+            child: Text(context.l10n.alertsCancel),
           ),
           AppButton(
-            text: 'Guardar',
+            text: context.l10n.vpSave,
             onPressed: () async {
               if (formKey.currentState!.validate()) {
                 final newMileage = int.parse(controller.text);
@@ -582,11 +584,11 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                   if (success) {
                     context.pop();
                     messenger.showSnackBar(
-                      const SnackBar(content: Text('Kilometraje actualizado correctamente')),
+                      SnackBar(content: Text(context.l10n.vpMileageUpdatedSuccess)),
                     );
                   } else {
                     messenger.showSnackBar(
-                      SnackBar(content: Text(vehicleProvider.error ?? 'Error al actualizar')),
+                      SnackBar(content: Text(vehicleProvider.error ?? context.l10n.vpUpdateError)),
                     );
                   }
                 }
@@ -608,14 +610,14 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           backgroundColor: colors.surface,
-          title: Text('Eliminar Vehículo', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: colors.error)),
+          title: Text(context.l10n.vpDeleteVehicle, style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: colors.error)),
           content: Form(
             key: formKey,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  '¿Estás seguro que deseas eliminar el ${vehicle.marca} ${vehicle.modelo}? Esta acción no se puede deshacer.',
+                  context.l10n.vpConfirmDelete(vehicle.marca ?? '', vehicle.modelo ?? ''),
                   style: TextStyle(fontSize: 14, color: colors.textPrimary),
                 ),
                 const SizedBox(height: 16),
@@ -623,14 +625,14 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                   controller: passwordController,
                   obscureText: true,
                   decoration: InputDecoration(
-                    labelText: 'Ingresa tu contraseña',
+                    labelText: context.l10n.vpEnterPassword,
                     labelStyle: TextStyle(color: colors.textSecondary),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     prefixIcon: Icon(Icons.lock, color: colors.primary),
                   ),
                   style: TextStyle(color: colors.textPrimary),
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'Ingresa tu contraseña';
+                    if (value == null || value.isEmpty) return context.l10n.vpEnterPassword;
                     return null;
                   },
                 ),
@@ -640,10 +642,10 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
           actions: [
             TextButton(
               onPressed: isVerifying ? null : () => context.pop(),
-              child: const Text('Cancelar'),
+              child: Text(context.l10n.alertsCancel),
             ),
             AppButton(
-              text: 'Eliminar',
+              text: context.l10n.vpDeleteVehicle,
               isLoading: isVerifying,
               onPressed: () async {
                 if (formKey.currentState!.validate()) {
@@ -658,7 +660,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                     if (!isValid) {
                       setState(() => isVerifying = false);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Contraseña incorrecta')),
+                        SnackBar(content: Text(context.l10n.vpIncorrectPassword)),
                       );
                       return;
                     }
@@ -672,11 +674,11 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                         context.pop(); // Close dialog
                         context.pop(); // Go back to previous screen
                         messenger.showSnackBar(
-                          const SnackBar(content: Text('Vehículo eliminado correctamente')),
+                          SnackBar(content: Text(context.l10n.vpDeleteSuccess)),
                         );
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(vehicleProvider.error ?? 'Error al eliminar')),
+                          SnackBar(content: Text(vehicleProvider.error ?? context.l10n.vpDeleteError)),
                         );
                       }
                     }

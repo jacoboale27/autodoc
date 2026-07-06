@@ -11,6 +11,9 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:intl/intl.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/providers/theme_provider.dart';
+import 'package:autodoc/core/providers/language_provider.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -38,8 +41,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Dashboard Administrador'),
+        title: Text(context.l10n.adminDashboardTitle),
         centerTitle: true,
+        actions: [
+          Consumer2<ThemeProvider, LanguageProvider>(
+            builder: (context, themeProvider, languageProvider, _) {
+              final isDark = themeProvider.themeMode == ThemeMode.dark;
+              final isEnglish = languageProvider.currentLocale.languageCode == 'en';
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
+                    onPressed: () => themeProvider.setThemeMode(isDark ? ThemeMode.light : ThemeMode.dark),
+                  ),
+                  TextButton(
+                    onPressed: () => languageProvider.changeLanguage(isEnglish ? 'es' : 'en'),
+                    child: Text(isEnglish ? 'EN' : 'ES', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+              );
+            },
+          ),
+        ],
       ),
       drawer: const AdminSidebar(),
       body: provider.isLoading
@@ -60,15 +85,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       children: [
                         _buildWelcomeHeader(context, authProvider, colors),
                         const SizedBox(height: 32),
-                        _buildSectionTitle(context, 'Métricas Globales'),
+                        _buildSectionTitle(context, context.l10n.adminGlobalMetricsTitle),
                         const SizedBox(height: 16),
                         _buildMetricsGrid(context, provider, colors),
                         const SizedBox(height: 32),
-                        _buildSectionTitle(context, 'Acciones Rápidas'),
+                        _buildSectionTitle(context, context.l10n.adminQuickActionsTitle),
                         const SizedBox(height: 16),
                         _buildQuickActions(context, colors),
                         const SizedBox(height: 32),
-                        _buildSectionTitle(context, 'Actividad Reciente'),
+                        _buildSectionTitle(context, context.l10n.adminRecentActivityTitle),
                         const SizedBox(height: 16),
                         _buildRecentActivity(context, adminProvider, colors),
                       ],
@@ -116,7 +141,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '¡Bienvenido, ${authProvider.userData?.nombreCompleto ?? 'Admin'}!',
+                  context.l10n.adminDashboardWelcome(authProvider.userData?.nombreCompleto ?? 'Admin'),
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -125,7 +150,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Panel de control administrativo',
+                  context.l10n.adminDashboardSubtitle,
                   style: GoogleFonts.inter(
                     color: Colors.white.withValues(alpha: 0.8),
                     fontSize: Responsive.fontSize(context, 14),
@@ -162,37 +187,37 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       physics: const NeverScrollableScrollPhysics(),
       children: [
         MetricCard(
-          title: 'Usuarios',
+          title: context.l10n.adminMetricsUsers,
           value: '${provider.metrics['usuarios']}',
           icon: Icons.people,
           color: colors.primary,
         ),
         MetricCard(
-          title: 'Talleres',
+          title: context.l10n.adminMetricsWorkshops,
           value: '${provider.metrics['talleres']}',
           icon: Icons.build,
           color: colors.warning,
         ),
         MetricCard(
-          title: 'Vehículos',
+          title: context.l10n.adminMetricsVehicles,
           value: '${provider.metrics['vehiculos']}',
           icon: Icons.directions_car,
           color: colors.secondary,
         ),
         MetricCard(
-          title: 'Servicios',
+          title: context.l10n.adminMetricsServices,
           value: '${provider.metrics['servicios']}',
           icon: Icons.miscellaneous_services,
           color: colors.secondary,
         ),
         MetricCard(
-          title: 'Alertas',
+          title: context.l10n.adminMetricsAlerts,
           value: '${provider.metrics['alertas']}',
           icon: Icons.warning,
           color: colors.error,
         ),
         MetricCard(
-          title: 'Reseñas',
+          title: context.l10n.adminMetricsReviews,
           value: '${provider.metrics['resenias']}',
           icon: Icons.rate_review,
           color: colors.primary,
@@ -209,28 +234,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         _buildActionChip(
           context,
           icon: Icons.people_outline,
-          label: 'Gestionar Usuarios',
+          label: context.l10n.adminQuickActionManageUsers,
           color: colors.primary,
           onTap: () => context.go('/admin/usuarios'),
         ),
         _buildActionChip(
           context,
           icon: Icons.build_circle_outlined,
-          label: 'Gestionar Talleres',
+          label: context.l10n.adminQuickActionManageWorkshops,
           color: colors.warning,
           onTap: () => context.go('/admin/talleres'),
         ),
         _buildActionChip(
           context,
           icon: Icons.rate_review_outlined,
-          label: 'Moderar Reseñas',
+          label: context.l10n.adminQuickActionModerateReviews,
           color: colors.secondary,
           onTap: () => context.go('/admin/resenias'),
         ),
         _buildActionChip(
           context,
           icon: Icons.history_outlined,
-          label: 'Ver Actividad',
+          label: context.l10n.adminQuickActionViewLogs,
           color: colors.primary,
           onTap: () => context.go('/admin/logs'),
         ),
@@ -291,7 +316,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Icon(Icons.history, size: Responsive.iconSize(context, 40), color: colors.textSecondary.withValues(alpha: 0.4)),
               const SizedBox(height: 12),
               Text(
-                'Sin actividad reciente',
+                context.l10n.adminNoRecentActivity,
                 style: TextStyle(color: colors.textSecondary, fontSize: Responsive.fontSize(context, 14)),
               ),
             ],
@@ -345,7 +370,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               onPressed: () => context.go('/admin/logs'),
               icon: Icon(Icons.arrow_forward, size: Responsive.iconSize(context, 16), color: colors.primary),
               label: Text(
-                'Ver todo el registro',
+                context.l10n.adminViewAllLogs,
                 style: TextStyle(color: colors.primary),
               ),
             ),

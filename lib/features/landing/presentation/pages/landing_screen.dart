@@ -1,4 +1,3 @@
-/*
 import 'package:flutter/material.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import '../widgets/landing_header.dart';
@@ -57,4 +56,3 @@ class LandingScreen extends StatelessWidget {
     );
   }
 }
-*/

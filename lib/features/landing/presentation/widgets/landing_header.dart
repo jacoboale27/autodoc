@@ -1,9 +1,9 @@
-/*
 import 'package:flutter/material.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class LandingHeader extends StatelessWidget {
   const LandingHeader({super.key});
@@ -57,9 +57,9 @@ class LandingHeader extends StatelessWidget {
               if (MediaQuery.of(context).size.width > 800)
                 Row(
                   children: [
-                    _NavLink(title: 'Plataforma'),
-                    _NavLink(title: 'Para Dueños'),
-                    _NavLink(title: 'Talleres'),
+                    _NavLink(title: context.l10n.navPlatform),
+                    _NavLink(title: context.l10n.navOwners),
+                    _NavLink(title: context.l10n.navWorkshops),
                   ],
                 ),
               const Spacer(),
@@ -69,13 +69,13 @@ class LandingHeader extends StatelessWidget {
                   TextButton(
                     onPressed: () {},
                     child: Text(
-                      'Login',
+                      context.l10n.navLogin,
                       style: AppTextStyles.labelLarge.copyWith(color: colors.textPrimary),
                     ),
                   ),
                   const SizedBox(width: 12),
                   AppButton(
-                    text: 'Probar Gratis',
+                    text: context.l10n.navTryFree,
                     onPressed: () {},
                     size: AppButtonSize.small,
                   ),
@@ -107,5 +107,3 @@ class _NavLink extends StatelessWidget {
     );
   }
 }
-
-*/

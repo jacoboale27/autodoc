@@ -1,0 +1,808 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for Spanish Castilian (`es`).
+class AppLocalizationsEs extends AppLocalizations {
+  AppLocalizationsEs([String locale = 'es']) : super(locale);
+
+  @override
+  String get appName => 'AutoDoc';
+
+  @override
+  String get navPlatform => 'Plataforma';
+
+  @override
+  String get navOwners => 'Para Dueños';
+
+  @override
+  String get navWorkshops => 'Talleres';
+
+  @override
+  String get navLogin => 'Login';
+
+  @override
+  String get navTryFree => 'Probar Gratis';
+
+  @override
+  String get authNoAccount => '¿No tienes una cuenta? ';
+
+  @override
+  String get authHaveAccount => '¿Ya tienes una cuenta? ';
+
+  @override
+  String get authRegisterFree => 'Regístrate gratis';
+
+  @override
+  String get authLogin => 'Inicia sesión';
+
+  @override
+  String get authCopilotSubtitle =>
+      'Tu copiloto para el control total de tu vehículo';
+
+  @override
+  String get authWelcomeBack => 'Bienvenido de nuevo';
+
+  @override
+  String get authCreateAccount => 'Crea tu cuenta';
+
+  @override
+  String get authEnterCredentials => 'Ingresa tus credenciales para acceder';
+
+  @override
+  String get authRegisterToManage =>
+      'Regístrate para comenzar a gestionar tus documentos';
+
+  @override
+  String get authEmailOrUserLabel => 'Correo o usuario';
+
+  @override
+  String get authEmailLabel => 'Correo electrónico';
+
+  @override
+  String get authEmailOrUserHint => 'nombre@ejemplo.com o usuario';
+
+  @override
+  String get authEmailHint => 'nombre@ejemplo.com';
+
+  @override
+  String get authPasswordLabel => 'Contraseña';
+
+  @override
+  String get authPasswordHint => '••••••••';
+
+  @override
+  String get authRememberMe => 'Recordarme';
+
+  @override
+  String get authForgotPassword => '¿Olvidaste tu contraseña?';
+
+  @override
+  String get authLoginButton => 'Iniciar Sesión';
+
+  @override
+  String get authRegisterButton => 'Registrarse';
+
+  @override
+  String get authOrContinueWith => 'O CONTINUAR CON';
+
+  @override
+  String get authGoogleLogin => 'Entrar con Google';
+
+  @override
+  String get authTabLogin => 'Login';
+
+  @override
+  String get authTabRegister => 'Registro';
+
+  @override
+  String get authTabSupport => 'Soporte';
+
+  @override
+  String get authForgotPassTitle => 'Recuperar contraseña';
+
+  @override
+  String get authForgotPassDesc =>
+      'Te enviaremos un enlace a tu correo para restablecer la contraseña.';
+
+  @override
+  String get authCancel => 'Cancelar';
+
+  @override
+  String get authSendLink => 'Enviar enlace';
+
+  @override
+  String get authInvalidEmail => 'Ingresa un correo válido.';
+
+  @override
+  String get authSendEmailError => 'No se pudo enviar el correo.';
+
+  @override
+  String get authCheckInbox => 'Revisa tu bandeja de entrada en ';
+
+  @override
+  String get authAndSpam => ' (y la carpeta de spam).';
+
+  @override
+  String get authVerifyEmailTitle => 'Verifica tu correo';
+
+  @override
+  String get authSentLinkTo => 'Enviamos un enlace de verificación a:';
+
+  @override
+  String get authAccountNotVerified =>
+      'Tu cuenta aún no está verificada. Revisa el correo enviado a:';
+
+  @override
+  String get authOpenLinkThenVerify =>
+      'Abre el enlace del correo y luego pulsa \"Ya verifiqué\" para continuar.';
+
+  @override
+  String get authUnderstood => 'Entendido';
+
+  @override
+  String get authContinueWithoutVerify => 'Continuar sin verificar';
+
+  @override
+  String get authResendEmail => 'Reenviar correo';
+
+  @override
+  String get authEmailResent => 'Correo de verificación reenviado.';
+
+  @override
+  String get authResendError => 'No se pudo reenviar.';
+
+  @override
+  String get authAlreadyVerified => 'Ya verifiqué';
+
+  @override
+  String get authEmailVerifiedSuccess => '¡Correo verificado correctamente!';
+
+  @override
+  String get authVerificationNotDetected =>
+      'Aún no detectamos la verificación. Abre el enlace del correo e inténtalo de nuevo.';
+
+  @override
+  String get authSupportCenter => 'Centro de soporte';
+
+  @override
+  String get authSupportDesc =>
+      '¿Necesitas ayuda con tu cuenta, verificación de correo o acceso?';
+
+  @override
+  String get authSupportEmail => 'Correo de soporte';
+
+  @override
+  String get authEmailCopied => 'Correo copiado al portapapeles';
+
+  @override
+  String get authEmailVerification => 'Verificación de correo';
+
+  @override
+  String get authEmailNotReceived =>
+      'No llegó el correo → revisa spam o reenvía desde login';
+
+  @override
+  String get authLoginToResend =>
+      'Inicia sesión con tu correo para reenviar la verificación.';
+
+  @override
+  String get authForgotPassTileTitle => 'Olvidé mi contraseña';
+
+  @override
+  String get authReceiveRecoveryLink =>
+      'Recibe un enlace de recuperación por correo';
+
+  @override
+  String get authSupportHours => 'Horario de atención: Lun–Vie 8:00–18:00';
+
+  @override
+  String get heroBadge => 'CONTROL TOTAL EN TU MANO';
+
+  @override
+  String get heroTitle => 'Tu Garaje Virtual,\nElevado';
+
+  @override
+  String get heroSubtitle =>
+      'Digitaliza tu vehículo hoy. Historial clínico certificado, alertas inteligentes de SOAT y mantenimientos, conectado con los mejores talleres.';
+
+  @override
+  String get heroStartGarage => 'Comenzar mi Garaje';
+
+  @override
+  String get heroViewDirectory => 'Ver Directorio';
+
+  @override
+  String get commandCenterTitle => 'Centro de Control';
+
+  @override
+  String get commandCenterSubtitle => 'Todo lo que necesitas en un solo lugar';
+
+  @override
+  String get tabGarageTitle => 'Garaje';
+
+  @override
+  String get tabGarageSubtitle => 'Tus vehículos';
+
+  @override
+  String get tabHistoryTitle => 'Historial';
+
+  @override
+  String get tabHistorySubtitle => 'Servicios';
+
+  @override
+  String get tabAlertsTitle => 'Alertas';
+
+  @override
+  String get tabAlertsSubtitle => 'Recordatorios';
+
+  @override
+  String get tabSyncTitle => 'Sincronizar';
+
+  @override
+  String get tabSyncSubtitle => 'Datos';
+
+  @override
+  String get valuePropTitle => 'Por qué elegir AutoDoc';
+
+  @override
+  String get valuePropSubtitle => 'Beneficios exclusivos';
+
+  @override
+  String get statSatisfaction => '99% Satisfacción';
+
+  @override
+  String get statWorkshops => '+500 Talleres';
+
+  @override
+  String get footerDesc => 'La mejor app para el cuidado de tu vehículo';
+
+  @override
+  String get footerOwners => 'Para Propietarios';
+
+  @override
+  String get footerWorkshops => 'Para Talleres';
+
+  @override
+  String get footerSocial => 'Redes Sociales';
+
+  @override
+  String get footerCopyright =>
+      '© 2026 AutoDoc. Todos los derechos reservados.';
+
+  @override
+  String dashHello(String userName) {
+    return 'Hola, $userName 👋';
+  }
+
+  @override
+  String get dashReadyForRoad => '¿Listo para la carretera hoy?';
+
+  @override
+  String get dashMaintCritical => 'Mantenimiento vencido — atención inmediata';
+
+  @override
+  String get dashMaintWarning => 'Mantenimiento próximo — revisa las alertas';
+
+  @override
+  String get dashMaintOptimal => 'Vehículo en buen estado';
+
+  @override
+  String get dashMaintStatusLabel => 'Estado de Mantenimiento';
+
+  @override
+  String get dashNoVehicles => 'No hay vehiculos registrados';
+
+  @override
+  String get dashNoVehiclesDesc =>
+      'Añade tu primer vehículo para empezar a controlar su mantenimiento y estado.';
+
+  @override
+  String get dashRegisterVehicle => 'Registrar Vehículo';
+
+  @override
+  String get dashMainVehicle => 'VEHICULO PRINCIPAL';
+
+  @override
+  String dashLicensePlate(String placa) {
+    return 'Placa: $placa';
+  }
+
+  @override
+  String get dashMileage => 'KILOMETRAJE';
+
+  @override
+  String get dashKm => 'km';
+
+  @override
+  String get dashViewVehicleState => 'Ver Estado del Vehículo';
+
+  @override
+  String get dashAddVehicleError => 'Error al agregar vehiculo';
+
+  @override
+  String get dashActiveAlerts => 'Alertas Activas';
+
+  @override
+  String get dashViewAll => 'Ver Todas';
+
+  @override
+  String get dashNoAlertsPending => '¡Excelente! No tienes alertas pendientes.';
+
+  @override
+  String get dashNearbyWorkshops => 'Talleres Cercanos';
+
+  @override
+  String get dashViewAllWorkshops => 'Ver todos';
+
+  @override
+  String get garageMyVehicles => 'Mis Vehículos';
+
+  @override
+  String get garageNoVehicles => 'No tienes vehículos en tu garaje';
+
+  @override
+  String get garageOptimal => 'Óptimo';
+
+  @override
+  String get garageSuggestedReview => 'Revisión Sugerida';
+
+  @override
+  String get garageMakePrimary => 'Hacer Principal';
+
+  @override
+  String garageNowPrimary(String vehicleName) {
+    return '$vehicleName es ahora tu vehículo principal';
+  }
+
+  @override
+  String get garageMakePrimaryError =>
+      'No se pudo establecer el vehículo principal';
+
+  @override
+  String get garageAddVehicleError => 'Error al agregar vehiculo';
+
+  @override
+  String get vpProfileTitle => 'Perfil del Vehículo';
+
+  @override
+  String get vpShareVehicle => 'Compartir Vehículo';
+
+  @override
+  String get vpDeleteVehicle => 'Eliminar Vehículo';
+
+  @override
+  String get vpActiveStatus => 'ACTIVO';
+
+  @override
+  String get vpOwnerPersonal => 'Propietario: Personal';
+
+  @override
+  String get vpYear => 'Año';
+
+  @override
+  String get vpColor => 'Color';
+
+  @override
+  String get vpMileage => 'Kilometraje';
+
+  @override
+  String get vpKm => 'km';
+
+  @override
+  String get vpBrand => 'Marca';
+
+  @override
+  String get vpDocAndAlerts => 'Documentación y Alertas';
+
+  @override
+  String get vpCirculationCard => 'Tarjeta de Circulación';
+
+  @override
+  String get vpSoatInsurance => 'Seguro SOAT';
+
+  @override
+  String get vpDateNotRegistered => 'Fecha no registrada';
+
+  @override
+  String get vpUpdate => 'Actualizar';
+
+  @override
+  String vpExpiredOn(String date) {
+    return 'Vencido el $date';
+  }
+
+  @override
+  String vpExpiresInDays(String days, String date) {
+    return 'Vence en $days días ($date)';
+  }
+
+  @override
+  String get vpRenew => 'Renovar';
+
+  @override
+  String get vpUpdateMileage => 'Actualizar Kilometraje';
+
+  @override
+  String vpEnterNewMileage(String km) {
+    return 'Ingresa el kilometraje actual. Debe ser mayor a $km km.';
+  }
+
+  @override
+  String get vpNewMileageLabel => 'Nuevo Kilometraje';
+
+  @override
+  String get vpEnterValue => 'Ingresa un valor';
+
+  @override
+  String get vpEnterValidNumber => 'Ingresa un número válido';
+
+  @override
+  String vpMustBeGreaterThan(String km) {
+    return 'Debe ser mayor a $km';
+  }
+
+  @override
+  String get vpSave => 'Guardar';
+
+  @override
+  String get vpMileageUpdatedSuccess => 'Kilometraje actualizado correctamente';
+
+  @override
+  String get vpUpdateError => 'Error al actualizar';
+
+  @override
+  String vpConfirmDelete(String brand, String model) {
+    return '¿Estás seguro que deseas eliminar el $brand $model? Esta acción no se puede deshacer.';
+  }
+
+  @override
+  String get vpEnterPassword => 'Ingresa tu contraseña';
+
+  @override
+  String get vpIncorrectPassword => 'Contraseña incorrecta';
+
+  @override
+  String get vpDeleteSuccess => 'Vehículo eliminado correctamente';
+
+  @override
+  String get vpDeleteError => 'Error al eliminar';
+
+  @override
+  String get vpQuickActions => 'Acciones Rápidas';
+
+  @override
+  String get vpHistory => 'Historial';
+
+  @override
+  String get vpServices => 'Servicios';
+
+  @override
+  String get vpPapers => 'Papeles';
+
+  @override
+  String get vpDateUpdatedSuccess => 'Fecha actualizada correctamente';
+
+  @override
+  String get vpDateUpdateError => 'Error al actualizar fecha';
+
+  @override
+  String get alertsSelectVehicle => 'Selecciona un vehículo primero';
+
+  @override
+  String get alertsTitle => 'Alertas';
+
+  @override
+  String get alertsUpdateMileage => 'Actualizar Kilometraje';
+
+  @override
+  String get alertsTabAll => 'Todas';
+
+  @override
+  String get alertsTabUrgent => 'Urgentes';
+
+  @override
+  String get alertsTabUpcoming => 'Próximas';
+
+  @override
+  String get alertsAllGood => '¡Todo al día!';
+
+  @override
+  String get alertsNoAlertsInCategory => 'No hay alertas en esta categoría.';
+
+  @override
+  String get alertsHighPriority => 'Prioridad Alta';
+
+  @override
+  String alertsPendingCount(String count) {
+    return '$count pendientes';
+  }
+
+  @override
+  String get alertsUpcomingExpirations => 'Próximos Vencimientos';
+
+  @override
+  String alertsEventsCount(String count) {
+    return '$count eventos';
+  }
+
+  @override
+  String get alertsSuggestions => 'Sugerencias';
+
+  @override
+  String get alertsCurrentMileage => 'Kilometraje actual: ';
+
+  @override
+  String alertsOverdue(String km) {
+    return 'Superado por $km km. ¡Atención inmediata!';
+  }
+
+  @override
+  String alertsMissingKm(String km) {
+    return 'Faltan $km km para la revisión programada.';
+  }
+
+  @override
+  String alertsNextServiceApprox(String km) {
+    return 'Próximo servicio en $km km aprox.';
+  }
+
+  @override
+  String alertsLastKm(String km) {
+    return 'Último: $km km';
+  }
+
+  @override
+  String alertsEveryKm(String km) {
+    return 'Cada $km km';
+  }
+
+  @override
+  String get alertsConfig => 'Configurar';
+
+  @override
+  String get alertsComplete => 'Completar';
+
+  @override
+  String get alertsSave => 'Guardar';
+
+  @override
+  String get alertsCancel => 'Cancelar';
+
+  @override
+  String get alertsNewMileage => 'Nuevo Kilometraje';
+
+  @override
+  String get histTitle => 'Historial de Servicios';
+
+  @override
+  String get histTabAll => 'Todos';
+
+  @override
+  String get histTabManual => 'Manual';
+
+  @override
+  String get histTabWorkshop => 'Taller';
+
+  @override
+  String get histNoServices => 'No hay servicios registrados';
+
+  @override
+  String get histNoServicesDesc => 'Los mantenimientos aparecerán aquí';
+
+  @override
+  String get histOwner => 'Propietario';
+
+  @override
+  String get histWorkshop => 'Taller';
+
+  @override
+  String get histEvidence => 'Evidencia';
+
+  @override
+  String get histReviewWorkshop => 'Reseñar taller';
+
+  @override
+  String get wdErrorLoading => 'Error al cargar talleres';
+
+  @override
+  String get wdNoWorkshopsFound => 'No se encontraron talleres';
+
+  @override
+  String get wdTitle => 'Directorio de Talleres';
+
+  @override
+  String get wdSearchHint => 'Buscar mecánicos o servicios...';
+
+  @override
+  String get wdFilterMunicipality => 'Municipio';
+
+  @override
+  String get wdFilterSpecialty => 'Especialidad';
+
+  @override
+  String get wdFilterRating => 'Rating';
+
+  @override
+  String get wdYourLocation => 'Tu Ubicación';
+
+  @override
+  String get wdWorkshop => 'Taller';
+
+  @override
+  String get wdGeneralMechanics => 'Mecánica General';
+
+  @override
+  String get wdMechanics => 'Mecánica';
+
+  @override
+  String wdDistanceKm(String km) {
+    return 'A $km km';
+  }
+
+  @override
+  String wdWorkshopsOnMap(String count) {
+    return '$count talleres en el mapa';
+  }
+
+  @override
+  String wdNoLocationCount(String count) {
+    return '$count sin ubicación';
+  }
+
+  @override
+  String get wdNoPhoneRegistered => 'Este taller no tiene teléfono registrado';
+
+  @override
+  String wdContactName(String name) {
+    return 'Contactar a $name';
+  }
+
+  @override
+  String get wdCopy => 'Copiar';
+
+  @override
+  String get wdClose => 'Cerrar';
+
+  @override
+  String get wdPhoneCopied => 'Teléfono copiado al portapapeles';
+
+  @override
+  String get wdNamelessWorkshop => 'Taller Sin Nombre';
+
+  @override
+  String get wdLocationNotSpecified => 'Ubicación no especificada';
+
+  @override
+  String wdSpecialtyIs(String specialty) {
+    return 'Especialidad: $specialty';
+  }
+
+  @override
+  String wdReviewsCount(String count) {
+    return '$count reseñas';
+  }
+
+  @override
+  String wdReviewCount(String count) {
+    return '$count reseña';
+  }
+
+  @override
+  String get wdReview => 'Reseñar';
+
+  @override
+  String get wdContact => 'Contactar';
+
+  @override
+  String upErrorUploadingImage(String error) {
+    return 'Error uploading image: $error';
+  }
+
+  @override
+  String get upProfileUpdatedSuccess => 'Perfil actualizado correctamente';
+
+  @override
+  String get upProfileTitle => 'Perfil';
+
+  @override
+  String get upProfileDataNotFound => 'Datos de perfil no encontrados';
+
+  @override
+  String get upPleaseCompleteSetup =>
+      'Por favor completa la configuración de tu perfil.';
+
+  @override
+  String get upSetupProfile => 'Configurar Perfil';
+
+  @override
+  String get upSignOut => 'Cerrar Sesión';
+
+  @override
+  String get upSaveChanges => 'Guardar Cambios';
+
+  @override
+  String get upMyProfile => 'Mi Perfil';
+
+  @override
+  String get upFullName => 'Nombre Completo';
+
+  @override
+  String get upEmailAddress => 'Correo Electrónico';
+
+  @override
+  String get upMemberSince => 'Miembro desde';
+
+  @override
+  String get upSettings => 'Ajustes';
+
+  @override
+  String get upDarkMode => 'Modo Oscuro';
+
+  @override
+  String get upSwitchTheme => 'Alternar entre modo claro y oscuro';
+
+  @override
+  String get upFollowSystem => 'Seguir el Sistema';
+
+  @override
+  String get upUseSystemTheme => 'Usar el tema predeterminado del sistema';
+
+  @override
+  String get adminDashboardTitle => 'Dashboard Administrador';
+
+  @override
+  String adminDashboardWelcome(String name) {
+    return '¡Bienvenido, $name!';
+  }
+
+  @override
+  String get adminDashboardSubtitle => 'Panel de control administrativo';
+
+  @override
+  String get adminGlobalMetricsTitle => 'Métricas Globales';
+
+  @override
+  String get adminMetricsUsers => 'Usuarios';
+
+  @override
+  String get adminMetricsWorkshops => 'Talleres';
+
+  @override
+  String get adminMetricsVehicles => 'Vehículos';
+
+  @override
+  String get adminMetricsServices => 'Servicios';
+
+  @override
+  String get adminMetricsAlerts => 'Alertas';
+
+  @override
+  String get adminMetricsReviews => 'Reseñas';
+
+  @override
+  String get adminQuickActionsTitle => 'Acciones Rápidas';
+
+  @override
+  String get adminQuickActionManageUsers => 'Gestionar Usuarios';
+
+  @override
+  String get adminQuickActionManageWorkshops => 'Gestionar Talleres';
+
+  @override
+  String get adminQuickActionModerateReviews => 'Moderar Reseñas';
+
+  @override
+  String get adminQuickActionViewLogs => 'Ver Actividad';
+
+  @override
+  String get adminRecentActivityTitle => 'Actividad Reciente';
+
+  @override
+  String get adminNoRecentActivity => 'Sin actividad reciente';
+
+  @override
+  String get adminViewAllLogs => 'Ver todo el registro';
+}

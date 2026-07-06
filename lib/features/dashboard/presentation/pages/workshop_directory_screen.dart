@@ -17,6 +17,7 @@ import 'package:autodoc/core/utils/role_utils.dart';
 import 'package:autodoc/core/widgets/review_sheet.dart';
 import 'package:flutter/services.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class WorkshopDirectoryScreen extends StatefulWidget {
   const WorkshopDirectoryScreen({super.key});
@@ -99,7 +100,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                       return AppSkeletonLayouts.workshopList();
                     }
                     if (snapshot.hasError) {
-                      return Center(child: Text('Error al cargar talleres', style: TextStyle(color: colors.textPrimary)));
+                      return Center(child: Text(context.l10n.wdErrorLoading, style: TextStyle(color: colors.textPrimary)));
                     }
 
                     var docs = snapshot.data?.docs ?? [];
@@ -159,7 +160,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                           children: [
                             Icon(Icons.search_off, size: Responsive.iconSize(context, 48), color: colors.textSecondary.withValues(alpha: 0.4)),
                             const SizedBox(height: 12),
-                            Text('No se encontraron talleres',
+                            Text(context.l10n.wdNoWorkshopsFound,
                                 style: TextStyle(color: colors.textSecondary, fontSize: Responsive.fontSize(context, 16))),
                           ],
                         ),
@@ -202,7 +203,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
             icon: Icon(Icons.arrow_back, color: colors.textPrimary),
             onPressed: () => context.pop(),
           ),
-          Text('Directorio de Talleres',
+          Text(context.l10n.wdTitle,
               style: GoogleFonts.inter(fontSize: Responsive.fontSize(context, 20), fontWeight: FontWeight.bold, color: colors.textPrimary)),
           const Spacer(),
           // Toggle Map/List
@@ -253,7 +254,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
         child: AppTextField(
           controller: _searchController,
           onChanged: (value) => setState(() => _searchQuery = value),
-          hintText: 'Buscar mecánicos o servicios...',
+          hintText: context.l10n.wdSearchHint,
           prefixIcon: const Icon(Icons.search),
         ),
       ),
@@ -266,11 +267,11 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
       padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 16)),
       child: Row(
         children: [
-          _buildFilterChip('Municipio', Icons.location_on, isDark, colors.textPrimary),
+          _buildFilterChip(context.l10n.wdFilterMunicipality, Icons.location_on, isDark, colors.textPrimary),
           const SizedBox(width: 12),
-          _buildFilterChip('Especialidad', Icons.build, isDark, colors.textPrimary),
+          _buildFilterChip(context.l10n.wdFilterSpecialty, Icons.build, isDark, colors.textPrimary),
           const SizedBox(width: 12),
-          _buildFilterChip('Rating', Icons.star, isDark, colors.textPrimary),
+          _buildFilterChip(context.l10n.wdFilterRating, Icons.star, isDark, colors.textPrimary),
         ],
       ),
     );
@@ -307,7 +308,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
       markers.add(Marker(
         markerId: const MarkerId('user_location'),
         position: LatLng(_userPosition!.latitude, _userPosition!.longitude),
-        infoWindow: const InfoWindow(title: 'Tu Ubicación'),
+        infoWindow: InfoWindow(title: context.l10n.wdYourLocation),
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
       ));
     }
@@ -316,13 +317,13 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
       final data = item['data'] as Map<String, dynamic>;
       final lat = data['latitud']?.toDouble();
       final lng = data['longitud']?.toDouble();
-      final name = data['nombre_completo'] ?? 'Taller';
+      final name = data['nombre_completo'] ?? context.l10n.wdWorkshop;
 
       if (lat != null && lng != null) {
         final dist = item['distance'] as double?;
         final snippet = dist != null
-            ? '${data['especialidad'] ?? 'Mecánica'} - A ${dist.toStringAsFixed(1)} km'
-            : data['especialidad'] ?? 'Mecánica General';
+            ? '${data['especialidad'] ?? context.l10n.wdMechanics} - ${context.l10n.wdDistanceKm(dist.toStringAsFixed(1))}'
+            : data['especialidad'] ?? context.l10n.wdGeneralMechanics;
 
         markers.add(Marker(
           markerId: MarkerId(item['id']),
@@ -373,11 +374,11 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
               children: [
                 Icon(Icons.location_on, color: colors.primary, size: Responsive.iconSize(context, 18)),
                 const SizedBox(width: 8),
-                Text('${markers.length - (_userPosition != null ? 1 : 0)} talleres en el mapa',
+                Text(context.l10n.wdWorkshopsOnMap((markers.length - (_userPosition != null ? 1 : 0)).toString()),
                     style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: Responsive.fontSize(context, 13), color: colors.textPrimary)),
                 if (workshopsWithoutCoords > 0) ...[
                   const Spacer(),
-                  Text('$workshopsWithoutCoords sin ubicación',
+                  Text(context.l10n.wdNoLocationCount(workshopsWithoutCoords.toString()),
                       style: GoogleFonts.inter(fontSize: Responsive.fontSize(context, 11), color: colors.textSecondary)),
                 ],
               ],
@@ -406,8 +407,8 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
   }
 
   Widget _buildMapCard(Map<String, dynamic> data, AppColors colors, bool isDark) {
-    final name = data['nombre_completo'] ?? 'Taller';
-    final spec = data['especialidad'] ?? 'Mecánica General';
+    final name = data['nombre_completo'] ?? context.l10n.wdWorkshop;
+    final spec = data['especialidad'] ?? context.l10n.wdGeneralMechanics;
     final rating = data['calificacion_promedio']?.toDouble() ?? 5.0;
     final location = data['ubicacion_municipio'] ?? '';
 
@@ -472,14 +473,14 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
   void _mostrarContacto(BuildContext context, String? telefono, String nombre) {
     if (telefono == null || telefono.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Este taller no tiene teléfono registrado')),
+        SnackBar(content: Text(context.l10n.wdNoPhoneRegistered)),
       );
       return;
     }
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Contactar a $nombre'),
+        title: Text(context.l10n.wdContactName(nombre)),
         content: SelectableText(telefono),
         actions: [
           TextButton(
@@ -487,14 +488,14 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
               Clipboard.setData(ClipboardData(text: telefono));
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Teléfono copiado al portapapeles')),
+                SnackBar(content: Text(context.l10n.wdPhoneCopied)),
               );
             },
-            child: const Text('Copiar'),
+            child: Text(context.l10n.wdCopy),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cerrar'),
+            child: Text(context.l10n.wdClose),
           ),
         ],
       ),
@@ -508,13 +509,13 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
     required bool isDark,
     double? distance,
   }) {
-    final name = data['nombre_completo'] ?? 'Taller Sin Nombre';
+    final name = data['nombre_completo'] ?? context.l10n.wdNamelessWorkshop;
     final telefono = data['telefono'] as String?;
     final imageUrl = data['foto_url'] ?? data['foto_perfil_url'];
-    final specialty = data['especialidad'] ?? 'Mecánica General';
+    final specialty = data['especialidad'] ?? context.l10n.wdGeneralMechanics;
     final rating = data['calificacion_promedio']?.toDouble() ?? 5.0;
     final reviewsCount = data['total_resenias'] ?? 0;
-    final location = data['ubicacion_municipio'] ?? 'Ubicación no especificada';
+    final location = data['ubicacion_municipio'] ?? context.l10n.wdLocationNotSpecified;
 
     return AppCard(
       margin: const EdgeInsets.only(bottom: 16),
@@ -561,7 +562,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                     Row(children: [
                       Icon(Icons.verified, size: Responsive.iconSize(context, 16), color: colors.textSecondary),
                       const SizedBox(width: 4),
-                      Expanded(child: Text('Especialidad: $specialty',
+                      Expanded(child: Text(context.l10n.wdSpecialtyIs(specialty),
                           style: TextStyle(color: colors.textSecondary, fontSize: Responsive.fontSize(context, 14)), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     ]),
                     const SizedBox(height: 4),
@@ -594,7 +595,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text('$reviewsCount reseña${reviewsCount == 1 ? '' : 's'}',
+                            Text(reviewsCount == 1 ? context.l10n.wdReviewCount(reviewsCount.toString()) : context.l10n.wdReviewsCount(reviewsCount.toString()),
                                 style: TextStyle(fontSize: Responsive.fontSize(context, 12), color: colors.textSecondary)),
                           ]),
                           Row(
@@ -607,11 +608,11 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                                   tallerNombre: name,
                                 ),
                                 icon: Icon(Icons.star_outline, size: Responsive.iconSize(context, 18)),
-                                label: const Text('Reseñar'),
+                                label: Text(context.l10n.wdReview),
                               ),
                               AppButton(
                                 onPressed: () => _mostrarContacto(context, telefono, name),
-                                text: 'Contactar',
+                                text: context.l10n.wdContact,
                               ),
                             ],
                           ),
