@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../constants/firestore_collections.dart';
 import 'package:flutter/foundation.dart';
 import 'package:autodoc/config/secrets.dart';
 
@@ -33,7 +34,7 @@ class VehicleImageService {
   }) async {
     try {
       // 1. Verificar primero en Cloud Firestore
-      final doc = await _firestore.collection('Vehiculos').doc(vehicleId).get();
+      final doc = await _firestore.collection(FirestoreCollections.vehiculos).doc(vehicleId).get();
       
       if (doc.exists) {
         final data = doc.data();
@@ -50,7 +51,7 @@ class VehicleImageService {
         // Si no existe (vehículo nuevo), el provider se encargará de guardarlo al crear el doc.
         if (vehicleId.isNotEmpty) {
           try {
-            await _firestore.collection('Vehiculos').doc(vehicleId).update({
+            await _firestore.collection(FirestoreCollections.vehiculos).doc(vehicleId).update({
               'foto_url': imageUrl,
             });
           } catch (e) {

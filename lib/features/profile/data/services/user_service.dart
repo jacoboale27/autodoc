@@ -2,10 +2,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import '../../../../core/models/user_model.dart';
+import 'package:autodoc/core/constants/firestore_collections.dart';
+import 'package:autodoc/core/constants/storage_paths.dart';
 
 class UserService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final String _collection = 'Usuarios';
+  final String _collection = FirestoreCollections.usuarios;
 
   Future<UserModel?> getUserData(String userId) async {
     try {
@@ -37,7 +39,7 @@ class UserService {
 
   Future<String> uploadProfilePhoto(String userId, File imageFile) async {
     try {
-      final ref = FirebaseStorage.instance.ref().child('perfiles').child('$userId.jpg');
+      final ref = FirebaseStorage.instance.ref().child(StoragePaths.perfiles).child('$userId.jpg');
       await ref.putFile(imageFile);
       return await ref.getDownloadURL();
     } catch (e) {

@@ -1,9 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/models/vehicle_model.dart';
+import '../../../../core/constants/firestore_collections.dart';
 
 class VehicleService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final String _collection = 'Vehiculos';
+  final String _collection = FirestoreCollections.vehiculos;
 
   Future<List<VehicleModel>> getVehiclesByOwner(String ownerId) async {
     try {

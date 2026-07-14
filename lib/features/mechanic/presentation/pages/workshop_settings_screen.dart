@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
@@ -58,7 +58,7 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
   @override
   void initState() {
     super.initState();
-    final user = context.read<AuthProvider>().userData;
+    final user = context.read<UserSessionProvider>().userData;
     _nameController = TextEditingController(text: user?.nombreCompleto ?? '');
     _phoneController = TextEditingController(text: user?.telefono ?? '');
     _specialtyController = TextEditingController(text: user?.especialidad ?? '');
@@ -93,8 +93,8 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final authProvider = context.read<AuthProvider>();
-      final currentUser = authProvider.userData;
+      final userSession = context.read<UserSessionProvider>();
+      final currentUser = userSession.userData;
 
       if (currentUser != null) {
         final rawPhone = _phoneController.text.trim();
@@ -111,7 +111,7 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
           longitud: _longitude,
         );
 
-        final success = await authProvider.updateProfile(updatedUser);
+        final success = await userSession.updateProfile(updatedUser);
 
         if (success && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -121,7 +121,7 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
             ),
           );
         } else {
-          throw authProvider.error ?? 'Error desconocido al actualizar perfil';
+          throw userSession.error ?? 'Error desconocido al actualizar perfil';
         }
       }
     } catch (e) {

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/admin_provider.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
 import '../widgets/admin_sidebar.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
@@ -26,7 +26,7 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
   }
 
   void _mostrarConfirmarEliminar(BuildContext context, String idResenia) {
-    final authProvider = context.read<AuthProvider>();
+    final userSession = context.read<UserSessionProvider>();
     final adminProvider = context.read<AdminProvider>();
     final controller = TextEditingController();
 
@@ -56,7 +56,7 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
               onPressed: () {
                 Navigator.pop(ctx);
                 adminProvider.eliminarResenia(
-                  authProvider.adminUid,
+                  userSession.currentUid,
                   idResenia,
                   controller.text.isEmpty ? 'Incumplimiento de normas' : controller.text,
                 );

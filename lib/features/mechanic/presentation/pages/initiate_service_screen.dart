@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
-import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:autodoc/core/models/alert_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
@@ -89,8 +89,8 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
 
     try {
       final alertProvider = context.read<AlertProvider>();
-      final authProvider = context.read<AuthProvider>();
-      final tallerId = authProvider.userData?.idUsuario ?? 'taller_anonimo';
+      final userSession = context.read<UserSessionProvider>();
+      final tallerId = userSession.userData?.idUsuario ?? 'taller_anonimo';
 
       for (var taskId in _completedTaskIds) {
         await alertProvider.tallerUpdateService(

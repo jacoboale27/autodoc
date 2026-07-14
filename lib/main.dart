@@ -12,6 +12,7 @@ import 'package:autodoc/core/services/translation_service.dart';
 import 'package:autodoc/firebase_options.dart';
 import 'package:autodoc/core/router/app_router.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
@@ -19,6 +20,8 @@ import 'package:autodoc/core/theme/app_theme.dart';
 import 'package:autodoc/features/admin/presentation/providers/admin_provider.dart';
 import 'package:autodoc/features/admin/presentation/providers/admin_dashboard_provider.dart';
 import 'package:autodoc/core/services/notification_service.dart';
+import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
+import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -98,10 +101,13 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => UserSessionProvider()),
         ChangeNotifierProvider(create: (_) => VehicleProvider()),
         ChangeNotifierProvider(create: (_) => AlertProvider()),
         ChangeNotifierProvider(create: (_) => AdminProvider()),
         ChangeNotifierProvider(create: (_) => AdminDashboardProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => ReservaProvider()),
       ],
       child: const MyApp(),
     ),

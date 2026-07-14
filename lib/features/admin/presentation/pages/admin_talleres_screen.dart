@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/constants/firestore_collections.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../providers/admin_provider.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
 import '../widgets/admin_sidebar.dart';
 import '../widgets/taller_admin_card.dart';
 import '../widgets/mecanico_admin_card.dart';
@@ -55,7 +56,7 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AdminProvider>();
-    final adminUid = context.read<AuthProvider>().adminUid;
+    final currentUid = context.read<UserSessionProvider>().currentUid;
     final colors = context.appColors;
     final mecanicos = provider.mecanicos;
 
@@ -122,7 +123,7 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                           final mecanico = mecanicos[index];
                           return StreamBuilder<DocumentSnapshot>(
                             stream: FirebaseFirestore.instance
-                                .collection('Usuarios')
+                                .collection(FirestoreCollections.usuarios)
                                 .doc(mecanico.idUsuario)
                                 .snapshots(),
                             builder: (context, snap) {
@@ -198,7 +199,7 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                                   context,
                                   'Aprobar Taller',
                                   '¿Estás seguro de que quieres aprobar este taller?',
-                                  () => provider.aprobarTaller(adminUid, taller.idTaller),
+                                  () => provider.aprobarTaller(currentUid, taller.idTaller),
                                 );
                               },
                               onRechazar: () {
@@ -206,7 +207,7 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                                   context,
                                   'Rechazar Taller',
                                   '¿Estás seguro de que quieres rechazar este taller?',
-                                  () => provider.rechazarTaller(adminUid, taller.idTaller),
+                                  () => provider.rechazarTaller(currentUid, taller.idTaller),
                                 );
                               },
                               onSuspender: () {
@@ -215,7 +216,7 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                                   'Suspender Taller',
                                   '¿Estás seguro de que quieres suspender este taller?',
                                   () => provider.suspenderTaller(
-                                    adminUid,
+                                    currentUid,
                                     taller.idTaller,
                                     'Suspensión administrativa',
                                   ),

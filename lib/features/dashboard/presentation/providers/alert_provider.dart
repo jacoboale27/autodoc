@@ -5,11 +5,18 @@ import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:autodoc/core/models/alert_model.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
-import 'package:autodoc/core/models/service_record_model.dart';
+
 import 'package:autodoc/core/models/maintenance_task_model.dart';
+import 'package:autodoc/core/constants/firestore_collections.dart';
+import 'package:autodoc/core/constants/storage_paths.dart';
 
 class AlertProvider extends ChangeNotifier {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore;
+  final FirebaseStorage _storage;
+
+  AlertProvider({FirebaseFirestore? firestore, FirebaseStorage? storage})
+      : _firestore = firestore ?? FirebaseFirestore.instance,
+        _storage = storage ?? FirebaseStorage.instance;
   
   List<AlertModel> _alerts = [];
   List<MaintenanceTask> _maintenanceTasks = [];
@@ -30,7 +37,7 @@ class AlertProvider extends ChangeNotifier {
     try {
       // 1. Obtener alertas manuales de Firestore
       final snapshot = await _firestore
-          .collection('alertas')
+          .collection(FirestoreCollections.alertas)
           .where('id_vehiculo', isEqualTo: vehicleId)
           .get();
 
@@ -40,13 +47,24 @@ class AlertProvider extends ChangeNotifier {
 
       // 2. Obtener tareas de mantenimiento robustas
       final mSnapshot = await _firestore
-          .collection('mantenimientos')
+          .collection(FirestoreCollections.mantenimientos)
           .where('id_vehiculo', isEqualTo: vehicleId)
           .get();
       
       _maintenanceTasks = mSnapshot.docs
           .map((doc) => MaintenanceTask.fromMap(doc.data(), doc.id))
           .toList();
+
+      if (_maintenanceTasks.isEmpty) {
+        await createDefaultTasks(vehicleId, vehicle.kilometrajeActual);
+        final mSnapshot2 = await _firestore
+            .collection(FirestoreCollections.mantenimientos)
+            .where('id_vehiculo', isEqualTo: vehicleId)
+            .get();
+        _maintenanceTasks = mSnapshot2.docs
+            .map((doc) => MaintenanceTask.fromMap(doc.data(), doc.id))
+            .toList();
+      }
 
       // 3. Generar alertas automáticas basadas en lógica
       await _generateSmartAlerts(vehicle);
@@ -81,38 +99,8 @@ class AlertProvider extends ChangeNotifier {
       }
     }
 
-    // --- 2. Alerta de Aceite ---
-    // Buscamos el último registro de servicio de aceite
-    final serviceSnapshot = await _firestore
-        .collection('servicios')
-        .where('id_vehiculo', isEqualTo: vehicle.idVehiculo)
-        .where('tipo_servicio', isEqualTo: 'Cambio de Aceite')
-        .orderBy('fecha', descending: true)
-        .limit(1)
-        .get();
-
-    int ultimoKm = 0;
-    if (serviceSnapshot.docs.isNotEmpty) {
-      final lastService = ServiceRecordModel.fromMap(
-        serviceSnapshot.docs.first.data(), 
-        serviceSnapshot.docs.first.id
-      );
-      ultimoKm = lastService.kilometrajeServicio ?? 0;
-    }
-
-    // Si han pasado más de 5000km (o lo configurado)
-    final kmDiff = vehicle.kilometrajeActual - ultimoKm;
-    if (kmDiff >= 4500) {
-      _addOrUpdateLocalAlert(AlertModel(
-        idAlerta: 'aceite_${vehicle.idVehiculo}',
-        idVehiculo: vehicle.idVehiculo,
-        tipoAlerta: 'Aceite',
-        titulo: 'Cambio de Aceite',
-        descripcion: 'Has recorrido $kmDiff km desde tu último cambio. Se recomienda realizarlo cada 5000 km.',
-        prioridad: kmDiff >= 5000 ? AlertPriority.high : AlertPriority.medium,
-        kilometrajeObjetivo: ultimoKm + 5000,
-      ));
-    }
+    // Nota: La alerta de Aceite se ha migrado a MaintenanceTasks
+    // para permitir umbrales configurables por el usuario.
 
     // --- 3. Presión de Llantas (Semanal) ---
     _addOrUpdateLocalAlert(AlertModel(
@@ -179,7 +167,7 @@ class AlertProvider extends ChangeNotifier {
         final alert = _alerts[index];
         
         if (!['soat_', 'aceite_', 'llantas_', 'fluidos_', 'luces_', 'task_'].any((p) => alertId.startsWith(p))) {
-          await _firestore.collection('alertas').doc(alertId).update({'estado': 'Completada'});
+          await _firestore.collection(FirestoreCollections.alertas).doc(alertId).update({'estado': 'Completada'});
         }
         
         _alerts[index] = alert.copyWith(estado: 'Completada');
@@ -210,7 +198,7 @@ class AlertProvider extends ChangeNotifier {
       final batch = _firestore.batch();
 
       for (var taskData in _defaultTasks) {
-        final docRef = _firestore.collection('mantenimientos').doc();
+        final docRef = _firestore.collection(FirestoreCollections.mantenimientos).doc();
         batch.set(docRef, {
           'id_vehiculo': vehicleId,
           'nombre': taskData['nombre'],
@@ -244,7 +232,7 @@ class AlertProvider extends ChangeNotifier {
       String? receiptUrl;
       
       // Actualizar la tarea
-      await _firestore.collection('mantenimientos').doc(taskId).update({
+      await _firestore.collection(FirestoreCollections.mantenimientos).doc(taskId).update({
         'ultimo_km': currentKm,
         'fecha_ultimo_servicio': Timestamp.fromDate(now),
       });
@@ -264,9 +252,9 @@ class AlertProvider extends ChangeNotifier {
         );
         
         if (receiptImage != null) {
-          final ref = FirebaseStorage.instance
+          final ref = _storage
               .ref()
-              .child('facturas')
+              .child(StoragePaths.facturas)
               .child(task.vehicleId)
               .child('${DateTime.now().millisecondsSinceEpoch}.jpg');
           await ref.putFile(receiptImage);
@@ -274,7 +262,7 @@ class AlertProvider extends ChangeNotifier {
         }
 
         // Registrar como un servicio hecho manualmente
-        await _firestore.collection('servicios').add({
+        await _firestore.collection(FirestoreCollections.servicios).add({
           'id_vehiculo': task.vehicleId,
           'id_taller': 'Manual (Propietario)',
           'tipo_servicio': task.nombre,
@@ -282,7 +270,7 @@ class AlertProvider extends ChangeNotifier {
           'kilometraje_servicio': currentKm,
           'descripcion': notes.isNotEmpty ? notes : 'Mantenimiento registrado manualmente por el propietario',
           'costo': cost,
-          'foto_factura_url' :? receiptUrl,
+          'foto_factura_url': receiptUrl,
         });
       }
 
@@ -306,7 +294,7 @@ class AlertProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      await _firestore.collection('mantenimientos').doc(taskId).update({
+      await _firestore.collection(FirestoreCollections.mantenimientos).doc(taskId).update({
         'frecuencia_km': newFrecuenciaKm,
       });
 
@@ -337,7 +325,7 @@ class AlertProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      await _firestore.collection('mantenimientos').doc(taskId).update({
+      await _firestore.collection(FirestoreCollections.mantenimientos).doc(taskId).update({
         'frecuencia_km': newFrecuenciaKm,
         'frecuencia_meses': newFrecuenciaMeses,
       });
@@ -379,7 +367,7 @@ class AlertProvider extends ChangeNotifier {
       final now = DateTime.now();
       
       // 1. Actualizar la tarea de mantenimiento principal
-      await _firestore.collection('mantenimientos').doc(taskId).update({
+      await _firestore.collection(FirestoreCollections.mantenimientos).doc(taskId).update({
         'ultimo_km': nuevoKilometraje,
         'fecha_ultimo_servicio': Timestamp.fromDate(now),
       });
@@ -391,9 +379,9 @@ class AlertProvider extends ChangeNotifier {
 
       String? receiptUrl;
       if (receiptImage != null) {
-        final ref = FirebaseStorage.instance
+        final ref = _storage
             .ref()
-            .child('facturas')
+            .child(StoragePaths.facturas)
             .child(vehicleId)
             .child('${DateTime.now().millisecondsSinceEpoch}.jpg');
         await ref.putFile(receiptImage);
@@ -401,7 +389,7 @@ class AlertProvider extends ChangeNotifier {
       }
 
       // 3. Registrar en colección servicios (tabla Servicios del esquema)
-      await _firestore.collection('servicios').add({
+      await _firestore.collection(FirestoreCollections.servicios).add({
         'id_vehiculo': vehicleId,
         'id_taller': tallerId,
         'tipo_servicio': task?.nombre ?? 'Servicio General',
@@ -413,7 +401,7 @@ class AlertProvider extends ChangeNotifier {
       });
 
       // 4. Registrar en historial_mantenimientos
-      await _firestore.collection('historial_mantenimientos').add({
+      await _firestore.collection(FirestoreCollections.historialMantenimientos).add({
         'id_taller': tallerId,
         'id_vehiculo': vehicleId,
         'id_tarea': taskId,
@@ -425,7 +413,7 @@ class AlertProvider extends ChangeNotifier {
 
       // 5. Actualizar el kilometraje del vehículo si es mayor
       if (task != null) {
-        final vehicleRef = _firestore.collection('vehiculos').doc(vehicleId);
+        final vehicleRef = _firestore.collection(FirestoreCollections.vehiculos).doc(vehicleId);
         final vDoc = await vehicleRef.get();
         if (vDoc.exists) {
           int currentKm = vDoc.data()?['kilometraje_actual'] ?? 0;

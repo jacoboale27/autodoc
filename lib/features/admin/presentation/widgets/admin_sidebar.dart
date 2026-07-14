@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
+import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
 
 class AdminSidebar extends StatelessWidget {
   const AdminSidebar({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
-    final user = authProvider.userData;
+    final userSession = context.watch<UserSessionProvider>();
+    final user = userSession.userData;
 
     return Drawer(
       child: Container(
@@ -97,7 +98,7 @@ class AdminSidebar extends StatelessWidget {
               isDestructive: true,
               onTap: () async {
                 final router = GoRouter.of(context);
-                await authProvider.signOut();
+                await context.read<AuthProvider>().signOut();
                 router.go('/login');
               },
             ),

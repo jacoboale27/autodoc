@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
-import 'package:autodoc/core/widgets/app_top_nav_bar.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 
 class AppScaffold extends StatelessWidget {
@@ -27,12 +26,13 @@ class AppScaffold extends StatelessWidget {
       appBar: appBar,
       body: Column(
         children: [
-          if (Responsive.isDesktop(context))
-            const Padding(
-              padding: EdgeInsets.only(top: 8.0),
-              child: AppTopNavBar(),
-            ),
-          Expanded(
+        // AppTopNavBar is now handled by MainScaffold globally
+        // if (Responsive.isDesktop(context))
+        //   const Padding(
+        //     padding: EdgeInsets.only(top: 8.0),
+        //     child: AppTopNavBar(),
+        //   ),
+        Expanded(
             child: useGradient
                 ? Container(
                     decoration: BoxDecoration(

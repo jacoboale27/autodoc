@@ -4,8 +4,12 @@ import '../../../../core/services/vehicle_image_service.dart';
 import '../../data/services/vehicle_service.dart';
 
 class VehicleProvider with ChangeNotifier {
-  final VehicleService _vehicleService = VehicleService();
-  final VehicleImageService _imageService = VehicleImageService();
+  final VehicleService _vehicleService;
+  final VehicleImageService _imageService;
+
+  VehicleProvider({VehicleService? vehicleService, VehicleImageService? imageService})
+      : _vehicleService = vehicleService ?? VehicleService(),
+        _imageService = imageService ?? VehicleImageService();
   List<VehicleModel> _vehicles = [];
   VehicleModel? _selectedVehicle;
    bool _isLoading = false;

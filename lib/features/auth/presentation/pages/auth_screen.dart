@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/utils/responsive.dart';
@@ -34,9 +35,9 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _loadRememberMePreferences() async {
-    final authProvider = context.read<AuthProvider>();
-    final remember = await authProvider.loadRememberMe();
-    final savedEmail = await authProvider.loadSavedEmail();
+    final sessionProvider = context.read<UserSessionProvider>();
+    final remember = await sessionProvider.loadRememberMe();
+    final savedEmail = await sessionProvider.loadSavedEmail();
     if (!mounted) return;
     setState(() {
       _rememberMe = remember;
@@ -52,7 +53,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _persistRememberMe() async {
-    await context.read<AuthProvider>().persistRememberMe(
+    await context.read<UserSessionProvider>().persistRememberMe(
       remember: _rememberMe,
       email: _emailController.text,
     );
@@ -386,7 +387,8 @@ class _AuthScreenState extends State<AuthScreen> {
       if (!canContinue || !mounted) return;
     }
 
-    final userData = authProvider.userData;
+    final sessionProvider = context.read<UserSessionProvider>();
+    final userData = sessionProvider.userData;
     if (userData != null) {
       final role = userData.rol.trim().toLowerCase();
       if (role == 'taller' || role == 'mecanico') {
@@ -506,7 +508,8 @@ class _AuthScreenState extends State<AuthScreen> {
         final success = await authProvider.signInWithGoogle();
         if (success && mounted) {
           HapticFeedback.lightImpact();
-          final userData = authProvider.userData;
+          final sessionProvider = context.read<UserSessionProvider>();
+          final userData = sessionProvider.userData;
           if (userData != null) {
             final role = userData.rol.trim().toLowerCase();
             if (role == 'taller' || role == 'mecanico') {

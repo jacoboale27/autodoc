@@ -1,96 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:io';
 import 'package:autodoc/features/auth/data/services/auth_service.dart';
-import 'package:autodoc/core/models/user_model.dart';
-import 'package:autodoc/features/profile/data/services/user_service.dart';
 import 'package:autodoc/features/admin/data/services/admin_auth_service.dart';
-import 'package:autodoc/features/auth/data/services/auth_preferences_service.dart';
-import 'package:autodoc/core/services/notification_service.dart';
+
 class AuthProvider with ChangeNotifier {
-  final AuthService _authService = AuthService();
-  final UserService _userService = UserService();
-  final AdminAuthService _adminAuthService = AdminAuthService();
-  final AuthPreferencesService _authPreferences = AuthPreferencesService();
-  User? _user;
-  UserModel? _userData;
+  final AuthService _authService;
+  final AdminAuthService _adminAuthService;
+  
+  AuthProvider({AuthService? authService, AdminAuthService? adminAuthService})
+      : _authService = authService ?? AuthService(),
+        _adminAuthService = adminAuthService ?? AdminAuthService();
+  
   bool _isLoading = false;
   String? _error;
-  bool _isAdminSession = false;
 
-  User? get user => _user;
-  UserModel? get userData => _userData;
   bool get isLoading => _isLoading;
   String? get error => _error;
-  bool get isAdminSession => _isAdminSession;
 
   bool get needsEmailVerification {
-    if (_user == null || _isAdminSession) return false;
+    if (FirebaseAuth.instance.currentUser == null) return false;
     return _authService.isEmailPasswordUser && !_authService.isCurrentUserEmailVerified;
-  }
-
-  /// The admin UID for use in admin operations.
-  /// Uses the Firebase Auth UID since admins are now real Firebase users.
-  String get adminUid => _user?.uid ?? _userData?.idUsuario ?? '';
-
-  AuthProvider() {
-    _authService.user.listen((User? user) async {
-      _user = user;
-      if (user != null) {
-        await fetchUserData(user.uid);
-      } else {
-        _userData = null;
-        _isAdminSession = false;
-      }
-      notifyListeners();
-    });
-  }
-
-  Future<void> fetchUserData(String userId) async {
-    debugPrint('Fetching user data for: $userId');
-    _setLoading(true);
-    try {
-      _userData = await _userService.getUserData(userId);
-
-      // Check if this user is an admin
-      if (_userData != null) {
-        final rol = _userData!.rol.trim().toLowerCase();
-        _isAdminSession = (rol == 'administrador' || rol == 'admin');
-        
-        // Save FCM token for the current user
-        try {
-          // Import should be handled at the top, let's just make sure we call it
-          await NotificationService().saveUserToken();
-        } catch (e) {
-          debugPrint("Failed to save FCM token: $e");
-        }
-      }
-
-      _setLoading(false);
-    } catch (e) {
-      _setError(e.toString());
-      _setLoading(false);
-    }
-  }
-
-  Future<bool> updateProfile(UserModel updatedUser, {File? imageFile}) async {
-    _setLoading(true);
-    _setError(null);
-    try {
-      UserModel userToUpdate = updatedUser;
-      if (imageFile != null) {
-        final photoUrl = await _userService.uploadProfilePhoto(updatedUser.idUsuario, imageFile);
-        userToUpdate = updatedUser.copyWith(fotoPerfilUrl: photoUrl);
-      }
-      await _userService.updateUserData(userToUpdate);
-      _userData = userToUpdate;
-      _setLoading(false);
-      return true;
-    } catch (e) {
-      _setError(e.toString());
-      _setLoading(false);
-      return false;
-    }
   }
 
   void _setLoading(bool value) {
@@ -113,10 +42,6 @@ class AuthProvider with ChangeNotifier {
       if (!email.contains('@')) {
         final adminUser = await _adminAuthService.loginAsAdmin(email, password);
         if (adminUser != null) {
-          // loginAsAdmin already signed us in via Firebase Auth
-          _user = FirebaseAuth.instance.currentUser;
-          _userData = adminUser;
-          _isAdminSession = true;
           _setLoading(false);
           return true;
         }
@@ -128,13 +53,8 @@ class AuthProvider with ChangeNotifier {
 
       // Standard email sign in via Firebase Auth
       final credential = await _authService.signInWithEmail(email, password);
-      _user = credential?.user;
-      if (_user != null) {
-        _userData = null; // Clear stale data
-        await fetchUserData(_user!.uid);
-      }
       _setLoading(false);
-      return true;
+      return credential?.user != null;
     } catch (e) {
       _setError(e.toString());
       _setLoading(false);
@@ -147,15 +67,8 @@ class AuthProvider with ChangeNotifier {
     _setError(null);
     try {
       final credential = await _authService.signInWithGoogle();
-      if (credential?.user != null) {
-        _user = credential!.user;
-        _userData = null; // Clear stale data
-        await fetchUserData(_user!.uid);
-        _setLoading(false);
-        return true;
-      }
       _setLoading(false);
-      return false;
+      return credential?.user != null;
     } catch (e) {
       _setError(e.toString());
       _setLoading(false);
@@ -168,12 +81,13 @@ class AuthProvider with ChangeNotifier {
     _setError(null);
     try {
       final credential = await _authService.registerWithEmail(email, password);
-      _user = credential?.user;
-      if (_user != null) {
+      if (credential?.user != null) {
         await _authService.sendEmailVerification();
+        _setLoading(false);
+        return true;
       }
       _setLoading(false);
-      return true;
+      return false;
     } catch (e) {
       _setError(e.toString());
       _setLoading(false);
@@ -212,7 +126,6 @@ class AuthProvider with ChangeNotifier {
   Future<bool> refreshEmailVerificationStatus() async {
     try {
       await _authService.reloadCurrentUser();
-      _user = FirebaseAuth.instance.currentUser;
       notifyListeners();
       return _authService.isCurrentUserEmailVerified;
     } catch (_) {
@@ -220,27 +133,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<void> persistRememberMe({
-    required bool remember,
-    required String email,
-  }) async {
-    await _authPreferences.setRememberMe(remember);
-    if (remember && email.contains('@')) {
-      await _authPreferences.saveEmail(email);
-    } else if (!remember) {
-      await _authPreferences.clearSavedCredentials();
-    }
-  }
-
-  Future<bool> loadRememberMe() => _authPreferences.getRememberMe();
-
-  Future<String?> loadSavedEmail() => _authPreferences.getSavedEmail();
-
   Future<void> signOut() async {
-    _userData = null;
-    _user = null;
-    _isAdminSession = false;
-    notifyListeners();
     await _authService.signOut();
   }
 
@@ -256,8 +149,7 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> reloadUser() async {
-    await _user?.reload();
-    _user = FirebaseAuth.instance.currentUser;
+    await FirebaseAuth.instance.currentUser?.reload();
     notifyListeners();
   }
 }

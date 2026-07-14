@@ -3,9 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:autodoc/core/models/user_model.dart';
-import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:autodoc/core/utils/responsive.dart';
@@ -378,9 +378,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             height: 56,
             child: ElevatedButton(
               onPressed: () async {
-                final authProvider = context.read<AuthProvider>();
+                final userSession = context.read<UserSessionProvider>();
                 // Usar currentUser directamente en caso de que el provider no haya actualizado
-                final user = authProvider.user ?? FirebaseAuth.instance.currentUser;
+                final user = userSession.user ?? FirebaseAuth.instance.currentUser;
                 final name = _nameController.text.trim();
                 
                 if (name.isEmpty) {
@@ -415,13 +415,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     fechaRegistro: DateTime.now(),
                   );
                   
-                  // Use AuthProvider.updateProfile to handle image upload and Firestore update
-                  final success = await authProvider.updateProfile(userModel, imageFile: _imageFile);
+                  // Use UserSessionProvider.updateProfile to handle image upload and Firestore update
+                  final success = await userSession.updateProfile(userModel, imageFile: _imageFile);
                   
                   if (success) {
                     // Update Firebase Auth displayName if needed
                     await user.updateDisplayName(name);
-                    await authProvider.reloadUser();
+                    await user.reload(); // update instance
                     
                     if (context.mounted) {
                       final role = _selectedRole.trim().toLowerCase();
@@ -432,7 +432,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       }
                     }
                   } else {
-                    throw authProvider.error ?? 'Error desconocido al guardar el perfil';
+                    throw userSession.error ?? 'Error desconocido al guardar el perfil';
                   }
                 } catch (e) {
                   if (context.mounted) {

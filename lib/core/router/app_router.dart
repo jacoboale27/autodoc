@@ -22,12 +22,17 @@ import 'package:autodoc/features/mechanic/presentation/pages/initiate_service_sc
 import 'package:autodoc/features/mechanic/presentation/pages/mechanic_reviews_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/task_config_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/task_complete_screen.dart';
+import 'package:autodoc/features/mechanic/presentation/pages/mechanic_service_history_screen.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_dashboard_screen.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_usuarios_screen.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_talleres_screen.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_resenias_screen.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_logs_screen.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_seed_screen.dart';
+import 'package:autodoc/core/widgets/main_scaffold.dart';
+import 'package:autodoc/features/chat/presentation/pages/conversaciones_list_screen.dart';
+import 'package:autodoc/features/chat/presentation/pages/chat_screen.dart';
+import 'package:autodoc/features/chat/presentation/pages/reserva_detail_screen.dart';
 
 CustomTransitionPage<T> buildPageWithFadeThrough<T>({
   required BuildContext context,
@@ -82,24 +87,42 @@ final GoRouter appRouter = GoRouter(
       path: '/profile_setup',
       pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const ProfileSetupScreen()),
     ),
-    GoRoute(
-      path: '/dashboard',
-      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const DashboardScreen()),
+    
+    // Main App Shell
+    ShellRoute(
+      builder: (context, state, child) {
+        return MainScaffold(child: child);
+      },
+      routes: [
+        GoRoute(
+          path: '/dashboard',
+          pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const DashboardScreen()),
+        ),
+        GoRoute(
+          path: '/garage',
+          pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const GarageScreen()),
+        ),
+        GoRoute(
+          path: '/workshop_directory',
+          pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const WorkshopDirectoryScreen()),
+        ),
+        GoRoute(
+          path: '/user_profile',
+          pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const UserProfileScreen()),
+        ),
+        GoRoute(
+          path: '/chat_list',
+          pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const ConversacionesListScreen()),
+        ),
+      ],
     ),
+    
     GoRoute(
       path: '/vehicle_profile',
       pageBuilder: (context, state) {
         final vehicle = state.extra as VehicleModel;
         return buildPageWithFadeThrough(context: context, state: state, child: VehicleProfileScreen(vehicle: vehicle));
       },
-    ),
-    GoRoute(
-      path: '/user_profile',
-      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const UserProfileScreen()),
-    ),
-    GoRoute(
-      path: '/garage',
-      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const GarageScreen()),
     ),
     GoRoute(
       path: '/alerts',
@@ -117,6 +140,10 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const VehicleSearchScreen()),
     ),
     GoRoute(
+      path: '/mechanic_service_history',
+      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const MechanicServiceHistoryScreen()),
+    ),
+    GoRoute(
       path: '/mechanic_dashboard',
       pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const MechanicDashboardScreen()),
     ),
@@ -129,14 +156,23 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const MechanicReviewsScreen()),
     ),
     GoRoute(
-      path: '/workshop_directory',
-      pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const WorkshopDirectoryScreen()),
-    ),
-    GoRoute(
       path: '/initiate_service',
       pageBuilder: (context, state) {
         final vehicle = state.extra as VehicleModel;
         return buildPageWithFadeThrough(context: context, state: state, child: InitiateServiceScreen(vehicle: vehicle));
+      },
+    ),
+    GoRoute(
+      path: '/chat/:id',
+      pageBuilder: (context, state) {
+        final id = state.pathParameters['id']!;
+        return buildPageWithFadeThrough(context: context, state: state, child: ChatScreen(conversacionId: id));
+      },
+    ),
+    GoRoute(
+      path: '/reserva_detail/:id',
+      pageBuilder: (context, state) {
+        return buildPageWithFadeThrough(context: context, state: state, child: const ReservaDetailScreen());
       },
     ),
     GoRoute(

@@ -4,8 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
-import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
 
+import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
 class MechanicSidebar extends StatelessWidget {
   const MechanicSidebar({super.key});
 
@@ -102,11 +102,27 @@ class MechanicSidebar extends StatelessWidget {
           ),
           _buildNavItem(
             context,
+            icon: Icons.history,
+            label: 'Mis Servicios',
+            isActive: currentPath == '/mechanic_service_history',
+            colors: colors,
+            onTap: () => _navigate(context, '/mechanic_service_history'),
+          ),
+          _buildNavItem(
+            context,
             icon: Icons.star_outline,
             label: 'Mis Reseñas',
             isActive: currentPath == '/mechanic_reviews',
             colors: colors,
             onTap: () => _navigate(context, '/mechanic_reviews'),
+          ),
+          _buildNavItem(
+            context,
+            icon: Icons.chat_bubble_outline,
+            label: 'Mensajes',
+            isActive: currentPath == '/chat_list',
+            colors: colors,
+            onTap: () => _navigate(context, '/chat_list'),
           ),
           _buildNavItem(
             context,

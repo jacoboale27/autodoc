@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:autodoc/core/widgets/review_sheet.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/constants/firestore_collections.dart';
 import 'package:autodoc/core/models/service_record_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
@@ -22,6 +23,9 @@ class ServiceHistoryScreen extends StatefulWidget {
 
 class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
   String _filter = 'Todos'; // 'Todos', 'Manual', 'Taller'
+  DateTimeRange? _dateRange;
+
+  String _sortOption = 'Fecha (Reciente)'; // 'Fecha (Reciente)', 'Fecha (Antiguo)', 'Costo (Mayor)', 'Costo (Menor)'
 
   @override
   Widget build(BuildContext context) {
@@ -66,12 +70,104 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
               ),
             ),
           ),
+          
+          // Advanced Filters
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colors.surface,
+                      foregroundColor: colors.primary,
+                      elevation: 0,
+                      side: BorderSide(color: colors.primary.withValues(alpha: 0.2)),
+                    ),
+                    icon: const Icon(Icons.date_range, size: 18),
+                    label: Text(_dateRange == null 
+                        ? 'Fechas' 
+                        : '${DateFormat('dd/MM').format(_dateRange!.start)} - ${DateFormat('dd/MM').format(_dateRange!.end)}'),
+                    onPressed: () async {
+                      final picked = await showDateRangePicker(
+                        context: context,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime.now(),
+                        initialDateRange: _dateRange,
+                        builder: (context, child) {
+                          return Theme(
+                            data: Theme.of(context).copyWith(
+                              colorScheme: ColorScheme.light(
+                                primary: colors.primary,
+                                onPrimary: Colors.white,
+                                surface: colors.surface,
+                                onSurface: colors.textPrimary,
+                              ),
+                            ),
+                            child: child!,
+                          );
+                        },
+                      );
+                      if (picked != null) {
+                        setState(() => _dateRange = picked);
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    initialValue: _sortOption,
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: colors.primary.withValues(alpha: 0.2)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: colors.primary.withValues(alpha: 0.2)),
+                      ),
+                      filled: true,
+                      fillColor: colors.surface,
+                    ),
+                    style: TextStyle(color: colors.textPrimary, fontSize: 13),
+                    items: ['Fecha (Reciente)', 'Fecha (Antiguo)', 'Costo (Mayor)', 'Costo (Menor)']
+                        .map((o) => DropdownMenuItem(value: o, child: Text(o)))
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) setState(() => _sortOption = val);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          
+          if (_dateRange != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => setState(() => _dateRange = null),
+                  icon: const Icon(Icons.clear, size: 16),
+                  label: const Text('Limpiar fechas'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: colors.error,
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(0, 0),
+                  ),
+                ),
+              ),
+            ),
 
-          // List
+          // List & Stats
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
-                  .collection('servicios')
+                  .collection(FirestoreCollections.servicios)
                   .where('id_vehiculo', isEqualTo: widget.vehicleId)
                   .snapshots(),
               builder: (context, snapshot) {
@@ -103,33 +199,156 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                       ),
                     )
                     .toList();
-                allRecords.sort((a, b) => b.fecha.compareTo(a.fecha));
-
+                
+                // Filter
                 final filteredRecords = allRecords.where((record) {
-                  if (_filter == context.l10n.histTabAll || _filter == 'Todos') return true;
-                  final isManual = record.idTaller == 'Manual (Propietario)';
-                  if (_filter == context.l10n.histTabManual || _filter == 'Manual') return isManual;
-                  if (_filter == context.l10n.histTabWorkshop || _filter == 'Taller') return !isManual;
+                  // Tab filter
+                  if (_filter != context.l10n.histTabAll && _filter != 'Todos') {
+                    final isManual = record.idTaller == 'Manual (Propietario)';
+                    if ((_filter == context.l10n.histTabManual || _filter == 'Manual') && !isManual) return false;
+                    if ((_filter == context.l10n.histTabWorkshop || _filter == 'Taller') && isManual) return false;
+                  }
+                  
+                  // Date range
+                  if (_dateRange != null) {
+                    final date = record.fecha;
+                    if (date.isBefore(_dateRange!.start) || date.isAfter(_dateRange!.end.add(const Duration(days: 1)))) {
+                      return false;
+                    }
+                  }
+                  
                   return true;
                 }).toList();
 
+                // Sort
+                filteredRecords.sort((a, b) {
+                  switch (_sortOption) {
+                    case 'Fecha (Antiguo)':
+                      return a.fecha.compareTo(b.fecha);
+                    case 'Costo (Mayor)':
+                      return (b.costo ?? 0).compareTo(a.costo ?? 0);
+                    case 'Costo (Menor)':
+                      return (a.costo ?? 0).compareTo(b.costo ?? 0);
+                    case 'Fecha (Reciente)':
+                    default:
+                      return b.fecha.compareTo(a.fecha);
+                  }
+                });
+
                 if (filteredRecords.isEmpty) {
-                  return _buildEmptyState(colors);
+                  return Column(
+                    children: [
+                      _buildStatistics(filteredRecords, colors),
+                      Expanded(child: _buildEmptyState(colors)),
+                    ],
+                  );
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  itemCount: filteredRecords.length,
-                  itemBuilder: (context, index) {
-                    final record = filteredRecords[index];
-                    return _buildServiceCard(record, colors, context);
-                  },
+                return Column(
+                  children: [
+                    _buildStatistics(filteredRecords, colors),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        itemCount: filteredRecords.length,
+                        itemBuilder: (context, index) {
+                          final record = filteredRecords[index];
+                          return _buildServiceCard(record, colors, context);
+                        },
+                      ),
+                    ),
+                  ],
                 );
               },
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatistics(List<ServiceRecordModel> records, AppColors colors) {
+    if (records.isEmpty) return const SizedBox.shrink();
+
+    double totalCost = records.fold(0, (acc, record) => acc + (record.costo ?? 0));
+    double avgCost = totalCost / records.length;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: colors.primary.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            'Total gastado',
+            style: GoogleFonts.inter(
+              color: colors.textSecondary,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '\$${totalCost.toStringAsFixed(2)}',
+            style: GoogleFonts.inter(
+              color: colors.primary,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              Column(
+                children: [
+                  Text(
+                    'Servicios',
+                    style: TextStyle(color: colors.textSecondary, fontSize: 12),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${records.length}',
+                    style: TextStyle(
+                      color: colors.textPrimary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+              Column(
+                children: [
+                  Text(
+                    'Promedio',
+                    style: TextStyle(color: colors.textSecondary, fontSize: 12),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '\$${avgCost.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      color: colors.textPrimary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),
@@ -387,7 +606,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
   ) async {
     final tallerId = record.idTaller!;
     final snap = await FirebaseFirestore.instance
-        .collection('Usuarios')
+        .collection(FirestoreCollections.usuarios)
         .doc(tallerId)
         .get();
     final nombre =

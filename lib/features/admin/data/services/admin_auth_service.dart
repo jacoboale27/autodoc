@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/models/user_model.dart';
+import '../../../../core/constants/firestore_collections.dart';
 
 /// Service that handles admin authentication through Firebase Auth.
 /// Admin credentials are stored in Firebase Auth as real users, and their
@@ -35,7 +36,7 @@ class AdminAuthService {
       if (user == null) return null;
 
       // Validate admin role in Firestore
-      final userDoc = await _firestore.collection('Usuarios').doc(user.uid).get();
+      final userDoc = await _firestore.collection(FirestoreCollections.usuarios).doc(user.uid).get();
       if (!userDoc.exists) return null;
 
       final data = userDoc.data()!;
@@ -57,7 +58,7 @@ class AdminAuthService {
   /// Checks if a given UID belongs to an admin in Firestore.
   Future<bool> isAdmin(String uid) async {
     try {
-      final doc = await _firestore.collection('Usuarios').doc(uid).get();
+      final doc = await _firestore.collection(FirestoreCollections.usuarios).doc(uid).get();
       if (!doc.exists) return false;
       final rol = (doc.data()?['rol'] as String? ?? '').trim().toLowerCase();
       return rol == 'administrador' || rol == 'admin';
@@ -69,7 +70,7 @@ class AdminAuthService {
   /// Retrieves admin user data by UID from Firestore.
   Future<UserModel?> getAdminByUid(String uid) async {
     try {
-      final doc = await _firestore.collection('Usuarios').doc(uid).get();
+      final doc = await _firestore.collection(FirestoreCollections.usuarios).doc(uid).get();
       if (!doc.exists) return null;
 
       final data = doc.data()!;
@@ -87,7 +88,7 @@ class AdminAuthService {
     try {
       // Try matching by a 'usuario' field if it exists
       final queryByUsuario = await _firestore
-          .collection('Usuarios')
+          .collection(FirestoreCollections.usuarios)
           .where('usuario', isEqualTo: username)
           .limit(1)
           .get();
@@ -99,7 +100,7 @@ class AdminAuthService {
       // Also try case-insensitive email prefix matching
       // e.g., username "admin" matches "admin@autodocsv.com"
       final queryByCorreo = await _firestore
-          .collection('Usuarios')
+          .collection(FirestoreCollections.usuarios)
           .where('correo', isGreaterThanOrEqualTo: '$username@')
           .where('correo', isLessThanOrEqualTo: '$username@\uf8ff')
           .limit(1)
@@ -157,7 +158,7 @@ class AdminAuthService {
         await credential.user!.updateDisplayName(nombre);
 
         // Create/update the Firestore user document
-        await _firestore.collection('Usuarios').doc(uid).set({
+        await _firestore.collection(FirestoreCollections.usuarios).doc(uid).set({
           'id_usuario': uid,
           'nombre_completo': nombre,
           'correo': email,

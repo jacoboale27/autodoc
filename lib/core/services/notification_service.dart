@@ -1,4 +1,5 @@
 import 'dart:io';
+import '../constants/firestore_collections.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -103,7 +104,7 @@ class NotificationService {
       // Obtener el token FCM
       String? token = await _firebaseMessaging.getToken();
       if (token != null) {
-        await FirebaseFirestore.instance.collection('Usuarios').doc(user.uid).update({
+        await FirebaseFirestore.instance.collection(FirestoreCollections.usuarios).doc(user.uid).update({
           'fcmToken': token,
         });
         debugPrint("Token FCM guardado en Firestore: $token");
@@ -111,7 +112,7 @@ class NotificationService {
 
       // Escuchar cambios en el token
       _firebaseMessaging.onTokenRefresh.listen((newToken) {
-        FirebaseFirestore.instance.collection('Usuarios').doc(user.uid).update({
+        FirebaseFirestore.instance.collection(FirestoreCollections.usuarios).doc(user.uid).update({
           'fcmToken': newToken,
         });
       });

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:autodoc/features/auth/data/services/auth_preferences_service.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
@@ -31,19 +31,19 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     // Navigate after checking auth state
     Future.delayed(const Duration(seconds: 3), () async {
       if (mounted) {
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final sessionProvider = Provider.of<UserSessionProvider>(context, listen: false);
         
         // Esperar un poco más si está cargando
         int attempts = 0;
-        while (authProvider.user != null && authProvider.userData == null && attempts < 10) {
+        while (sessionProvider.user != null && sessionProvider.userData == null && attempts < 10) {
           await Future.delayed(const Duration(milliseconds: 500));
           attempts++;
         }
 
         if (mounted) {
-          final user = authProvider.user;
+          final user = sessionProvider.user;
           if (user != null) {
-            final userData = authProvider.userData;
+            final userData = sessionProvider.userData;
             if (userData != null) {
               final role = userData.rol.trim().toLowerCase();
               if (role == 'taller' || role == 'mecanico') {

@@ -14,22 +14,22 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Obtiene los datos del perfil del usuario actual de la colección 'Usuarios'
+    // Obtiene los datos del perfil del usuario actual de la colección 'usuarios'
     function getUserData() {
-      return get(/databases/$(database)/documents/Usuarios/$(request.auth.uid)).data;
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
     }
 
     // Verifica si el usuario actual tiene rol de Administrador o Propietario principal
     function isAdmin() {
       return isAuthenticated() && 
-        exists(/databases/$(database)/documents/Usuarios/$(request.auth.uid)) &&
+        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
         getUserData().rol in ['Administrador', 'admin', 'Propietario'];
     }
 
     // Verifica si el usuario actual tiene rol de Mecánico
     function isMecanico() {
       return isAuthenticated() && 
-        exists(/databases/$(database)/documents/Usuarios/$(request.auth.uid)) &&
+        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
         getUserData().rol == 'Mecanico';
     }
 
@@ -37,7 +37,7 @@ service cloud.firestore {
     // --- REGLAS POR COLECCIÓN ---
 
     // 1. Tabla de Usuarios
-    match /Usuarios/{userId} {
+    match /usuarios/{userId} {
       allow read: if isAuthenticated();
       
       // Permitir la creación de su propio perfil de usuario durante registro/onboarding
@@ -52,7 +52,7 @@ service cloud.firestore {
     }
 
     // 2. Tabla de Talleres
-    match /Talleres/{tallerId} {
+    match /talleres/{tallerId} {
       // El directorio de talleres es de lectura pública
       allow read: if true;
       
@@ -66,7 +66,7 @@ service cloud.firestore {
     }
 
     // 3. Tabla de Vehículos
-    match /Vehiculos/{vehiculoId} {
+    match /vehiculos/{vehiculoId} {
       allow read: if isAuthenticated();
       
       // Solo el propietario registrado del vehículo puede crearlo o eliminarlo
@@ -83,7 +83,7 @@ service cloud.firestore {
     }
 
     // 4. Tabla de Servicios (Historial de Mantenimiento)
-    match /Servicios/{servicioId} {
+    match /servicios/{servicioId} {
       allow read: if isAuthenticated();
       
       // Solo mecánicos y administradores pueden registrar nuevos servicios/mantenimientos
@@ -95,7 +95,7 @@ service cloud.firestore {
     }
 
     // 5. Tabla de Alertas y Recordatorios
-    match /Alertas/{alertaId} {
+    match /alertas/{alertaId} {
       allow read: if isAuthenticated();
       
       // Cualquier usuario autenticado (dueños o mecánicos autorizados) puede gestionar alertas
@@ -103,7 +103,7 @@ service cloud.firestore {
     }
 
     // 6. Tabla de Reseñas
-    match /Resenias/{reseniaId} {
+    match /resenias/{reseniaId} {
       // Las reseñas son de lectura pública para alimentar el directorio de talleres
       allow read: if true;
       
@@ -115,6 +115,44 @@ service cloud.firestore {
       
       // El autor original o el administrador (moderación de comentarios ofensivos) pueden eliminarla
       allow delete: if isAuthenticated() && (resource.data.id_usuario == request.auth.uid || isAdmin());
+    }
+
+    // 7. Tabla de Conversaciones
+    match /conversaciones/{convId} {
+      allow read, update, create: if isAuthenticated();
+      
+      match /mensajes/{msgId} {
+        allow read, create, update: if isAuthenticated() &&
+          (get(/databases/$(database)/documents/conversaciones/$(convId)).data
+            .id_propietario == request.auth.uid ||
+          get(/databases/$(database)/documents/conversaciones/$(convId)).data
+            .id_mecanico == request.auth.uid);
+      }
+    }
+
+    // 8. Tabla de Reservas
+    match /reservas/{reservaId} {
+      allow read: if isAuthenticated() &&
+        (resource.data.id_propietario == request.auth.uid ||
+         resource.data.id_mecanico == request.auth.uid);
+      allow create: if isAuthenticated() &&
+        request.resource.data.id_propietario == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        resource.data.id_propietario == request.auth.uid ||
+        isMecanico() || isAdmin()
+      );
+    }
+
+    // 9. Tabla de Cotizaciones
+    match /cotizaciones/{cotizacionId} {
+      allow read: if isAuthenticated() &&
+        (resource.data.id_propietario == request.auth.uid ||
+         resource.data.id_mecanico == request.auth.uid);
+      allow create: if isAuthenticated() &&
+        request.resource.data.id_mecanico == request.auth.uid;
+      allow update: if isAuthenticated() &&
+        (resource.data.id_propietario == request.auth.uid ||
+         resource.data.id_mecanico == request.auth.uid);
     }
 
     // Regla de respaldo

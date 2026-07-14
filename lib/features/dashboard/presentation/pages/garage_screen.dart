@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
-import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/core/widgets/vehicle_image_widget.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
@@ -27,7 +27,7 @@ class GarageScreen extends StatelessWidget {
 
     final vehicleProvider = context.watch<VehicleProvider>();
     final vehicles = vehicleProvider.vehicles;
-    final currentUserId = context.watch<AuthProvider>().user?.uid;
+    final currentUserId = context.watch<UserSessionProvider>().user?.uid;
 
     return AppScaffold(
       useGradient: true,
@@ -356,12 +356,12 @@ class GarageScreen extends StatelessWidget {
       builder: (context) => AddVehicleForm(
         primaryColor: primary,
         onFinish: (vehicle) async {
-          final authProvider = context.read<AuthProvider>();
+          final userSession = context.read<UserSessionProvider>();
           final vehicleProvider = context.read<VehicleProvider>();
 
           final newVehicle = vehicle.copyWith(
             idVehiculo: const Uuid().v4(),
-            idPropietario: authProvider.user!.uid,
+            idPropietario: userSession.user!.uid,
           );
 
           final success = await vehicleProvider.addVehicle(newVehicle);

@@ -1,11 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:autodoc/core/models/review_model.dart';
+import '../../../../core/models/review_model.dart';
+import '../../../../core/constants/firestore_collections.dart';
 
 class ReviewService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> get _resenias =>
-      _firestore.collection('Resenias');
+      _firestore.collection(FirestoreCollections.resenias);
 
   Future<bool> hasUserReviewedTaller(String userId, String tallerId) async {
     final snapshot = await _resenias
@@ -78,7 +79,7 @@ class ReviewService {
         ? 0.0
         : reviews.map((r) => r.estrellas).reduce((a, b) => a + b) / total;
 
-    await _firestore.collection('Usuarios').doc(tallerId).update({
+    await _firestore.collection(FirestoreCollections.usuarios).doc(tallerId).update({
       'calificacion_promedio': double.parse(promedio.toStringAsFixed(1)),
       'total_resenias': total,
     });

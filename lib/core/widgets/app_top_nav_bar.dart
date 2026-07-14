@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/utils/responsive.dart';
-import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/providers/language_provider.dart';
 import 'package:provider/provider.dart';
@@ -84,6 +84,12 @@ class AppTopNavBar extends StatelessWidget {
             isActive: currentPath == '/workshop_directory',
             onTap: () => context.push('/workshop_directory'),
           ),
+          _TopNavLink(
+            title: 'Chat',
+            icon: Icons.chat_bubble_outline_rounded,
+            isActive: currentPath == '/chat_list',
+            onTap: () => context.push('/chat_list'),
+          ),
           
           const Spacer(),
           
@@ -126,9 +132,9 @@ class AppTopNavBar extends StatelessWidget {
           ),
           
           // Profile Action
-          Consumer<AuthProvider>(
-            builder: (context, authProvider, _) {
-              final user = authProvider.user;
+          Consumer<UserSessionProvider>(
+            builder: (context, userSession, _) {
+              final user = userSession.user;
               return InkWell(
                 onTap: () => context.push('/user_profile'),
                 borderRadius: BorderRadius.circular(999),

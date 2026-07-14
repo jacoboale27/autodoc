@@ -7,6 +7,7 @@ import 'package:autodoc/core/models/vehicle_model.dart';
 import '../providers/vehicle_provider.dart';
 import '../widgets/license_plate_widget.dart';
 import 'package:go_router/go_router.dart';
+
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_scaffold.dart';
@@ -651,10 +652,10 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                 if (formKey.currentState!.validate()) {
                   setState(() => isVerifying = true);
                   
-                  final authProvider = context.read<AuthProvider>();
+
                   final vehicleProvider = context.read<VehicleProvider>();
                   
-                  final isValid = await authProvider.verifyPassword(passwordController.text);
+                  final isValid = await context.read<AuthProvider>().verifyPassword(passwordController.text);
                   
                   if (context.mounted) {
                     if (!isValid) {

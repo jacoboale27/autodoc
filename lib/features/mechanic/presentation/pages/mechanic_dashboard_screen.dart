@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
 import 'package:autodoc/core/models/service_record_model.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
@@ -27,8 +28,8 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
     final bool isMobile = MediaQuery.of(context).size.width < 700;
     final colors = context.appColors;
     final theme = Theme.of(context);
-    final authProvider = context.watch<AuthProvider>();
-    final userData = authProvider.userData;
+    final userSession = context.watch<UserSessionProvider>();
+    final userData = userSession.userData;
     
     if (userData == null || userData.idUsuario.isEmpty) {
       return const Scaffold(
@@ -264,7 +265,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
   Widget _buildDashboardMetrics(AppColors colors, bool isMobile, String tallerId) {
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('Usuarios')
+          .collection(FirestoreCollections.usuarios)
           .doc(tallerId)
           .snapshots(),
       builder: (context, userSnapshot) {
@@ -274,11 +275,28 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
 
         return StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
-              .collection('servicios')
+              .collection(FirestoreCollections.servicios)
               .where('id_taller', isEqualTo: tallerId)
               .snapshots(),
           builder: (context, snapshot) {
-            final totalServicios = snapshot.hasData ? snapshot.data!.docs.length : 0;
+            final allServicios = snapshot.hasData ? snapshot.data!.docs : [];
+            final totalServicios = allServicios.length;
+            
+            final vehiculosUnicos = <String>{};
+            int serviciosMesActual = 0;
+            final now = DateTime.now();
+            
+            for (var doc in allServicios) {
+              final data = doc.data() as Map<String, dynamic>;
+              vehiculosUnicos.add(data['id_vehiculo'] ?? '');
+              
+              if (data['fecha'] != null) {
+                final fecha = (data['fecha'] as Timestamp).toDate();
+                if (fecha.year == now.year && fecha.month == now.month) {
+                  serviciosMesActual++;
+                }
+              }
+            }
 
             return LayoutBuilder(builder: (context, constraints) {
               final double cardWidth =
@@ -289,10 +307,27 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                 runSpacing: 24,
                 children: [
                   _buildMetricCard(
-                    title: 'Servicios Realizados',
+                    title: 'Servicios (Mes)',
+                    value: serviciosMesActual.toString(),
+                    icon: Icons.calendar_today,
+                    accentColor: colors.secondary,
+                    colors: colors,
+                    width: cardWidth,
+                  ),
+                  _buildMetricCard(
+                    title: 'Total Servicios',
                     value: totalServicios.toString(),
                     icon: Icons.build_circle,
-                    accentColor: colors.secondary,
+                    accentColor: colors.primary,
+                    colors: colors,
+                    width: cardWidth,
+                    onTap: () => context.push('/mechanic_service_history'),
+                  ),
+                  _buildMetricCard(
+                    title: 'Vehículos Atendidos',
+                    value: vehiculosUnicos.length.toString(),
+                    icon: Icons.directions_car,
+                    accentColor: colors.success,
                     colors: colors,
                     width: cardWidth,
                   ),
@@ -401,7 +436,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
           const SizedBox(height: 16),
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
-                .collection('servicios')
+                .collection(FirestoreCollections.servicios)
                 .where('id_taller', isEqualTo: tallerId)
                 .orderBy('fecha', descending: true)
                 .limit(5)

@@ -3,10 +3,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/constants/firestore_collections.dart';
 import 'package:autodoc/core/models/review_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
-import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
 import 'package:autodoc/features/reviews/data/services/review_service.dart';
 import 'package:autodoc/core/utils/responsive.dart';
@@ -20,8 +21,8 @@ class MechanicReviewsScreen extends StatelessWidget {
     final isMobile = MediaQuery.of(context).size.width < 700;
     final colors = context.appColors;
     final theme = Theme.of(context);
-    final authProvider = context.watch<AuthProvider>();
-    final userData = authProvider.userData;
+    final userSession = context.watch<UserSessionProvider>();
+    final userData = userSession.userData;
 
     if (userData == null || userData.idUsuario.isEmpty) {
       return const Scaffold(
@@ -78,7 +79,7 @@ class MechanicReviewsScreen extends StatelessWidget {
                 Expanded(
                   child: StreamBuilder<DocumentSnapshot>(
                     stream: FirebaseFirestore.instance
-                        .collection('Usuarios')
+                        .collection(FirestoreCollections.usuarios)
                         .doc(tallerId)
                         .snapshots(),
                     builder: (context, userSnap) {

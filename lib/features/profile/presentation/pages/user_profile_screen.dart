@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/providers/language_provider.dart';
@@ -30,7 +31,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   @override
   void initState() {
     super.initState();
-    final user = context.read<AuthProvider>().userData;
+    final user = context.read<UserSessionProvider>().userData;
     if (user != null) {
       _nameController.text = user.nombreCompleto;
       _emailController.text = user.correo;
@@ -54,15 +55,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Future<void> _saveProfile() async {
-    final authProvider = context.read<AuthProvider>();
-    final currentUser = authProvider.userData;
+    final sessionProvider = context.read<UserSessionProvider>();
+    final currentUser = sessionProvider.userData;
     if (currentUser == null) return;
 
     final updatedUser = currentUser.copyWith(
       nombreCompleto: _nameController.text,
     );
 
-    final success = await authProvider.updateProfile(updatedUser, imageFile: _imageFile);
+    final success = await sessionProvider.updateProfile(updatedUser, imageFile: _imageFile);
     
     if (!mounted) return;
     
@@ -71,9 +72,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.upProfileUpdatedSuccess)),
       );
-    } else if (authProvider.error != null) {
+    } else if (sessionProvider.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.upErrorUploadingImage(authProvider.error!))),
+        SnackBar(content: Text(context.l10n.upErrorUploadingImage(sessionProvider.error!))),
       );
     }
   }
@@ -89,9 +90,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final bgColorEnd = isDark ? const Color(0xFF0F172A) : const Color(0xFFECE9F1);
     final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
 
-    final authProvider = context.watch<AuthProvider>();
-    final user = authProvider.userData;
-    final isLoading = authProvider.isLoading;
+    final sessionProvider = context.watch<UserSessionProvider>();
+    final user = sessionProvider.userData;
+    final isLoading = sessionProvider.isLoading;
 
     if (isLoading && user == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -108,7 +109,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               const SizedBox(height: 16),
               Text(context.l10n.upProfileDataNotFound, style: TextStyle(fontSize: Responsive.fontSize(context, 18), fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              Text(authProvider.error ?? context.l10n.upPleaseCompleteSetup, textAlign: TextAlign.center),
+              Text(sessionProvider.error ?? context.l10n.upPleaseCompleteSetup, textAlign: TextAlign.center),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () => context.go('/profile_setup'),
@@ -117,7 +118,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               TextButton(
                 onPressed: () async {
                   final router = GoRouter.of(context);
-                  await authProvider.signOut();
+                  await context.read<AuthProvider>().signOut();
                   router.go('/login');
                 },
                 child: Text(context.l10n.upSignOut, style: const TextStyle(color: Colors.red)),

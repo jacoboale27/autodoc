@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/admin_provider.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
 import '../widgets/admin_sidebar.dart';
 import '../widgets/account_row.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
@@ -120,8 +120,8 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AdminProvider>();
-    final authProvider = context.watch<AuthProvider>();
-    final adminUid = authProvider.adminUid;
+    final userSession = context.watch<UserSessionProvider>();
+    final currentUid = userSession.currentUid;
     final colors = context.appColors;
 
     // Show success/error snackbar
@@ -208,21 +208,21 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                               final usuario = usuariosFiltrados[index];
                               return AccountRow(
                                 usuario: usuario,
-                                isCurrentAdmin: usuario.idUsuario == adminUid,
+                                isCurrentAdmin: usuario.idUsuario == currentUid,
                                 onSuspender: () {
                                   _mostrarDialogoMotivo(context, 'Suspender Usuario', (motivo) {
-                                    provider.suspenderUsuario(adminUid, usuario.idUsuario, motivo);
+                                    provider.suspenderUsuario(currentUid, usuario.idUsuario, motivo);
                                   });
                                 },
                                 onReactivar: () {
-                                  provider.reactivarUsuario(adminUid, usuario.idUsuario);
+                                  provider.reactivarUsuario(currentUid, usuario.idUsuario);
                                 },
                                 onCambiarRol: () {
                                   _mostrarDialogoCambiarRol(
                                     context,
                                     usuario.idUsuario,
                                     usuario.rol,
-                                    adminUid,
+                                    currentUid,
                                   );
                                 },
                               );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/constants/firestore_collections.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
@@ -27,7 +28,7 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
   Future<void> _loadSharedUsers() async {
     final users = <Map<String, String>>[];
     for (var uid in widget.vehicle.sharedWith) {
-      final doc = await _firestore.collection('Usuarios').doc(uid).get();
+      final doc = await _firestore.collection(FirestoreCollections.usuarios).doc(uid).get();
       if (doc.exists) {
         users.add({
           'uid': uid,
@@ -231,7 +232,7 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
     setState(() => _isLoading = true);
     try {
       // Find user by email in Usuarios collection
-      final query = await _firestore.collection('Usuarios')
+      final query = await _firestore.collection(FirestoreCollections.usuarios)
           .where('correo', isEqualTo: email).limit(1).get();
 
       if (query.docs.isEmpty) {
@@ -255,7 +256,7 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
       }
 
       // Update Firestore
-      await _firestore.collection('Vehiculos').doc(widget.vehicle.idVehiculo).update({
+      await _firestore.collection(FirestoreCollections.vehiculos).doc(widget.vehicle.idVehiculo).update({
         'shared_with': FieldValue.arrayUnion([targetUid]),
       });
 
@@ -273,7 +274,7 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
 
   Future<void> _removeUser(String uid) async {
     try {
-      await _firestore.collection('Vehiculos').doc(widget.vehicle.idVehiculo).update({
+      await _firestore.collection(FirestoreCollections.vehiculos).doc(widget.vehicle.idVehiculo).update({
         'shared_with': FieldValue.arrayRemove([uid]),
       });
 

@@ -6,7 +6,8 @@ import '../providers/admin_dashboard_provider.dart';
 import '../providers/admin_provider.dart';
 import '../widgets/admin_sidebar.dart';
 import '../widgets/metric_card.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
+import '../widgets/services_trend_chart.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:intl/intl.dart';
@@ -36,7 +37,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<AdminDashboardProvider>();
     final adminProvider = context.watch<AdminProvider>();
-    final authProvider = context.watch<AuthProvider>();
+    final userSession = context.watch<UserSessionProvider>();
     final colors = context.appColors;
 
     return Scaffold(
@@ -83,11 +84,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildWelcomeHeader(context, authProvider, colors),
+                        _buildWelcomeHeader(context, userSession, colors),
                         const SizedBox(height: 32),
                         _buildSectionTitle(context, context.l10n.adminGlobalMetricsTitle),
                         const SizedBox(height: 16),
                         _buildMetricsGrid(context, provider, colors),
+                        const SizedBox(height: 32),
+                        ServicesTrendChart(
+                          serviciosPorMes: Map<int, int>.from(provider.metrics['serviciosPorMes'] ?? {}),
+                        ),
                         const SizedBox(height: 32),
                         _buildSectionTitle(context, context.l10n.adminQuickActionsTitle),
                         const SizedBox(height: 16),
@@ -103,7 +108,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildWelcomeHeader(BuildContext context, AuthProvider authProvider, AppColors colors) {
+  Widget _buildWelcomeHeader(BuildContext context, UserSessionProvider userSession, AppColors colors) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(Responsive.padding(context, 24)),
@@ -141,7 +146,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  context.l10n.adminDashboardWelcome(authProvider.userData?.nombreCompleto ?? 'Admin'),
+                  context.l10n.adminDashboardWelcome(userSession.userData?.nombreCompleto ?? 'Admin'),
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:autodoc/features/dashboard/data/services/workshop_service.dart';
+import 'package:autodoc/core/models/user_model.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
@@ -13,11 +14,13 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/widgets/app_skeleton.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
-import 'package:autodoc/core/utils/role_utils.dart';
+
 import 'package:autodoc/core/widgets/review_sheet.dart';
-import 'package:flutter/services.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:provider/provider.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
+import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 
 class WorkshopDirectoryScreen extends StatefulWidget {
   const WorkshopDirectoryScreen({super.key});
@@ -90,11 +93,8 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
             const SizedBox(height: 8),
             // Content: List or Map
               Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('Usuarios')
-                      .where('rol', whereIn: mechanicFirestoreRoles)
-                      .snapshots(),
+                child: StreamBuilder<List<UserModel>>(
+                  stream: WorkshopService().getWorkshopsStream(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return AppSkeletonLayouts.workshopList();
@@ -103,14 +103,14 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                       return Center(child: Text(context.l10n.wdErrorLoading, style: TextStyle(color: colors.textPrimary)));
                     }
 
-                    var docs = snapshot.data?.docs ?? [];
+                    var users = snapshot.data ?? [];
                     List<Map<String, dynamic>> items = [];
 
-                    for (var doc in docs) {
-                      final data = doc.data() as Map<String, dynamic>;
+                    for (var user in users) {
+                      final data = user.toMap();
                       double? distance;
-                      final lat = data['latitud']?.toDouble();
-                      final lng = data['longitud']?.toDouble();
+                      final lat = user.latitud;
+                      final lng = user.longitud;
 
                       if (_userPosition != null && lat != null && lng != null) {
                         final distInMeters = Geolocator.distanceBetween(
@@ -123,7 +123,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                       }
 
                       items.add({
-                        'id': doc.id,
+                        'id': user.idUsuario,
                         'data': data,
                         'distance': distance,
                       });
@@ -469,38 +469,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
 
 
 
-  // ======= LIST VIEW CARD =======
-  void _mostrarContacto(BuildContext context, String? telefono, String nombre) {
-    if (telefono == null || telefono.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.wdNoPhoneRegistered)),
-      );
-      return;
-    }
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.l10n.wdContactName(nombre)),
-        content: SelectableText(telefono),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: telefono));
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(context.l10n.wdPhoneCopied)),
-              );
-            },
-            child: Text(context.l10n.wdCopy),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(context.l10n.wdClose),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildWorkshopCard({
     required String tallerId,
@@ -510,7 +479,6 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
     double? distance,
   }) {
     final name = data['nombre_completo'] ?? context.l10n.wdNamelessWorkshop;
-    final telefono = data['telefono'] as String?;
     final imageUrl = data['foto_url'] ?? data['foto_perfil_url'];
     final specialty = data['especialidad'] ?? context.l10n.wdGeneralMechanics;
     final rating = data['calificacion_promedio']?.toDouble() ?? 5.0;
@@ -611,7 +579,31 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                                 label: Text(context.l10n.wdReview),
                               ),
                               AppButton(
-                                onPressed: () => _mostrarContacto(context, telefono, name),
+                                onPressed: () async {
+                                  final userSession = context.read<UserSessionProvider>();
+                                  final userId = userSession.user?.uid;
+                                  if (userId == null) return;
+                                  
+                                  // The logged user is assuming the Propietario role in this case
+                                  // (Mechanics could also contact other mechanics theoretically, but usually this is Prop -> Mec)
+                                  final chatId = await context.read<ChatProvider>().iniciarOCrearConversacion(
+                                    idPropietario: userId,
+                                    idMecanico: tallerId, // tallerId is the mechanic's UID
+                                    nombrePropietario: userSession.userData?.nombreCompleto ?? 'Propietario',
+                                    nombreMecanico: name,
+                                    idTaller: tallerId,
+                                  );
+                                  
+                                  if (chatId.isNotEmpty && mounted) {
+                                    context.push('/chat/$chatId');
+                                  } else {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Error al iniciar el chat')),
+                                      );
+                                    }
+                                  }
+                                },
                                 text: context.l10n.wdContact,
                               ),
                             ],

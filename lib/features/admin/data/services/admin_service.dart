@@ -1,9 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/models/user_model.dart';
 import '../../../../core/models/workshop_model.dart';
 import '../../../../core/models/review_model.dart';
 import '../../../../core/models/admin_log_model.dart';
 import '../repositories/admin_repository.dart';
+import '../../../../core/constants/firestore_collections.dart';
 
 class AdminService {
   final AdminRepository _repository = AdminRepository();
@@ -79,13 +81,38 @@ class AdminService {
   }
 
   // Métricas
-  Future<Map<String, int>> fetchDashboardMetrics() async {
-    final totalUsuarios = await _repository.countCollection('Usuarios');
-    final totalTalleres = await _repository.countCollection('Talleres');
-    final totalVehiculos = await _repository.countCollection('Vehiculos');
-    final totalServicios = await _repository.countCollection('Servicios');
-    final totalAlertas = await _repository.countCollection('Alertas');
-    final totalResenias = await _repository.countCollection('Resenias');
+  Future<Map<String, dynamic>> fetchDashboardMetrics() async {
+    final totalUsuarios = await _repository.countCollection(FirestoreCollections.usuarios);
+    final totalTalleres = await _repository.countCollection(FirestoreCollections.talleres);
+    final totalVehiculos = await _repository.countCollection(FirestoreCollections.vehiculos);
+    final totalServicios = await _repository.countCollection(FirestoreCollections.servicios);
+    final totalAlertas = await _repository.countCollection(FirestoreCollections.alertas);
+    final totalResenias = await _repository.countCollection(FirestoreCollections.resenias);
+
+    // Calcular servicios por mes (ultimos 6 meses)
+    final now = DateTime.now();
+    final seisMesesAtras = DateTime(now.year, now.month - 5, 1);
+    
+    final serviciosSnapshot = await FirebaseFirestore.instance
+        .collection(FirestoreCollections.servicios)
+        .where('fecha', isGreaterThanOrEqualTo: Timestamp.fromDate(seisMesesAtras))
+        .get();
+        
+    final Map<int, int> serviciosPorMes = {};
+    for (int i = 0; i < 6; i++) {
+      final mes = DateTime(now.year, now.month - i, 1);
+      serviciosPorMes[mes.month] = 0;
+    }
+
+    for (var doc in serviciosSnapshot.docs) {
+      final data = doc.data();
+      if (data['fecha'] != null) {
+        final date = (data['fecha'] as Timestamp).toDate();
+        if (serviciosPorMes.containsKey(date.month)) {
+          serviciosPorMes[date.month] = (serviciosPorMes[date.month] ?? 0) + 1;
+        }
+      }
+    }
 
     return {
       'usuarios': totalUsuarios,
@@ -94,6 +121,7 @@ class AdminService {
       'servicios': totalServicios,
       'alertas': totalAlertas,
       'resenias': totalResenias,
+      'serviciosPorMes': serviciosPorMes,
     };
   }
 }

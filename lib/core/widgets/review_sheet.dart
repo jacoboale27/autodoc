@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
-import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:autodoc/features/reviews/data/services/review_service.dart';
 
 /// Muestra un bottom sheet para calificar un taller/mecánico.
@@ -57,7 +57,7 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
   }
 
   Future<void> _checkExisting() async {
-    final userId = context.read<AuthProvider>().userData?.idUsuario;
+    final userId = context.read<UserSessionProvider>().userData?.idUsuario;
     if (userId == null) {
       setState(() => _checking = false);
       return;
@@ -79,7 +79,7 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
   }
 
   Future<void> _submit() async {
-    final auth = context.read<AuthProvider>();
+    final auth = context.read<UserSessionProvider>();
     final userId = auth.userData?.idUsuario;
     if (userId == null) return;
 

@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
-import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
@@ -14,8 +14,7 @@ import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:uuid/uuid.dart';
-import 'package:autodoc/core/widgets/app_bottom_nav_bar.dart';
-import 'package:autodoc/core/widgets/app_top_nav_bar.dart';
+
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import '../widgets/add_vehicle_form.dart';
@@ -34,10 +33,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_isInitialized) {
-      final authProvider = context.read<AuthProvider>();
-      if (authProvider.user != null) {
+      final userSession = context.read<UserSessionProvider>();
+      if (userSession.user != null) {
         final vehicleProvider = context.read<VehicleProvider>();
-        vehicleProvider.fetchVehicles(authProvider.user!.uid).then((_) {
+        vehicleProvider.fetchVehicles(userSession.user!.uid).then((_) {
           if (mounted && vehicleProvider.selectedVehicle != null) {
             context.read<AlertProvider>().fetchAlerts(
               vehicleProvider.selectedVehicle!.idVehiculo,
@@ -148,40 +147,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
 
             // Bottom Navbar (Only on mobile)
-            if (!Responsive.isDesktop(context))
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: AppBottomNavBar(
-                  currentIndex: 0,
-                  onTap: (index) {
-                    switch (index) {
-                      case 0:
-                        context.go('/dashboard');
-                        break;
-                      case 1:
-                        context.push('/garage');
-                        break;
-                      case 2:
-                        context.push('/workshop_directory');
-                        break;
-                      case 3:
-                        context.push('/user_profile');
-                        break;
-                    }
-                  },
-                ),
-              ),
-              
+            // Removed local navbar as it's now handled by ShellRoute globally
+
             // Top Navbar (Only on desktop)
-            if (Responsive.isDesktop(context))
-              const Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: AppTopNavBar(),
-              ),
+            // Removed local navbar as it's now handled by ShellRoute globally
           ],
         ),
       ),
@@ -194,9 +163,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Color textColor,
     Color subTextColor,
   ) {
-    final authProvider = context.watch<AuthProvider>();
+    final userSession = context.watch<UserSessionProvider>();
     final userName =
-        authProvider.user?.displayName?.split(' ').first ?? 'Usuario';
+        userSession.user?.displayName?.split(' ').first ?? 'Usuario';
 
     return Padding(
       padding: EdgeInsets.all(Responsive.padding(context, 24.0)),
@@ -238,7 +207,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     border: Border.all(color: Colors.white, width: 2),
                     image: DecorationImage(
                       image: CachedNetworkImageProvider(
-                        authProvider.userData?.fotoPerfilUrl ??
+                        userSession.userData?.fotoPerfilUrl ??
                             'https://www.w3schools.com/howto/img_avatar.png',
                       ),
                       fit: BoxFit.cover,
@@ -553,12 +522,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       builder: (context) => AddVehicleForm(
         primaryColor: primary,
         onFinish: (vehicle) async {
-          final authProvider = context.read<AuthProvider>();
+          final userSession = context.read<UserSessionProvider>();
           final vehicleProvider = context.read<VehicleProvider>();
 
           final newVehicle = vehicle.copyWith(
             idVehiculo: Uuid().v4(),
-            idPropietario: authProvider.user!.uid,
+            idPropietario: userSession.user!.uid,
           );
 
           final success = await vehicleProvider.addVehicle(newVehicle);
