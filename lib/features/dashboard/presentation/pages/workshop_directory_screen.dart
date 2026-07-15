@@ -32,6 +32,7 @@ class WorkshopDirectoryScreen extends StatefulWidget {
 class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  bool _showFavorites = false;
   bool _showMap = false;
   GoogleMapController? _mapController;
   Position? _userPosition;
@@ -138,6 +139,13 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                       if (distB != null) return 1;
                       return 0;
                     });
+
+                    if (_showFavorites) {
+                      final usuario = context.read<UserSessionProvider>().userData;
+                      if (usuario != null) {
+                        items = items.where((item) => usuario.talleresFavoritos.contains(item['id'])).toList();
+                      }
+                    }
 
                     if (_searchQuery.isNotEmpty) {
                       final q = _searchQuery.toLowerCase();
@@ -267,34 +275,41 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
       padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 16)),
       child: Row(
         children: [
-          _buildFilterChip(context.l10n.wdFilterMunicipality, Icons.location_on, isDark, colors.textPrimary),
-          const SizedBox(width: 12),
-          _buildFilterChip(context.l10n.wdFilterSpecialty, Icons.build, isDark, colors.textPrimary),
-          const SizedBox(width: 12),
-          _buildFilterChip(context.l10n.wdFilterRating, Icons.star, isDark, colors.textPrimary),
+          _buildFilterChip('Todos', Icons.all_inclusive, !_showFavorites, () => setState(() => _showFavorites = false), isDark, colors.textPrimary),
+          const SizedBox(width: 8),
+          _buildFilterChip('Favoritos', Icons.favorite, _showFavorites, () => setState(() => _showFavorites = true), isDark, colors.textPrimary),
+          const SizedBox(width: 8),
+          _buildFilterChip('Más Cercanos', Icons.location_on, false, () {}, isDark, colors.textPrimary),
+          const SizedBox(width: 8),
+          _buildFilterChip('Mejor Calificados', Icons.star, false, () {}, isDark, colors.textPrimary),
         ],
       ),
     );
   }
 
-  Widget _buildFilterChip(String label, IconData icon, bool isDark, Color textColor) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 16), vertical: Responsive.padding(context, 8)),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0F172A) : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey[200]!),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: Responsive.iconSize(context, 16), color: textColor),
-          const SizedBox(width: 8),
-          Text(label, style: TextStyle(color: textColor, fontSize: Responsive.fontSize(context, 14), fontWeight: FontWeight.w600)),
-          const SizedBox(width: 4),
-          Icon(Icons.keyboard_arrow_down, size: Responsive.iconSize(context, 16), color: textColor),
-        ],
+  Widget _buildFilterChip(String label, IconData icon, bool isSelected, VoidCallback onTap, bool isDark, Color textColor) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 16), vertical: Responsive.padding(context, 8)),
+        decoration: BoxDecoration(
+          color: isSelected ? (isDark ? Colors.blue.withValues(alpha: 0.2) : Colors.blue.withValues(alpha: 0.1)) : (isDark ? const Color(0xFF0F172A) : Colors.white),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: isSelected ? Colors.blue : (isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey[200]!)),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: Responsive.iconSize(context, 16), color: isSelected ? Colors.blue : textColor),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(color: isSelected ? Colors.blue : textColor, fontSize: Responsive.fontSize(context, 14), fontWeight: FontWeight.w600)),
+            if (!isSelected) ...[
+              const SizedBox(width: 4),
+              Icon(Icons.keyboard_arrow_down, size: Responsive.iconSize(context, 16), color: textColor),
+            ]
+          ],
+        ),
       ),
     );
   }

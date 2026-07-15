@@ -11,7 +11,7 @@ class AdminDashboardProvider with ChangeNotifier {
     'servicios': 0,
     'alertas': 0,
     'resenias': 0,
-    'serviciosPorMes': <int, int>{},
+    'serviciosPorMes': <String, int>{},
   };
   bool _isLoading = false;
   String? _error;

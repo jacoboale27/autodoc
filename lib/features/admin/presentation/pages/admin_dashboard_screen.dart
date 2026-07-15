@@ -91,7 +91,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         _buildMetricsGrid(context, provider, colors),
                         const SizedBox(height: 32),
                         ServicesTrendChart(
-                          serviciosPorMes: Map<int, int>.from(provider.metrics['serviciosPorMes'] ?? {}),
+                          serviciosPorMes: Map<String, int>.from(provider.metrics['serviciosPorMes'] ?? {}),
                         ),
                         const SizedBox(height: 32),
                         _buildSectionTitle(context, context.l10n.adminQuickActionsTitle),

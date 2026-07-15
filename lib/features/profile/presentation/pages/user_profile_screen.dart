@@ -13,6 +13,7 @@ import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/providers/language_provider.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/features/profile/presentation/pages/about_screen.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({super.key});
@@ -369,6 +370,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             },
             isDark,
           ),
+          const Divider(height: 32),
+          _buildActionOption(
+            context,
+            'Acerca de AutoDoc',
+            'Versión, créditos y legal',
+            Icons.info_outline,
+            () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
+            },
+            isDark,
+          ),
         ],
       ),
     );
@@ -504,8 +516,172 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
+  Widget _buildActionOption(BuildContext context, String title, String subtitle, IconData icon, VoidCallback onTap, bool isDark) {
+    return InkWell(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(Responsive.padding(context, 8)),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey[100],
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: Responsive.iconSize(context, 20), color: isDark ? Colors.white70 : Colors.grey[700]),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.inter(
+                    fontSize: Responsive.fontSize(context, 16),
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white : const Color(0xFF1E293B),
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.inter(
+                    fontSize: Responsive.fontSize(context, 12),
+                    color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.arrow_forward_ios, size: 16, color: isDark ? Colors.white54 : Colors.grey[500]),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    final authProvider = context.read<AuthProvider>();
+    final isEmailPassword = authProvider.isEmailPasswordUser;
+    final passwordController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) {
+        bool isLoading = false;
+        String? errorMessage;
+        
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Eliminar Cuenta'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('¿Estás seguro de que deseas eliminar tu cuenta? Esta acción no se puede deshacer y perderás todos tus datos.'),
+                  const SizedBox(height: 16),
+                  if (isEmailPassword) ...[
+                    const Text('Para confirmar, ingresa tu contraseña:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: passwordController,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Contraseña',
+                      ),
+                    ),
+                  ] else ...[
+                    const Text('Para confirmar, deberás volver a iniciar sesión con Google.', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                  if (errorMessage != null) ...[
+                    const SizedBox(height: 8),
+                    Text(errorMessage!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading ? null : () => Navigator.pop(context),
+                  child: const Text('Cancelar'),
+                ),
+                TextButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          setState(() {
+                            isLoading = true;
+                            errorMessage = null;
+                          });
+                          
+                          bool canDelete = false;
+                          
+                          if (isEmailPassword) {
+                            final pass = passwordController.text;
+                            if (pass.isEmpty) {
+                              setState(() {
+                                errorMessage = 'La contraseña no puede estar vacía.';
+                                isLoading = false;
+                              });
+                              return;
+                            }
+                            canDelete = await authProvider.verifyPassword(pass);
+                            if (!canDelete) {
+                              setState(() {
+                                errorMessage = 'Contraseña incorrecta.';
+                                isLoading = false;
+                              });
+                              return;
+                            }
+                          } else {
+                            canDelete = await authProvider.signInWithGoogle();
+                            if (!canDelete) {
+                              setState(() {
+                                errorMessage = 'No se pudo re-autenticar con Google.';
+                                isLoading = false;
+                              });
+                              return;
+                            }
+                          }
+                          
+                          if (canDelete) {
+                            final success = await authProvider.deleteAccount();
+                            if (success && context.mounted) {
+                               Navigator.pop(context);
+                               GoRouter.of(context).go('/login');
+                            } else if (context.mounted) {
+                               setState(() {
+                                 errorMessage = 'Error al eliminar la cuenta: ${authProvider.error ?? 'Error desconocido.'}';
+                                 isLoading = false;
+                               });
+                            }
+                          }
+                        },
+                  child: isLoading 
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('Eliminar', style: TextStyle(color: Colors.red)),
+                ),
+              ],
+            );
+          }
+        );
+      }
+    );
+  }
+
   Widget _buildLogoutButton(BuildContext context, Color primary) {
-    return TextButton.icon(
+    return Column(
+      children: [
+        TextButton.icon(
+          onPressed: () => _showDeleteAccountDialog(context),
+          icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+          label: const Text('Eliminar cuenta', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          style: TextButton.styleFrom(
+            padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 24), vertical: Responsive.padding(context, 12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextButton.icon(
       onPressed: () async {
         final authProvider = context.read<AuthProvider>();
         final router = GoRouter.of(context);
@@ -518,6 +694,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 24), vertical: Responsive.padding(context, 12)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
+    ),
+      ],
     );
   }
 }

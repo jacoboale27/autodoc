@@ -358,6 +358,7 @@ class AlertProvider extends ChangeNotifier {
     required int nuevoKilometraje,
     required String tallerId,
     required String descripcion,
+    double? costo,
     File? receiptImage,
   }) async {
     _isLoading = true;
@@ -396,7 +397,7 @@ class AlertProvider extends ChangeNotifier {
         'fecha': Timestamp.fromDate(now),
         'kilometraje_servicio': nuevoKilometraje,
         'descripcion': descripcion,
-        'costo': null,
+        'costo': costo,
         'foto_factura_url': receiptUrl,
       });
 
@@ -443,6 +444,35 @@ class AlertProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       rethrow;
+    }
+  }
+
+  Future<MaintenanceStatus> getVehicleOverallStatus(VehicleModel vehicle) async {
+    try {
+      final snapshot = await _firestore
+          .collection(FirestoreCollections.mantenimientos)
+          .where('id_vehiculo', isEqualTo: vehicle.idVehiculo)
+          .get();
+
+      final tasks = snapshot.docs
+          .map((doc) => MaintenanceTask.fromMap(doc.data(), doc.id))
+          .toList();
+
+      if (tasks.isEmpty) return MaintenanceStatus.optimal;
+
+      MaintenanceStatus worstStatus = MaintenanceStatus.optimal;
+      for (final task in tasks) {
+        final s = task.getStatus(vehicle.kilometrajeActual);
+        if (s == MaintenanceStatus.critical) {
+          worstStatus = MaintenanceStatus.critical;
+          break;
+        } else if (s == MaintenanceStatus.preventive) {
+          worstStatus = MaintenanceStatus.preventive;
+        }
+      }
+      return worstStatus;
+    } catch (e) {
+      return MaintenanceStatus.optimal;
     }
   }
 }

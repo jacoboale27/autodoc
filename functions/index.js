@@ -4,6 +4,7 @@ admin.initializeApp();
 
 const db = admin.firestore();
 const messaging = admin.messaging();
+const storage = admin.storage();
 
 /**
  * 1. Scheduled function to check alerts (alertas) daily.
@@ -253,7 +254,41 @@ exports.notifyOnNewChatMessage = functions.firestore
   });
 
 /**
- * 5. Firestore trigger when a reservation status changes.
+ * 5. Firestore trigger when a new reservation is created.
+ * Sends a push notification to the mechanic.
+ */
+exports.notifyOnNewReservation = functions.firestore
+  .document('reservas/{reservaId}')
+  .onCreate(async (snap, context) => {
+    const reserva = snap.data();
+    
+    try {
+      const targetId = reserva.id_mecanico;
+      if (!targetId) return null;
+
+      const userDoc = await db.collection('usuarios').doc(targetId).get();
+      const fcmToken = userDoc.exists ? userDoc.data().fcmToken : null;
+
+      if (!fcmToken) return null;
+
+      await messaging.send({
+        token: fcmToken,
+        notification: {
+          title: 'Nueva Solicitud de Cita',
+          body: `Has recibido una nueva solicitud de cita para el ${reserva.fecha_hora_propuesta ? new Date(reserva.fecha_hora_propuesta).toLocaleDateString() : 'día propuesto'}.`
+        },
+        data: {
+          type: 'reserva',
+          reservaId: context.params.reservaId
+        }
+      });
+    } catch (error) {
+      console.error('Error sending new reservation notification:', error);
+    }
+  });
+
+/**
+ * 5.1. Firestore trigger when a reservation status changes.
  * Sends a push notification to the owner or mechanic.
  */
 exports.notifyOnReservationStatusChange = functions.firestore
@@ -350,5 +385,99 @@ exports.sendReservationReminders = functions.pubsub.schedule('every 24 hours').o
     }
   } catch (error) {
     console.error('Error in sendReservationReminders:', error);
+  }
+});
+
+
+
+/**
+ * 6. Auth trigger when a user is deleted.
+ * Cleans up user data (Firestore) when an account is deleted from Firebase Auth.
+ */
+exports.onUserDelete = functions.auth.user().onDelete(async (user) => {
+  const userId = user.uid;
+  console.log(`User ${userId} deleted. Cleaning up data...`);
+
+  try {
+    // 1. Delete user document
+    await db.collection('usuarios').doc(userId).delete();
+    console.log(`User document ${userId} deleted.`);
+
+    // 2. Delete all vehicles owned by the user
+    const vehiculosSnapshot = await db.collection('vehiculos').where('id_propietario', '==', userId).get();
+    
+    for (const vehiculoDoc of vehiculosSnapshot.docs) {
+      const vehiculoId = vehiculoDoc.id;
+      
+      // Delete alerts for this vehicle
+      const alertasSnapshot = await db.collection('alertas').where('id_vehiculo', '==', vehiculoId).get();
+      for (const alertaDoc of alertasSnapshot.docs) {
+        await db.collection('alertas').doc(alertaDoc.id).delete();
+      }
+
+      // Delete services for this vehicle
+      const serviciosSnapshot = await db.collection('servicios').where('id_vehiculo', '==', vehiculoId).get();
+      for (const servicioDoc of serviciosSnapshot.docs) {
+        await db.collection('servicios').doc(servicioDoc.id).delete();
+      }
+
+      // Finally, delete the vehicle
+      await db.collection('vehiculos').doc(vehiculoId).delete();
+      console.log(`Vehicle ${vehiculoId} and its related data deleted.`);
+    }
+    
+    // 3. Delete user's profile picture
+    try {
+      await storage.bucket().deleteFiles({ prefix: `perfiles/${userId}/` });
+      console.log(`Profile pictures for user ${userId} deleted.`);
+    } catch (e) {
+      console.error(`Error deleting profile pictures for user ${userId}:`, e);
+    }
+
+  } catch (error) {
+    console.error(`Error cleaning up data for user ${userId}:`, error);
+  }
+});
+
+/**
+ * 7. Firestore trigger when a vehicle is deleted.
+ * Cleans up related data (alerts, maintenance, services) and Storage files.
+ */
+exports.onVehicleDelete = functions.firestore.document('vehiculos/{vehicleId}').onDelete(async (snap, context) => {
+  const vehicleId = context.params.vehicleId;
+  console.log(`Vehicle ${vehicleId} deleted. Cleaning up related data...`);
+
+  try {
+    const batch = db.batch();
+
+    // 1. Delete alerts
+    const alertas = await db.collection('alertas').where('id_vehiculo', '==', vehicleId).get();
+    alertas.docs.forEach(doc => batch.delete(doc.ref));
+
+    // 2. Delete mantenimientos
+    const mantenimientos = await db.collection('mantenimientos').where('id_vehiculo', '==', vehicleId).get();
+    mantenimientos.docs.forEach(doc => batch.delete(doc.ref));
+
+    // 3. Delete servicios
+    const servicios = await db.collection('servicios').where('id_vehiculo', '==', vehicleId).get();
+    servicios.docs.forEach(doc => batch.delete(doc.ref));
+
+    // 4. Delete historial_mantenimientos
+    const historial = await db.collection('historial_mantenimientos').where('id_vehiculo', '==', vehicleId).get();
+    historial.docs.forEach(doc => batch.delete(doc.ref));
+
+    await batch.commit();
+    console.log(`Firestore data for vehicle ${vehicleId} deleted.`);
+
+    // 5. Delete storage files
+    try {
+      await storage.bucket().deleteFiles({ prefix: `facturas/${vehicleId}/` });
+      console.log(`Storage files for vehicle ${vehicleId} deleted.`);
+    } catch (e) {
+      console.error(`Error deleting storage files for vehicle ${vehicleId}:`, e);
+    }
+
+  } catch (error) {
+    console.error(`Error cleaning up data for vehicle ${vehicleId}:`, error);
   }
 });

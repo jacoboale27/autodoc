@@ -6,6 +6,7 @@ class UserModel {
   final String correo;
   final String rol;
   final DateTime fechaRegistro;
+  final List<String> talleresFavoritos;
   final String? fotoPerfilUrl;
   final String? especialidad;
   final String? ubicacionMunicipio;
@@ -23,6 +24,7 @@ class UserModel {
     required this.correo,
     required this.rol,
     required this.fechaRegistro,
+    this.talleresFavoritos = const [],
     this.fotoPerfilUrl,
     this.especialidad,
     this.ubicacionMunicipio,
@@ -41,6 +43,7 @@ class UserModel {
     String? correo,
     String? rol,
     DateTime? fechaRegistro,
+    List<String>? talleresFavoritos,
     String? fotoPerfilUrl,
     String? especialidad,
     String? ubicacionMunicipio,
@@ -58,6 +61,7 @@ class UserModel {
       correo: correo ?? this.correo,
       rol: rol ?? this.rol,
       fechaRegistro: fechaRegistro ?? this.fechaRegistro,
+      talleresFavoritos: talleresFavoritos ?? this.talleresFavoritos,
       fotoPerfilUrl: fotoPerfilUrl ?? this.fotoPerfilUrl,
       especialidad: especialidad ?? this.especialidad,
       ubicacionMunicipio: ubicacionMunicipio ?? this.ubicacionMunicipio,
@@ -78,6 +82,7 @@ class UserModel {
       'correo': correo,
       'rol': rol,
       'fecha_registro': Timestamp.fromDate(fechaRegistro),
+      'talleres_favoritos': talleresFavoritos,
       'foto_perfil_url': fotoPerfilUrl,
       if (especialidad != null) 'especialidad': especialidad,
       if (ubicacionMunicipio != null) 'ubicacion_municipio': ubicacionMunicipio,
@@ -98,6 +103,7 @@ class UserModel {
       correo: map['correo'] ?? '',
       rol: map['rol'] ?? 'Propietario',
       fechaRegistro: (map['fecha_registro'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      talleresFavoritos: List<String>.from(map['talleres_favoritos'] ?? []),
       fotoPerfilUrl: map['foto_perfil_url'] ?? map['foto_url'],
       especialidad: map['especialidad'],
       ubicacionMunicipio: map['ubicacion_municipio'],

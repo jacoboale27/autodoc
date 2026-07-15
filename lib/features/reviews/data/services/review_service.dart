@@ -17,6 +17,16 @@ class ReviewService {
     return snapshot.docs.isNotEmpty;
   }
 
+  Future<ReviewModel?> getUserReviewForTaller(String userId, String tallerId) async {
+    final snapshot = await _resenias
+        .where('id_usuario', isEqualTo: userId)
+        .where('id_taller', isEqualTo: tallerId)
+        .limit(1)
+        .get();
+    if (snapshot.docs.isEmpty) return null;
+    return ReviewModel.fromMap(snapshot.docs.first.data(), snapshot.docs.first.id);
+  }
+
   Future<List<ReviewModel>> getReviewsForTaller(String tallerId) async {
     final snapshot =
         await _resenias.where('id_taller', isEqualTo: tallerId).get();
@@ -72,6 +82,27 @@ class ReviewService {
     await recalculateTallerRating(tallerId);
   }
 
+  Future<void> updateReview({
+    required String reviewId,
+    required String tallerId,
+    required int estrellas,
+    String? comentario,
+  }) async {
+    if (estrellas < 1 || estrellas > 5) {
+      throw ArgumentError('La calificación debe estar entre 1 y 5 estrellas.');
+    }
+
+    final docRef = _resenias.doc(reviewId);
+    
+    await docRef.update({
+      'estrellas': estrellas,
+      'comentario': comentario?.trim().isEmpty == true ? null : comentario?.trim(),
+      'fecha_resenia': FieldValue.serverTimestamp(),
+    });
+
+    await recalculateTallerRating(tallerId);
+  }
+
   Future<void> recalculateTallerRating(String tallerId) async {
     final reviews = await getReviewsForTaller(tallerId);
     final total = reviews.length;
@@ -79,7 +110,7 @@ class ReviewService {
         ? 0.0
         : reviews.map((r) => r.estrellas).reduce((a, b) => a + b) / total;
 
-    await _firestore.collection(FirestoreCollections.usuarios).doc(tallerId).update({
+    await _firestore.collection(FirestoreCollections.talleres).doc(tallerId).update({
       'calificacion_promedio': double.parse(promedio.toStringAsFixed(1)),
       'total_resenias': total,
     });

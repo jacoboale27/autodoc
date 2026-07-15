@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../widgets/historial_chat_card.dart';
+import '../widgets/vehiculo_picker.dart';
+
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
@@ -7,7 +10,6 @@ import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:autodoc/features/chat/presentation/widgets/disponibilidad_picker.dart';
 import 'package:autodoc/features/chat/presentation/widgets/chat_background.dart';
-import 'package:autodoc/features/chat/presentation/widgets/vehiculo_picker.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/vehiculo_chat_card.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/reserva_chat_card.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -22,6 +24,8 @@ import 'package:autodoc/features/chat/presentation/widgets/cards/imagen_chat_car
 import 'package:autodoc/features/chat/data/models/mensaje_model.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cotizacion_picker.dart';
 import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
+import 'package:autodoc/features/chat/data/models/reserva_model.dart';
+import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
 
 class ChatScreen extends StatefulWidget {
   final String conversacionId;
@@ -219,7 +223,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                _buildMessageContent(msg, isMe, colors, isDark),
+                                _buildMessageContent(msg, isMe, colors, isDark, conversacion?.idMecanico ?? ''),
                                 if (isMe && !msg.isDeleted) ...[
                                   const SizedBox(height: 4),
                                   Row(
@@ -304,7 +308,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildMessageContent(MensajeModel msg, bool isMe, AppColors colors, bool isDark) {
+  Widget _buildMessageContent(MensajeModel msg, bool isMe, AppColors colors, bool isDark, String tallerId) {
     switch (msg.tipo) {
       case 'vehiculo_card':
         return VehiculoChatCard(metadata: msg.metadata ?? {}, isMe: isMe);
@@ -326,12 +330,18 @@ class _ChatScreenState extends State<ChatScreen> {
         return ReviewChatCard(
           metadata: msg.metadata ?? {}, 
           isMe: isMe,
-          tallerId: isMe ? (msg.idRemitente) : (msg.idRemitente), // Simplified for demo
+          tallerId: tallerId,
           mensajeId: msg.id,
           conversacionId: widget.conversacionId,
         );
       case 'imagen':
         return ImagenChatCard(urlArchivo: msg.urlArchivo ?? '', isMe: isMe);
+      case 'historial':
+        return HistorialChatCard(
+          mensaje: msg, 
+          isMe: isMe,
+          colors: colors,
+        );
       case 'texto':
       default:
         return Text(
@@ -397,8 +407,43 @@ class _ChatScreenState extends State<ChatScreen> {
                     backgroundColor: Colors.transparent,
                     isScrollControlled: true,
                     builder: (context) => DisponibilidadPicker(
-                      onConfirm: (fecha, hora) {
-                        context.read<ChatProvider>().enviarMensaje(
+                      onConfirm: (fecha, hora) async {
+                        final provider = context.read<ChatProvider>();
+                        final reservaProvider = context.read<ReservaProvider>();
+                        
+                        final vehiculoId = provider.conversaciones.where((c) => c.id == widget.conversacionId).firstOrNull?.idVehiculo ?? '';
+                        
+                        int h = 12;
+                        int m = 0;
+                        try {
+                          final timeParts = hora.split(' ');
+                          final time = timeParts[0].split(':');
+                          h = int.parse(time[0]);
+                          m = int.parse(time[1]);
+                          if (timeParts.length > 1 && timeParts[1].toLowerCase() == 'pm' && h < 12) h += 12;
+                          if (timeParts.length > 1 && timeParts[1].toLowerCase() == 'am' && h == 12) h = 0;
+                        } catch(e) {
+                          // Ignore parsing errors and use default time
+                        }
+                        
+                        final fechaHora = DateTime(fecha.year, fecha.month, fecha.day, h, m);
+
+                        final reserva = ReservaModel(
+                          id: '',
+                          idConversacion: widget.conversacionId,
+                          idPropietario: isMecanico ? receptorId : userId,
+                          idMecanico: isMecanico ? userId : receptorId,
+                          idVehiculo: vehiculoId,
+                          idTaller: isMecanico ? userId : receptorId,
+                          fechaHoraPropuesta: fechaHora,
+                          tipoServicio: 'Cita General',
+                          estado: 'pendiente',
+                          fechaCreacion: DateTime.now(),
+                        );
+                        
+                        final reservaId = await reservaProvider.solicitarReserva(reserva);
+
+                        provider.enviarMensaje(
                           conversacionId: widget.conversacionId,
                           contenido: '📅 Propuesta de cita: \nFecha: ${fecha.day}/${fecha.month}/${fecha.year}\nHora: $hora',
                           remitenteId: userId,
@@ -406,6 +451,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           isMecanicoRemitente: isMecanico,
                           tipo: 'reserva_card',
                           metadata: {
+                            'id_reserva': reservaId,
                             'fecha': fecha.toIso8601String(),
                             'hora': hora,
                             'estado': 'pendiente',

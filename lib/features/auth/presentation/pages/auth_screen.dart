@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import '../widgets/auth_bottom_nav.dart';
+import '../widgets/auth_background_blobs.dart';
+
+import '../widgets/auth_logo_section.dart';
+
 import 'package:flutter/services.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'dart:ui';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -20,7 +24,6 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  static const String _supportEmail = 'soporte@autodoc.app';
 
   late bool _isLoginMode;
   bool _rememberMe = false;
@@ -84,31 +87,8 @@ class _AuthScreenState extends State<AuthScreen> {
         color: colors.surface,
         child: Stack(
           children: [
-            // Decorative blobs (theme aware)
-            Positioned(
-              top: -100,
-              left: -50,
-              child: Container(
-                width: Responsive.size(context, 300),
-                height: Responsive.size(context, 300),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: colors.primary.withValues(alpha: isDark ? 0.1 : 0.05),
-                ),
-              ).animate().scale(duration: 2.seconds, curve: Curves.easeOut),
-            ),
-            Positioned(
-              bottom: -50,
-              right: -100,
-              child: Container(
-                width: Responsive.size(context, 400),
-                height: Responsive.size(context, 400),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: colors.secondary.withValues(alpha: isDark ? 0.1 : 0.05),
-                ),
-              ).animate().scale(delay: 500.ms, duration: 2.seconds, curve: Curves.easeOut),
-            ),
+            // Decorative blobs
+            Positioned.fill(child: AuthBackgroundBlobs(colors: colors, isDark: isDark)),
             
             // Main Content
             Center(
@@ -123,7 +103,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // Logo Section
-                    _buildLogoSection(colors),
+                    AuthLogoSection(colors: colors),
                     const SizedBox(height: 32),
                     
                     // Central Glassmorphism Card
@@ -163,7 +143,7 @@ class _AuthScreenState extends State<AuthScreen> {
               bottom: 0,
               left: 0,
               right: 0,
-              child: _buildBottomNav(colors, isDark),
+              child: AuthBottomNav(colors: colors, isDark: isDark),
             ),
           ],
         ),
@@ -171,33 +151,6 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _buildLogoSection(AppColors colors) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: colors.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Icon(Icons.directions_car, color: colors.primary, size: Responsive.iconSize(context, 48)),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'AutoDoc',
-          style: AppTextStyles.headlineLarge.copyWith(
-            color: colors.textPrimary,
-            letterSpacing: -1,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          context.l10n.authCopilotSubtitle,
-          style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
-        ),
-      ],
-    ).animate().fadeIn(duration: 800.ms).slideY(begin: -0.2, end: 0);
-  }
 
   Widget _buildGlassCard(AppColors colors, bool isDark, {Key? key}) {
     return ClipRRect(
@@ -557,47 +510,6 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _buildBottomNav(AppColors colors, bool isDark) {
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-          decoration: BoxDecoration(
-            color: colors.surfaceContainer.withValues(alpha: isDark ? 0.8 : 0.9),
-            border: Border(top: BorderSide(color: colors.outline.withValues(alpha: 0.2))),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              Expanded(child: _buildNavItem(Icons.login, context.l10n.authTabLogin, _isLoginMode, colors, () => setState(() => _isLoginMode = true))),
-              Expanded(child: _buildNavItem(Icons.person_add_outlined, context.l10n.authTabRegister, !_isLoginMode, colors, () => setState(() => _isLoginMode = false))),
-              Expanded(child: _buildNavItem(Icons.help_outline, context.l10n.authTabSupport, false, colors, _showSupportSheet)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, bool isActive, AppColors colors, VoidCallback onTap) {
-    final color = isActive ? colors.primary : colors.textSecondary;
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label.toUpperCase(),
-            style: AppTextStyles.labelSmall.copyWith(color: color),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _showForgotPasswordDialog() async {
     final colors = context.appColors;
     final resetEmailController = TextEditingController(
@@ -786,112 +698,4 @@ class _AuthScreenState extends State<AuthScreen> {
         false;
   }
 
-  void _showSupportSheet() {
-    final colors = context.appColors;
-
-    showModalBottomSheet<void>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      backgroundColor: colors.surfaceContainer,
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: colors.outline,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                context.l10n.authSupportCenter,
-                style: AppTextStyles.titleLarge.copyWith(color: colors.primary),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                context.l10n.authSupportDesc,
-                style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
-              ),
-              const SizedBox(height: 20),
-              _supportTile(
-                icon: Icons.email_outlined,
-                title: context.l10n.authSupportEmail,
-                subtitle: _supportEmail,
-                colors: colors,
-                onTap: () {
-                  Clipboard.setData(const ClipboardData(text: _supportEmail));
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(content: Text(context.l10n.authEmailCopied)),
-                  );
-                },
-              ),
-              _supportTile(
-                icon: Icons.mark_email_read_outlined,
-                title: context.l10n.authEmailVerification,
-                subtitle: context.l10n.authEmailNotReceived,
-                colors: colors,
-                onTap: () {
-                  Navigator.pop(ctx);
-                  if (_isLoginMode && _isValidEmail(_emailController.text)) {
-                    _showEmailVerificationDialog(
-                      isRegistration: false,
-                      email: _emailController.text.trim(),
-                    );
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(context.l10n.authLoginToResend),
-                      ),
-                    );
-                  }
-                },
-              ),
-              _supportTile(
-                icon: Icons.lock_reset,
-                title: context.l10n.authForgotPassTileTitle,
-                subtitle: context.l10n.authReceiveRecoveryLink,
-                colors: colors,
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showForgotPasswordDialog();
-                },
-              ),
-              const SizedBox(height: 8),
-              Text(
-                context.l10n.authSupportHours,
-                style: AppTextStyles.labelSmall.copyWith(color: colors.textSecondary),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _supportTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required AppColors colors,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: colors.primary),
-      title: Text(title, style: AppTextStyles.titleSmall),
-      subtitle: Text(subtitle, style: AppTextStyles.bodySmall.copyWith(color: colors.textSecondary)),
-      trailing: Icon(Icons.chevron_right, size: 20, color: colors.textSecondary),
-      onTap: onTap,
-    );
-  }
 }

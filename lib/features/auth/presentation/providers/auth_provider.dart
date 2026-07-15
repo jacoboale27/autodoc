@@ -22,6 +22,8 @@ class AuthProvider with ChangeNotifier {
     return _authService.isEmailPasswordUser && !_authService.isCurrentUserEmailVerified;
   }
 
+  bool get isEmailPasswordUser => _authService.isEmailPasswordUser;
+
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
@@ -129,6 +131,29 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return _authService.isCurrentUserEmailVerified;
     } catch (_) {
+      return false;
+    }
+  }
+
+
+  Future<bool> deleteAccount() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _authService.deleteAccount();
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      if (e == 'requires-recent-login') {
+        _error = 'requires-recent-login';
+      } else {
+        _error = e.toString();
+      }
+      notifyListeners();
       return false;
     }
   }

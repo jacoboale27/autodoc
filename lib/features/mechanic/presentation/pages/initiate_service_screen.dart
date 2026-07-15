@@ -25,6 +25,7 @@ class InitiateServiceScreen extends StatefulWidget {
 class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   final TextEditingController _kmController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
+  final TextEditingController _costoController = TextEditingController();
   final Set<String> _completedTaskIds = {};
   bool _isSaving = false;
   File? _invoiceImage;
@@ -56,6 +57,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   void dispose() {
     _kmController.dispose();
     _notesController.dispose();
+    _costoController.dispose();
     super.dispose();
   }
 
@@ -91,6 +93,8 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       final alertProvider = context.read<AlertProvider>();
       final userSession = context.read<UserSessionProvider>();
       final tallerId = userSession.userData?.idUsuario ?? 'taller_anonimo';
+      
+      final costoDouble = double.tryParse(_costoController.text);
 
       for (var taskId in _completedTaskIds) {
         await alertProvider.tallerUpdateService(
@@ -98,6 +102,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           nuevoKilometraje: nuevoKm,
           tallerId: tallerId,
           descripcion: _notesController.text,
+          costo: costoDouble,
           receiptImage: _invoiceImage,
         );
       }
@@ -163,6 +168,11 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
             _buildSectionTitle('TAREAS A REALIZAR', colors),
             const SizedBox(height: 12),
             _buildMaintenanceTasks(alertProvider, colors),
+            const SizedBox(height: 24),
+            
+            _buildSectionTitle('COSTO DEL SERVICIO (OPCIONAL)', colors),
+            const SizedBox(height: 12),
+            _buildCostoInput(colors),
             const SizedBox(height: 24),
 
             _buildSectionTitle('OBSERVACIONES TÉCNICAS', colors),
@@ -421,6 +431,39 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           Text(
             'KM',
             style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: colors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCostoInput(AppColors colors) {
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surfaceContainer,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+      ),
+      padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 20), vertical: Responsive.padding(context, 8)),
+      child: Row(
+        children: [
+          Icon(Icons.attach_money, color: colors.secondary),
+          const SizedBox(width: 16),
+          Expanded(
+            child: TextField(
+              controller: _costoController,
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              style: GoogleFonts.inter(
+                fontSize: Responsive.fontSize(context, 18),
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+              ),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                hintText: 'Ej. 150.00',
+                hintStyle: GoogleFonts.inter(color: colors.textSecondary),
+              ),
+            ),
           ),
         ],
       ),

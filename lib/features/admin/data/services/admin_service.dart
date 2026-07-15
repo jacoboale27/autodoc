@@ -98,18 +98,19 @@ class AdminService {
         .where('fecha', isGreaterThanOrEqualTo: Timestamp.fromDate(seisMesesAtras))
         .get();
         
-    final Map<int, int> serviciosPorMes = {};
+    final Map<String, int> serviciosPorMes = {};
     for (int i = 0; i < 6; i++) {
       final mes = DateTime(now.year, now.month - i, 1);
-      serviciosPorMes[mes.month] = 0;
+      serviciosPorMes['${mes.year}-${mes.month}'] = 0;
     }
 
     for (var doc in serviciosSnapshot.docs) {
       final data = doc.data();
       if (data['fecha'] != null) {
         final date = (data['fecha'] as Timestamp).toDate();
-        if (serviciosPorMes.containsKey(date.month)) {
-          serviciosPorMes[date.month] = (serviciosPorMes[date.month] ?? 0) + 1;
+        final key = '${date.year}-${date.month}';
+        if (serviciosPorMes.containsKey(key)) {
+          serviciosPorMes[key] = (serviciosPorMes[key] ?? 0) + 1;
         }
       }
     }

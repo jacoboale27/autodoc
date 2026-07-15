@@ -14,6 +14,7 @@ class VehicleModel {
   final String? fotoUrl;
   final bool isPrimary;
   final List<String> sharedWith; // UIDs de usuarios con acceso
+  final List<String> notas;
 
   VehicleModel({
     required this.idVehiculo,
@@ -29,6 +30,7 @@ class VehicleModel {
     this.fotoUrl,
     this.isPrimary = false,
     this.sharedWith = const [],
+    this.notas = const [],
   });
 
   VehicleModel copyWith({
@@ -45,6 +47,7 @@ class VehicleModel {
     String? fotoUrl,
     bool? isPrimary,
     List<String>? sharedWith,
+    List<String>? notas,
   }) {
     return VehicleModel(
       idVehiculo: idVehiculo ?? this.idVehiculo,
@@ -60,6 +63,7 @@ class VehicleModel {
       fotoUrl: fotoUrl ?? this.fotoUrl,
       isPrimary: isPrimary ?? this.isPrimary,
       sharedWith: sharedWith ?? this.sharedWith,
+      notas: notas ?? this.notas,
     );
   }
 
@@ -78,6 +82,7 @@ class VehicleModel {
       'foto_url': fotoUrl,
       'es_principal': isPrimary,
       'shared_with': sharedWith,
+      'notas': notas,
     };
   }
 
@@ -96,6 +101,7 @@ class VehicleModel {
       fotoUrl: map['foto_url'],
       isPrimary: map['es_principal'] ?? false,
       sharedWith: List<String>.from(map['shared_with'] ?? []),
+      notas: List<String>.from(map['notas'] ?? []),
     );
   }
 }

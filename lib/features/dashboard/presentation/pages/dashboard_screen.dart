@@ -8,6 +8,8 @@ import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provid
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/core/models/maintenance_task_model.dart';
+import 'package:autodoc/features/dashboard/data/services/workshop_service.dart';
+import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/widgets/vehicle_image_widget.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
@@ -772,16 +774,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          InkWell(
-            onTap: () => context.push('/workshop_directory'),
-            child: _buildServiceTile(
-              Icons.build,
-              'AutoFix Workshop',
-              'Especialidad: Motor • 4.8★',
-              primary,
-              isDark,
-              subTextColor,
-            ),
+          StreamBuilder<List<UserModel>>(
+            stream: WorkshopService().getWorkshopsStream(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                return Center(
+                  child: Text('No hay talleres disponibles', style: TextStyle(color: subTextColor)),
+                );
+              }
+
+              var workshops = snapshot.data!;
+              // Sort by rating descending
+              workshops.sort((a, b) {
+                final ratingA = a.toMap()['calificacion_promedio'] as num? ?? 0.0;
+                final ratingB = b.toMap()['calificacion_promedio'] as num? ?? 0.0;
+                return ratingB.compareTo(ratingA);
+              });
+              
+              // Take top 5
+              final topWorkshops = workshops.take(5).toList();
+
+              return Column(
+                children: topWorkshops.map((workshop) {
+                  final data = workshop.toMap();
+                  final calificacion = data['calificacion_promedio'] as num? ?? 0.0;
+                  final especialidad = data['especialidad'] as String? ?? 'General';
+                  return InkWell(
+                    onTap: () => context.push('/workshop_directory'),
+                    child: _buildServiceTile(
+                      Icons.build,
+                      data['nombre_completo'] as String? ?? 'Taller',
+                      'Especialidad: $especialidad • ${calificacion.toStringAsFixed(1)}★',
+                      primary,
+                      isDark,
+                      subTextColor,
+                    ),
+                  );
+                }).toList(),
+              );
+            },
           ),
         ],
       ),

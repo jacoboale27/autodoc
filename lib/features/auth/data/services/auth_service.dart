@@ -1,10 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import 'package:flutter/foundation.dart';
+
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    serverClientId: '702895874700-ffjqoc3c4a8uca611o7r86k06g91213d.apps.googleusercontent.com',
+    serverClientId: kIsWeb ? null : '702895874700-ffjqoc3c4a8uca611o7r86k06g91213d.apps.googleusercontent.com',
   );
 
   // Stream of auth changes
@@ -57,6 +59,22 @@ class AuthService {
       );
       return credential;
     } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    }
+  }
+
+
+  // Delete Account
+  Future<void> deleteAccount() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        await user.delete();
+      }
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        throw 'requires-recent-login';
+      }
       throw _handleAuthException(e);
     }
   }

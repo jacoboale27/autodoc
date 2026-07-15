@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import '../widgets/vehicle_gallery_widget.dart';
+
+import '../widgets/expense_summary_card.dart';
+import '../../data/services/vehicle_service.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 import 'package:autodoc/core/widgets/vehicle_image_widget.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +12,7 @@ import 'package:autodoc/core/models/vehicle_model.dart';
 import '../providers/vehicle_provider.dart';
 import '../widgets/license_plate_widget.dart';
 import 'package:go_router/go_router.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
 
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
@@ -58,7 +64,10 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                 children: [
                   _buildHeroImage(vehicle, colors),
                   _buildVehicleIdentity(vehicle, colors),
+                  _buildExpenseSummary(vehicle, colors),
                   _buildTechnicalDetails(vehicle, colors),
+                  _buildNotesSection(vehicle, colors),
+                  VehicleGalleryWidget(vehicleId: vehicle.idVehiculo, colors: colors),
                   _buildDocumentationStatus(vehicle, colors),
                   _buildQuickActions(vehicle, colors),
                 ],
@@ -242,6 +251,24 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     );
   }
 
+  Widget _buildExpenseSummary(VehicleModel vehicle, AppColors colors) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+      child: FutureBuilder<Map<String, dynamic>>(
+        future: VehicleService().getExpenseSummary(vehicle.idVehiculo),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+            return const SizedBox.shrink();
+          }
+          return ExpenseSummaryCard(summary: snapshot.data!);
+        },
+      ),
+    );
+  }
+
   Widget _buildTechnicalDetails(VehicleModel vehicle, AppColors colors) {
     return Padding(
       padding: EdgeInsets.all(Responsive.padding(context, 20)),
@@ -305,6 +332,110 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
       ),
     );
   }
+
+
+  Widget _buildNotesSection(VehicleModel vehicle, AppColors colors) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Notas Rápidas',
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: colors.textPrimary,
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.add, color: colors.primary),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) {
+                      final controller = TextEditingController();
+                      return AlertDialog(
+                        title: const Text('Nueva Nota'),
+                        content: TextField(
+                          controller: controller,
+                          decoration: const InputDecoration(hintText: 'Escribe tu nota aquí...'),
+                          maxLines: 3,
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Cancelar'),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              final text = controller.text.trim();
+                              if (text.isNotEmpty) {
+                                final uid = context.read<UserSessionProvider>().user?.uid;
+                                final provider = context.read<VehicleProvider>();
+                                await VehicleService().addNote(vehicle.idVehiculo, text);
+                                if (uid != null) {
+                                  provider.fetchVehicles(uid);
+                                }
+                              }
+                              if (ctx.mounted) {
+                                Navigator.pop(ctx);
+                              }
+                            },
+                            child: const Text('Guardar'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
+          if (vehicle.notas.isEmpty)
+            Text('No hay notas registradas.', style: TextStyle(color: colors.textSecondary))
+          else
+            ...vehicle.notas.map((nota) => Dismissible(
+              key: Key(nota),
+              direction: DismissDirection.endToStart,
+              onDismissed: (direction) async {
+                final uid = context.read<UserSessionProvider>().user?.uid;
+                final provider = context.read<VehicleProvider>();
+                await VehicleService().removeNote(vehicle.idVehiculo, nota);
+                if (uid != null) {
+                  provider.fetchVehicles(uid);
+                }
+              },
+              background: Container(
+                color: colors.error,
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.only(right: 16.0),
+                child: const Icon(Icons.delete, color: Colors.white),
+              ),
+              child: Card(
+                margin: const EdgeInsets.only(bottom: 8.0),
+                color: isDark(context) ? colors.surfaceContainer : Colors.grey.shade50,
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Row(
+                    children: [
+                      Icon(Icons.sticky_note_2, color: colors.primary, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text(nota, style: TextStyle(color: colors.textPrimary))),
+                    ],
+                  ),
+                ),
+              ),
+            )),
+        ],
+      ),
+    );
+  }
+
+  bool isDark(BuildContext context) => Theme.of(context).brightness == Brightness.dark;
 
   Widget _buildDocumentationStatus(VehicleModel vehicle, AppColors colors) {
     return Padding(

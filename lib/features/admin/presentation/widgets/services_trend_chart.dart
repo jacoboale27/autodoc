@@ -5,7 +5,7 @@ import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class ServicesTrendChart extends StatelessWidget {
-  final Map<int, int> serviciosPorMes;
+  final Map<String, int> serviciosPorMes;
 
   const ServicesTrendChart({super.key, required this.serviciosPorMes});
 
@@ -21,15 +21,16 @@ class ServicesTrendChart extends StatelessWidget {
     }
 
     final now = DateTime.now();
-    List<int> monthsOrder = [];
+    List<String> monthsOrder = [];
     for (int i = 5; i >= 0; i--) {
-      monthsOrder.add(DateTime(now.year, now.month - i, 1).month);
+      final date = DateTime(now.year, now.month - i, 1);
+      monthsOrder.add('${date.year}-${date.month}');
     }
 
     final spots = monthsOrder.asMap().entries.map((entry) {
       final index = entry.key.toDouble();
-      final month = entry.value;
-      final value = (serviciosPorMes[month] ?? 0).toDouble();
+      final key = entry.value;
+      final value = (serviciosPorMes[key] ?? 0).toDouble();
       return FlSpot(index, value);
     }).toList();
 
@@ -59,7 +60,8 @@ class ServicesTrendChart extends StatelessWidget {
                       reservedSize: 30,
                       getTitlesWidget: (value, meta) {
                         if (value.toInt() >= 0 && value.toInt() < monthsOrder.length) {
-                          final month = monthsOrder[value.toInt()];
+                          final key = monthsOrder[value.toInt()];
+                          final month = int.parse(key.split('-')[1]);
                           final monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
                           return Padding(
                             padding: const EdgeInsets.only(top: 8.0),

@@ -123,7 +123,7 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                           final mecanico = mecanicos[index];
                           return StreamBuilder<DocumentSnapshot>(
                             stream: FirebaseFirestore.instance
-                                .collection(FirestoreCollections.usuarios)
+                                .collection(FirestoreCollections.talleres)
                                 .doc(mecanico.idUsuario)
                                 .snapshots(),
                             builder: (context, snap) {

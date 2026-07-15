@@ -4,7 +4,9 @@ import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
-
+import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
+import 'package:go_router/go_router.dart';
+import 'package:autodoc/features/chat/data/models/reserva_model.dart';
 class ReservaChatCard extends StatelessWidget {
   final Map<String, dynamic> metadata;
   final bool isMe;
@@ -132,6 +134,10 @@ class ReservaChatCard extends StatelessWidget {
                             final newMeta = Map<String, dynamic>.from(metadata);
                             newMeta['estado'] = 'aceptada';
                             context.read<ChatProvider>().actualizarMetadatosMensaje(conversacionId, mensajeId, newMeta);
+                            final reservaId = metadata['id_reserva'];
+                            if (reservaId != null) {
+                              context.read<ReservaProvider>().cambiarEstadoReserva(reservaId, 'confirmada', fechaConfirmada: DateTime.now());
+                            }
                           },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: colors.primary,
@@ -149,6 +155,10 @@ class ReservaChatCard extends StatelessWidget {
                             final newMeta = Map<String, dynamic>.from(metadata);
                             newMeta['estado'] = 'rechazada';
                             context.read<ChatProvider>().actualizarMetadatosMensaje(conversacionId, mensajeId, newMeta);
+                            final reservaId = metadata['id_reserva'];
+                            if (reservaId != null) {
+                              context.read<ReservaProvider>().cambiarEstadoReserva(reservaId, 'rechazada');
+                            }
                           },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.red,
@@ -162,6 +172,32 @@ class ReservaChatCard extends StatelessWidget {
                     ],
                   ),
                 ],
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      final reserva = ReservaModel(
+                        id: metadata['id_reserva'] ?? 'dummy_id',
+                        idConversacion: conversacionId,
+                        idPropietario: '', 
+                        idMecanico: '',
+                        idVehiculo: metadata['id_vehiculo'] ?? 'No especificado',
+                        idTaller: '',
+                        fechaHoraPropuesta: fecha ?? DateTime.now(),
+                        tipoServicio: metadata['tipo_servicio'] ?? 'Servicio General',
+                        estado: estado,
+                        fechaCreacion: DateTime.now(),
+                      );
+                      context.push('/reserva_detail', extra: reserva);
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: isMe ? Colors.white : colors.primary,
+                      side: BorderSide(color: isMe ? Colors.white70 : colors.primary.withValues(alpha: 0.5)),
+                    ),
+                    child: const Text('Ver detalle'),
+                  ),
+                ),
               ],
             ),
           ),

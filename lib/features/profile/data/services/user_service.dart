@@ -23,7 +23,9 @@ class UserService {
 
   Future<void> updateUserData(UserModel user) async {
     try {
-      await _firestore.collection(_collection).doc(user.idUsuario).set(user.toMap(), SetOptions(merge: true));
+      final updateData = user.toMap();
+      updateData.remove('rol');
+      await _firestore.collection(_collection).doc(user.idUsuario).set(updateData, SetOptions(merge: true));
     } catch (e) {
       throw 'Error al actualizar perfil: $e';
     }
@@ -44,6 +46,26 @@ class UserService {
       return await ref.getDownloadURL();
     } catch (e) {
       throw 'Error al subir foto: $e';
+    }
+  }
+
+  Future<void> addFavoriteWorkshop(String userId, String tallerId) async {
+    try {
+      await _firestore.collection(_collection).doc(userId).update({
+        'talleres_favoritos': FieldValue.arrayUnion([tallerId]),
+      });
+    } catch (e) {
+      throw 'Error al agregar favorito: $e';
+    }
+  }
+
+  Future<void> removeFavoriteWorkshop(String userId, String tallerId) async {
+    try {
+      await _firestore.collection(_collection).doc(userId).update({
+        'talleres_favoritos': FieldValue.arrayRemove([tallerId]),
+      });
+    } catch (e) {
+      throw 'Error al quitar favorito: $e';
     }
   }
 }

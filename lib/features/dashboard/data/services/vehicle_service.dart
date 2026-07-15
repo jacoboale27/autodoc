@@ -74,4 +74,98 @@ class VehicleService {
       throw 'Error al obtener vehículos compartidos: $e';
     }
   }
+
+  Future<Map<String, dynamic>> getExpenseSummary(String vehicleId) async {
+    try {
+      final snapshot = await _firestore
+          .collection(FirestoreCollections.servicios)
+          .where('id_vehiculo', isEqualTo: vehicleId)
+          .get();
+      
+      double total = 0;
+      double totalMesActual = 0;
+      final Map<int, double> porMes = {};
+      
+      final now = DateTime.now();
+      
+      for (int i = 0; i < 6; i++) {
+        final mes = DateTime(now.year, now.month - i, 1);
+        porMes[mes.month] = 0;
+      }
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final costo = (data['costo'] as num?)?.toDouble() ?? 0.0;
+        final fecha = (data['fecha'] as Timestamp?)?.toDate();
+        
+        total += costo;
+        
+        if (fecha != null) {
+          if (fecha.year == now.year && fecha.month == now.month) {
+            totalMesActual += costo;
+          }
+          if (porMes.containsKey(fecha.month)) {
+            porMes[fecha.month] = (porMes[fecha.month] ?? 0) + costo;
+          }
+        }
+      }
+      
+      return {
+        'total': total,
+        'mes_actual': totalMesActual,
+        'promedio': snapshot.docs.isNotEmpty ? total / snapshot.docs.length : 0.0,
+        'por_mes': porMes,
+      };
+    } catch (e) {
+      throw 'Error al obtener resumen de gastos: $e';
+    }
+  }
+
+  Future<void> addNote(String vehicleId, String note) async {
+    try {
+      await _firestore.collection(_collection).doc(vehicleId).update({
+        'notas': FieldValue.arrayUnion([note]),
+      });
+    } catch (e) {
+      throw 'Error al agregar nota: $e';
+    }
+  }
+
+  Future<void> removeNote(String vehicleId, String note) async {
+    try {
+      await _firestore.collection(_collection).doc(vehicleId).update({
+        'notas': FieldValue.arrayRemove([note]),
+      });
+    } catch (e) {
+      throw 'Error al eliminar nota: $e';
+    }
+  }
+
+  Future<Map<String, dynamic>?> getLastVisitedWorkshop(String vehicleId) async {
+    try {
+      final snapshot = await _firestore
+          .collection(FirestoreCollections.servicios)
+          .where('id_vehiculo', isEqualTo: vehicleId)
+          .orderBy('fecha', descending: true)
+          .limit(1)
+          .get();
+          
+      if (snapshot.docs.isEmpty) return null;
+      
+      final data = snapshot.docs.first.data();
+      final tallerId = data['id_taller'] as String?;
+      if (tallerId == null) return null;
+      
+      final tallerDoc = await _firestore.collection(FirestoreCollections.talleres).doc(tallerId).get();
+      if (!tallerDoc.exists) return null;
+      
+      return {
+        'id_taller': tallerId,
+        'nombre': tallerDoc.data()?['nombre'] ?? 'Taller Desconocido',
+        'fecha': (data['fecha'] as Timestamp?)?.toDate(),
+      };
+    } catch (e) {
+      throw 'Error al obtener último taller: $e';
+    }
+  }
 }

@@ -5,6 +5,7 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:autodoc/features/reviews/data/services/review_service.dart';
+import 'package:autodoc/core/models/review_model.dart';
 
 /// Muestra un bottom sheet para calificar un taller/mecánico.
 Future<bool?> showReviewBottomSheet(
@@ -47,8 +48,9 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
   final _comentarioController = TextEditingController();
   int _estrellas = 5;
   bool _isSubmitting = false;
-  bool _alreadyReviewed = false;
   bool _checking = true;
+
+  ReviewModel? _existingReview;
 
   @override
   void initState() {
@@ -62,11 +64,14 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
       setState(() => _checking = false);
       return;
     }
-    final exists =
-        await _reviewService.hasUserReviewedTaller(userId, widget.tallerId);
+    final existing = await _reviewService.getUserReviewForTaller(userId, widget.tallerId);
     if (mounted) {
       setState(() {
-        _alreadyReviewed = exists;
+        _existingReview = existing;
+        if (existing != null) {
+          _estrellas = existing.estrellas;
+          _comentarioController.text = existing.comentario ?? '';
+        }
         _checking = false;
       });
     }
@@ -85,13 +90,23 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
 
     setState(() => _isSubmitting = true);
     try {
-      await _reviewService.submitReview(
-        userId: userId,
-        tallerId: widget.tallerId,
-        estrellas: _estrellas,
-        comentario: _comentarioController.text,
-        idServicio: widget.idServicio,
-      );
+      if (_existingReview != null) {
+        await _reviewService.updateReview(
+          reviewId: _existingReview!.idResenia,
+          tallerId: widget.tallerId,
+          estrellas: _estrellas,
+          comentario: _comentarioController.text,
+        );
+      } else {
+        await _reviewService.submitReview(
+          userId: userId,
+          tallerId: widget.tallerId,
+          estrellas: _estrellas,
+          comentario: _comentarioController.text,
+          idServicio: widget.idServicio,
+        );
+      }
+      
       if (mounted) {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -150,22 +165,6 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
           const SizedBox(height: 24),
           if (_checking)
             const Center(child: CircularProgressIndicator())
-          else if (_alreadyReviewed)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Row(
-                children: [
-                  Icon(Icons.check_circle, color: colors.secondary),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Ya dejaste una reseña para este taller.',
-                      style: TextStyle(color: colors.textSecondary),
-                    ),
-                  ),
-                ],
-              ),
-            )
           else ...[
             Center(
               child: Row(
@@ -200,7 +199,7 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
             SizedBox(
               width: double.infinity,
               child: AppButton(
-                text: _isSubmitting ? 'Enviando...' : 'Publicar reseña',
+                text: _isSubmitting ? 'Guardando...' : (_existingReview != null ? 'Actualizar reseña' : 'Publicar reseña'),
                 onPressed: _isSubmitting ? null : _submit,
               ),
             ),

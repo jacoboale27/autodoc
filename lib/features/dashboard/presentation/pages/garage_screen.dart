@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
+import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/core/widgets/vehicle_image_widget.dart';
@@ -155,11 +156,6 @@ class GarageScreen extends StatelessWidget {
     VehicleProvider provider,
     String? currentUserId,
   ) {
-    // Determine status (mocked logic based on html)
-    // For now, let's just make it "Óptimo" if kilometraje < 10000
-    final isOptimo = vehicle.kilometrajeActual < 10000;
-    final statusColor = isOptimo ? Colors.green : Colors.yellow[700]!;
-    final statusText = isOptimo ? context.l10n.garageOptimal : context.l10n.garageSuggestedReview;
 
     return AppCard(
       onTap: () => context.push('/vehicle_profile', extra: vehicle),
@@ -187,44 +183,68 @@ class GarageScreen extends StatelessWidget {
                   Positioned(
                     top: 12,
                     left: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 4,
+                    child: FutureBuilder<MaintenanceStatus>(
+                      future: context.read<AlertProvider>().getVehicleOverallStatus(vehicle),
+                      builder: (context, snapshot) {
+                        final worstStatus = snapshot.data ?? MaintenanceStatus.optimal;
+                        
+                        Color statusColor = colors.secondary;
+                        String statusText = 'ÓPTIMO';
+                        switch (worstStatus) {
+                          case MaintenanceStatus.critical:
+                            statusColor = colors.error;
+                            statusText = 'ATENCIÓN REQUERIDA';
+                            break;
+                          case MaintenanceStatus.preventive:
+                            statusColor = colors.warning;
+                            statusText = 'REVISIÓN PRONTA';
+                            break;
+                          case MaintenanceStatus.optimal:
+                            statusColor = colors.secondary;
+                            statusText = 'ÓPTIMO';
+                            break;
+                        }
+
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
                           ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 10,
-                            height: 10,
-                            decoration: BoxDecoration(
-                              color: statusColor,
-                              shape: BoxShape.circle,
-                            ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 4,
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            statusText.toUpperCase(),
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF334155),
-                              letterSpacing: 0.5,
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  color: statusColor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                statusText,
+                                style: GoogleFonts.inter(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF334155),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        );
+                      }
                     ),
                   ),
                   // Primary Star Badge

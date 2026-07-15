@@ -33,6 +33,7 @@ import 'package:autodoc/core/widgets/main_scaffold.dart';
 import 'package:autodoc/features/chat/presentation/pages/conversaciones_list_screen.dart';
 import 'package:autodoc/features/chat/presentation/pages/chat_screen.dart';
 import 'package:autodoc/features/chat/presentation/pages/reserva_detail_screen.dart';
+import 'package:autodoc/features/chat/data/models/reserva_model.dart';
 
 CustomTransitionPage<T> buildPageWithFadeThrough<T>({
   required BuildContext context,
@@ -170,9 +171,10 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
-      path: '/reserva_detail/:id',
+      path: '/reserva_detail',
       pageBuilder: (context, state) {
-        return buildPageWithFadeThrough(context: context, state: state, child: const ReservaDetailScreen());
+        final reserva = state.extra as ReservaModel;
+        return buildPageWithFadeThrough(context: context, state: state, child: ReservaDetailScreen(reserva: reserva));
       },
     ),
     GoRoute(
