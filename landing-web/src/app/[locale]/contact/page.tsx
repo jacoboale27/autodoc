@@ -1,11 +1,19 @@
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
+import { setRequestLocale } from 'next-intl/server';
 import Header from "@/components/ui/Header";
 import Footer from "@/components/ui/Footer";
 import { Mail, Phone, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
 
-export default function ContactPage() {
-  const t = useTranslations();
+export default async function ContactPage({
+  params
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
+  const t = await getTranslations();
 
   return (
     <main className="relative min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0f172a] dark:text-white">
@@ -53,7 +61,7 @@ export default function ContactPage() {
           </div>
 
           <div>
-            <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+            <form className="space-y-4" action="#">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium mb-1">Nombre</label>
                 <input
@@ -82,9 +90,8 @@ export default function ContactPage() {
                 ></textarea>
               </div>
               <button
-                type="button"
+                type="submit"
                 className="w-full bg-[#522C81] text-white font-bold py-3 px-4 rounded-lg hover:bg-[#3d2062] transition-colors"
-                onClick={() => alert("Mensaje enviado (Simulado)")}
               >
                 Enviar Mensaje
               </button>
