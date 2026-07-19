@@ -799,4 +799,354 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get adminViewAllLogs => 'View all logs';
+
+  @override
+  String get authCompleteCredentials => 'Fill in email and password.';
+
+  @override
+  String get authEnterValidEmail => 'Enter a valid email address.';
+
+  @override
+  String get authPasswordTooShort => 'Password must be at least 6 characters.';
+
+  @override
+  String get addVehicleBrand => 'Brand';
+
+  @override
+  String get addVehicleBrandSubtitle => 'What is the brand of your vehicle?';
+
+  @override
+  String get addVehicleSearchBrand => 'Search brand...';
+
+  @override
+  String get addVehicleErrorBrands => 'Error loading brands';
+
+  @override
+  String get addVehicleRetry => 'Retry';
+
+  @override
+  String get addVehicleNotFoundBrand => 'I can\'t find my brand...';
+
+  @override
+  String get addVehicleModel => 'Model';
+
+  @override
+  String addVehicleModelSubtitle(String brand) {
+    return 'Select the model of your $brand';
+  }
+
+  @override
+  String get addVehicleSearchModel => 'Search model...';
+
+  @override
+  String get addVehicleErrorModels => 'Error loading models';
+
+  @override
+  String get addVehicleNotFoundModel => 'I can\'t find my model...';
+
+  @override
+  String get addVehicleDetails => 'Final Details';
+
+  @override
+  String get addVehicleDetailsSubtitle => 'Complete the remaining information';
+
+  @override
+  String get addVehiclePlate => 'License Plate';
+
+  @override
+  String get addVehiclePlateHint => 'e.g. P123-456';
+
+  @override
+  String get addVehicleYear => 'Year';
+
+  @override
+  String get addVehicleColor => 'Color';
+
+  @override
+  String get addVehicleColorHint => 'Gray';
+
+  @override
+  String get addVehicleMileage => 'Current Mileage';
+
+  @override
+  String get addVehicleDocs => 'Documentation';
+
+  @override
+  String get addVehicleCardExp => 'Card Expiration';
+
+  @override
+  String get addVehicleSoatExp => 'SOAT Expiration';
+
+  @override
+  String get addVehicleFinish => 'Finish Registration';
+
+  @override
+  String get addVehicleSuccess => 'Vehicle Registered!';
+
+  @override
+  String addVehicleSuccessDesc(String brand, String model) {
+    return 'Your $brand $model is now in the garage.';
+  }
+
+  @override
+  String get addVehicleGoDashboard => 'Go to Dashboard';
+
+  @override
+  String get addVehicleSelectDate => 'Select date';
+
+  @override
+  String get histTotalSpent => 'Total spent';
+
+  @override
+  String get histServicesCount => 'Services';
+
+  @override
+  String get histAverage => 'Average';
+
+  @override
+  String get vpQuickNotes => 'Quick Notes';
+
+  @override
+  String get pdfHistoryTitle => 'Service History';
+
+  @override
+  String pdfVehicle(String brand, String model, String year) {
+    return 'Vehicle: $brand $model ($year)';
+  }
+
+  @override
+  String pdfPlate(String plate) {
+    return 'Plate: $plate';
+  }
+
+  @override
+  String pdfReportDate(String date) {
+    return 'Report Date: $date';
+  }
+
+  @override
+  String pdfTotalServices(String count) {
+    return 'Total Services: $count';
+  }
+
+  @override
+  String pdfTotalSpent(String amount) {
+    return 'Total Spent: \$$amount';
+  }
+
+  @override
+  String get adminLogsTitle => 'Activity Log';
+
+  @override
+  String get adminDeleteReview => 'Delete Review';
+
+  @override
+  String get adminCancel => 'Cancel';
+
+  @override
+  String get adminDelete => 'Delete';
+
+  @override
+  String get adminModerateReviews => 'Review Moderation';
+
+  @override
+  String get adminAccessDenied => 'Access Denied';
+
+  @override
+  String get adminAccessDeniedDesc =>
+      'This screen is only available in a development environment.';
+
+  @override
+  String get adminConfigAdmins => 'Configure Administrators';
+
+  @override
+  String get adminConfirm => 'Confirm';
+
+  @override
+  String get adminManageWorkshops => 'Workshop Management';
+
+  @override
+  String get adminChangeRole => 'Change User Role';
+
+  @override
+  String get adminSelectNewRole => 'Select the new role:';
+
+  @override
+  String get adminManageUsers => 'User Management';
+
+  @override
+  String get adminSuspendAccount => 'Suspend Account';
+
+  @override
+  String get adminReactivateAccount => 'Reactivate Account';
+
+  @override
+  String get adminChangeUserRole => 'Change Role';
+
+  @override
+  String get adminNoTrendData => 'No trend data available.';
+
+  @override
+  String get adminReject => 'Reject';
+
+  @override
+  String get adminApproveWorkshop => 'Approve Workshop';
+
+  @override
+  String get adminSuspend => 'Suspend';
+
+  @override
+  String get adminReactivate => 'Reactivate';
+
+  @override
+  String adminError(String error) {
+    return 'Error: $error';
+  }
+
+  @override
+  String chatOpeningSection(String label) {
+    return 'Opening $label section...';
+  }
+
+  @override
+  String get chatDeleteMessage => 'Delete message';
+
+  @override
+  String get chatCamera => 'Camera';
+
+  @override
+  String get chatGallery => 'Gallery';
+
+  @override
+  String get chatShareVehicle => 'Share Vehicle';
+
+  @override
+  String get chatNewReservation => 'New Reservation';
+
+  @override
+  String get chatSendQuote => 'Send Quote';
+
+  @override
+  String get chatRequestRating => 'Request Rating';
+
+  @override
+  String get chatUploadImageError => 'Error uploading image';
+
+  @override
+  String chatReservationSuccess(String status) {
+    return 'Reservation $status successfully';
+  }
+
+  @override
+  String get chatReservationDetail => 'Appointment Detail';
+
+  @override
+  String get coreAppTitle => 'AutoDoc Workshop';
+
+  @override
+  String get chatViewFullHistory => 'View Full History';
+
+  @override
+  String get chatConfirmProposal => 'Confirm Proposal';
+
+  @override
+  String get chatGenerateAndSend => 'Generate and Send';
+
+  @override
+  String get chatRateService => 'Rate Service';
+
+  @override
+  String get chatReviewThanks => 'Thank you for your review!';
+
+  @override
+  String get chatAccept => 'Accept';
+
+  @override
+  String get chatReject => 'Reject';
+
+  @override
+  String get chatViewDetail => 'View detail';
+
+  @override
+  String get chatService => 'Service';
+
+  @override
+  String get chatDate => 'Date';
+
+  @override
+  String get chatTime => 'Time';
+
+  @override
+  String get chatVehicleId => 'Vehicle ID';
+
+  @override
+  String get chatAcceptAppointment => 'Accept Appointment';
+
+  @override
+  String get chatRejectReschedule => 'Reject / Reschedule';
+
+  @override
+  String get chatConfirmDelete =>
+      'Are you sure you want to delete this message for everyone?';
+
+  @override
+  String get notifications => 'Notifications';
+
+  @override
+  String get noNotifications => 'You have no notifications';
+
+  @override
+  String get markAllRead => 'Mark all as read';
+
+  @override
+  String get upLanguage => 'Language / Idioma';
+
+  @override
+  String get upLanguageDesc => 'EN (Enabled) / ES (Disabled)';
+
+  @override
+  String get upAbout => 'About AutoDoc';
+
+  @override
+  String get upAboutDesc => 'Version, credits and legal';
+
+  @override
+  String get upDeleteAccountTitle => 'Delete Account';
+
+  @override
+  String get upDeleteAccountConfirm =>
+      'Are you sure you want to delete your account? This action cannot be undone and you will lose all your data.';
+
+  @override
+  String get upEnterPasswordConfirm => 'To confirm, enter your password:';
+
+  @override
+  String get upPasswordLabel => 'Password';
+
+  @override
+  String get upGoogleReauthConfirm =>
+      'To confirm, you must sign in with Google again.';
+
+  @override
+  String get upPasswordEmpty => 'Password cannot be empty.';
+
+  @override
+  String get upPasswordIncorrect => 'Incorrect password.';
+
+  @override
+  String get upGoogleReauthFailed => 'Could not re-authenticate with Google.';
+
+  @override
+  String upDeleteAccountError(String error) {
+    return 'Error deleting account: $error';
+  }
+
+  @override
+  String get upCancel => 'Cancel';
+
+  @override
+  String get upDelete => 'Delete';
+
+  @override
+  String get upDeleteAccount => 'Delete account';
 }

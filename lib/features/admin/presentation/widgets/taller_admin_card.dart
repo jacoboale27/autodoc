@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/models/workshop_model.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class TallerAdminCard extends StatelessWidget {
   final WorkshopModel taller;
@@ -69,7 +70,7 @@ class TallerAdminCard extends StatelessWidget {
                   TextButton(
                     onPressed: onRechazar,
                     style: TextButton.styleFrom(foregroundColor: Colors.grey[600]),
-                    child: const Text('Rechazar'),
+                    child: Text(context.l10n.adminReject),
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton(
@@ -80,13 +81,13 @@ class TallerAdminCard extends StatelessWidget {
                       elevation: 0,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    child: const Text('Aprobar Taller'),
+                    child: Text(context.l10n.adminApproveWorkshop),
                   ),
                 ] else if (taller.estado == 'aprobado') ...[
                   OutlinedButton.icon(
                     onPressed: onSuspender,
                     icon: const Icon(Icons.block_flipped, size: 18),
-                    label: const Text('Suspender'),
+                    label: Text(context.l10n.adminSuspend),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.red,
                       side: const BorderSide(color: Colors.red),
@@ -97,7 +98,7 @@ class TallerAdminCard extends StatelessWidget {
                   ElevatedButton.icon(
                     onPressed: onAprobar,
                     icon: const Icon(Icons.check_circle_outline, size: 18),
-                    label: const Text('Reactivar'),
+                    label: Text(context.l10n.adminReactivate),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,

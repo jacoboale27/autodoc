@@ -30,7 +30,19 @@ service cloud.firestore {
     function isMecanico() {
       return isAuthenticated() && 
         exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
-        getUserData().rol == 'Mecanico';
+        getUserData().rol in ['Mecanico', 'Taller'];
+    }
+
+    // Obtiene el propietario de un vehículo
+    function getVehicleOwner(vehiculoId) {
+      return get(/databases/$(database)/documents/vehiculos/$(vehiculoId)).data.id_propietario;
+    }
+
+    // Verifica si el usuario es propietario de un vehículo dado
+    function isVehicleOwner(vehiculoId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/vehiculos/$(vehiculoId)) &&
+        getVehicleOwner(vehiculoId) == request.auth.uid;
     }
 
 
@@ -95,11 +107,32 @@ service cloud.firestore {
     }
 
     // 5. Tabla de Alertas y Recordatorios
+    // Restringido: solo el propietario del vehículo vinculado o admin puede gestionar alertas
     match /alertas/{alertaId} {
-      allow read: if isAuthenticated();
+      // Lectura: propietario del vehículo vinculado, mecánico con relación, o admin
+      allow read: if isAuthenticated() && (
+        isVehicleOwner(resource.data.id_vehiculo)
+        || isMecanico()
+        || isAdmin()
+      );
       
-      // Cualquier usuario autenticado (dueños o mecánicos autorizados) puede gestionar alertas
-      allow create, update, delete: if isAuthenticated();
+      // Creación: propietario del vehículo o admin
+      allow create: if isAuthenticated() && (
+        isVehicleOwner(request.resource.data.id_vehiculo)
+        || isAdmin()
+      );
+
+      // Actualización: propietario del vehículo o admin
+      allow update: if isAuthenticated() && (
+        isVehicleOwner(resource.data.id_vehiculo)
+        || isAdmin()
+      );
+
+      // Eliminación: propietario del vehículo o admin
+      allow delete: if isAuthenticated() && (
+        isVehicleOwner(resource.data.id_vehiculo)
+        || isAdmin()
+      );
     }
 
     // 6. Tabla de Reseñas
@@ -118,11 +151,34 @@ service cloud.firestore {
     }
 
     // 7. Tabla de Conversaciones
+    // Restringido: solo los participantes de la conversación pueden leer/crear/actualizar
     match /conversaciones/{convId} {
-      allow read, update, create: if isAuthenticated();
-      
+      allow read: if isAuthenticated() && (
+        resource.data.id_propietario == request.auth.uid ||
+        resource.data.id_mecanico == request.auth.uid ||
+        isAdmin()
+      );
+
+      allow create: if isAuthenticated() && (
+        request.resource.data.id_propietario == request.auth.uid ||
+        request.resource.data.id_mecanico == request.auth.uid
+      );
+
+      allow update: if isAuthenticated() && (
+        resource.data.id_propietario == request.auth.uid ||
+        resource.data.id_mecanico == request.auth.uid ||
+        isAdmin()
+      );
+
+      // Subcolección de mensajes — solo participantes de la conversación padre
       match /mensajes/{msgId} {
         allow read, create, update: if isAuthenticated() &&
+          (get(/databases/$(database)/documents/conversaciones/$(convId)).data
+            .id_propietario == request.auth.uid ||
+          get(/databases/$(database)/documents/conversaciones/$(convId)).data
+            .id_mecanico == request.auth.uid);
+
+        allow delete: if isAuthenticated() &&
           (get(/databases/$(database)/documents/conversaciones/$(convId)).data
             .id_propietario == request.auth.uid ||
           get(/databases/$(database)/documents/conversaciones/$(convId)).data
@@ -134,7 +190,8 @@ service cloud.firestore {
     match /reservas/{reservaId} {
       allow read: if isAuthenticated() &&
         (resource.data.id_propietario == request.auth.uid ||
-         resource.data.id_mecanico == request.auth.uid);
+         resource.data.id_mecanico == request.auth.uid ||
+         isAdmin());
       allow create: if isAuthenticated() &&
         request.resource.data.id_propietario == request.auth.uid;
       allow update: if isAuthenticated() && (
@@ -147,7 +204,8 @@ service cloud.firestore {
     match /cotizaciones/{cotizacionId} {
       allow read: if isAuthenticated() &&
         (resource.data.id_propietario == request.auth.uid ||
-         resource.data.id_mecanico == request.auth.uid);
+         resource.data.id_mecanico == request.auth.uid ||
+         isAdmin());
       allow create: if isAuthenticated() &&
         request.resource.data.id_mecanico == request.auth.uid;
       allow update: if isAuthenticated() &&
@@ -155,7 +213,88 @@ service cloud.firestore {
          resource.data.id_mecanico == request.auth.uid);
     }
 
-    // Regla de respaldo
+    // 10. Tabla de Mantenimientos (tareas de mantenimiento programadas)
+    // Solo el propietario del vehículo puede leer/crear/actualizar/eliminar
+    // Mecánicos pueden leer y actualizar (registrar km, marcar completado)
+    match /mantenimientos/{mantenimientoId} {
+      allow read: if isAuthenticated() && (
+        isVehicleOwner(resource.data.id_vehiculo)
+        || isMecanico()
+        || isAdmin()
+      );
+      
+      allow create: if isAuthenticated() && (
+        isVehicleOwner(request.resource.data.id_vehiculo)
+        || isAdmin()
+      );
+
+      allow update: if isAuthenticated() && (
+        isVehicleOwner(resource.data.id_vehiculo)
+        || isMecanico()
+        || isAdmin()
+      );
+
+      allow delete: if isAuthenticated() && (
+        isVehicleOwner(resource.data.id_vehiculo)
+        || isAdmin()
+      );
+    }
+
+    // 11. Tabla de Historial de Mantenimientos
+    // Lectura: propietario del vehículo o mecánico del servicio
+    // Escritura: mecánico o admin
+    match /historial_mantenimientos/{historialId} {
+      allow read: if isAuthenticated() && (
+        isVehicleOwner(resource.data.id_vehiculo)
+        || isMecanico()
+        || isAdmin()
+      );
+
+      allow create: if isAuthenticated() && (
+        isMecanico()
+        || isAdmin()
+      );
+
+      allow update: if isAuthenticated() && (
+        isMecanico()
+        || isAdmin()
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // 12. Admin Logs — audit trail
+    // Lectura: solo administradores
+    // Escritura: solo vía Admin SDK (Cloud Functions) o admin autenticado
+    // Los clientes normales NO pueden escribir en esta colección
+    match /admin_logs/{logId} {
+      allow read: if isAdmin();
+      
+      // Solo admin puede crear logs desde el cliente
+      // Cloud Functions usan Admin SDK que bypasea estas reglas
+      allow create: if isAdmin();
+      
+      allow update, delete: if false; // Logs son inmutables
+    }
+
+    // 13. Notificaciones in-app (para centro de notificaciones)
+    match /notificaciones/{userId}/items/{notifId} {
+      allow read: if isOwner(userId);
+      allow update: if isOwner(userId); // marcar como leída
+      allow create: if false; // Solo vía Cloud Functions (Admin SDK)
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    // --- REGLA CATCH-ALL ADMIN ---
+    // IMPORTANTE: Esta regla existe como safety net para que los administradores
+    // puedan acceder a colecciones no explícitamente listadas arriba
+    // (e.g. colecciones futuras o de debug). En producción, se recomienda
+    // auditar periódicamente qué colecciones caen bajo esta regla y agregar
+    // reglas explícitas para cada una.
+    // 
+    // NOTA: Las reglas más específicas arriba tienen prioridad sobre esta.
+    // Si un documento ya tiene reglas explícitas, esta regla NO las sobreescribe
+    // para usuarios no-admin.
     match /{document=**} {
       allow read, write: if isAdmin();
     }

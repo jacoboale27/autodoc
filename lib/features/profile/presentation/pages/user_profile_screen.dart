@@ -14,6 +14,7 @@ import 'package:autodoc/core/providers/language_provider.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/features/profile/presentation/pages/about_screen.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({super.key});
@@ -32,7 +33,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   @override
   void initState() {
     super.initState();
-    final user = context.read<UserSessionProvider>().userData;
+    final user = context.read<UserProfileProvider>().userData;
     if (user != null) {
       _nameController.text = user.nombreCompleto;
       _emailController.text = user.correo;
@@ -122,7 +123,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   await context.read<AuthProvider>().signOut();
                   router.go('/login');
                 },
-                child: Text(context.l10n.upSignOut, style: const TextStyle(color: Colors.red)),
+                child: Text(context.l10n.upSignOut, style: TextStyle(color: theme.colorScheme.error)),
               ),
             ],
           ),
@@ -361,8 +362,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           const Divider(height: 32),
           _buildThemeOption(
             context,
-            'Idioma / Language',
-            'EN (Activado) / ES (Desactivado)',
+            context.l10n.upLanguage,
+            context.l10n.upLanguageDesc,
             Icons.language_outlined,
             languageProvider.currentLocale.languageCode == 'en',
             (value) {
@@ -373,8 +374,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           const Divider(height: 32),
           _buildActionOption(
             context,
-            'Acerca de AutoDoc',
-            'Versión, créditos y legal',
+            context.l10n.upAbout,
+            context.l10n.upAboutDesc,
             Icons.info_outline,
             () {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
@@ -562,6 +563,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final authProvider = context.read<AuthProvider>();
     final isEmailPassword = authProvider.isEmailPasswordUser;
     final passwordController = TextEditingController();
+    final theme = Theme.of(context);
     
     showDialog(
       context: context,
@@ -577,32 +579,32 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('¿Estás seguro de que deseas eliminar tu cuenta? Esta acción no se puede deshacer y perderás todos tus datos.'),
+                  Text(context.l10n.upDeleteAccountConfirm),
                   const SizedBox(height: 16),
                   if (isEmailPassword) ...[
-                    const Text('Para confirmar, ingresa tu contraseña:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text(context.l10n.upEnterPasswordConfirm, style: const TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     TextField(
                       controller: passwordController,
                       obscureText: true,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        labelText: 'Contraseña',
+                      decoration: InputDecoration(
+                        border: const OutlineInputBorder(),
+                        labelText: context.l10n.upPasswordLabel,
                       ),
                     ),
                   ] else ...[
-                    const Text('Para confirmar, deberás volver a iniciar sesión con Google.', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text(context.l10n.upGoogleReauthConfirm, style: const TextStyle(fontWeight: FontWeight.bold)),
                   ],
                   if (errorMessage != null) ...[
                     const SizedBox(height: 8),
-                    Text(errorMessage!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                    Text(errorMessage!, style: TextStyle(color: theme.colorScheme.error, fontSize: 12)),
                   ],
                 ],
               ),
               actions: [
                 TextButton(
                   onPressed: isLoading ? null : () => Navigator.pop(context),
-                  child: const Text('Cancelar'),
+                  child: Text(context.l10n.upCancel),
                 ),
                 TextButton(
                   onPressed: isLoading
@@ -619,7 +621,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             final pass = passwordController.text;
                             if (pass.isEmpty) {
                               setState(() {
-                                errorMessage = 'La contraseña no puede estar vacía.';
+                                errorMessage = context.l10n.upPasswordEmpty;
                                 isLoading = false;
                               });
                               return;
@@ -627,7 +629,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             canDelete = await authProvider.verifyPassword(pass);
                             if (!canDelete) {
                               setState(() {
-                                errorMessage = 'Contraseña incorrecta.';
+                                errorMessage = context.l10n.upPasswordIncorrect;
                                 isLoading = false;
                               });
                               return;
@@ -636,7 +638,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             canDelete = await authProvider.signInWithGoogle();
                             if (!canDelete) {
                               setState(() {
-                                errorMessage = 'No se pudo re-autenticar con Google.';
+                                errorMessage = context.l10n.upGoogleReauthFailed;
                                 isLoading = false;
                               });
                               return;
@@ -650,7 +652,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                GoRouter.of(context).go('/login');
                             } else if (context.mounted) {
                                setState(() {
-                                 errorMessage = 'Error al eliminar la cuenta: ${authProvider.error ?? 'Error desconocido.'}';
+                                 errorMessage = context.l10n.upDeleteAccountError(authProvider.error ?? 'Unknown error');
                                  isLoading = false;
                                });
                             }
@@ -658,7 +660,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         },
                   child: isLoading 
                       ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('Eliminar', style: TextStyle(color: Colors.red)),
+                      : Text(context.l10n.upDelete, style: TextStyle(color: theme.colorScheme.error)),
                 ),
               ],
             );
@@ -669,12 +671,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Widget _buildLogoutButton(BuildContext context, Color primary) {
+    final theme = Theme.of(context);
     return Column(
       children: [
         TextButton.icon(
           onPressed: () => _showDeleteAccountDialog(context),
-          icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-          label: const Text('Eliminar cuenta', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
+          label: Text(context.l10n.upDeleteAccount, style: TextStyle(color: theme.colorScheme.error, fontWeight: FontWeight.bold)),
           style: TextButton.styleFrom(
             padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 24), vertical: Responsive.padding(context, 12)),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -688,8 +691,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         await authProvider.signOut();
         router.go('/login');
       },
-      icon: const Icon(Icons.logout, color: Colors.red),
-      label: Text(context.l10n.upSignOut, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+      icon: Icon(Icons.logout, color: theme.colorScheme.error),
+      label: Text(context.l10n.upSignOut, style: TextStyle(color: theme.colorScheme.error, fontWeight: FontWeight.bold)),
       style: TextButton.styleFrom(
         padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 24), vertical: Responsive.padding(context, 12)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

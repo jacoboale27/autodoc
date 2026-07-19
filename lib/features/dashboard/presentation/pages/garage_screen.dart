@@ -18,6 +18,7 @@ import 'package:uuid/uuid.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/providers/auth_session_provider.dart';
 
 class GarageScreen extends StatelessWidget {
   const GarageScreen({super.key});
@@ -28,7 +29,7 @@ class GarageScreen extends StatelessWidget {
 
     final vehicleProvider = context.watch<VehicleProvider>();
     final vehicles = vehicleProvider.vehicles;
-    final currentUserId = context.watch<UserSessionProvider>().user?.uid;
+    final currentUserId = context.watch<AuthSessionProvider>().user?.uid;
 
     return AppScaffold(
       useGradient: true,

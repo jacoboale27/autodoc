@@ -140,11 +140,11 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   // Top Icon
-                  const Align(
+                  Align(
                     alignment: Alignment.topRight,
                     child: Icon(
                       Icons.settings_suggest,
-                      color: Colors.white24,
+                      color: colors.onPrimary.withValues(alpha: 0.24),
                       size: 40,
                     ),
                   ),
@@ -166,7 +166,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                 width: 100,
                                 height: 100,
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.1),
+                                  color: colors.onPrimary.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                               ),
@@ -191,7 +191,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                               width: 80,
                               height: 80,
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: colors.onPrimary,
                                 borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
@@ -244,7 +244,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                       Text(
                         'DIAGNÓSTICO PROFESIONAL',
                         style: AppTextStyles.labelMedium.copyWith(
-                          color: Colors.white.withValues(alpha: 0.6),
+                          color: colors.onPrimary.withValues(alpha: 0.6),
                           letterSpacing: 4,
                         ),
                       ).animate().fadeIn(delay: 600.ms),
@@ -287,7 +287,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                       Text(
                         'Cargando datos...',
                         style: AppTextStyles.titleMedium.copyWith(
-                          color: Colors.white,
+                          color: colors.onPrimary,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -296,7 +296,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                         width: 192,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
+                          color: colors.onPrimary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(2),
                         ),
                         child: Align(

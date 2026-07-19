@@ -104,7 +104,7 @@ class HeroSection extends StatelessWidget {
                   Positioned(
                     right: 40,
                     bottom: 0,
-                    child: _PhoneMockup(
+                    child: const _PhoneMockup(
                       image: 'assets/images/garage_screen_lightmode.jpg', 
                       rotate: 0.08,
                       scale: 0.9,
@@ -115,7 +115,7 @@ class HeroSection extends StatelessWidget {
                   Positioned(
                     left: 20,
                     top: 0,
-                    child: _PhoneMockup(
+                    child: const _PhoneMockup(
                       image: 'assets/images/dashboard_screen_lightmode.jpg',
                       rotate: -0.1,
                       scale: 1.0,

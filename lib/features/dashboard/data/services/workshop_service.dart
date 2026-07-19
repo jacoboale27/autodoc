@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/utils/role_utils.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class WorkshopService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -41,5 +42,27 @@ class WorkshopService {
         .collection(FirestoreCollections.usuarios)
         .doc(workshop.idUsuario)
         .update(workshop.toMap());
+  }
+
+  Future<void> saveFilters({double? minRating, double? maxDistance, String? specialty}) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (minRating != null) await prefs.setDouble('wd_min_rating', minRating);
+    if (maxDistance != null) await prefs.setDouble('wd_max_distance', maxDistance);
+    if (specialty != null) {
+      if (specialty.isEmpty) {
+        await prefs.remove('wd_specialty');
+      } else {
+        await prefs.setString('wd_specialty', specialty);
+      }
+    }
+  }
+
+  Future<Map<String, dynamic>> loadFilters() async {
+    final prefs = await SharedPreferences.getInstance();
+    return {
+      'minRating': prefs.getDouble('wd_min_rating'),
+      'maxDistance': prefs.getDouble('wd_max_distance'),
+      'specialty': prefs.getString('wd_specialty'),
+    };
   }
 }

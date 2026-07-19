@@ -7,6 +7,7 @@ import '../../../../core/utils/plate_formatter.dart';
 import '../../../../core/models/nhtsa_models.dart';
 import '../../../../core/services/vehicle_api_service.dart';
 import '../../../../core/theme/app_colors.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class AddVehicleForm extends StatefulWidget {
   final Function(VehicleModel) onFinish;
@@ -234,13 +235,13 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
       key: const ValueKey(0),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildStepHeader('Marca', '¿Cuál es la marca de tu vehículo?'),
+        _buildStepHeader(context.l10n.addVehicleBrand, context.l10n.addVehicleBrandSubtitle),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: TextField(
             style: TextStyle(color: colors.textPrimary),
             decoration: InputDecoration(
-              hintText: 'Buscar marca...',
+              hintText: context.l10n.addVehicleSearchBrand,
               hintStyle: TextStyle(color: colors.textSecondary.withValues(alpha: 0.5)),
               prefixIcon: Icon(Icons.search, color: colors.textSecondary),
               filled: true,
@@ -265,8 +266,8 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text('Error al cargar marcas', style: TextStyle(color: Colors.red)),
-                          TextButton(onPressed: _fetchAllMakes, child: const Text('Reintentar')),
+                          Text(context.l10n.addVehicleErrorBrands, style: const TextStyle(color: Colors.red)),
+                          TextButton(onPressed: _fetchAllMakes, child: Text(context.l10n.addVehicleRetry)),
                         ],
                       ),
                     )
@@ -276,7 +277,7 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                       itemBuilder: (context, index) {
                         if (index == filteredMakes.length) {
                           return ListTile(
-                            title: Text('No encuentro mi marca...', style: TextStyle(fontStyle: FontStyle.italic, color: widget.primaryColor)),
+                            title: Text(context.l10n.addVehicleNotFoundBrand, style: TextStyle(fontStyle: FontStyle.italic, color: widget.primaryColor)),
                             onTap: _showManualBrandInput,
                           );
                         }
@@ -315,13 +316,13 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
       key: const ValueKey(1),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildStepHeader('Modelo', 'Selecciona el modelo de tu $_selectedBrand'),
+        _buildStepHeader(context.l10n.addVehicleModel, context.l10n.addVehicleModelSubtitle(_selectedBrand ?? '')),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: TextField(
             style: TextStyle(color: colors.textPrimary),
             decoration: InputDecoration(
-              hintText: 'Buscar modelo...',
+              hintText: context.l10n.addVehicleSearchModel,
               hintStyle: TextStyle(color: colors.textSecondary.withValues(alpha: 0.5)),
               prefixIcon: Icon(Icons.search, color: colors.textSecondary),
               filled: true,
@@ -346,8 +347,8 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text('Error al cargar modelos', style: TextStyle(color: Colors.red)),
-                          TextButton(onPressed: () => _fetchModels(_selectedBrand!), child: const Text('Reintentar')),
+                          Text(context.l10n.addVehicleErrorModels, style: const TextStyle(color: Colors.red)),
+                          TextButton(onPressed: () => _fetchModels(_selectedBrand!), child: Text(context.l10n.addVehicleRetry)),
                         ],
                       ),
                     )
@@ -357,7 +358,7 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                       itemBuilder: (context, index) {
                         if (index == filteredModels.length) {
                           return ListTile(
-                            title: Text('No encuentro mi modelo...', style: TextStyle(fontStyle: FontStyle.italic, color: widget.primaryColor)),
+                            title: Text(context.l10n.addVehicleNotFoundModel, style: TextStyle(fontStyle: FontStyle.italic, color: widget.primaryColor)),
                             onTap: _showManualModelInput,
                           );
                         }
@@ -392,8 +393,8 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildStepHeader('Detalles finales', 'Completa la información restante'),
-          _buildTextField('Número de Placa', 'e.g. P123-456', _placaController, Icons.badge, formatters: [PlateFormatter()]),
+          _buildStepHeader(context.l10n.addVehicleDetails, context.l10n.addVehicleDetailsSubtitle),
+          _buildTextField(context.l10n.addVehiclePlate, context.l10n.addVehiclePlateHint, _placaController, Icons.badge, formatters: [PlateFormatter()]),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -413,7 +414,7 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Año', style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+                            Text(context.l10n.addVehicleYear, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
                             Text(
                               _anioController.text.isEmpty ? '2024' : _anioController.text,
                               style: TextStyle(fontWeight: FontWeight.bold, color: colors.textPrimary),
@@ -426,31 +427,57 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                 ),
               ),
               const SizedBox(width: 12),
-              Expanded(child: _buildTextField('Color', 'Gris', _colorController, Icons.palette)),
+              Expanded(child: _buildTextField(context.l10n.addVehicleColor, context.l10n.addVehicleColorHint, _colorController, Icons.palette)),
             ],
           ),
           const SizedBox(height: 16),
-          _buildTextField('Kilometraje Actual', '0', _kilometrajeController, Icons.speed, keyboardType: TextInputType.number),
+          _buildTextField(context.l10n.addVehicleMileage, '0', _kilometrajeController, Icons.speed, keyboardType: TextInputType.number),
           const SizedBox(height: 24),
-          Text('Documentación', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: colors.textPrimary)),
+          Text(context.l10n.addVehicleDocs, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: colors.textPrimary)),
           const SizedBox(height: 12),
-          _buildDatePicker('Vencimiento Tarjeta', _vencimientoTarjeta, (d) => setState(() => _vencimientoTarjeta = d)),
+          _buildDatePicker(context.l10n.addVehicleCardExp, _vencimientoTarjeta, (d) => setState(() => _vencimientoTarjeta = d)),
           const SizedBox(height: 12),
-          _buildDatePicker('Vencimiento SOAT', _vencimientoSoat, (d) => setState(() => _vencimientoSoat = d)),
+          _buildDatePicker(context.l10n.addVehicleSoatExp, _vencimientoSoat, (d) => setState(() => _vencimientoSoat = d)),
           const SizedBox(height: 32),
           SizedBox(
             width: double.infinity,
             height: 56,
             child: ElevatedButton(
               onPressed: () {
-                if (_placaController.text.isEmpty) return;
+                if (_placaController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('El número de placa es obligatorio')));
+                  return;
+                }
+                
+                final anio = int.tryParse(_anioController.text);
+                final currentYear = DateTime.now().year;
+                if (anio == null || anio < 1900 || anio > currentYear) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Año inválido')));
+                  return;
+                }
+
+                if (_colorController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('El color es obligatorio')));
+                  return;
+                }
+                if (_colorController.text.length > 30) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('El color no debe exceder 30 caracteres')));
+                  return;
+                }
+
+                final km = int.tryParse(_kilometrajeController.text);
+                if (km == null || km < 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Kilometraje inválido')));
+                  return;
+                }
+                
                 _nextStep();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: widget.primaryColor,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
-              child: const Text('Finalizar Registro', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: Text(context.l10n.addVehicleFinish, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(height: 24),
@@ -470,12 +497,12 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
           const Icon(Icons.check_circle_rounded, size: 80, color: Colors.green),
           const SizedBox(height: 24),
           Text(
-            '¡Vehículo Registrado!',
+            context.l10n.addVehicleSuccess,
             style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold, color: colors.textPrimary),
           ),
           const SizedBox(height: 12),
           Text(
-            'Tu $_selectedBrand $_selectedModel ya está en el garaje.',
+            context.l10n.addVehicleSuccessDesc(_selectedBrand ?? '', _selectedModel ?? ''),
             textAlign: TextAlign.center,
             style: TextStyle(color: colors.textSecondary),
           ),
@@ -543,7 +570,7 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                     width: 20,
                     child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                   )
-                : const Text('Ir al Dashboard', style: TextStyle(color: Colors.white)),
+                : Text(context.l10n.addVehicleGoDashboard, style: const TextStyle(color: Colors.white)),
             ),
           ),
         ],
@@ -608,7 +635,7 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
               children: [
                 Text(label, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
                 Text(
-                  value != null ? DateFormat('dd/MM/yyyy').format(value) : 'Seleccionar fecha',
+                  value != null ? DateFormat('dd/MM/yyyy').format(value) : context.l10n.addVehicleSelectDate,
                   style: TextStyle(fontWeight: FontWeight.bold, color: colors.textPrimary),
                 ),
               ],

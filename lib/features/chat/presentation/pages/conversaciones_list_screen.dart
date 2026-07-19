@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:autodoc/core/constants/firestore_collections.dart';
+
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
@@ -8,6 +7,9 @@ import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/providers/auth_session_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 
 class ConversacionesListScreen extends StatefulWidget {
   const ConversacionesListScreen({super.key});
@@ -21,8 +23,8 @@ class _ConversacionesListScreenState extends State<ConversacionesListScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final user = context.read<UserSessionProvider>().user;
-      final userData = context.read<UserSessionProvider>().userData;
+      final user = context.read<AuthSessionProvider>().user;
+      final userData = context.read<UserProfileProvider>().userData;
       if (user != null) {
         context.read<ChatProvider>().inicializarConversaciones(user.uid, userData?.rol == 'Mecanico');
       }
@@ -50,7 +52,7 @@ class _ConversacionesListScreenState extends State<ConversacionesListScreen> {
         elevation: 0,
       ),
       body: chatProvider.error != null
-          ? Center(child: Text('Error: ${chatProvider.error}', style: TextStyle(color: colors.error)))
+          ? Center(child: Text(context.l10n.adminError(chatProvider.error!), style: TextStyle(color: colors.error)))
           : chatProvider.conversaciones.isEmpty
               ? _buildEmptyState(colors, isDark)
               : ListView.separated(
@@ -80,9 +82,8 @@ class _ConversacionesListScreenState extends State<ConversacionesListScreen> {
                         backgroundColor: colors.primary.withValues(alpha: 0.2),
                         child: Icon(Icons.person, color: colors.primary),
                       ),
-                      title: UserNameWidget(
-                        userId: isMecanico ? conv.idPropietario : conv.idMecanico,
-                        fallbackName: targetName,
+                      title: Text(
+                        targetName,
                         style: AppTextStyles.titleMedium.copyWith(
                           fontWeight: noLeidos > 0 ? FontWeight.bold : FontWeight.w600,
                         ),
@@ -159,28 +160,4 @@ class _ConversacionesListScreenState extends State<ConversacionesListScreen> {
   }
 }
 
-class UserNameWidget extends StatelessWidget {
-  final String userId;
-  final String fallbackName;
-  final TextStyle? style;
-
-  const UserNameWidget({super.key, required this.userId, required this.fallbackName, this.style});
-
-  @override
-  Widget build(BuildContext context) {
-    if (userId.isEmpty) return Text(fallbackName, style: style);
-    
-    return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance.collection(FirestoreCollections.usuarios).doc(userId).get(),
-      builder: (context, snapshot) {
-        if (snapshot.hasData && snapshot.data!.exists) {
-          final data = snapshot.data!.data() as Map<String, dynamic>?;
-          final name = data?['nombre_completo'];
-          return Text(name?.isNotEmpty == true ? name! : fallbackName, style: style);
-        }
-        return Text(fallbackName, style: style);
-      },
-    );
-  }
-}
 

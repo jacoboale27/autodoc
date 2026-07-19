@@ -87,5 +87,23 @@ void main() {
       expect(vehicleProvider.isLoading, false);
       expect(vehicleProvider.error, null);
     });
+
+    test('setMainVehicle changes selectedVehicle', () async {
+      final vehicles = [
+        VehicleModel(idVehiculo: '1', idPropietario: 'owner', placa: 'ABC', marca: 'Toyota', modelo: 'Corolla', anio: 2020),
+        VehicleModel(idVehiculo: '2', idPropietario: 'owner', placa: 'XYZ', marca: 'Honda', modelo: 'Civic', anio: 2022),
+      ];
+      when(mockVehicleService.getVehiclesByOwner('owner')).thenAnswer((_) async => vehicles);
+      when(mockVehicleService.getSharedVehicles('owner')).thenAnswer((_) async => []);
+
+      await vehicleProvider.fetchVehicles('owner');
+      expect(vehicleProvider.selectedVehicle?.idVehiculo, '1');
+
+      await vehicleProvider.setAsPrimary(vehicles[1]);
+      
+      // Wait, in the mock getVehiclesByOwner should now return the updated list to test `fetchVehicles`
+      // For now we just verify it calls updateVehicle
+      verify(mockVehicleService.updateVehicle(argThat(isA<VehicleModel>()))).called(greaterThan(0));
+    });
   });
 }

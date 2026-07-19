@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../data/services/admin_service.dart';
 
@@ -15,23 +16,43 @@ class AdminDashboardProvider with ChangeNotifier {
   };
   bool _isLoading = false;
   String? _error;
+  
+  StreamSubscription<Map<String, dynamic>>? _subscription;
 
   Map<String, dynamic> get metrics => _metrics;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  Future<void> fetchMetrics() async {
+  void fetchMetrics() {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
+    _subscription?.cancel();
+    
     try {
-      _metrics = await _adminService.fetchDashboardMetrics();
+      _subscription = _adminService.watchDashboardMetrics().listen(
+        (newMetrics) {
+          _metrics = newMetrics;
+          _isLoading = false;
+          notifyListeners();
+        },
+        onError: (e) {
+          _error = e.toString();
+          _isLoading = false;
+          notifyListeners();
+        },
+      );
     } catch (e) {
       _error = e.toString();
-    } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
   }
 }

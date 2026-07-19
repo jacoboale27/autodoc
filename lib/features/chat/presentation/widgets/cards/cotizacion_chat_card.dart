@@ -3,6 +3,7 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class CotizacionChatCard extends StatelessWidget {
   final Map<String, dynamic> metadata;
@@ -137,7 +138,7 @@ class CotizacionChatCard extends StatelessWidget {
                             side: BorderSide(color: colors.primary),
                             padding: const EdgeInsets.symmetric(vertical: 8),
                           ),
-                          child: const Text('Aceptar'),
+                          child: Text(context.l10n.chatAccept),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -157,7 +158,7 @@ class CotizacionChatCard extends StatelessWidget {
                             side: const BorderSide(color: Colors.red),
                             padding: const EdgeInsets.symmetric(vertical: 8),
                           ),
-                          child: const Text('Rechazar'),
+                          child: Text(context.l10n.chatReject),
                         ),
                       ),
                     ],

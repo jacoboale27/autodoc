@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/models/user_model.dart';
@@ -8,7 +9,9 @@ import '../repositories/admin_repository.dart';
 import '../../../../core/constants/firestore_collections.dart';
 
 class AdminService {
-  final AdminRepository _repository = AdminRepository();
+  final AdminRepository _repository;
+  
+  AdminService({AdminRepository? repository}) : _repository = repository ?? AdminRepository();
   final _uuid = const Uuid();
 
   Future<void> _logAction(String adminUid, String accion, String modulo, String referenciaId, String detalle) async {
@@ -64,6 +67,11 @@ class AdminService {
     await _logAction(adminUid, 'SUSPENDER_TALLER', 'Talleres', idTaller, motivo);
   }
 
+  Future<void> reactivarTaller(String adminUid, String idTaller) async {
+    await _repository.updateTallerEstado(idTaller, 'aprobado');
+    await _logAction(adminUid, 'REACTIVAR_TALLER', 'Talleres', idTaller, 'Taller reactivado');
+  }
+
   // Reseñas
   Future<List<ReviewModel>> fetchResenias() async {
     return await _repository.getResenias();
@@ -81,48 +89,95 @@ class AdminService {
   }
 
   // Métricas
-  Future<Map<String, dynamic>> fetchDashboardMetrics() async {
-    final totalUsuarios = await _repository.countCollection(FirestoreCollections.usuarios);
-    final totalTalleres = await _repository.countCollection(FirestoreCollections.talleres);
-    final totalVehiculos = await _repository.countCollection(FirestoreCollections.vehiculos);
-    final totalServicios = await _repository.countCollection(FirestoreCollections.servicios);
-    final totalAlertas = await _repository.countCollection(FirestoreCollections.alertas);
-    final totalResenias = await _repository.countCollection(FirestoreCollections.resenias);
+  Stream<Map<String, dynamic>> watchDashboardMetrics() {
+    late StreamController<Map<String, dynamic>> controller;
+    final List<StreamSubscription> subscriptions = [];
 
-    // Calcular servicios por mes (ultimos 6 meses)
-    final now = DateTime.now();
-    final seisMesesAtras = DateTime(now.year, now.month - 5, 1);
-    
-    final serviciosSnapshot = await FirebaseFirestore.instance
-        .collection(FirestoreCollections.servicios)
-        .where('fecha', isGreaterThanOrEqualTo: Timestamp.fromDate(seisMesesAtras))
-        .get();
-        
-    final Map<String, int> serviciosPorMes = {};
-    for (int i = 0; i < 6; i++) {
-      final mes = DateTime(now.year, now.month - i, 1);
-      serviciosPorMes['${mes.year}-${mes.month}'] = 0;
-    }
+    Map<String, dynamic> metrics = {
+      'usuarios': 0,
+      'talleres': 0,
+      'vehiculos': 0,
+      'servicios': 0,
+      'alertas': 0,
+      'resenias': 0,
+      'serviciosPorMes': <String, int>{},
+    };
 
-    for (var doc in serviciosSnapshot.docs) {
-      final data = doc.data();
-      if (data['fecha'] != null) {
-        final date = (data['fecha'] as Timestamp).toDate();
-        final key = '${date.year}-${date.month}';
-        if (serviciosPorMes.containsKey(key)) {
-          serviciosPorMes[key] = (serviciosPorMes[key] ?? 0) + 1;
-        }
+    void updateMetrics() {
+      if (!controller.isClosed) {
+        controller.add(Map.from(metrics));
       }
     }
 
-    return {
-      'usuarios': totalUsuarios,
-      'talleres': totalTalleres,
-      'vehiculos': totalVehiculos,
-      'servicios': totalServicios,
-      'alertas': totalAlertas,
-      'resenias': totalResenias,
-      'serviciosPorMes': serviciosPorMes,
-    };
+    void startListening() {
+      final fs = FirebaseFirestore.instance;
+
+      subscriptions.add(fs.collection(FirestoreCollections.usuarios).snapshots().listen((snap) {
+        metrics['usuarios'] = snap.size;
+        updateMetrics();
+      }));
+      subscriptions.add(fs.collection(FirestoreCollections.talleres).snapshots().listen((snap) {
+        metrics['talleres'] = snap.size;
+        updateMetrics();
+      }));
+      subscriptions.add(fs.collection(FirestoreCollections.vehiculos).snapshots().listen((snap) {
+        metrics['vehiculos'] = snap.size;
+        updateMetrics();
+      }));
+      subscriptions.add(fs.collection(FirestoreCollections.alertas).snapshots().listen((snap) {
+        metrics['alertas'] = snap.size;
+        updateMetrics();
+      }));
+      subscriptions.add(fs.collection(FirestoreCollections.resenias).snapshots().listen((snap) {
+        metrics['resenias'] = snap.size;
+        updateMetrics();
+      }));
+      subscriptions.add(fs.collection(FirestoreCollections.servicios).snapshots().listen((snap) {
+        metrics['servicios'] = snap.size;
+        updateMetrics();
+      }));
+
+      final now = DateTime.now();
+      final seisMesesAtras = DateTime(now.year, now.month - 5, 1);
+
+      subscriptions.add(fs.collection(FirestoreCollections.servicios)
+          .where('fecha', isGreaterThanOrEqualTo: Timestamp.fromDate(seisMesesAtras))
+          .snapshots().listen((snap) {
+        
+        final Map<String, int> serviciosPorMes = {};
+        for (int i = 0; i < 6; i++) {
+          final mes = DateTime(now.year, now.month - i, 1);
+          serviciosPorMes['${mes.year}-${mes.month}'] = 0;
+        }
+
+        for (var doc in snap.docs) {
+          final data = doc.data();
+          if (data['fecha'] != null) {
+            final date = (data['fecha'] as Timestamp).toDate();
+            final key = '${date.year}-${date.month}';
+            if (serviciosPorMes.containsKey(key)) {
+              serviciosPorMes[key] = (serviciosPorMes[key] ?? 0) + 1;
+            }
+          }
+        }
+        
+        metrics['serviciosPorMes'] = serviciosPorMes;
+        updateMetrics();
+      }));
+    }
+
+    void stopListening() {
+      for (var sub in subscriptions) {
+        sub.cancel();
+      }
+      subscriptions.clear();
+    }
+
+    controller = StreamController<Map<String, dynamic>>(
+      onListen: startListening,
+      onCancel: stopListening,
+    );
+
+    return controller.stream;
   }
 }

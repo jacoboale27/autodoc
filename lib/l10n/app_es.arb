@@ -68,25 +68,25 @@
   "heroSubtitle": "Digitaliza tu vehículo hoy. Historial clínico certificado, alertas inteligentes de SOAT y mantenimientos, conectado con los mejores talleres.",
   "heroStartGarage": "Comenzar mi Garaje",
   "heroViewDirectory": "Ver Directorio",
-  "commandCenterTitle": "Digital Command Center",
-  "commandCenterSubtitle": "Toma el mando de tu experiencia automotriz con herramientas diseñadas para tu tranquilidad.",
-  "tabGarageTitle": "Garaje Virtual",
-  "tabGarageSubtitle": "Centraliza la información de todos tus vehículos en un solo panel interactivo.",
-  "tabHistoryTitle": "Historial Digital",
-  "tabHistorySubtitle": "Cada servicio, factura y foto guardada de forma segura para siempre.",
-  "tabAlertsTitle": "Alertas Proactivas",
-  "tabAlertsSubtitle": "SOAT, seguros y cambios de aceite. Te avisamos antes de que sea tarde.",
-  "tabSyncTitle": "Conexión con Talleres",
-  "tabSyncSubtitle": "Sincronización directa con mecánicos para validación de servicios real.",
-  "valuePropTitle": "Tranquilidad para el conductor, eficiencia para el experto.",
-  "valuePropSubtitle": "Diseñamos una plataforma que rompe la barrera de desconfianza entre dueños y talleres. Con AutoDoc, cada intervención es clara, cada costo es justificado y cada vehículo mantiene su valor de reventa.",
-  "statSatisfaction": "Satisfacción del Usuario",
-  "statWorkshops": "Talleres Verificados",
-  "footerDesc": "Transformando la gestión automotriz a través de tecnología inteligente y transparencia garantizada.",
-  "footerOwners": "Para Dueños",
+  "commandCenterTitle": "Centro de Control",
+  "commandCenterSubtitle": "Todo lo que necesitas en un solo lugar",
+  "tabGarageTitle": "Garaje",
+  "tabGarageSubtitle": "Tus vehículos",
+  "tabHistoryTitle": "Historial",
+  "tabHistorySubtitle": "Servicios",
+  "tabAlertsTitle": "Alertas",
+  "tabAlertsSubtitle": "Recordatorios",
+  "tabSyncTitle": "Sincronizar",
+  "tabSyncSubtitle": "Datos",
+  "valuePropTitle": "Por qué elegir AutoDoc",
+  "valuePropSubtitle": "Beneficios exclusivos",
+  "statSatisfaction": "99% Satisfacción",
+  "statWorkshops": "+500 Talleres",
+  "footerDesc": "La mejor app para el cuidado de tu vehículo",
+  "footerOwners": "Para Propietarios",
   "footerWorkshops": "Para Talleres",
-  "footerSocial": "Social",
-  "footerCopyright": "© 2026 AutoDoc Technology. Hecho para conductores inteligentes.",
+  "footerSocial": "Redes Sociales",
+  "footerCopyright": "© 2026 AutoDoc. Todos los derechos reservados.",
   "dashHello": "Hola, {userName} 👋",
   "@dashHello": {
     "placeholders": {
@@ -422,23 +422,198 @@
   "adminRecentActivityTitle": "Actividad Reciente",
   "adminNoRecentActivity": "Sin actividad reciente",
   "adminViewAllLogs": "Ver todo el registro",
-  "commandCenterTitle": "Centro de Control",
-  "commandCenterSubtitle": "Todo lo que necesitas en un solo lugar",
-  "tabGarageTitle": "Garaje",
-  "tabGarageSubtitle": "Tus vehículos",
-  "tabHistoryTitle": "Historial",
-  "tabHistorySubtitle": "Servicios",
-  "tabAlertsTitle": "Alertas",
-  "tabAlertsSubtitle": "Recordatorios",
-  "tabSyncTitle": "Sincronizar",
-  "tabSyncSubtitle": "Datos",
-  "footerDesc": "La mejor app para el cuidado de tu vehículo",
-  "footerOwners": "Para Propietarios",
-  "footerWorkshops": "Para Talleres",
-  "footerSocial": "Redes Sociales",
-  "footerCopyright": "© 2026 AutoDoc. Todos los derechos reservados.",
-  "valuePropTitle": "Por qué elegir AutoDoc",
-  "valuePropSubtitle": "Beneficios exclusivos",
-  "statSatisfaction": "99% Satisfacción",
-  "statWorkshops": "+500 Talleres"
+  "authCompleteCredentials": "Completa correo y contraseña.",
+  "authEnterValidEmail": "Ingresa un correo electrónico válido.",
+  "authPasswordTooShort": "La contraseña debe tener al menos 6 caracteres.",
+  "addVehicleBrand": "Marca",
+  "addVehicleBrandSubtitle": "¿Cuál es la marca de tu vehículo?",
+  "addVehicleSearchBrand": "Buscar marca...",
+  "addVehicleErrorBrands": "Error al cargar marcas",
+  "addVehicleRetry": "Reintentar",
+  "addVehicleNotFoundBrand": "No encuentro mi marca...",
+  "addVehicleModel": "Modelo",
+  "addVehicleModelSubtitle": "Selecciona el modelo de tu {brand}",
+  "@addVehicleModelSubtitle": {
+    "placeholders": {
+      "brand": {
+        "type": "String"
+      }
+    }
+  },
+  "addVehicleSearchModel": "Buscar modelo...",
+  "addVehicleErrorModels": "Error al cargar modelos",
+  "addVehicleNotFoundModel": "No encuentro mi modelo...",
+  "addVehicleDetails": "Detalles finales",
+  "addVehicleDetailsSubtitle": "Completa la información restante",
+  "addVehiclePlate": "Número de Placa",
+  "addVehiclePlateHint": "e.g. P123-456",
+  "addVehicleYear": "Año",
+  "addVehicleColor": "Color",
+  "addVehicleColorHint": "Gris",
+  "addVehicleMileage": "Kilometraje Actual",
+  "addVehicleDocs": "Documentación",
+  "addVehicleCardExp": "Vencimiento Tarjeta",
+  "addVehicleSoatExp": "Vencimiento SOAT",
+  "addVehicleFinish": "Finalizar Registro",
+  "addVehicleSuccess": "¡Vehículo Registrado!",
+  "addVehicleSuccessDesc": "Tu {brand} {model} ya está en el garaje.",
+  "@addVehicleSuccessDesc": {
+    "placeholders": {
+      "brand": {
+        "type": "String"
+      },
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "addVehicleGoDashboard": "Ir al Dashboard",
+  "addVehicleSelectDate": "Seleccionar fecha",
+  "histTotalSpent": "Total gastado",
+  "histServicesCount": "Servicios",
+  "histAverage": "Promedio",
+  "vpQuickNotes": "Notas Rápidas",
+  "pdfHistoryTitle": "Historial de Servicios",
+  "pdfVehicle": "Vehículo: {brand} {model} ({year})",
+  "@pdfVehicle": {
+    "placeholders": {
+      "brand": {
+        "type": "String"
+      },
+      "model": {
+        "type": "String"
+      },
+      "year": {
+        "type": "String"
+      }
+    }
+  },
+  "pdfPlate": "Placa: {plate}",
+  "@pdfPlate": {
+    "placeholders": {
+      "plate": {
+        "type": "String"
+      }
+    }
+  },
+  "pdfReportDate": "Fecha de Reporte: {date}",
+  "@pdfReportDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "pdfTotalServices": "Total de Servicios: {count}",
+  "@pdfTotalServices": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "pdfTotalSpent": "Gasto Total: ${amount}",
+  "@pdfTotalSpent": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "adminLogsTitle": "Registro de Actividad",
+  "adminDeleteReview": "Eliminar Reseña",
+  "adminCancel": "Cancelar",
+  "adminDelete": "Eliminar",
+  "adminModerateReviews": "Moderación de Reseñas",
+  "adminAccessDenied": "Acceso Denegado",
+  "adminAccessDeniedDesc": "Esta pantalla solo está disponible en entorno de desarrollo.",
+  "adminConfigAdmins": "Configurar Administradores",
+  "adminConfirm": "Confirmar",
+  "adminManageWorkshops": "Gestión de Talleres",
+  "adminChangeRole": "Cambiar Rol de Usuario",
+  "adminSelectNewRole": "Selecciona el nuevo rol:",
+  "adminManageUsers": "Gestión de Usuarios",
+  "adminSuspendAccount": "Suspender Cuenta",
+  "adminReactivateAccount": "Reactivar Cuenta",
+  "adminChangeUserRole": "Cambiar Rol",
+  "adminNoTrendData": "No hay datos de tendencias disponibles.",
+  "adminReject": "Rechazar",
+  "adminApproveWorkshop": "Aprobar Taller",
+  "adminSuspend": "Suspender",
+  "adminReactivate": "Reactivar",
+  "adminError": "Error: {error}",
+  "@adminError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "chatOpeningSection": "Abriendo sección de {label}...",
+  "@chatOpeningSection": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "chatDeleteMessage": "Eliminar mensaje",
+  "chatCamera": "Cámara",
+  "chatGallery": "Galería",
+  "chatShareVehicle": "Compartir Vehículo",
+  "chatNewReservation": "Nueva Reserva",
+  "chatSendQuote": "Enviar Cotización",
+  "chatRequestRating": "Solicitar Calificación",
+  "chatUploadImageError": "Error al subir imagen",
+  "chatReservationSuccess": "Reserva {status} exitosamente",
+  "@chatReservationSuccess": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "chatReservationDetail": "Detalle de Cita",
+  "coreAppTitle": "AutoDoc Taller",
+  "chatViewFullHistory": "Ver Historial Completo",
+  "chatConfirmProposal": "Confirmar Propuesta",
+  "chatGenerateAndSend": "Generar y Enviar",
+  "chatRateService": "Calificar Servicio",
+  "chatReviewThanks": "¡Gracias por tu reseña!",
+  "chatAccept": "Aceptar",
+  "chatReject": "Rechazar",
+  "chatViewDetail": "Ver detalle",
+  "chatService": "Servicio",
+  "chatDate": "Fecha",
+  "chatTime": "Hora",
+  "chatVehicleId": "Vehículo ID",
+  "chatAcceptAppointment": "Aceptar Cita",
+  "chatRejectReschedule": "Rechazar / Reprogramar",
+  "chatConfirmDelete": "¿Estás seguro de que quieres eliminar este mensaje para todos?",
+  "notifications": "Notificaciones",
+  "noNotifications": "No tienes notificaciones",
+  "markAllRead": "Marcar todo como leído",
+  "upLanguage": "Idioma / Language",
+  "upLanguageDesc": "EN (Activado) / ES (Desactivado)",
+  "upAbout": "Acerca de AutoDoc",
+  "upAboutDesc": "Versión, créditos y legal",
+  "upDeleteAccountTitle": "Eliminar Cuenta",
+  "upDeleteAccountConfirm": "¿Estás seguro de que deseas eliminar tu cuenta? Esta acción no se puede deshacer y perderás todos tus datos.",
+  "upEnterPasswordConfirm": "Para confirmar, ingresa tu contraseña:",
+  "upPasswordLabel": "Contraseña",
+  "upGoogleReauthConfirm": "Para confirmar, deberás volver a iniciar sesión con Google.",
+  "upPasswordEmpty": "La contraseña no puede estar vacía.",
+  "upPasswordIncorrect": "Contraseña incorrecta.",
+  "upGoogleReauthFailed": "No se pudo re-autenticar con Google.",
+  "upDeleteAccountError": "Error al eliminar la cuenta: {error}",
+  "@upDeleteAccountError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "upCancel": "Cancelar",
+  "upDelete": "Eliminar",
+  "upDeleteAccount": "Eliminar cuenta"
 }

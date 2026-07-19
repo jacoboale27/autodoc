@@ -36,16 +36,16 @@ class LandingScreen extends StatelessWidget {
             ),
           ),
           
-          CustomScrollView(
+          const CustomScrollView(
             slivers: [
-              const LandingHeader(),
+              LandingHeader(),
               SliverToBoxAdapter(
                 child: Column(
                   children: [
-                    const HeroSection(),
-                    const CommandCenterSection(),
-                    const ValuePropSection(),
-                    const LandingFooter(),
+                    HeroSection(),
+                    CommandCenterSection(),
+                    ValuePropSection(),
+                    LandingFooter(),
                   ],
                 ),
               ),

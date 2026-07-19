@@ -4,6 +4,7 @@ import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/review_sheet.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class ReviewChatCard extends StatelessWidget {
   final Map<String, dynamic> metadata;
@@ -95,16 +96,16 @@ class ReviewChatCard extends StatelessWidget {
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                      child: const Text('Calificar Servicio', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: Text(context.l10n.chatRateService, style: const TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ] else if (estado == 'completada' && !isMe) ...[
                   const SizedBox(height: 12),
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.check_circle, color: Colors.green, size: 16),
-                      SizedBox(width: 4),
-                      Text('¡Gracias por tu reseña!', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                      const Icon(Icons.check_circle, color: Colors.green, size: 16),
+                      const SizedBox(width: 4),
+                      Text(context.l10n.chatReviewThanks, style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ],

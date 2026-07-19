@@ -36,26 +36,37 @@ export default function HeroSection() {
           {t("heroSubtitle")}
         </p>
         
-        <div className="flex flex-col items-start space-y-4 sm:flex-row sm:items-center sm:space-x-8 sm:space-y-0">
+        <div className="flex flex-col items-start gap-4 mt-8 sm:flex-row sm:items-center sm:gap-6">
           <Link href="https://autodoc-6ef5a.web.app/login" passHref target="_blank">
-            <motion.button
-              whileHover={{ scale: 1.05, x: 5 }}
-              whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-2 text-lg font-bold text-[#522C81] dark:text-white transition-all hover:text-[#3d2062] dark:hover:text-sky-400"
-            >
-              {t("heroStartGarage")} <span>→</span>
-            </motion.button>
-          </Link>
-          
-          <Link href="#features">
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="rounded-xl border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-transparent px-6 py-3 font-semibold text-slate-700 dark:text-white backdrop-blur-md transition-all hover:bg-slate-100 dark:hover:bg-slate-800 shadow-sm dark:shadow-none"
+              className="rounded-xl bg-[#522C81] px-6 py-3 font-bold text-white shadow-lg transition-all hover:bg-[#3d2062] hover:shadow-xl w-full sm:w-auto"
             >
-              {t("heroViewDirectory")}
+              {t("heroOpenWebApp")}
             </motion.button>
           </Link>
+          
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <Link href="https://play.google.com/store/apps/details?id=com.autodoc.app" target="_blank" className="hover:opacity-80 transition-opacity">
+              <Image 
+                src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" 
+                alt="Get it on Google Play" 
+                width={135} 
+                height={40} 
+                className="h-[40px] w-auto"
+              />
+            </Link>
+            <Link href="https://apps.apple.com/app/id123456789" target="_blank" className="hover:opacity-80 transition-opacity">
+              <Image 
+                src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" 
+                alt="Download on the App Store" 
+                width={120} 
+                height={40} 
+                className="h-[40px] w-auto"
+              />
+            </Link>
+          </div>
         </div>
       </motion.div>
 
@@ -91,8 +102,8 @@ export default function HeroSection() {
         >
           <div className="relative aspect-[9/19.5] w-full">
             <Image
-              src="/assets/dashboard.jpg"
-              alt="Dashboard App"
+              src="/assets/directory.jpg"
+              alt="Directory App"
               fill
               className="object-cover"
               priority

@@ -363,7 +363,7 @@ class _AuthScreenState extends State<AuthScreen> {
     if (email.isEmpty || password.isEmpty) {
       HapticFeedback.heavyImpact();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Completa correo y contraseña.')),
+        SnackBar(content: Text(context.l10n.authCompleteCredentials)),
       );
       return;
     }
@@ -387,17 +387,24 @@ class _AuthScreenState extends State<AuthScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
+    if (email.isEmpty || password.isEmpty) {
+      HapticFeedback.heavyImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.authCompleteCredentials)),
+      );
+      return;
+    }
     if (!_isValidEmail(email)) {
       HapticFeedback.heavyImpact();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa un correo electrónico válido.')),
+        SnackBar(content: Text(context.l10n.authEnterValidEmail)),
       );
       return;
     }
     if (password.length < 6) {
       HapticFeedback.heavyImpact();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('La contraseña debe tener al menos 6 caracteres.')),
+        SnackBar(content: Text(context.l10n.authPasswordTooShort)),
       );
       return;
     }
@@ -423,11 +430,15 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget _buildSubmitButton(AppColors colors) {
     final authProvider = context.watch<AuthProvider>();
     
-    return SizedBox(
-      width: double.infinity,
-      height: 54,
-      child: ElevatedButton(
-        onPressed: authProvider.isLoading
+    return Semantics(
+      label: _isLoginMode ? 'Botón Iniciar sesión' : 'Botón Registrarse',
+      button: true,
+      enabled: !authProvider.isLoading,
+      child: SizedBox(
+        width: double.infinity,
+        height: 54,
+        child: ElevatedButton(
+          onPressed: authProvider.isLoading
             ? null
             : () async {
                 if (_isLoginMode) {
@@ -449,6 +460,7 @@ class _AuthScreenState extends State<AuthScreen> {
               child: CircularProgressIndicator(color: colors.onPrimary, strokeWidth: 2)
             ) 
           : Text(_isLoginMode ? context.l10n.authLoginButton : context.l10n.authRegisterButton),
+        ),
       ),
     );
   }
@@ -456,25 +468,15 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget _buildGoogleButton(AppColors colors) {
     final authProvider = context.read<AuthProvider>();
     
-    return OutlinedButton(
-      onPressed: () async {
+    return Semantics(
+      label: 'Botón Continuar con Google',
+      button: true,
+      child: OutlinedButton(
+        onPressed: () async {
         final success = await authProvider.signInWithGoogle();
         if (success && mounted) {
           HapticFeedback.lightImpact();
-          final sessionProvider = context.read<UserSessionProvider>();
-          final userData = sessionProvider.userData;
-          if (userData != null) {
-            final role = userData.rol.trim().toLowerCase();
-            if (role == 'taller' || role == 'mecanico') {
-              context.go('/mechanic_dashboard');
-            } else if (role == 'admin' || role == 'administrador') {
-              context.go('/admin/dashboard');
-            } else {
-              context.go('/dashboard');
-            }
-          } else {
-            context.go('/profile_setup');
-          }
+          await _navigateAfterAuth(authProvider);
         } else if (mounted && authProvider.error != null) {
           HapticFeedback.heavyImpact();
           ScaffoldMessenger.of(context).showSnackBar(
@@ -507,6 +509,7 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 

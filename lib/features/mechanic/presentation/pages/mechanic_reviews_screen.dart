@@ -187,61 +187,101 @@ class MechanicReviewsScreen extends StatelessWidget {
                                   );
                                 }
 
-                                return ListView.separated(
-                                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                                  itemCount: reviews.length,
-                                  separatorBuilder: (context, index) =>
-                                      const SizedBox(height: 12),
-                                  itemBuilder: (context, index) {
-                                    final r = reviews[index];
-                                    return AppCard(
-                                      margin: EdgeInsets.zero,
-                                      padding: EdgeInsets.all(Responsive.padding(context, 16)),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Row(
-                                                children: List.generate(5, (i) {
-                                                  return Icon(
-                                                    Icons.star,
-                                                    size: Responsive.iconSize(context, 16),
-                                                    color: i < r.estrellas
-                                                        ? colors.warning
-                                                        : colors.textSecondary
-                                                            .withValues(
-                                                                alpha: 0.2),
-                                                  );
-                                                }),
-                                              ),
-                                              Text(
-                                                DateFormat('dd MMM yyyy')
-                                                    .format(r.fechaResenia),
-                                                style: TextStyle(
-                                                  fontSize: Responsive.fontSize(context, 12),
-                                                  color: colors.textSecondary,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          if (r.comentario != null &&
-                                              r.comentario!.isNotEmpty) ...[
+                                return Column(
+                                  children: [
+                                    _buildDistribution(reviews, colors, context),
+                                    const SizedBox(height: 16),
+                                    Expanded(
+                                      child: ListView.separated(
+                                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                                        itemCount: reviews.length,
+                                        separatorBuilder: (context, index) =>
                                             const SizedBox(height: 12),
-                                            TranslatedText(
-                                              r.comentario!,
-                                              style: GoogleFonts.inter(
-                                                color: colors.textPrimary,
-                                              ),
+                                        itemBuilder: (context, index) {
+                                          final r = reviews[index];
+                                          return AppCard(
+                                            margin: EdgeInsets.zero,
+                                            padding: EdgeInsets.all(Responsive.padding(context, 16)),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.spaceBetween,
+                                                  children: [
+                                                    Row(
+                                                      children: List.generate(5, (i) {
+                                                        return Icon(
+                                                          Icons.star,
+                                                          size: Responsive.iconSize(context, 16),
+                                                          color: i < r.estrellas
+                                                              ? colors.warning
+                                                              : colors.textSecondary
+                                                                  .withValues(
+                                                                      alpha: 0.2),
+                                                        );
+                                                      }),
+                                                    ),
+                                                      Row(
+                                                        children: [
+                                                          Text(
+                                                            DateFormat('dd MMM yyyy')
+                                                                .format(r.fechaResenia),
+                                                            style: TextStyle(
+                                                              fontSize: Responsive.fontSize(context, 12),
+                                                              color: colors.textSecondary,
+                                                            ),
+                                                          ),
+                                                          if (r.comentario != null && r.comentario!.isNotEmpty && !r.isReported)
+                                                            IconButton(
+                                                              icon: Icon(Icons.flag_outlined, size: 16, color: colors.textSecondary),
+                                                              onPressed: () async {
+                                                                final confirm = await showDialog<bool>(
+                                                                  context: context,
+                                                                  builder: (ctx) => AlertDialog(
+                                                                    title: const Text('Reportar Reseña'),
+                                                                    content: const Text('¿Estás seguro de que deseas reportar esta reseña por lenguaje inapropiado o falso? Será revisada por el equipo de moderación.'),
+                                                                    actions: [
+                                                                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+                                                                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Reportar', style: TextStyle(color: Colors.red))),
+                                                                    ],
+                                                                  ),
+                                                                );
+                                                                if (confirm == true) {
+                                                                  await reviewService.reportReview(r.idResenia);
+                                                                  if (context.mounted) {
+                                                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reseña reportada para moderación.')));
+                                                                  }
+                                                                }
+                                                              },
+                                                            ),
+                                                          if (r.isReported)
+                                                            Padding(
+                                                              padding: const EdgeInsets.only(left: 8.0),
+                                                              child: Icon(Icons.flag, size: 16, color: colors.error),
+                                                            ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
+                                                if (r.comentario != null &&
+                                                    r.comentario!.isNotEmpty) ...[
+                                                  const SizedBox(height: 12),
+                                                  TranslatedText(
+                                                    r.comentario!,
+                                                    style: GoogleFonts.inter(
+                                                      color: colors.textPrimary,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
                                             ),
-                                          ],
-                                        ],
+                                          );
+                                        },
                                       ),
-                                    );
-                                  },
+                                    ),
+                                  ],
                                 );
                               },
                             ),
@@ -255,6 +295,62 @@ class MechanicReviewsScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDistribution(List<ReviewModel> reviews, AppColors colors, BuildContext context) {
+    if (reviews.isEmpty) return const SizedBox.shrink();
+
+    final counts = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
+    for (var r in reviews) {
+      counts[r.estrellas] = (counts[r.estrellas] ?? 0) + 1;
+    }
+    final total = reviews.length;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: AppCard(
+        margin: EdgeInsets.zero,
+        padding: EdgeInsets.all(Responsive.padding(context, 20)),
+        child: Column(
+          children: [
+            for (int i = 5; i >= 1; i--)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Text(
+                      '$i',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: colors.textPrimary),
+                    ),
+                    Icon(Icons.star, size: 16, color: colors.warning),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: total > 0 ? (counts[i]! / total) : 0,
+                          backgroundColor: colors.textSecondary.withValues(alpha: 0.1),
+                          valueColor: AlwaysStoppedAnimation<Color>(colors.warning),
+                          minHeight: 8,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 30,
+                      child: Text(
+                        '${counts[i]}',
+                        textAlign: TextAlign.right,
+                        style: TextStyle(color: colors.textSecondary, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

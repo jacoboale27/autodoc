@@ -1,13 +1,14 @@
 {
-    "name": "autodoc",
-    "short_name": "autodoc",
+    "name": "AutoDoc — Gestión Automotriz",
+    "short_name": "AutoDoc",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#522C81",
+    "theme_color": "#522C81",
+    "description": "Gestiona tu vehículo, historial de mantenimientos, alertas y conecta con talleres de confianza.",
+    "orientation": "any",
     "prefer_related_applications": false,
+    "categories": ["utilities", "automotive"],
     "icons": [
         {
             "src": "icons/Icon-192.png",
@@ -30,6 +31,22 @@
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Mi Garaje",
+            "short_name": "Garaje",
+            "description": "Ver mis vehículos",
+            "url": "/garage",
+            "icons": [{ "src": "icons/Icon-192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "Alertas",
+            "short_name": "Alertas",
+            "description": "Ver alertas de mantenimiento",
+            "url": "/alerts",
+            "icons": [{ "src": "icons/Icon-192.png", "sizes": "192x192" }]
         }
     ]
 }

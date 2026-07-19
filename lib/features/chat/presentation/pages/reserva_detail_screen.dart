@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
 import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:intl/intl.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class ReservaDetailScreen extends StatefulWidget {
   final ReservaModel reserva;
@@ -31,13 +32,13 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Reserva $nuevoEstado exitosamente')),
+          SnackBar(content: Text(context.l10n.chatReservationSuccess(nuevoEstado))),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(content: Text(context.l10n.adminError(e.toString()))),
         );
       }
     } finally {
@@ -67,7 +68,7 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
     return Scaffold(
       backgroundColor: isDark ? colors.surfaceContainer : colors.surface,
       appBar: AppBar(
-        title: const Text('Detalle de Cita'),
+        title: Text(context.l10n.chatReservationDetail),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -110,7 +111,7 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
                         ],
                       ),
                       const SizedBox(height: 24),
-                      Text('Servicio', style: TextStyle(color: colors.textSecondary, fontSize: 12)),
+                      Text(context.l10n.chatService, style: TextStyle(color: colors.textSecondary, fontSize: 12)),
                       const SizedBox(height: 4),
                       Text(reserva.tipoServicio.isNotEmpty ? reserva.tipoServicio : 'Mantenimiento General', 
                           style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold)),
@@ -122,7 +123,7 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Fecha', style: TextStyle(color: colors.textSecondary, fontSize: 12)),
+                                Text(context.l10n.chatDate, style: TextStyle(color: colors.textSecondary, fontSize: 12)),
                                 const SizedBox(height: 4),
                                 Text(DateFormat('EEE, dd MMM yyyy', 'es').format(reserva.fechaHoraPropuesta), 
                                     style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold)),
@@ -133,7 +134,7 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Hora', style: TextStyle(color: colors.textSecondary, fontSize: 12)),
+                                Text(context.l10n.chatTime, style: TextStyle(color: colors.textSecondary, fontSize: 12)),
                                 const SizedBox(height: 4),
                                 Text(DateFormat('hh:mm a').format(reserva.fechaHoraPropuesta), 
                                     style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold)),
@@ -144,7 +145,7 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
                       ),
                       const Divider(height: 32),
                       
-                      Text('Vehículo ID', style: TextStyle(color: colors.textSecondary, fontSize: 12)),
+                      Text(context.l10n.chatVehicleId, style: TextStyle(color: colors.textSecondary, fontSize: 12)),
                       const SizedBox(height: 4),
                       Text(reserva.idVehiculo, style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold)),
                     ],
@@ -159,7 +160,7 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () => _cambiarEstado('confirmada'),
                       icon: const Icon(Icons.check),
-                      label: const Text('Aceptar Cita', style: TextStyle(fontWeight: FontWeight.bold)),
+                      label: Text(context.l10n.chatAcceptAppointment, style: const TextStyle(fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: colors.primary,
                         foregroundColor: Colors.white,
@@ -176,7 +177,7 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
                       style: TextButton.styleFrom(
                         foregroundColor: colors.error,
                       ),
-                      child: const Text('Rechazar / Reprogramar', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: Text(context.l10n.chatRejectReschedule, style: const TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],

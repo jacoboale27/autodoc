@@ -103,6 +103,13 @@ class ReviewService {
     await recalculateTallerRating(tallerId);
   }
 
+  Future<void> reportReview(String reviewId) async {
+    final docRef = _resenias.doc(reviewId);
+    await docRef.update({
+      'is_reported': true,
+    });
+  }
+
   Future<void> recalculateTallerRating(String tallerId) async {
     final reviews = await getReviewsForTaller(tallerId);
     final total = reviews.length;

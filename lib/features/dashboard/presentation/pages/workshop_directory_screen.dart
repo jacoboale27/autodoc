@@ -21,6 +21,7 @@ import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 
 class WorkshopDirectoryScreen extends StatefulWidget {
   const WorkshopDirectoryScreen({super.key});
@@ -40,10 +41,26 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
   // Default center (El Salvador)
   static const LatLng _defaultCenter = LatLng(13.6929, -89.2182);
 
+  // Filtros
+  double? _minRating;
+  double? _maxDistance;
+  String? _specialty;
+  final WorkshopService _workshopService = WorkshopService();
+
   @override
   void initState() {
     super.initState();
     _requestLocationPermission();
+    _loadFilters();
+  }
+
+  Future<void> _loadFilters() async {
+    final filters = await _workshopService.loadFilters();
+    setState(() {
+      _minRating = filters['minRating'];
+      _maxDistance = filters['maxDistance'];
+      _specialty = filters['specialty'];
+    });
   }
 
   Future<void> _requestLocationPermission() async {
@@ -141,7 +158,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                     });
 
                     if (_showFavorites) {
-                      final usuario = context.read<UserSessionProvider>().userData;
+                      final usuario = context.read<UserProfileProvider>().userData;
                       if (usuario != null) {
                         items = items.where((item) => usuario.talleresFavoritos.contains(item['id'])).toList();
                       }
@@ -154,6 +171,30 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                         final name = (data['nombre_completo'] as String?)?.toLowerCase() ?? '';
                         final spec = (data['especialidad'] as String?)?.toLowerCase() ?? '';
                         return name.contains(q) || spec.contains(q);
+                      }).toList();
+                    }
+
+                    // Advanced Filters
+                    if (_minRating != null) {
+                      items = items.where((item) {
+                        final data = item['data'] as Map<String, dynamic>;
+                        final rating = data['calificacion_promedio']?.toDouble() ?? 5.0;
+                        return rating >= _minRating!;
+                      }).toList();
+                    }
+                    if (_maxDistance != null) {
+                      items = items.where((item) {
+                        final dist = item['distance'] as double?;
+                        if (dist == null) return false;
+                        return dist <= _maxDistance!;
+                      }).toList();
+                    }
+                    if (_specialty != null && _specialty!.isNotEmpty) {
+                      final q = _specialty!.toLowerCase();
+                      items = items.where((item) {
+                        final data = item['data'] as Map<String, dynamic>;
+                        final spec = (data['especialidad'] as String?)?.toLowerCase() ?? '';
+                        return spec.contains(q);
                       }).toList();
                     }
 
@@ -275,15 +316,117 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
       padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 16)),
       child: Row(
         children: [
-          _buildFilterChip('Todos', Icons.all_inclusive, !_showFavorites, () => setState(() => _showFavorites = false), isDark, colors.textPrimary),
+          _buildFilterChip('Todos', Icons.all_inclusive, !_showFavorites && _minRating == null && _maxDistance == null && _specialty == null, () {
+            setState(() {
+              _showFavorites = false;
+              _minRating = null;
+              _maxDistance = null;
+              _specialty = null;
+            });
+            _workshopService.saveFilters();
+          }, isDark, colors.textPrimary),
           const SizedBox(width: 8),
           _buildFilterChip('Favoritos', Icons.favorite, _showFavorites, () => setState(() => _showFavorites = true), isDark, colors.textPrimary),
           const SizedBox(width: 8),
-          _buildFilterChip('Más Cercanos', Icons.location_on, false, () {}, isDark, colors.textPrimary),
-          const SizedBox(width: 8),
-          _buildFilterChip('Mejor Calificados', Icons.star, false, () {}, isDark, colors.textPrimary),
+          _buildFilterChip('Filtros Avanzados', Icons.tune, _minRating != null || _maxDistance != null || _specialty != null, _showFiltersSheet, isDark, colors.textPrimary),
         ],
       ),
+    );
+  }
+
+  void _showFiltersSheet() {
+    double tempRating = _minRating ?? 0.0;
+    double tempDistance = _maxDistance ?? 50.0;
+    String tempSpecialty = _specialty ?? '';
+    final TextEditingController specController = TextEditingController(text: tempSpecialty);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final colors = context.appColors;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(Responsive.padding(context, 20)),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Filtros Avanzados', style: GoogleFonts.inter(fontSize: Responsive.fontSize(context, 18), fontWeight: FontWeight.bold, color: colors.textPrimary)),
+                    const SizedBox(height: 16),
+                    Text('Calificación Mínima: ${tempRating > 0 ? tempRating.toStringAsFixed(1) : 'Cualquiera'}', style: TextStyle(color: colors.textPrimary)),
+                    Slider(
+                      value: tempRating,
+                      min: 0,
+                      max: 5,
+                      divisions: 10,
+                      activeColor: Colors.amber,
+                      onChanged: (val) => setModalState(() => tempRating = val),
+                    ),
+                    const SizedBox(height: 16),
+                    Text('Distancia Máxima: ${tempDistance.toInt()} km', style: TextStyle(color: colors.textPrimary)),
+                    Slider(
+                      value: tempDistance,
+                      min: 5,
+                      max: 100,
+                      divisions: 19,
+                      activeColor: colors.primary,
+                      onChanged: (val) => setModalState(() => tempDistance = val),
+                    ),
+                    const SizedBox(height: 16),
+                    AppTextField(
+                      controller: specController,
+                      label: 'Especialidad (ej. Frenos, Eléctrico)',
+                      onChanged: (val) => tempSpecialty = val,
+                    ),
+                    const SizedBox(height: 24),
+                    AppButton(
+                      text: 'Aplicar Filtros',
+                      onPressed: () {
+                        setState(() {
+                          _minRating = tempRating > 0 ? tempRating : null;
+                          _maxDistance = tempDistance;
+                          _specialty = tempSpecialty.trim().isNotEmpty ? tempSpecialty.trim() : null;
+                        });
+                        _workshopService.saveFilters(
+                          minRating: _minRating,
+                          maxDistance: _maxDistance,
+                          specialty: _specialty ?? '',
+                        );
+                        Navigator.pop(context);
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    AppButton(
+                      text: 'Limpiar Filtros',
+                      type: AppButtonType.secondary,
+                      onPressed: () {
+                        setState(() {
+                          _minRating = null;
+                          _maxDistance = null;
+                          _specialty = null;
+                        });
+                        _workshopService.saveFilters(specialty: '');
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

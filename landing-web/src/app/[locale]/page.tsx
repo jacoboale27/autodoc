@@ -2,6 +2,7 @@ import Header from "@/components/ui/Header";
 import HeroSection from "@/components/ui/HeroSection";
 import ValuePropSection from "@/components/ui/ValuePropSection";
 import FeaturesGrid from "@/components/ui/FeaturesGrid";
+import WorkshopsSection from "@/components/ui/WorkshopsSection";
 import Footer from "@/components/ui/Footer";
 import { setRequestLocale } from 'next-intl/server';
 
@@ -22,6 +23,7 @@ export default async function Home({
       <div className="relative z-10 bg-[#0f172a]">
         <FeaturesGrid />
         <ValuePropSection />
+        <WorkshopsSection />
         <Footer />
       </div>
     </main>

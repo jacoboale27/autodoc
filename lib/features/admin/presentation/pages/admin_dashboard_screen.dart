@@ -71,11 +71,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       body: provider.isLoading
           ? Center(child: CircularProgressIndicator(color: colors.primary))
           : provider.error != null
-              ? Center(child: Text('Error: ${provider.error}'))
+              ? Center(child: Text(context.l10n.adminError(provider.error!)))
               : RefreshIndicator(
                   color: colors.primary,
                   onRefresh: () async {
-                    await provider.fetchMetrics();
+                    provider.fetchMetrics();
                     await adminProvider.fetchLogs();
                   },
                   child: SingleChildScrollView(

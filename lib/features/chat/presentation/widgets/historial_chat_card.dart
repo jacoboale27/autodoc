@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import '../../data/models/mensaje_model.dart';
 import 'package:go_router/go_router.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class HistorialChatCard extends StatelessWidget {
   final MensajeModel mensaje;
@@ -56,7 +57,7 @@ class HistorialChatCard extends StatelessWidget {
                 backgroundColor: isMe ? Colors.white : colors.primary,
                 foregroundColor: isMe ? colors.primary : Colors.white,
               ),
-              child: const Text('Ver Historial Completo'),
+              child: Text(context.l10n.chatViewFullHistory),
             ),
           ],
         ),

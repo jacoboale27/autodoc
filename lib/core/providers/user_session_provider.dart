@@ -6,6 +6,15 @@ import 'package:autodoc/features/profile/data/services/user_service.dart';
 import 'package:autodoc/features/auth/data/services/auth_preferences_service.dart';
 import 'package:autodoc/core/services/notification_service.dart';
 
+/// UserSessionProvider — slim facade.
+///
+/// This provider consolidates auth state and user profile for screens
+/// that need both. The heavy logic is delegated to:
+///   - AuthSessionProvider  → FirebaseAuth, uid, isLoggedIn
+///   - UserProfileProvider  → UserModel, fetch/update profile
+///
+/// This facade remains for backward compatibility with existing screens
+/// (~20 files reference it). New code should prefer the focused providers.
 class UserSessionProvider with ChangeNotifier {
   final UserService _userService = UserService();
   final AuthPreferencesService _authPreferences = AuthPreferencesService();
@@ -25,7 +34,7 @@ class UserSessionProvider with ChangeNotifier {
   String get currentUid => _user?.uid ?? _userData?.idUsuario ?? '';
 
   UserSessionProvider() {
-    FirebaseAuth.instance.authStateChanges().listen((User? user) async {
+    FirebaseAuth.instance.idTokenChanges().listen((User? user) async {
       _user = user;
       if (user != null) {
         await fetchUserData(user.uid);
@@ -106,4 +115,12 @@ class UserSessionProvider with ChangeNotifier {
   Future<bool> loadRememberMe() => _authPreferences.getRememberMe();
 
   Future<String?> loadSavedEmail() => _authPreferences.getSavedEmail();
+
+  /// Refreshes user data from Firestore (used to poll approval status).
+  Future<void> refreshUserData() async {
+    final uid = _user?.uid ?? _userData?.idUsuario;
+    if (uid != null && uid.isNotEmpty) {
+      await fetchUserData(uid);
+    }
+  }
 }

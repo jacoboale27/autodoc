@@ -294,7 +294,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
       child: Column(
         children: [
           Text(
-            'Total gastado',
+            context.l10n.histTotalSpent,
             style: GoogleFonts.inter(
               color: colors.textSecondary,
               fontSize: 14,
@@ -318,7 +318,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
               Column(
                 children: [
                   Text(
-                    'Servicios',
+                    context.l10n.histServicesCount,
                     style: TextStyle(color: colors.textSecondary, fontSize: 12),
                   ),
                   const SizedBox(height: 2),
@@ -335,7 +335,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
               Column(
                 children: [
                   Text(
-                    'Promedio',
+                    context.l10n.histAverage,
                     style: TextStyle(color: colors.textSecondary, fontSize: 12),
                   ),
                   const SizedBox(height: 2),
@@ -554,7 +554,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                         const SizedBox(width: 4),
                         Text(
                           context.l10n.histEvidence,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                             color: Colors.green,

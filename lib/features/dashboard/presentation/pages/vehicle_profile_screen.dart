@@ -11,10 +11,8 @@ import 'package:provider/provider.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import '../providers/vehicle_provider.dart';
 import '../widgets/license_plate_widget.dart';
-import 'package:go_router/go_router.dart';
-import 'package:autodoc/core/providers/user_session_provider.dart';
-
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_scaffold.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
@@ -22,6 +20,7 @@ import 'package:autodoc/core/widgets/app_button.dart';
 import '../widgets/share_vehicle_sheet.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/providers/auth_session_provider.dart';
 
 class VehicleProfileScreen extends StatefulWidget {
   final VehicleModel vehicle;
@@ -344,7 +343,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Notas Rápidas',
+                context.l10n.vpQuickNotes,
                 style: GoogleFonts.inter(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -374,7 +373,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                             onPressed: () async {
                               final text = controller.text.trim();
                               if (text.isNotEmpty) {
-                                final uid = context.read<UserSessionProvider>().user?.uid;
+                                final uid = context.read<AuthSessionProvider>().user?.uid;
                                 final provider = context.read<VehicleProvider>();
                                 await VehicleService().addNote(vehicle.idVehiculo, text);
                                 if (uid != null) {
@@ -402,7 +401,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
               key: Key(nota),
               direction: DismissDirection.endToStart,
               onDismissed: (direction) async {
-                final uid = context.read<UserSessionProvider>().user?.uid;
+                final uid = context.read<AuthSessionProvider>().user?.uid;
                 final provider = context.read<VehicleProvider>();
                 await VehicleService().removeNote(vehicle.idVehiculo, nota);
                 if (uid != null) {

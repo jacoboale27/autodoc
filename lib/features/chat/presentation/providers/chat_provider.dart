@@ -8,7 +8,10 @@ import '../../data/models/cotizacion_model.dart';
 import '../../data/repositories/chat_repository.dart';
 
 class ChatProvider extends ChangeNotifier {
-  final ChatRepository _chatRepository = ChatRepository();
+  final ChatRepository _chatRepository;
+
+  ChatProvider({ChatRepository? repository}) 
+      : _chatRepository = repository ?? ChatRepository();
   
   List<ConversacionModel> _conversaciones = [];
   List<ConversacionModel> get conversaciones => _conversaciones;

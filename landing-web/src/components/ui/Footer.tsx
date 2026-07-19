@@ -44,20 +44,23 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="mb-6 font-bold text-slate-900 dark:text-white">{t("footerSocial")}</h4>
-            <ul className="space-y-4 text-sm text-slate-500 dark:text-slate-400">
-              <li><a href="#" className="hover:text-[#522C81] dark:hover:text-sky-400">Twitter</a></li>
-              <li><a href="#" className="hover:text-[#522C81] dark:hover:text-sky-400">Instagram</a></li>
-              <li><a href="#" className="hover:text-[#522C81] dark:hover:text-sky-400">LinkedIn</a></li>
-            </ul>
+            <h4 className="mb-6 font-bold text-slate-900 dark:text-white">Descarga la App</h4>
+            <div className="flex flex-col gap-3">
+              <a href="#" className="inline-block">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt="Download on the App Store" className="h-10" />
+              </a>
+              <a href="#" className="inline-block">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Get it on Google Play" className="h-10" />
+              </a>
+            </div>
           </div>
         </div>
 
         <div className="mt-16 flex flex-col items-center justify-between border-t border-slate-200 dark:border-slate-800 pt-8 sm:flex-row text-sm text-slate-500">
           <p>{t("footerCopyright")}</p>
           <div className="mt-4 flex gap-4 sm:mt-0">
-            <a href="#" className="hover:text-slate-900 dark:hover:text-white">Privacidad</a>
-            <a href="#" className="hover:text-slate-900 dark:hover:text-white">Términos</a>
+            <a href="https://autodoc.app/privacidad" target="_blank" rel="noopener noreferrer" className="hover:text-slate-900 dark:hover:text-white">Privacidad</a>
+            <a href="https://autodoc.app/terminos" target="_blank" rel="noopener noreferrer" className="hover:text-slate-900 dark:hover:text-white">Términos</a>
           </div>
         </div>
       </div>

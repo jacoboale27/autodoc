@@ -68,25 +68,25 @@
   "heroSubtitle": "Digitize your vehicle today. Certified clinical history, smart SOAT and maintenance alerts, connected with the best workshops.",
   "heroStartGarage": "Start my Garage",
   "heroViewDirectory": "View Directory",
-  "commandCenterTitle": "Digital Command Center",
-  "commandCenterSubtitle": "Take control of your automotive experience with tools designed for your peace of mind.",
-  "tabGarageTitle": "Virtual Garage",
-  "tabGarageSubtitle": "Centralize information for all your vehicles in a single interactive panel.",
-  "tabHistoryTitle": "Digital History",
-  "tabHistorySubtitle": "Every service, invoice, and photo saved securely forever.",
-  "tabAlertsTitle": "Proactive Alerts",
-  "tabAlertsSubtitle": "SOAT, insurance, and oil changes. We notify you before it's too late.",
-  "tabSyncTitle": "Workshop Connection",
-  "tabSyncSubtitle": "Direct synchronization with mechanics for real service validation.",
-  "valuePropTitle": "Peace of mind for the driver, efficiency for the expert.",
-  "valuePropSubtitle": "We designed a platform that breaks the barrier of distrust between owners and workshops. With AutoDoc, every intervention is clear, every cost is justified, and every vehicle maintains its resale value.",
-  "statSatisfaction": "User Satisfaction",
-  "statWorkshops": "Verified Workshops",
-  "footerDesc": "Transforming automotive management through intelligent technology and guaranteed transparency.",
+  "commandCenterTitle": "Command Center",
+  "commandCenterSubtitle": "Everything you need in one place",
+  "tabGarageTitle": "Garage",
+  "tabGarageSubtitle": "Your vehicles",
+  "tabHistoryTitle": "History",
+  "tabHistorySubtitle": "Services",
+  "tabAlertsTitle": "Alerts",
+  "tabAlertsSubtitle": "Reminders",
+  "tabSyncTitle": "Sync",
+  "tabSyncSubtitle": "Data",
+  "valuePropTitle": "Why choose AutoDoc",
+  "valuePropSubtitle": "Exclusive benefits",
+  "statSatisfaction": "99% Satisfaction",
+  "statWorkshops": "+500 Workshops",
+  "footerDesc": "The best app for your vehicle care",
   "footerOwners": "For Owners",
   "footerWorkshops": "For Workshops",
-  "footerSocial": "Social",
-  "footerCopyright": "© 2026 AutoDoc Technology. Made for smart drivers.",
+  "footerSocial": "Social Media",
+  "footerCopyright": "© 2026 AutoDoc. All rights reserved.",
   "dashHello": "Hello, {userName} 👋",
   "@dashHello": {
     "placeholders": {
@@ -422,23 +422,198 @@
   "adminRecentActivityTitle": "Recent Activity",
   "adminNoRecentActivity": "No recent activity",
   "adminViewAllLogs": "View all logs",
-  "commandCenterTitle": "Command Center",
-  "commandCenterSubtitle": "Everything you need in one place",
-  "tabGarageTitle": "Garage",
-  "tabGarageSubtitle": "Your vehicles",
-  "tabHistoryTitle": "History",
-  "tabHistorySubtitle": "Services",
-  "tabAlertsTitle": "Alerts",
-  "tabAlertsSubtitle": "Reminders",
-  "tabSyncTitle": "Sync",
-  "tabSyncSubtitle": "Data",
-  "footerDesc": "The best app for your vehicle care",
-  "footerOwners": "For Owners",
-  "footerWorkshops": "For Workshops",
-  "footerSocial": "Social Media",
-  "footerCopyright": "© 2026 AutoDoc. All rights reserved.",
-  "valuePropTitle": "Why choose AutoDoc",
-  "valuePropSubtitle": "Exclusive benefits",
-  "statSatisfaction": "99% Satisfaction",
-  "statWorkshops": "+500 Workshops"
+  "authCompleteCredentials": "Fill in email and password.",
+  "authEnterValidEmail": "Enter a valid email address.",
+  "authPasswordTooShort": "Password must be at least 6 characters.",
+  "addVehicleBrand": "Brand",
+  "addVehicleBrandSubtitle": "What is the brand of your vehicle?",
+  "addVehicleSearchBrand": "Search brand...",
+  "addVehicleErrorBrands": "Error loading brands",
+  "addVehicleRetry": "Retry",
+  "addVehicleNotFoundBrand": "I can't find my brand...",
+  "addVehicleModel": "Model",
+  "addVehicleModelSubtitle": "Select the model of your {brand}",
+  "@addVehicleModelSubtitle": {
+    "placeholders": {
+      "brand": {
+        "type": "String"
+      }
+    }
+  },
+  "addVehicleSearchModel": "Search model...",
+  "addVehicleErrorModels": "Error loading models",
+  "addVehicleNotFoundModel": "I can't find my model...",
+  "addVehicleDetails": "Final Details",
+  "addVehicleDetailsSubtitle": "Complete the remaining information",
+  "addVehiclePlate": "License Plate",
+  "addVehiclePlateHint": "e.g. P123-456",
+  "addVehicleYear": "Year",
+  "addVehicleColor": "Color",
+  "addVehicleColorHint": "Gray",
+  "addVehicleMileage": "Current Mileage",
+  "addVehicleDocs": "Documentation",
+  "addVehicleCardExp": "Card Expiration",
+  "addVehicleSoatExp": "SOAT Expiration",
+  "addVehicleFinish": "Finish Registration",
+  "addVehicleSuccess": "Vehicle Registered!",
+  "addVehicleSuccessDesc": "Your {brand} {model} is now in the garage.",
+  "@addVehicleSuccessDesc": {
+    "placeholders": {
+      "brand": {
+        "type": "String"
+      },
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "addVehicleGoDashboard": "Go to Dashboard",
+  "addVehicleSelectDate": "Select date",
+  "histTotalSpent": "Total spent",
+  "histServicesCount": "Services",
+  "histAverage": "Average",
+  "vpQuickNotes": "Quick Notes",
+  "pdfHistoryTitle": "Service History",
+  "pdfVehicle": "Vehicle: {brand} {model} ({year})",
+  "@pdfVehicle": {
+    "placeholders": {
+      "brand": {
+        "type": "String"
+      },
+      "model": {
+        "type": "String"
+      },
+      "year": {
+        "type": "String"
+      }
+    }
+  },
+  "pdfPlate": "Plate: {plate}",
+  "@pdfPlate": {
+    "placeholders": {
+      "plate": {
+        "type": "String"
+      }
+    }
+  },
+  "pdfReportDate": "Report Date: {date}",
+  "@pdfReportDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "pdfTotalServices": "Total Services: {count}",
+  "@pdfTotalServices": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "pdfTotalSpent": "Total Spent: ${amount}",
+  "@pdfTotalSpent": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "adminLogsTitle": "Activity Log",
+  "adminDeleteReview": "Delete Review",
+  "adminCancel": "Cancel",
+  "adminDelete": "Delete",
+  "adminModerateReviews": "Review Moderation",
+  "adminAccessDenied": "Access Denied",
+  "adminAccessDeniedDesc": "This screen is only available in a development environment.",
+  "adminConfigAdmins": "Configure Administrators",
+  "adminConfirm": "Confirm",
+  "adminManageWorkshops": "Workshop Management",
+  "adminChangeRole": "Change User Role",
+  "adminSelectNewRole": "Select the new role:",
+  "adminManageUsers": "User Management",
+  "adminSuspendAccount": "Suspend Account",
+  "adminReactivateAccount": "Reactivate Account",
+  "adminChangeUserRole": "Change Role",
+  "adminNoTrendData": "No trend data available.",
+  "adminReject": "Reject",
+  "adminApproveWorkshop": "Approve Workshop",
+  "adminSuspend": "Suspend",
+  "adminReactivate": "Reactivate",
+  "adminError": "Error: {error}",
+  "@adminError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "chatOpeningSection": "Opening {label} section...",
+  "@chatOpeningSection": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "chatDeleteMessage": "Delete message",
+  "chatCamera": "Camera",
+  "chatGallery": "Gallery",
+  "chatShareVehicle": "Share Vehicle",
+  "chatNewReservation": "New Reservation",
+  "chatSendQuote": "Send Quote",
+  "chatRequestRating": "Request Rating",
+  "chatUploadImageError": "Error uploading image",
+  "chatReservationSuccess": "Reservation {status} successfully",
+  "@chatReservationSuccess": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "chatReservationDetail": "Appointment Detail",
+  "coreAppTitle": "AutoDoc Workshop",
+  "chatViewFullHistory": "View Full History",
+  "chatConfirmProposal": "Confirm Proposal",
+  "chatGenerateAndSend": "Generate and Send",
+  "chatRateService": "Rate Service",
+  "chatReviewThanks": "Thank you for your review!",
+  "chatAccept": "Accept",
+  "chatReject": "Reject",
+  "chatViewDetail": "View detail",
+  "chatService": "Service",
+  "chatDate": "Date",
+  "chatTime": "Time",
+  "chatVehicleId": "Vehicle ID",
+  "chatAcceptAppointment": "Accept Appointment",
+  "chatRejectReschedule": "Reject / Reschedule",
+  "chatConfirmDelete": "Are you sure you want to delete this message for everyone?",
+  "notifications": "Notifications",
+  "noNotifications": "You have no notifications",
+  "markAllRead": "Mark all as read",
+  "upLanguage": "Language / Idioma",
+  "upLanguageDesc": "EN (Enabled) / ES (Disabled)",
+  "upAbout": "About AutoDoc",
+  "upAboutDesc": "Version, credits and legal",
+  "upDeleteAccountTitle": "Delete Account",
+  "upDeleteAccountConfirm": "Are you sure you want to delete your account? This action cannot be undone and you will lose all your data.",
+  "upEnterPasswordConfirm": "To confirm, enter your password:",
+  "upPasswordLabel": "Password",
+  "upGoogleReauthConfirm": "To confirm, you must sign in with Google again.",
+  "upPasswordEmpty": "Password cannot be empty.",
+  "upPasswordIncorrect": "Incorrect password.",
+  "upGoogleReauthFailed": "Could not re-authenticate with Google.",
+  "upDeleteAccountError": "Error deleting account: {error}",
+  "@upDeleteAccountError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "upCancel": "Cancel",
+  "upDelete": "Delete",
+  "upDeleteAccount": "Delete account"
 }

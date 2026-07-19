@@ -14,6 +14,7 @@ import 'package:intl/intl.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/providers/language_provider.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 class MechanicDashboardScreen extends StatefulWidget {
   const MechanicDashboardScreen({super.key});
@@ -102,6 +103,8 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                             _buildQuickActions(colors, isMobile),
                             const SizedBox(height: 32),
                             _buildDashboardMetrics(colors, isMobile, userData.idUsuario),
+                            const SizedBox(height: 32),
+                            _buildIncomeChartSection(colors, isMobile, userData.idUsuario),
                             const SizedBox(height: 32),
                             _buildRecentServices(colors, userData.idUsuario),
                           ],
@@ -284,18 +287,36 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
             
             final vehiculosUnicos = <String>{};
             int serviciosMesActual = 0;
+            double ingresosMesActual = 0;
+            double ingresosMesAnterior = 0;
             final now = DateTime.now();
+            final pastMonth = DateTime(now.year, now.month - 1);
             
             for (var doc in allServicios) {
               final data = doc.data() as Map<String, dynamic>;
               vehiculosUnicos.add(data['id_vehiculo'] ?? '');
+              final double costo = data['costo'] != null ? (data['costo'] is int ? (data['costo'] as int).toDouble() : data['costo'] as double) : 0.0;
               
               if (data['fecha'] != null) {
                 final fecha = (data['fecha'] as Timestamp).toDate();
                 if (fecha.year == now.year && fecha.month == now.month) {
                   serviciosMesActual++;
+                  ingresosMesActual += costo;
+                } else if (fecha.year == pastMonth.year && fecha.month == pastMonth.month) {
+                  ingresosMesAnterior += costo;
                 }
               }
+            }
+
+            String variacionIngresos = '';
+            if (ingresosMesAnterior > 0) {
+              final diff = ingresosMesActual - ingresosMesAnterior;
+              final pct = (diff / ingresosMesAnterior) * 100;
+              variacionIngresos = '${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%';
+            } else if (ingresosMesActual > 0) {
+              variacionIngresos = '+100%';
+            } else {
+              variacionIngresos = '0%';
             }
 
             return LayoutBuilder(builder: (context, constraints) {
@@ -306,6 +327,15 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                 spacing: 24,
                 runSpacing: 24,
                 children: [
+                  _buildMetricCard(
+                    title: 'Ingresos (Mes)',
+                    value: '\$${ingresosMesActual.toStringAsFixed(2)}',
+                    icon: Icons.attach_money,
+                    accentColor: colors.success,
+                    colors: colors,
+                    width: cardWidth,
+                    subtitle: variacionIngresos.isNotEmpty ? '$variacionIngresos vs mes ant.' : null,
+                  ),
                   _buildMetricCard(
                     title: 'Servicios (Mes)',
                     value: serviciosMesActual.toString(),
@@ -365,6 +395,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
     required AppColors colors,
     required double width,
     VoidCallback? onTap,
+    String? subtitle,
   }) {
     return AppCard(
       padding: EdgeInsets.all(Responsive.padding(context, 24)),
@@ -403,11 +434,169 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.inter(
+                        color: subtitle.startsWith('+') ? colors.success : (subtitle.startsWith('-') ? colors.error : colors.textSecondary),
+                        fontSize: Responsive.fontSize(context, 12),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildIncomeChartSection(AppColors colors, bool isMobile, String tallerId) {
+    return AppCard(
+      padding: EdgeInsets.all(Responsive.padding(context, 24)),
+      margin: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Tendencia de Ingresos',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.bold,
+                  fontSize: Responsive.fontSize(context, 18),
+                  color: colors.primary,
+                ),
+              ),
+              Icon(Icons.show_chart, color: colors.success),
+            ],
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            height: 250,
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection(FirestoreCollections.servicios)
+                  .where('id_taller', isEqualTo: tallerId)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final docs = snapshot.data!.docs;
+                final now = DateTime.now();
+                
+                // Generar últimos 6 meses
+                final Map<String, double> ingresosPorMes = {};
+                for (int i = 5; i >= 0; i--) {
+                  final m = DateTime(now.year, now.month - i);
+                  ingresosPorMes['${m.year}-${m.month}'] = 0.0;
+                }
+
+                // Sumar ingresos
+                for (var doc in docs) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  if (data['fecha'] != null) {
+                    final fecha = (data['fecha'] as Timestamp).toDate();
+                    final key = '${fecha.year}-${fecha.month}';
+                    if (ingresosPorMes.containsKey(key)) {
+                      final double costo = data['costo'] != null ? (data['costo'] is int ? (data['costo'] as int).toDouble() : data['costo'] as double) : 0.0;
+                      ingresosPorMes[key] = (ingresosPorMes[key] ?? 0) + costo;
+                    }
+                  }
+                }
+
+                final values = ingresosPorMes.values.toList();
+                final keys = ingresosPorMes.keys.toList();
+                
+                double maxY = 100;
+                for (var v in values) {
+                  if (v > maxY) maxY = v;
+                }
+                maxY = (maxY * 1.2).ceilToDouble(); // 20% margen superior
+
+                final spots = <FlSpot>[];
+                for (int i = 0; i < values.length; i++) {
+                  spots.add(FlSpot(i.toDouble(), values[i]));
+                }
+
+                return LineChart(
+                  LineChartData(
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      horizontalInterval: maxY > 0 ? maxY / 4 : 25,
+                      getDrawingHorizontalLine: (value) => FlLine(
+                        color: colors.textSecondary.withValues(alpha: 0.1),
+                        strokeWidth: 1,
+                      ),
+                    ),
+                    titlesData: FlTitlesData(
+                      show: true,
+                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 30,
+                          interval: 1,
+                          getTitlesWidget: (value, meta) {
+                            final idx = value.toInt();
+                            if (idx >= 0 && idx < keys.length) {
+                              final parts = keys[idx].split('-');
+                              final m = int.parse(parts[1]);
+                              const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 8.0),
+                                child: Text(meses[m - 1], style: TextStyle(color: colors.textSecondary, fontSize: 12)),
+                              );
+                            }
+                            return const Text('');
+                          },
+                        ),
+                      ),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          interval: maxY > 0 ? maxY / 4 : 25,
+                          reservedSize: 42,
+                          getTitlesWidget: (value, meta) {
+                            if (value == maxY) return const SizedBox.shrink();
+                            return Text('\$${value.toInt()}', style: TextStyle(color: colors.textSecondary, fontSize: 10));
+                          },
+                        ),
+                      ),
+                    ),
+                    borderData: FlBorderData(show: false),
+                    minX: 0,
+                    maxX: 5,
+                    minY: 0,
+                    maxY: maxY > 0 ? maxY : 100,
+                    lineBarsData: [
+                      LineChartBarData(
+                        spots: spots,
+                        isCurved: true,
+                        color: colors.success,
+                        barWidth: 3,
+                        isStrokeCapRound: true,
+                        dotData: const FlDotData(show: true),
+                        belowBarData: BarAreaData(
+                          show: true,
+                          color: colors.success.withValues(alpha: 0.1),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

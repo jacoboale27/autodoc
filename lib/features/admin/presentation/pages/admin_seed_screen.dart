@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:flutter/foundation.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 /// Pantalla que indicaba el estado de la migración de cuentas.
 /// La semilla fue ejecutada con éxito y los secretos fueron eliminados por seguridad.
@@ -9,9 +11,18 @@ class AdminSeedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!kDebugMode) {
+      return Scaffold(
+        appBar: AppBar(title: Text(context.l10n.adminAccessDenied)),
+        body: Center(
+          child: Text(context.l10n.adminAccessDeniedDesc),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Configurar Administradores'),
+        title: Text(context.l10n.adminConfigAdmins),
         centerTitle: true,
       ),
       body: Center(

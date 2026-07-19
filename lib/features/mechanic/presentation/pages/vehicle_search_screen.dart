@@ -3,11 +3,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
 
 class VehicleSearchScreen extends StatefulWidget {
   const VehicleSearchScreen({super.key});
@@ -26,6 +28,29 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
       return '${clean.substring(0, 3)}-${clean.substring(3)}';
     }
     return clean;
+  }
+
+  Future<void> _scanQR() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(title: const Text('Escanear QR')),
+          body: MobileScanner(
+            onDetect: (capture) {
+              final List<Barcode> barcodes = capture.barcodes;
+              if (barcodes.isNotEmpty) {
+                final barcode = barcodes.first;
+                if (barcode.rawValue != null) {
+                  Navigator.of(context).pop();
+                  _searchController.text = barcode.rawValue!;
+                  _handleSearch();
+                }
+              }
+            },
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _handleSearch() async {
@@ -156,13 +181,20 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
               CircleAvatar(
                 radius: 18,
                 backgroundColor: colors.primary,
-                child: Text(
-                  'ML',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: Responsive.fontSize(context, 12),
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: Builder(
+                  builder: (ctx) {
+                    final session = ctx.watch<UserSessionProvider>();
+                    final name = session.userData?.nombreCompleto ?? 'Taller';
+                    final initials = name.length >= 2 ? name.substring(0, 2).toUpperCase() : 'TA';
+                    return Text(
+                      initials,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: Responsive.fontSize(context, 12),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    );
+                  }
                 ),
               ),
             ],
@@ -233,16 +265,19 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
                     onSubmitted: (_) => _handleSearch(),
                   ),
                 ),
-                Container(
-                  padding: EdgeInsets.all(isMobile ? 12 : 16),
-                  decoration: BoxDecoration(
-                    color: colors.secondary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.qr_code_scanner,
-                    color: colors.primary,
-                    size: isMobile ? 20 : 28,
+                GestureDetector(
+                  onTap: _scanQR,
+                  child: Container(
+                    padding: EdgeInsets.all(isMobile ? 12 : 16),
+                    decoration: BoxDecoration(
+                      color: colors.secondary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.qr_code_scanner,
+                      color: colors.primary,
+                      size: isMobile ? 20 : 28,
+                    ),
                   ),
                 ),
               ],

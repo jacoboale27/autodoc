@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class ServicesTrendChart extends StatelessWidget {
   final Map<String, int> serviciosPorMes;
@@ -16,7 +17,7 @@ class ServicesTrendChart extends StatelessWidget {
     if (serviciosPorMes.isEmpty) {
       return AppCard(
         padding: const EdgeInsets.all(24),
-        child: const Center(child: Text("No hay datos de tendencias disponibles.")),
+        child: Center(child: Text(context.l10n.adminNoTrendData)),
       );
     }
 
@@ -52,7 +53,7 @@ class ServicesTrendChart extends StatelessWidget {
             height: 250,
             child: LineChart(
               LineChartData(
-                gridData: FlGridData(show: false),
+                gridData: const FlGridData(show: false),
                 titlesData: FlTitlesData(
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(

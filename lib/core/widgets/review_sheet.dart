@@ -6,6 +6,7 @@ import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:autodoc/features/reviews/data/services/review_service.dart';
 import 'package:autodoc/core/models/review_model.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 
 /// Muestra un bottom sheet para calificar un taller/mecánico.
 Future<bool?> showReviewBottomSheet(
@@ -49,6 +50,7 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
   int _estrellas = 5;
   bool _isSubmitting = false;
   bool _checking = true;
+  bool _canEdit = true;
 
   ReviewModel? _existingReview;
 
@@ -59,7 +61,7 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
   }
 
   Future<void> _checkExisting() async {
-    final userId = context.read<UserSessionProvider>().userData?.idUsuario;
+    final userId = context.read<UserProfileProvider>().userData?.idUsuario;
     if (userId == null) {
       setState(() => _checking = false);
       return;
@@ -71,6 +73,9 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
         if (existing != null) {
           _estrellas = existing.estrellas;
           _comentarioController.text = existing.comentario ?? '';
+          if (DateTime.now().difference(existing.fechaResenia).inDays > 7) {
+            _canEdit = false;
+          }
         }
         _checking = false;
       });
@@ -195,12 +200,34 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
                 ),
               ),
             ),
+            if (!_canEdit) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: colors.error, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Las reseñas solo se pueden editar dentro de los primeros 7 días.',
+                        style: TextStyle(color: colors.error, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: AppButton(
                 text: _isSubmitting ? 'Guardando...' : (_existingReview != null ? 'Actualizar reseña' : 'Publicar reseña'),
-                onPressed: _isSubmitting ? null : _submit,
+                onPressed: (_isSubmitting || !_canEdit) ? null : _submit,
               ),
             ),
           ],

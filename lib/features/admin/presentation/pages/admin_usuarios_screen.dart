@@ -6,6 +6,7 @@ import '../widgets/admin_sidebar.dart';
 import '../widgets/account_row.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class AdminUsuariosScreen extends StatefulWidget {
   const AdminUsuariosScreen({super.key});
@@ -16,6 +17,9 @@ class AdminUsuariosScreen extends StatefulWidget {
 
 class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
   String _searchQuery = '';
+  String _filterRol = 'Todos';
+  String _filterEstado = 'Todos'; // Todos, activo, suspendido, Pendiente
+  DateTime? _filterDateFrom;
 
   @override
   void initState() {
@@ -36,13 +40,13 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
           decoration: const InputDecoration(labelText: 'Motivo / Detalle'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.adminCancel)),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               onConfirm(controller.text.isEmpty ? 'Sin motivo' : controller.text);
             },
-            child: Text('Confirmar'),
+            child: Text(context.l10n.adminConfirm),
           ),
         ],
       ),
@@ -58,7 +62,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            title: Text('Cambiar Rol de Usuario'),
+            title: Text(context.l10n.adminChangeRole),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,7 +72,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                   style: TextStyle(color: Colors.grey[600], fontSize: Responsive.fontSize(context, 13)),
                 ),
                 const SizedBox(height: 16),
-                Text('Selecciona el nuevo rol:', style: TextStyle(fontWeight: FontWeight.w600)),
+                Text(context.l10n.adminSelectNewRole, style: const TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 12),
                 ...roles.where((r) => r != rolActual).map((rol) => ListTile(
                   title: Text(rol),
@@ -83,7 +87,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
               ],
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancelar')),
+              TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.adminCancel)),
               ElevatedButton(
                 onPressed: selectedRol == null
                     ? null
@@ -95,7 +99,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                               selectedRol!,
                             );
                       },
-                child: Text('Confirmar'),
+                child: Text(context.l10n.adminConfirm),
               ),
             ],
           );
@@ -147,20 +151,29 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
     });
 
     final usuariosFiltrados = provider.usuarios.where((u) {
-      return u.nombreCompleto.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-             u.correo.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchSearch = u.nombreCompleto.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                          u.correo.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchRol = _filterRol == 'Todos' || u.rol == _filterRol;
+      final matchEstado = _filterEstado == 'Todos' || u.estado.toLowerCase() == _filterEstado.toLowerCase();
+      final matchDate = _filterDateFrom == null || u.fechaRegistro.isAfter(_filterDateFrom!);
+      return matchSearch && matchRol && matchEstado && matchDate;
     }).toList();
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Gestión de Usuarios'),
+        title: Text(context.l10n.adminManageUsers),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.filter_list_rounded),
+            tooltip: 'Filtros avanzados',
+            onPressed: _showAdvancedFilters,
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Chip(
               avatar: Icon(Icons.people, size: Responsive.iconSize(context, 16)),
-              label: Text('${provider.usuarios.length}'),
+              label: Text('${usuariosFiltrados.length}'),
               backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
             ),
           ),
@@ -180,6 +193,22 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
           ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 16.0)),
+            child: Row(
+              children: [
+                _buildFilterChip('Todos'),
+                const SizedBox(width: 8),
+                _buildFilterChip('Propietario'),
+                const SizedBox(width: 8),
+                _buildFilterChip('Mecanico'),
+                const SizedBox(width: 8),
+                _buildFilterChip('Administrador'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
           Expanded(
             child: provider.isLoading
                 ? Center(child: CircularProgressIndicator(color: colors.primary))
@@ -232,6 +261,103 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFilterChip(String label) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: _filterRol == label,
+      onSelected: (selected) {
+        if (selected) setState(() => _filterRol = label);
+      },
+    );
+  }
+
+  void _showAdvancedFilters() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(builder: (ctx, setSheetState) {
+          return Padding(
+            padding: EdgeInsets.all(Responsive.padding(context, 24)),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Filtros Avanzados', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 20),
+
+                Text('Estado de cuenta', style: Theme.of(context).textTheme.labelLarge),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: ['Todos', 'activo', 'suspendido', 'Pendiente'].map((estado) {
+                    return ChoiceChip(
+                      label: Text(estado == 'Todos' ? 'Todos' : estado[0].toUpperCase() + estado.substring(1)),
+                      selected: _filterEstado == estado,
+                      onSelected: (_) {
+                        setSheetState(() => _filterEstado = estado);
+                        setState(() => _filterEstado = estado);
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 20),
+
+                Text('Registrado desde', style: Theme.of(context).textTheme.labelLarge),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.calendar_today, size: 16),
+                  label: Text(_filterDateFrom != null
+                      ? 'Desde ${_filterDateFrom!.day}/${_filterDateFrom!.month}/${_filterDateFrom!.year}'
+                      : 'Seleccionar fecha'),
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _filterDateFrom ?? DateTime.now().subtract(const Duration(days: 30)),
+                      firstDate: DateTime(2024),
+                      lastDate: DateTime.now(),
+                    );
+                    if (picked != null) {
+                      setSheetState(() => _filterDateFrom = picked);
+                      setState(() => _filterDateFrom = picked);
+                    }
+                  },
+                ),
+                const SizedBox(height: 20),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          setState(() {
+                            _filterEstado = 'Todos';
+                            _filterDateFrom = null;
+                          });
+                          Navigator.pop(ctx);
+                        },
+                        child: const Text('Limpiar'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Aplicar'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        });
+      },
     );
   }
 }

@@ -8,6 +8,7 @@ import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 
 class WorkshopSettingsScreen extends StatefulWidget {
   const WorkshopSettingsScreen({super.key});
@@ -58,7 +59,7 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
   @override
   void initState() {
     super.initState();
-    final user = context.read<UserSessionProvider>().userData;
+    final user = context.read<UserProfileProvider>().userData;
     _nameController = TextEditingController(text: user?.nombreCompleto ?? '');
     _phoneController = TextEditingController(text: user?.telefono ?? '');
     _specialtyController = TextEditingController(text: user?.especialidad ?? '');

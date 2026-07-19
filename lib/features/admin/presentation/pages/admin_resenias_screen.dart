@@ -8,6 +8,7 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/widgets/translated_text.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class AdminReseniasScreen extends StatefulWidget {
   const AdminReseniasScreen({super.key});
@@ -35,11 +36,11 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
       builder: (ctx) {
         final colors = ctx.appColors;
         return AlertDialog(
-          title: Text('Eliminar Reseña'),
+          title: Text(ctx.l10n.adminDeleteReview),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('¿Estás seguro de que quieres eliminar esta reseña? Esta acción no se puede deshacer.'),
+              const Text('¿Estás seguro de que quieres eliminar esta reseña? Esta acción no se puede deshacer.'),
               const SizedBox(height: 16),
               TextField(
                 controller: controller,
@@ -51,7 +52,7 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancelar')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(ctx.l10n.adminCancel)),
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(ctx);
@@ -65,7 +66,7 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
                 backgroundColor: colors.error,
                 foregroundColor: Colors.white,
               ),
-              child: Text('Eliminar'),
+              child: Text(ctx.l10n.adminDelete),
             ),
           ],
         );
@@ -80,7 +81,7 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Moderación de Reseñas'),
+        title: Text(context.l10n.adminModerateReviews),
         centerTitle: true,
       ),
       drawer: const AdminSidebar(),

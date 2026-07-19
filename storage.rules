@@ -7,6 +7,27 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    // Verifica si el usuario es administrador consultando Firestore
+    function isAdmin() {
+      return isAuthenticated() &&
+        firestore.exists(/databases/(default)/documents/usuarios/$(request.auth.uid)) &&
+        firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.rol in ['Administrador', 'admin', 'Propietario'];
+    }
+
+    // Verifica si el usuario es propietario de un vehículo
+    function isVehicleOwner(vehicleId) {
+      return isAuthenticated() &&
+        firestore.exists(/databases/(default)/documents/vehiculos/$(vehicleId)) &&
+        firestore.get(/databases/(default)/documents/vehiculos/$(vehicleId)).data.id_propietario == request.auth.uid;
+    }
+
+    // Verifica si el usuario es mecánico
+    function isMecanico() {
+      return isAuthenticated() &&
+        firestore.exists(/databases/(default)/documents/usuarios/$(request.auth.uid)) &&
+        firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.rol in ['Mecanico', 'Taller'];
+    }
+
     // Reglas para fotos de perfil
     // Cualquier usuario de la app puede leer las fotos de perfil
     // Solo el propietario puede subir o modificar su propia foto de perfil
@@ -16,9 +37,35 @@ service firebase.storage {
     }
 
     // Reglas para facturas y recibos de mantenimiento
-    // Propietarios y mecánicos pueden subir y leer las facturas
+    // Lectura: propietario del vehículo, mecánicos con servicio activo, o admin
+    // Escritura: propietario del vehículo, mecánicos, o admin
     match /facturas/{vehicleId}/{fileName} {
+      allow read: if isAuthenticated() && (
+        isVehicleOwner(vehicleId)
+        || isMecanico()
+        || isAdmin()
+      );
+      allow write: if isAuthenticated() && (
+        isVehicleOwner(vehicleId)
+        || isMecanico()
+        || isAdmin()
+      );
+    }
+
+    // Reglas para imágenes de chat
+    // Solo participantes de la conversación (autenticados)
+    match /chat_images/{conversacionId}/{fileName} {
       allow read, write: if isAuthenticated();
+    }
+
+    // Reglas para imágenes de vehículos
+    match /vehiculos/{vehicleId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (
+        isVehicleOwner(vehicleId)
+        || isMecanico()
+        || isAdmin()
+      );
     }
   }
 }

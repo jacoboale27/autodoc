@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:go_router/go_router.dart';
@@ -33,9 +34,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appColors = context.appColors;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final primaryPurple = isDarkMode ? const Color(0xFFD0BCFF) : const Color(0xFF522C81);
-    const mintColor = Color(0xFF81E6D9);
+    final primaryPurple = appColors.primary;
+    final mintColor = appColors.secondary;
 
     return Scaffold(
       backgroundColor: isDarkMode ? Theme.of(context).scaffoldBackgroundColor : const Color(0xFFF9F9FF),
@@ -46,7 +48,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
             child: AppBar(
-              backgroundColor: isDarkMode ? Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.7) : Colors.white.withValues(alpha: 0.7),
+              backgroundColor: isDarkMode ? Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.7) : appColors.surface.withValues(alpha: 0.7),
               elevation: 0,
               centerTitle: false,
               title: Row(
@@ -75,7 +77,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         style: GoogleFonts.inter(
                           fontSize: Responsive.fontSize(context, 10),
                           fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                          color: isDarkMode ? appColors.textSecondary.withValues(alpha: 0.6) : appColors.textSecondary,
                           letterSpacing: 1.5,
                         ),
                       ),
@@ -84,7 +86,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         width: 60,
                         height: 6,
                         decoration: BoxDecoration(
-                          color: Colors.grey[300],
+                          color: appColors.outline,
                           borderRadius: BorderRadius.circular(3),
                         ),
                         child: FractionallySizedBox(
@@ -124,9 +126,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 // Glass Panel
                 Container(
                   decoration: BoxDecoration(
-                    color: isDarkMode ? Colors.black.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.6),
+                    color: isDarkMode ? appColors.surfaceContainer.withValues(alpha: 0.4) : appColors.surfaceContainer.withValues(alpha: 0.6),
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: isDarkMode ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.4)),
+                    border: Border.all(color: isDarkMode ? appColors.outline.withValues(alpha: 0.1) : appColors.outline.withValues(alpha: 0.4)),
                     boxShadow: [
                       BoxShadow(
                         color: primaryPurple.withValues(alpha: isDarkMode ? 0.2 : 0.05),
@@ -157,7 +159,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                               'Configura tu perfil para obtener diagnósticos personalizados y alertas precisas para tu vehículo.',
                               style: GoogleFonts.inter(
                                 fontSize: Responsive.fontSize(context, 14),
-                                color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+                                color: isDarkMode ? appColors.outline : appColors.textSecondary,
                               ),
                             ),
                             const SizedBox(height: 32),
@@ -172,7 +174,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       color: primaryPurple.withValues(alpha: 0.1),
-                                      border: Border.all(color: Colors.white, width: 3),
+                                      border: Border.all(color: appColors.onPrimary, width: 3),
                                       boxShadow: [
                                         BoxShadow(
                                           color: Colors.black.withValues(alpha: 0.1),
@@ -202,7 +204,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                           color: primaryPurple,
                                           shape: BoxShape.circle,
                                         ),
-                                        child: Icon(Icons.camera_alt, color: Colors.white, size: Responsive.iconSize(context, 16)),
+                                        child: Icon(Icons.camera_alt, color: appColors.onPrimary, size: Responsive.iconSize(context, 16)),
                                       ),
                                     ),
                                   ),
@@ -217,25 +219,25 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                               style: GoogleFonts.inter(
                                 fontSize: Responsive.fontSize(context, 12),
                                 fontWeight: FontWeight.bold,
-                                color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+                                color: isDarkMode ? appColors.outline : appColors.textSecondary,
                               ),
                             ),
                             const SizedBox(height: 8),
                             TextField(
                               controller: _nameController,
-                              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                              style: TextStyle(color: isDarkMode ? appColors.onPrimary : appColors.onSecondary),
                               decoration: InputDecoration(
                                 hintText: 'Ej. Juan Pérez',
-                                hintStyle: TextStyle(color: isDarkMode ? Colors.grey[500] : Colors.grey[400]),
+                                hintStyle: TextStyle(color: isDarkMode ? appColors.textSecondary.withValues(alpha: 0.8) : appColors.textSecondary.withValues(alpha: 0.6)),
                                 filled: true,
-                                fillColor: isDarkMode ? Colors.black.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.5),
+                                fillColor: isDarkMode ? appColors.onSecondary.withValues(alpha: 0.3) : appColors.onPrimary.withValues(alpha: 0.5),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!),
+                                  borderSide: BorderSide(color: isDarkMode ? appColors.textPrimary.withValues(alpha: 0.8) : appColors.outline),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!),
+                                  borderSide: BorderSide(color: isDarkMode ? appColors.textPrimary.withValues(alpha: 0.8) : appColors.outline),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
@@ -251,7 +253,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                               style: GoogleFonts.inter(
                                 fontSize: Responsive.fontSize(context, 12),
                                 fontWeight: FontWeight.bold,
-                                color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+                                color: isDarkMode ? appColors.outline : appColors.textSecondary,
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -300,7 +302,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                             : 'Como mecánico, más adelante podrás registrar los datos de tu taller para comenzar a recibir servicios.',
                                         style: GoogleFonts.inter(
                                           fontSize: Responsive.fontSize(context, 12),
-                                          color: isDarkMode ? Colors.grey[300] : Colors.grey[800],
+                                          color: isDarkMode ? appColors.outline : appColors.textPrimary.withValues(alpha: 0.8),
                                         ),
                                       ),
                                     ),
@@ -315,7 +317,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                               style: GoogleFonts.inter(
                                 fontSize: Responsive.fontSize(context, 12),
                                 fontWeight: FontWeight.bold,
-                                color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+                                color: isDarkMode ? appColors.outline : appColors.textSecondary,
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -324,9 +326,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                             Container(
                               padding: EdgeInsets.all(Responsive.padding(context, 16)),
                               decoration: BoxDecoration(
-                                color: isDarkMode ? Colors.black.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.4),
+                                color: isDarkMode ? appColors.onSecondary.withValues(alpha: 0.3) : appColors.outline.withValues(alpha: 0.4),
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!),
+                                border: Border.all(color: isDarkMode ? appColors.textPrimary.withValues(alpha: 0.8) : appColors.outline),
                               ),
                               child: Row(
                                 children: [
@@ -337,7 +339,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                       color: mintColor.withValues(alpha: 0.2),
                                       shape: BoxShape.circle,
                                     ),
-                                    child: Icon(Icons.notifications_active, color: Colors.teal[700]),
+                                    child: Icon(Icons.notifications_active, color: appColors.success),
                                   ),
                                   const SizedBox(width: 16),
                                   Expanded(
@@ -349,14 +351,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                           style: GoogleFonts.inter(
                                             fontWeight: FontWeight.bold,
                                             fontSize: Responsive.fontSize(context, 14),
-                                            color: isDarkMode ? Colors.white : Colors.black,
+                                            color: isDarkMode ? appColors.onPrimary : appColors.onSecondary,
                                           ),
                                         ),
                                         Text(
                                           'Alertas sobre cambios de aceite, frenos y más.',
                                           style: GoogleFonts.inter(
                                             fontSize: Responsive.fontSize(context, 12),
-                                            color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                            color: isDarkMode ? appColors.textSecondary.withValues(alpha: 0.6) : appColors.textSecondary,
                                           ),
                                         ),
                                       ],
@@ -365,7 +367,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                   Switch(
                                     value: _notificationsEnabled,
                                     onChanged: (val) => setState(() => _notificationsEnabled = val),
-                                    activeThumbColor: Colors.white,
+                                    activeThumbColor: appColors.onPrimary,
                                     activeTrackColor: mintColor,
                                   ),
                                 ],
@@ -385,8 +387,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       bottomSheet: Container(
         padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 24), vertical: Responsive.padding(context, 16)),
         decoration: BoxDecoration(
-          color: isDarkMode ? Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.8),
-          border: Border(top: BorderSide(color: isDarkMode ? Colors.white.withValues(alpha: 0.05) : Colors.grey[200]!)),
+          color: isDarkMode ? Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.95) : appColors.onPrimary.withValues(alpha: 0.8),
+          border: Border(top: BorderSide(color: isDarkMode ? appColors.onPrimary.withValues(alpha: 0.05) : appColors.surfaceVariant)),
         ),
         child: SafeArea(
           child: SizedBox(
@@ -401,9 +403,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 
                 if (name.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Por favor, ingresa tu nombre completo'),
-                      backgroundColor: Colors.red,
+                    SnackBar(
+                      content: const Text('Por favor, ingresa tu nombre completo'),
+                      backgroundColor: appColors.error,
                     ),
                   );
                   return;
@@ -411,9 +413,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
                 if (user == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Error: Sesión no encontrada. Vuelve a iniciar sesión.'),
-                      backgroundColor: Colors.red,
+                    SnackBar(
+                      content: const Text('Error: Sesión no encontrada. Vuelve a iniciar sesión.'),
+                      backgroundColor: appColors.error,
                     ),
                   );
                   return;
@@ -455,7 +457,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('Error al guardar: $e'),
-                        backgroundColor: Colors.red,
+                        backgroundColor: appColors.error,
                       ),
                     );
                   }
@@ -517,9 +519,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
+    final appColors = context.appColors;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    const mintColor = Color(0xFF81E6D9);
-    final primaryPurple = isDarkMode ? const Color(0xFFD0BCFF) : const Color(0xFF522C81);
+    final mintColor = appColors.secondary;
+    final primaryPurple = appColors.primary;
 
     return GestureDetector(
       onTap: onTap,
@@ -527,10 +530,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          color: isSelected ? mintColor.withValues(alpha: 0.1) : (isDarkMode ? Colors.black.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.4)),
+          color: isSelected ? mintColor.withValues(alpha: 0.1) : (isDarkMode ? appColors.onSecondary.withValues(alpha: 0.3) : appColors.outline.withValues(alpha: 0.4)),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? mintColor : (isDarkMode ? Colors.grey[800]! : Colors.grey[300]!),
+            color: isSelected ? mintColor : (isDarkMode ? appColors.textPrimary.withValues(alpha: 0.8) : appColors.outline),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -547,7 +550,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.bold,
                 fontSize: Responsive.fontSize(context, 14),
-                color: isDarkMode ? Colors.white : Colors.grey[800],
+                color: isDarkMode ? appColors.onPrimary : appColors.textPrimary.withValues(alpha: 0.8),
               ),
             ),
           ],

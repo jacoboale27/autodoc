@@ -187,7 +187,7 @@ class AdminProvider with ChangeNotifier {
   Future<void> reactivarTaller(String adminUid, String idTaller) async {
     _setLoading(true);
     try {
-      await _adminService.aprobarTaller(adminUid, idTaller);
+      await _adminService.reactivarTaller(adminUid, idTaller);
       _setSuccess('Taller reactivado');
       _talleres = await _adminService.fetchTalleres();
     } catch (e) {

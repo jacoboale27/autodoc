@@ -3,12 +3,13 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/firestore_collections.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../providers/admin_provider.dart';
-import 'package:autodoc/core/providers/user_session_provider.dart';
-import '../widgets/admin_sidebar.dart';
 import '../widgets/taller_admin_card.dart';
+import '../widgets/admin_sidebar.dart';
 import '../widgets/mecanico_admin_card.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/providers/auth_session_provider.dart';
 
 class AdminTalleresScreen extends StatefulWidget {
   const AdminTalleresScreen({super.key});
@@ -19,6 +20,7 @@ class AdminTalleresScreen extends StatefulWidget {
 
 class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
   String _filterStatus = 'todos';
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -40,13 +42,13 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
         title: Text(title),
         content: Text(content),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.adminCancel)),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               onConfirm();
             },
-            child: const Text('Confirmar'),
+            child: Text(context.l10n.adminConfirm),
           ),
         ],
       ),
@@ -56,18 +58,22 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AdminProvider>();
-    final currentUid = context.read<UserSessionProvider>().currentUid;
+    final currentUid = context.read<AuthSessionProvider>().currentUid;
     final colors = context.appColors;
-    final mecanicos = provider.mecanicos;
+    final mecanicos = provider.mecanicos.where((m) {
+      return m.nombreCompleto.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+             m.correo.toLowerCase().contains(_searchQuery.toLowerCase());
+    }).toList();
 
     final talleresFiltrados = provider.talleres.where((t) {
-      if (_filterStatus == 'todos') return true;
-      return t.estado == _filterStatus;
+      final matchStatus = _filterStatus == 'todos' || t.estado == _filterStatus;
+      final matchSearch = t.nombre.toLowerCase().contains(_searchQuery.toLowerCase());
+      return matchStatus && matchSearch;
     }).toList();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Gestión de Talleres'),
+        title: Text(context.l10n.adminManageWorkshops),
         centerTitle: true,
       ),
       drawer: const AdminSidebar(),
@@ -80,7 +86,20 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                 slivers: [
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      padding: const EdgeInsets.all(16.0),
+                      child: TextField(
+                        decoration: InputDecoration(
+                          labelText: 'Buscar taller / mecánico...',
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onChanged: (value) => setState(() => _searchQuery = value),
+                      ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

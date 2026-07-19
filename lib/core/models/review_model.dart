@@ -7,6 +7,7 @@ class ReviewModel {
   final int estrellas;
   final String? comentario;
   final DateTime fechaResenia;
+  final bool isReported;
 
   ReviewModel({
     required this.idResenia,
@@ -15,6 +16,7 @@ class ReviewModel {
     required this.estrellas,
     this.comentario,
     required this.fechaResenia,
+    this.isReported = false,
   });
 
   ReviewModel copyWith({
@@ -24,6 +26,7 @@ class ReviewModel {
     int? estrellas,
     String? comentario,
     DateTime? fechaResenia,
+    bool? isReported,
   }) {
     return ReviewModel(
       idResenia: idResenia ?? this.idResenia,
@@ -32,6 +35,7 @@ class ReviewModel {
       estrellas: estrellas ?? this.estrellas,
       comentario: comentario ?? this.comentario,
       fechaResenia: fechaResenia ?? this.fechaResenia,
+      isReported: isReported ?? this.isReported,
     );
   }
 
@@ -43,6 +47,7 @@ class ReviewModel {
       'estrellas': estrellas,
       'comentario': comentario,
       'fecha_resenia': Timestamp.fromDate(fechaResenia),
+      'is_reported': isReported,
     };
   }
 
@@ -54,6 +59,7 @@ class ReviewModel {
       estrellas: map['estrellas'] ?? 5,
       comentario: map['comentario'],
       fechaResenia: (map['fecha_resenia'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      isReported: map['is_reported'] ?? false,
     );
   }
 }

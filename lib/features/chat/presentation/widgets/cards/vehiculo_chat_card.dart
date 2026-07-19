@@ -15,7 +15,6 @@ class VehiculoChatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final String marca = metadata['marca'] ?? 'Marca desconocida';
     final String modelo = metadata['modelo'] ?? 'Modelo desconocido';
@@ -26,9 +25,9 @@ class VehiculoChatCard extends StatelessWidget {
       width: 250,
       margin: const EdgeInsets.only(top: 8),
       decoration: BoxDecoration(
-        color: isDark ? colors.surfaceContainer : Colors.white,
+        color: isMe ? colors.primary.withValues(alpha: 0.1) : colors.surfaceContainer,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isMe ? Colors.white30 : (isDark ? Colors.white12 : Colors.black12)),
+        border: Border.all(color: colors.outline.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -36,18 +35,18 @@ class VehiculoChatCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: isMe ? Colors.black12 : (isDark ? Colors.black26 : Colors.grey.shade100),
+              color: isMe ? colors.primary.withValues(alpha: 0.2) : colors.surfaceContainer,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
             ),
             child: Row(
               children: [
-                Icon(Icons.directions_car, size: 16, color: isMe ? Colors.white : colors.primary),
+                Icon(Icons.directions_car, size: 16, color: isMe ? colors.surface : colors.primary),
                 const SizedBox(width: 8),
                 Text(
                   'Vehículo Compartido',
                   style: AppTextStyles.bodyMedium.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: isMe ? Colors.white : colors.textPrimary,
+                    color: isMe ? colors.surface : colors.textPrimary,
                   ),
                 ),
               ],
@@ -62,7 +61,7 @@ class VehiculoChatCard extends StatelessWidget {
                   '$marca $modelo',
                   style: AppTextStyles.titleMedium.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: isMe ? Colors.white : colors.textPrimary,
+                    color: isMe ? colors.surface : colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -73,13 +72,13 @@ class VehiculoChatCard extends StatelessWidget {
                       'Año: $anio',
                       style: TextStyle(
                         fontSize: 13,
-                        color: isMe ? Colors.white70 : colors.textSecondary,
+                        color: isMe ? colors.surface.withValues(alpha: 0.7) : colors.textSecondary,
                       ),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: isMe ? Colors.black26 : colors.primary.withValues(alpha: 0.1),
+                        color: isMe ? colors.surface.withValues(alpha: 0.2) : colors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -87,7 +86,7 @@ class VehiculoChatCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: isMe ? Colors.white : colors.primary,
+                          color: isMe ? colors.surface : colors.primary,
                         ),
                       ),
                     ),

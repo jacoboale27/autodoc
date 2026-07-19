@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
@@ -127,7 +128,7 @@ class _DisponibilidadPickerState extends State<DisponibilidadPicker> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   disabledBackgroundColor: colors.primary.withValues(alpha: 0.3),
                 ),
-                child: const Text('Confirmar Propuesta', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: Text(context.l10n.chatConfirmProposal, style: const TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
           ],

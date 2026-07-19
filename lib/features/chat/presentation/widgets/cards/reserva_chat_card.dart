@@ -7,6 +7,7 @@ import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart'
 import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/features/chat/data/models/reserva_model.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 class ReservaChatCard extends StatelessWidget {
   final Map<String, dynamic> metadata;
   final bool isMe;
@@ -145,7 +146,7 @@ class ReservaChatCard extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             minimumSize: Size.zero,
                           ),
-                          child: const Text('Aceptar'),
+                          child: Text(context.l10n.chatAccept),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -166,7 +167,7 @@ class ReservaChatCard extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             minimumSize: Size.zero,
                           ),
-                          child: const Text('Rechazar'),
+                          child: Text(context.l10n.chatReject),
                         ),
                       ),
                     ],
@@ -195,7 +196,7 @@ class ReservaChatCard extends StatelessWidget {
                       foregroundColor: isMe ? Colors.white : colors.primary,
                       side: BorderSide(color: isMe ? Colors.white70 : colors.primary.withValues(alpha: 0.5)),
                     ),
-                    child: const Text('Ver detalle'),
+                    child: Text(context.l10n.chatViewDetail),
                   ),
                 ),
               ],

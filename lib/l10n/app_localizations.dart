@@ -1567,6 +1567,654 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Ver todo el registro'**
   String get adminViewAllLogs;
+
+  /// No description provided for @authCompleteCredentials.
+  ///
+  /// In es, this message translates to:
+  /// **'Completa correo y contraseña.'**
+  String get authCompleteCredentials;
+
+  /// No description provided for @authEnterValidEmail.
+  ///
+  /// In es, this message translates to:
+  /// **'Ingresa un correo electrónico válido.'**
+  String get authEnterValidEmail;
+
+  /// No description provided for @authPasswordTooShort.
+  ///
+  /// In es, this message translates to:
+  /// **'La contraseña debe tener al menos 6 caracteres.'**
+  String get authPasswordTooShort;
+
+  /// No description provided for @addVehicleBrand.
+  ///
+  /// In es, this message translates to:
+  /// **'Marca'**
+  String get addVehicleBrand;
+
+  /// No description provided for @addVehicleBrandSubtitle.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Cuál es la marca de tu vehículo?'**
+  String get addVehicleBrandSubtitle;
+
+  /// No description provided for @addVehicleSearchBrand.
+  ///
+  /// In es, this message translates to:
+  /// **'Buscar marca...'**
+  String get addVehicleSearchBrand;
+
+  /// No description provided for @addVehicleErrorBrands.
+  ///
+  /// In es, this message translates to:
+  /// **'Error al cargar marcas'**
+  String get addVehicleErrorBrands;
+
+  /// No description provided for @addVehicleRetry.
+  ///
+  /// In es, this message translates to:
+  /// **'Reintentar'**
+  String get addVehicleRetry;
+
+  /// No description provided for @addVehicleNotFoundBrand.
+  ///
+  /// In es, this message translates to:
+  /// **'No encuentro mi marca...'**
+  String get addVehicleNotFoundBrand;
+
+  /// No description provided for @addVehicleModel.
+  ///
+  /// In es, this message translates to:
+  /// **'Modelo'**
+  String get addVehicleModel;
+
+  /// No description provided for @addVehicleModelSubtitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Selecciona el modelo de tu {brand}'**
+  String addVehicleModelSubtitle(String brand);
+
+  /// No description provided for @addVehicleSearchModel.
+  ///
+  /// In es, this message translates to:
+  /// **'Buscar modelo...'**
+  String get addVehicleSearchModel;
+
+  /// No description provided for @addVehicleErrorModels.
+  ///
+  /// In es, this message translates to:
+  /// **'Error al cargar modelos'**
+  String get addVehicleErrorModels;
+
+  /// No description provided for @addVehicleNotFoundModel.
+  ///
+  /// In es, this message translates to:
+  /// **'No encuentro mi modelo...'**
+  String get addVehicleNotFoundModel;
+
+  /// No description provided for @addVehicleDetails.
+  ///
+  /// In es, this message translates to:
+  /// **'Detalles finales'**
+  String get addVehicleDetails;
+
+  /// No description provided for @addVehicleDetailsSubtitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Completa la información restante'**
+  String get addVehicleDetailsSubtitle;
+
+  /// No description provided for @addVehiclePlate.
+  ///
+  /// In es, this message translates to:
+  /// **'Número de Placa'**
+  String get addVehiclePlate;
+
+  /// No description provided for @addVehiclePlateHint.
+  ///
+  /// In es, this message translates to:
+  /// **'e.g. P123-456'**
+  String get addVehiclePlateHint;
+
+  /// No description provided for @addVehicleYear.
+  ///
+  /// In es, this message translates to:
+  /// **'Año'**
+  String get addVehicleYear;
+
+  /// No description provided for @addVehicleColor.
+  ///
+  /// In es, this message translates to:
+  /// **'Color'**
+  String get addVehicleColor;
+
+  /// No description provided for @addVehicleColorHint.
+  ///
+  /// In es, this message translates to:
+  /// **'Gris'**
+  String get addVehicleColorHint;
+
+  /// No description provided for @addVehicleMileage.
+  ///
+  /// In es, this message translates to:
+  /// **'Kilometraje Actual'**
+  String get addVehicleMileage;
+
+  /// No description provided for @addVehicleDocs.
+  ///
+  /// In es, this message translates to:
+  /// **'Documentación'**
+  String get addVehicleDocs;
+
+  /// No description provided for @addVehicleCardExp.
+  ///
+  /// In es, this message translates to:
+  /// **'Vencimiento Tarjeta'**
+  String get addVehicleCardExp;
+
+  /// No description provided for @addVehicleSoatExp.
+  ///
+  /// In es, this message translates to:
+  /// **'Vencimiento SOAT'**
+  String get addVehicleSoatExp;
+
+  /// No description provided for @addVehicleFinish.
+  ///
+  /// In es, this message translates to:
+  /// **'Finalizar Registro'**
+  String get addVehicleFinish;
+
+  /// No description provided for @addVehicleSuccess.
+  ///
+  /// In es, this message translates to:
+  /// **'¡Vehículo Registrado!'**
+  String get addVehicleSuccess;
+
+  /// No description provided for @addVehicleSuccessDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Tu {brand} {model} ya está en el garaje.'**
+  String addVehicleSuccessDesc(String brand, String model);
+
+  /// No description provided for @addVehicleGoDashboard.
+  ///
+  /// In es, this message translates to:
+  /// **'Ir al Dashboard'**
+  String get addVehicleGoDashboard;
+
+  /// No description provided for @addVehicleSelectDate.
+  ///
+  /// In es, this message translates to:
+  /// **'Seleccionar fecha'**
+  String get addVehicleSelectDate;
+
+  /// No description provided for @histTotalSpent.
+  ///
+  /// In es, this message translates to:
+  /// **'Total gastado'**
+  String get histTotalSpent;
+
+  /// No description provided for @histServicesCount.
+  ///
+  /// In es, this message translates to:
+  /// **'Servicios'**
+  String get histServicesCount;
+
+  /// No description provided for @histAverage.
+  ///
+  /// In es, this message translates to:
+  /// **'Promedio'**
+  String get histAverage;
+
+  /// No description provided for @vpQuickNotes.
+  ///
+  /// In es, this message translates to:
+  /// **'Notas Rápidas'**
+  String get vpQuickNotes;
+
+  /// No description provided for @pdfHistoryTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Historial de Servicios'**
+  String get pdfHistoryTitle;
+
+  /// No description provided for @pdfVehicle.
+  ///
+  /// In es, this message translates to:
+  /// **'Vehículo: {brand} {model} ({year})'**
+  String pdfVehicle(String brand, String model, String year);
+
+  /// No description provided for @pdfPlate.
+  ///
+  /// In es, this message translates to:
+  /// **'Placa: {plate}'**
+  String pdfPlate(String plate);
+
+  /// No description provided for @pdfReportDate.
+  ///
+  /// In es, this message translates to:
+  /// **'Fecha de Reporte: {date}'**
+  String pdfReportDate(String date);
+
+  /// No description provided for @pdfTotalServices.
+  ///
+  /// In es, this message translates to:
+  /// **'Total de Servicios: {count}'**
+  String pdfTotalServices(String count);
+
+  /// No description provided for @pdfTotalSpent.
+  ///
+  /// In es, this message translates to:
+  /// **'Gasto Total: \${amount}'**
+  String pdfTotalSpent(String amount);
+
+  /// No description provided for @adminLogsTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Registro de Actividad'**
+  String get adminLogsTitle;
+
+  /// No description provided for @adminDeleteReview.
+  ///
+  /// In es, this message translates to:
+  /// **'Eliminar Reseña'**
+  String get adminDeleteReview;
+
+  /// No description provided for @adminCancel.
+  ///
+  /// In es, this message translates to:
+  /// **'Cancelar'**
+  String get adminCancel;
+
+  /// No description provided for @adminDelete.
+  ///
+  /// In es, this message translates to:
+  /// **'Eliminar'**
+  String get adminDelete;
+
+  /// No description provided for @adminModerateReviews.
+  ///
+  /// In es, this message translates to:
+  /// **'Moderación de Reseñas'**
+  String get adminModerateReviews;
+
+  /// No description provided for @adminAccessDenied.
+  ///
+  /// In es, this message translates to:
+  /// **'Acceso Denegado'**
+  String get adminAccessDenied;
+
+  /// No description provided for @adminAccessDeniedDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Esta pantalla solo está disponible en entorno de desarrollo.'**
+  String get adminAccessDeniedDesc;
+
+  /// No description provided for @adminConfigAdmins.
+  ///
+  /// In es, this message translates to:
+  /// **'Configurar Administradores'**
+  String get adminConfigAdmins;
+
+  /// No description provided for @adminConfirm.
+  ///
+  /// In es, this message translates to:
+  /// **'Confirmar'**
+  String get adminConfirm;
+
+  /// No description provided for @adminManageWorkshops.
+  ///
+  /// In es, this message translates to:
+  /// **'Gestión de Talleres'**
+  String get adminManageWorkshops;
+
+  /// No description provided for @adminChangeRole.
+  ///
+  /// In es, this message translates to:
+  /// **'Cambiar Rol de Usuario'**
+  String get adminChangeRole;
+
+  /// No description provided for @adminSelectNewRole.
+  ///
+  /// In es, this message translates to:
+  /// **'Selecciona el nuevo rol:'**
+  String get adminSelectNewRole;
+
+  /// No description provided for @adminManageUsers.
+  ///
+  /// In es, this message translates to:
+  /// **'Gestión de Usuarios'**
+  String get adminManageUsers;
+
+  /// No description provided for @adminSuspendAccount.
+  ///
+  /// In es, this message translates to:
+  /// **'Suspender Cuenta'**
+  String get adminSuspendAccount;
+
+  /// No description provided for @adminReactivateAccount.
+  ///
+  /// In es, this message translates to:
+  /// **'Reactivar Cuenta'**
+  String get adminReactivateAccount;
+
+  /// No description provided for @adminChangeUserRole.
+  ///
+  /// In es, this message translates to:
+  /// **'Cambiar Rol'**
+  String get adminChangeUserRole;
+
+  /// No description provided for @adminNoTrendData.
+  ///
+  /// In es, this message translates to:
+  /// **'No hay datos de tendencias disponibles.'**
+  String get adminNoTrendData;
+
+  /// No description provided for @adminReject.
+  ///
+  /// In es, this message translates to:
+  /// **'Rechazar'**
+  String get adminReject;
+
+  /// No description provided for @adminApproveWorkshop.
+  ///
+  /// In es, this message translates to:
+  /// **'Aprobar Taller'**
+  String get adminApproveWorkshop;
+
+  /// No description provided for @adminSuspend.
+  ///
+  /// In es, this message translates to:
+  /// **'Suspender'**
+  String get adminSuspend;
+
+  /// No description provided for @adminReactivate.
+  ///
+  /// In es, this message translates to:
+  /// **'Reactivar'**
+  String get adminReactivate;
+
+  /// No description provided for @adminError.
+  ///
+  /// In es, this message translates to:
+  /// **'Error: {error}'**
+  String adminError(String error);
+
+  /// No description provided for @chatOpeningSection.
+  ///
+  /// In es, this message translates to:
+  /// **'Abriendo sección de {label}...'**
+  String chatOpeningSection(String label);
+
+  /// No description provided for @chatDeleteMessage.
+  ///
+  /// In es, this message translates to:
+  /// **'Eliminar mensaje'**
+  String get chatDeleteMessage;
+
+  /// No description provided for @chatCamera.
+  ///
+  /// In es, this message translates to:
+  /// **'Cámara'**
+  String get chatCamera;
+
+  /// No description provided for @chatGallery.
+  ///
+  /// In es, this message translates to:
+  /// **'Galería'**
+  String get chatGallery;
+
+  /// No description provided for @chatShareVehicle.
+  ///
+  /// In es, this message translates to:
+  /// **'Compartir Vehículo'**
+  String get chatShareVehicle;
+
+  /// No description provided for @chatNewReservation.
+  ///
+  /// In es, this message translates to:
+  /// **'Nueva Reserva'**
+  String get chatNewReservation;
+
+  /// No description provided for @chatSendQuote.
+  ///
+  /// In es, this message translates to:
+  /// **'Enviar Cotización'**
+  String get chatSendQuote;
+
+  /// No description provided for @chatRequestRating.
+  ///
+  /// In es, this message translates to:
+  /// **'Solicitar Calificación'**
+  String get chatRequestRating;
+
+  /// No description provided for @chatUploadImageError.
+  ///
+  /// In es, this message translates to:
+  /// **'Error al subir imagen'**
+  String get chatUploadImageError;
+
+  /// No description provided for @chatReservationSuccess.
+  ///
+  /// In es, this message translates to:
+  /// **'Reserva {status} exitosamente'**
+  String chatReservationSuccess(String status);
+
+  /// No description provided for @chatReservationDetail.
+  ///
+  /// In es, this message translates to:
+  /// **'Detalle de Cita'**
+  String get chatReservationDetail;
+
+  /// No description provided for @coreAppTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'AutoDoc Taller'**
+  String get coreAppTitle;
+
+  /// No description provided for @chatViewFullHistory.
+  ///
+  /// In es, this message translates to:
+  /// **'Ver Historial Completo'**
+  String get chatViewFullHistory;
+
+  /// No description provided for @chatConfirmProposal.
+  ///
+  /// In es, this message translates to:
+  /// **'Confirmar Propuesta'**
+  String get chatConfirmProposal;
+
+  /// No description provided for @chatGenerateAndSend.
+  ///
+  /// In es, this message translates to:
+  /// **'Generar y Enviar'**
+  String get chatGenerateAndSend;
+
+  /// No description provided for @chatRateService.
+  ///
+  /// In es, this message translates to:
+  /// **'Calificar Servicio'**
+  String get chatRateService;
+
+  /// No description provided for @chatReviewThanks.
+  ///
+  /// In es, this message translates to:
+  /// **'¡Gracias por tu reseña!'**
+  String get chatReviewThanks;
+
+  /// No description provided for @chatAccept.
+  ///
+  /// In es, this message translates to:
+  /// **'Aceptar'**
+  String get chatAccept;
+
+  /// No description provided for @chatReject.
+  ///
+  /// In es, this message translates to:
+  /// **'Rechazar'**
+  String get chatReject;
+
+  /// No description provided for @chatViewDetail.
+  ///
+  /// In es, this message translates to:
+  /// **'Ver detalle'**
+  String get chatViewDetail;
+
+  /// No description provided for @chatService.
+  ///
+  /// In es, this message translates to:
+  /// **'Servicio'**
+  String get chatService;
+
+  /// No description provided for @chatDate.
+  ///
+  /// In es, this message translates to:
+  /// **'Fecha'**
+  String get chatDate;
+
+  /// No description provided for @chatTime.
+  ///
+  /// In es, this message translates to:
+  /// **'Hora'**
+  String get chatTime;
+
+  /// No description provided for @chatVehicleId.
+  ///
+  /// In es, this message translates to:
+  /// **'Vehículo ID'**
+  String get chatVehicleId;
+
+  /// No description provided for @chatAcceptAppointment.
+  ///
+  /// In es, this message translates to:
+  /// **'Aceptar Cita'**
+  String get chatAcceptAppointment;
+
+  /// No description provided for @chatRejectReschedule.
+  ///
+  /// In es, this message translates to:
+  /// **'Rechazar / Reprogramar'**
+  String get chatRejectReschedule;
+
+  /// No description provided for @chatConfirmDelete.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Estás seguro de que quieres eliminar este mensaje para todos?'**
+  String get chatConfirmDelete;
+
+  /// No description provided for @notifications.
+  ///
+  /// In es, this message translates to:
+  /// **'Notificaciones'**
+  String get notifications;
+
+  /// No description provided for @noNotifications.
+  ///
+  /// In es, this message translates to:
+  /// **'No tienes notificaciones'**
+  String get noNotifications;
+
+  /// No description provided for @markAllRead.
+  ///
+  /// In es, this message translates to:
+  /// **'Marcar todo como leído'**
+  String get markAllRead;
+
+  /// No description provided for @upLanguage.
+  ///
+  /// In es, this message translates to:
+  /// **'Idioma / Language'**
+  String get upLanguage;
+
+  /// No description provided for @upLanguageDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'EN (Activado) / ES (Desactivado)'**
+  String get upLanguageDesc;
+
+  /// No description provided for @upAbout.
+  ///
+  /// In es, this message translates to:
+  /// **'Acerca de AutoDoc'**
+  String get upAbout;
+
+  /// No description provided for @upAboutDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Versión, créditos y legal'**
+  String get upAboutDesc;
+
+  /// No description provided for @upDeleteAccountTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Eliminar Cuenta'**
+  String get upDeleteAccountTitle;
+
+  /// No description provided for @upDeleteAccountConfirm.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Estás seguro de que deseas eliminar tu cuenta? Esta acción no se puede deshacer y perderás todos tus datos.'**
+  String get upDeleteAccountConfirm;
+
+  /// No description provided for @upEnterPasswordConfirm.
+  ///
+  /// In es, this message translates to:
+  /// **'Para confirmar, ingresa tu contraseña:'**
+  String get upEnterPasswordConfirm;
+
+  /// No description provided for @upPasswordLabel.
+  ///
+  /// In es, this message translates to:
+  /// **'Contraseña'**
+  String get upPasswordLabel;
+
+  /// No description provided for @upGoogleReauthConfirm.
+  ///
+  /// In es, this message translates to:
+  /// **'Para confirmar, deberás volver a iniciar sesión con Google.'**
+  String get upGoogleReauthConfirm;
+
+  /// No description provided for @upPasswordEmpty.
+  ///
+  /// In es, this message translates to:
+  /// **'La contraseña no puede estar vacía.'**
+  String get upPasswordEmpty;
+
+  /// No description provided for @upPasswordIncorrect.
+  ///
+  /// In es, this message translates to:
+  /// **'Contraseña incorrecta.'**
+  String get upPasswordIncorrect;
+
+  /// No description provided for @upGoogleReauthFailed.
+  ///
+  /// In es, this message translates to:
+  /// **'No se pudo re-autenticar con Google.'**
+  String get upGoogleReauthFailed;
+
+  /// No description provided for @upDeleteAccountError.
+  ///
+  /// In es, this message translates to:
+  /// **'Error al eliminar la cuenta: {error}'**
+  String upDeleteAccountError(String error);
+
+  /// No description provided for @upCancel.
+  ///
+  /// In es, this message translates to:
+  /// **'Cancelar'**
+  String get upCancel;
+
+  /// No description provided for @upDelete.
+  ///
+  /// In es, this message translates to:
+  /// **'Eliminar'**
+  String get upDelete;
+
+  /// No description provided for @upDeleteAccount.
+  ///
+  /// In es, this message translates to:
+  /// **'Eliminar cuenta'**
+  String get upDeleteAccount;
 }
 
 class _AppLocalizationsDelegate

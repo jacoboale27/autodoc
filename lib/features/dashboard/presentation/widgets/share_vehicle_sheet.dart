@@ -224,7 +224,8 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
 
   Future<void> _addUser() async {
     final email = _emailController.text.trim().toLowerCase();
-    if (email.isEmpty || !email.contains('@')) {
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (email.isEmpty || !emailRegex.hasMatch(email)) {
       _showSnack('Ingresa un correo válido');
       return;
     }

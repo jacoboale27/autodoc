@@ -6,6 +6,7 @@ import { getMessages, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { Analytics } from "@vercel/analytics/react";
 
 export const dynamicParams = false;
 
@@ -23,10 +24,39 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "AutoDoc",
-  description: "Tu Garaje Virtual Inteligente",
-};
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const isEn = locale === 'en';
+  
+  return {
+    title: {
+      template: '%s | AutoDoc',
+      default: isEn ? 'AutoDoc - Your Smart Virtual Garage' : 'AutoDoc - Tu Garaje Virtual Inteligente',
+    },
+    description: isEn 
+      ? 'Manage your vehicle documents, maintenance history, and connect with certified workshops.' 
+      : 'Gestiona tus documentos vehiculares, historial de mantenimiento y conecta con talleres certificados.',
+    openGraph: {
+      type: 'website',
+      locale: isEn ? 'en_US' : 'es_ES',
+      url: 'https://autodoc-6ef5a.web.app',
+      title: 'AutoDoc',
+      description: isEn 
+        ? 'Your Smart Virtual Garage' 
+        : 'Tu Garaje Virtual Inteligente',
+      siteName: 'AutoDoc',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: 'AutoDoc',
+      description: isEn ? 'Your Smart Virtual Garage' : 'Tu Garaje Virtual Inteligente',
+    }
+  };
+}
 
 export default async function RootLayout({
   children,
@@ -63,6 +93,7 @@ export default async function RootLayout({
             {children}
           </ThemeProvider>
         </NextIntlClientProvider>
+        <Analytics />
       </body>
     </html>
   );

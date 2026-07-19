@@ -7,6 +7,29 @@ const messaging = admin.messaging();
 const storage = admin.storage();
 
 /**
+ * Helper: Write a notification to Firestore for the in-app notification center.
+ * Stored under `notificaciones/{userId}/items/{auto-id}`
+ * 
+ * @param {string} userId - The recipient user ID
+ * @param {object} notification - { tipo, titulo, body, deepLink, metadata }
+ */
+async function writeNotification(userId, notification) {
+  try {
+    await db.collection('notificaciones').doc(userId).collection('items').add({
+      tipo: notification.tipo || 'sistema',
+      titulo: notification.titulo || '',
+      body: notification.body || '',
+      leida: false,
+      deepLink: notification.deepLink || null,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      metadata: notification.metadata || null,
+    });
+  } catch (e) {
+    console.error(`Error writing notification for user ${userId}:`, e);
+  }
+}
+
+/**
  * 1. Scheduled function to check alerts (alertas) daily.
  * Notifies the user if an alert is expiring in 7 days or less, or already expired.
  */
@@ -65,6 +88,15 @@ exports.checkAlertsDaily = functions.pubsub.schedule('every 24 hours').onRun(asy
             vehiculoId: vehiculoId
           }
         });
+
+        // Persist in notification center
+        await writeNotification(ownerId, {
+          tipo: 'alerta',
+          titulo: title,
+          body: body,
+          deepLink: '/alerts',
+          metadata: { alertaId: doc.id, vehiculoId: vehiculoId },
+        });
       }
     }
   } catch (error) {
@@ -120,14 +152,30 @@ exports.checkMileageOnVehicleUpdate = functions.firestore
                 body: `Tu vehículo ${newValue.placa} está a ${diff}km de requerir ${task.nombre || 'un servicio'}.`
               }
             });
+
+            await writeNotification(ownerId, {
+              tipo: 'mantenimiento',
+              titulo: 'Mantenimiento Cercano',
+              body: `Tu vehículo ${newValue.placa} está a ${diff}km de requerir ${task.nombre || 'un servicio'}.`,
+              deepLink: '/garage',
+              metadata: { vehicleId, taskId: doc.id },
+            });
           } else if (diff <= 0 && currentKm > ultimoKm) {
             // Exceeded
             await messaging.send({
               token: fcmToken,
               notification: {
                 title: 'Mantenimiento Requerido',
-                body: `Tu vehículo ${newValue.placa} ya superó el kilometraje para ${task.nombre || 'el servicio'}.`
+                body: `Tu vehículo ${newValue.placa} ha superado el kilometraje para ${task.nombre || 'el servicio'}.`
               }
+            });
+
+            await writeNotification(ownerId, {
+              tipo: 'mantenimiento',
+              titulo: 'Mantenimiento Requerido',
+              body: `Tu vehículo ${newValue.placa} ha superado el kilometraje para ${task.nombre || 'el servicio'}.`,
+              deepLink: '/garage',
+              metadata: { vehicleId, taskId: doc.id },
             });
           }
         }
@@ -179,6 +227,15 @@ exports.requestReviewOnServiceComplete = functions.firestore
           tallerId: tallerId,
           serviceId: context.params.serviceId
         }
+      });
+
+      // Persist in notification center
+      await writeNotification(ownerId, {
+        tipo: 'review',
+        titulo: '¿Qué tal te fue en tu servicio?',
+        body: `Tu vehículo ${vehiculoDoc.data().placa} fue atendido en ${tallerName}. Por favor, déjales una reseña.`,
+        deepLink: '/workshop_directory',
+        metadata: { tallerId, serviceId: context.params.serviceId },
       });
     } catch (error) {
       console.error('Error sending review request:', error);
@@ -247,6 +304,15 @@ exports.notifyOnNewChatMessage = functions.firestore
           conversacionId: conversacionId
         }
       });
+
+      // Persist in notification center
+      await writeNotification(receptorId, {
+        tipo: 'chat',
+        titulo: title,
+        body: body,
+        deepLink: `/chat/${conversacionId}`,
+        metadata: { conversacionId },
+      });
       
     } catch (error) {
       console.error('Error sending chat notification:', error);
@@ -281,6 +347,15 @@ exports.notifyOnNewReservation = functions.firestore
           type: 'reserva',
           reservaId: context.params.reservaId
         }
+      });
+
+      // Persist in notification center
+      await writeNotification(targetId, {
+        tipo: 'reserva',
+        titulo: 'Nueva Solicitud de Cita',
+        body: `Has recibido una nueva solicitud de cita para el ${reserva.fecha_hora_propuesta ? new Date(reserva.fecha_hora_propuesta).toLocaleDateString() : 'día propuesto'}.`,
+        deepLink: '/mechanic_dashboard',
+        metadata: { reservaId: context.params.reservaId },
       });
     } catch (error) {
       console.error('Error sending new reservation notification:', error);
@@ -330,6 +405,15 @@ exports.notifyOnReservationStatusChange = functions.firestore
           type: 'reserva',
           reservaId: context.params.reservaId
         }
+      });
+
+      // Persist in notification center
+      await writeNotification(targetId, {
+        tipo: 'reserva',
+        titulo: title,
+        body: body,
+        deepLink: '/reserva_detail',
+        metadata: { reservaId: context.params.reservaId },
       });
     } catch (error) {
       console.error('Error sending reservation notification:', error);

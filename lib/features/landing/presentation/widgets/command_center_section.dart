@@ -129,8 +129,8 @@ class _CommandCenterSectionState extends State<CommandCenterSection> {
   Widget _buildShowcaseContent() {
     switch (_activeTab) {
       case CommandCenterTab.garage:
-        return _ShowcaseImage(
-          key: const ValueKey('garage'),
+        return const _ShowcaseImage(
+          key: ValueKey('garage'),
           imageUrl: 'https://images.unsplash.com/photo-1592199564137-731e91904939',
           overlay: Positioned.fill(
             child: Center(
@@ -163,13 +163,13 @@ class _CommandCenterSectionState extends State<CommandCenterSection> {
               children: [
                 Text('Línea de Tiempo Clínica', style: AppTextStyles.titleLarge),
                 const SizedBox(height: 32),
-                _TimelineItem(
+                const _TimelineItem(
                   date: '15 JUN 2026',
                   title: 'Cambio de Kit de Distribución',
                   subtitle: 'Taller Central Motor • 45,000 km',
                   isLast: false,
                 ),
-                _TimelineItem(
+                const _TimelineItem(
                   date: '12 MAR 2026',
                   title: 'Mantenimiento Preventivo',
                   subtitle: 'AutoExpress • 42,300 km',

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 
 class CotizacionPicker extends StatefulWidget {
@@ -103,7 +104,7 @@ class _CotizacionPickerState extends State<CotizacionPicker> {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: const Text('Generar y Enviar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                child: Text(context.l10n.chatGenerateAndSend, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
             ),
           ],

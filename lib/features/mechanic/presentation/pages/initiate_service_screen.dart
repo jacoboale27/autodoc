@@ -113,7 +113,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
         HapticFeedback.lightImpact();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Servicio registrado exitosamente'),
+            content: const Text('Servicio registrado exitosamente'),
             backgroundColor: context.appColors.secondary,
           ),
         );
@@ -242,12 +242,12 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                 TextButton.icon(
                   onPressed: () => _pickInvoiceImage(ImageSource.camera),
                   icon: const Icon(Icons.camera_alt),
-                  label: Text('Tomar otra'),
+                  label: const Text('Tomar otra'),
                 ),
                 TextButton.icon(
                   onPressed: () => _pickInvoiceImage(ImageSource.gallery),
                   icon: const Icon(Icons.photo_library),
-                  label: Text('Galería'),
+                  label: const Text('Galería'),
                 ),
                 TextButton.icon(
                   onPressed: () => setState(() => _invoiceImage = null),
@@ -275,7 +275,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                 ElevatedButton.icon(
                   onPressed: () => _pickInvoiceImage(ImageSource.camera),
                   icon: const Icon(Icons.camera_alt),
-                  label: Text('Cámara'),
+                  label: const Text('Cámara'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.primary,
                     foregroundColor: Colors.white,
@@ -286,7 +286,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                 OutlinedButton.icon(
                   onPressed: () => _pickInvoiceImage(ImageSource.gallery),
                   icon: const Icon(Icons.photo_library),
-                  label: Text('Galería'),
+                  label: const Text('Galería'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: colors.primary,
                     side: BorderSide(color: colors.primary),
@@ -452,7 +452,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           Expanded(
             child: TextField(
               controller: _costoController,
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
               style: GoogleFonts.inter(
                 fontSize: Responsive.fontSize(context, 18),
                 fontWeight: FontWeight.bold,

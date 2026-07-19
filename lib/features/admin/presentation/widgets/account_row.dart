@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/models/user_model.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class AccountRow extends StatelessWidget {
   final UserModel usuario;
@@ -71,19 +72,19 @@ class AccountRow extends StatelessWidget {
         },
         itemBuilder: (context) => [
           if (usuario.estado == 'activo' && !isCurrentAdmin)
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'suspender',
-              child: Text('Suspender Cuenta', style: TextStyle(color: Colors.red)),
+              child: Text(context.l10n.adminSuspendAccount, style: const TextStyle(color: Colors.red)),
             ),
           if (usuario.estado == 'suspendido')
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'reactivar',
-              child: Text('Reactivar Cuenta', style: TextStyle(color: Colors.green)),
+              child: Text(context.l10n.adminReactivateAccount, style: const TextStyle(color: Colors.green)),
             ),
           if (!isCurrentAdmin)
-            const PopupMenuItem(
-              value: 'rol',
-              child: Text('Cambiar Rol'),
+            PopupMenuItem(
+              value: 'cambiar_rol',
+              child: Text(context.l10n.adminChangeUserRole),
             ),
         ],
       ),

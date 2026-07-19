@@ -805,4 +805,355 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get adminViewAllLogs => 'Ver todo el registro';
+
+  @override
+  String get authCompleteCredentials => 'Completa correo y contraseña.';
+
+  @override
+  String get authEnterValidEmail => 'Ingresa un correo electrónico válido.';
+
+  @override
+  String get authPasswordTooShort =>
+      'La contraseña debe tener al menos 6 caracteres.';
+
+  @override
+  String get addVehicleBrand => 'Marca';
+
+  @override
+  String get addVehicleBrandSubtitle => '¿Cuál es la marca de tu vehículo?';
+
+  @override
+  String get addVehicleSearchBrand => 'Buscar marca...';
+
+  @override
+  String get addVehicleErrorBrands => 'Error al cargar marcas';
+
+  @override
+  String get addVehicleRetry => 'Reintentar';
+
+  @override
+  String get addVehicleNotFoundBrand => 'No encuentro mi marca...';
+
+  @override
+  String get addVehicleModel => 'Modelo';
+
+  @override
+  String addVehicleModelSubtitle(String brand) {
+    return 'Selecciona el modelo de tu $brand';
+  }
+
+  @override
+  String get addVehicleSearchModel => 'Buscar modelo...';
+
+  @override
+  String get addVehicleErrorModels => 'Error al cargar modelos';
+
+  @override
+  String get addVehicleNotFoundModel => 'No encuentro mi modelo...';
+
+  @override
+  String get addVehicleDetails => 'Detalles finales';
+
+  @override
+  String get addVehicleDetailsSubtitle => 'Completa la información restante';
+
+  @override
+  String get addVehiclePlate => 'Número de Placa';
+
+  @override
+  String get addVehiclePlateHint => 'e.g. P123-456';
+
+  @override
+  String get addVehicleYear => 'Año';
+
+  @override
+  String get addVehicleColor => 'Color';
+
+  @override
+  String get addVehicleColorHint => 'Gris';
+
+  @override
+  String get addVehicleMileage => 'Kilometraje Actual';
+
+  @override
+  String get addVehicleDocs => 'Documentación';
+
+  @override
+  String get addVehicleCardExp => 'Vencimiento Tarjeta';
+
+  @override
+  String get addVehicleSoatExp => 'Vencimiento SOAT';
+
+  @override
+  String get addVehicleFinish => 'Finalizar Registro';
+
+  @override
+  String get addVehicleSuccess => '¡Vehículo Registrado!';
+
+  @override
+  String addVehicleSuccessDesc(String brand, String model) {
+    return 'Tu $brand $model ya está en el garaje.';
+  }
+
+  @override
+  String get addVehicleGoDashboard => 'Ir al Dashboard';
+
+  @override
+  String get addVehicleSelectDate => 'Seleccionar fecha';
+
+  @override
+  String get histTotalSpent => 'Total gastado';
+
+  @override
+  String get histServicesCount => 'Servicios';
+
+  @override
+  String get histAverage => 'Promedio';
+
+  @override
+  String get vpQuickNotes => 'Notas Rápidas';
+
+  @override
+  String get pdfHistoryTitle => 'Historial de Servicios';
+
+  @override
+  String pdfVehicle(String brand, String model, String year) {
+    return 'Vehículo: $brand $model ($year)';
+  }
+
+  @override
+  String pdfPlate(String plate) {
+    return 'Placa: $plate';
+  }
+
+  @override
+  String pdfReportDate(String date) {
+    return 'Fecha de Reporte: $date';
+  }
+
+  @override
+  String pdfTotalServices(String count) {
+    return 'Total de Servicios: $count';
+  }
+
+  @override
+  String pdfTotalSpent(String amount) {
+    return 'Gasto Total: \$$amount';
+  }
+
+  @override
+  String get adminLogsTitle => 'Registro de Actividad';
+
+  @override
+  String get adminDeleteReview => 'Eliminar Reseña';
+
+  @override
+  String get adminCancel => 'Cancelar';
+
+  @override
+  String get adminDelete => 'Eliminar';
+
+  @override
+  String get adminModerateReviews => 'Moderación de Reseñas';
+
+  @override
+  String get adminAccessDenied => 'Acceso Denegado';
+
+  @override
+  String get adminAccessDeniedDesc =>
+      'Esta pantalla solo está disponible en entorno de desarrollo.';
+
+  @override
+  String get adminConfigAdmins => 'Configurar Administradores';
+
+  @override
+  String get adminConfirm => 'Confirmar';
+
+  @override
+  String get adminManageWorkshops => 'Gestión de Talleres';
+
+  @override
+  String get adminChangeRole => 'Cambiar Rol de Usuario';
+
+  @override
+  String get adminSelectNewRole => 'Selecciona el nuevo rol:';
+
+  @override
+  String get adminManageUsers => 'Gestión de Usuarios';
+
+  @override
+  String get adminSuspendAccount => 'Suspender Cuenta';
+
+  @override
+  String get adminReactivateAccount => 'Reactivar Cuenta';
+
+  @override
+  String get adminChangeUserRole => 'Cambiar Rol';
+
+  @override
+  String get adminNoTrendData => 'No hay datos de tendencias disponibles.';
+
+  @override
+  String get adminReject => 'Rechazar';
+
+  @override
+  String get adminApproveWorkshop => 'Aprobar Taller';
+
+  @override
+  String get adminSuspend => 'Suspender';
+
+  @override
+  String get adminReactivate => 'Reactivar';
+
+  @override
+  String adminError(String error) {
+    return 'Error: $error';
+  }
+
+  @override
+  String chatOpeningSection(String label) {
+    return 'Abriendo sección de $label...';
+  }
+
+  @override
+  String get chatDeleteMessage => 'Eliminar mensaje';
+
+  @override
+  String get chatCamera => 'Cámara';
+
+  @override
+  String get chatGallery => 'Galería';
+
+  @override
+  String get chatShareVehicle => 'Compartir Vehículo';
+
+  @override
+  String get chatNewReservation => 'Nueva Reserva';
+
+  @override
+  String get chatSendQuote => 'Enviar Cotización';
+
+  @override
+  String get chatRequestRating => 'Solicitar Calificación';
+
+  @override
+  String get chatUploadImageError => 'Error al subir imagen';
+
+  @override
+  String chatReservationSuccess(String status) {
+    return 'Reserva $status exitosamente';
+  }
+
+  @override
+  String get chatReservationDetail => 'Detalle de Cita';
+
+  @override
+  String get coreAppTitle => 'AutoDoc Taller';
+
+  @override
+  String get chatViewFullHistory => 'Ver Historial Completo';
+
+  @override
+  String get chatConfirmProposal => 'Confirmar Propuesta';
+
+  @override
+  String get chatGenerateAndSend => 'Generar y Enviar';
+
+  @override
+  String get chatRateService => 'Calificar Servicio';
+
+  @override
+  String get chatReviewThanks => '¡Gracias por tu reseña!';
+
+  @override
+  String get chatAccept => 'Aceptar';
+
+  @override
+  String get chatReject => 'Rechazar';
+
+  @override
+  String get chatViewDetail => 'Ver detalle';
+
+  @override
+  String get chatService => 'Servicio';
+
+  @override
+  String get chatDate => 'Fecha';
+
+  @override
+  String get chatTime => 'Hora';
+
+  @override
+  String get chatVehicleId => 'Vehículo ID';
+
+  @override
+  String get chatAcceptAppointment => 'Aceptar Cita';
+
+  @override
+  String get chatRejectReschedule => 'Rechazar / Reprogramar';
+
+  @override
+  String get chatConfirmDelete =>
+      '¿Estás seguro de que quieres eliminar este mensaje para todos?';
+
+  @override
+  String get notifications => 'Notificaciones';
+
+  @override
+  String get noNotifications => 'No tienes notificaciones';
+
+  @override
+  String get markAllRead => 'Marcar todo como leído';
+
+  @override
+  String get upLanguage => 'Idioma / Language';
+
+  @override
+  String get upLanguageDesc => 'EN (Activado) / ES (Desactivado)';
+
+  @override
+  String get upAbout => 'Acerca de AutoDoc';
+
+  @override
+  String get upAboutDesc => 'Versión, créditos y legal';
+
+  @override
+  String get upDeleteAccountTitle => 'Eliminar Cuenta';
+
+  @override
+  String get upDeleteAccountConfirm =>
+      '¿Estás seguro de que deseas eliminar tu cuenta? Esta acción no se puede deshacer y perderás todos tus datos.';
+
+  @override
+  String get upEnterPasswordConfirm => 'Para confirmar, ingresa tu contraseña:';
+
+  @override
+  String get upPasswordLabel => 'Contraseña';
+
+  @override
+  String get upGoogleReauthConfirm =>
+      'Para confirmar, deberás volver a iniciar sesión con Google.';
+
+  @override
+  String get upPasswordEmpty => 'La contraseña no puede estar vacía.';
+
+  @override
+  String get upPasswordIncorrect => 'Contraseña incorrecta.';
+
+  @override
+  String get upGoogleReauthFailed => 'No se pudo re-autenticar con Google.';
+
+  @override
+  String upDeleteAccountError(String error) {
+    return 'Error al eliminar la cuenta: $error';
+  }
+
+  @override
+  String get upCancel => 'Cancelar';
+
+  @override
+  String get upDelete => 'Eliminar';
+
+  @override
+  String get upDeleteAccount => 'Eliminar cuenta';
 }

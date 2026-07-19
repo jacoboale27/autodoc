@@ -26,17 +26,21 @@ class AuthBottomNav extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildNavAction(Icons.help_outline, 'Ayuda', colors),
-          _buildNavAction(Icons.shield_outlined, 'Privacidad', colors),
-          _buildNavAction(Icons.gavel_outlined, 'Términos', colors),
+          _buildNavAction(context, Icons.help_outline, 'Ayuda', colors),
+          _buildNavAction(context, Icons.shield_outlined, 'Privacidad', colors),
+          _buildNavAction(context, Icons.gavel_outlined, 'Términos', colors),
         ],
       ),
     );
   }
 
-  Widget _buildNavAction(IconData icon, String label, AppColors colors) {
+  Widget _buildNavAction(BuildContext context, IconData icon, String label, AppColors colors) {
     return GestureDetector(
-      onTap: () {},
+      onTap: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Abriendo sección de $label...')),
+        );
+      },
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

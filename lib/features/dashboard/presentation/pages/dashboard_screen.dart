@@ -528,7 +528,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           final vehicleProvider = context.read<VehicleProvider>();
 
           final newVehicle = vehicle.copyWith(
-            idVehiculo: Uuid().v4(),
+            idVehiculo: const Uuid().v4(),
             idPropietario: userSession.user!.uid,
           );
 

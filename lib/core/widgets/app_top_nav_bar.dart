@@ -3,10 +3,11 @@ import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/utils/responsive.dart';
-import 'package:autodoc/core/providers/user_session_provider.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/providers/language_provider.dart';
+import 'package:autodoc/core/providers/notification_center_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 
 class AppTopNavBar extends StatelessWidget {
   const AppTopNavBar({super.key});
@@ -131,10 +132,49 @@ class AppTopNavBar extends StatelessWidget {
             },
           ),
           
+          // Notification Bell with Badge
+          Consumer<NotificationCenterProvider>(
+            builder: (context, notifProvider, _) {
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      notifProvider.hasUnread
+                          ? Icons.notifications_active_rounded
+                          : Icons.notifications_none_rounded,
+                      color: notifProvider.hasUnread ? colors.primary : colors.textSecondary,
+                    ),
+                    onPressed: () => context.push('/notifications'),
+                    tooltip: 'Notificaciones',
+                  ),
+                  if (notifProvider.hasUnread)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: colors.error,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                        child: Text(
+                          '${notifProvider.unreadCount > 9 ? "9+" : notifProvider.unreadCount}',
+                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          SizedBox(width: Responsive.padding(context, 8)),
+          
           // Profile Action
-          Consumer<UserSessionProvider>(
+          Consumer<UserProfileProvider>(
             builder: (context, userSession, _) {
-              final user = userSession.user;
+              final user = userSession.userData;
               return InkWell(
                 onTap: () => context.push('/user_profile'),
                 borderRadius: BorderRadius.circular(999),
@@ -143,11 +183,15 @@ class AppTopNavBar extends StatelessWidget {
                     CircleAvatar(
                       radius: Responsive.size(context, 16),
                       backgroundColor: colors.primary,
-                      backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
-                      child: user?.photoURL == null 
+                      backgroundImage: user?.fotoPerfilUrl != null
+                          ? NetworkImage(user!.fotoPerfilUrl!)
+                          : null,
+                      child: user?.fotoPerfilUrl == null
                           ? Text(
-                              user?.displayName?.isNotEmpty == true ? user!.displayName![0].toUpperCase() : 'U',
-                              style: TextStyle(color: Colors.white, fontSize: Responsive.fontSize(context, 14), fontWeight: FontWeight.bold),
+                              user?.nombreCompleto.isNotEmpty == true
+                                  ? user!.nombreCompleto[0].toUpperCase()
+                                  : 'U',
+                              style: AppTextStyles.bodySmall.copyWith(color: colors.surface),
                             )
                           : null,
                     ),

@@ -26,6 +26,7 @@ import 'package:autodoc/features/chat/presentation/widgets/cotizacion_picker.dar
 import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
 import 'package:autodoc/features/chat/data/models/reserva_model.dart';
 import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class ChatScreen extends StatefulWidget {
   final String conversacionId;
@@ -187,19 +188,19 @@ class _ChatScreenState extends State<ChatScreen> {
                               showDialog(
                                 context: context,
                                 builder: (ctx) => AlertDialog(
-                                  title: const Text('Eliminar mensaje'),
-                                  content: const Text('¿Estás seguro de que quieres eliminar este mensaje para todos?'),
+                                  title: Text(context.l10n.chatDeleteMessage),
+                                  content: Text(context.l10n.chatConfirmDelete),
                                   actions: [
                                     TextButton(
                                       onPressed: () => Navigator.pop(ctx),
-                                      child: const Text('Cancelar'),
+                                      child: Text(context.l10n.adminCancel),
                                     ),
                                     TextButton(
                                       onPressed: () {
                                         Navigator.pop(ctx);
                                         context.read<ChatProvider>().deleteMensaje(widget.conversacionId, msg.id);
                                       },
-                                      child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+                                      child: Text(context.l10n.adminDelete, style: const TextStyle(color: Colors.red)),
                                     ),
                                   ],
                                 ),
@@ -270,7 +271,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 IconButton(
                   icon: Icon(Icons.camera_alt, color: colors.primary),
-                  onPressed: () => _pickAndSendImage(userId, isMecanico, receptorId),
+                  onPressed: () => _pickAndSendImage(userId, isMecanico, receptorId, ImageSource.camera),
                 ),
                 Expanded(
                   child: Container(
@@ -365,10 +366,26 @@ class _ChatScreenState extends State<ChatScreen> {
         return SafeArea(
           child: Wrap(
             children: [
+              ListTile(
+                leading: Icon(Icons.camera_alt, color: colors.primary),
+                title: Text(context.l10n.chatCamera),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAndSendImage(userId, isMecanico, receptorId, ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.photo_library, color: colors.primary),
+                title: Text(context.l10n.chatGallery),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAndSendImage(userId, isMecanico, receptorId, ImageSource.gallery);
+                },
+              ),
               if (!isMecanico) // Solo el propietario comparte su vehículo
                 ListTile(
                   leading: Icon(Icons.directions_car, color: colors.primary),
-                  title: const Text('Compartir Vehículo'),
+                  title: Text(context.l10n.chatShareVehicle),
                   onTap: () {
                     Navigator.pop(context);
                     showModalBottomSheet(
@@ -399,7 +416,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ListTile(
                 leading: Icon(Icons.calendar_month, color: colors.primary),
-                title: const Text('Nueva Reserva'),
+                title: Text(context.l10n.chatNewReservation),
                 onTap: () {
                   Navigator.pop(context);
                   showModalBottomSheet(
@@ -465,7 +482,7 @@ class _ChatScreenState extends State<ChatScreen> {
               if (isMecanico) ...[
                 ListTile(
                   leading: Icon(Icons.request_quote, color: colors.secondary),
-                  title: const Text('Enviar Cotización'),
+                  title: Text(context.l10n.chatSendQuote),
                   onTap: () {
                     Navigator.pop(context);
                     showModalBottomSheet(
@@ -511,7 +528,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 ListTile(
                   leading: Icon(Icons.star, color: colors.warning),
-                  title: const Text('Solicitar Calificación'),
+                  title: Text(context.l10n.chatRequestRating),
                   onTap: () {
                     Navigator.pop(context);
                     context.read<ChatProvider>().enviarMensaje(
@@ -535,9 +552,9 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Future<void> _pickAndSendImage(String userId, bool isMecanico, String receptorId) async {
+  Future<void> _pickAndSendImage(String userId, bool isMecanico, String receptorId, ImageSource source) async {
     final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    final XFile? image = await picker.pickImage(source: source);
 
     if (image != null) {
       if (!mounted) return;
@@ -558,7 +575,7 @@ class _ChatScreenState extends State<ChatScreen> {
           urlArchivo: url,
         );
       } else {
-         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error al subir imagen')));
+         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.l10n.chatUploadImageError)));
       }
     }
   }
