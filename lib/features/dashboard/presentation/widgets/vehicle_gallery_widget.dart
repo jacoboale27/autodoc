@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
@@ -39,7 +38,7 @@ class VehicleGalleryWidget extends StatelessWidget {
                   if (picked != null) {
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Subiendo foto...')));
-                    await photoService.addPhoto(vehicleId, File(picked.path));
+                    await photoService.addPhoto(vehicleId, picked);
                   }
                 },
               ),

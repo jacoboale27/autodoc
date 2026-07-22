@@ -10,6 +10,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 
 import 'package:autodoc/core/providers/language_provider.dart';
 import 'package:autodoc/core/services/translation_service.dart';
@@ -28,6 +29,7 @@ import 'package:autodoc/core/services/notification_service.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
 import 'package:autodoc/core/providers/notification_center_provider.dart';
+import 'package:autodoc/core/providers/user_session_provider.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -59,6 +61,7 @@ String? _resolveNotificationRoute(Map<String, dynamic> data) {
 // Global navigator key for deep linking from background (removed because unused)
 
 void main() async {
+  usePathUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
   
   // 1. Inicializar Firebase
@@ -182,6 +185,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => ReservaProvider()),
         ChangeNotifierProvider(create: (_) => NotificationCenterProvider()),
+        ChangeNotifierProvider(create: (_) => UserSessionProvider()),
       ],
       child: MyApp(
         authProvider: authSessionProvider,

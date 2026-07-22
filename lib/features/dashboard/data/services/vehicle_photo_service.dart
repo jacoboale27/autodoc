@@ -1,6 +1,6 @@
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 class VehiclePhotoModel {
@@ -41,11 +41,13 @@ class VehiclePhotoService {
         .map((snap) => snap.docs.map((doc) => VehiclePhotoModel.fromMap(doc.data(), doc.id)).toList());
   }
 
-  Future<void> addPhoto(String vehicleId, File imageFile) async {
+  Future<void> addPhoto(String vehicleId, XFile imageFile) async {
     final photoId = _uuid.v4();
     final ref = _storage.ref().child('vehiculos/$vehicleId/fotos/$photoId.jpg');
     
-    await ref.putFile(imageFile);
+    final bytes = await imageFile.readAsBytes();
+    final metadata = SettableMetadata(contentType: 'image/jpeg');
+    await ref.putData(bytes, metadata);
     final url = await ref.getDownloadURL();
 
     await _firestore

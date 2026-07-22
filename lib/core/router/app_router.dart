@@ -5,7 +5,6 @@ import 'package:animations/animations.dart';
 import 'package:autodoc/features/splash/presentation/pages/splash_screen.dart';
 import 'package:autodoc/features/onboarding/presentation/pages/onboarding_screen.dart';
 import 'package:autodoc/features/auth/presentation/pages/auth_screen.dart';
-import 'package:autodoc/features/landing/presentation/pages/landing_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/dashboard_screen.dart';
 import 'package:autodoc/features/profile/presentation/pages/profile_setup_screen.dart';
 import 'package:autodoc/features/profile/presentation/pages/user_profile_screen.dart';
@@ -64,7 +63,6 @@ const _publicRoutes = <String>{
   '/login',
   '/register',
   '/onboarding',
-  '/landing',
 };
 
 /// Routes exclusively for Propietario role
@@ -73,7 +71,6 @@ const _ownerRoutes = <String>{
   '/garage',
   '/workshop_directory',
   '/user_profile',
-  '/chat_list',
   '/vehicle_profile',
   '/alerts',
   '/service_history',
@@ -97,7 +94,6 @@ const _adminRoutes = <String>{
   '/admin/talleres',
   '/admin/resenias',
   '/admin/logs',
-  '/admin/seed',
 };
 
 /// Determines the normalized role string
@@ -139,106 +135,124 @@ bool _matchesRouteSet(String path, Set<String> routes) {
 /// - /initiate_service: expects `VehicleModel`
 /// - /task_config: expects `MaintenanceTask`
 /// - /task_complete: expects `Map<String, dynamic>` with keys 'task' (MaintenanceTask) and 'currentKm' (int)
+/// Core redirect logic extracted for unit testing
+String? appRouterRedirect(AuthSessionProvider authProvider, UserProfileProvider profileProvider, BuildContext context, GoRouterState state) {
+  final currentPath = state.uri.path;
+  final isPublicRoute = _publicRoutes.contains(currentPath);
+  final isLoggedIn = authProvider.isLoggedIn;
+  final currentUid = authProvider.currentUid;
+  final rawUserData = profileProvider.userData;
+  
+  // Only consider userData valid if it matches currentUid
+  final userData = (rawUserData != null && rawUserData.idUsuario == currentUid) ? rawUserData : null;
+  final hasAttemptedFetch = profileProvider.hasAttemptedFetchFor(currentUid);
+  final isProfileLoading = profileProvider.isLoading || (isLoggedIn && !hasAttemptedFetch);
+
+  // --- 1. Unauthenticated user trying to access protected route ---
+  if (!isLoggedIn && !isPublicRoute) {
+    // Persist intended destination as query param for post-login redirect
+    // Never allow unauthenticated access to /profile_setup
+    return '/login';
+  }
+
+  // Wait if profile is loading or profile fetch for current UID has not completed
+  if (isLoggedIn && (isProfileLoading || !hasAttemptedFetch)) {
+     // Allow the user to stay on splash or login/register while profile loads
+     if (currentPath == '/' || currentPath == '/login' || currentPath == '/register') return null;
+     // For any other route, stay put while loading — the router will re-evaluate
+     // when profileProvider notifies (via refreshListenable)
+     return null;
+  }
+
+  // --- 2. Authenticated user on login/register → redirect to appropriate home ---
+  if (isLoggedIn && (currentPath == '/login' || currentPath == '/register')) {
+    if (isProfileLoading || !hasAttemptedFetch) return null; // Wait for profile to load
+    if (userData == null) {
+      // Stay on login/register screen if user profile document is not created yet
+      return null;
+    }
+    // Check if there's a pending redirect
+    final redirectParam = state.uri.queryParameters['redirect'];
+    if (redirectParam != null && redirectParam.isNotEmpty) {
+      return Uri.decodeComponent(redirectParam);
+    }
+    return _homeForRole(_normalizeRole(userData.rol));
+  }
+
+  // --- 3. Authenticated user without profile accessing protected route → force profile setup ---
+  if (isLoggedIn && userData == null && !isProfileLoading && hasAttemptedFetch && currentPath != '/profile_setup' && !isPublicRoute) {
+    return '/profile_setup';
+  }
+
+  // --- 4. Role-based access control ---
+  if (isLoggedIn && userData != null) {
+    final role = _normalizeRole(userData.rol);
+    final home = _homeForRole(role);
+
+    // Mechanic pending approval: block dashboard access until approved
+    final estado = userData.estado.trim().toLowerCase();
+    if (role == 'mechanic' && (estado == 'pendiente' || estado == 'pending')) {
+      if (currentPath != '/mechanic_pending') {
+        return '/mechanic_pending';
+      }
+      return null; // Already on pending screen
+    }
+
+    // Chat routes are shared between owner and mechanic
+    if (currentPath.startsWith('/chat/') || currentPath == '/chat_list' || currentPath == '/reserva_detail') {
+      return null; // Allow — both roles use chat
+    }
+
+    // Task config/complete routes are for owners
+    if (currentPath == '/task_config' || currentPath == '/task_complete') {
+      if (role != 'owner' && role != 'admin') {
+        return home;
+      }
+      return null;
+    }
+
+    // Profile setup is for anyone
+    if (currentPath == '/profile_setup') {
+      return null;
+    }
+
+    // Owner trying to access mechanic routes → redirect to owner home
+    if (role == 'owner' && _matchesRouteSet(currentPath, _mechanicRoutes)) {
+      return '/dashboard';
+    }
+    if (role == 'owner' && _matchesRouteSet(currentPath, _adminRoutes)) {
+      return '/dashboard';
+    }
+
+    // Mechanic trying to access owner routes → redirect to mechanic home
+    if (role == 'mechanic' && _matchesRouteSet(currentPath, _ownerRoutes)) {
+      return '/mechanic_dashboard';
+    }
+    if (role == 'mechanic' && _matchesRouteSet(currentPath, _adminRoutes)) {
+      return '/mechanic_dashboard';
+    }
+
+    // Non-admin trying to access admin routes → redirect to their home
+    if (role != 'admin' && _matchesRouteSet(currentPath, _adminRoutes)) {
+      return home;
+    }
+  }
+
+  // --- 5. No redirect needed ---
+  return null;
+}
+
+/// App Router Definition with auth guards
 GoRouter createAppRouter(AuthSessionProvider authProvider, UserProfileProvider profileProvider) {
   return GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/',
     refreshListenable: Listenable.merge([authProvider, profileProvider]),
-    redirect: (BuildContext context, GoRouterState state) {
-      final currentPath = state.uri.path;
-      final isPublicRoute = _publicRoutes.contains(currentPath);
-      final isLoggedIn = authProvider.isLoggedIn;
-      final userData = profileProvider.userData;
-
-      // --- 1. Unauthenticated user trying to access protected route ---
-      if (!isLoggedIn && !isPublicRoute) {
-        // Persist intended destination as query param for post-login redirect
-        final encodedRedirect = Uri.encodeComponent(currentPath);
-        return '/login?redirect=$encodedRedirect';
-      }
-
-      // --- 2. Authenticated user on login/register → redirect to appropriate home ---
-      if (isLoggedIn && (currentPath == '/login' || currentPath == '/register')) {
-        if (userData == null) {
-          return '/profile_setup';
-        }
-        // Check if there's a pending redirect
-        final redirectParam = state.uri.queryParameters['redirect'];
-        if (redirectParam != null && redirectParam.isNotEmpty) {
-          return Uri.decodeComponent(redirectParam);
-        }
-        return _homeForRole(_normalizeRole(userData.rol));
-      }
-
-      // --- 3. Authenticated user without profile → force profile setup ---
-      if (isLoggedIn && userData == null && currentPath != '/profile_setup' && !isPublicRoute) {
-        return '/profile_setup';
-      }
-
-      // --- 4. Role-based access control ---
-      if (isLoggedIn && userData != null) {
-        final role = _normalizeRole(userData.rol);
-        final home = _homeForRole(role);
-
-        // Mechanic pending approval: block dashboard access until approved
-        final estado = userData.estado.trim().toLowerCase();
-        if (role == 'mechanic' && (estado == 'pendiente' || estado == 'pending')) {
-          if (currentPath != '/mechanic_pending') {
-            return '/mechanic_pending';
-          }
-          return null; // Already on pending screen
-        }
-
-        // Chat routes are shared between owner and mechanic
-        if (currentPath.startsWith('/chat/') || currentPath == '/reserva_detail') {
-          return null; // Allow — both roles use chat
-        }
-
-        // Task config/complete routes are for owners
-        if (currentPath == '/task_config' || currentPath == '/task_complete') {
-          if (role != 'owner' && role != 'admin') {
-            return home;
-          }
-          return null;
-        }
-
-        // Profile setup is for anyone
-        if (currentPath == '/profile_setup') {
-          return null;
-        }
-
-        // Owner trying to access mechanic routes → redirect to owner home
-        if (role == 'owner' && _matchesRouteSet(currentPath, _mechanicRoutes)) {
-          return '/dashboard';
-        }
-        if (role == 'owner' && _matchesRouteSet(currentPath, _adminRoutes)) {
-          return '/dashboard';
-        }
-
-        // Mechanic trying to access owner routes → redirect to mechanic home
-        if (role == 'mechanic' && _matchesRouteSet(currentPath, _ownerRoutes)) {
-          return '/mechanic_dashboard';
-        }
-        if (role == 'mechanic' && _matchesRouteSet(currentPath, _adminRoutes)) {
-          return '/mechanic_dashboard';
-        }
-
-        // Non-admin trying to access admin routes → redirect to their home
-        if (role != 'admin' && _matchesRouteSet(currentPath, _adminRoutes)) {
-          return home;
-        }
-      }
-
-      // --- 5. No redirect needed ---
-      return null;
-    },
+    redirect: (BuildContext context, GoRouterState state) =>
+        appRouterRedirect(authProvider, profileProvider, context, state),
     routes: [
       GoRoute(
         path: '/',
         pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const SplashScreen()),
-      ),
-      GoRoute(
-        path: '/landing',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const LandingScreen()),
       ),
       GoRoute(
         path: '/onboarding',

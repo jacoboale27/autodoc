@@ -85,8 +85,8 @@ export default function HeroSection() {
         >
           <div className="relative aspect-[9/19.5] w-full">
             <Image
-              src="/assets/dashboard.jpg"
-              alt="Dashboard App"
+              src="/assets/directory.jpg"
+              alt="Directory App"
               fill
               className="object-cover"
               priority
@@ -102,8 +102,8 @@ export default function HeroSection() {
         >
           <div className="relative aspect-[9/19.5] w-full">
             <Image
-              src="/assets/directory.jpg"
-              alt="Directory App"
+              src="/assets/dashboard.jpg"
+              alt="Dashboard App"
               fill
               className="object-cover"
               priority

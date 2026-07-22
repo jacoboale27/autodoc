@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
@@ -27,7 +27,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   bool _isEditing = false;
-  File? _imageFile;
+  XFile? _imageFile;
   final _picker = ImagePicker();
 
   @override
@@ -51,7 +51,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
     if (pickedFile != null) {
       setState(() {
-        _imageFile = File(pickedFile.path);
+        _imageFile = pickedFile;
       });
     }
   }
@@ -233,7 +233,18 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               ),
               child: ClipOval(
                 child: _imageFile != null
-                    ? Image.file(_imageFile!, fit: BoxFit.cover)
+                    ? FutureBuilder<List<int>>(
+                        future: _imageFile!.readAsBytes().then((b) => b.toList()),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData) {
+                            return Image.memory(
+                              Uint8List.fromList(snapshot.data!),
+                              fit: BoxFit.cover,
+                            );
+                          }
+                          return const Center(child: CircularProgressIndicator());
+                        },
+                      )
                     : CachedNetworkImage(
                         imageUrl: user.fotoPerfilUrl ?? 'https://www.w3schools.com/howto/img_avatar.png',
                         fit: BoxFit.cover,

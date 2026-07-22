@@ -1,8 +1,8 @@
-import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:autodoc/core/models/alert_model.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 
@@ -222,7 +222,7 @@ class AlertProvider extends ChangeNotifier {
     required int currentKm,
     required double cost,
     required String notes,
-    File? receiptImage,
+    XFile? receiptImage,
   }) async {
     _isLoading = true;
     notifyListeners();
@@ -257,7 +257,9 @@ class AlertProvider extends ChangeNotifier {
               .child(StoragePaths.facturas)
               .child(task.vehicleId)
               .child('${DateTime.now().millisecondsSinceEpoch}.jpg');
-          await ref.putFile(receiptImage);
+          final bytes = await receiptImage.readAsBytes();
+          final metadata = SettableMetadata(contentType: 'image/jpeg');
+          await ref.putData(bytes, metadata);
           receiptUrl = await ref.getDownloadURL();
         }
 
@@ -359,7 +361,7 @@ class AlertProvider extends ChangeNotifier {
     required String tallerId,
     required String descripcion,
     double? costo,
-    File? receiptImage,
+    XFile? receiptImage,
   }) async {
     _isLoading = true;
     notifyListeners();
@@ -385,7 +387,9 @@ class AlertProvider extends ChangeNotifier {
             .child(StoragePaths.facturas)
             .child(vehicleId)
             .child('${DateTime.now().millisecondsSinceEpoch}.jpg');
-        await ref.putFile(receiptImage);
+        final bytes = await receiptImage.readAsBytes();
+        final metadata = SettableMetadata(contentType: 'image/jpeg');
+        await ref.putData(bytes, metadata);
         receiptUrl = await ref.getDownloadURL();
       }
 

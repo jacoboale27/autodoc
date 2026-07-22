@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../data/models/conversacion_model.dart';
 import '../../data/models/mensaje_model.dart';
 import '../../data/models/cotizacion_model.dart';
@@ -194,7 +194,7 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  Future<String?> subirImagenChat(String conversacionId, File imageFile) async {
+  Future<String?> subirImagenChat(String conversacionId, XFile imageFile) async {
     try {
       _isLoading = true;
       notifyListeners();
@@ -205,7 +205,9 @@ class ChatProvider extends ChangeNotifier {
           .child('chat_images')
           .child(conversacionId)
           .child(fileName);
-      await ref.putFile(imageFile);
+      final bytes = await imageFile.readAsBytes();
+      final metadata = SettableMetadata(contentType: 'image/jpeg');
+      await ref.putData(bytes, metadata);
       final url = await ref.getDownloadURL();
       
       _isLoading = false;

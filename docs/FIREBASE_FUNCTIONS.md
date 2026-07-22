@@ -1,4 +1,4 @@
-# Firebase Cloud Functions — AutoDoc
+nece# Firebase Cloud Functions — AutoDoc
 
 > **Última actualización:** 2026-07-19  
 > **Archivo fuente:** `functions/index.js`  

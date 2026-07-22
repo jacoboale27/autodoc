@@ -1,5 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -28,7 +29,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   final TextEditingController _costoController = TextEditingController();
   final Set<String> _completedTaskIds = {};
   bool _isSaving = false;
-  File? _invoiceImage;
+  XFile? _invoiceImage;
 
   Future<void> _pickInvoiceImage(ImageSource source) async {
     try {
@@ -36,7 +37,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       final pickedFile = await picker.pickImage(source: source, imageQuality: 80);
       if (pickedFile != null) {
         setState(() {
-          _invoiceImage = File(pickedFile.path);
+          _invoiceImage = pickedFile;
         });
       }
     } catch (e) {
@@ -228,11 +229,22 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           if (_invoiceImage != null) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.file(
-                _invoiceImage!,
-                height: 200,
-                width: double.infinity,
-                fit: BoxFit.cover,
+              child: FutureBuilder<List<int>>(
+                future: _invoiceImage!.readAsBytes().then((b) => b.toList()),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    return Image.memory(
+                      Uint8List.fromList(snapshot.data!),
+                      height: 200,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    );
+                  }
+                  return const SizedBox(
+                    height: 200,
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                },
               ),
             ),
             const SizedBox(height: 12),

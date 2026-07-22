@@ -14,7 +14,7 @@ import 'package:autodoc/features/chat/presentation/widgets/cards/vehiculo_chat_c
 import 'package:autodoc/features/chat/presentation/widgets/cards/reserva_chat_card.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
-import 'dart:io';
+
 
 import 'package:image_picker/image_picker.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/cotizacion_chat_card.dart';
@@ -560,7 +560,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (!mounted) return;
 
       final provider = context.read<ChatProvider>();
-      final url = await provider.subirImagenChat(widget.conversacionId, File(image.path));
+      final url = await provider.subirImagenChat(widget.conversacionId, image);
       
       if (!mounted) return;
       

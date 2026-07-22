@@ -1,5 +1,5 @@
-import 'dart:io';
 import 'dart:ui';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -21,14 +21,14 @@ class TaskCompleteScreen extends StatefulWidget {
 class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
   final _costController = TextEditingController();
   final _notesController = TextEditingController();
-  File? _receiptImage;
+  XFile? _receiptImage;
   bool _isLoading = false;
 
   Future<void> _pickImage(ImageSource source) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: source, imageQuality: 70);
     if (pickedFile != null) {
-      setState(() => _receiptImage = File(pickedFile.path));
+      setState(() => _receiptImage = pickedFile);
     }
   }
 
@@ -237,9 +237,20 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(color: Colors.green.withValues(alpha: 0.3), width: 2),
-                            image: DecorationImage(
-                              image: FileImage(_receiptImage!),
-                              fit: BoxFit.cover,
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: FutureBuilder<List<int>>(
+                              future: _receiptImage!.readAsBytes().then((b) => b.toList()),
+                              builder: (context, snapshot) {
+                                if (snapshot.hasData) {
+                                  return Image.memory(
+                                    Uint8List.fromList(snapshot.data!),
+                                    fit: BoxFit.cover,
+                                  );
+                                }
+                                return const Center(child: CircularProgressIndicator());
+                              },
                             ),
                           ),
                         ),

@@ -4,7 +4,6 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _i4;
-import 'dart:io' as _i15;
 import 'dart:typed_data' as _i16;
 
 import 'package:autodoc/core/models/user_model.dart' as _i9;
@@ -21,6 +20,7 @@ import 'package:cloud_firestore/cloud_firestore.dart' as _i3;
 import 'package:firebase_auth/firebase_auth.dart' as _i7;
 import 'package:firebase_core/firebase_core.dart' as _i2;
 import 'package:firebase_storage/firebase_storage.dart' as _i5;
+import 'package:image_picker/image_picker.dart' as _i15;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i13;
 
@@ -264,6 +264,16 @@ class MockAuthService extends _i1.Mock implements _i6.AuthService {
       ) as _i4.Future<_i7.UserCredential?>);
 
   @override
+  _i4.Future<void> deleteAccount() => (super.noSuchMethod(
+        Invocation.method(
+          #deleteAccount,
+          [],
+        ),
+        returnValue: _i4.Future<void>.value(),
+        returnValueForMissingStub: _i4.Future<void>.value(),
+      ) as _i4.Future<void>);
+
+  @override
   _i4.Future<void> signOut() => (super.noSuchMethod(
         Invocation.method(
           #signOut,
@@ -439,6 +449,61 @@ class MockVehicleService extends _i1.Mock implements _i10.VehicleService {
         returnValue:
             _i4.Future<List<_i11.VehicleModel>>.value(<_i11.VehicleModel>[]),
       ) as _i4.Future<List<_i11.VehicleModel>>);
+
+  @override
+  _i4.Future<Map<String, dynamic>> getExpenseSummary(String? vehicleId) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #getExpenseSummary,
+          [vehicleId],
+        ),
+        returnValue:
+            _i4.Future<Map<String, dynamic>>.value(<String, dynamic>{}),
+      ) as _i4.Future<Map<String, dynamic>>);
+
+  @override
+  _i4.Future<void> addNote(
+    String? vehicleId,
+    String? note,
+  ) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #addNote,
+          [
+            vehicleId,
+            note,
+          ],
+        ),
+        returnValue: _i4.Future<void>.value(),
+        returnValueForMissingStub: _i4.Future<void>.value(),
+      ) as _i4.Future<void>);
+
+  @override
+  _i4.Future<void> removeNote(
+    String? vehicleId,
+    String? note,
+  ) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #removeNote,
+          [
+            vehicleId,
+            note,
+          ],
+        ),
+        returnValue: _i4.Future<void>.value(),
+        returnValueForMissingStub: _i4.Future<void>.value(),
+      ) as _i4.Future<void>);
+
+  @override
+  _i4.Future<Map<String, dynamic>?> getLastVisitedWorkshop(String? vehicleId) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #getLastVisitedWorkshop,
+          [vehicleId],
+        ),
+        returnValue: _i4.Future<Map<String, dynamic>?>.value(),
+      ) as _i4.Future<Map<String, dynamic>?>);
 }
 
 /// A class which mocks [VehicleImageService].
@@ -527,7 +592,7 @@ class MockUserService extends _i1.Mock implements _i14.UserService {
   @override
   _i4.Future<String> uploadProfilePhoto(
     String? userId,
-    _i15.File? imageFile,
+    _i15.XFile? imageFile,
   ) =>
       (super.noSuchMethod(
         Invocation.method(
@@ -548,6 +613,40 @@ class MockUserService extends _i1.Mock implements _i14.UserService {
           ),
         )),
       ) as _i4.Future<String>);
+
+  @override
+  _i4.Future<void> addFavoriteWorkshop(
+    String? userId,
+    String? tallerId,
+  ) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #addFavoriteWorkshop,
+          [
+            userId,
+            tallerId,
+          ],
+        ),
+        returnValue: _i4.Future<void>.value(),
+        returnValueForMissingStub: _i4.Future<void>.value(),
+      ) as _i4.Future<void>);
+
+  @override
+  _i4.Future<void> removeFavoriteWorkshop(
+    String? userId,
+    String? tallerId,
+  ) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #removeFavoriteWorkshop,
+          [
+            userId,
+            tallerId,
+          ],
+        ),
+        returnValue: _i4.Future<void>.value(),
+        returnValueForMissingStub: _i4.Future<void>.value(),
+      ) as _i4.Future<void>);
 }
 
 /// A class which mocks [FirebaseFirestore].

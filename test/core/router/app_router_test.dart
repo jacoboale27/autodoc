@@ -1,151 +1,134 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:autodoc/core/router/app_router.dart';
+import 'package:autodoc/core/providers/auth_session_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
+import 'package:autodoc/core/models/user_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-/// Tests for the route helper functions in app_router.dart.
-/// 
-/// These tests verify the redirect logic helpers:
-/// - _normalizeRole: maps role strings to normalized values
-/// - _homeForRole: maps normalized roles to home routes
-/// - _matchesRouteSet: checks if a path matches a route set
-/// 
-/// The full GoRouter redirect logic requires a widget test harness
-/// (integration test), but the helper functions can be tested in isolation.
+class FakeAuthSessionProvider extends ChangeNotifier implements AuthSessionProvider {
+  final bool _isLoggedIn;
+  final String _currentUid;
+
+  FakeAuthSessionProvider({bool isLoggedIn = false, String currentUid = ''})
+      : _isLoggedIn = isLoggedIn,
+        _currentUid = currentUid;
+
+  @override
+  bool get isLoggedIn => _isLoggedIn;
+
+  @override
+  String get currentUid => _currentUid;
+
+  @override
+  User? get user => null;
+
+  @override
+  Future<void> refreshUser() async {}
+}
+
+class FakeUserProfileProvider extends ChangeNotifier implements UserProfileProvider {
+  final UserModel? _userData;
+  final bool _isLoading;
+  final bool _hasAttemptedFetch;
+
+  FakeUserProfileProvider({
+    UserModel? userData,
+    bool isLoading = false,
+    bool hasAttemptedFetch = true,
+  })  : _userData = userData,
+        _isLoading = isLoading,
+        _hasAttemptedFetch = hasAttemptedFetch;
+
+  @override
+  UserModel? get userData => _userData;
+
+  @override
+  bool get isLoading => _isLoading;
+
+  @override
+  bool get hasAttemptedFetch => _hasAttemptedFetch;
+
+  @override
+  String? get fetchedUserId => _userData?.idUsuario;
+
+  @override
+  bool hasAttemptedFetchFor(String userId) => _hasAttemptedFetch;
+
+  @override
+  String? get error => null;
+
+  @override
+  Future<void> fetchUserData(String userId) async {}
+
+  @override
+  Future<bool> updateProfile(UserModel updatedUser, {dynamic imageFile, bool isNewUser = false}) async => true;
+
+  @override
+  void clearUserData() {}
+}
+
 void main() {
-  group('_normalizeRole', () {
-    test('normalizes "Propietario" to owner', () {
-      expect(_normalizeRoleForTest('Propietario'), 'owner');
-    });
+  testWidgets('AppRouter Redirect Logic Direct Unit Tests', (WidgetTester tester) async {
+    await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+    final BuildContext context = tester.element(find.byType(SizedBox));
 
-    test('normalizes "Mecanico" to mechanic', () {
-      expect(_normalizeRoleForTest('Mecanico'), 'mechanic');
-    });
+    String? evaluateRedirect({
+      required bool isLoggedIn,
+      required UserModel? userData,
+      required String path,
+    }) {
+      final authProvider = FakeAuthSessionProvider(isLoggedIn: isLoggedIn, currentUid: isLoggedIn ? 'uid_1' : '');
+      final profileProvider = FakeUserProfileProvider(userData: userData, hasAttemptedFetch: true);
+      final router = createAppRouter(authProvider, profileProvider);
 
-    test('normalizes "Taller" to mechanic', () {
-      expect(_normalizeRoleForTest('Taller'), 'mechanic');
-    });
+      final uri = Uri.parse(path);
+      final state = GoRouterState(
+        router.configuration,
+        uri: uri,
+        matchedLocation: uri.path,
+        name: null,
+        path: uri.path,
+        fullPath: uri.path,
+        pathParameters: const {},
+        extra: null,
+        pageKey: ValueKey(uri.path),
+      );
 
-    test('normalizes "admin" (lowercase) to admin', () {
-      expect(_normalizeRoleForTest('admin'), 'admin');
-    });
-
-    test('normalizes "Administrador" to admin', () {
-      expect(_normalizeRoleForTest('Administrador'), 'admin');
-    });
-
-    test('normalizes null to empty string', () {
-      expect(_normalizeRoleForTest(null), '');
-    });
-
-    test('normalizes unknown role to owner (default)', () {
-      expect(_normalizeRoleForTest('unknown'), 'owner');
-    });
-  });
-
-  group('_homeForRole', () {
-    test('owner home is /dashboard', () {
-      expect(_homeForRoleForTest('owner'), '/dashboard');
-    });
-
-    test('mechanic home is /mechanic_dashboard', () {
-      expect(_homeForRoleForTest('mechanic'), '/mechanic_dashboard');
-    });
-
-    test('admin home is /admin/dashboard', () {
-      expect(_homeForRoleForTest('admin'), '/admin/dashboard');
-    });
-
-    test('empty role defaults to /dashboard', () {
-      expect(_homeForRoleForTest(''), '/dashboard');
-    });
-  });
-
-  group('_matchesRouteSet', () {
-    const testSet = <String>{'/dashboard', '/garage', '/alerts'};
-
-    test('exact match returns true', () {
-      expect(_matchesRouteSetForTest('/dashboard', testSet), isTrue);
-    });
-
-    test('sub-path match returns true', () {
-      expect(_matchesRouteSetForTest('/dashboard/details', testSet), isTrue);
-    });
-
-    test('no match returns false', () {
-      expect(_matchesRouteSetForTest('/mechanic_dashboard', testSet), isFalse);
-    });
-
-    test('partial prefix does not match', () {
-      // /dashboards should NOT match /dashboard
-      expect(_matchesRouteSetForTest('/dashboards', testSet), isFalse);
-    });
-
-    test('empty path does not match', () {
-      expect(_matchesRouteSetForTest('', testSet), isFalse);
-    });
-  });
-
-  group('Route Sets — No overlap between roles', () {
-    test('owner routes and mechanic routes have no common paths', () {
-      final ownerRoutes = <String>{
-        '/dashboard', '/garage', '/workshop_directory',
-        '/user_profile', '/chat_list', '/vehicle_profile',
-        '/alerts', '/service_history',
-      };
-      final mechanicRoutes = <String>{
-        '/mechanic_dashboard', '/mechanic_search',
-        '/mechanic_service_history', '/workshop_settings',
-        '/mechanic_reviews', '/initiate_service', '/mechanic_pending',
-      };
-
-      final overlap = ownerRoutes.intersection(mechanicRoutes);
-      expect(overlap, isEmpty, reason: 'Owner and mechanic routes should not overlap');
-    });
-
-    test('public routes do not include protected routes', () {
-      const publicRoutes = <String>{'/', '/login', '/register', '/onboarding', '/landing'};
-      const protectedPrefixes = ['/dashboard', '/admin', '/mechanic', '/garage'];
-
-      for (final pub in publicRoutes) {
-        for (final prot in protectedPrefixes) {
-          expect(
-            pub.startsWith(prot),
-            isFalse,
-            reason: 'Public route $pub should not start with protected prefix $prot',
-          );
-        }
-      }
-    });
-  });
-}
-
-// ── Test helpers that expose private functions for testing ─────────────────────
-// Since _normalizeRole, _homeForRole, _matchesRouteSet are file-level private
-// functions in app_router.dart, we duplicate the logic here for testability.
-// This is the standard approach without modifying production code.
-
-String _normalizeRoleForTest(String? rol) {
-  if (rol == null) return '';
-  final r = rol.trim().toLowerCase();
-  if (r == 'admin' || r == 'administrador') return 'admin';
-  if (r == 'mecanico' || r == 'taller') return 'mechanic';
-  return 'owner';
-}
-
-String _homeForRoleForTest(String normalizedRole) {
-  switch (normalizedRole) {
-    case 'admin':
-      return '/admin/dashboard';
-    case 'mechanic':
-      return '/mechanic_dashboard';
-    default:
-      return '/dashboard';
-  }
-}
-
-bool _matchesRouteSetForTest(String path, Set<String> routes) {
-  for (final route in routes) {
-    if (path == route || path.startsWith('$route/') || path.startsWith('$route?')) {
-      return true;
+      return appRouterRedirect(authProvider, profileProvider, context, state);
     }
-  }
-  return false;
+
+    // 1. Unauthenticated user on /login -> null (stays on /login)
+    expect(evaluateRedirect(isLoggedIn: false, userData: null, path: '/login'), null);
+
+    // 2. Unauthenticated user on protected /dashboard -> /login
+    expect(evaluateRedirect(isLoggedIn: false, userData: null, path: '/dashboard'), '/login');
+
+    // 3. Authenticated user without Firestore profile on /login -> null (stays on /login)
+    expect(evaluateRedirect(isLoggedIn: true, userData: null, path: '/login'), null);
+
+    // 4. Authenticated user without Firestore profile trying to access protected /dashboard -> /profile_setup
+    expect(evaluateRedirect(isLoggedIn: true, userData: null, path: '/dashboard'), '/profile_setup');
+
+    // 5. Authenticated user with Propietario profile on /login -> /dashboard
+    final ownerUser = UserModel(
+      idUsuario: 'uid_1',
+      nombreCompleto: 'Juan Owner',
+      correo: 'owner@test.com',
+      rol: 'Propietario',
+      fechaRegistro: DateTime.now(),
+    );
+    expect(evaluateRedirect(isLoggedIn: true, userData: ownerUser, path: '/login'), '/dashboard');
+
+    // 6. Authenticated user with Mecanico profile on /login -> /mechanic_dashboard
+    final mechanicUser = UserModel(
+      idUsuario: 'uid_1',
+      nombreCompleto: 'Carlos Mecanico',
+      correo: 'mecanico@test.com',
+      rol: 'Mecanico',
+      fechaRegistro: DateTime.now(),
+    );
+    expect(evaluateRedirect(isLoggedIn: true, userData: mechanicUser, path: '/login'), '/mechanic_dashboard');
+  });
 }

@@ -1,0 +1,89 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "servicios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "id_taller",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fecha",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "conversaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "id_propietario",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "id_mecanico",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "conversaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "id_mecanico",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ultimo_mensaje_ts",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "conversaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "id_propietario",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ultimo_mensaje_ts",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "mensajes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "id_remitente",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "historial_mantenimientos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "id_taller",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fecha",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

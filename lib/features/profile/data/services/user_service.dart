@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/models/user_model.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/core/constants/storage_paths.dart';
@@ -39,10 +39,12 @@ class UserService {
     }
   }
 
-  Future<String> uploadProfilePhoto(String userId, File imageFile) async {
+  Future<String> uploadProfilePhoto(String userId, XFile imageFile) async {
     try {
       final ref = FirebaseStorage.instance.ref().child(StoragePaths.perfiles).child('$userId.jpg');
-      await ref.putFile(imageFile);
+      final bytes = await imageFile.readAsBytes();
+      final metadata = SettableMetadata(contentType: 'image/jpeg');
+      await ref.putData(bytes, metadata);
       return await ref.getDownloadURL();
     } catch (e) {
       throw 'Error al subir foto: $e';

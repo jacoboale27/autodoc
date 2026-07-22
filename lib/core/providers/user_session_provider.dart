@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/features/profile/data/services/user_service.dart';
 import 'package:autodoc/features/auth/data/services/auth_preferences_service.dart';
@@ -70,7 +70,7 @@ class UserSessionProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> updateProfile(UserModel updatedUser, {File? imageFile}) async {
+  Future<bool> updateProfile(UserModel updatedUser, {XFile? imageFile}) async {
     _setLoading(true);
     _setError(null);
     try {
