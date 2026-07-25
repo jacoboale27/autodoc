@@ -20,9 +20,6 @@ export default function Header() {
   }, []);
 
   const toggleLanguage = () => {
-    // Determine current locale based on pathname (if possible) or default logic
-    // Since we don't have access to current locale directly from useTranslations easily without a hook, 
-    // we can use document.documentElement.lang or let next-intl handle it
     const nextLocale = document.documentElement.lang === "es" ? "en" : "es";
     router.replace(pathname, { locale: nextLocale });
   };
@@ -39,7 +36,7 @@ export default function Header() {
     >
       <div className="flex w-full max-w-5xl items-center justify-between rounded-full border border-slate-200 dark:border-slate-700/50 bg-white/90 dark:bg-[#111827]/80 px-6 py-3 shadow-lg backdrop-blur-md">
         {/* Logo */}
-        <div className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#522C81] dark:bg-sky-500 shadow-[0_0_10px_rgba(82,44,129,0.5)] dark:shadow-[0_0_10px_rgba(56,189,248,0.5)]">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -55,18 +52,18 @@ export default function Header() {
           <span className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
             {t("appName")}
           </span>
-        </div>
+        </Link>
 
         {/* Navigation */}
         <nav className="hidden md:flex items-center gap-8">
-          <Link href="#platform" className="text-sm font-medium text-slate-600 dark:text-slate-200 transition hover:text-[#522C81] dark:hover:text-sky-400">
-            {t("navPlatform")}
-          </Link>
-          <Link href="#owners" className="text-sm font-medium text-slate-600 dark:text-slate-200 transition hover:text-[#522C81] dark:hover:text-sky-400">
+          <Link href="#features" className="text-sm font-medium text-slate-600 dark:text-slate-200 transition hover:text-[#522C81] dark:hover:text-sky-400">
             {t("navOwners")}
           </Link>
           <Link href="#workshops" className="text-sm font-medium text-slate-600 dark:text-slate-200 transition hover:text-[#522C81] dark:hover:text-sky-400">
             {t("navWorkshops")}
+          </Link>
+          <Link href="#testimonials" className="text-sm font-medium text-slate-600 dark:text-slate-200 transition hover:text-[#522C81] dark:hover:text-sky-400">
+            {t("navTestimonials")}
           </Link>
         </nav>
 
@@ -95,7 +92,7 @@ export default function Header() {
             {t("navLogin")}
           </Link>
           <Link href="https://autodoc-6ef5a.web.app/register" target="_blank">
-            <button className="rounded-full bg-[#522C81] dark:bg-transparent dark:border-none px-4 py-2 text-sm font-bold text-white transition hover:bg-[#3d2062] dark:hover:text-sky-400">
+            <button className="rounded-full bg-[#522C81] dark:bg-[#522C81] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#3d2062]">
               {t("navTryFree")}
             </button>
           </Link>
