@@ -3,6 +3,7 @@ import HeroSection from "@/components/ui/HeroSection";
 import ValuePropSection from "@/components/ui/ValuePropSection";
 import FeaturesGrid from "@/components/ui/FeaturesGrid";
 import WorkshopsSection from "@/components/ui/WorkshopsSection";
+import TestimonialsSection from "@/components/ui/TestimonialsSection";
 import Footer from "@/components/ui/Footer";
 import { setRequestLocale } from 'next-intl/server';
 
@@ -24,6 +25,7 @@ export default async function Home({
         <FeaturesGrid />
         <ValuePropSection />
         <WorkshopsSection />
+        <TestimonialsSection />
         <Footer />
       </div>
     </main>
