@@ -46,7 +46,7 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="mb-6 font-bold text-slate-900 dark:text-white">Descarga la App</h4>
+            <h4 className="mb-6 font-bold text-slate-900 dark:text-white">{t("downloadApp")}</h4>
             <div className="flex flex-col gap-3">
               <Link href="https://apps.apple.com/app/id123456789" target="_blank" className="inline-block hover:opacity-80 transition-opacity">
                 <Image src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt="Download on the App Store" width={120} height={40} className="h-10 w-auto" />

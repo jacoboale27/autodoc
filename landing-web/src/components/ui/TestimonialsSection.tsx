@@ -12,15 +12,15 @@ export default function TestimonialsSection() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
           <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 text-center hover:border-sky-500/40 transition-colors">
             <div className="text-4xl font-extrabold text-sky-400 mb-2">{t("statSatisfaction")}</div>
-            <p className="text-slate-400 text-sm">Conductores tranquilos y satisfechos</p>
+            <p className="text-slate-400 text-sm">{t("statSatisfactionSub")}</p>
           </div>
           <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 text-center hover:border-emerald-500/40 transition-colors">
             <div className="text-4xl font-extrabold text-emerald-400 mb-2">{t("statWorkshops")}</div>
-            <p className="text-slate-400 text-sm">Red nacional de especialistas</p>
+            <p className="text-slate-400 text-sm">{t("statWorkshopsSub")}</p>
           </div>
           <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 text-center hover:border-indigo-500/40 transition-colors">
             <div className="text-4xl font-extrabold text-indigo-400 mb-2">{t("statServices")}</div>
-            <p className="text-slate-400 text-sm">Historiales certificados guardados</p>
+            <p className="text-slate-400 text-sm">{t("statServicesSub")}</p>
           </div>
         </div>
 

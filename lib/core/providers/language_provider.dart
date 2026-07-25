@@ -14,8 +14,14 @@ class LanguageProvider extends ChangeNotifier {
   Future<void> _loadLocale() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final code = prefs.getString('app_locale') ?? 'es';
-      _currentLocale = Locale(code);
+      final code = prefs.getString('app_locale');
+      if (code != null && code.isNotEmpty) {
+        _currentLocale = Locale(code);
+      } else {
+        final deviceLanguage = WidgetsBinding.instance.platformDispatcher.locale.languageCode.toLowerCase();
+        final autoCode = (deviceLanguage == 'en') ? 'en' : 'es';
+        _currentLocale = Locale(autoCode);
+      }
       notifyListeners();
     } catch (e) {
       debugPrint("Error loading app locale: $e");

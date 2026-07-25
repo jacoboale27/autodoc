@@ -135,13 +135,13 @@ export default function FeaturesGrid() {
                     className="absolute inset-0 bg-cover bg-center opacity-10 dark:opacity-30"
                     style={{ backgroundImage: 'url(https://images.pexels.com/photos/8985913/pexels-photo-8985913.jpeg)' }}
                   />
-                  <h4 className="text-2xl font-bold mb-8 relative z-10 text-slate-900 dark:text-white">Línea de Tiempo Clínica</h4>
+                  <h4 className="text-2xl font-bold mb-8 relative z-10 text-slate-900 dark:text-white">{t("featuresTimelineTitle")}</h4>
                   <div className="space-y-6 relative z-10 max-w-sm">
                     <div className="flex gap-4 items-start">
                       <div className="w-3 h-3 rounded-full bg-[#81E6D9] dark:bg-sky-400 mt-1.5 shadow-[0_0_10px_rgba(129,230,217,0.8)] dark:shadow-[0_0_10px_rgba(56,189,248,0.8)]"></div>
                       <div>
                         <p className="text-xs text-[#522C81] dark:text-sky-400 font-bold">15 JUN 2026</p>
-                        <p className="text-sm font-bold text-slate-900 dark:text-white">Cambio de Kit de Distribución</p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">{t("featuresTimelineItemTitle")}</p>
                         <p className="text-[10px] text-slate-500 dark:text-slate-400">Taller Central Motor • 45,000 km</p>
                       </div>
                     </div>
@@ -168,8 +168,8 @@ export default function FeaturesGrid() {
                       <div className="flex items-center gap-4">
                         <svg className="w-10 h-10 text-[#FC8181] dark:text-inherit" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                         <div>
-                          <p className="font-black text-lg leading-tight">ATENCIÓN REQUERIDA</p>
-                          <p className="text-xs font-bold opacity-80 text-[#FC8181] dark:text-inherit">Próximo cambio de aceite en 500km</p>
+                          <p className="font-black text-lg leading-tight">{t("featuresAlertTitle")}</p>
+                          <p className="text-xs font-bold opacity-80 text-[#FC8181] dark:text-inherit">{t("featuresAlertDesc")}</p>
                         </div>
                       </div>
                     </div>
@@ -199,8 +199,8 @@ export default function FeaturesGrid() {
                       </div>
                    </div>
                    <div className="text-center mt-4">
-                     <p className="text-xl font-bold mb-2 text-slate-900 dark:text-white">Sincronización Certificada</p>
-                     <p className="text-slate-500 dark:text-slate-400 text-sm max-w-xs mx-auto">Tu mecánico sube la evidencia y tú la recibes al instante con trazabilidad total.</p>
+                     <p className="text-xl font-bold mb-2 text-slate-900 dark:text-white">{t("featuresSyncTitle")}</p>
+                     <p className="text-slate-500 dark:text-slate-400 text-sm max-w-xs mx-auto">{t("featuresSyncDesc")}</p>
                    </div>
                 </div>
               )}

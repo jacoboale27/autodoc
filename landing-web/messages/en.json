@@ -62,5 +62,20 @@
   "footerPrivacy": "Privacy Policy",
   "footerTerms": "Terms of Service",
   "footerContact": "Support",
-  "footerCopyright": "© 2026 AutoDoc Technology. Made for smart drivers."
+  "footerCopyright": "© 2026 AutoDoc Technology. Made for smart drivers.",
+  "featuredWorkshopsTitle": "Featured Workshops",
+  "featuredWorkshopsSubtitle": "Find the best certified workshops near you.",
+  "noWorkshopsAvailable": "No workshops available at the moment.",
+  "formRequiredError": "Please fill in all required fields.",
+  "formGenericError": "An error occurred while submitting the request. Please try again.",
+  "featuresTimelineTitle": "Clinical Timeline",
+  "featuresTimelineItemTitle": "Timing Belt Kit Replacement",
+  "featuresAlertTitle": "ATTENTION REQUIRED",
+  "featuresAlertDesc": "Next oil change in 500km",
+  "featuresSyncTitle": "Certified Synchronization",
+  "featuresSyncDesc": "Your mechanic uploads the evidence and you receive it instantly with full traceability.",
+  "statSatisfactionSub": "Peaceful and satisfied drivers",
+  "statWorkshopsSub": "Nationwide network of specialists",
+  "statServicesSub": "Saved certified histories",
+  "downloadApp": "Download the App"
 }

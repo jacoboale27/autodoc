@@ -73,7 +73,7 @@ export default function WorkshopsSection() {
     setErrorMessage("");
 
     if (!formName.trim() || !formEmail.trim() || !formPhone.trim() || !formLocation.trim()) {
-      setErrorMessage("Por favor completa todos los campos requeridos.");
+      setErrorMessage(t("formRequiredError"));
       return;
     }
 
@@ -110,7 +110,7 @@ export default function WorkshopsSection() {
       setSubmitted(true);
     } catch (err) {
       console.error("Error submitting workshop application", err);
-      setErrorMessage("Ocurrió un error al enviar la solicitud. Intenta nuevamente.");
+      setErrorMessage(t("formGenericError"));
     } finally {
       setSubmitting(false);
     }
@@ -129,10 +129,10 @@ export default function WorkshopsSection() {
             className="text-center mb-12"
           >
             <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl mb-4">
-              Talleres Destacados
+              {t("featuredWorkshopsTitle")}
             </h2>
             <p className="text-lg text-slate-600 dark:text-slate-300">
-              Encuentra los mejores talleres certificados cerca de ti.
+              {t("featuredWorkshopsSubtitle")}
             </p>
           </motion.div>
 
@@ -168,7 +168,7 @@ export default function WorkshopsSection() {
               ))}
             </div>
           ) : (
-            <p className="text-center text-slate-500">No hay talleres disponibles en este momento.</p>
+            <p className="text-center text-slate-500">{t("noWorkshopsAvailable")}</p>
           )}
         </div>
 

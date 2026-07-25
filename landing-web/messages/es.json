@@ -62,5 +62,20 @@
   "footerPrivacy": "Política de Privacidad",
   "footerTerms": "Términos de Servicio",
   "footerContact": "Soporte",
-  "footerCopyright": "© 2026 AutoDoc Technology. Hecho para conductores inteligentes."
+  "footerCopyright": "© 2026 AutoDoc Technology. Hecho para conductores inteligentes.",
+  "featuredWorkshopsTitle": "Talleres Destacados",
+  "featuredWorkshopsSubtitle": "Encuentra los mejores talleres certificados cerca de ti.",
+  "noWorkshopsAvailable": "No hay talleres disponibles en este momento.",
+  "formRequiredError": "Por favor completa todos los campos requeridos.",
+  "formGenericError": "Ocurrió un error al enviar la solicitud. Intenta nuevamente.",
+  "featuresTimelineTitle": "Línea de Tiempo Clínica",
+  "featuresTimelineItemTitle": "Cambio de Kit de Distribución",
+  "featuresAlertTitle": "ATENCIÓN REQUERIDA",
+  "featuresAlertDesc": "Próximo cambio de aceite en 500km",
+  "featuresSyncTitle": "Sincronización Certificada",
+  "featuresSyncDesc": "Tu mecánico sube la evidencia y tú la recibes al instante con trazabilidad total.",
+  "statSatisfactionSub": "Conductores tranquilos y satisfechos",
+  "statWorkshopsSub": "Red nacional de especialistas",
+  "statServicesSub": "Historiales certificados guardados",
+  "downloadApp": "Descarga la App"
 }
