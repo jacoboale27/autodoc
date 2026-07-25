@@ -1,10 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { MapPin, Star } from "lucide-react";
+import { MapPin, Star, ShieldCheck, Calendar, FileSpreadsheet, CheckCircle2, AlertCircle } from "lucide-react";
 
 interface Workshop {
   id: string;
@@ -19,6 +18,18 @@ export default function WorkshopsSection() {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Form State
+  const [formName, setFormName] = useState("");
+  const [formRep, setFormRep] = useState("");
+  const [formEmail, setFormEmail] = useState("");
+  const [formPhone, setFormPhone] = useState("");
+  const [formLocation, setFormLocation] = useState("");
+  const [formSpecialty, setFormSpecialty] = useState("Mecánica General");
+
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
   useEffect(() => {
     async function fetchWorkshops() {
       try {
@@ -32,7 +43,6 @@ export default function WorkshopsSection() {
             .map((doc: any) => {
               const fields = doc.fields;
               const id = doc.name.split("/").pop();
-              // Only include approved workshops if 'estado' field exists and is 'aprobado'
               const estado = fields?.estado?.stringValue || 'aprobado';
               if (estado !== 'aprobado') return null;
 
@@ -46,7 +56,7 @@ export default function WorkshopsSection() {
             })
             .filter(Boolean);
           
-          setWorkshops(parsed.slice(0, 3)); // Show top 3
+          setWorkshops(parsed.slice(0, 3));
         }
       } catch (e) {
         console.error("Error fetching workshops", e);
@@ -57,6 +67,54 @@ export default function WorkshopsSection() {
 
     fetchWorkshops();
   }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage("");
+
+    if (!formName.trim() || !formEmail.trim() || !formPhone.trim() || !formLocation.trim()) {
+      setErrorMessage("Por favor completa todos los campos requeridos.");
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const payload = {
+        fields: {
+          nombre: { stringValue: formName.trim() },
+          representante: { stringValue: formRep.trim() },
+          correo: { stringValue: formEmail.trim() },
+          telefono: { stringValue: formPhone.trim() },
+          ubicacion_municipio: { stringValue: formLocation.trim() },
+          especialidad: { stringValue: formSpecialty },
+          estado: { stringValue: "pendiente" },
+          origen: { stringValue: "landing_web" },
+          fecha_solicitud: { timestampValue: new Date().toISOString() },
+        },
+      };
+
+      const res = await fetch(
+        "https://firestore.googleapis.com/v1/projects/autodoc-6ef5a/databases/(default)/documents/talleres",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Error al guardar en Firestore");
+      }
+
+      setSubmitted(true);
+    } catch (err) {
+      console.error("Error submitting workshop application", err);
+      setErrorMessage("Ocurrió un error al enviar la solicitud. Intenta nuevamente.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <section id="workshops" className="relative z-10 py-24 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
@@ -114,31 +172,177 @@ export default function WorkshopsSection() {
           )}
         </div>
 
-        {/* CTA Section */}
+        {/* Benefits Grid for Workshops */}
+        <div className="mb-20">
+          <div className="text-center max-w-3xl mx-auto mb-12">
+            <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white sm:text-4xl mb-4">
+              {t("workshopTitle")}
+            </h2>
+            <p className="text-lg text-slate-600 dark:text-slate-300">
+              {t("workshopSubtitle")}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="bg-slate-50 dark:bg-slate-800/80 p-8 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <div className="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center mb-6">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{t("benefitVerified")}</h3>
+              <p className="text-slate-600 dark:text-slate-400 text-sm">{t("benefitVerifiedDesc")}</p>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800/80 p-8 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <div className="w-12 h-12 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center mb-6">
+                <Calendar className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{t("benefitAppointments")}</h3>
+              <p className="text-slate-600 dark:text-slate-400 text-sm">{t("benefitAppointmentsDesc")}</p>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800/80 p-8 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-6">
+                <FileSpreadsheet className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{t("benefitHistory")}</h3>
+              <p className="text-slate-600 dark:text-slate-400 text-sm">{t("benefitHistoryDesc")}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Affiliation Registration Form Section */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
-          className="mx-auto max-w-3xl text-center bg-slate-50 dark:bg-slate-800/50 rounded-3xl p-12 border border-slate-200 dark:border-slate-800"
+          className="mx-auto max-w-3xl bg-slate-50 dark:bg-slate-800/60 rounded-3xl p-8 sm:p-12 border border-slate-200 dark:border-slate-700 shadow-xl"
         >
-          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-3xl mb-4">
-            ¿Eres un taller mecánico?
-          </h2>
-          <p className="text-lg text-slate-600 dark:text-slate-300 mb-8">
-            Únete a AutoDoc para gestionar tu taller de manera eficiente y conectar con más clientes. Digitaliza tus servicios y mejora tu reputación.
-          </p>
-          <div className="flex justify-center gap-4">
-            <Link href="https://autodoc-6ef5a.web.app/login" passHref target="_blank">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="rounded-xl bg-[#522C81] px-8 py-4 font-bold text-white shadow-lg transition-all hover:bg-[#3d2062] hover:shadow-xl"
-              >
-                Regístrate ahora
-              </motion.button>
-            </Link>
+          <div className="text-center mb-8">
+            <h3 className="text-2xl font-extrabold text-slate-900 dark:text-white sm:text-3xl mb-2">
+              {t("formTitle")}
+            </h3>
+            <p className="text-slate-600 dark:text-slate-300 text-sm">
+              Completa el formulario y un administrador validará tu información para otorgarte el sello de Taller Verificado.
+            </p>
           </div>
+
+          {submitted ? (
+            <div className="text-center py-8">
+              <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
+              <h4 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{t("formSuccessTitle")}</h4>
+              <p className="text-slate-600 dark:text-slate-300">{t("formSuccessDesc")}</p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {errorMessage && (
+                <div className="flex items-center space-x-2 text-rose-500 bg-rose-500/10 border border-rose-500/20 p-4 rounded-xl text-sm">
+                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    {t("formWorkshopName")} *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    placeholder="e.g. AutoFix San Salvador"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#522C81]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    {t("formRepName")}
+                  </label>
+                  <input
+                    type="text"
+                    value={formRep}
+                    onChange={(e) => setFormRep(e.target.value)}
+                    placeholder="e.g. Ing. Roberto Gómez"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#522C81]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    {t("formEmail")} *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={formEmail}
+                    onChange={(e) => setFormEmail(e.target.value)}
+                    placeholder="contacto@taller.com"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#522C81]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    {t("formPhone")} *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={formPhone}
+                    onChange={(e) => setFormPhone(e.target.value)}
+                    placeholder="e.g. +503 7777-8888"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#522C81]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    {t("formLocation")} *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formLocation}
+                    onChange={(e) => setFormLocation(e.target.value)}
+                    placeholder="San Salvador"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#522C81]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    {t("formSpecialty")}
+                  </label>
+                  <select
+                    value={formSpecialty}
+                    onChange={(e) => setFormSpecialty(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#522C81]"
+                  >
+                    <option value="Mecánica General">Mecánica General</option>
+                    <option value="Motor y Transmisión">Motor y Transmisión</option>
+                    <option value="Frenos y Suspensión">Frenos y Suspensión</option>
+                    <option value="Sistema Eléctrico">Sistema Eléctrico</option>
+                    <option value="Enderezado y Pintura">Enderezado y Pintura</option>
+                  </select>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-4 rounded-xl bg-[#522C81] hover:bg-[#3d2062] text-white font-bold text-lg shadow-lg transition-all disabled:opacity-50"
+              >
+                {submitting ? t("formSubmitting") : t("formSubmit")}
+              </button>
+            </form>
+          )}
         </motion.div>
       </div>
     </section>
