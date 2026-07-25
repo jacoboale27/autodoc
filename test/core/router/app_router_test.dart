@@ -105,8 +105,8 @@ void main() {
     // 2. Unauthenticated user on protected /dashboard -> /login
     expect(evaluateRedirect(isLoggedIn: false, userData: null, path: '/dashboard'), '/login');
 
-    // 3. Authenticated user without Firestore profile on /login -> null (stays on /login)
-    expect(evaluateRedirect(isLoggedIn: true, userData: null, path: '/login'), null);
+    // 3. Authenticated user without Firestore profile on /login -> /profile_setup
+    expect(evaluateRedirect(isLoggedIn: true, userData: null, path: '/login'), '/profile_setup');
 
     // 4. Authenticated user without Firestore profile trying to access protected /dashboard -> /profile_setup
     expect(evaluateRedirect(isLoggedIn: true, userData: null, path: '/dashboard'), '/profile_setup');
@@ -130,5 +130,9 @@ void main() {
       fechaRegistro: DateTime.now(),
     );
     expect(evaluateRedirect(isLoggedIn: true, userData: mechanicUser, path: '/login'), '/mechanic_dashboard');
+
+    // 7. Authenticated user with existing profile on /profile_setup -> /dashboard
+    expect(evaluateRedirect(isLoggedIn: true, userData: ownerUser, path: '/profile_setup'), '/dashboard');
+    expect(evaluateRedirect(isLoggedIn: true, userData: mechanicUser, path: '/profile_setup'), '/mechanic_dashboard');
   });
 }

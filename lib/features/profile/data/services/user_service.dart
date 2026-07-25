@@ -15,6 +15,17 @@ class UserService {
       if (doc.exists && doc.data() != null) {
         return UserModel.fromMap(doc.data()!, doc.id);
       }
+      
+      // Fallback query if document ID isn't directly the Auth UID
+      final query = await _firestore
+          .collection(_collection)
+          .where('id_usuario', isEqualTo: userId)
+          .limit(1)
+          .get();
+      if (query.docs.isNotEmpty) {
+        return UserModel.fromMap(query.docs.first.data(), query.docs.first.id);
+      }
+
       return null;
     } catch (e) {
       throw 'Error al obtener datos del usuario: $e';
@@ -33,7 +44,14 @@ class UserService {
 
   Future<void> createUserData(UserModel user) async {
     try {
-      await _firestore.collection(_collection).doc(user.idUsuario).set(user.toMap());
+      final doc = await _firestore.collection(_collection).doc(user.idUsuario).get();
+      if (doc.exists) {
+        final updateData = user.toMap();
+        updateData.remove('rol');
+        await _firestore.collection(_collection).doc(user.idUsuario).set(updateData, SetOptions(merge: true));
+      } else {
+        await _firestore.collection(_collection).doc(user.idUsuario).set(user.toMap());
+      }
     } catch (e) {
       throw 'Error al crear perfil: $e';
     }

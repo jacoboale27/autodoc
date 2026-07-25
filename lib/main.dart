@@ -159,8 +159,7 @@ void main() async {
   final authSessionProvider = AuthSessionProvider();
   final userProfileProvider = UserProfileProvider();
 
-  // Escuchar cambios de auth para obtener datos de perfil
-  authSessionProvider.addListener(() {
+  void checkAndFetchProfile() {
     if (authSessionProvider.isLoggedIn) {
       if (userProfileProvider.userData?.idUsuario != authSessionProvider.currentUid) {
         userProfileProvider.fetchUserData(authSessionProvider.currentUid);
@@ -168,7 +167,12 @@ void main() async {
     } else {
       userProfileProvider.clearUserData();
     }
-  });
+  }
+
+  // Escuchar cambios de auth para obtener datos de perfil
+  authSessionProvider.addListener(checkAndFetchProfile);
+  // Ejecutar verificación inicial por si la sesión ya estaba activa
+  checkAndFetchProfile();
 
   runApp(
     MultiProvider(

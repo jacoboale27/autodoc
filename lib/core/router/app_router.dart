@@ -143,8 +143,10 @@ String? appRouterRedirect(AuthSessionProvider authProvider, UserProfileProvider 
   final currentUid = authProvider.currentUid;
   final rawUserData = profileProvider.userData;
   
-  // Only consider userData valid if it matches currentUid
-  final userData = (rawUserData != null && rawUserData.idUsuario == currentUid) ? rawUserData : null;
+  // Only consider userData valid if it matches currentUid or rawUserData was successfully fetched
+  final userData = (rawUserData != null && (rawUserData.idUsuario == currentUid || rawUserData.idUsuario.isEmpty))
+      ? rawUserData
+      : null;
   final hasAttemptedFetch = profileProvider.hasAttemptedFetchFor(currentUid);
   final isProfileLoading = profileProvider.isLoading || (isLoggedIn && !hasAttemptedFetch);
 
@@ -164,12 +166,13 @@ String? appRouterRedirect(AuthSessionProvider authProvider, UserProfileProvider 
      return null;
   }
 
-  // --- 2. Authenticated user on login/register → redirect to appropriate home ---
+  // --- 2. Authenticated user on login/register → redirect to appropriate home or profile_setup ---
   if (isLoggedIn && (currentPath == '/login' || currentPath == '/register')) {
     if (isProfileLoading || !hasAttemptedFetch) return null; // Wait for profile to load
     if (userData == null) {
-      // Stay on login/register screen if user profile document is not created yet
-      return null;
+      // Do not redirect to /profile_setup if there was a network/fetch error
+      if (profileProvider.error != null) return null;
+      return '/profile_setup';
     }
     // Check if there's a pending redirect
     final redirectParam = state.uri.queryParameters['redirect'];
@@ -180,7 +183,7 @@ String? appRouterRedirect(AuthSessionProvider authProvider, UserProfileProvider 
   }
 
   // --- 3. Authenticated user without profile accessing protected route → force profile setup ---
-  if (isLoggedIn && userData == null && !isProfileLoading && hasAttemptedFetch && currentPath != '/profile_setup' && !isPublicRoute) {
+  if (isLoggedIn && userData == null && !isProfileLoading && hasAttemptedFetch && profileProvider.error == null && currentPath != '/profile_setup' && !isPublicRoute) {
     return '/profile_setup';
   }
 
@@ -211,9 +214,9 @@ String? appRouterRedirect(AuthSessionProvider authProvider, UserProfileProvider 
       return null;
     }
 
-    // Profile setup is for anyone
+    // If user already has a valid profile, redirect from profile_setup to their home dashboard
     if (currentPath == '/profile_setup') {
-      return null;
+      return home;
     }
 
     // Owner trying to access mechanic routes → redirect to owner home

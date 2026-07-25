@@ -506,7 +506,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                     Switch(
                                       value: _notificationsEnabled,
                                       onChanged: (val) => setState(() => _notificationsEnabled = val),
-                                      activeColor: primaryColor,
+                                      activeThumbColor: primaryColor,
                                       activeTrackColor: primaryColor.withValues(alpha: 0.3),
                                     ),
                                   ],

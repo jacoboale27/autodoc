@@ -97,23 +97,49 @@ class UserModel {
   }
 
   factory UserModel.fromMap(Map<String, dynamic> map, String documentId) {
+    DateTime parseDate(dynamic val) {
+      if (val == null) return DateTime.now();
+      if (val is Timestamp) return val.toDate();
+      if (val is DateTime) return val;
+      if (val is String) return DateTime.tryParse(val) ?? DateTime.now();
+      if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
+      return DateTime.now();
+    }
+
+    double? parseDouble(dynamic val) {
+      if (val == null) return null;
+      if (val is num) return val.toDouble();
+      if (val is String) return double.tryParse(val);
+      return null;
+    }
+
+    List<String> parseStringList(dynamic val) {
+      if (val is List) {
+        return val.map((e) => e.toString()).toList();
+      }
+      return [];
+    }
+
+    final rawId = map['id_usuario'] ?? map['idUsuario'] ?? map['id'];
+    final id = (rawId != null && rawId.toString().isNotEmpty) ? rawId.toString() : documentId;
+
     return UserModel(
-      idUsuario: map['id_usuario'] ?? documentId,
-      nombreCompleto: map['nombre_completo'] ?? '',
-      correo: map['correo'] ?? '',
-      rol: map['rol'] ?? 'Propietario',
-      fechaRegistro: (map['fecha_registro'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      talleresFavoritos: List<String>.from(map['talleres_favoritos'] ?? []),
-      fotoPerfilUrl: map['foto_perfil_url'] ?? map['foto_url'],
-      especialidad: map['especialidad'],
-      ubicacionMunicipio: map['ubicacion_municipio'],
-      telefono: map['telefono'],
-      estado: map['estado'] ?? 'activo',
-      fcmToken: map['fcmToken'],
-      departamento: map['departamento'],
-      municipio: map['municipio'],
-      latitud: (map['latitud'] as num?)?.toDouble(),
-      longitud: (map['longitud'] as num?)?.toDouble(),
+      idUsuario: id,
+      nombreCompleto: (map['nombre_completo'] ?? map['nombreCompleto'] ?? map['nombre'] ?? '').toString(),
+      correo: (map['correo'] ?? map['email'] ?? '').toString(),
+      rol: (map['rol'] ?? map['role'] ?? 'Propietario').toString(),
+      fechaRegistro: parseDate(map['fecha_registro'] ?? map['fechaRegistro']),
+      talleresFavoritos: parseStringList(map['talleres_favoritos'] ?? map['talleresFavoritos']),
+      fotoPerfilUrl: (map['foto_perfil_url'] ?? map['foto_url'] ?? map['fotoPerfilUrl'])?.toString(),
+      especialidad: map['especialidad']?.toString(),
+      ubicacionMunicipio: (map['ubicacion_municipio'] ?? map['ubicacionMunicipio'])?.toString(),
+      telefono: map['telefono']?.toString(),
+      estado: (map['estado'] ?? 'activo').toString(),
+      fcmToken: map['fcmToken']?.toString(),
+      departamento: map['departamento']?.toString(),
+      municipio: map['municipio']?.toString(),
+      latitud: parseDouble(map['latitud']),
+      longitud: parseDouble(map['longitud']),
     );
   }
 }
