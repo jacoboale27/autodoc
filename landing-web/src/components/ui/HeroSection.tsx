@@ -8,6 +8,13 @@ import { useTranslations } from "next-intl";
 export default function HeroSection() {
   const t = useTranslations();
 
+  const scrollToWorkshops = () => {
+    const el = document.getElementById("workshops");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   return (
     <div className="relative z-10 mx-auto max-w-7xl px-6 pt-36 pb-24 sm:pt-48 lg:flex lg:items-center lg:gap-x-10 lg:px-8">
       {/* Left Column: Text Content */}
@@ -36,18 +43,30 @@ export default function HeroSection() {
           {t("heroSubtitle")}
         </p>
         
-        <div className="flex flex-col items-start gap-4 mt-8 sm:flex-row sm:items-center sm:gap-6">
-          <Link href="https://autodoc-6ef5a.web.app/login" passHref target="_blank">
+        {/* Dual CTAs & App Badges */}
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+            <Link href="https://autodoc-6ef5a.web.app/login" passHref target="_blank">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="w-full sm:w-auto rounded-xl bg-[#522C81] px-8 py-4 font-bold text-white shadow-lg transition-all hover:bg-[#3d2062] hover:shadow-xl text-center"
+              >
+                {t("heroStartGarage")}
+              </motion.button>
+            </Link>
+
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="rounded-xl bg-[#522C81] px-6 py-3 font-bold text-white shadow-lg transition-all hover:bg-[#3d2062] hover:shadow-xl w-full sm:w-auto"
+              onClick={scrollToWorkshops}
+              className="w-full sm:w-auto rounded-xl border-2 border-[#522C81] dark:border-purple-400 px-8 py-4 font-bold text-[#522C81] dark:text-purple-300 hover:bg-[#522C81]/10 dark:hover:bg-purple-900/30 transition-all text-center"
             >
-              {t("heroOpenWebApp")}
+              {t("heroAffiliateWorkshop")}
             </motion.button>
-          </Link>
-          
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+          </div>
+
+          <div className="flex items-center gap-3 pt-2">
             <Link href="https://play.google.com/store/apps/details?id=com.autodoc.app" target="_blank" className="hover:opacity-80 transition-opacity">
               <Image 
                 src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" 
@@ -77,7 +96,7 @@ export default function HeroSection() {
         transition={{ duration: 0.8, delay: 0.4 }}
         className="relative mt-16 sm:mt-24 lg:mt-0 lg:flex-shrink-0 lg:flex-grow h-[600px] hidden md:block"
       >
-        {/* Back Phone (Dashboard) */}
+        {/* Back Phone (Directory) */}
         <motion.div
           animate={{ y: [0, -10, 0] }}
           transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
@@ -94,7 +113,7 @@ export default function HeroSection() {
           </div>
         </motion.div>
 
-        {/* Front Phone (Directory) */}
+        {/* Front Phone (Dashboard) */}
         <motion.div
           animate={{ y: [0, 15, 0] }}
           transition={{ repeat: Infinity, duration: 5, ease: "easeInOut", delay: 1 }}
