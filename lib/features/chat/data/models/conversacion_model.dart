@@ -41,7 +41,8 @@ class ConversacionModel {
       idTaller: map['id_taller'],
       idVehiculo: map['id_vehiculo'],
       ultimoMensaje: map['ultimo_mensaje'] ?? '',
-      ultimoMensajeTs: (map['ultimo_mensaje_ts'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      ultimoMensajeTs:
+          (map['ultimo_mensaje_ts'] as Timestamp?)?.toDate() ?? DateTime.now(),
       noLeidosPropietario: map['no_leidos_propietario'] ?? 0,
       noLeidosMecanico: map['no_leidos_mecanico'] ?? 0,
       estado: map['estado'] ?? 'activo',

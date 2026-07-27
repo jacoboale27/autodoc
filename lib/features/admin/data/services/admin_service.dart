@@ -10,11 +10,18 @@ import '../../../../core/constants/firestore_collections.dart';
 
 class AdminService {
   final AdminRepository _repository;
-  
-  AdminService({AdminRepository? repository}) : _repository = repository ?? AdminRepository();
+
+  AdminService({AdminRepository? repository})
+    : _repository = repository ?? AdminRepository();
   final _uuid = const Uuid();
 
-  Future<void> _logAction(String adminUid, String accion, String modulo, String referenciaId, String detalle) async {
+  Future<void> _logAction(
+    String adminUid,
+    String accion,
+    String modulo,
+    String referenciaId,
+    String detalle,
+  ) async {
     final log = AdminLogModel(
       idLog: _uuid.v4(),
       adminUid: adminUid,
@@ -32,19 +39,45 @@ class AdminService {
     return await _repository.getUsuarios();
   }
 
-  Future<void> suspenderUsuario(String adminUid, String targetUid, String motivo) async {
+  Future<void> suspenderUsuario(
+    String adminUid,
+    String targetUid,
+    String motivo,
+  ) async {
     await _repository.updateUsuarioEstado(targetUid, 'suspendido');
-    await _logAction(adminUid, 'SUSPENDER_USUARIO', 'Usuarios', targetUid, motivo);
+    await _logAction(
+      adminUid,
+      'SUSPENDER_USUARIO',
+      'Usuarios',
+      targetUid,
+      motivo,
+    );
   }
 
   Future<void> reactivarUsuario(String adminUid, String targetUid) async {
     await _repository.updateUsuarioEstado(targetUid, 'activo');
-    await _logAction(adminUid, 'REACTIVAR_USUARIO', 'Usuarios', targetUid, 'Reactivación de cuenta');
+    await _logAction(
+      adminUid,
+      'REACTIVAR_USUARIO',
+      'Usuarios',
+      targetUid,
+      'Reactivación de cuenta',
+    );
   }
-  
-  Future<void> cambiarRolUsuario(String adminUid, String targetUid, String nuevoRol) async {
+
+  Future<void> cambiarRolUsuario(
+    String adminUid,
+    String targetUid,
+    String nuevoRol,
+  ) async {
     await _repository.updateUsuarioRol(targetUid, nuevoRol);
-    await _logAction(adminUid, 'CAMBIAR_ROL', 'Usuarios', targetUid, 'Cambio a rol: $nuevoRol');
+    await _logAction(
+      adminUid,
+      'CAMBIAR_ROL',
+      'Usuarios',
+      targetUid,
+      'Cambio a rol: $nuevoRol',
+    );
   }
 
   // Talleres
@@ -54,22 +87,50 @@ class AdminService {
 
   Future<void> aprobarTaller(String adminUid, String idTaller) async {
     await _repository.updateTallerEstado(idTaller, 'aprobado');
-    await _logAction(adminUid, 'APROBAR_TALLER', 'Talleres', idTaller, 'Taller verificado y aprobado');
+    await _logAction(
+      adminUid,
+      'APROBAR_TALLER',
+      'Talleres',
+      idTaller,
+      'Taller verificado y aprobado',
+    );
   }
 
   Future<void> rechazarTaller(String adminUid, String idTaller) async {
     await _repository.updateTallerEstado(idTaller, 'rechazado');
-    await _logAction(adminUid, 'RECHAZAR_TALLER', 'Talleres', idTaller, 'Taller rechazado');
+    await _logAction(
+      adminUid,
+      'RECHAZAR_TALLER',
+      'Talleres',
+      idTaller,
+      'Taller rechazado',
+    );
   }
 
-  Future<void> suspenderTaller(String adminUid, String idTaller, String motivo) async {
+  Future<void> suspenderTaller(
+    String adminUid,
+    String idTaller,
+    String motivo,
+  ) async {
     await _repository.updateTallerEstado(idTaller, 'suspendido');
-    await _logAction(adminUid, 'SUSPENDER_TALLER', 'Talleres', idTaller, motivo);
+    await _logAction(
+      adminUid,
+      'SUSPENDER_TALLER',
+      'Talleres',
+      idTaller,
+      motivo,
+    );
   }
 
   Future<void> reactivarTaller(String adminUid, String idTaller) async {
     await _repository.updateTallerEstado(idTaller, 'aprobado');
-    await _logAction(adminUid, 'REACTIVAR_TALLER', 'Talleres', idTaller, 'Taller reactivado');
+    await _logAction(
+      adminUid,
+      'REACTIVAR_TALLER',
+      'Talleres',
+      idTaller,
+      'Taller reactivado',
+    );
   }
 
   // Reseñas
@@ -77,9 +138,19 @@ class AdminService {
     return await _repository.getResenias();
   }
 
-  Future<String?> eliminarResenia(String adminUid, String idResenia, String motivo) async {
+  Future<String?> eliminarResenia(
+    String adminUid,
+    String idResenia,
+    String motivo,
+  ) async {
     final idTaller = await _repository.deleteResenia(idResenia);
-    await _logAction(adminUid, 'ELIMINAR_RESENIA', 'Resenias', idResenia, motivo);
+    await _logAction(
+      adminUid,
+      'ELIMINAR_RESENIA',
+      'Resenias',
+      idResenia,
+      motivo,
+    );
     return idTaller;
   }
 
@@ -112,58 +183,80 @@ class AdminService {
     void startListening() {
       final fs = FirebaseFirestore.instance;
 
-      subscriptions.add(fs.collection(FirestoreCollections.usuarios).snapshots().listen((snap) {
-        metrics['usuarios'] = snap.size;
-        updateMetrics();
-      }));
-      subscriptions.add(fs.collection(FirestoreCollections.talleres).snapshots().listen((snap) {
-        metrics['talleres'] = snap.size;
-        updateMetrics();
-      }));
-      subscriptions.add(fs.collection(FirestoreCollections.vehiculos).snapshots().listen((snap) {
-        metrics['vehiculos'] = snap.size;
-        updateMetrics();
-      }));
-      subscriptions.add(fs.collection(FirestoreCollections.alertas).snapshots().listen((snap) {
-        metrics['alertas'] = snap.size;
-        updateMetrics();
-      }));
-      subscriptions.add(fs.collection(FirestoreCollections.resenias).snapshots().listen((snap) {
-        metrics['resenias'] = snap.size;
-        updateMetrics();
-      }));
-      subscriptions.add(fs.collection(FirestoreCollections.servicios).snapshots().listen((snap) {
-        metrics['servicios'] = snap.size;
-        updateMetrics();
-      }));
+      subscriptions.add(
+        fs.collection(FirestoreCollections.usuarios).snapshots().listen((snap) {
+          metrics['usuarios'] = snap.size;
+          updateMetrics();
+        }),
+      );
+      subscriptions.add(
+        fs.collection(FirestoreCollections.talleres).snapshots().listen((snap) {
+          metrics['talleres'] = snap.size;
+          updateMetrics();
+        }),
+      );
+      subscriptions.add(
+        fs.collection(FirestoreCollections.vehiculos).snapshots().listen((
+          snap,
+        ) {
+          metrics['vehiculos'] = snap.size;
+          updateMetrics();
+        }),
+      );
+      subscriptions.add(
+        fs.collection(FirestoreCollections.alertas).snapshots().listen((snap) {
+          metrics['alertas'] = snap.size;
+          updateMetrics();
+        }),
+      );
+      subscriptions.add(
+        fs.collection(FirestoreCollections.resenias).snapshots().listen((snap) {
+          metrics['resenias'] = snap.size;
+          updateMetrics();
+        }),
+      );
+      subscriptions.add(
+        fs.collection(FirestoreCollections.servicios).snapshots().listen((
+          snap,
+        ) {
+          metrics['servicios'] = snap.size;
+          updateMetrics();
+        }),
+      );
 
       final now = DateTime.now();
       final seisMesesAtras = DateTime(now.year, now.month - 5, 1);
 
-      subscriptions.add(fs.collection(FirestoreCollections.servicios)
-          .where('fecha', isGreaterThanOrEqualTo: Timestamp.fromDate(seisMesesAtras))
-          .snapshots().listen((snap) {
-        
-        final Map<String, int> serviciosPorMes = {};
-        for (int i = 0; i < 6; i++) {
-          final mes = DateTime(now.year, now.month - i, 1);
-          serviciosPorMes['${mes.year}-${mes.month}'] = 0;
-        }
+      subscriptions.add(
+        fs
+            .collection(FirestoreCollections.servicios)
+            .where(
+              'fecha',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(seisMesesAtras),
+            )
+            .snapshots()
+            .listen((snap) {
+              final Map<String, int> serviciosPorMes = {};
+              for (int i = 0; i < 6; i++) {
+                final mes = DateTime(now.year, now.month - i, 1);
+                serviciosPorMes['${mes.year}-${mes.month}'] = 0;
+              }
 
-        for (var doc in snap.docs) {
-          final data = doc.data();
-          if (data['fecha'] != null) {
-            final date = (data['fecha'] as Timestamp).toDate();
-            final key = '${date.year}-${date.month}';
-            if (serviciosPorMes.containsKey(key)) {
-              serviciosPorMes[key] = (serviciosPorMes[key] ?? 0) + 1;
-            }
-          }
-        }
-        
-        metrics['serviciosPorMes'] = serviciosPorMes;
-        updateMetrics();
-      }));
+              for (var doc in snap.docs) {
+                final data = doc.data();
+                if (data['fecha'] != null) {
+                  final date = (data['fecha'] as Timestamp).toDate();
+                  final key = '${date.year}-${date.month}';
+                  if (serviciosPorMes.containsKey(key)) {
+                    serviciosPorMes[key] = (serviciosPorMes[key] ?? 0) + 1;
+                  }
+                }
+              }
+
+              metrics['serviciosPorMes'] = serviciosPorMes;
+              updateMetrics();
+            }),
+      );
     }
 
     void stopListening() {

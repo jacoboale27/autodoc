@@ -61,7 +61,10 @@ class ServiceRecordModel {
     };
   }
 
-  factory ServiceRecordModel.fromMap(Map<String, dynamic> map, String documentId) {
+  factory ServiceRecordModel.fromMap(
+    Map<String, dynamic> map,
+    String documentId,
+  ) {
     return ServiceRecordModel(
       idServicio: map['id_servicio'] ?? documentId,
       idVehiculo: map['id_vehiculo'] ?? '',

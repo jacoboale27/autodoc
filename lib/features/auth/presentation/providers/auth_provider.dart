@@ -6,11 +6,11 @@ import 'package:autodoc/features/admin/data/services/admin_auth_service.dart';
 class AuthProvider with ChangeNotifier {
   final AuthService _authService;
   final AdminAuthService _adminAuthService;
-  
+
   AuthProvider({AuthService? authService, AdminAuthService? adminAuthService})
-      : _authService = authService ?? AuthService(),
-        _adminAuthService = adminAuthService ?? AdminAuthService();
-  
+    : _authService = authService ?? AuthService(),
+      _adminAuthService = adminAuthService ?? AdminAuthService();
+
   bool _isLoading = false;
   String? _error;
 
@@ -19,7 +19,8 @@ class AuthProvider with ChangeNotifier {
 
   bool get needsEmailVerification {
     if (FirebaseAuth.instance.currentUser == null) return false;
-    return _authService.isEmailPasswordUser && !_authService.isCurrentUserEmailVerified;
+    return _authService.isEmailPasswordUser &&
+        !_authService.isCurrentUserEmailVerified;
   }
 
   bool get isEmailPasswordUser => _authService.isEmailPasswordUser;
@@ -134,7 +135,6 @@ class AuthProvider with ChangeNotifier {
       return false;
     }
   }
-
 
   Future<bool> deleteAccount() async {
     _isLoading = true;

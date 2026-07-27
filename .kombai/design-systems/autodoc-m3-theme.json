@@ -1,0 +1,30 @@
+{
+  "name": "AutoDoc Material 3 Modern System",
+  "version": "1.0.0",
+  "colors": {
+    "primary": "#1E88E5",
+    "secondary": "#00BCD4",
+    "accent": "#FF9800",
+    "surface": "#F8FAFC",
+    "darkSurface": "#0F172A",
+    "darkSurfaceContainer": "#1E293B",
+    "success": "#4CAF50",
+    "warning": "#FF9800",
+    "error": "#F44336"
+  },
+  "typography": {
+    "fontFamily": "Outfit",
+    "secondaryFontFamily": "Inter"
+  },
+  "radii": {
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "full": 999
+  },
+  "shadows": {
+    "soft": "0px 4px 20px rgba(0, 0, 0, 0.06)",
+    "card": "0px 8px 30px rgba(0, 0, 0, 0.08)"
+  }
+}

@@ -40,9 +40,19 @@ class _AlertsScreenState extends State<AlertsScreen> {
       body: Column(
         children: [
           // Header
-          _buildHeader(context, isDark, colors.primary, colors.surfaceContainer),
+          _buildHeader(
+            context,
+            isDark,
+            colors.primary,
+            colors.surfaceContainer,
+          ),
           // Tabs
-          _buildTabs(isDark, colors.primary, colors.textSecondary, colors.surfaceContainer),
+          _buildTabs(
+            isDark,
+            colors.primary,
+            colors.textSecondary,
+            colors.surfaceContainer,
+          ),
           // Content
           Expanded(
             child: vehicle == null
@@ -77,42 +87,42 @@ class _AlertsScreenState extends State<AlertsScreen> {
   ) {
     return Container(
       padding: EdgeInsets.only(
-            top: MediaQuery.of(context).padding.top + 8,
-            left: 8,
-            right: 8,
-            bottom: 12,
+        top: MediaQuery.of(context).padding.top + 8,
+        left: 8,
+        right: 8,
+        bottom: 12,
+      ),
+      decoration: BoxDecoration(
+        color: cardColor,
+        border: Border(
+          bottom: BorderSide(color: primary.withValues(alpha: 0.1)),
+        ),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: Icon(
+              Icons.arrow_back_ios_new,
+              color: isDark ? Colors.white70 : Colors.grey[700],
+            ),
+            onPressed: () => context.pop(),
           ),
-          decoration: BoxDecoration(
-            color: cardColor,
-            border: Border(
-              bottom: BorderSide(color: primary.withValues(alpha: 0.1)),
+          Text(
+            context.l10n.alertsTitle,
+            style: GoogleFonts.inter(
+              fontSize: Responsive.fontSize(context, 20),
+              fontWeight: FontWeight.bold,
+              color: primary,
             ),
           ),
-          child: Row(
-            children: [
-              IconButton(
-                icon: Icon(
-                  Icons.arrow_back_ios_new,
-                  color: isDark ? Colors.white70 : Colors.grey[700],
-                ),
-                onPressed: () => context.pop(),
-              ),
-              Text(
-                context.l10n.alertsTitle,
-                style: GoogleFonts.inter(
-                  fontSize: Responsive.fontSize(context, 20),
-                  fontWeight: FontWeight.bold,
-                  color: primary,
-                ),
-              ),
-              const Spacer(),
-              IconButton(
-                icon: Icon(Icons.update, color: primary),
-                tooltip: context.l10n.alertsUpdateMileage,
-                onPressed: () => _showUpdateMileageDialog(context),
-              ),
-            ],
+          const Spacer(),
+          IconButton(
+            icon: Icon(Icons.update, color: primary),
+            tooltip: context.l10n.alertsUpdateMileage,
+            onPressed: () => _showUpdateMileageDialog(context),
           ),
+        ],
+      ),
     );
   }
 
@@ -122,7 +132,11 @@ class _AlertsScreenState extends State<AlertsScreen> {
     Color subTextColor,
     Color cardColor,
   ) {
-    final tabs = [context.l10n.alertsTabAll, context.l10n.alertsTabUrgent, context.l10n.alertsTabUpcoming];
+    final tabs = [
+      context.l10n.alertsTabAll,
+      context.l10n.alertsTabUrgent,
+      context.l10n.alertsTabUpcoming,
+    ];
     return Container(
       decoration: BoxDecoration(
         color: cardColor,
@@ -256,7 +270,9 @@ class _AlertsScreenState extends State<AlertsScreen> {
           _buildSectionHeader(
             context.l10n.alertsHighPriority,
             Colors.red,
-            context.l10n.alertsPendingCount((criticalTasks.length + highAlerts.length).toString()),
+            context.l10n.alertsPendingCount(
+              (criticalTasks.length + highAlerts.length).toString(),
+            ),
           ),
           const SizedBox(height: 12),
           ...criticalTasks.map(
@@ -290,7 +306,9 @@ class _AlertsScreenState extends State<AlertsScreen> {
           _buildSectionHeader(
             context.l10n.alertsUpcomingExpirations,
             Colors.amber[700]!,
-            context.l10n.alertsEventsCount((preventiveTasks.length + medAlerts.length).toString()),
+            context.l10n.alertsEventsCount(
+              (preventiveTasks.length + medAlerts.length).toString(),
+            ),
           ),
           const SizedBox(height: 12),
           ...preventiveTasks.map(
@@ -361,7 +379,11 @@ class _AlertsScreenState extends State<AlertsScreen> {
       ),
       child: Row(
         children: [
-          Icon(Icons.speed, color: primary, size: Responsive.iconSize(context, 20)),
+          Icon(
+            Icons.speed,
+            color: primary,
+            size: Responsive.iconSize(context, 20),
+          ),
           const SizedBox(width: 10),
           Text(
             context.l10n.alertsCurrentMileage,
@@ -474,7 +496,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                           ),
                           borderRadius: BorderRadius.circular(12),
                         ),
-              child: Icon(
+                        child: Icon(
                           Icons.build_circle_outlined,
                           color: accentColor,
                           size: Responsive.iconSize(context, 24),
@@ -549,11 +571,15 @@ class _AlertsScreenState extends State<AlertsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        context.l10n.alertsLastKm(NumberFormat('#,###').format(task.ultimoKm)),
+                        context.l10n.alertsLastKm(
+                          NumberFormat('#,###').format(task.ultimoKm),
+                        ),
                         style: TextStyle(fontSize: 10, color: subTextColor),
                       ),
                       Text(
-                        context.l10n.alertsEveryKm(NumberFormat('#,###').format(task.frecuenciaKm)),
+                        context.l10n.alertsEveryKm(
+                          NumberFormat('#,###').format(task.frecuenciaKm),
+                        ),
                         style: TextStyle(fontSize: 10, color: subTextColor),
                       ),
                     ],
@@ -567,7 +593,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
                           label: context.l10n.alertsConfig,
                           icon: Icons.settings,
                           accentColor: primary,
-                          onPressed: () => context.push('/task_config', extra: task),
+                          onPressed: () =>
+                              context.push('/task_config', extra: task),
                           outlined: true,
                         ),
                       ),
@@ -723,8 +750,18 @@ class _AlertsScreenState extends State<AlertsScreen> {
           );
 
     final button = outlined
-        ? OutlinedButton.icon(onPressed: onPressed, style: style, icon: Icon(icon, size: 16), label: _compactLabel(label))
-        : ElevatedButton.icon(onPressed: onPressed, style: style, icon: Icon(icon, size: 16), label: _compactLabel(label));
+        ? OutlinedButton.icon(
+            onPressed: onPressed,
+            style: style,
+            icon: Icon(icon, size: 16),
+            label: _compactLabel(label),
+          )
+        : ElevatedButton.icon(
+            onPressed: onPressed,
+            style: style,
+            icon: Icon(icon, size: 16),
+            label: _compactLabel(label),
+          );
 
     return SizedBox(height: 40, child: button);
   }

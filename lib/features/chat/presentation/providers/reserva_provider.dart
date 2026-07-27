@@ -5,15 +5,15 @@ import '../../data/repositories/reserva_repository.dart';
 
 class ReservaProvider extends ChangeNotifier {
   final ReservaRepository _reservaRepository = ReservaRepository();
-  
+
   List<ReservaModel> _reservas = [];
   List<ReservaModel> get reservas => _reservas;
 
   StreamSubscription? _reservasSub;
-  
+
   bool _isLoading = false;
   bool get isLoading => _isLoading;
-  
+
   String? _error;
   String? get error => _error;
 
@@ -28,18 +28,20 @@ class ReservaProvider extends ChangeNotifier {
     notifyListeners();
 
     _reservasSub?.cancel();
-    _reservasSub = _reservaRepository.streamReservasUsuario(userId, isMecanico: isMecanico).listen(
-      (data) {
-        _reservas = data;
-        _isLoading = false;
-        notifyListeners();
-      },
-      onError: (e) {
-        _error = e.toString();
-        _isLoading = false;
-        notifyListeners();
-      },
-    );
+    _reservasSub = _reservaRepository
+        .streamReservasUsuario(userId, isMecanico: isMecanico)
+        .listen(
+          (data) {
+            _reservas = data;
+            _isLoading = false;
+            notifyListeners();
+          },
+          onError: (e) {
+            _error = e.toString();
+            _isLoading = false;
+            notifyListeners();
+          },
+        );
   }
 
   Future<String> solicitarReserva(ReservaModel reserva) async {
@@ -60,9 +62,17 @@ class ReservaProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> cambiarEstadoReserva(String reservaId, String estado, {DateTime? fechaConfirmada}) async {
+  Future<void> cambiarEstadoReserva(
+    String reservaId,
+    String estado, {
+    DateTime? fechaConfirmada,
+  }) async {
     try {
-      await _reservaRepository.actualizarEstadoReserva(reservaId, estado, fechaConfirmada: fechaConfirmada);
+      await _reservaRepository.actualizarEstadoReserva(
+        reservaId,
+        estado,
+        fechaConfirmada: fechaConfirmada,
+      );
     } catch (e) {
       _error = e.toString();
       notifyListeners();

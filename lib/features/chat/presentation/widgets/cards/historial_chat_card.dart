@@ -18,10 +18,11 @@ class HistorialChatCard extends StatelessWidget {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final String tipoServicio = metadata['tipo_servicio'] ?? 'Servicio anterior';
+    final String tipoServicio =
+        metadata['tipo_servicio'] ?? 'Servicio anterior';
     final double costo = metadata['costo']?.toDouble() ?? 0.0;
     final String fechaRaw = metadata['fecha'] ?? '';
-    
+
     DateTime? fecha;
     if (fechaRaw.isNotEmpty) {
       fecha = DateTime.tryParse(fechaRaw);
@@ -33,7 +34,11 @@ class HistorialChatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? colors.surfaceContainer : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isMe ? Colors.white30 : (isDark ? Colors.white12 : Colors.black12)),
+        border: Border.all(
+          color: isMe
+              ? Colors.white30
+              : (isDark ? Colors.white12 : Colors.black12),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -41,12 +46,20 @@ class HistorialChatCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: isMe ? Colors.black12 : (isDark ? Colors.black26 : Colors.grey.shade100),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              color: isMe
+                  ? Colors.black12
+                  : (isDark ? Colors.black26 : Colors.grey.shade100),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(12),
+              ),
             ),
             child: Row(
               children: [
-                Icon(Icons.history, size: 16, color: isMe ? Colors.white : colors.primary),
+                Icon(
+                  Icons.history,
+                  size: 16,
+                  color: isMe ? Colors.white : colors.primary,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'Historial Adjunto',
@@ -75,7 +88,9 @@ class HistorialChatCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      fecha != null ? DateFormat('dd MMM yyyy').format(fecha) : 'Fecha sin definir',
+                      fecha != null
+                          ? DateFormat('dd MMM yyyy').format(fecha)
+                          : 'Fecha sin definir',
                       style: TextStyle(
                         fontSize: 13,
                         color: isMe ? Colors.white70 : colors.textSecondary,

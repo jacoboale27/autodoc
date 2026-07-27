@@ -8,7 +8,11 @@ class VehiclePhotoModel {
   final String url;
   final DateTime timestamp;
 
-  VehiclePhotoModel({required this.id, required this.url, required this.timestamp});
+  VehiclePhotoModel({
+    required this.id,
+    required this.url,
+    required this.timestamp,
+  });
 
   factory VehiclePhotoModel.fromMap(Map<String, dynamic> map, String id) {
     return VehiclePhotoModel(
@@ -19,10 +23,7 @@ class VehiclePhotoModel {
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'url': url,
-      'timestamp': Timestamp.fromDate(timestamp),
-    };
+    return {'url': url, 'timestamp': Timestamp.fromDate(timestamp)};
   }
 }
 
@@ -38,13 +39,17 @@ class VehiclePhotoService {
         .collection('fotos')
         .orderBy('timestamp', descending: true)
         .snapshots()
-        .map((snap) => snap.docs.map((doc) => VehiclePhotoModel.fromMap(doc.data(), doc.id)).toList());
+        .map(
+          (snap) => snap.docs
+              .map((doc) => VehiclePhotoModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
   Future<void> addPhoto(String vehicleId, XFile imageFile) async {
     final photoId = _uuid.v4();
     final ref = _storage.ref().child('vehiculos/$vehicleId/fotos/$photoId.jpg');
-    
+
     final bytes = await imageFile.readAsBytes();
     final metadata = SettableMetadata(contentType: 'image/jpeg');
     await ref.putData(bytes, metadata);
@@ -55,11 +60,22 @@ class VehiclePhotoService {
         .doc(vehicleId)
         .collection('fotos')
         .doc(photoId)
-        .set(VehiclePhotoModel(id: photoId, url: url, timestamp: DateTime.now()).toMap());
+        .set(
+          VehiclePhotoModel(
+            id: photoId,
+            url: url,
+            timestamp: DateTime.now(),
+          ).toMap(),
+        );
   }
 
   Future<void> deletePhoto(String vehicleId, String photoId, String url) async {
-    await _firestore.collection('vehiculos').doc(vehicleId).collection('fotos').doc(photoId).delete();
+    await _firestore
+        .collection('vehiculos')
+        .doc(vehicleId)
+        .collection('fotos')
+        .doc(photoId)
+        .delete();
     try {
       await _storage.refFromURL(url).delete();
     } catch (e) {

@@ -13,7 +13,7 @@ class ServicesTrendChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    
+
     if (serviciosPorMes.isEmpty) {
       return AppCard(
         padding: const EdgeInsets.all(24),
@@ -60,15 +60,32 @@ class ServicesTrendChart extends StatelessWidget {
                       showTitles: true,
                       reservedSize: 30,
                       getTitlesWidget: (value, meta) {
-                        if (value.toInt() >= 0 && value.toInt() < monthsOrder.length) {
+                        if (value.toInt() >= 0 &&
+                            value.toInt() < monthsOrder.length) {
                           final key = monthsOrder[value.toInt()];
                           final month = int.parse(key.split('-')[1]);
-                          final monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                          final monthNames = [
+                            'Ene',
+                            'Feb',
+                            'Mar',
+                            'Abr',
+                            'May',
+                            'Jun',
+                            'Jul',
+                            'Ago',
+                            'Sep',
+                            'Oct',
+                            'Nov',
+                            'Dic',
+                          ];
                           return Padding(
                             padding: const EdgeInsets.only(top: 8.0),
                             child: Text(
                               monthNames[month - 1],
-                              style: TextStyle(color: colors.textSecondary, fontSize: 12),
+                              style: TextStyle(
+                                color: colors.textSecondary,
+                                fontSize: 12,
+                              ),
                             ),
                           );
                         }
@@ -83,13 +100,20 @@ class ServicesTrendChart extends StatelessWidget {
                       getTitlesWidget: (value, meta) {
                         return Text(
                           value.toInt().toString(),
-                          style: TextStyle(color: colors.textSecondary, fontSize: 12),
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 12,
+                          ),
                         );
                       },
                     ),
                   ),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                 ),
                 borderData: FlBorderData(show: false),
                 lineBarsData: [

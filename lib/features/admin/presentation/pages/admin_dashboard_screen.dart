@@ -7,7 +7,7 @@ import '../providers/admin_provider.dart';
 import '../widgets/admin_sidebar.dart';
 import '../widgets/metric_card.dart';
 import '../widgets/services_trend_chart.dart';
-import 'package:autodoc/core/providers/user_session_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:intl/intl.dart';
@@ -37,7 +37,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<AdminDashboardProvider>();
     final adminProvider = context.watch<AdminProvider>();
-    final userSession = context.watch<UserSessionProvider>();
+    final userSession = context.watch<UserProfileProvider>();
     final colors = context.appColors;
 
     return Scaffold(
@@ -48,17 +48,29 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Consumer2<ThemeProvider, LanguageProvider>(
             builder: (context, themeProvider, languageProvider, _) {
               final isDark = themeProvider.themeMode == ThemeMode.dark;
-              final isEnglish = languageProvider.currentLocale.languageCode == 'en';
+              final isEnglish =
+                  languageProvider.currentLocale.languageCode == 'en';
               return Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
-                    onPressed: () => themeProvider.setThemeMode(isDark ? ThemeMode.light : ThemeMode.dark),
+                    icon: Icon(
+                      isDark
+                          ? Icons.light_mode_outlined
+                          : Icons.dark_mode_outlined,
+                    ),
+                    onPressed: () => themeProvider.setThemeMode(
+                      isDark ? ThemeMode.light : ThemeMode.dark,
+                    ),
                   ),
                   TextButton(
-                    onPressed: () => languageProvider.changeLanguage(isEnglish ? 'es' : 'en'),
-                    child: Text(isEnglish ? 'EN' : 'ES', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    onPressed: () => languageProvider.changeLanguage(
+                      isEnglish ? 'es' : 'en',
+                    ),
+                    child: Text(
+                      isEnglish ? 'EN' : 'ES',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                   const SizedBox(width: 8),
                 ],
@@ -71,44 +83,59 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       body: provider.isLoading
           ? Center(child: CircularProgressIndicator(color: colors.primary))
           : provider.error != null
-              ? Center(child: Text(context.l10n.adminError(provider.error!)))
-              : RefreshIndicator(
-                  color: colors.primary,
-                  onRefresh: () async {
-                    provider.fetchMetrics();
-                    await adminProvider.fetchLogs();
-                  },
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.all(Responsive.padding(context, 24.0)),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildWelcomeHeader(context, userSession, colors),
-                        const SizedBox(height: 32),
-                        _buildSectionTitle(context, context.l10n.adminGlobalMetricsTitle),
-                        const SizedBox(height: 16),
-                        _buildMetricsGrid(context, provider, colors),
-                        const SizedBox(height: 32),
-                        ServicesTrendChart(
-                          serviciosPorMes: Map<String, int>.from(provider.metrics['serviciosPorMes'] ?? {}),
-                        ),
-                        const SizedBox(height: 32),
-                        _buildSectionTitle(context, context.l10n.adminQuickActionsTitle),
-                        const SizedBox(height: 16),
-                        _buildQuickActions(context, colors),
-                        const SizedBox(height: 32),
-                        _buildSectionTitle(context, context.l10n.adminRecentActivityTitle),
-                        const SizedBox(height: 16),
-                        _buildRecentActivity(context, adminProvider, colors),
-                      ],
+          ? Center(child: Text(context.l10n.adminError(provider.error!)))
+          : RefreshIndicator(
+              color: colors.primary,
+              onRefresh: () async {
+                provider.fetchMetrics();
+                await adminProvider.fetchLogs();
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.all(Responsive.padding(context, 24.0)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildWelcomeHeader(context, userSession, colors),
+                    const SizedBox(height: 32),
+                    _buildSectionTitle(
+                      context,
+                      context.l10n.adminGlobalMetricsTitle,
                     ),
-                  ),
+                    const SizedBox(height: 16),
+                    _buildMetricsGrid(context, provider, colors),
+                    const SizedBox(height: 32),
+                    ServicesTrendChart(
+                      serviciosPorMes: Map<String, int>.from(
+                        provider.metrics['serviciosPorMes'] ?? {},
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    _buildSectionTitle(
+                      context,
+                      context.l10n.adminQuickActionsTitle,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildQuickActions(context, colors),
+                    const SizedBox(height: 32),
+                    _buildSectionTitle(
+                      context,
+                      context.l10n.adminRecentActivityTitle,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildRecentActivity(context, adminProvider, colors),
+                  ],
                 ),
+              ),
+            ),
     );
   }
 
-  Widget _buildWelcomeHeader(BuildContext context, UserSessionProvider userSession, AppColors colors) {
+  Widget _buildWelcomeHeader(
+    BuildContext context,
+    UserProfileProvider userSession,
+    AppColors colors,
+  ) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(Responsive.padding(context, 24)),
@@ -116,10 +143,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            colors.primary,
-            colors.primary.withValues(alpha: 0.75),
-          ],
+          colors: [colors.primary, colors.primary.withValues(alpha: 0.75)],
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
@@ -138,7 +162,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(Icons.admin_panel_settings, color: Colors.white, size: Responsive.iconSize(context, 28)),
+            child: Icon(
+              Icons.admin_panel_settings,
+              color: Colors.white,
+              size: Responsive.iconSize(context, 28),
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -146,7 +174,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  context.l10n.adminDashboardWelcome(userSession.userData?.nombreCompleto ?? 'Admin'),
+                  context.l10n.adminDashboardWelcome(
+                    userSession.userData?.nombreCompleto ?? 'Admin',
+                  ),
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -173,13 +203,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return Text(
       title,
       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
-          ),
+        fontWeight: FontWeight.bold,
+        letterSpacing: 0.5,
+      ),
     );
   }
 
-  Widget _buildMetricsGrid(BuildContext context, AdminDashboardProvider provider, AppColors colors) {
+  Widget _buildMetricsGrid(
+    BuildContext context,
+    AdminDashboardProvider provider,
+    AppColors colors,
+  ) {
     final screenWidth = MediaQuery.of(context).size.width;
     final crossAxisCount = screenWidth > 900 ? 3 : (screenWidth > 600 ? 2 : 1);
 
@@ -281,7 +315,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 16), vertical: Responsive.padding(context, 12)),
+          padding: EdgeInsets.symmetric(
+            horizontal: Responsive.padding(context, 16),
+            vertical: Responsive.padding(context, 12),
+          ),
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(14),
@@ -301,7 +338,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
               ),
               const SizedBox(width: 6),
-              Icon(Icons.arrow_forward_ios, color: color, size: Responsive.iconSize(context, 12)),
+              Icon(
+                Icons.arrow_forward_ios,
+                color: color,
+                size: Responsive.iconSize(context, 12),
+              ),
             ],
           ),
         ),
@@ -309,7 +350,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildRecentActivity(BuildContext context, AdminProvider adminProvider, AppColors colors) {
+  Widget _buildRecentActivity(
+    BuildContext context,
+    AdminProvider adminProvider,
+    AppColors colors,
+  ) {
     final recentLogs = adminProvider.logs.take(5).toList();
 
     if (recentLogs.isEmpty) {
@@ -318,11 +363,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         child: Center(
           child: Column(
             children: [
-              Icon(Icons.history, size: Responsive.iconSize(context, 40), color: colors.textSecondary.withValues(alpha: 0.4)),
+              Icon(
+                Icons.history,
+                size: Responsive.iconSize(context, 40),
+                color: colors.textSecondary.withValues(alpha: 0.4),
+              ),
               const SizedBox(height: 12),
               Text(
                 context.l10n.adminNoRecentActivity,
-                style: TextStyle(color: colors.textSecondary, fontSize: Responsive.fontSize(context, 14)),
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: Responsive.fontSize(context, 14),
+                ),
               ),
             ],
           ),
@@ -335,7 +387,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       child: Column(
         children: [
           ...recentLogs.map((log) {
-            final isDestructive = log.accion.contains('SUSPENDER') ||
+            final isDestructive =
+                log.accion.contains('SUSPENDER') ||
                 log.accion.contains('ELIMINAR') ||
                 log.accion.contains('RECHAZAR');
             final accentColor = isDestructive ? colors.error : colors.secondary;
@@ -348,24 +401,35 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
-                  isDestructive ? Icons.warning_amber : Icons.check_circle_outline,
+                  isDestructive
+                      ? Icons.warning_amber
+                      : Icons.check_circle_outline,
                   color: accentColor,
                   size: Responsive.iconSize(context, 20),
                 ),
               ),
               title: Text(
                 log.accion.replaceAll('_', ' '),
-                style: TextStyle(fontSize: Responsive.fontSize(context, 13), fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  fontSize: Responsive.fontSize(context, 13),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               subtitle: Text(
                 log.detalle,
-                style: TextStyle(fontSize: Responsive.fontSize(context, 12), color: colors.textSecondary),
+                style: TextStyle(
+                  fontSize: Responsive.fontSize(context, 12),
+                  color: colors.textSecondary,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               trailing: Text(
                 DateFormat('dd/MM HH:mm').format(log.fecha),
-                style: TextStyle(fontSize: Responsive.fontSize(context, 11), color: colors.textSecondary.withValues(alpha: 0.6)),
+                style: TextStyle(
+                  fontSize: Responsive.fontSize(context, 11),
+                  color: colors.textSecondary.withValues(alpha: 0.6),
+                ),
               ),
             );
           }),
@@ -373,7 +437,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             padding: EdgeInsets.all(Responsive.padding(context, 12)),
             child: TextButton.icon(
               onPressed: () => context.go('/admin/logs'),
-              icon: Icon(Icons.arrow_forward, size: Responsive.iconSize(context, 16), color: colors.primary),
+              icon: Icon(
+                Icons.arrow_forward,
+                size: Responsive.iconSize(context, 16),
+                color: colors.primary,
+              ),
               label: Text(
                 context.l10n.adminViewAllLogs,
                 style: TextStyle(color: colors.primary),

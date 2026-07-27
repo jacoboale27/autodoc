@@ -42,7 +42,10 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
         title: Text(title),
         content: Text(content),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.adminCancel)),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.l10n.adminCancel),
+          ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
@@ -61,13 +64,17 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
     final currentUid = context.read<AuthSessionProvider>().currentUid;
     final colors = context.appColors;
     final mecanicos = provider.mecanicos.where((m) {
-      return m.nombreCompleto.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-             m.correo.toLowerCase().contains(_searchQuery.toLowerCase());
+      return m.nombreCompleto.toLowerCase().contains(
+            _searchQuery.toLowerCase(),
+          ) ||
+          m.correo.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
 
     final talleresFiltrados = provider.talleres.where((t) {
       final matchStatus = _filterStatus == 'todos' || t.estado == _filterStatus;
-      final matchSearch = t.nombre.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchSearch = t.nombre.toLowerCase().contains(
+        _searchQuery.toLowerCase(),
+      );
       return matchStatus && matchSearch;
     }).toList();
 
@@ -91,9 +98,12 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                         decoration: InputDecoration(
                           labelText: 'Buscar taller / mecánico...',
                           prefixIcon: const Icon(Icons.search),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                        onChanged: (value) => setState(() => _searchQuery = value),
+                        onChanged: (value) =>
+                            setState(() => _searchQuery = value),
                       ),
                     ),
                   ),
@@ -126,7 +136,10 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                   if (mecanicos.isEmpty)
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 16), vertical: Responsive.padding(context, 24)),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: Responsive.padding(context, 16),
+                          vertical: Responsive.padding(context, 24),
+                        ),
                         child: Center(
                           child: Text(
                             'No hay mecánicos registrados en la plataforma',
@@ -137,28 +150,25 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                     )
                   else
                     SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final mecanico = mecanicos[index];
-                          return StreamBuilder<DocumentSnapshot>(
-                            stream: FirebaseFirestore.instance
-                                .collection(FirestoreCollections.talleres)
-                                .doc(mecanico.idUsuario)
-                                .snapshots(),
-                            builder: (context, snap) {
-                              final data =
-                                  snap.data?.data() as Map<String, dynamic>?;
-                              return MecanicoAdminCard(
-                                usuario: mecanico,
-                                calificacionPromedio:
-                                    data?['calificacion_promedio']?.toDouble(),
-                                totalResenias: data?['total_resenias'] ?? 0,
-                              );
-                            },
-                          );
-                        },
-                        childCount: mecanicos.length,
-                      ),
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final mecanico = mecanicos[index];
+                        return StreamBuilder<DocumentSnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection(FirestoreCollections.talleres)
+                              .doc(mecanico.idUsuario)
+                              .snapshots(),
+                          builder: (context, snap) {
+                            final data =
+                                snap.data?.data() as Map<String, dynamic>?;
+                            return MecanicoAdminCard(
+                              usuario: mecanico,
+                              calificacionPromedio:
+                                  data?['calificacion_promedio']?.toDouble(),
+                              totalResenias: data?['total_resenias'] ?? 0,
+                            );
+                          },
+                        );
+                      }, childCount: mecanicos.length),
                     ),
                   if (provider.talleres.isNotEmpty) ...[
                     SliverToBoxAdapter(
@@ -197,7 +207,9 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                     if (talleresFiltrados.isEmpty)
                       SliverToBoxAdapter(
                         child: Padding(
-                          padding: EdgeInsets.all(Responsive.padding(context, 24)),
+                          padding: EdgeInsets.all(
+                            Responsive.padding(context, 24),
+                          ),
                           child: Center(
                             child: Text(
                               'No hay talleres con este filtro',
@@ -208,43 +220,46 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                       )
                     else
                       SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final taller = talleresFiltrados[index];
-                            return TallerAdminCard(
-                              taller: taller,
-                              onAprobar: () {
-                                _mostrarConfirmacion(
-                                  context,
-                                  'Aprobar Taller',
-                                  '¿Estás seguro de que quieres aprobar este taller?',
-                                  () => provider.aprobarTaller(currentUid, taller.idTaller),
-                                );
-                              },
-                              onRechazar: () {
-                                _mostrarConfirmacion(
-                                  context,
-                                  'Rechazar Taller',
-                                  '¿Estás seguro de que quieres rechazar este taller?',
-                                  () => provider.rechazarTaller(currentUid, taller.idTaller),
-                                );
-                              },
-                              onSuspender: () {
-                                _mostrarConfirmacion(
-                                  context,
-                                  'Suspender Taller',
-                                  '¿Estás seguro de que quieres suspender este taller?',
-                                  () => provider.suspenderTaller(
-                                    currentUid,
-                                    taller.idTaller,
-                                    'Suspensión administrativa',
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                          childCount: talleresFiltrados.length,
-                        ),
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final taller = talleresFiltrados[index];
+                          return TallerAdminCard(
+                            taller: taller,
+                            onAprobar: () {
+                              _mostrarConfirmacion(
+                                context,
+                                'Aprobar Taller',
+                                '¿Estás seguro de que quieres aprobar este taller?',
+                                () => provider.aprobarTaller(
+                                  currentUid,
+                                  taller.idTaller,
+                                ),
+                              );
+                            },
+                            onRechazar: () {
+                              _mostrarConfirmacion(
+                                context,
+                                'Rechazar Taller',
+                                '¿Estás seguro de que quieres rechazar este taller?',
+                                () => provider.rechazarTaller(
+                                  currentUid,
+                                  taller.idTaller,
+                                ),
+                              );
+                            },
+                            onSuspender: () {
+                              _mostrarConfirmacion(
+                                context,
+                                'Suspender Taller',
+                                '¿Estás seguro de que quieres suspender este taller?',
+                                () => provider.suspenderTaller(
+                                  currentUid,
+                                  taller.idTaller,
+                                  'Suspensión administrativa',
+                                ),
+                              );
+                            },
+                          );
+                        }, childCount: talleresFiltrados.length),
                       ),
                   ],
                   const SliverToBoxAdapter(child: SizedBox(height: 24)),

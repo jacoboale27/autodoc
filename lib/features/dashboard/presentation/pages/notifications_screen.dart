@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/providers/notification_center_provider.dart';
-import 'package:autodoc/core/providers/user_session_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/models/app_notification_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
@@ -16,9 +16,9 @@ class NotificationsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final l10n = AppLocalizations.of(context)!;
-    final userSession = context.watch<UserSessionProvider>();
+    final userSession = context.watch<UserProfileProvider>();
     final notifProvider = context.watch<NotificationCenterProvider>();
-    final userId = userSession.currentUid;
+    final userId = (userSession.userData?.idUsuario ?? "");
 
     return Scaffold(
       appBar: AppBar(
@@ -63,11 +63,17 @@ class NotificationsScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.notifications_none_rounded, size: 64, color: colors.textSecondary.withValues(alpha: 0.4)),
+            Icon(
+              Icons.notifications_none_rounded,
+              size: 64,
+              color: colors.textSecondary.withValues(alpha: 0.4),
+            ),
             const SizedBox(height: 16),
             Text(
               AppLocalizations.of(context)!.noNotifications,
-              style: AppTextStyles.bodyLarge.copyWith(color: colors.textSecondary),
+              style: AppTextStyles.bodyLarge.copyWith(
+                color: colors.textSecondary,
+              ),
             ),
           ],
         ),

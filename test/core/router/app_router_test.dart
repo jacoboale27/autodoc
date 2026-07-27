@@ -7,13 +7,14 @@ import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class FakeAuthSessionProvider extends ChangeNotifier implements AuthSessionProvider {
+class FakeAuthSessionProvider extends ChangeNotifier
+    implements AuthSessionProvider {
   final bool _isLoggedIn;
   final String _currentUid;
 
   FakeAuthSessionProvider({bool isLoggedIn = false, String currentUid = ''})
-      : _isLoggedIn = isLoggedIn,
-        _currentUid = currentUid;
+    : _isLoggedIn = isLoggedIn,
+      _currentUid = currentUid;
 
   @override
   bool get isLoggedIn => _isLoggedIn;
@@ -28,7 +29,8 @@ class FakeAuthSessionProvider extends ChangeNotifier implements AuthSessionProvi
   Future<void> refreshUser() async {}
 }
 
-class FakeUserProfileProvider extends ChangeNotifier implements UserProfileProvider {
+class FakeUserProfileProvider extends ChangeNotifier
+    implements UserProfileProvider {
   final UserModel? _userData;
   final bool _isLoading;
   final bool _hasAttemptedFetch;
@@ -37,9 +39,9 @@ class FakeUserProfileProvider extends ChangeNotifier implements UserProfileProvi
     UserModel? userData,
     bool isLoading = false,
     bool hasAttemptedFetch = true,
-  })  : _userData = userData,
-        _isLoading = isLoading,
-        _hasAttemptedFetch = hasAttemptedFetch;
+  }) : _userData = userData,
+       _isLoading = isLoading,
+       _hasAttemptedFetch = hasAttemptedFetch;
 
   @override
   UserModel? get userData => _userData;
@@ -63,14 +65,20 @@ class FakeUserProfileProvider extends ChangeNotifier implements UserProfileProvi
   Future<void> fetchUserData(String userId) async {}
 
   @override
-  Future<bool> updateProfile(UserModel updatedUser, {dynamic imageFile, bool isNewUser = false}) async => true;
+  Future<bool> updateProfile(
+    UserModel updatedUser, {
+    dynamic imageFile,
+    bool isNewUser = false,
+  }) async => true;
 
   @override
   void clearUserData() {}
 }
 
 void main() {
-  testWidgets('AppRouter Redirect Logic Direct Unit Tests', (WidgetTester tester) async {
+  testWidgets('AppRouter Redirect Logic Direct Unit Tests', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const MaterialApp(home: SizedBox()));
     final BuildContext context = tester.element(find.byType(SizedBox));
 
@@ -79,8 +87,14 @@ void main() {
       required UserModel? userData,
       required String path,
     }) {
-      final authProvider = FakeAuthSessionProvider(isLoggedIn: isLoggedIn, currentUid: isLoggedIn ? 'uid_1' : '');
-      final profileProvider = FakeUserProfileProvider(userData: userData, hasAttemptedFetch: true);
+      final authProvider = FakeAuthSessionProvider(
+        isLoggedIn: isLoggedIn,
+        currentUid: isLoggedIn ? 'uid_1' : '',
+      );
+      final profileProvider = FakeUserProfileProvider(
+        userData: userData,
+        hasAttemptedFetch: true,
+      );
       final router = createAppRouter(authProvider, profileProvider);
 
       final uri = Uri.parse(path);
@@ -100,16 +114,28 @@ void main() {
     }
 
     // 1. Unauthenticated user on /login -> null (stays on /login)
-    expect(evaluateRedirect(isLoggedIn: false, userData: null, path: '/login'), null);
+    expect(
+      evaluateRedirect(isLoggedIn: false, userData: null, path: '/login'),
+      null,
+    );
 
     // 2. Unauthenticated user on protected /dashboard -> /login
-    expect(evaluateRedirect(isLoggedIn: false, userData: null, path: '/dashboard'), '/login');
+    expect(
+      evaluateRedirect(isLoggedIn: false, userData: null, path: '/dashboard'),
+      '/login',
+    );
 
     // 3. Authenticated user without Firestore profile on /login -> /profile_setup
-    expect(evaluateRedirect(isLoggedIn: true, userData: null, path: '/login'), '/profile_setup');
+    expect(
+      evaluateRedirect(isLoggedIn: true, userData: null, path: '/login'),
+      '/profile_setup',
+    );
 
     // 4. Authenticated user without Firestore profile trying to access protected /dashboard -> /profile_setup
-    expect(evaluateRedirect(isLoggedIn: true, userData: null, path: '/dashboard'), '/profile_setup');
+    expect(
+      evaluateRedirect(isLoggedIn: true, userData: null, path: '/dashboard'),
+      '/profile_setup',
+    );
 
     // 5. Authenticated user with Propietario profile on /login -> /dashboard
     final ownerUser = UserModel(
@@ -119,7 +145,10 @@ void main() {
       rol: 'Propietario',
       fechaRegistro: DateTime.now(),
     );
-    expect(evaluateRedirect(isLoggedIn: true, userData: ownerUser, path: '/login'), '/dashboard');
+    expect(
+      evaluateRedirect(isLoggedIn: true, userData: ownerUser, path: '/login'),
+      '/dashboard',
+    );
 
     // 6. Authenticated user with Mecanico profile on /login -> /mechanic_dashboard
     final mechanicUser = UserModel(
@@ -129,10 +158,31 @@ void main() {
       rol: 'Mecanico',
       fechaRegistro: DateTime.now(),
     );
-    expect(evaluateRedirect(isLoggedIn: true, userData: mechanicUser, path: '/login'), '/mechanic_dashboard');
+    expect(
+      evaluateRedirect(
+        isLoggedIn: true,
+        userData: mechanicUser,
+        path: '/login',
+      ),
+      '/mechanic_dashboard',
+    );
 
     // 7. Authenticated user with existing profile on /profile_setup -> /dashboard
-    expect(evaluateRedirect(isLoggedIn: true, userData: ownerUser, path: '/profile_setup'), '/dashboard');
-    expect(evaluateRedirect(isLoggedIn: true, userData: mechanicUser, path: '/profile_setup'), '/mechanic_dashboard');
+    expect(
+      evaluateRedirect(
+        isLoggedIn: true,
+        userData: ownerUser,
+        path: '/profile_setup',
+      ),
+      '/dashboard',
+    );
+    expect(
+      evaluateRedirect(
+        isLoggedIn: true,
+        userData: mechanicUser,
+        path: '/profile_setup',
+      ),
+      '/mechanic_dashboard',
+    );
   });
 }

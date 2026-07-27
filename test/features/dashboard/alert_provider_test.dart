@@ -18,7 +18,6 @@ void main() {
     mockAlertsCollection = MockCollectionReference<Map<String, dynamic>>();
     mockQuery = MockQuery<Map<String, dynamic>>();
 
-
     alertProvider = AlertProvider(
       firestore: mockFirestore,
       storage: mockStorage,
@@ -33,17 +32,31 @@ void main() {
       expect(alertProvider.maintenanceTasks, isEmpty);
     });
 
-    test('fetchAlerts sets loading state and handles error correctly', () async {
-      final vehicle = VehicleModel(idVehiculo: '1', idPropietario: 'owner', placa: 'ABC', marca: 'Toyota', modelo: 'Corolla', anio: 2020);
+    test(
+      'fetchAlerts sets loading state and handles error correctly',
+      () async {
+        final vehicle = VehicleModel(
+          idVehiculo: '1',
+          idPropietario: 'owner',
+          placa: 'ABC',
+          marca: 'Toyota',
+          modelo: 'Corolla',
+          anio: 2020,
+        );
 
-      when(mockFirestore.collection('alertas')).thenReturn(mockAlertsCollection);
-      when(mockAlertsCollection.where('id_vehiculo', isEqualTo: '1')).thenReturn(mockQuery);
-      when(mockQuery.get()).thenThrow('Firestore error');
+        when(
+          mockFirestore.collection('alertas'),
+        ).thenReturn(mockAlertsCollection);
+        when(
+          mockAlertsCollection.where('id_vehiculo', isEqualTo: '1'),
+        ).thenReturn(mockQuery);
+        when(mockQuery.get()).thenThrow('Firestore error');
 
-      await alertProvider.fetchAlerts('1', vehicle);
+        await alertProvider.fetchAlerts('1', vehicle);
 
-      expect(alertProvider.isLoading, false);
-      expect(alertProvider.error, contains('Firestore error'));
-    });
+        expect(alertProvider.isLoading, false);
+        expect(alertProvider.error, contains('Firestore error'));
+      },
+    );
   });
 }

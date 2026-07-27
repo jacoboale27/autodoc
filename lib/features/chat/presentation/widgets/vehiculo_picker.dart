@@ -30,18 +30,20 @@ class VehiculoPicker extends StatelessWidget {
         children: [
           Text(
             'Selecciona un Vehículo',
-            style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold),
+            style: AppTextStyles.titleLarge.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 16),
           Expanded(
             child: Consumer<VehicleProvider>(
               builder: (context, vehicleProvider, child) {
                 final vehicles = vehicleProvider.vehicles;
-                
+
                 if (vehicleProvider.isLoading && vehicles.isEmpty) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                
+
                 if (vehicles.isEmpty) {
                   return Center(
                     child: Text(
@@ -56,8 +58,13 @@ class VehiculoPicker extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final vehicle = vehicles[index];
                     return ListTile(
-                      leading: Icon(Icons.directions_car, color: colors.primary),
-                      title: Text('${vehicle.marca ?? ''} ${vehicle.modelo ?? ''}'),
+                      leading: Icon(
+                        Icons.directions_car,
+                        color: colors.primary,
+                      ),
+                      title: Text(
+                        '${vehicle.marca ?? ''} ${vehicle.modelo ?? ''}',
+                      ),
                       subtitle: Text(vehicle.placa),
                       onTap: () {
                         onSelected({

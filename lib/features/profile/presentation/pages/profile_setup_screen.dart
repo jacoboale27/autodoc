@@ -55,7 +55,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               centerTitle: false,
               title: Row(
                 children: [
-                  Icon(Icons.directions_car, color: primaryColor, size: Responsive.iconSize(context, 22)),
+                  Icon(
+                    Icons.directions_car,
+                    color: primaryColor,
+                    size: Responsive.iconSize(context, 22),
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     'AutoDoc',
@@ -75,7 +79,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       context.go('/login');
                     }
                   },
-                  icon: Icon(Icons.logout, color: appColors.textSecondary, size: 16),
+                  icon: Icon(
+                    Icons.logout,
+                    color: appColors.textSecondary,
+                    size: 16,
+                  ),
                   label: Text(
                     'Salir',
                     style: GoogleFonts.inter(
@@ -174,7 +182,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               ),
             ),
           ],
-          
+
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
@@ -194,7 +202,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: isDarkMode ? 0.3 : 0.06),
+                          color: Colors.black.withValues(
+                            alpha: isDarkMode ? 0.3 : 0.06,
+                          ),
                           blurRadius: 24,
                           offset: const Offset(0, 10),
                         ),
@@ -205,22 +215,30 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       child: BackdropFilter(
                         filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                         child: Padding(
-                          padding: EdgeInsets.all(Responsive.padding(context, 32.0)),
+                          padding: EdgeInsets.all(
+                            Responsive.padding(context, 32.0),
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               // Title
                               Text(
-                                '¡Bienvenido a AutoDoc!',
-                                style: GoogleFonts.montserrat(
-                                  fontSize: Responsive.fontSize(context, 26),
-                                  fontWeight: FontWeight.bold,
-                                  color: appColors.textPrimary,
-                                  letterSpacing: -0.5,
-                                ),
-                              ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0),
+                                    '¡Bienvenido a AutoDoc!',
+                                    style: GoogleFonts.montserrat(
+                                      fontSize: Responsive.fontSize(
+                                        context,
+                                        26,
+                                      ),
+                                      fontWeight: FontWeight.bold,
+                                      color: appColors.textPrimary,
+                                      letterSpacing: -0.5,
+                                    ),
+                                  )
+                                  .animate()
+                                  .fadeIn(duration: 400.ms)
+                                  .slideY(begin: -0.1, end: 0),
                               const SizedBox(height: 8),
-                              
+
                               // Subtitle with high contrast
                               Text(
                                 'Configura tu perfil para obtener diagnósticos personalizados y alertas precisas para tu vehículo.',
@@ -229,9 +247,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                   color: appColors.textSecondary,
                                   height: 1.4,
                                 ),
-                              ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
+                              ).animate().fadeIn(
+                                delay: 100.ms,
+                                duration: 400.ms,
+                              ),
                               const SizedBox(height: 32),
-                              
+
                               // Avatar / Profile Photo Picker
                               Center(
                                 child: Stack(
@@ -241,14 +262,20 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                       height: 104,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: primaryColor.withValues(alpha: 0.15),
+                                        color: primaryColor.withValues(
+                                          alpha: 0.15,
+                                        ),
                                         border: Border.all(
-                                          color: primaryColor.withValues(alpha: 0.6),
+                                          color: primaryColor.withValues(
+                                            alpha: 0.6,
+                                          ),
                                           width: 3,
                                         ),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: primaryColor.withValues(alpha: 0.2),
+                                            color: primaryColor.withValues(
+                                              alpha: 0.2,
+                                            ),
                                             blurRadius: 16,
                                             spreadRadius: 2,
                                           ),
@@ -257,24 +284,35 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                       child: ClipOval(
                                         child: _imageFile != null
                                             ? FutureBuilder<List<int>>(
-                                                future: _imageFile!.readAsBytes().then((b) => b.toList()),
+                                                future: _imageFile!
+                                                    .readAsBytes()
+                                                    .then((b) => b.toList()),
                                                 builder: (context, snapshot) {
                                                   if (snapshot.hasData) {
                                                     return Image.memory(
-                                                      Uint8List.fromList(snapshot.data!),
+                                                      Uint8List.fromList(
+                                                        snapshot.data!,
+                                                      ),
                                                       fit: BoxFit.cover,
                                                       width: 104,
                                                       height: 104,
                                                     );
                                                   }
                                                   return Center(
-                                                    child: CircularProgressIndicator(color: primaryColor, strokeWidth: 2),
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          color: primaryColor,
+                                                          strokeWidth: 2,
+                                                        ),
                                                   );
                                                 },
                                               )
                                             : Icon(
                                                 Icons.person_rounded,
-                                                size: Responsive.iconSize(context, 54),
+                                                size: Responsive.iconSize(
+                                                  context,
+                                                  54,
+                                                ),
                                                 color: primaryColor,
                                               ),
                                       ),
@@ -284,35 +322,56 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                       right: 2,
                                       child: GestureDetector(
                                         onTap: () async {
-                                          final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+                                          final pickedFile = await _picker
+                                              .pickImage(
+                                                source: ImageSource.gallery,
+                                              );
                                           if (pickedFile != null) {
-                                            setState(() => _imageFile = pickedFile);
+                                            setState(
+                                              () => _imageFile = pickedFile,
+                                            );
                                           }
                                         },
                                         child: Container(
-                                          padding: EdgeInsets.all(Responsive.padding(context, 8)),
+                                          padding: EdgeInsets.all(
+                                            Responsive.padding(context, 8),
+                                          ),
                                           decoration: BoxDecoration(
                                             color: primaryColor,
                                             shape: BoxShape.circle,
-                                            border: Border.all(color: appColors.surface, width: 2),
+                                            border: Border.all(
+                                              color: appColors.surface,
+                                              width: 2,
+                                            ),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: Colors.black.withValues(alpha: 0.3),
+                                                color: Colors.black.withValues(
+                                                  alpha: 0.3,
+                                                ),
                                                 blurRadius: 6,
                                               ),
                                             ],
                                           ),
                                           child: Icon(
                                             Icons.camera_alt_rounded,
-                                            color: isDarkMode ? appColors.surface : Colors.white,
-                                            size: Responsive.iconSize(context, 16),
+                                            color: isDarkMode
+                                                ? appColors.surface
+                                                : Colors.white,
+                                            size: Responsive.iconSize(
+                                              context,
+                                              16,
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
-                              ).animate().scale(delay: 150.ms, duration: 400.ms, curve: Curves.easeOutBack),
+                              ).animate().scale(
+                                delay: 150.ms,
+                                duration: 400.ms,
+                                curve: Curves.easeOutBack,
+                              ),
                               const SizedBox(height: 32),
 
                               // Full Name Label
@@ -326,16 +385,20 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              
+
                               // Full Name Input Field
                               Container(
                                 decoration: BoxDecoration(
                                   color: isDarkMode
-                                      ? appColors.surfaceVariant.withValues(alpha: 0.6)
+                                      ? appColors.surfaceVariant.withValues(
+                                          alpha: 0.6,
+                                        )
                                       : appColors.surface,
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
-                                    color: appColors.outline.withValues(alpha: 0.5),
+                                    color: appColors.outline.withValues(
+                                      alpha: 0.5,
+                                    ),
                                   ),
                                 ),
                                 child: TextField(
@@ -348,7 +411,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                   decoration: InputDecoration(
                                     hintText: 'Ej. Juan Pérez',
                                     hintStyle: GoogleFonts.inter(
-                                      fontSize: Responsive.fontSize(context, 15),
+                                      fontSize: Responsive.fontSize(
+                                        context,
+                                        15,
+                                      ),
                                       color: appColors.textSecondary,
                                     ),
                                     prefixIcon: Icon(
@@ -358,7 +424,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                     ),
                                     filled: false,
                                     border: InputBorder.none,
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 16,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -375,7 +444,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                 ),
                               ),
                               const SizedBox(height: 12),
-                              
+
                               // Role Selection Cards
                               Row(
                                 children: [
@@ -383,8 +452,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                     child: _buildRoleCard(
                                       title: 'Propietario',
                                       icon: Icons.person_outline_rounded,
-                                      isSelected: _selectedRole == 'Propietario',
-                                      onTap: () => setState(() => _selectedRole = 'Propietario'),
+                                      isSelected:
+                                          _selectedRole == 'Propietario',
+                                      onTap: () => setState(
+                                        () => _selectedRole = 'Propietario',
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 14),
@@ -393,13 +465,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                       title: 'Mecánico',
                                       icon: Icons.build_circle_outlined,
                                       isSelected: _selectedRole == 'Mecanico',
-                                      onTap: () => setState(() => _selectedRole = 'Mecanico'),
+                                      onTap: () => setState(
+                                        () => _selectedRole = 'Mecanico',
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 16),
-                              
+
                               // Role Explanation Banner
                               AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 300),
@@ -407,14 +481,19 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                   key: ValueKey<String>(_selectedRole),
                                   padding: const EdgeInsets.all(14),
                                   decoration: BoxDecoration(
-                                    color: primaryColor.withValues(alpha: isDarkMode ? 0.12 : 0.08),
+                                    color: primaryColor.withValues(
+                                      alpha: isDarkMode ? 0.12 : 0.08,
+                                    ),
                                     borderRadius: BorderRadius.circular(14),
                                     border: Border.all(
-                                      color: primaryColor.withValues(alpha: 0.3),
+                                      color: primaryColor.withValues(
+                                        alpha: 0.3,
+                                      ),
                                     ),
                                   ),
                                   child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Icon(
                                         Icons.info_outline_rounded,
@@ -428,7 +507,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                               ? 'Como propietario, podrás agregar vehículos a tu garaje virtual y dar seguimiento a sus mantenimientos.'
                                               : 'Como mecánico, podrás administrar tu taller, registrar servicios y conectar con propietarios de vehículos.',
                                           style: GoogleFonts.inter(
-                                            fontSize: Responsive.fontSize(context, 12.5),
+                                            fontSize: Responsive.fontSize(
+                                              context,
+                                              12.5,
+                                            ),
                                             color: appColors.textPrimary,
                                             height: 1.4,
                                           ),
@@ -454,14 +536,20 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
                               // Maintenance Notifications Switch Row
                               Container(
-                                padding: EdgeInsets.all(Responsive.padding(context, 16)),
+                                padding: EdgeInsets.all(
+                                  Responsive.padding(context, 16),
+                                ),
                                 decoration: BoxDecoration(
                                   color: isDarkMode
-                                      ? appColors.surfaceVariant.withValues(alpha: 0.5)
+                                      ? appColors.surfaceVariant.withValues(
+                                          alpha: 0.5,
+                                        )
                                       : appColors.surface,
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: appColors.outline.withValues(alpha: 0.4),
+                                    color: appColors.outline.withValues(
+                                      alpha: 0.4,
+                                    ),
                                   ),
                                 ),
                                 child: Row(
@@ -470,7 +558,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                       width: 42,
                                       height: 42,
                                       decoration: BoxDecoration(
-                                        color: primaryColor.withValues(alpha: 0.15),
+                                        color: primaryColor.withValues(
+                                          alpha: 0.15,
+                                        ),
                                         shape: BoxShape.circle,
                                       ),
                                       child: Icon(
@@ -482,13 +572,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                     const SizedBox(width: 16),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             'Notificaciones de mantenimiento',
                                             style: GoogleFonts.inter(
                                               fontWeight: FontWeight.w600,
-                                              fontSize: Responsive.fontSize(context, 14),
+                                              fontSize: Responsive.fontSize(
+                                                context,
+                                                14,
+                                              ),
                                               color: appColors.textPrimary,
                                             ),
                                           ),
@@ -496,7 +590,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                           Text(
                                             'Alertas sobre cambios de aceite, frenos y revisiones.',
                                             style: GoogleFonts.inter(
-                                              fontSize: Responsive.fontSize(context, 12),
+                                              fontSize: Responsive.fontSize(
+                                                context,
+                                                12,
+                                              ),
                                               color: appColors.textSecondary,
                                             ),
                                           ),
@@ -505,9 +602,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                     ),
                                     Switch(
                                       value: _notificationsEnabled,
-                                      onChanged: (val) => setState(() => _notificationsEnabled = val),
+                                      onChanged: (val) => setState(
+                                        () => _notificationsEnabled = val,
+                                      ),
                                       activeThumbColor: primaryColor,
-                                      activeTrackColor: primaryColor.withValues(alpha: 0.3),
+                                      activeTrackColor: primaryColor.withValues(
+                                        alpha: 0.3,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -532,9 +633,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         decoration: BoxDecoration(
           color: appColors.surface,
           border: Border(
-            top: BorderSide(
-              color: appColors.outline.withValues(alpha: 0.3),
-            ),
+            top: BorderSide(color: appColors.outline.withValues(alpha: 0.3)),
           ),
           boxShadow: [
             BoxShadow(
@@ -553,14 +652,18 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   ? null
                   : () async {
                       final authSession = context.read<AuthSessionProvider>();
-                      final profileProvider = context.read<UserProfileProvider>();
-                      final user = authSession.user ?? FirebaseAuth.instance.currentUser;
+                      final profileProvider = context
+                          .read<UserProfileProvider>();
+                      final user =
+                          authSession.user ?? FirebaseAuth.instance.currentUser;
                       final name = _nameController.text.trim();
-                      
+
                       if (name.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: const Text('Por favor, ingresa tu nombre completo'),
+                            content: const Text(
+                              'Por favor, ingresa tu nombre completo',
+                            ),
                             backgroundColor: appColors.error,
                           ),
                         );
@@ -570,7 +673,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       if (user == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: const Text('Error: Sesión no encontrada. Vuelve a iniciar sesión.'),
+                            content: const Text(
+                              'Error: Sesión no encontrada. Vuelve a iniciar sesión.',
+                            ),
                             backgroundColor: appColors.error,
                           ),
                         );
@@ -579,7 +684,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
                       try {
                         setState(() => _isLoading = true);
-                        
+
                         UserModel userModel = UserModel(
                           idUsuario: user.uid,
                           nombreCompleto: name,
@@ -587,13 +692,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                           rol: _selectedRole,
                           fechaRegistro: DateTime.now(),
                         );
-                        
-                        final success = await profileProvider.updateProfile(userModel, imageFile: _imageFile, isNewUser: true);
-                        
+
+                        final success = await profileProvider.updateProfile(
+                          userModel,
+                          imageFile: _imageFile,
+                          isNewUser: true,
+                        );
+
                         if (success) {
                           await user.updateDisplayName(name);
                           await user.reload();
-                          
+
                           if (context.mounted) {
                             final role = _selectedRole.trim().toLowerCase();
                             if (role == 'mecanico') {
@@ -603,7 +712,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                             }
                           }
                         } else {
-                          throw profileProvider.error ?? 'Error desconocido al guardar el perfil';
+                          throw profileProvider.error ??
+                              'Error desconocido al guardar el perfil';
                         }
                       } catch (e) {
                         if (context.mounted) {
@@ -628,36 +738,38 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: _isLoading 
-                ? [
-                    SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        color: isDarkMode ? appColors.surface : Colors.white,
-                        strokeWidth: 2.5,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Guardando...',
-                      style: GoogleFonts.montserrat(
-                        fontWeight: FontWeight.bold,
-                        fontSize: Responsive.fontSize(context, 16),
-                      ),
-                    ),
-                  ]
-                : [
-                    Text(
-                      'Finalizar Configuración',
-                      style: GoogleFonts.montserrat(
-                        fontWeight: FontWeight.bold,
-                        fontSize: Responsive.fontSize(context, 16),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    const Icon(Icons.arrow_forward_rounded, size: 20),
-                  ],
+                children: _isLoading
+                    ? [
+                        SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: isDarkMode
+                                ? appColors.surface
+                                : Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Guardando...',
+                          style: GoogleFonts.montserrat(
+                            fontWeight: FontWeight.bold,
+                            fontSize: Responsive.fontSize(context, 16),
+                          ),
+                        ),
+                      ]
+                    : [
+                        Text(
+                          'Finalizar Configuración',
+                          style: GoogleFonts.montserrat(
+                            fontWeight: FontWeight.bold,
+                            fontSize: Responsive.fontSize(context, 16),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const Icon(Icons.arrow_forward_rounded, size: 20),
+                      ],
               ),
             ),
           ),
@@ -684,7 +796,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         decoration: BoxDecoration(
           color: isSelected
               ? primaryColor.withValues(alpha: isDarkMode ? 0.2 : 0.1)
-              : (isDarkMode ? appColors.surfaceVariant.withValues(alpha: 0.4) : appColors.surface),
+              : (isDarkMode
+                    ? appColors.surfaceVariant.withValues(alpha: 0.4)
+                    : appColors.surface),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected
@@ -715,7 +829,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               style: GoogleFonts.inter(
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                 fontSize: Responsive.fontSize(context, 14),
-                color: isSelected ? appColors.textPrimary : appColors.textSecondary,
+                color: isSelected
+                    ? appColors.textPrimary
+                    : appColors.textSecondary,
               ),
             ),
           ],

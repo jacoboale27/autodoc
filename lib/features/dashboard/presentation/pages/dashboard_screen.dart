@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
-import 'package:autodoc/core/providers/user_session_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
@@ -35,10 +35,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_isInitialized) {
-      final userSession = context.read<UserSessionProvider>();
-      if (userSession.user != null) {
+      final userSession = context.read<UserProfileProvider>();
+      if (userSession.userData != null) {
         final vehicleProvider = context.read<VehicleProvider>();
-        vehicleProvider.fetchVehicles(userSession.user!.uid).then((_) {
+        vehicleProvider.fetchVehicles(userSession.userData!.idUsuario).then((
+          _,
+        ) {
           if (mounted && vehicleProvider.selectedVehicle != null) {
             context.read<AlertProvider>().fetchAlerts(
               vehicleProvider.selectedVehicle!.idVehiculo,
@@ -84,8 +86,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             SafeArea(
               child: SingleChildScrollView(
                 padding: EdgeInsets.only(
-                  bottom: Responsive.isDesktop(context) ? Responsive.padding(context, 24) : Responsive.padding(context, 120),
-                  top: Responsive.isDesktop(context) ? Responsive.size(context, 100) : 0,
+                  bottom: Responsive.isDesktop(context)
+                      ? Responsive.padding(context, 24)
+                      : Responsive.padding(context, 120),
+                  top: Responsive.isDesktop(context)
+                      ? Responsive.size(context, 100)
+                      : 0,
                 ), // Adjust padding based on navbars
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,7 +109,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         subTextColor,
                       )
                     else
-                       _buildVehicleCard(
+                      _buildVehicleCard(
                         primaryPurple,
                         vehicle,
                         isDark,
@@ -165,9 +171,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Color textColor,
     Color subTextColor,
   ) {
-    final userSession = context.watch<UserSessionProvider>();
+    final userSession = context.watch<UserProfileProvider>();
     final userName =
-        userSession.user?.displayName?.split(' ').first ?? 'Usuario';
+        userSession.userData?.nombreCompleto.split(' ').first ?? 'Usuario';
 
     return Padding(
       padding: EdgeInsets.all(Responsive.padding(context, 24.0)),
@@ -279,7 +285,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 24)),
+      padding: EdgeInsets.symmetric(
+        horizontal: Responsive.padding(context, 24),
+      ),
       child: AppCard(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         margin: EdgeInsets.zero,
@@ -291,7 +299,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 color: semColor.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
-              child: Icon(semIcon, color: semColor, size: Responsive.iconSize(context, 22)),
+              child: Icon(
+                semIcon,
+                color: semColor,
+                size: Responsive.iconSize(context, 22),
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -335,13 +347,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _semDot(MaintenanceStatus dot, MaintenanceStatus current, AppColors colors) {
+  Widget _semDot(
+    MaintenanceStatus dot,
+    MaintenanceStatus current,
+    AppColors colors,
+  ) {
     final bool active = dot.index >= current.index;
     final Color c = dot == MaintenanceStatus.critical
         ? colors.error
         : dot == MaintenanceStatus.preventive
-            ? colors.warning
-            : colors.secondary;
+        ? colors.warning
+        : colors.secondary;
     return Container(
       width: 10,
       height: 10,
@@ -506,8 +522,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               width: double.infinity,
               child: AppButton(
                 text: context.l10n.dashViewVehicleState,
-                onPressed: () => context.push('/vehicle_profile', extra: vehicle),
-                icon: const Icon(Icons.arrow_forward_rounded, size: 16, color: Colors.white),
+                onPressed: () =>
+                    context.push('/vehicle_profile', extra: vehicle),
+                icon: const Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 16,
+                  color: Colors.white,
+                ),
               ),
             ),
           ],
@@ -524,12 +545,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       builder: (context) => AddVehicleForm(
         primaryColor: primary,
         onFinish: (vehicle) async {
-          final userSession = context.read<UserSessionProvider>();
+          final userSession = context.read<UserProfileProvider>();
           final vehicleProvider = context.read<VehicleProvider>();
 
           final newVehicle = vehicle.copyWith(
             idVehiculo: const Uuid().v4(),
-            idPropietario: userSession.user!.uid,
+            idPropietario: userSession.userData!.idUsuario,
           );
 
           final success = await vehicleProvider.addVehicle(newVehicle);
@@ -620,7 +641,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 24)),
+          padding: EdgeInsets.symmetric(
+            horizontal: Responsive.padding(context, 24),
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -722,7 +745,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 color: statusColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: statusColor, size: Responsive.iconSize(context, 24)),
+              child: Icon(
+                icon,
+                color: statusColor,
+                size: Responsive.iconSize(context, 24),
+              ),
             ),
             const SizedBox(height: 12),
             Text(
@@ -780,28 +807,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+              if (snapshot.hasError ||
+                  !snapshot.hasData ||
+                  snapshot.data!.isEmpty) {
                 return Center(
-                  child: Text('No hay talleres disponibles', style: TextStyle(color: subTextColor)),
+                  child: Text(
+                    'No hay talleres disponibles',
+                    style: TextStyle(color: subTextColor),
+                  ),
                 );
               }
 
               var workshops = snapshot.data!;
               // Sort by rating descending
               workshops.sort((a, b) {
-                final ratingA = a.toMap()['calificacion_promedio'] as num? ?? 0.0;
-                final ratingB = b.toMap()['calificacion_promedio'] as num? ?? 0.0;
+                final ratingA =
+                    a.toMap()['calificacion_promedio'] as num? ?? 0.0;
+                final ratingB =
+                    b.toMap()['calificacion_promedio'] as num? ?? 0.0;
                 return ratingB.compareTo(ratingA);
               });
-              
+
               // Take top 5
               final topWorkshops = workshops.take(5).toList();
 
               return Column(
                 children: topWorkshops.map((workshop) {
                   final data = workshop.toMap();
-                  final calificacion = data['calificacion_promedio'] as num? ?? 0.0;
-                  final especialidad = data['especialidad'] as String? ?? 'General';
+                  final calificacion =
+                      data['calificacion_promedio'] as num? ?? 0.0;
+                  final especialidad =
+                      data['especialidad'] as String? ?? 'General';
                   return InkWell(
                     onTap: () => context.push('/workshop_directory'),
                     child: _buildServiceTile(
@@ -842,7 +878,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               color: primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(Responsive.size(context, 12)),
             ),
-            child: Icon(icon, color: primary, size: Responsive.iconSize(context, 24)),
+            child: Icon(
+              icon,
+              color: primary,
+              size: Responsive.iconSize(context, 24),
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -869,5 +909,4 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-
 }

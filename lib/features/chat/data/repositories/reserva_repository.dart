@@ -6,20 +6,28 @@ class ReservaRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Obtener reservas de un usuario
-  Stream<List<ReservaModel>> streamReservasUsuario(String userId, {bool isMecanico = false}) {
+  Stream<List<ReservaModel>> streamReservasUsuario(
+    String userId, {
+    bool isMecanico = false,
+  }) {
     return _firestore
         .collection(FirestoreCollections.reservas)
         .where(isMecanico ? 'id_mecanico' : 'id_propietario', isEqualTo: userId)
         .orderBy('fecha_hora_propuesta', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => ReservaModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => ReservaModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
   // Obtener reserva por ID
   Future<ReservaModel?> getReserva(String reservaId) async {
-    final doc = await _firestore.collection(FirestoreCollections.reservas).doc(reservaId).get();
+    final doc = await _firestore
+        .collection(FirestoreCollections.reservas)
+        .doc(reservaId)
+        .get();
     if (doc.exists) {
       return ReservaModel.fromMap(doc.data()!, doc.id);
     }
@@ -34,11 +42,18 @@ class ReservaRepository {
   }
 
   // Actualizar estado de reserva
-  Future<void> actualizarEstadoReserva(String reservaId, String estado, {DateTime? fechaConfirmada}) async {
+  Future<void> actualizarEstadoReserva(
+    String reservaId,
+    String estado, {
+    DateTime? fechaConfirmada,
+  }) async {
     Map<String, dynamic> data = {'estado': estado};
     if (fechaConfirmada != null) {
       data['fecha_hora_confirmada'] = Timestamp.fromDate(fechaConfirmada);
     }
-    await _firestore.collection(FirestoreCollections.reservas).doc(reservaId).update(data);
+    await _firestore
+        .collection(FirestoreCollections.reservas)
+        .doc(reservaId)
+        .update(data);
   }
 }

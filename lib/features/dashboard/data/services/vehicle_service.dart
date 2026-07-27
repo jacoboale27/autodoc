@@ -12,7 +12,7 @@ class VehicleService {
           .collection(_collection)
           .where('id_propietario', isEqualTo: ownerId)
           .get();
-      
+
       return snapshot.docs
           .map((doc) => VehicleModel.fromMap(doc.data(), doc.id))
           .toList();
@@ -23,7 +23,10 @@ class VehicleService {
 
   Future<void> addVehicle(VehicleModel vehicle) async {
     try {
-      await _firestore.collection(_collection).doc(vehicle.idVehiculo).set(vehicle.toMap());
+      await _firestore
+          .collection(_collection)
+          .doc(vehicle.idVehiculo)
+          .set(vehicle.toMap());
     } catch (e) {
       throw 'Error al registrar vehículo: $e';
     }
@@ -31,7 +34,10 @@ class VehicleService {
 
   Future<void> updateVehicle(VehicleModel vehicle) async {
     try {
-      await _firestore.collection(_collection).doc(vehicle.idVehiculo).update(vehicle.toMap());
+      await _firestore
+          .collection(_collection)
+          .doc(vehicle.idVehiculo)
+          .update(vehicle.toMap());
     } catch (e) {
       throw 'Error al actualizar vehículo: $e';
     }
@@ -52,9 +58,12 @@ class VehicleService {
           .where('placa', isEqualTo: plate)
           .limit(1)
           .get();
-      
+
       if (snapshot.docs.isEmpty) return null;
-      return VehicleModel.fromMap(snapshot.docs.first.data(), snapshot.docs.first.id);
+      return VehicleModel.fromMap(
+        snapshot.docs.first.data(),
+        snapshot.docs.first.id,
+      );
     } catch (e) {
       throw 'Error al buscar vehículo por placa: $e';
     }
@@ -66,7 +75,7 @@ class VehicleService {
           .collection(_collection)
           .where('shared_with', arrayContains: userId)
           .get();
-      
+
       return snapshot.docs
           .map((doc) => VehicleModel.fromMap(doc.data(), doc.id))
           .toList();
@@ -81,13 +90,13 @@ class VehicleService {
           .collection(FirestoreCollections.servicios)
           .where('id_vehiculo', isEqualTo: vehicleId)
           .get();
-      
+
       double total = 0;
       double totalMesActual = 0;
       final Map<int, double> porMes = {};
-      
+
       final now = DateTime.now();
-      
+
       for (int i = 0; i < 6; i++) {
         final mes = DateTime(now.year, now.month - i, 1);
         porMes[mes.month] = 0;
@@ -97,9 +106,9 @@ class VehicleService {
         final data = doc.data();
         final costo = (data['costo'] as num?)?.toDouble() ?? 0.0;
         final fecha = (data['fecha'] as Timestamp?)?.toDate();
-        
+
         total += costo;
-        
+
         if (fecha != null) {
           if (fecha.year == now.year && fecha.month == now.month) {
             totalMesActual += costo;
@@ -109,11 +118,13 @@ class VehicleService {
           }
         }
       }
-      
+
       return {
         'total': total,
         'mes_actual': totalMesActual,
-        'promedio': snapshot.docs.isNotEmpty ? total / snapshot.docs.length : 0.0,
+        'promedio': snapshot.docs.isNotEmpty
+            ? total / snapshot.docs.length
+            : 0.0,
         'por_mes': porMes,
       };
     } catch (e) {
@@ -149,16 +160,19 @@ class VehicleService {
           .orderBy('fecha', descending: true)
           .limit(1)
           .get();
-          
+
       if (snapshot.docs.isEmpty) return null;
-      
+
       final data = snapshot.docs.first.data();
       final tallerId = data['id_taller'] as String?;
       if (tallerId == null) return null;
-      
-      final tallerDoc = await _firestore.collection(FirestoreCollections.talleres).doc(tallerId).get();
+
+      final tallerDoc = await _firestore
+          .collection(FirestoreCollections.talleres)
+          .doc(tallerId)
+          .get();
       if (!tallerDoc.exists) return null;
-      
+
       return {
         'id_taller': tallerId,
         'nombre': tallerDoc.data()?['nombre'] ?? 'Taller Desconocido',

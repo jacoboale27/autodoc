@@ -4,7 +4,8 @@ class MensajeModel {
   final String id;
   final String idRemitente;
   final String contenido;
-  final String tipo; // 'texto' | 'imagen' | 'vehiculo_card' | 'reserva_card' | 'cotizacion_card'
+  final String
+  tipo; // 'texto' | 'imagen' | 'vehiculo_card' | 'reserva_card' | 'cotizacion_card'
   final Map<String, dynamic>? metadata;
   final DateTime timestamp;
   final String estado; // 'enviado' | 'entregado' | 'visto'
@@ -29,7 +30,9 @@ class MensajeModel {
       idRemitente: map['id_remitente'] ?? '',
       contenido: map['contenido'] ?? '',
       tipo: map['tipo'] ?? 'texto',
-      metadata: map['metadata'] != null ? Map<String, dynamic>.from(map['metadata']) : null,
+      metadata: map['metadata'] != null
+          ? Map<String, dynamic>.from(map['metadata'])
+          : null,
       timestamp: (map['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
       estado: map['estado'] ?? 'enviado',
       urlArchivo: map['url_archivo'],

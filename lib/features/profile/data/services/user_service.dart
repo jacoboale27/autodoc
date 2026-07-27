@@ -15,7 +15,7 @@ class UserService {
       if (doc.exists && doc.data() != null) {
         return UserModel.fromMap(doc.data()!, doc.id);
       }
-      
+
       // Fallback query if document ID isn't directly the Auth UID
       final query = await _firestore
           .collection(_collection)
@@ -36,7 +36,10 @@ class UserService {
     try {
       final updateData = user.toMap();
       updateData.remove('rol');
-      await _firestore.collection(_collection).doc(user.idUsuario).set(updateData, SetOptions(merge: true));
+      await _firestore
+          .collection(_collection)
+          .doc(user.idUsuario)
+          .set(updateData, SetOptions(merge: true));
     } catch (e) {
       throw 'Error al actualizar perfil: $e';
     }
@@ -44,13 +47,22 @@ class UserService {
 
   Future<void> createUserData(UserModel user) async {
     try {
-      final doc = await _firestore.collection(_collection).doc(user.idUsuario).get();
+      final doc = await _firestore
+          .collection(_collection)
+          .doc(user.idUsuario)
+          .get();
       if (doc.exists) {
         final updateData = user.toMap();
         updateData.remove('rol');
-        await _firestore.collection(_collection).doc(user.idUsuario).set(updateData, SetOptions(merge: true));
+        await _firestore
+            .collection(_collection)
+            .doc(user.idUsuario)
+            .set(updateData, SetOptions(merge: true));
       } else {
-        await _firestore.collection(_collection).doc(user.idUsuario).set(user.toMap());
+        await _firestore
+            .collection(_collection)
+            .doc(user.idUsuario)
+            .set(user.toMap());
       }
     } catch (e) {
       throw 'Error al crear perfil: $e';
@@ -59,7 +71,10 @@ class UserService {
 
   Future<String> uploadProfilePhoto(String userId, XFile imageFile) async {
     try {
-      final ref = FirebaseStorage.instance.ref().child(StoragePaths.perfiles).child('$userId.jpg');
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child(StoragePaths.perfiles)
+          .child('$userId.jpg');
       final bytes = await imageFile.readAsBytes();
       final metadata = SettableMetadata(contentType: 'image/jpeg');
       await ref.putData(bytes, metadata);

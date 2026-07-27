@@ -75,16 +75,40 @@ void main() {
 
     test('average of single 5-star review is 5.0', () {
       final reviews = [
-        ReviewModel(idResenia: 'r1', idUsuario: 'u1', idTaller: 't1', estrellas: 5, fechaResenia: DateTime.now()),
+        ReviewModel(
+          idResenia: 'r1',
+          idUsuario: 'u1',
+          idTaller: 't1',
+          estrellas: 5,
+          fechaResenia: DateTime.now(),
+        ),
       ];
       expect(calcularPromedio(reviews), 5.0);
     });
 
     test('average of mixed reviews rounds to 1 decimal', () {
       final reviews = [
-        ReviewModel(idResenia: 'r1', idUsuario: 'u1', idTaller: 't1', estrellas: 5, fechaResenia: DateTime.now()),
-        ReviewModel(idResenia: 'r2', idUsuario: 'u2', idTaller: 't1', estrellas: 3, fechaResenia: DateTime.now()),
-        ReviewModel(idResenia: 'r3', idUsuario: 'u3', idTaller: 't1', estrellas: 4, fechaResenia: DateTime.now()),
+        ReviewModel(
+          idResenia: 'r1',
+          idUsuario: 'u1',
+          idTaller: 't1',
+          estrellas: 5,
+          fechaResenia: DateTime.now(),
+        ),
+        ReviewModel(
+          idResenia: 'r2',
+          idUsuario: 'u2',
+          idTaller: 't1',
+          estrellas: 3,
+          fechaResenia: DateTime.now(),
+        ),
+        ReviewModel(
+          idResenia: 'r3',
+          idUsuario: 'u3',
+          idTaller: 't1',
+          estrellas: 4,
+          fechaResenia: DateTime.now(),
+        ),
       ];
       // (5+3+4)/3 = 4.0
       expect(calcularPromedio(reviews), 4.0);
@@ -92,10 +116,34 @@ void main() {
 
     test('average is correctly rounded for non-even divisions', () {
       final reviews = [
-        ReviewModel(idResenia: 'r1', idUsuario: 'u1', idTaller: 't1', estrellas: 5, fechaResenia: DateTime.now()),
-        ReviewModel(idResenia: 'r2', idUsuario: 'u2', idTaller: 't1', estrellas: 4, fechaResenia: DateTime.now()),
-        ReviewModel(idResenia: 'r3', idUsuario: 'u3', idTaller: 't1', estrellas: 3, fechaResenia: DateTime.now()),
-        ReviewModel(idResenia: 'r4', idUsuario: 'u4', idTaller: 't1', estrellas: 2, fechaResenia: DateTime.now()),
+        ReviewModel(
+          idResenia: 'r1',
+          idUsuario: 'u1',
+          idTaller: 't1',
+          estrellas: 5,
+          fechaResenia: DateTime.now(),
+        ),
+        ReviewModel(
+          idResenia: 'r2',
+          idUsuario: 'u2',
+          idTaller: 't1',
+          estrellas: 4,
+          fechaResenia: DateTime.now(),
+        ),
+        ReviewModel(
+          idResenia: 'r3',
+          idUsuario: 'u3',
+          idTaller: 't1',
+          estrellas: 3,
+          fechaResenia: DateTime.now(),
+        ),
+        ReviewModel(
+          idResenia: 'r4',
+          idUsuario: 'u4',
+          idTaller: 't1',
+          estrellas: 2,
+          fechaResenia: DateTime.now(),
+        ),
       ];
       // (5+4+3+2)/4 = 3.5
       expect(calcularPromedio(reviews), 3.5);
@@ -106,7 +154,9 @@ void main() {
     test('estrellas must be between 1 and 5', () {
       void validateEstrellas(int estrellas) {
         if (estrellas < 1 || estrellas > 5) {
-          throw ArgumentError('La calificación debe estar entre 1 y 5 estrellas.');
+          throw ArgumentError(
+            'La calificación debe estar entre 1 y 5 estrellas.',
+          );
         }
       }
 
@@ -148,8 +198,20 @@ void main() {
     });
 
     test('ReviewModel equality based on id', () {
-      final r1 = ReviewModel(idResenia: 'r1', idUsuario: 'u1', idTaller: 't1', estrellas: 5, fechaResenia: DateTime.now());
-      final r2 = ReviewModel(idResenia: 'r1', idUsuario: 'u1', idTaller: 't1', estrellas: 5, fechaResenia: DateTime.now());
+      final r1 = ReviewModel(
+        idResenia: 'r1',
+        idUsuario: 'u1',
+        idTaller: 't1',
+        estrellas: 5,
+        fechaResenia: DateTime.now(),
+      );
+      final r2 = ReviewModel(
+        idResenia: 'r1',
+        idUsuario: 'u1',
+        idTaller: 't1',
+        estrellas: 5,
+        fechaResenia: DateTime.now(),
+      );
       expect(r1.idResenia, r2.idResenia);
     });
   });

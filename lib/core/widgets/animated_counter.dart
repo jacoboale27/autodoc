@@ -20,7 +20,8 @@ class AnimatedCounter extends StatefulWidget {
   State<AnimatedCounter> createState() => _AnimatedCounterState();
 }
 
-class _AnimatedCounterState extends State<AnimatedCounter> with SingleTickerProviderStateMixin {
+class _AnimatedCounterState extends State<AnimatedCounter>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
   num _oldValue = 0;
@@ -29,9 +30,10 @@ class _AnimatedCounterState extends State<AnimatedCounter> with SingleTickerProv
   void initState() {
     super.initState();
     _controller = AnimationController(vsync: this, duration: widget.duration);
-    _animation = Tween<double>(begin: _oldValue.toDouble(), end: widget.value.toDouble()).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _animation = Tween<double>(
+      begin: _oldValue.toDouble(),
+      end: widget.value.toDouble(),
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
     _controller.forward();
   }
 
@@ -40,9 +42,10 @@ class _AnimatedCounterState extends State<AnimatedCounter> with SingleTickerProv
     super.didUpdateWidget(oldWidget);
     if (oldWidget.value != widget.value) {
       _oldValue = oldWidget.value;
-      _animation = Tween<double>(begin: _oldValue.toDouble(), end: widget.value.toDouble()).animate(
-        CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-      );
+      _animation = Tween<double>(
+        begin: _oldValue.toDouble(),
+        end: widget.value.toDouble(),
+      ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
       _controller.forward(from: 0.0);
     }
   }
@@ -59,7 +62,9 @@ class _AnimatedCounterState extends State<AnimatedCounter> with SingleTickerProv
       animation: _animation,
       builder: (context, child) {
         final val = _animation.value;
-        final displayValue = widget.value is int ? val.toInt().toString() : val.toStringAsFixed(1);
+        final displayValue = widget.value is int
+            ? val.toInt().toString()
+            : val.toStringAsFixed(1);
         return Text(
           '${widget.prefix}$displayValue${widget.suffix}',
           style: widget.style,

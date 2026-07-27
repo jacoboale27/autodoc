@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
-import 'package:autodoc/core/providers/user_session_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 /// Pantalla de espera para mecánicos que aún no han sido aprobados por el administrador.
-/// 
+///
 /// Un mecánico que acaba de registrarse tiene `estado == 'Pendiente'` en su perfil.
 /// Esta pantalla bloquea el acceso al dashboard hasta que el administrador aprueba
 /// el taller, cambiando el estado a 'activo'.
@@ -26,8 +26,8 @@ class _MechanicPendingScreenState extends State<MechanicPendingScreen> {
   /// Reload user data to check if admin has approved the account.
   Future<void> _checkApprovalStatus() async {
     setState(() => _checking = true);
-    final session = context.read<UserSessionProvider>();
-    await session.refreshUserData();
+    final session = context.read<UserProfileProvider>();
+    await session.fetchUserData(session.userData?.idUsuario ?? "");
     if (!mounted) return;
     setState(() => _checking = false);
 
@@ -40,7 +40,9 @@ class _MechanicPendingScreenState extends State<MechanicPendingScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Tu cuenta aún está pendiente de aprobación. Por favor, espera.'),
+            content: Text(
+              'Tu cuenta aún está pendiente de aprobación. Por favor, espera.',
+            ),
             duration: Duration(seconds: 3),
           ),
         );
@@ -57,7 +59,7 @@ class _MechanicPendingScreenState extends State<MechanicPendingScreen> {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final session = context.watch<UserSessionProvider>();
+    final session = context.watch<UserProfileProvider>();
     final userData = session.userData;
 
     return Scaffold(
@@ -71,7 +73,10 @@ class _MechanicPendingScreenState extends State<MechanicPendingScreen> {
             end: Alignment.bottomRight,
             colors: isDark
                 ? [colors.surface, colors.surfaceContainer]
-                : [colors.surface, colors.surfaceContainer.withValues(alpha: 0.5)],
+                : [
+                    colors.surface,
+                    colors.surfaceContainer.withValues(alpha: 0.5),
+                  ],
           ),
         ),
         child: SafeArea(
@@ -82,19 +87,22 @@ class _MechanicPendingScreenState extends State<MechanicPendingScreen> {
               children: [
                 // Pending icon with animation
                 Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: colors.primary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: colors.primary.withValues(alpha: 0.3), width: 2),
-                  ),
-                  child: Icon(
-                    Icons.schedule_rounded,
-                    size: 60,
-                    color: colors.primary,
-                  ),
-                )
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: colors.primary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: colors.primary.withValues(alpha: 0.3),
+                          width: 2,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.schedule_rounded,
+                        size: 60,
+                        color: colors.primary,
+                      ),
+                    )
                     .animate(onPlay: (c) => c.repeat())
                     .scale(
                       duration: const Duration(seconds: 2),
@@ -142,26 +150,31 @@ class _MechanicPendingScreenState extends State<MechanicPendingScreen> {
                   decoration: BoxDecoration(
                     color: colors.surfaceContainer,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: colors.outline.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: colors.outline.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _infoRow(
                         icon: Icons.email_outlined,
-                        text: '¿Qué sigue? El administrador revisará tu solicitud y te notificará por email.',
+                        text:
+                            '¿Qué sigue? El administrador revisará tu solicitud y te notificará por email.',
                         colors: colors,
                       ),
                       const SizedBox(height: 12),
                       _infoRow(
                         icon: Icons.notifications_outlined,
-                        text: 'Recibirás una notificación push cuando tu cuenta sea aprobada.',
+                        text:
+                            'Recibirás una notificación push cuando tu cuenta sea aprobada.',
                         colors: colors,
                       ),
                       const SizedBox(height: 12),
                       _infoRow(
                         icon: Icons.access_time_outlined,
-                        text: 'Tiempo estimado de aprobación: 1-2 días hábiles.',
+                        text:
+                            'Tiempo estimado de aprobación: 1-2 días hábiles.',
                         colors: colors,
                       ),
                     ],
@@ -196,7 +209,9 @@ class _MechanicPendingScreenState extends State<MechanicPendingScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: colors.primary,
                       foregroundColor: colors.onPrimary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),
@@ -206,7 +221,11 @@ class _MechanicPendingScreenState extends State<MechanicPendingScreen> {
                 // Sign out option
                 TextButton.icon(
                   onPressed: _signOut,
-                  icon: Icon(Icons.logout_rounded, color: colors.textSecondary, size: 18),
+                  icon: Icon(
+                    Icons.logout_rounded,
+                    color: colors.textSecondary,
+                    size: 18,
+                  ),
                   label: Text(
                     'Cerrar sesión',
                     style: GoogleFonts.inter(color: colors.textSecondary),
@@ -220,7 +239,11 @@ class _MechanicPendingScreenState extends State<MechanicPendingScreen> {
     );
   }
 
-  Widget _infoRow({required IconData icon, required String text, required AppColors colors}) {
+  Widget _infoRow({
+    required IconData icon,
+    required String text,
+    required AppColors colors,
+  }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

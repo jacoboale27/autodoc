@@ -77,8 +77,12 @@ class VehicleModel {
       'anio': anio,
       'color': color,
       'kilometraje_actual': kilometrajeActual,
-      'vencimiento_tarjeta': vencimientoTarjeta != null ? Timestamp.fromDate(vencimientoTarjeta!) : null,
-      'vencimiento_soat': vencimientoSoat != null ? Timestamp.fromDate(vencimientoSoat!) : null,
+      'vencimiento_tarjeta': vencimientoTarjeta != null
+          ? Timestamp.fromDate(vencimientoTarjeta!)
+          : null,
+      'vencimiento_soat': vencimientoSoat != null
+          ? Timestamp.fromDate(vencimientoSoat!)
+          : null,
       'foto_url': fotoUrl,
       'es_principal': isPrimary,
       'shared_with': sharedWith,

@@ -12,9 +12,8 @@ void main() {
       routes: [
         GoRoute(
           path: '/',
-          builder: (context, state) => const Scaffold(
-            body: Center(child: Text('AutoDoc Smoke Test')),
-          ),
+          builder: (context, state) =>
+              const Scaffold(body: Center(child: Text('AutoDoc Smoke Test'))),
         ),
       ],
     );
@@ -32,25 +31,27 @@ void main() {
     await tester.pump();
 
     // Verify that the theme is applied
-    final BuildContext context = tester.element(find.text('AutoDoc Smoke Test'));
+    final BuildContext context = tester.element(
+      find.text('AutoDoc Smoke Test'),
+    );
     final colors = context.appColors;
 
     // Verify primary color from light theme tokens
     expect(colors.primary, AppPalette.lightPrimary);
-    
+
     // Verify background color
     expect(Theme.of(context).scaffoldBackgroundColor, colors.surface);
 
     expect(find.text('AutoDoc Smoke Test'), findsOneWidget);
   });
 
-  testWidgets('AppSkeleton renders with theme tokens', (WidgetTester tester) async {
+  testWidgets('AppSkeleton renders with theme tokens', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light,
-        home: Scaffold(
-          body: AppSkeleton.card(height: 80),
-        ),
+        home: Scaffold(body: AppSkeleton.card(height: 80)),
       ),
     );
     await tester.pump();

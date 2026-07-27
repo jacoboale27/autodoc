@@ -19,8 +19,14 @@ class _DisponibilidadPickerState extends State<DisponibilidadPicker> {
   String? _selectedTime;
 
   final List<String> _availableTimes = [
-    '08:00 AM', '09:00 AM', '10:00 AM', '11:00 AM',
-    '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM',
+    '08:00 AM',
+    '09:00 AM',
+    '10:00 AM',
+    '11:00 AM',
+    '01:00 PM',
+    '02:00 PM',
+    '03:00 PM',
+    '04:00 PM',
   ];
 
   @override
@@ -46,7 +52,9 @@ class _DisponibilidadPickerState extends State<DisponibilidadPicker> {
         children: [
           Text(
             'Proponer Fecha y Hora',
-            style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold),
+            style: AppTextStyles.titleLarge.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 16),
           TableCalendar(
@@ -80,7 +88,9 @@ class _DisponibilidadPickerState extends State<DisponibilidadPicker> {
           if (_selectedDay != null) ...[
             Text(
               'Horarios Disponibles',
-              style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold),
+              style: AppTextStyles.titleMedium.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 12),
             SizedBox(
@@ -103,8 +113,12 @@ class _DisponibilidadPickerState extends State<DisponibilidadPicker> {
                       },
                       selectedColor: colors.primary,
                       labelStyle: TextStyle(
-                        color: isSelected ? Colors.white : (isDark ? Colors.white : Colors.black),
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        color: isSelected
+                            ? Colors.white
+                            : (isDark ? Colors.white : Colors.black),
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                       ),
                     ),
                   );
@@ -125,10 +139,17 @@ class _DisponibilidadPickerState extends State<DisponibilidadPicker> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: colors.primary,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  disabledBackgroundColor: colors.primary.withValues(alpha: 0.3),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  disabledBackgroundColor: colors.primary.withValues(
+                    alpha: 0.3,
+                  ),
                 ),
-                child: Text(context.l10n.chatConfirmProposal, style: const TextStyle(fontWeight: FontWeight.bold)),
+                child: Text(
+                  context.l10n.chatConfirmProposal,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ],

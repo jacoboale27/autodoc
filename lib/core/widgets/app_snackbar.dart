@@ -11,10 +11,10 @@ class AppSnackbar {
     SnackbarType type = SnackbarType.info,
   }) {
     final colors = context.appColors;
-    
+
     Color backgroundColor;
     IconData icon;
-    
+
     switch (type) {
       case SnackbarType.success:
         backgroundColor = colors.success;
@@ -49,9 +49,7 @@ class AppSnackbar {
       ),
       backgroundColor: backgroundColor,
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       margin: const EdgeInsets.all(16),
       elevation: 6,
       duration: const Duration(seconds: 4),

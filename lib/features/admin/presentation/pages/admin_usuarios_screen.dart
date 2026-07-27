@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/admin_provider.dart';
-import 'package:autodoc/core/providers/user_session_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import '../widgets/admin_sidebar.dart';
 import '../widgets/account_row.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
@@ -29,7 +29,11 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
     });
   }
 
-  void _mostrarDialogoMotivo(BuildContext context, String title, Function(String) onConfirm) {
+  void _mostrarDialogoMotivo(
+    BuildContext context,
+    String title,
+    Function(String) onConfirm,
+  ) {
     final controller = TextEditingController();
     showDialog(
       context: context,
@@ -40,11 +44,16 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
           decoration: const InputDecoration(labelText: 'Motivo / Detalle'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.adminCancel)),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.l10n.adminCancel),
+          ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              onConfirm(controller.text.isEmpty ? 'Sin motivo' : controller.text);
+              onConfirm(
+                controller.text.isEmpty ? 'Sin motivo' : controller.text,
+              );
             },
             child: Text(context.l10n.adminConfirm),
           ),
@@ -53,7 +62,12 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
     );
   }
 
-  void _mostrarDialogoCambiarRol(BuildContext context, String targetUid, String rolActual, String adminUid) {
+  void _mostrarDialogoCambiarRol(
+    BuildContext context,
+    String targetUid,
+    String rolActual,
+    String adminUid,
+  ) {
     final roles = ['Propietario', 'Mecanico', 'Administrador'];
     String? selectedRol;
 
@@ -69,35 +83,59 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
               children: [
                 Text(
                   'Rol actual: $rolActual',
-                  style: TextStyle(color: Colors.grey[600], fontSize: Responsive.fontSize(context, 13)),
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: Responsive.fontSize(context, 13),
+                  ),
                 ),
                 const SizedBox(height: 16),
-                Text(context.l10n.adminSelectNewRole, style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text(
+                  context.l10n.adminSelectNewRole,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 12),
-                ...roles.where((r) => r != rolActual).map((rol) => ListTile(
-                  title: Text(rol),
-                  subtitle: Text(_descRol(rol), style: TextStyle(fontSize: Responsive.fontSize(context, 12))),
-                  trailing: selectedRol == rol
-                      ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
-                      : const Icon(Icons.circle_outlined, color: Colors.grey),
-                  onTap: () => setDialogState(() => selectedRol = rol),
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                )),
+                ...roles
+                    .where((r) => r != rolActual)
+                    .map(
+                      (rol) => ListTile(
+                        title: Text(rol),
+                        subtitle: Text(
+                          _descRol(rol),
+                          style: TextStyle(
+                            fontSize: Responsive.fontSize(context, 12),
+                          ),
+                        ),
+                        trailing: selectedRol == rol
+                            ? Icon(
+                                Icons.check_circle,
+                                color: Theme.of(context).colorScheme.primary,
+                              )
+                            : const Icon(
+                                Icons.circle_outlined,
+                                color: Colors.grey,
+                              ),
+                        onTap: () => setDialogState(() => selectedRol = rol),
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                      ),
+                    ),
               ],
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.adminCancel)),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(context.l10n.adminCancel),
+              ),
               ElevatedButton(
                 onPressed: selectedRol == null
                     ? null
                     : () {
                         Navigator.pop(context);
                         context.read<AdminProvider>().cambiarRolUsuario(
-                              adminUid,
-                              targetUid,
-                              selectedRol!,
-                            );
+                          adminUid,
+                          targetUid,
+                          selectedRol!,
+                        );
                       },
                 child: Text(context.l10n.adminConfirm),
               ),
@@ -124,8 +162,8 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AdminProvider>();
-    final userSession = context.watch<UserSessionProvider>();
-    final currentUid = userSession.currentUid;
+    final userSession = context.watch<UserProfileProvider>();
+    final currentUid = (userSession.userData?.idUsuario ?? "");
     final colors = context.appColors;
 
     // Show success/error snackbar
@@ -151,11 +189,15 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
     });
 
     final usuariosFiltrados = provider.usuarios.where((u) {
-      final matchSearch = u.nombreCompleto.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                          u.correo.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchSearch =
+          u.nombreCompleto.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          u.correo.toLowerCase().contains(_searchQuery.toLowerCase());
       final matchRol = _filterRol == 'Todos' || u.rol == _filterRol;
-      final matchEstado = _filterEstado == 'Todos' || u.estado.toLowerCase() == _filterEstado.toLowerCase();
-      final matchDate = _filterDateFrom == null || u.fechaRegistro.isAfter(_filterDateFrom!);
+      final matchEstado =
+          _filterEstado == 'Todos' ||
+          u.estado.toLowerCase() == _filterEstado.toLowerCase();
+      final matchDate =
+          _filterDateFrom == null || u.fechaRegistro.isAfter(_filterDateFrom!);
       return matchSearch && matchRol && matchEstado && matchDate;
     }).toList();
 
@@ -172,9 +214,14 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Chip(
-              avatar: Icon(Icons.people, size: Responsive.iconSize(context, 16)),
+              avatar: Icon(
+                Icons.people,
+                size: Responsive.iconSize(context, 16),
+              ),
               label: Text('${usuariosFiltrados.length}'),
-              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.1),
             ),
           ),
         ],
@@ -188,14 +235,18 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
               decoration: InputDecoration(
                 labelText: 'Buscar usuario...',
                 prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
           ),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 16.0)),
+            padding: EdgeInsets.symmetric(
+              horizontal: Responsive.padding(context, 16.0),
+            ),
             child: Row(
               children: [
                 _buildFilterChip('Todos'),
@@ -211,7 +262,9 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
           const SizedBox(height: 8),
           Expanded(
             child: provider.isLoading
-                ? Center(child: CircularProgressIndicator(color: colors.primary))
+                ? Center(
+                    child: CircularProgressIndicator(color: colors.primary),
+                  )
                 : RefreshIndicator(
                     color: colors.primary,
                     onRefresh: provider.fetchUsuarios,
@@ -220,31 +273,53 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.person_search, size: Responsive.iconSize(context, 64), color: colors.textSecondary.withValues(alpha: 0.3)),
+                                Icon(
+                                  Icons.person_search,
+                                  size: Responsive.iconSize(context, 64),
+                                  color: colors.textSecondary.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                ),
                                 const SizedBox(height: 16),
                                 Text(
-                                  _searchQuery.isEmpty ? 'No hay usuarios registrados' : 'Sin resultados para "$_searchQuery"',
+                                  _searchQuery.isEmpty
+                                      ? 'No hay usuarios registrados'
+                                      : 'Sin resultados para "$_searchQuery"',
                                   style: TextStyle(color: colors.textSecondary),
                                 ),
                               ],
                             ),
                           )
                         : ListView.separated(
-                            padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 16)),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: Responsive.padding(context, 16),
+                            ),
                             itemCount: usuariosFiltrados.length,
-                            separatorBuilder: (context, index) => const SizedBox(height: 8),
+                            separatorBuilder: (context, index) =>
+                                const SizedBox(height: 8),
                             itemBuilder: (context, index) {
                               final usuario = usuariosFiltrados[index];
                               return AccountRow(
                                 usuario: usuario,
                                 isCurrentAdmin: usuario.idUsuario == currentUid,
                                 onSuspender: () {
-                                  _mostrarDialogoMotivo(context, 'Suspender Usuario', (motivo) {
-                                    provider.suspenderUsuario(currentUid, usuario.idUsuario, motivo);
-                                  });
+                                  _mostrarDialogoMotivo(
+                                    context,
+                                    'Suspender Usuario',
+                                    (motivo) {
+                                      provider.suspenderUsuario(
+                                        currentUid,
+                                        usuario.idUsuario,
+                                        motivo,
+                                      );
+                                    },
+                                  );
                                 },
                                 onReactivar: () {
-                                  provider.reactivarUsuario(currentUid, usuario.idUsuario);
+                                  provider.reactivarUsuario(
+                                    currentUid,
+                                    usuario.idUsuario,
+                                  );
                                 },
                                 onCambiarRol: () {
                                   _mostrarDialogoCambiarRol(
@@ -281,82 +356,106 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
-        return StatefulBuilder(builder: (ctx, setSheetState) {
-          return Padding(
-            padding: EdgeInsets.all(Responsive.padding(context, 24)),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Filtros Avanzados', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 20),
-
-                Text('Estado de cuenta', style: Theme.of(context).textTheme.labelLarge),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: ['Todos', 'activo', 'suspendido', 'Pendiente'].map((estado) {
-                    return ChoiceChip(
-                      label: Text(estado == 'Todos' ? 'Todos' : estado[0].toUpperCase() + estado.substring(1)),
-                      selected: _filterEstado == estado,
-                      onSelected: (_) {
-                        setSheetState(() => _filterEstado = estado);
-                        setState(() => _filterEstado = estado);
-                      },
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 20),
-
-                Text('Registrado desde', style: Theme.of(context).textTheme.labelLarge),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.calendar_today, size: 16),
-                  label: Text(_filterDateFrom != null
-                      ? 'Desde ${_filterDateFrom!.day}/${_filterDateFrom!.month}/${_filterDateFrom!.year}'
-                      : 'Seleccionar fecha'),
-                  onPressed: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: _filterDateFrom ?? DateTime.now().subtract(const Duration(days: 30)),
-                      firstDate: DateTime(2024),
-                      lastDate: DateTime.now(),
-                    );
-                    if (picked != null) {
-                      setSheetState(() => _filterDateFrom = picked);
-                      setState(() => _filterDateFrom = picked);
-                    }
-                  },
-                ),
-                const SizedBox(height: 20),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () {
-                          setState(() {
-                            _filterEstado = 'Todos';
-                            _filterDateFrom = null;
-                          });
-                          Navigator.pop(ctx);
-                        },
-                        child: const Text('Limpiar'),
-                      ),
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.all(Responsive.padding(context, 24)),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Filtros Avanzados',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Aplicar'),
-                      ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  Text(
+                    'Estado de cuenta',
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: ['Todos', 'activo', 'suspendido', 'Pendiente']
+                        .map((estado) {
+                          return ChoiceChip(
+                            label: Text(
+                              estado == 'Todos'
+                                  ? 'Todos'
+                                  : estado[0].toUpperCase() +
+                                        estado.substring(1),
+                            ),
+                            selected: _filterEstado == estado,
+                            onSelected: (_) {
+                              setSheetState(() => _filterEstado = estado);
+                              setState(() => _filterEstado = estado);
+                            },
+                          );
+                        })
+                        .toList(),
+                  ),
+                  const SizedBox(height: 20),
+
+                  Text(
+                    'Registrado desde',
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.calendar_today, size: 16),
+                    label: Text(
+                      _filterDateFrom != null
+                          ? 'Desde ${_filterDateFrom!.day}/${_filterDateFrom!.month}/${_filterDateFrom!.year}'
+                          : 'Seleccionar fecha',
                     ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        });
+                    onPressed: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate:
+                            _filterDateFrom ??
+                            DateTime.now().subtract(const Duration(days: 30)),
+                        firstDate: DateTime(2024),
+                        lastDate: DateTime.now(),
+                      );
+                      if (picked != null) {
+                        setSheetState(() => _filterDateFrom = picked);
+                        setState(() => _filterDateFrom = picked);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 20),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            setState(() {
+                              _filterEstado = 'Todos';
+                              _filterDateFrom = null;
+                            });
+                            Navigator.pop(ctx);
+                          },
+                          child: const Text('Limpiar'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Aplicar'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
       },
     );
   }

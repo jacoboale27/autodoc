@@ -40,6 +40,7 @@ class AdminProvider with ChangeNotifier {
     }
     return 'Mecánico';
   }
+
   List<ReviewModel> get resenias => _resenias;
   List<AdminLogModel> get logs => _logs;
   bool get isLoading => _isLoading;
@@ -83,7 +84,6 @@ class AdminProvider with ChangeNotifier {
       _usuarios = futures[0] as List<UserModel>;
       _talleres = futures[1] as List<WorkshopModel>;
       _resenias = futures[2] as List<ReviewModel>;
-      
     } catch (e) {
       _setError(e.toString());
     } finally {
@@ -104,7 +104,11 @@ class AdminProvider with ChangeNotifier {
     }
   }
 
-  Future<void> suspenderUsuario(String adminUid, String targetUid, String motivo) async {
+  Future<void> suspenderUsuario(
+    String adminUid,
+    String targetUid,
+    String motivo,
+  ) async {
     _setLoading(true);
     try {
       await _adminService.suspenderUsuario(adminUid, targetUid, motivo);
@@ -130,7 +134,11 @@ class AdminProvider with ChangeNotifier {
     }
   }
 
-  Future<void> cambiarRolUsuario(String adminUid, String targetUid, String nuevoRol) async {
+  Future<void> cambiarRolUsuario(
+    String adminUid,
+    String targetUid,
+    String nuevoRol,
+  ) async {
     _setLoading(true);
     try {
       await _adminService.cambiarRolUsuario(adminUid, targetUid, nuevoRol);
@@ -171,7 +179,11 @@ class AdminProvider with ChangeNotifier {
     }
   }
 
-  Future<void> suspenderTaller(String adminUid, String idTaller, String motivo) async {
+  Future<void> suspenderTaller(
+    String adminUid,
+    String idTaller,
+    String motivo,
+  ) async {
     _setLoading(true);
     try {
       await _adminService.suspenderTaller(adminUid, idTaller, motivo);
@@ -199,11 +211,18 @@ class AdminProvider with ChangeNotifier {
 
   // --- RESEÑAS ---
 
-  Future<void> eliminarResenia(String adminUid, String idResenia, String motivo) async {
+  Future<void> eliminarResenia(
+    String adminUid,
+    String idResenia,
+    String motivo,
+  ) async {
     _setLoading(true);
     try {
-      final idTaller =
-          await _adminService.eliminarResenia(adminUid, idResenia, motivo);
+      final idTaller = await _adminService.eliminarResenia(
+        adminUid,
+        idResenia,
+        motivo,
+      );
       if (idTaller != null && idTaller.isNotEmpty) {
         await ReviewService().recalculateTallerRating(idTaller);
       }

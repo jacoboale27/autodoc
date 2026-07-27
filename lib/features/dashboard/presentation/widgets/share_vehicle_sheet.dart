@@ -7,7 +7,11 @@ import 'package:autodoc/core/models/vehicle_model.dart';
 class ShareVehicleSheet extends StatefulWidget {
   final VehicleModel vehicle;
   final Function(VehicleModel) onUpdated;
-  const ShareVehicleSheet({super.key, required this.vehicle, required this.onUpdated});
+  const ShareVehicleSheet({
+    super.key,
+    required this.vehicle,
+    required this.onUpdated,
+  });
 
   @override
   State<ShareVehicleSheet> createState() => _ShareVehicleSheetState();
@@ -28,7 +32,10 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
   Future<void> _loadSharedUsers() async {
     final users = <Map<String, String>>[];
     for (var uid in widget.vehicle.sharedWith) {
-      final doc = await _firestore.collection(FirestoreCollections.usuarios).doc(uid).get();
+      final doc = await _firestore
+          .collection(FirestoreCollections.usuarios)
+          .doc(uid)
+          .get();
       if (doc.exists) {
         users.add({
           'uid': uid,
@@ -59,7 +66,9 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
     return Container(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-        top: 16, left: 20, right: 20,
+        top: 16,
+        left: 20,
+        right: 20,
       ),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1B2E) : Colors.white,
@@ -71,10 +80,14 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
         children: [
           // Handle
           Center(
-            child: Container(width: 40, height: 4,
-                decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2))),
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
           ),
           const SizedBox(height: 20),
 
@@ -83,9 +96,14 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
             children: [
               Icon(Icons.people_outline, color: primary, size: 24),
               const SizedBox(width: 10),
-              Text('Compartir Vehículo',
-                  style: GoogleFonts.inter(
-                      fontSize: 20, fontWeight: FontWeight.bold, color: textColor)),
+              Text(
+                'Compartir Vehículo',
+                style: GoogleFonts.inter(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -105,23 +123,36 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
                   style: TextStyle(color: textColor),
                   decoration: InputDecoration(
                     hintText: 'Agregar correo electrónico...',
-                    hintStyle: TextStyle(color: subTextColor.withValues(alpha: 0.5)),
-                    prefixIcon: Icon(Icons.mail_outline, color: primary, size: 20),
+                    hintStyle: TextStyle(
+                      color: subTextColor.withValues(alpha: 0.5),
+                    ),
+                    prefixIcon: Icon(
+                      Icons.mail_outline,
+                      color: primary,
+                      size: 20,
+                    ),
                     filled: true,
                     fillColor: cardColor,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: primary.withValues(alpha: 0.2)),
+                      borderSide: BorderSide(
+                        color: primary.withValues(alpha: 0.2),
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: primary.withValues(alpha: 0.15)),
+                      borderSide: BorderSide(
+                        color: primary.withValues(alpha: 0.15),
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: primary, width: 1.5),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 14,
+                    ),
                   ),
                 ),
               ),
@@ -134,12 +165,20 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
                     backgroundColor: primary,
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                   ),
                   child: _isLoading
-                      ? const SizedBox(width: 18, height: 18,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
                       : const Icon(Icons.person_add, size: 20),
                 ),
               ),
@@ -149,10 +188,15 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
           const SizedBox(height: 20),
 
           // Shared users list
-          Text('PERSONAS CON ACCESO',
-              style: GoogleFonts.inter(
-                  fontSize: 11, fontWeight: FontWeight.w700,
-                  letterSpacing: 1, color: subTextColor)),
+          Text(
+            'PERSONAS CON ACCESO',
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1,
+              color: subTextColor,
+            ),
+          ),
           const SizedBox(height: 12),
 
           if (_sharedUsers.isEmpty)
@@ -162,14 +206,23 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
               decoration: BoxDecoration(
                 color: cardColor,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: primary.withValues(alpha: 0.1), style: BorderStyle.solid),
+                border: Border.all(
+                  color: primary.withValues(alpha: 0.1),
+                  style: BorderStyle.solid,
+                ),
               ),
               child: Column(
                 children: [
-                  Icon(Icons.person_off_outlined, size: 32, color: subTextColor.withValues(alpha: 0.4)),
+                  Icon(
+                    Icons.person_off_outlined,
+                    size: 32,
+                    color: subTextColor.withValues(alpha: 0.4),
+                  ),
                   const SizedBox(height: 8),
-                  Text('Solo tú tienes acceso',
-                      style: GoogleFonts.inter(fontSize: 13, color: subTextColor)),
+                  Text(
+                    'Solo tú tienes acceso',
+                    style: GoogleFonts.inter(fontSize: 13, color: subTextColor),
+                  ),
                 ],
               ),
             )
@@ -178,7 +231,10 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
               final user = _sharedUsers[i];
               return Container(
                 margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: cardColor,
                   borderRadius: BorderRadius.circular(12),
@@ -191,7 +247,10 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
                       backgroundColor: primary.withValues(alpha: 0.12),
                       child: Text(
                         (user['name'] ?? 'U')[0].toUpperCase(),
-                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: primary),
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          color: primary,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -199,16 +258,30 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(user['name'] ?? '',
-                              style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.w600, fontSize: 14, color: textColor)),
-                          Text(user['email'] ?? '',
-                              style: GoogleFonts.inter(fontSize: 12, color: subTextColor)),
+                          Text(
+                            user['name'] ?? '',
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: textColor,
+                            ),
+                          ),
+                          Text(
+                            user['email'] ?? '',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: subTextColor,
+                            ),
+                          ),
                         ],
                       ),
                     ),
                     IconButton(
-                      icon: Icon(Icons.close, color: Colors.red.withValues(alpha: 0.6), size: 18),
+                      icon: Icon(
+                        Icons.close,
+                        color: Colors.red.withValues(alpha: 0.6),
+                        size: 18,
+                      ),
                       onPressed: () => _removeUser(user['uid']!),
                       tooltip: 'Revocar acceso',
                     ),
@@ -233,8 +306,11 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
     setState(() => _isLoading = true);
     try {
       // Find user by email in Usuarios collection
-      final query = await _firestore.collection(FirestoreCollections.usuarios)
-          .where('correo', isEqualTo: email).limit(1).get();
+      final query = await _firestore
+          .collection(FirestoreCollections.usuarios)
+          .where('correo', isEqualTo: email)
+          .limit(1)
+          .get();
 
       if (query.docs.isEmpty) {
         _showSnack('No se encontró un usuario con ese correo');
@@ -257,9 +333,12 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
       }
 
       // Update Firestore
-      await _firestore.collection(FirestoreCollections.vehiculos).doc(widget.vehicle.idVehiculo).update({
-        'shared_with': FieldValue.arrayUnion([targetUid]),
-      });
+      await _firestore
+          .collection(FirestoreCollections.vehiculos)
+          .doc(widget.vehicle.idVehiculo)
+          .update({
+            'shared_with': FieldValue.arrayUnion([targetUid]),
+          });
 
       final newShared = [...widget.vehicle.sharedWith, targetUid];
       widget.onUpdated(widget.vehicle.copyWith(sharedWith: newShared));
@@ -275,11 +354,16 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
 
   Future<void> _removeUser(String uid) async {
     try {
-      await _firestore.collection(FirestoreCollections.vehiculos).doc(widget.vehicle.idVehiculo).update({
-        'shared_with': FieldValue.arrayRemove([uid]),
-      });
+      await _firestore
+          .collection(FirestoreCollections.vehiculos)
+          .doc(widget.vehicle.idVehiculo)
+          .update({
+            'shared_with': FieldValue.arrayRemove([uid]),
+          });
 
-      final newShared = widget.vehicle.sharedWith.where((u) => u != uid).toList();
+      final newShared = widget.vehicle.sharedWith
+          .where((u) => u != uid)
+          .toList();
       widget.onUpdated(widget.vehicle.copyWith(sharedWith: newShared));
 
       setState(() => _sharedUsers.removeWhere((u) => u['uid'] == uid));

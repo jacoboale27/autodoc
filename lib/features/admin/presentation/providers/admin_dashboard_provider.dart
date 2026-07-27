@@ -16,7 +16,7 @@ class AdminDashboardProvider with ChangeNotifier {
   };
   bool _isLoading = false;
   String? _error;
-  
+
   StreamSubscription<Map<String, dynamic>>? _subscription;
 
   Map<String, dynamic> get metrics => _metrics;
@@ -29,7 +29,7 @@ class AdminDashboardProvider with ChangeNotifier {
     notifyListeners();
 
     _subscription?.cancel();
-    
+
     try {
       _subscription = _adminService.watchDashboardMetrics().listen(
         (newMetrics) {

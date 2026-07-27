@@ -19,7 +19,7 @@ void main() {
       await provider.setThemeMode(ThemeMode.dark);
       expect(provider.themeMode, ThemeMode.dark);
     });
-    
+
     test('setThemeMode updates theme light', () async {
       final provider = ThemeProvider();
       await provider.setThemeMode(ThemeMode.light);

@@ -5,7 +5,8 @@ enum AlertPriority { high, medium, low }
 class AlertModel {
   final String idAlerta;
   final String idVehiculo;
-  final String tipoAlerta; // 'Aceite', 'SOAT', 'Llantas', 'Fluidos', 'Luces', 'Bateria'
+  final String
+  tipoAlerta; // 'Aceite', 'SOAT', 'Llantas', 'Fluidos', 'Luces', 'Bateria'
   final String titulo;
   final String descripcion;
   final DateTime? fechaLimite;
@@ -60,7 +61,9 @@ class AlertModel {
       'tipo_alerta': tipoAlerta,
       'titulo': titulo,
       'descripcion': descripcion,
-      'fecha_limite': fechaLimite != null ? Timestamp.fromDate(fechaLimite!) : null,
+      'fecha_limite': fechaLimite != null
+          ? Timestamp.fromDate(fechaLimite!)
+          : null,
       'kilometraje_objetivo': kilometrajeObjetivo,
       'estado': estado,
       'prioridad': prioridad.name,
@@ -82,7 +85,9 @@ class AlertModel {
         (e) => e.name == (map['prioridad'] ?? 'medium'),
         orElse: () => AlertPriority.medium,
       ),
-      metadata: map['metadata'] != null ? Map<String, dynamic>.from(map['metadata']) : null,
+      metadata: map['metadata'] != null
+          ? Map<String, dynamic>.from(map['metadata'])
+          : null,
     );
   }
 }

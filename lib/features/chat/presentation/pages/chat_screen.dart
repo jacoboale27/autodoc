@@ -6,7 +6,7 @@ import '../widgets/vehiculo_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
-import 'package:autodoc/core/providers/user_session_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:autodoc/features/chat/presentation/widgets/disponibilidad_picker.dart';
 import 'package:autodoc/features/chat/presentation/widgets/chat_background.dart';
@@ -14,7 +14,6 @@ import 'package:autodoc/features/chat/presentation/widgets/cards/vehiculo_chat_c
 import 'package:autodoc/features/chat/presentation/widgets/cards/reserva_chat_card.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
-
 
 import 'package:image_picker/image_picker.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/cotizacion_chat_card.dart';
@@ -30,7 +29,7 @@ import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class ChatScreen extends StatefulWidget {
   final String conversacionId;
-  
+
   const ChatScreen({super.key, required this.conversacionId});
 
   @override
@@ -50,22 +49,28 @@ class _ChatScreenState extends State<ChatScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ChatProvider>().inicializarMensajes(widget.conversacionId);
     });
-    
+
     _controller.addListener(() {
       final text = _controller.text;
-      final userSession = context.read<UserSessionProvider>();
-      final userId = userSession.user?.uid;
-      
+      final userSession = context.read<UserProfileProvider>();
+      final userId = userSession.userData?.idUsuario;
+
       if (text.isNotEmpty && !_isTyping) {
         _isTyping = true;
-        context.read<ChatProvider>().setTypingStatus(widget.conversacionId, userId);
+        context.read<ChatProvider>().setTypingStatus(
+          widget.conversacionId,
+          userId,
+        );
       }
-      
+
       _typingTimer?.cancel();
       _typingTimer = Timer(const Duration(seconds: 2), () {
         if (_isTyping) {
           _isTyping = false;
-          context.read<ChatProvider>().setTypingStatus(widget.conversacionId, null);
+          context.read<ChatProvider>().setTypingStatus(
+            widget.conversacionId,
+            null,
+          );
         }
       });
     });
@@ -82,7 +87,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _enviarMensaje(String userId, bool isMecanico, String receptorId) {
     if (_controller.text.trim().isEmpty) return;
-    
+
     context.read<ChatProvider>().enviarMensaje(
       conversacionId: widget.conversacionId,
       contenido: _controller.text.trim(),
@@ -99,18 +104,24 @@ class _ChatScreenState extends State<ChatScreen> {
     final colors = context.appColors;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     final chatProvider = context.watch<ChatProvider>();
-    final userSession = context.watch<UserSessionProvider>();
-    final userId = userSession.user?.uid ?? '';
+    final userSession = context.watch<UserProfileProvider>();
+    final userId = userSession.userData?.idUsuario ?? '';
     final isMecanico = userSession.userData?.rol == 'Mecanico';
-    
+
     // Necesitamos el receptorId (el ID del otro usuario). Para este demo lo hardcodearemos si no lo tenemos
     // en un caso real se obtiene del conversacion_model
-    final conversacion = chatProvider.conversaciones.where((c) => c.id == widget.conversacionId).firstOrNull;
-    final receptorId = isMecanico ? conversacion?.idPropietario ?? '' : conversacion?.idMecanico ?? '';
-    final targetName = conversacion != null 
-        ? (isMecanico ? conversacion.nombrePropietario : conversacion.nombreMecanico) 
+    final conversacion = chatProvider.conversaciones
+        .where((c) => c.id == widget.conversacionId)
+        .firstOrNull;
+    final receptorId = isMecanico
+        ? conversacion?.idPropietario ?? ''
+        : conversacion?.idMecanico ?? '';
+    final targetName = conversacion != null
+        ? (isMecanico
+              ? conversacion.nombrePropietario
+              : conversacion.nombreMecanico)
         : (isMecanico ? 'Propietario' : 'Mecánico / Taller');
 
     return Scaffold(
@@ -125,8 +136,11 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             const SizedBox(width: 12),
             FutureBuilder<DocumentSnapshot>(
-              future: receptorId.isNotEmpty 
-                  ? FirebaseFirestore.instance.collection(FirestoreCollections.usuarios).doc(receptorId).get()
+              future: receptorId.isNotEmpty
+                  ? FirebaseFirestore.instance
+                        .collection(FirestoreCollections.usuarios)
+                        .doc(receptorId)
+                        .get()
                   : null,
               builder: (context, snapshot) {
                 String finalName = targetName;
@@ -142,12 +156,18 @@ class _ChatScreenState extends State<ChatScreen> {
                   children: [
                     Text(
                       finalName,
-                      style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold),
+                      style: AppTextStyles.titleMedium.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                    if (conversacion != null && conversacion.typingId == receptorId)
+                    if (conversacion != null &&
+                        conversacion.typingId == receptorId)
                       Text(
                         'Escribiendo...',
-                        style: AppTextStyles.bodySmall.copyWith(color: colors.primary, fontStyle: FontStyle.italic),
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: colors.primary,
+                          fontStyle: FontStyle.italic,
+                        ),
                       ),
                   ],
                 );
@@ -164,24 +184,32 @@ class _ChatScreenState extends State<ChatScreen> {
             child: Stack(
               children: [
                 Positioned.fill(
-                    child: ChatBackgroundPattern(
-                      color: isDark ? Colors.white.withValues(alpha: 0.05) : colors.primary.withValues(alpha: 0.08),
-                    ),
+                  child: ChatBackgroundPattern(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : colors.primary.withValues(alpha: 0.08),
+                  ),
                 ),
-                if (chatProvider.isLoading && chatProvider.mensajesActuales.isEmpty)
+                if (chatProvider.isLoading &&
+                    chatProvider.mensajesActuales.isEmpty)
                   const Center(child: CircularProgressIndicator())
                 else
                   ListView.builder(
                     controller: _scrollController,
                     reverse: true,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 24,
+                    ),
                     itemCount: chatProvider.mensajesActuales.length,
                     itemBuilder: (context, index) {
                       final msg = chatProvider.mensajesActuales[index];
                       final isMe = msg.idRemitente == userId;
-                      
+
                       return Align(
-                        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                        alignment: isMe
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
                         child: GestureDetector(
                           onLongPress: () {
                             if (isMe && !msg.isDeleted) {
@@ -198,9 +226,19 @@ class _ChatScreenState extends State<ChatScreen> {
                                     TextButton(
                                       onPressed: () {
                                         Navigator.pop(ctx);
-                                        context.read<ChatProvider>().deleteMensaje(widget.conversacionId, msg.id);
+                                        context
+                                            .read<ChatProvider>()
+                                            .deleteMensaje(
+                                              widget.conversacionId,
+                                              msg.id,
+                                            );
                                       },
-                                      child: Text(context.l10n.adminDelete, style: const TextStyle(color: Colors.red)),
+                                      child: Text(
+                                        context.l10n.adminDelete,
+                                        style: const TextStyle(
+                                          color: Colors.red,
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -209,11 +247,20 @@ class _ChatScreenState extends State<ChatScreen> {
                           },
                           child: Container(
                             margin: const EdgeInsets.only(bottom: 12, top: 2),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
                             decoration: BoxDecoration(
-                              color: isMe 
-                                  ? (msg.isDeleted ? colors.textSecondary.withValues(alpha: 0.5) : colors.primary) 
-                                  : (isDark ? Colors.white12 : Colors.grey.shade200),
+                              color: isMe
+                                  ? (msg.isDeleted
+                                        ? colors.textSecondary.withValues(
+                                            alpha: 0.5,
+                                          )
+                                        : colors.primary)
+                                  : (isDark
+                                        ? Colors.white12
+                                        : Colors.grey.shade200),
                               borderRadius: BorderRadius.only(
                                 topLeft: const Radius.circular(16),
                                 topRight: const Radius.circular(16),
@@ -224,16 +271,26 @@ class _ChatScreenState extends State<ChatScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                _buildMessageContent(msg, isMe, colors, isDark, conversacion?.idMecanico ?? ''),
+                                _buildMessageContent(
+                                  msg,
+                                  isMe,
+                                  colors,
+                                  isDark,
+                                  conversacion?.idMecanico ?? '',
+                                ),
                                 if (isMe && !msg.isDeleted) ...[
                                   const SizedBox(height: 4),
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(
-                                        msg.estado == 'visto' ? Icons.done_all : Icons.check,
+                                        msg.estado == 'visto'
+                                            ? Icons.done_all
+                                            : Icons.check,
                                         size: 14,
-                                        color: msg.estado == 'visto' ? Colors.blue.shade200 : Colors.white70,
+                                        color: msg.estado == 'visto'
+                                            ? Colors.blue.shade200
+                                            : Colors.white70,
                                       ),
                                     ],
                                   ),
@@ -248,30 +305,46 @@ class _ChatScreenState extends State<ChatScreen> {
               ],
             ),
           ),
-          
+
           // Input Bar
           Container(
             padding: EdgeInsets.only(
-              left: 16, 
-              right: 16, 
-              top: 12, 
-              bottom: MediaQuery.of(context).padding.bottom + 12
+              left: 16,
+              right: 16,
+              top: 12,
+              bottom: MediaQuery.of(context).padding.bottom + 12,
             ),
             decoration: BoxDecoration(
               color: isDark ? colors.surfaceContainer : Colors.white,
-              border: Border(top: BorderSide(color: isDark ? Colors.white12 : Colors.black12)),
+              border: Border(
+                top: BorderSide(
+                  color: isDark ? Colors.white12 : Colors.black12,
+                ),
+              ),
             ),
             child: Row(
               children: [
                 IconButton(
                   icon: Icon(Icons.add_circle_outline, color: colors.primary),
                   onPressed: () {
-                    _mostrarMenuAdjuntos(context, userId, isMecanico, receptorId, colors, isDark);
+                    _mostrarMenuAdjuntos(
+                      context,
+                      userId,
+                      isMecanico,
+                      receptorId,
+                      colors,
+                      isDark,
+                    );
                   },
                 ),
                 IconButton(
                   icon: Icon(Icons.camera_alt, color: colors.primary),
-                  onPressed: () => _pickAndSendImage(userId, isMecanico, receptorId, ImageSource.camera),
+                  onPressed: () => _pickAndSendImage(
+                    userId,
+                    isMecanico,
+                    receptorId,
+                    ImageSource.camera,
+                  ),
                 ),
                 Expanded(
                   child: Container(
@@ -286,7 +359,8 @@ class _ChatScreenState extends State<ChatScreen> {
                         hintText: 'Escribe un mensaje...',
                         border: InputBorder.none,
                       ),
-                      onSubmitted: (_) => _enviarMensaje(userId, isMecanico, receptorId),
+                      onSubmitted: (_) =>
+                          _enviarMensaje(userId, isMecanico, receptorId),
                     ),
                   ),
                 ),
@@ -298,7 +372,8 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                   child: IconButton(
                     icon: const Icon(Icons.send, color: Colors.white, size: 20),
-                    onPressed: () => _enviarMensaje(userId, isMecanico, receptorId),
+                    onPressed: () =>
+                        _enviarMensaje(userId, isMecanico, receptorId),
                   ),
                 ),
               ],
@@ -309,27 +384,33 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildMessageContent(MensajeModel msg, bool isMe, AppColors colors, bool isDark, String tallerId) {
+  Widget _buildMessageContent(
+    MensajeModel msg,
+    bool isMe,
+    AppColors colors,
+    bool isDark,
+    String tallerId,
+  ) {
     switch (msg.tipo) {
       case 'vehiculo_card':
         return VehiculoChatCard(metadata: msg.metadata ?? {}, isMe: isMe);
       case 'reserva_card':
         return ReservaChatCard(
-          metadata: msg.metadata ?? {}, 
+          metadata: msg.metadata ?? {},
           isMe: isMe,
           mensajeId: msg.id,
           conversacionId: widget.conversacionId,
         );
       case 'cotizacion_card':
         return CotizacionChatCard(
-          metadata: msg.metadata ?? {}, 
+          metadata: msg.metadata ?? {},
           isMe: isMe,
           mensajeId: msg.id,
           conversacionId: widget.conversacionId,
         );
       case 'review_card':
         return ReviewChatCard(
-          metadata: msg.metadata ?? {}, 
+          metadata: msg.metadata ?? {},
           isMe: isMe,
           tallerId: tallerId,
           mensajeId: msg.id,
@@ -338,24 +419,29 @@ class _ChatScreenState extends State<ChatScreen> {
       case 'imagen':
         return ImagenChatCard(urlArchivo: msg.urlArchivo ?? '', isMe: isMe);
       case 'historial':
-        return HistorialChatCard(
-          mensaje: msg, 
-          isMe: isMe,
-          colors: colors,
-        );
+        return HistorialChatCard(mensaje: msg, isMe: isMe, colors: colors);
       case 'texto':
       default:
         return Text(
           msg.contenido,
           style: TextStyle(
-            color: isMe ? Colors.white : (isDark ? Colors.white : Colors.black87),
+            color: isMe
+                ? Colors.white
+                : (isDark ? Colors.white : Colors.black87),
             fontSize: 15,
           ),
         );
     }
   }
 
-  void _mostrarMenuAdjuntos(BuildContext context, String userId, bool isMecanico, String receptorId, AppColors colors, bool isDark) {
+  void _mostrarMenuAdjuntos(
+    BuildContext context,
+    String userId,
+    bool isMecanico,
+    String receptorId,
+    AppColors colors,
+    bool isDark,
+  ) {
     showModalBottomSheet(
       context: context,
       backgroundColor: isDark ? colors.surfaceContainer : Colors.white,
@@ -371,7 +457,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 title: Text(context.l10n.chatCamera),
                 onTap: () {
                   Navigator.pop(context);
-                  _pickAndSendImage(userId, isMecanico, receptorId, ImageSource.camera);
+                  _pickAndSendImage(
+                    userId,
+                    isMecanico,
+                    receptorId,
+                    ImageSource.camera,
+                  );
                 },
               ),
               ListTile(
@@ -379,7 +470,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 title: Text(context.l10n.chatGallery),
                 onTap: () {
                   Navigator.pop(context);
-                  _pickAndSendImage(userId, isMecanico, receptorId, ImageSource.gallery);
+                  _pickAndSendImage(
+                    userId,
+                    isMecanico,
+                    receptorId,
+                    ImageSource.gallery,
+                  );
                 },
               ),
               if (!isMecanico) // Solo el propietario comparte su vehículo
@@ -398,11 +494,14 @@ class _ChatScreenState extends State<ChatScreen> {
                           FirebaseFirestore.instance
                               .collection(FirestoreCollections.conversaciones)
                               .doc(widget.conversacionId)
-                              .update({'id_vehiculo': vehiculoData['vehiculo_id']});
-                              
+                              .update({
+                                'id_vehiculo': vehiculoData['vehiculo_id'],
+                              });
+
                           context.read<ChatProvider>().enviarMensaje(
                             conversacionId: widget.conversacionId,
-                            contenido: '🚗 Vehículo seleccionado para servicio: ${vehiculoData['marca']} ${vehiculoData['modelo']}',
+                            contenido:
+                                '🚗 Vehículo seleccionado para servicio: ${vehiculoData['marca']} ${vehiculoData['modelo']}',
                             remitenteId: userId,
                             receptorId: receptorId,
                             isMecanicoRemitente: isMecanico,
@@ -427,9 +526,14 @@ class _ChatScreenState extends State<ChatScreen> {
                       onConfirm: (fecha, hora) async {
                         final provider = context.read<ChatProvider>();
                         final reservaProvider = context.read<ReservaProvider>();
-                        
-                        final vehiculoId = provider.conversaciones.where((c) => c.id == widget.conversacionId).firstOrNull?.idVehiculo ?? '';
-                        
+
+                        final vehiculoId =
+                            provider.conversaciones
+                                .where((c) => c.id == widget.conversacionId)
+                                .firstOrNull
+                                ?.idVehiculo ??
+                            '';
+
                         int h = 12;
                         int m = 0;
                         try {
@@ -437,13 +541,27 @@ class _ChatScreenState extends State<ChatScreen> {
                           final time = timeParts[0].split(':');
                           h = int.parse(time[0]);
                           m = int.parse(time[1]);
-                          if (timeParts.length > 1 && timeParts[1].toLowerCase() == 'pm' && h < 12) h += 12;
-                          if (timeParts.length > 1 && timeParts[1].toLowerCase() == 'am' && h == 12) h = 0;
-                        } catch(e) {
+                          if (timeParts.length > 1 &&
+                              timeParts[1].toLowerCase() == 'pm' &&
+                              h < 12) {
+                            h += 12;
+                          }
+                          if (timeParts.length > 1 &&
+                              timeParts[1].toLowerCase() == 'am' &&
+                              h == 12) {
+                            h = 0;
+                          }
+                        } catch (e) {
                           // Ignore parsing errors and use default time
                         }
-                        
-                        final fechaHora = DateTime(fecha.year, fecha.month, fecha.day, h, m);
+
+                        final fechaHora = DateTime(
+                          fecha.year,
+                          fecha.month,
+                          fecha.day,
+                          h,
+                          m,
+                        );
 
                         final reserva = ReservaModel(
                           id: '',
@@ -457,12 +575,14 @@ class _ChatScreenState extends State<ChatScreen> {
                           estado: 'pendiente',
                           fechaCreacion: DateTime.now(),
                         );
-                        
-                        final reservaId = await reservaProvider.solicitarReserva(reserva);
+
+                        final reservaId = await reservaProvider
+                            .solicitarReserva(reserva);
 
                         provider.enviarMensaje(
                           conversacionId: widget.conversacionId,
-                          contenido: '📅 Propuesta de cita: \nFecha: ${fecha.day}/${fecha.month}/${fecha.year}\nHora: $hora',
+                          contenido:
+                              '📅 Propuesta de cita: \nFecha: ${fecha.day}/${fecha.month}/${fecha.year}\nHora: $hora',
                           remitenteId: userId,
                           receptorId: receptorId,
                           isMecanicoRemitente: isMecanico,
@@ -492,24 +612,30 @@ class _ChatScreenState extends State<ChatScreen> {
                       builder: (context) => CotizacionPicker(
                         onConfirm: (descripcion, total) async {
                           final provider = context.read<ChatProvider>();
-                          
+
                           // Guardar cotización en la base de datos
                           final cotizacion = CotizacionModel(
                             id: '',
-                            idPropietario: receptorId, 
+                            idPropietario: receptorId,
                             idMecanico: userId,
-                            idVehiculo: provider.conversaciones.where((c) => c.id == widget.conversacionId).firstOrNull?.idVehiculo,
-                            idTaller: userId, 
+                            idVehiculo: provider.conversaciones
+                                .where((c) => c.id == widget.conversacionId)
+                                .firstOrNull
+                                ?.idVehiculo,
+                            idTaller: userId,
                             descripcion: descripcion,
                             total: total,
                             fecha: DateTime.now(),
                           );
-                          
-                          final cotizacionId = await provider.crearCotizacion(cotizacion);
+
+                          final cotizacionId = await provider.crearCotizacion(
+                            cotizacion,
+                          );
 
                           provider.enviarMensaje(
                             conversacionId: widget.conversacionId,
-                            contenido: 'He creado una nueva cotización para tu vehículo.',
+                            contenido:
+                                'He creado una nueva cotización para tu vehículo.',
                             remitenteId: userId,
                             receptorId: receptorId,
                             isMecanicoRemitente: isMecanico,
@@ -533,14 +659,13 @@ class _ChatScreenState extends State<ChatScreen> {
                     Navigator.pop(context);
                     context.read<ChatProvider>().enviarMensaje(
                       conversacionId: widget.conversacionId,
-                      contenido: '¡Servicio Finalizado! Por favor déjanos tu reseña.',
+                      contenido:
+                          '¡Servicio Finalizado! Por favor déjanos tu reseña.',
                       remitenteId: userId,
                       receptorId: receptorId,
                       isMecanicoRemitente: isMecanico,
                       tipo: 'review_card',
-                      metadata: {
-                        'estado': 'pendiente',
-                      },
+                      metadata: {'estado': 'pendiente'},
                     );
                   },
                 ),
@@ -552,7 +677,12 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Future<void> _pickAndSendImage(String userId, bool isMecanico, String receptorId, ImageSource source) async {
+  Future<void> _pickAndSendImage(
+    String userId,
+    bool isMecanico,
+    String receptorId,
+    ImageSource source,
+  ) async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: source);
 
@@ -561,9 +691,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
       final provider = context.read<ChatProvider>();
       final url = await provider.subirImagenChat(widget.conversacionId, image);
-      
+
       if (!mounted) return;
-      
+
       if (url != null) {
         provider.enviarMensaje(
           conversacionId: widget.conversacionId,
@@ -575,7 +705,9 @@ class _ChatScreenState extends State<ChatScreen> {
           urlArchivo: url,
         );
       } else {
-         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.l10n.chatUploadImageError)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.chatUploadImageError)),
+        );
       }
     }
   }

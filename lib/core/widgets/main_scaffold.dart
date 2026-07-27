@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:autodoc/core/providers/user_session_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/utils/responsive.dart';
@@ -15,7 +15,7 @@ class MainScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isDesktop = Responsive.isDesktop(context);
-    final userSession = Provider.of<UserSessionProvider>(context);
+    final userSession = Provider.of<UserProfileProvider>(context);
     final isMecanico = userSession.userData?.rol == 'Mecanico';
 
     if (isMecanico) {
@@ -58,7 +58,9 @@ class InstagramBottomNavBar extends StatelessWidget {
 
     int currentIndex = 0;
     if (currentLocation.startsWith('/garage')) currentIndex = 1;
-    if (currentLocation.startsWith('/chat_list')) currentIndex = 2; // New tab for Chat
+    if (currentLocation.startsWith('/chat_list')) {
+      currentIndex = 2; // New tab for Chat
+    }
     if (currentLocation.startsWith('/workshop_directory')) currentIndex = 3;
     if (currentLocation.startsWith('/user_profile')) currentIndex = 4;
 
@@ -152,14 +154,18 @@ class _NavBarItem extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isActive 
-              ? (isDark ? colors.primary.withValues(alpha: 0.15) : colors.primary.withValues(alpha: 0.1)) 
+          color: isActive
+              ? (isDark
+                    ? colors.primary.withValues(alpha: 0.15)
+                    : colors.primary.withValues(alpha: 0.1))
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(
           isActive ? activeIcon : icon,
-          color: isActive ? colors.primary : (isDark ? Colors.white70 : Colors.black87),
+          color: isActive
+              ? colors.primary
+              : (isDark ? Colors.white70 : Colors.black87),
           size: 26,
         ),
       ),

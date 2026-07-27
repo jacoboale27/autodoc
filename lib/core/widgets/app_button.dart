@@ -7,6 +7,7 @@ import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 
 enum AppButtonType { primary, secondary, text }
+
 enum AppButtonSize { small, medium, large }
 
 class AppButton extends StatelessWidget {
@@ -49,7 +50,10 @@ class AppButton extends StatelessWidget {
       case AppButtonType.primary:
         backgroundColor = colors.primary;
         foregroundColor = colors.onPrimary;
-        gradientColors = [colors.primary, colors.primary.withValues(alpha: 0.85)];
+        gradientColors = [
+          colors.primary,
+          colors.primary.withValues(alpha: 0.85),
+        ];
         break;
       case AppButtonType.secondary:
         backgroundColor = colors.secondary;
@@ -68,17 +72,26 @@ class AppButton extends StatelessWidget {
 
     switch (size) {
       case AppButtonSize.small:
-        btnPadding = EdgeInsets.symmetric(vertical: Responsive.padding(context, 8), horizontal: Responsive.padding(context, 16));
+        btnPadding = EdgeInsets.symmetric(
+          vertical: Responsive.padding(context, 8),
+          horizontal: Responsive.padding(context, 16),
+        );
         textStyle = AppTextStyles.labelMedium;
         btnIconSize = Responsive.iconSize(context, 16);
         break;
       case AppButtonSize.medium:
-        btnPadding = EdgeInsets.symmetric(vertical: Responsive.padding(context, 14), horizontal: Responsive.padding(context, 24));
+        btnPadding = EdgeInsets.symmetric(
+          vertical: Responsive.padding(context, 14),
+          horizontal: Responsive.padding(context, 24),
+        );
         textStyle = AppTextStyles.titleSmall;
         btnIconSize = Responsive.iconSize(context, 20);
         break;
       case AppButtonSize.large:
-        btnPadding = EdgeInsets.symmetric(vertical: Responsive.padding(context, 18), horizontal: Responsive.padding(context, 32));
+        btnPadding = EdgeInsets.symmetric(
+          vertical: Responsive.padding(context, 18),
+          horizontal: Responsive.padding(context, 32),
+        );
         textStyle = AppTextStyles.titleMedium;
         btnIconSize = Responsive.iconSize(context, 24);
         break;
@@ -137,7 +150,9 @@ class AppButton extends StatelessWidget {
     );
 
     if (isLoading && type != AppButtonType.text) {
-      buttonContent = buttonContent.animate(onPlay: (c) => c.repeat()).shimmer(
+      buttonContent = buttonContent
+          .animate(onPlay: (c) => c.repeat())
+          .shimmer(
             duration: 1500.ms,
             color: Colors.white.withValues(alpha: 0.2),
           );
@@ -160,8 +175,12 @@ class AppButton extends StatelessWidget {
       style: ElevatedButton.styleFrom(
         foregroundColor: foregroundColor,
         backgroundColor: Colors.transparent,
-        shadowColor: type == AppButtonType.text ? Colors.transparent : colors.primary.withValues(alpha: 0.3),
-        elevation: type == AppButtonType.text ? 0 : 0, // Let hover elevation do the work if needed
+        shadowColor: type == AppButtonType.text
+            ? Colors.transparent
+            : colors.primary.withValues(alpha: 0.3),
+        elevation: type == AppButtonType.text
+            ? 0
+            : 0, // Let hover elevation do the work if needed
         padding: EdgeInsets.zero,
         shape: shape,
       ),

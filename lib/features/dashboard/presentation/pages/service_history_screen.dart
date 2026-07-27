@@ -26,7 +26,8 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
   String _filter = 'Todos'; // 'Todos', 'Manual', 'Taller'
   DateTimeRange? _dateRange;
 
-  String _sortOption = 'Fecha (Reciente)'; // 'Fecha (Reciente)', 'Fecha (Antiguo)', 'Costo (Mayor)', 'Costo (Menor)'
+  String _sortOption =
+      'Fecha (Reciente)'; // 'Fecha (Reciente)', 'Fecha (Antiguo)', 'Costo (Mayor)', 'Costo (Menor)'
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +72,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
               ),
             ),
           ),
-          
+
           // Advanced Filters
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -83,12 +84,16 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                       backgroundColor: colors.surface,
                       foregroundColor: colors.primary,
                       elevation: 0,
-                      side: BorderSide(color: colors.primary.withValues(alpha: 0.2)),
+                      side: BorderSide(
+                        color: colors.primary.withValues(alpha: 0.2),
+                      ),
                     ),
                     icon: const Icon(Icons.date_range, size: 18),
-                    label: Text(_dateRange == null 
-                        ? 'Fechas' 
-                        : '${DateFormat('dd/MM').format(_dateRange!.start)} - ${DateFormat('dd/MM').format(_dateRange!.end)}'),
+                    label: Text(
+                      _dateRange == null
+                          ? 'Fechas'
+                          : '${DateFormat('dd/MM').format(_dateRange!.start)} - ${DateFormat('dd/MM').format(_dateRange!.end)}',
+                    ),
                     onPressed: () async {
                       final picked = await showDateRangePicker(
                         context: context,
@@ -120,22 +125,37 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                   child: DropdownButtonFormField<String>(
                     initialValue: _sortOption,
                     decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: colors.primary.withValues(alpha: 0.2)),
+                        borderSide: BorderSide(
+                          color: colors.primary.withValues(alpha: 0.2),
+                        ),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: colors.primary.withValues(alpha: 0.2)),
+                        borderSide: BorderSide(
+                          color: colors.primary.withValues(alpha: 0.2),
+                        ),
                       ),
                       filled: true,
                       fillColor: colors.surface,
                     ),
                     style: TextStyle(color: colors.textPrimary, fontSize: 13),
-                    items: ['Fecha (Reciente)', 'Fecha (Antiguo)', 'Costo (Mayor)', 'Costo (Menor)']
-                        .map((o) => DropdownMenuItem(value: o, child: Text(o)))
-                        .toList(),
+                    items:
+                        [
+                              'Fecha (Reciente)',
+                              'Fecha (Antiguo)',
+                              'Costo (Mayor)',
+                              'Costo (Menor)',
+                            ]
+                            .map(
+                              (o) => DropdownMenuItem(value: o, child: Text(o)),
+                            )
+                            .toList(),
                     onChanged: (val) {
                       if (val != null) setState(() => _sortOption = val);
                     },
@@ -145,7 +165,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          
+
           if (_dateRange != null)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -200,24 +220,36 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                       ),
                     )
                     .toList();
-                
+
                 // Filter
                 final filteredRecords = allRecords.where((record) {
                   // Tab filter
-                  if (_filter != context.l10n.histTabAll && _filter != 'Todos') {
+                  if (_filter != context.l10n.histTabAll &&
+                      _filter != 'Todos') {
                     final isManual = record.idTaller == 'Manual (Propietario)';
-                    if ((_filter == context.l10n.histTabManual || _filter == 'Manual') && !isManual) return false;
-                    if ((_filter == context.l10n.histTabWorkshop || _filter == 'Taller') && isManual) return false;
-                  }
-                  
-                  // Date range
-                  if (_dateRange != null) {
-                    final date = record.fecha;
-                    if (date.isBefore(_dateRange!.start) || date.isAfter(_dateRange!.end.add(const Duration(days: 1)))) {
+                    if ((_filter == context.l10n.histTabManual ||
+                            _filter == 'Manual') &&
+                        !isManual) {
+                      return false;
+                    }
+                    if ((_filter == context.l10n.histTabWorkshop ||
+                            _filter == 'Taller') &&
+                        isManual) {
                       return false;
                     }
                   }
-                  
+
+                  // Date range
+                  if (_dateRange != null) {
+                    final date = record.fecha;
+                    if (date.isBefore(_dateRange!.start) ||
+                        date.isAfter(
+                          _dateRange!.end.add(const Duration(days: 1)),
+                        )) {
+                      return false;
+                    }
+                  }
+
                   return true;
                 }).toList();
 
@@ -274,7 +306,10 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
   Widget _buildStatistics(List<ServiceRecordModel> records, AppColors colors) {
     if (records.isEmpty) return const SizedBox.shrink();
 
-    double totalCost = records.fold(0, (acc, record) => acc + (record.costo ?? 0));
+    double totalCost = records.fold(
+      0,
+      (acc, record) => acc + (record.costo ?? 0),
+    );
     double avgCost = totalCost / records.length;
 
     return Container(
@@ -295,10 +330,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
         children: [
           Text(
             context.l10n.histTotalSpent,
-            style: GoogleFonts.inter(
-              color: colors.textSecondary,
-              fontSize: 14,
-            ),
+            style: GoogleFonts.inter(color: colors.textSecondary, fontSize: 14),
           ),
           const SizedBox(height: 4),
           Text(
@@ -519,7 +551,9 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      isManual ? context.l10n.histOwner : context.l10n.histWorkshop,
+                      isManual
+                          ? context.l10n.histOwner
+                          : context.l10n.histWorkshop,
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -610,8 +644,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
         .collection(FirestoreCollections.usuarios)
         .doc(tallerId)
         .get();
-    final nombre =
-        snap.data()?['nombre_completo'] as String? ?? 'Taller';
+    final nombre = snap.data()?['nombre_completo'] as String? ?? 'Taller';
     if (!context.mounted) return;
     await showReviewBottomSheet(
       context,

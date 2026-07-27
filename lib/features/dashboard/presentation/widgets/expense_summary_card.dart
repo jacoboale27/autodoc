@@ -13,7 +13,7 @@ class ExpenseSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final porMes = summary['por_mes'] as Map<int, double>? ?? {};
-    
+
     if (porMes.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -48,9 +48,21 @@ class ExpenseSummaryCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildMetricColumn('Total (Histórico)', '\$${summary['total']?.toStringAsFixed(2)}', colors),
-              _buildMetricColumn('Este Mes', '\$${summary['mes_actual']?.toStringAsFixed(2)}', colors),
-              _buildMetricColumn('Promedio', '\$${summary['promedio']?.toStringAsFixed(2)}', colors),
+              _buildMetricColumn(
+                'Total (Histórico)',
+                '\$${summary['total']?.toStringAsFixed(2)}',
+                colors,
+              ),
+              _buildMetricColumn(
+                'Este Mes',
+                '\$${summary['mes_actual']?.toStringAsFixed(2)}',
+                colors,
+              ),
+              _buildMetricColumn(
+                'Promedio',
+                '\$${summary['promedio']?.toStringAsFixed(2)}',
+                colors,
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -65,14 +77,31 @@ class ExpenseSummaryCard extends StatelessWidget {
                       showTitles: true,
                       reservedSize: 30,
                       getTitlesWidget: (value, meta) {
-                        if (value.toInt() >= 0 && value.toInt() < monthsOrder.length) {
+                        if (value.toInt() >= 0 &&
+                            value.toInt() < monthsOrder.length) {
                           final month = monthsOrder[value.toInt()];
-                          final monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                          final monthNames = [
+                            'Ene',
+                            'Feb',
+                            'Mar',
+                            'Abr',
+                            'May',
+                            'Jun',
+                            'Jul',
+                            'Ago',
+                            'Sep',
+                            'Oct',
+                            'Nov',
+                            'Dic',
+                          ];
                           return Padding(
                             padding: const EdgeInsets.only(top: 8.0),
                             child: Text(
                               monthNames[month - 1],
-                              style: TextStyle(color: colors.textSecondary, fontSize: 12),
+                              style: TextStyle(
+                                color: colors.textSecondary,
+                                fontSize: 12,
+                              ),
                             ),
                           );
                         }
@@ -87,20 +116,28 @@ class ExpenseSummaryCard extends StatelessWidget {
                       getTitlesWidget: (value, meta) {
                         return Text(
                           value.toInt().toString(),
-                          style: TextStyle(color: colors.textSecondary, fontSize: 12),
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 12,
+                          ),
                         );
                       },
                     ),
                   ),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                 ),
                 borderData: FlBorderData(show: false),
                 lineBarsData: [
                   LineChartBarData(
                     spots: spots,
                     isCurved: true,
-                    color: colors.error, // Usamos rojo u otro color para los gastos
+                    color: colors
+                        .error, // Usamos rojo u otro color para los gastos
                     barWidth: 4,
                     isStrokeCapRound: true,
                     dotData: const FlDotData(show: false),
@@ -124,10 +161,7 @@ class ExpenseSummaryCard extends StatelessWidget {
       children: [
         Text(
           label,
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            color: colors.textSecondary,
-          ),
+          style: GoogleFonts.inter(fontSize: 12, color: colors.textSecondary),
         ),
         const SizedBox(height: 4),
         Text(

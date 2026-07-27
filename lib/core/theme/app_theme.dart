@@ -58,9 +58,7 @@ class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         backgroundColor: const Color(0xFF1E293B),
         contentTextStyle: GoogleFonts.inter(
           color: Colors.white,
@@ -101,7 +99,8 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: AppPalette.lightPrimary, // Keep same seed for harmony, override primary
+        seedColor: AppPalette
+            .lightPrimary, // Keep same seed for harmony, override primary
         primary: AppPalette.darkPrimary,
         secondary: AppPalette.darkSecondary,
         surface: AppPalette.darkSurface,
@@ -128,9 +127,7 @@ class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         backgroundColor: const Color(0xFF334155),
         contentTextStyle: GoogleFonts.inter(
           color: Colors.white,

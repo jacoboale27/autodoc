@@ -3,12 +3,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:autodoc/core/providers/user_session_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
 import 'package:autodoc/core/utils/responsive.dart';
-import 'package:autodoc/core/providers/user_profile_provider.dart';
 
 class WorkshopSettingsScreen extends StatefulWidget {
   const WorkshopSettingsScreen({super.key});
@@ -31,14 +30,60 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
   bool _isLoading = false;
 
   static const Map<String, List<String>> _elSalvadorDivipola = {
-    'San Salvador': ['San Salvador', 'Soyapango', 'Mejicanos', 'Ilopango', 'Apopa', 'Ciudad Delgado', 'San Martín', 'Tonacatepeque', 'Cuscatancingo'],
-    'La Libertad': ['Santa Tecla', 'Antiguo Cuscatlán', 'Colón', 'San Juan Opico', 'La Libertad', 'Quezaltepeque', 'Zaragoza'],
-    'Santa Ana': ['Santa Ana', 'Chalchuapa', 'Metapán', 'Coatepeque', 'San Sebastián Salitrillo'],
+    'San Salvador': [
+      'San Salvador',
+      'Soyapango',
+      'Mejicanos',
+      'Ilopango',
+      'Apopa',
+      'Ciudad Delgado',
+      'San Martín',
+      'Tonacatepeque',
+      'Cuscatancingo',
+    ],
+    'La Libertad': [
+      'Santa Tecla',
+      'Antiguo Cuscatlán',
+      'Colón',
+      'San Juan Opico',
+      'La Libertad',
+      'Quezaltepeque',
+      'Zaragoza',
+    ],
+    'Santa Ana': [
+      'Santa Ana',
+      'Chalchuapa',
+      'Metapán',
+      'Coatepeque',
+      'San Sebastián Salitrillo',
+    ],
     'San Miguel': ['San Miguel', 'El Tránsito', 'Ciudad Barrios', 'Chinameca'],
-    'Sonsonate': ['Sonsonate', 'Izalco', 'Acajutla', 'Nahuizalco', 'Juayúa', 'Armenia'],
-    'La Paz': ['Zacatecoluca', 'Olocuilta', 'San Luis Talpa', 'Santiago Nonualco'],
-    'Ahuachapán': ['Ahuachapán', 'Atiquizaya', 'San Francisco Menéndez', 'Tacuba'],
-    'Usulután': ['Usulután', 'Jiquilisco', 'Santiago de María', 'Puerto El Triunfo'],
+    'Sonsonate': [
+      'Sonsonate',
+      'Izalco',
+      'Acajutla',
+      'Nahuizalco',
+      'Juayúa',
+      'Armenia',
+    ],
+    'La Paz': [
+      'Zacatecoluca',
+      'Olocuilta',
+      'San Luis Talpa',
+      'Santiago Nonualco',
+    ],
+    'Ahuachapán': [
+      'Ahuachapán',
+      'Atiquizaya',
+      'San Francisco Menéndez',
+      'Tacuba',
+    ],
+    'Usulután': [
+      'Usulután',
+      'Jiquilisco',
+      'Santiago de María',
+      'Puerto El Triunfo',
+    ],
   };
 
   String _formatPhoneNumber(String input) {
@@ -55,30 +100,33 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
     return input;
   }
 
-
   @override
   void initState() {
     super.initState();
     final user = context.read<UserProfileProvider>().userData;
     _nameController = TextEditingController(text: user?.nombreCompleto ?? '');
     _phoneController = TextEditingController(text: user?.telefono ?? '');
-    _specialtyController = TextEditingController(text: user?.especialidad ?? '');
-    
+    _specialtyController = TextEditingController(
+      text: user?.especialidad ?? '',
+    );
+
     // Limpieza de datos antiguos e inconsistentes de geografía (como Colombia)
     _selectedDept = user?.departamento;
-    if (_selectedDept != null && !_elSalvadorDivipola.containsKey(_selectedDept)) {
+    if (_selectedDept != null &&
+        !_elSalvadorDivipola.containsKey(_selectedDept)) {
       _selectedDept = null;
     }
-    
+
     _selectedMuni = user?.municipio ?? user?.ubicacionMunicipio;
-    if (_selectedMuni != null && (_selectedDept == null || !_elSalvadorDivipola[_selectedDept]!.contains(_selectedMuni))) {
+    if (_selectedMuni != null &&
+        (_selectedDept == null ||
+            !_elSalvadorDivipola[_selectedDept]!.contains(_selectedMuni))) {
       _selectedMuni = null;
     }
-    
+
     _latitude = user?.latitud;
     _longitude = user?.longitud;
   }
-
 
   @override
   void dispose() {
@@ -94,7 +142,7 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final userSession = context.read<UserSessionProvider>();
+      final userSession = context.read<UserProfileProvider>();
       final currentUser = userSession.userData;
 
       if (currentUser != null) {
@@ -196,7 +244,9 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                                 const SizedBox(height: 16),
                               ],
                               Container(
-                                padding: EdgeInsets.all(Responsive.padding(context, 24)),
+                                padding: EdgeInsets.all(
+                                  Responsive.padding(context, 24),
+                                ),
                                 decoration: BoxDecoration(
                                   color: colors.surfaceContainer,
                                   borderRadius: BorderRadius.circular(16),
@@ -208,8 +258,9 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                                   boxShadow: [
                                     if (!isDark)
                                       BoxShadow(
-                                        color: Colors.black
-                                            .withValues(alpha: 0.05),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.05,
+                                        ),
                                         blurRadius: 10,
                                         offset: const Offset(0, 4),
                                       ),
@@ -221,14 +272,19 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                                     Row(
                                       children: [
                                         Container(
-                                          padding: EdgeInsets.all(Responsive.padding(context, 12)),
+                                          padding: EdgeInsets.all(
+                                            Responsive.padding(context, 12),
+                                          ),
                                           decoration: BoxDecoration(
                                             color: primary.withValues(
-                                                alpha: 0.1),
+                                              alpha: 0.1,
+                                            ),
                                             shape: BoxShape.circle,
                                           ),
-                                          child: Icon(Icons.store,
-                                              color: primary),
+                                          child: Icon(
+                                            Icons.store,
+                                            color: primary,
+                                          ),
                                         ),
                                         const SizedBox(width: 16),
                                         Expanded(
@@ -239,7 +295,10 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                                               Text(
                                                 'Información Pública',
                                                 style: GoogleFonts.montserrat(
-                                                  fontSize: Responsive.fontSize(context, 18),
+                                                  fontSize: Responsive.fontSize(
+                                                    context,
+                                                    18,
+                                                  ),
                                                   fontWeight: FontWeight.bold,
                                                   color: colors.textPrimary,
                                                 ),
@@ -248,7 +307,10 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                                                 'Estos datos serán visibles en el directorio de talleres.',
                                                 style: TextStyle(
                                                   color: colors.textSecondary,
-                                                  fontSize: Responsive.fontSize(context, 13),
+                                                  fontSize: Responsive.fontSize(
+                                                    context,
+                                                    13,
+                                                  ),
                                                 ),
                                               ),
                                             ],
@@ -265,8 +327,8 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                                       isDark: isDark,
                                       validator: (value) =>
                                           value == null || value.isEmpty
-                                              ? 'Requerido'
-                                              : null,
+                                          ? 'Requerido'
+                                          : null,
                                     ),
                                     const SizedBox(height: 20),
                                     _buildInputField(
@@ -297,7 +359,11 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                                     _buildDropdownField(
                                       label: 'Municipio',
                                       value: _selectedMuni,
-                                      items: (_selectedDept == null ? [] : _elSalvadorDivipola[_selectedDept]) ?? [],
+                                      items:
+                                          (_selectedDept == null
+                                              ? []
+                                              : _elSalvadorDivipola[_selectedDept]) ??
+                                          [],
                                       icon: Icons.location_on,
                                       colors: colors,
                                       isDark: isDark,
@@ -323,14 +389,16 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                                         if (value == null || value.isEmpty) {
                                           return 'Por favor, ingresa un número de teléfono';
                                         }
-                                        final digits = value.replaceAll(RegExp(r'\D'), '');
+                                        final digits = value.replaceAll(
+                                          RegExp(r'\D'),
+                                          '',
+                                        );
                                         if (digits.length < 8) {
                                           return 'El número debe tener al menos 8 dígitos';
                                         }
                                         return null;
                                       },
                                     ),
-
                                   ],
                                 ),
                               ),
@@ -360,7 +428,10 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                                           'Guardar Cambios',
                                           style: GoogleFonts.montserrat(
                                             fontWeight: FontWeight.bold,
-                                            fontSize: Responsive.fontSize(context, 16),
+                                            fontSize: Responsive.fontSize(
+                                              context,
+                                              16,
+                                            ),
                                           ),
                                         ),
                                 ),
@@ -383,7 +454,9 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
   Widget _buildTopBar(bool isDark, AppColors colors) {
     return Container(
       height: 64,
-      padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 32)),
+      padding: EdgeInsets.symmetric(
+        horizontal: Responsive.padding(context, 32),
+      ),
       decoration: BoxDecoration(
         color: colors.surfaceContainer,
         border: Border(
@@ -477,9 +550,7 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
       decoration: BoxDecoration(
         color: colors.surfaceContainer,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? Colors.white10 : Colors.grey[200]!,
-        ),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.grey[200]!),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -538,11 +609,18 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                       children: [
                         Text(
                           'Coordenadas Registradas',
-                          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: Responsive.fontSize(context, 14), color: colors.textPrimary),
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.bold,
+                            fontSize: Responsive.fontSize(context, 14),
+                            color: colors.textPrimary,
+                          ),
                         ),
                         Text(
                           'Lat: ${_latitude!.toStringAsFixed(6)}, Lng: ${_longitude!.toStringAsFixed(6)}',
-                          style: GoogleFonts.inter(fontSize: Responsive.fontSize(context, 12), color: colors.textSecondary),
+                          style: GoogleFonts.inter(
+                            fontSize: Responsive.fontSize(context, 12),
+                            color: colors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -556,7 +634,9 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
               decoration: BoxDecoration(
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colors.warning.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: colors.warning.withValues(alpha: 0.3),
+                ),
               ),
               child: Row(
                 children: [
@@ -565,7 +645,10 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                   Expanded(
                     child: Text(
                       'Aún no has registrado tus coordenadas de ubicación.',
-                      style: GoogleFonts.inter(fontSize: Responsive.fontSize(context, 13), color: colors.textPrimary),
+                      style: GoogleFonts.inter(
+                        fontSize: Responsive.fontSize(context, 13),
+                        color: colors.textPrimary,
+                      ),
                     ),
                   ),
                 ],
@@ -583,7 +666,9 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.primary,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                 ),
@@ -597,7 +682,9 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: colors.primary,
                     side: BorderSide(color: colors.primary),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                 ),
@@ -660,7 +747,6 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
         ? LatLng(_latitude!, _longitude!)
         : const LatLng(13.6929, -89.2182); // San Salvador, El Salvador
 
-
     showDialog(
       context: context,
       builder: (ctx) {
@@ -671,7 +757,11 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
               backgroundColor: colors.surfaceContainer,
               title: Text(
                 'Toca en tu ubicación exacta',
-                style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: Responsive.fontSize(context, 16), color: colors.textPrimary),
+                style: GoogleFonts.montserrat(
+                  fontWeight: FontWeight.bold,
+                  fontSize: Responsive.fontSize(context, 16),
+                  color: colors.textPrimary,
+                ),
               ),
               content: SizedBox(
                 width: double.maxFinite,
@@ -700,7 +790,10 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: Text('Cancelar', style: TextStyle(color: colors.textSecondary)),
+                  child: Text(
+                    'Cancelar',
+                    style: TextStyle(color: colors.textSecondary),
+                  ),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -710,8 +803,13 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                     });
                     Navigator.pop(ctx);
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: colors.primary),
-                  child: const Text('Confirmar', style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colors.primary,
+                  ),
+                  child: const Text(
+                    'Confirmar',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             );
@@ -750,8 +848,9 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
           validator: validator,
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle:
-                TextStyle(color: colors.textSecondary.withValues(alpha: 0.5)),
+            hintStyle: TextStyle(
+              color: colors.textSecondary.withValues(alpha: 0.5),
+            ),
             prefixIcon: Icon(icon, color: colors.textSecondary),
             filled: true,
             fillColor: colors.surface,
@@ -770,7 +869,9 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                  color: Theme.of(context).colorScheme.primary, width: 2),
+                color: Theme.of(context).colorScheme.primary,
+                width: 2,
+              ),
             ),
           ),
         ),

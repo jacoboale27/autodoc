@@ -7,14 +7,13 @@ import 'dart:typed_data';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
-import 'package:autodoc/core/providers/user_session_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/providers/language_provider.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/features/profile/presentation/pages/about_screen.dart';
-import 'package:autodoc/core/providers/user_profile_provider.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({super.key});
@@ -48,7 +47,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Future<void> _pickImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    final pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+    );
     if (pickedFile != null) {
       setState(() {
         _imageFile = pickedFile;
@@ -57,7 +59,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Future<void> _saveProfile() async {
-    final sessionProvider = context.read<UserSessionProvider>();
+    final sessionProvider = context.read<UserProfileProvider>();
     final currentUser = sessionProvider.userData;
     if (currentUser == null) return;
 
@@ -65,10 +67,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       nombreCompleto: _nameController.text,
     );
 
-    final success = await sessionProvider.updateProfile(updatedUser, imageFile: _imageFile);
-    
+    final success = await sessionProvider.updateProfile(
+      updatedUser,
+      imageFile: _imageFile,
+    );
+
     if (!mounted) return;
-    
+
     if (success) {
       setState(() => _isEditing = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -76,7 +81,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       );
     } else if (sessionProvider.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.upErrorUploadingImage(sessionProvider.error!))),
+        SnackBar(
+          content: Text(
+            context.l10n.upErrorUploadingImage(sessionProvider.error!),
+          ),
+        ),
       );
     }
   }
@@ -85,14 +94,18 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     final primaryPurple = theme.colorScheme.primary;
     final accentColor = const Color(0xFF98FFD9);
-    final bgColorStart = isDark ? const Color(0xFF1E293B) : const Color(0xFFF7F6F8);
-    final bgColorEnd = isDark ? const Color(0xFF0F172A) : const Color(0xFFECE9F1);
+    final bgColorStart = isDark
+        ? const Color(0xFF1E293B)
+        : const Color(0xFFF7F6F8);
+    final bgColorEnd = isDark
+        ? const Color(0xFF0F172A)
+        : const Color(0xFFECE9F1);
     final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
 
-    final sessionProvider = context.watch<UserSessionProvider>();
+    final sessionProvider = context.watch<UserProfileProvider>();
     final user = sessionProvider.userData;
     final isLoading = sessionProvider.isLoading;
 
@@ -107,11 +120,24 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.person_off_outlined, size: Responsive.iconSize(context, 64), color: Colors.grey),
+              Icon(
+                Icons.person_off_outlined,
+                size: Responsive.iconSize(context, 64),
+                color: Colors.grey,
+              ),
               const SizedBox(height: 16),
-              Text(context.l10n.upProfileDataNotFound, style: TextStyle(fontSize: Responsive.fontSize(context, 18), fontWeight: FontWeight.bold)),
+              Text(
+                context.l10n.upProfileDataNotFound,
+                style: TextStyle(
+                  fontSize: Responsive.fontSize(context, 18),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 8),
-              Text(sessionProvider.error ?? context.l10n.upPleaseCompleteSetup, textAlign: TextAlign.center),
+              Text(
+                sessionProvider.error ?? context.l10n.upPleaseCompleteSetup,
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () => context.go('/profile_setup'),
@@ -123,7 +149,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   await context.read<AuthProvider>().signOut();
                   router.go('/login');
                 },
-                child: Text(context.l10n.upSignOut, style: TextStyle(color: theme.colorScheme.error)),
+                child: Text(
+                  context.l10n.upSignOut,
+                  style: TextStyle(color: theme.colorScheme.error),
+                ),
               ),
             ],
           ),
@@ -151,7 +180,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   padding: EdgeInsets.all(Responsive.padding(context, 24.0)),
                   child: Column(
                     children: [
-                      _buildProfileHeader(user, primaryPurple, accentColor, textColor),
+                      _buildProfileHeader(
+                        user,
+                        primaryPurple,
+                        accentColor,
+                        textColor,
+                      ),
                       const SizedBox(height: 40),
                       _buildInfoSection(user, primaryPurple, isDark),
                       const SizedBox(height: 24),
@@ -174,10 +208,21 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
                     )
-                  : Text(context.l10n.upSaveChanges, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-              icon: isLoading ? null : const Icon(Icons.check, color: Colors.white),
+                  : Text(
+                      context.l10n.upSaveChanges,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+              icon: isLoading
+                  ? null
+                  : const Icon(Icons.check, color: Colors.white),
             )
           : null,
     );
@@ -185,13 +230,19 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Widget _buildAppBar(BuildContext context, Color primary, Color textColor) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 16.0), vertical: Responsive.padding(context, 8.0)),
+      padding: EdgeInsets.symmetric(
+        horizontal: Responsive.padding(context, 16.0),
+        vertical: Responsive.padding(context, 8.0),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: Icon(Icons.arrow_back_ios_new, size: Responsive.iconSize(context, 20)),
+            icon: Icon(
+              Icons.arrow_back_ios_new,
+              size: Responsive.iconSize(context, 20),
+            ),
           ),
           Text(
             context.l10n.upMyProfile,
@@ -205,14 +256,22 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             onPressed: () {
               setState(() => _isEditing = !_isEditing);
             },
-            icon: Icon(_isEditing ? Icons.close : Icons.edit_outlined, color: primary),
+            icon: Icon(
+              _isEditing ? Icons.close : Icons.edit_outlined,
+              color: primary,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildProfileHeader(UserModel user, Color primary, Color accent, Color textColor) {
+  Widget _buildProfileHeader(
+    UserModel user,
+    Color primary,
+    Color accent,
+    Color textColor,
+  ) {
     return Column(
       children: [
         Stack(
@@ -234,7 +293,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               child: ClipOval(
                 child: _imageFile != null
                     ? FutureBuilder<List<int>>(
-                        future: _imageFile!.readAsBytes().then((b) => b.toList()),
+                        future: _imageFile!.readAsBytes().then(
+                          (b) => b.toList(),
+                        ),
                         builder: (context, snapshot) {
                           if (snapshot.hasData) {
                             return Image.memory(
@@ -242,16 +303,25 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               fit: BoxFit.cover,
                             );
                           }
-                          return const Center(child: CircularProgressIndicator());
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
                         },
                       )
                     : CachedNetworkImage(
-                        imageUrl: user.fotoPerfilUrl ?? 'https://www.w3schools.com/howto/img_avatar.png',
+                        imageUrl:
+                            user.fotoPerfilUrl ??
+                            'https://www.w3schools.com/howto/img_avatar.png',
                         fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(color: Colors.grey[200]),
+                        placeholder: (context, url) =>
+                            Container(color: Colors.grey[200]),
                         errorWidget: (context, url, error) => Container(
                           color: primary.withValues(alpha: 0.1),
-                          child: Icon(Icons.person, size: Responsive.iconSize(context, 60), color: primary),
+                          child: Icon(
+                            Icons.person,
+                            size: Responsive.iconSize(context, 60),
+                            color: primary,
+                          ),
                         ),
                       ),
               ),
@@ -269,7 +339,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
                     ),
-                    child: Icon(Icons.camera_alt, color: Colors.white, size: Responsive.iconSize(context, 20)),
+                    child: Icon(
+                      Icons.camera_alt,
+                      color: Colors.white,
+                      size: Responsive.iconSize(context, 20),
+                    ),
                   ),
                 ),
               ),
@@ -300,16 +374,36 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     return Container(
       padding: EdgeInsets.all(Responsive.padding(context, 24)),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.white.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.3)),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.3),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildInfoField(context.l10n.upFullName, _nameController, Icons.person_outline, primary, _isEditing, isDark),
+          _buildInfoField(
+            context.l10n.upFullName,
+            _nameController,
+            Icons.person_outline,
+            primary,
+            _isEditing,
+            isDark,
+          ),
           const SizedBox(height: 24),
-          _buildInfoField(context.l10n.upEmailAddress, _emailController, Icons.email_outlined, primary, false, isDark), // Email usually not editable here
+          _buildInfoField(
+            context.l10n.upEmailAddress,
+            _emailController,
+            Icons.email_outlined,
+            primary,
+            false,
+            isDark,
+          ), // Email usually not editable here
           const SizedBox(height: 24),
           _buildStaticField(
             context.l10n.upMemberSince,
@@ -323,16 +417,26 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
-  Widget _buildSettingsSection(BuildContext context, Color primary, bool isDark) {
+  Widget _buildSettingsSection(
+    BuildContext context,
+    Color primary,
+    bool isDark,
+  ) {
     final themeProvider = context.watch<ThemeProvider>();
     final languageProvider = context.watch<LanguageProvider>();
-    
+
     return Container(
       padding: EdgeInsets.all(Responsive.padding(context, 24)),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.white.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.3)),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.3),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,7 +458,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             Icons.dark_mode_outlined,
             themeProvider.themeMode == ThemeMode.dark,
             (value) {
-              themeProvider.setThemeMode(value ? ThemeMode.dark : ThemeMode.light);
+              themeProvider.setThemeMode(
+                value ? ThemeMode.dark : ThemeMode.light,
+              );
             },
             isDark,
           ),
@@ -366,7 +472,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             Icons.settings_brightness_outlined,
             themeProvider.themeMode == ThemeMode.system,
             (value) {
-              themeProvider.setThemeMode(value ? ThemeMode.system : (isDark ? ThemeMode.dark : ThemeMode.light));
+              themeProvider.setThemeMode(
+                value
+                    ? ThemeMode.system
+                    : (isDark ? ThemeMode.dark : ThemeMode.light),
+              );
             },
             isDark,
           ),
@@ -389,7 +499,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             context.l10n.upAboutDesc,
             Icons.info_outline,
             () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AboutScreen()),
+              );
             },
             isDark,
           ),
@@ -412,10 +525,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         Container(
           padding: EdgeInsets.all(Responsive.padding(context, 8)),
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey[100],
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.1)
+                : Colors.grey[100],
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, size: Responsive.iconSize(context, 20), color: isDark ? Colors.white70 : Colors.grey[700]),
+          child: Icon(
+            icon,
+            size: Responsive.iconSize(context, 20),
+            color: isDark ? Colors.white70 : Colors.grey[700],
+          ),
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -449,7 +568,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
-  Widget _buildInfoField(String label, TextEditingController controller, IconData icon, Color primary, bool enabled, bool isDark) {
+  Widget _buildInfoField(
+    String label,
+    TextEditingController controller,
+    IconData icon,
+    Color primary,
+    bool enabled,
+    bool isDark,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -472,10 +598,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             color: isDark ? Colors.white : const Color(0xFF1E293B),
           ),
           decoration: InputDecoration(
-            prefixIcon: Icon(icon, color: enabled ? primary : const Color(0xFF94A3B8), size: 20),
+            prefixIcon: Icon(
+              icon,
+              color: enabled ? primary : const Color(0xFF94A3B8),
+              size: 20,
+            ),
             filled: true,
             fillColor: enabled ? Colors.white : Colors.transparent,
-            contentPadding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 0), vertical: Responsive.padding(context, 12)),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: Responsive.padding(context, 0),
+              vertical: Responsive.padding(context, 12),
+            ),
             border: enabled
                 ? OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -496,7 +629,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
-  Widget _buildStaticField(String label, String value, IconData icon, Color primary, bool isDark) {
+  Widget _buildStaticField(
+    String label,
+    String value,
+    IconData icon,
+    Color primary,
+    bool isDark,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -528,7 +667,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
-  Widget _buildActionOption(BuildContext context, String title, String subtitle, IconData icon, VoidCallback onTap, bool isDark) {
+  Widget _buildActionOption(
+    BuildContext context,
+    String title,
+    String subtitle,
+    IconData icon,
+    VoidCallback onTap,
+    bool isDark,
+  ) {
     return InkWell(
       onTap: onTap,
       child: Row(
@@ -536,10 +682,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           Container(
             padding: EdgeInsets.all(Responsive.padding(context, 8)),
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey[100],
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : Colors.grey[100],
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, size: Responsive.iconSize(context, 20), color: isDark ? Colors.white70 : Colors.grey[700]),
+            child: Icon(
+              icon,
+              size: Responsive.iconSize(context, 20),
+              color: isDark ? Colors.white70 : Colors.grey[700],
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -564,7 +716,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               ],
             ),
           ),
-          Icon(Icons.arrow_forward_ios, size: 16, color: isDark ? Colors.white54 : Colors.grey[500]),
+          Icon(
+            Icons.arrow_forward_ios,
+            size: 16,
+            color: isDark ? Colors.white54 : Colors.grey[500],
+          ),
         ],
       ),
     );
@@ -575,13 +731,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final isEmailPassword = authProvider.isEmailPasswordUser;
     final passwordController = TextEditingController();
     final theme = Theme.of(context);
-    
+
     showDialog(
       context: context,
       builder: (context) {
         bool isLoading = false;
         String? errorMessage;
-        
+
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
@@ -593,7 +749,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   Text(context.l10n.upDeleteAccountConfirm),
                   const SizedBox(height: 16),
                   if (isEmailPassword) ...[
-                    Text(context.l10n.upEnterPasswordConfirm, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      context.l10n.upEnterPasswordConfirm,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     const SizedBox(height: 8),
                     TextField(
                       controller: passwordController,
@@ -604,11 +763,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       ),
                     ),
                   ] else ...[
-                    Text(context.l10n.upGoogleReauthConfirm, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      context.l10n.upGoogleReauthConfirm,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ],
                   if (errorMessage != null) ...[
                     const SizedBox(height: 8),
-                    Text(errorMessage!, style: TextStyle(color: theme.colorScheme.error, fontSize: 12)),
+                    Text(
+                      errorMessage!,
+                      style: TextStyle(
+                        color: theme.colorScheme.error,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ],
               ),
@@ -625,9 +793,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             isLoading = true;
                             errorMessage = null;
                           });
-                          
+
                           bool canDelete = false;
-                          
+
                           if (isEmailPassword) {
                             final pass = passwordController.text;
                             if (pass.isEmpty) {
@@ -649,35 +817,46 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             canDelete = await authProvider.signInWithGoogle();
                             if (!canDelete) {
                               setState(() {
-                                errorMessage = context.l10n.upGoogleReauthFailed;
+                                errorMessage =
+                                    context.l10n.upGoogleReauthFailed;
                                 isLoading = false;
                               });
                               return;
                             }
                           }
-                          
+
                           if (canDelete) {
                             final success = await authProvider.deleteAccount();
                             if (success && context.mounted) {
-                               Navigator.pop(context);
-                               GoRouter.of(context).go('/login');
+                              Navigator.pop(context);
+                              GoRouter.of(context).go('/login');
                             } else if (context.mounted) {
-                               setState(() {
-                                 errorMessage = context.l10n.upDeleteAccountError(authProvider.error ?? 'Unknown error');
-                                 isLoading = false;
-                               });
+                              setState(() {
+                                errorMessage = context.l10n
+                                    .upDeleteAccountError(
+                                      authProvider.error ?? 'Unknown error',
+                                    );
+                                isLoading = false;
+                              });
                             }
                           }
                         },
-                  child: isLoading 
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                      : Text(context.l10n.upDelete, style: TextStyle(color: theme.colorScheme.error)),
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(
+                          context.l10n.upDelete,
+                          style: TextStyle(color: theme.colorScheme.error),
+                        ),
                 ),
               ],
             );
-          }
+          },
         );
-      }
+      },
     );
   }
 
@@ -688,27 +867,49 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         TextButton.icon(
           onPressed: () => _showDeleteAccountDialog(context),
           icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
-          label: Text(context.l10n.upDeleteAccount, style: TextStyle(color: theme.colorScheme.error, fontWeight: FontWeight.bold)),
+          label: Text(
+            context.l10n.upDeleteAccount,
+            style: TextStyle(
+              color: theme.colorScheme.error,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           style: TextButton.styleFrom(
-            padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 24), vertical: Responsive.padding(context, 12)),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            padding: EdgeInsets.symmetric(
+              horizontal: Responsive.padding(context, 24),
+              vertical: Responsive.padding(context, 12),
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         ),
         const SizedBox(height: 8),
         TextButton.icon(
-      onPressed: () async {
-        final authProvider = context.read<AuthProvider>();
-        final router = GoRouter.of(context);
-        await authProvider.signOut();
-        router.go('/login');
-      },
-      icon: Icon(Icons.logout, color: theme.colorScheme.error),
-      label: Text(context.l10n.upSignOut, style: TextStyle(color: theme.colorScheme.error, fontWeight: FontWeight.bold)),
-      style: TextButton.styleFrom(
-        padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 24), vertical: Responsive.padding(context, 12)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    ),
+          onPressed: () async {
+            final authProvider = context.read<AuthProvider>();
+            final router = GoRouter.of(context);
+            await authProvider.signOut();
+            router.go('/login');
+          },
+          icon: Icon(Icons.logout, color: theme.colorScheme.error),
+          label: Text(
+            context.l10n.upSignOut,
+            style: TextStyle(
+              color: theme.colorScheme.error,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          style: TextButton.styleFrom(
+            padding: EdgeInsets.symmetric(
+              horizontal: Responsive.padding(context, 24),
+              vertical: Responsive.padding(context, 12),
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
       ],
     );
   }

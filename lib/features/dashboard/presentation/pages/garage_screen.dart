@@ -5,7 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/core/models/maintenance_task_model.dart';
-import 'package:autodoc/core/providers/user_session_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
+import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/core/widgets/vehicle_image_widget.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
@@ -18,7 +19,6 @@ import 'package:uuid/uuid.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
-import 'package:autodoc/core/providers/auth_session_provider.dart';
 
 class GarageScreen extends StatelessWidget {
   const GarageScreen({super.key});
@@ -39,15 +39,14 @@ class GarageScreen extends StatelessWidget {
             _buildHeader(context, colors),
             Expanded(
               child: vehicleProvider.isLoading
-                  ? AppSkeletonLayouts.listCards(
-                      itemCount: 3,
-                      cardHeight: 140,
-                    )
+                  ? AppSkeletonLayouts.listCards(itemCount: 3, cardHeight: 140)
                   : vehicles.isEmpty
                   ? _buildEmptyState(context, colors)
                   : AnimationLimiter(
                       child: ListView.builder(
-                        padding: EdgeInsets.all(Responsive.padding(context, 16)),
+                        padding: EdgeInsets.all(
+                          Responsive.padding(context, 16),
+                        ),
                         itemCount: vehicles.length,
                         itemBuilder: (context, index) {
                           final vehicle = vehicles[index];
@@ -157,7 +156,6 @@ class GarageScreen extends StatelessWidget {
     VehicleProvider provider,
     String? currentUserId,
   ) {
-
     return AppCard(
       onTap: () => context.push('/vehicle_profile', extra: vehicle),
       margin: const EdgeInsets.only(bottom: 16),
@@ -185,10 +183,13 @@ class GarageScreen extends StatelessWidget {
                     top: 12,
                     left: 12,
                     child: FutureBuilder<MaintenanceStatus>(
-                      future: context.read<AlertProvider>().getVehicleOverallStatus(vehicle),
+                      future: context
+                          .read<AlertProvider>()
+                          .getVehicleOverallStatus(vehicle),
                       builder: (context, snapshot) {
-                        final worstStatus = snapshot.data ?? MaintenanceStatus.optimal;
-                        
+                        final worstStatus =
+                            snapshot.data ?? MaintenanceStatus.optimal;
+
                         Color statusColor = colors.secondary;
                         String statusText = 'ÓPTIMO';
                         switch (worstStatus) {
@@ -245,7 +246,7 @@ class GarageScreen extends StatelessWidget {
                             ],
                           ),
                         );
-                      }
+                      },
                     ),
                   ),
                   // Primary Star Badge
@@ -311,11 +312,16 @@ class GarageScreen extends StatelessWidget {
                   ),
                   Row(
                     children: [
-                      if (!vehicle.isPrimary && vehicle.idPropietario == currentUserId)
+                      if (!vehicle.isPrimary &&
+                          vehicle.idPropietario == currentUserId)
                         AppButton(
                           onPressed: provider.isLoading
                               ? null
-                              : () => _setVehicleAsPrimary(context, vehicle, provider),
+                              : () => _setVehicleAsPrimary(
+                                  context,
+                                  vehicle,
+                                  provider,
+                                ),
                           text: context.l10n.garageMakePrimary,
                           type: AppButtonType.text,
                           icon: const Icon(Icons.star_border),
@@ -354,16 +360,16 @@ class GarageScreen extends StatelessWidget {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            context.l10n.garageNowPrimary('${vehicle.marca ?? ''} ${vehicle.modelo ?? ''}'.trim()),
+            context.l10n.garageNowPrimary(
+              '${vehicle.marca ?? ''} ${vehicle.modelo ?? ''}'.trim(),
+            ),
           ),
         ),
       );
     } else {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(
-            provider.error ?? context.l10n.garageMakePrimaryError,
-          ),
+          content: Text(provider.error ?? context.l10n.garageMakePrimaryError),
         ),
       );
     }
@@ -377,12 +383,12 @@ class GarageScreen extends StatelessWidget {
       builder: (context) => AddVehicleForm(
         primaryColor: primary,
         onFinish: (vehicle) async {
-          final userSession = context.read<UserSessionProvider>();
+          final userSession = context.read<UserProfileProvider>();
           final vehicleProvider = context.read<VehicleProvider>();
 
           final newVehicle = vehicle.copyWith(
             idVehiculo: const Uuid().v4(),
-            idPropietario: userSession.user!.uid,
+            idPropietario: userSession.userData!.idUsuario,
           );
 
           final success = await vehicleProvider.addVehicle(newVehicle);

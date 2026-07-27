@@ -8,7 +8,11 @@ import 'package:autodoc/config/secrets.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    serverClientId: kIsWeb ? null : (AppSecrets.firebaseIosClientId.isNotEmpty ? AppSecrets.firebaseIosClientId : null),
+    serverClientId: kIsWeb
+        ? null
+        : (AppSecrets.firebaseIosClientId.isNotEmpty
+              ? AppSecrets.firebaseIosClientId
+              : null),
   );
 
   // Stream of auth changes
@@ -23,7 +27,8 @@ class AuthService {
       if (googleUser == null) return null; // Cancelled by user
 
       // Obtain the auth details from the request
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
 
       // Create a new credential
       final OAuthCredential credential = GoogleAuthProvider.credential(
@@ -53,7 +58,10 @@ class AuthService {
   }
 
   // Register with email and password
-  Future<UserCredential?> registerWithEmail(String email, String password) async {
+  Future<UserCredential?> registerWithEmail(
+    String email,
+    String password,
+  ) async {
     try {
       final credential = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -64,7 +72,6 @@ class AuthService {
       throw _handleAuthException(e);
     }
   }
-
 
   // Delete Account
   Future<void> deleteAccount() async {
@@ -94,7 +101,10 @@ class AuthService {
     try {
       final user = _auth.currentUser;
       if (user == null || user.email == null) return false;
-      final credential = EmailAuthProvider.credential(email: user.email!, password: password);
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: password,
+      );
       await user.reauthenticateWithCredential(credential);
       return true;
     } catch (e) {

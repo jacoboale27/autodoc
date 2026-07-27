@@ -8,9 +8,11 @@ class VehicleProvider with ChangeNotifier {
   final VehicleService _vehicleService;
   final VehicleImageService _imageService;
 
-  VehicleProvider({VehicleService? vehicleService, VehicleImageService? imageService})
-      : _vehicleService = vehicleService ?? VehicleService(),
-        _imageService = imageService ?? VehicleImageService() {
+  VehicleProvider({
+    VehicleService? vehicleService,
+    VehicleImageService? imageService,
+  }) : _vehicleService = vehicleService ?? VehicleService(),
+       _imageService = imageService ?? VehicleImageService() {
     _initCache();
   }
 
@@ -69,7 +71,10 @@ class VehicleProvider with ChangeNotifier {
       final cachedData = box.get('user_vehicles');
       if (cachedData != null && cachedData is List) {
         return cachedData
-            .map((item) => VehicleModel.fromJson(Map<String, dynamic>.from(item as Map)))
+            .map(
+              (item) =>
+                  VehicleModel.fromJson(Map<String, dynamic>.from(item as Map)),
+            )
             .toList();
       }
     } catch (e) {
@@ -103,7 +108,7 @@ class VehicleProvider with ChangeNotifier {
     try {
       final owned = await _vehicleService.getVehiclesByOwner(ownerId);
       final shared = await _vehicleService.getSharedVehicles(ownerId);
-      
+
       // Merge: owned first, then shared (avoiding duplicates)
       final allIds = owned.map((v) => v.idVehiculo).toSet();
       final merged = [...owned];
@@ -123,7 +128,7 @@ class VehicleProvider with ChangeNotifier {
       } else {
         _selectedVehicle = null;
       }
-      
+
       await _cacheVehicles(_vehicles);
 
       _setLoading(false);
@@ -165,7 +170,7 @@ class VehicleProvider with ChangeNotifier {
         year: vehicle.anio ?? 0,
         color: vehicle.color ?? '',
       );
-      
+
       vehicle = vehicle.copyWith(fotoUrl: imageUrl);
 
       await _vehicleService.addVehicle(vehicle);
@@ -184,7 +189,10 @@ class VehicleProvider with ChangeNotifier {
     _setError(null);
     try {
       if (vehicle.isPrimary) {
-        await _demoteCurrentPrimary(vehicle.idPropietario, excludeId: vehicle.idVehiculo);
+        await _demoteCurrentPrimary(
+          vehicle.idPropietario,
+          excludeId: vehicle.idVehiculo,
+        );
       }
       await _vehicleService.updateVehicle(vehicle);
       await fetchVehicles(vehicle.idPropietario);
@@ -204,7 +212,10 @@ class VehicleProvider with ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
-      await _demoteCurrentPrimary(vehicle.idPropietario, excludeId: vehicle.idVehiculo);
+      await _demoteCurrentPrimary(
+        vehicle.idPropietario,
+        excludeId: vehicle.idVehiculo,
+      );
       await _vehicleService.updateVehicle(vehicle.copyWith(isPrimary: true));
       await fetchVehicles(vehicle.idPropietario);
       _setLoading(false);
@@ -216,8 +227,13 @@ class VehicleProvider with ChangeNotifier {
     }
   }
 
-  Future<void> _demoteCurrentPrimary(String ownerId, {String? excludeId}) async {
-    final currentPrimary = _vehicles.where((v) => v.isPrimary && v.idVehiculo != excludeId).toList();
+  Future<void> _demoteCurrentPrimary(
+    String ownerId, {
+    String? excludeId,
+  }) async {
+    final currentPrimary = _vehicles
+        .where((v) => v.isPrimary && v.idVehiculo != excludeId)
+        .toList();
     for (var v in currentPrimary) {
       await _vehicleService.updateVehicle(v.copyWith(isPrimary: false));
     }
@@ -232,15 +248,21 @@ class VehicleProvider with ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
-      final wasPrimary = _vehicles.any((v) => v.idVehiculo == vehicleId && v.isPrimary);
+      final wasPrimary = _vehicles.any(
+        (v) => v.idVehiculo == vehicleId && v.isPrimary,
+      );
       await _vehicleService.deleteVehicle(vehicleId);
       await fetchVehicles(ownerId);
 
       // Si se eliminó el principal, promover el primero restante del dueño
       if (wasPrimary && _vehicles.isNotEmpty) {
-        final owned = _vehicles.where((v) => v.idPropietario == ownerId).toList();
+        final owned = _vehicles
+            .where((v) => v.idPropietario == ownerId)
+            .toList();
         if (owned.isNotEmpty && !owned.any((v) => v.isPrimary)) {
-          await _vehicleService.updateVehicle(owned.first.copyWith(isPrimary: true));
+          await _vehicleService.updateVehicle(
+            owned.first.copyWith(isPrimary: true),
+          );
           await fetchVehicles(ownerId);
         }
       }
@@ -257,8 +279,11 @@ class VehicleProvider with ChangeNotifier {
   Future<void> updateVehicleMileage(String vehicleId, int newMileage) async {
     _setLoading(true);
     try {
-      if (_selectedVehicle != null && _selectedVehicle!.idVehiculo == vehicleId) {
-        final updatedVehicle = _selectedVehicle!.copyWith(kilometrajeActual: newMileage);
+      if (_selectedVehicle != null &&
+          _selectedVehicle!.idVehiculo == vehicleId) {
+        final updatedVehicle = _selectedVehicle!.copyWith(
+          kilometrajeActual: newMileage,
+        );
         await _vehicleService.updateVehicle(updatedVehicle);
         await fetchVehicles(_selectedVehicle!.idPropietario);
       }

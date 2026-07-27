@@ -3,7 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/features/profile/data/services/user_service.dart';
 
-/// Extracted from UserSessionProvider to reduce coupling.
+/// Extracted from UserProfileProvider to reduce coupling.
 class UserProfileProvider with ChangeNotifier {
   final UserService _userService = UserService();
 
@@ -43,22 +43,29 @@ class UserProfileProvider with ChangeNotifier {
   }
 
   /// Update user profile, optionally with a new profile image
-  Future<bool> updateProfile(UserModel updatedUser, {XFile? imageFile, bool isNewUser = false}) async {
+  Future<bool> updateProfile(
+    UserModel updatedUser, {
+    XFile? imageFile,
+    bool isNewUser = false,
+  }) async {
     _setLoading(true);
     _setError(null);
     try {
       UserModel userToUpdate = updatedUser;
       if (imageFile != null) {
-        final photoUrl = await _userService.uploadProfilePhoto(updatedUser.idUsuario, imageFile);
+        final photoUrl = await _userService.uploadProfilePhoto(
+          updatedUser.idUsuario,
+          imageFile,
+        );
         userToUpdate = updatedUser.copyWith(fotoPerfilUrl: photoUrl);
       }
-      
+
       if (isNewUser) {
         await _userService.createUserData(userToUpdate);
       } else {
         await _userService.updateUserData(userToUpdate);
       }
-      
+
       _userData = userToUpdate;
       _fetchedUserId = updatedUser.idUsuario;
       _hasAttemptedFetch = true;

@@ -19,7 +19,7 @@ void main() {
       await provider.changeLanguage('en');
       expect(provider.currentLocale, const Locale('en'));
     });
-    
+
     test('changeLanguage updates locale back to es', () async {
       final provider = LanguageProvider();
       await provider.changeLanguage('en');

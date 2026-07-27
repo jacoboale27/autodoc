@@ -40,7 +40,7 @@ class _AboutScreenState extends State<AboutScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    
+
     return Scaffold(
       backgroundColor: colors.surface,
       appBar: AppBar(
@@ -88,14 +88,11 @@ class _AboutScreenState extends State<AboutScreen> {
             const SizedBox(height: 8),
             Text(
               'Tu copiloto digital para el cuidado del vehículo',
-              style: TextStyle(
-                color: colors.textSecondary,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: colors.textSecondary, fontSize: 16),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 40),
-            
+
             // Info Cards
             Container(
               decoration: BoxDecoration(
@@ -109,24 +106,39 @@ class _AboutScreenState extends State<AboutScreen> {
                     title: const Text('Versión'),
                     trailing: Text(
                       '$_version ($_buildNumber)',
-                      style: TextStyle(color: colors.textSecondary, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  Divider(height: 1, color: colors.outline.withValues(alpha: 0.2)),
+                  Divider(
+                    height: 1,
+                    color: colors.outline.withValues(alpha: 0.2),
+                  ),
                   ListTile(
                     leading: Icon(Icons.email_outlined, color: colors.primary),
                     title: const Text('Soporte Técnico'),
                     trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                     onTap: () => _launchUrl('mailto:soporte@autodoc.app'),
                   ),
-                  Divider(height: 1, color: colors.outline.withValues(alpha: 0.2)),
+                  Divider(
+                    height: 1,
+                    color: colors.outline.withValues(alpha: 0.2),
+                  ),
                   ListTile(
-                    leading: Icon(Icons.privacy_tip_outlined, color: colors.primary),
+                    leading: Icon(
+                      Icons.privacy_tip_outlined,
+                      color: colors.primary,
+                    ),
                     title: const Text('Política de Privacidad'),
                     trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                     onTap: () => _launchUrl('https://autodoc.app/privacidad'),
                   ),
-                  Divider(height: 1, color: colors.outline.withValues(alpha: 0.2)),
+                  Divider(
+                    height: 1,
+                    color: colors.outline.withValues(alpha: 0.2),
+                  ),
                   ListTile(
                     leading: Icon(Icons.gavel_outlined, color: colors.primary),
                     title: const Text('Términos y Condiciones'),
@@ -136,7 +148,7 @@ class _AboutScreenState extends State<AboutScreen> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 40),
             Text(
               '© ${DateTime.now().year} AutoDoc Inc.\nTodos los derechos reservados.',

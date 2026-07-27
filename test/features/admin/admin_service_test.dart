@@ -42,7 +42,11 @@ void main() {
 
   group('AdminService Tests', () {
     test('suspenderUsuario updates state and logs action', () async {
-      await adminService.suspenderUsuario('admin1', 'user1', 'Incumplimiento de normas');
+      await adminService.suspenderUsuario(
+        'admin1',
+        'user1',
+        'Incumplimiento de normas',
+      );
 
       expect(fakeRepository.lastUpdatedUid, 'user1');
       expect(fakeRepository.lastUpdatedEstado, 'suspendido');

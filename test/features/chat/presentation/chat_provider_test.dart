@@ -8,7 +8,7 @@ import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
 import 'package:autodoc/features/chat/data/repositories/chat_repository.dart';
 
 /// ChatProvider unit tests.
-/// 
+///
 /// Note: ChatProvider uses ChatRepository internally (Firestore-based).
 /// These tests verify provider state management and observable contract
 /// without network calls (using a test-safe instantiation).
@@ -54,34 +54,37 @@ void main() {
   });
 
   group('ChatProvider — Unread count calculation', () {
-    test('totalNoLeidosPropietario sums noLeidosPropietario across conversations', () {
-      // We inject conversations directly via testing the getter logic
-      // Since _conversaciones is private, we test via the computed getter
-      // by verifying the formula is correct given a controlled state.
-      // 
-      // The getter is: _conversaciones.fold(0, (sum, item) => sum + item.noLeidosPropietario)
-      // We can verify this with a ConversacionModel that has known values.
-      
-      final conv = ConversacionModel(
-        id: 'c1',
-        idPropietario: 'p1',
-        idMecanico: 'm1',
-        nombrePropietario: 'Juan',
-        nombreMecanico: 'Taller X',
-        ultimoMensaje: 'Hola',
-        ultimoMensajeTs: DateTime.now(),
-        noLeidosPropietario: 3,
-        noLeidosMecanico: 1,
-      );
+    test(
+      'totalNoLeidosPropietario sums noLeidosPropietario across conversations',
+      () {
+        // We inject conversations directly via testing the getter logic
+        // Since _conversaciones is private, we test via the computed getter
+        // by verifying the formula is correct given a controlled state.
+        //
+        // The getter is: _conversaciones.fold(0, (sum, item) => sum + item.noLeidosPropietario)
+        // We can verify this with a ConversacionModel that has known values.
 
-      // Access via public getters; fold over empty list = 0
-      expect(chatProvider.totalNoLeidosPropietario, 0);
-      expect(chatProvider.totalNoLeidosMecanico, 0);
-      
-      // Verify model fields are correct
-      expect(conv.noLeidosPropietario, 3);
-      expect(conv.noLeidosMecanico, 1);
-    });
+        final conv = ConversacionModel(
+          id: 'c1',
+          idPropietario: 'p1',
+          idMecanico: 'm1',
+          nombrePropietario: 'Juan',
+          nombreMecanico: 'Taller X',
+          ultimoMensaje: 'Hola',
+          ultimoMensajeTs: DateTime.now(),
+          noLeidosPropietario: 3,
+          noLeidosMecanico: 1,
+        );
+
+        // Access via public getters; fold over empty list = 0
+        expect(chatProvider.totalNoLeidosPropietario, 0);
+        expect(chatProvider.totalNoLeidosMecanico, 0);
+
+        // Verify model fields are correct
+        expect(conv.noLeidosPropietario, 3);
+        expect(conv.noLeidosMecanico, 1);
+      },
+    );
   });
 
   group('ChatProvider — MensajeModel contract', () {
@@ -97,7 +100,7 @@ void main() {
       expect(msg.id, 'msg1');
       expect(msg.contenido, 'Hola taller');
       expect(msg.tipo, 'texto');
-      
+
       final map = msg.toMap();
       expect(map['id_remitente'], 'user1');
       expect(map['contenido'], 'Hola taller');

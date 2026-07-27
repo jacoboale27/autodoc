@@ -58,7 +58,8 @@ class ReviewModel {
       idTaller: map['id_taller'] ?? '',
       estrellas: map['estrellas'] ?? 5,
       comentario: map['comentario'],
-      fechaResenia: (map['fecha_resenia'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      fechaResenia:
+          (map['fecha_resenia'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isReported: map['is_reported'] ?? false,
     );
   }

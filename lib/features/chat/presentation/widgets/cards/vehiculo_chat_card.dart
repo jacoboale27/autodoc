@@ -25,7 +25,9 @@ class VehiculoChatCard extends StatelessWidget {
       width: 250,
       margin: const EdgeInsets.only(top: 8),
       decoration: BoxDecoration(
-        color: isMe ? colors.primary.withValues(alpha: 0.1) : colors.surfaceContainer,
+        color: isMe
+            ? colors.primary.withValues(alpha: 0.1)
+            : colors.surfaceContainer,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: colors.outline.withValues(alpha: 0.2)),
       ),
@@ -35,12 +37,20 @@ class VehiculoChatCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: isMe ? colors.primary.withValues(alpha: 0.2) : colors.surfaceContainer,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              color: isMe
+                  ? colors.primary.withValues(alpha: 0.2)
+                  : colors.surfaceContainer,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(12),
+              ),
             ),
             child: Row(
               children: [
-                Icon(Icons.directions_car, size: 16, color: isMe ? colors.surface : colors.primary),
+                Icon(
+                  Icons.directions_car,
+                  size: 16,
+                  color: isMe ? colors.surface : colors.primary,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'Vehículo Compartido',
@@ -72,13 +82,20 @@ class VehiculoChatCard extends StatelessWidget {
                       'Año: $anio',
                       style: TextStyle(
                         fontSize: 13,
-                        color: isMe ? colors.surface.withValues(alpha: 0.7) : colors.textSecondary,
+                        color: isMe
+                            ? colors.surface.withValues(alpha: 0.7)
+                            : colors.textSecondary,
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
-                        color: isMe ? colors.surface.withValues(alpha: 0.2) : colors.primary.withValues(alpha: 0.1),
+                        color: isMe
+                            ? colors.surface.withValues(alpha: 0.2)
+                            : colors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(

@@ -7,14 +7,18 @@ class VehicleApiService {
 
   Future<List<CarMake>> fetchAllMakes() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/getallmakes?format=json'));
+      final response = await http.get(
+        Uri.parse('$baseUrl/getallmakes?format=json'),
+      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         final List<dynamic> results = data['Results'];
         return results.map((json) => CarMake.fromJson(json)).toList();
       } else {
-        throw Exception('Error al cargar marcas: Código de estado ${response.statusCode}');
+        throw Exception(
+          'Error al cargar marcas: Código de estado ${response.statusCode}',
+        );
       }
     } catch (e) {
       throw Exception('Fallo de red o error al parsear marcas: $e');
@@ -23,14 +27,20 @@ class VehicleApiService {
 
   Future<List<CarModel>> fetchModelsByMake(String makeName) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/getmodelsformake/${Uri.encodeComponent(makeName)}?format=json'));
+      final response = await http.get(
+        Uri.parse(
+          '$baseUrl/getmodelsformake/${Uri.encodeComponent(makeName)}?format=json',
+        ),
+      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         final List<dynamic> results = data['Results'];
         return results.map((json) => CarModel.fromJson(json)).toList();
       } else {
-        throw Exception('Error al cargar modelos: Código de estado ${response.statusCode}');
+        throw Exception(
+          'Error al cargar modelos: Código de estado ${response.statusCode}',
+        );
       }
     } catch (e) {
       throw Exception('Fallo de red o error al parsear modelos: $e');

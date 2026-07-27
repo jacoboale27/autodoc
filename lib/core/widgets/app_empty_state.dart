@@ -58,10 +58,7 @@ class AppEmptyState extends StatelessWidget {
                 color: colors.textSecondary,
               ),
             ),
-            if (action != null) ...[
-              const SizedBox(height: 24),
-              action!,
-            ],
+            if (action != null) ...[const SizedBox(height: 24), action!],
           ],
         ),
       ),

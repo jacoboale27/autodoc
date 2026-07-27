@@ -24,9 +24,11 @@ class CotizacionChatCard extends StatelessWidget {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final String descripcion = metadata['descripcion'] ?? 'Cotización sin detalles';
+    final String descripcion =
+        metadata['descripcion'] ?? 'Cotización sin detalles';
     final double precioRaw = metadata['total']?.toDouble() ?? 0.0;
-    final String estado = metadata['estado'] ?? 'pendiente'; // pendiente, aceptada, rechazada
+    final String estado =
+        metadata['estado'] ?? 'pendiente'; // pendiente, aceptada, rechazada
 
     Color badgeColor = Colors.orange;
     String badgeText = 'Pendiente';
@@ -44,7 +46,11 @@ class CotizacionChatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? colors.surfaceContainer : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isMe ? Colors.white30 : (isDark ? Colors.white12 : Colors.black12)),
+        border: Border.all(
+          color: isMe
+              ? Colors.white30
+              : (isDark ? Colors.white12 : Colors.black12),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -52,15 +58,23 @@ class CotizacionChatCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: isMe ? Colors.black12 : (isDark ? Colors.black26 : Colors.grey.shade100),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              color: isMe
+                  ? Colors.black12
+                  : (isDark ? Colors.black26 : Colors.grey.shade100),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(12),
+              ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.request_quote, size: 16, color: isMe ? Colors.white : colors.primary),
+                    Icon(
+                      Icons.request_quote,
+                      size: 16,
+                      color: isMe ? Colors.white : colors.primary,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'Cotización de Servicio',
@@ -72,14 +86,21 @@ class CotizacionChatCard extends StatelessWidget {
                   ],
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: badgeColor,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     badgeText,
-                    style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -128,9 +149,16 @@ class CotizacionChatCard extends StatelessWidget {
                             final newMeta = Map<String, dynamic>.from(metadata);
                             newMeta['estado'] = 'aceptada';
                             final provider = context.read<ChatProvider>();
-                            provider.actualizarMetadatosMensaje(conversacionId, mensajeId, newMeta);
+                            provider.actualizarMetadatosMensaje(
+                              conversacionId,
+                              mensajeId,
+                              newMeta,
+                            );
                             if (metadata['id_cotizacion'] != null) {
-                              provider.actualizarEstadoCotizacion(metadata['id_cotizacion'], 'aceptada');
+                              provider.actualizarEstadoCotizacion(
+                                metadata['id_cotizacion'],
+                                'aceptada',
+                              );
                             }
                           },
                           style: OutlinedButton.styleFrom(
@@ -148,9 +176,16 @@ class CotizacionChatCard extends StatelessWidget {
                             final newMeta = Map<String, dynamic>.from(metadata);
                             newMeta['estado'] = 'rechazada';
                             final provider = context.read<ChatProvider>();
-                            provider.actualizarMetadatosMensaje(conversacionId, mensajeId, newMeta);
+                            provider.actualizarMetadatosMensaje(
+                              conversacionId,
+                              mensajeId,
+                              newMeta,
+                            );
                             if (metadata['id_cotizacion'] != null) {
-                              provider.actualizarEstadoCotizacion(metadata['id_cotizacion'], 'rechazada');
+                              provider.actualizarEstadoCotizacion(
+                                metadata['id_cotizacion'],
+                                'rechazada',
+                              );
                             }
                           },
                           style: OutlinedButton.styleFrom(

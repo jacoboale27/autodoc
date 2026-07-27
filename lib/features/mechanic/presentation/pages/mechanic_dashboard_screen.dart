@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:autodoc/core/providers/user_session_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
 import 'package:autodoc/core/models/service_record_model.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
@@ -20,7 +20,8 @@ class MechanicDashboardScreen extends StatefulWidget {
   const MechanicDashboardScreen({super.key});
 
   @override
-  State<MechanicDashboardScreen> createState() => _MechanicDashboardScreenState();
+  State<MechanicDashboardScreen> createState() =>
+      _MechanicDashboardScreenState();
 }
 
 class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
@@ -29,13 +30,11 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
     final bool isMobile = MediaQuery.of(context).size.width < 700;
     final colors = context.appColors;
     final theme = Theme.of(context);
-    final userSession = context.watch<UserSessionProvider>();
+    final userSession = context.watch<UserProfileProvider>();
     final userData = userSession.userData;
-    
+
     if (userData == null || userData.idUsuario.isEmpty) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final mechanicName = userData.nombreCompleto;
@@ -59,17 +58,33 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                 Consumer2<ThemeProvider, LanguageProvider>(
                   builder: (context, themeProvider, languageProvider, _) {
                     final isDark = themeProvider.themeMode == ThemeMode.dark;
-                    final isEnglish = languageProvider.currentLocale.languageCode == 'en';
+                    final isEnglish =
+                        languageProvider.currentLocale.languageCode == 'en';
                     return Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined, color: colors.primary),
-                          onPressed: () => themeProvider.setThemeMode(isDark ? ThemeMode.light : ThemeMode.dark),
+                          icon: Icon(
+                            isDark
+                                ? Icons.light_mode_outlined
+                                : Icons.dark_mode_outlined,
+                            color: colors.primary,
+                          ),
+                          onPressed: () => themeProvider.setThemeMode(
+                            isDark ? ThemeMode.light : ThemeMode.dark,
+                          ),
                         ),
                         TextButton(
-                          onPressed: () => languageProvider.changeLanguage(isEnglish ? 'es' : 'en'),
-                          child: Text(isEnglish ? 'EN' : 'ES', style: TextStyle(fontWeight: FontWeight.bold, color: colors.primary)),
+                          onPressed: () => languageProvider.changeLanguage(
+                            isEnglish ? 'es' : 'en',
+                          ),
+                          child: Text(
+                            isEnglish ? 'EN' : 'ES',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: colors.primary,
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 8),
                       ],
@@ -102,9 +117,17 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                             const SizedBox(height: 24),
                             _buildQuickActions(colors, isMobile),
                             const SizedBox(height: 32),
-                            _buildDashboardMetrics(colors, isMobile, userData.idUsuario),
+                            _buildDashboardMetrics(
+                              colors,
+                              isMobile,
+                              userData.idUsuario,
+                            ),
                             const SizedBox(height: 32),
-                            _buildIncomeChartSection(colors, isMobile, userData.idUsuario),
+                            _buildIncomeChartSection(
+                              colors,
+                              isMobile,
+                              userData.idUsuario,
+                            ),
                             const SizedBox(height: 32),
                             _buildRecentServices(colors, userData.idUsuario),
                           ],
@@ -124,11 +147,15 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
   Widget _buildTopBar(AppColors colors, ThemeData theme, String mechanicName) {
     return Container(
       height: 64,
-      padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 32)),
+      padding: EdgeInsets.symmetric(
+        horizontal: Responsive.padding(context, 32),
+      ),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         border: Border(
-          bottom: BorderSide(color: colors.textSecondary.withValues(alpha: 0.1)),
+          bottom: BorderSide(
+            color: colors.textSecondary.withValues(alpha: 0.1),
+          ),
         ),
       ),
       child: Row(
@@ -148,17 +175,33 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
               Consumer2<ThemeProvider, LanguageProvider>(
                 builder: (context, themeProvider, languageProvider, _) {
                   final isDark = themeProvider.themeMode == ThemeMode.dark;
-                  final isEnglish = languageProvider.currentLocale.languageCode == 'en';
+                  final isEnglish =
+                      languageProvider.currentLocale.languageCode == 'en';
                   return Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined, color: colors.textSecondary),
-                        onPressed: () => themeProvider.setThemeMode(isDark ? ThemeMode.light : ThemeMode.dark),
+                        icon: Icon(
+                          isDark
+                              ? Icons.light_mode_outlined
+                              : Icons.dark_mode_outlined,
+                          color: colors.textSecondary,
+                        ),
+                        onPressed: () => themeProvider.setThemeMode(
+                          isDark ? ThemeMode.light : ThemeMode.dark,
+                        ),
                       ),
                       TextButton(
-                        onPressed: () => languageProvider.changeLanguage(isEnglish ? 'es' : 'en'),
-                        child: Text(isEnglish ? 'EN' : 'ES', style: TextStyle(fontWeight: FontWeight.bold, color: colors.textSecondary)),
+                        onPressed: () => languageProvider.changeLanguage(
+                          isEnglish ? 'es' : 'en',
+                        ),
+                        child: Text(
+                          isEnglish ? 'EN' : 'ES',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: colors.textSecondary,
+                          ),
+                        ),
                       ),
                     ],
                   );
@@ -258,14 +301,22 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
           AppButton(
             text: 'Buscar',
             onPressed: () => context.push('/mechanic_search'),
-            icon: Icon(Icons.search, size: Responsive.iconSize(context, 18), color: Colors.white),
+            icon: Icon(
+              Icons.search,
+              size: Responsive.iconSize(context, 18),
+              color: Colors.white,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDashboardMetrics(AppColors colors, bool isMobile, String tallerId) {
+  Widget _buildDashboardMetrics(
+    AppColors colors,
+    bool isMobile,
+    String tallerId,
+  ) {
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
           .collection(FirestoreCollections.usuarios)
@@ -284,25 +335,30 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
           builder: (context, snapshot) {
             final allServicios = snapshot.hasData ? snapshot.data!.docs : [];
             final totalServicios = allServicios.length;
-            
+
             final vehiculosUnicos = <String>{};
             int serviciosMesActual = 0;
             double ingresosMesActual = 0;
             double ingresosMesAnterior = 0;
             final now = DateTime.now();
             final pastMonth = DateTime(now.year, now.month - 1);
-            
+
             for (var doc in allServicios) {
               final data = doc.data() as Map<String, dynamic>;
               vehiculosUnicos.add(data['id_vehiculo'] ?? '');
-              final double costo = data['costo'] != null ? (data['costo'] is int ? (data['costo'] as int).toDouble() : data['costo'] as double) : 0.0;
-              
+              final double costo = data['costo'] != null
+                  ? (data['costo'] is int
+                        ? (data['costo'] as int).toDouble()
+                        : data['costo'] as double)
+                  : 0.0;
+
               if (data['fecha'] != null) {
                 final fecha = (data['fecha'] as Timestamp).toDate();
                 if (fecha.year == now.year && fecha.month == now.month) {
                   serviciosMesActual++;
                   ingresosMesActual += costo;
-                } else if (fecha.year == pastMonth.year && fecha.month == pastMonth.month) {
+                } else if (fecha.year == pastMonth.year &&
+                    fecha.month == pastMonth.month) {
                   ingresosMesAnterior += costo;
                 }
               }
@@ -312,75 +368,81 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
             if (ingresosMesAnterior > 0) {
               final diff = ingresosMesActual - ingresosMesAnterior;
               final pct = (diff / ingresosMesAnterior) * 100;
-              variacionIngresos = '${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%';
+              variacionIngresos =
+                  '${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%';
             } else if (ingresosMesActual > 0) {
               variacionIngresos = '+100%';
             } else {
               variacionIngresos = '0%';
             }
 
-            return LayoutBuilder(builder: (context, constraints) {
-              final double cardWidth =
-                  isMobile ? constraints.maxWidth : (constraints.maxWidth - 48) / 3;
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final double cardWidth = isMobile
+                    ? constraints.maxWidth
+                    : (constraints.maxWidth - 48) / 3;
 
-              return Wrap(
-                spacing: 24,
-                runSpacing: 24,
-                children: [
-                  _buildMetricCard(
-                    title: 'Ingresos (Mes)',
-                    value: '\$${ingresosMesActual.toStringAsFixed(2)}',
-                    icon: Icons.attach_money,
-                    accentColor: colors.success,
-                    colors: colors,
-                    width: cardWidth,
-                    subtitle: variacionIngresos.isNotEmpty ? '$variacionIngresos vs mes ant.' : null,
-                  ),
-                  _buildMetricCard(
-                    title: 'Servicios (Mes)',
-                    value: serviciosMesActual.toString(),
-                    icon: Icons.calendar_today,
-                    accentColor: colors.secondary,
-                    colors: colors,
-                    width: cardWidth,
-                  ),
-                  _buildMetricCard(
-                    title: 'Total Servicios',
-                    value: totalServicios.toString(),
-                    icon: Icons.build_circle,
-                    accentColor: colors.primary,
-                    colors: colors,
-                    width: cardWidth,
-                    onTap: () => context.push('/mechanic_service_history'),
-                  ),
-                  _buildMetricCard(
-                    title: 'Vehículos Atendidos',
-                    value: vehiculosUnicos.length.toString(),
-                    icon: Icons.directions_car,
-                    accentColor: colors.success,
-                    colors: colors,
-                    width: cardWidth,
-                  ),
-                  _buildMetricCard(
-                    title: 'Calificación',
-                    value: promedio > 0 ? promedio.toStringAsFixed(1) : '—',
-                    icon: Icons.star_rounded,
-                    accentColor: colors.warning,
-                    colors: colors,
-                    width: cardWidth,
-                  ),
-                  _buildMetricCard(
-                    title: 'Reseñas',
-                    value: totalResenias.toString(),
-                    icon: Icons.rate_review_outlined,
-                    accentColor: colors.primary,
-                    colors: colors,
-                    width: cardWidth,
-                    onTap: () => context.push('/mechanic_reviews'),
-                  ),
-                ],
-              );
-            });
+                return Wrap(
+                  spacing: 24,
+                  runSpacing: 24,
+                  children: [
+                    _buildMetricCard(
+                      title: 'Ingresos (Mes)',
+                      value: '\$${ingresosMesActual.toStringAsFixed(2)}',
+                      icon: Icons.attach_money,
+                      accentColor: colors.success,
+                      colors: colors,
+                      width: cardWidth,
+                      subtitle: variacionIngresos.isNotEmpty
+                          ? '$variacionIngresos vs mes ant.'
+                          : null,
+                    ),
+                    _buildMetricCard(
+                      title: 'Servicios (Mes)',
+                      value: serviciosMesActual.toString(),
+                      icon: Icons.calendar_today,
+                      accentColor: colors.secondary,
+                      colors: colors,
+                      width: cardWidth,
+                    ),
+                    _buildMetricCard(
+                      title: 'Total Servicios',
+                      value: totalServicios.toString(),
+                      icon: Icons.build_circle,
+                      accentColor: colors.primary,
+                      colors: colors,
+                      width: cardWidth,
+                      onTap: () => context.push('/mechanic_service_history'),
+                    ),
+                    _buildMetricCard(
+                      title: 'Vehículos Atendidos',
+                      value: vehiculosUnicos.length.toString(),
+                      icon: Icons.directions_car,
+                      accentColor: colors.success,
+                      colors: colors,
+                      width: cardWidth,
+                    ),
+                    _buildMetricCard(
+                      title: 'Calificación',
+                      value: promedio > 0 ? promedio.toStringAsFixed(1) : '—',
+                      icon: Icons.star_rounded,
+                      accentColor: colors.warning,
+                      colors: colors,
+                      width: cardWidth,
+                    ),
+                    _buildMetricCard(
+                      title: 'Reseñas',
+                      value: totalResenias.toString(),
+                      icon: Icons.rate_review_outlined,
+                      accentColor: colors.primary,
+                      colors: colors,
+                      width: cardWidth,
+                      onTap: () => context.push('/mechanic_reviews'),
+                    ),
+                  ],
+                );
+              },
+            );
           },
         );
       },
@@ -411,7 +473,11 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                 color: accentColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(icon, color: accentColor, size: Responsive.iconSize(context, 32)),
+              child: Icon(
+                icon,
+                color: accentColor,
+                size: Responsive.iconSize(context, 32),
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -439,7 +505,11 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                     Text(
                       subtitle,
                       style: GoogleFonts.inter(
-                        color: subtitle.startsWith('+') ? colors.success : (subtitle.startsWith('-') ? colors.error : colors.textSecondary),
+                        color: subtitle.startsWith('+')
+                            ? colors.success
+                            : (subtitle.startsWith('-')
+                                  ? colors.error
+                                  : colors.textSecondary),
                         fontSize: Responsive.fontSize(context, 12),
                         fontWeight: FontWeight.w500,
                       ),
@@ -454,7 +524,11 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
     );
   }
 
-  Widget _buildIncomeChartSection(AppColors colors, bool isMobile, String tallerId) {
+  Widget _buildIncomeChartSection(
+    AppColors colors,
+    bool isMobile,
+    String tallerId,
+  ) {
     return AppCard(
       padding: EdgeInsets.all(Responsive.padding(context, 24)),
       margin: EdgeInsets.zero,
@@ -490,7 +564,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
 
                 final docs = snapshot.data!.docs;
                 final now = DateTime.now();
-                
+
                 // Generar últimos 6 meses
                 final Map<String, double> ingresosPorMes = {};
                 for (int i = 5; i >= 0; i--) {
@@ -505,7 +579,11 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                     final fecha = (data['fecha'] as Timestamp).toDate();
                     final key = '${fecha.year}-${fecha.month}';
                     if (ingresosPorMes.containsKey(key)) {
-                      final double costo = data['costo'] != null ? (data['costo'] is int ? (data['costo'] as int).toDouble() : data['costo'] as double) : 0.0;
+                      final double costo = data['costo'] != null
+                          ? (data['costo'] is int
+                                ? (data['costo'] as int).toDouble()
+                                : data['costo'] as double)
+                          : 0.0;
                       ingresosPorMes[key] = (ingresosPorMes[key] ?? 0) + costo;
                     }
                   }
@@ -513,7 +591,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
 
                 final values = ingresosPorMes.values.toList();
                 final keys = ingresosPorMes.keys.toList();
-                
+
                 double maxY = 100;
                 for (var v in values) {
                   if (v > maxY) maxY = v;
@@ -538,8 +616,12 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                     ),
                     titlesData: FlTitlesData(
                       show: true,
-                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
                       bottomTitles: AxisTitles(
                         sideTitles: SideTitles(
                           showTitles: true,
@@ -550,10 +632,29 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                             if (idx >= 0 && idx < keys.length) {
                               final parts = keys[idx].split('-');
                               final m = int.parse(parts[1]);
-                              const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                              const meses = [
+                                'Ene',
+                                'Feb',
+                                'Mar',
+                                'Abr',
+                                'May',
+                                'Jun',
+                                'Jul',
+                                'Ago',
+                                'Sep',
+                                'Oct',
+                                'Nov',
+                                'Dic',
+                              ];
                               return Padding(
                                 padding: const EdgeInsets.only(top: 8.0),
-                                child: Text(meses[m - 1], style: TextStyle(color: colors.textSecondary, fontSize: 12)),
+                                child: Text(
+                                  meses[m - 1],
+                                  style: TextStyle(
+                                    color: colors.textSecondary,
+                                    fontSize: 12,
+                                  ),
+                                ),
                               );
                             }
                             return const Text('');
@@ -567,7 +668,13 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                           reservedSize: 42,
                           getTitlesWidget: (value, meta) {
                             if (value == maxY) return const SizedBox.shrink();
-                            return Text('\$${value.toInt()}', style: TextStyle(color: colors.textSecondary, fontSize: 10));
+                            return Text(
+                              '\$${value.toInt()}',
+                              style: TextStyle(
+                                color: colors.textSecondary,
+                                fontSize: 10,
+                              ),
+                            );
                           },
                         ),
                       ),
@@ -649,12 +756,18 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
               }
 
               final records = snapshot.data!.docs
-                  .map((d) => ServiceRecordModel.fromMap(
-                      d.data() as Map<String, dynamic>, d.id))
+                  .map(
+                    (d) => ServiceRecordModel.fromMap(
+                      d.data() as Map<String, dynamic>,
+                      d.id,
+                    ),
+                  )
                   .toList();
 
               return Column(
-                children: records.map((r) => _buildServiceTile(r, colors)).toList(),
+                children: records
+                    .map((r) => _buildServiceTile(r, colors))
+                    .toList(),
               );
             },
           ),
@@ -680,7 +793,11 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
               color: colors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(Icons.build_circle, color: colors.primary, size: Responsive.iconSize(context, 24)),
+            child: Icon(
+              Icons.build_circle,
+              color: colors.primary,
+              size: Responsive.iconSize(context, 24),
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(

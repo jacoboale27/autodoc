@@ -17,34 +17,41 @@ class ReviewService {
     return snapshot.docs.isNotEmpty;
   }
 
-  Future<ReviewModel?> getUserReviewForTaller(String userId, String tallerId) async {
+  Future<ReviewModel?> getUserReviewForTaller(
+    String userId,
+    String tallerId,
+  ) async {
     final snapshot = await _resenias
         .where('id_usuario', isEqualTo: userId)
         .where('id_taller', isEqualTo: tallerId)
         .limit(1)
         .get();
     if (snapshot.docs.isEmpty) return null;
-    return ReviewModel.fromMap(snapshot.docs.first.data(), snapshot.docs.first.id);
+    return ReviewModel.fromMap(
+      snapshot.docs.first.data(),
+      snapshot.docs.first.id,
+    );
   }
 
   Future<List<ReviewModel>> getReviewsForTaller(String tallerId) async {
-    final snapshot =
-        await _resenias.where('id_taller', isEqualTo: tallerId).get();
+    final snapshot = await _resenias
+        .where('id_taller', isEqualTo: tallerId)
+        .get();
     return snapshot.docs
         .map((doc) => ReviewModel.fromMap(doc.data(), doc.id))
         .toList();
   }
 
   Stream<List<ReviewModel>> watchReviewsForTaller(String tallerId) {
-    return _resenias.where('id_taller', isEqualTo: tallerId).snapshots().map(
-      (snapshot) {
-        final list = snapshot.docs
-            .map((doc) => ReviewModel.fromMap(doc.data(), doc.id))
-            .toList();
-        list.sort((a, b) => b.fechaResenia.compareTo(a.fechaResenia));
-        return list;
-      },
-    );
+    return _resenias.where('id_taller', isEqualTo: tallerId).snapshots().map((
+      snapshot,
+    ) {
+      final list = snapshot.docs
+          .map((doc) => ReviewModel.fromMap(doc.data(), doc.id))
+          .toList();
+      list.sort((a, b) => b.fechaResenia.compareTo(a.fechaResenia));
+      return list;
+    });
   }
 
   Future<void> submitReview({
@@ -69,7 +76,9 @@ class ReviewService {
       idUsuario: userId,
       idTaller: tallerId,
       estrellas: estrellas,
-      comentario: comentario?.trim().isEmpty == true ? null : comentario?.trim(),
+      comentario: comentario?.trim().isEmpty == true
+          ? null
+          : comentario?.trim(),
       fechaResenia: DateTime.now(),
     );
 
@@ -93,10 +102,12 @@ class ReviewService {
     }
 
     final docRef = _resenias.doc(reviewId);
-    
+
     await docRef.update({
       'estrellas': estrellas,
-      'comentario': comentario?.trim().isEmpty == true ? null : comentario?.trim(),
+      'comentario': comentario?.trim().isEmpty == true
+          ? null
+          : comentario?.trim(),
       'fecha_resenia': FieldValue.serverTimestamp(),
     });
 
@@ -105,9 +116,7 @@ class ReviewService {
 
   Future<void> reportReview(String reviewId) async {
     final docRef = _resenias.doc(reviewId);
-    await docRef.update({
-      'is_reported': true,
-    });
+    await docRef.update({'is_reported': true});
   }
 
   Future<void> recalculateTallerRating(String tallerId) async {
@@ -117,9 +126,12 @@ class ReviewService {
         ? 0.0
         : reviews.map((r) => r.estrellas).reduce((a, b) => a + b) / total;
 
-    await _firestore.collection(FirestoreCollections.talleres).doc(tallerId).update({
-      'calificacion_promedio': double.parse(promedio.toStringAsFixed(1)),
-      'total_resenias': total,
-    });
+    await _firestore
+        .collection(FirestoreCollections.talleres)
+        .doc(tallerId)
+        .update({
+          'calificacion_promedio': double.parse(promedio.toStringAsFixed(1)),
+          'total_resenias': total,
+        });
   }
 }

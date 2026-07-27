@@ -30,7 +30,6 @@ import 'package:autodoc/core/services/notification_service.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
 import 'package:autodoc/core/providers/notification_center_provider.dart';
-import 'package:autodoc/core/providers/user_session_provider.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -68,11 +67,15 @@ void main() async {
   // 0. Cargar variables de entorno
   try {
     await dotenv.load(fileName: ".env");
-    debugPrint("=== [AutoDoc Init] Variables de entorno cargadas con éxito ===");
+    debugPrint(
+      "=== [AutoDoc Init] Variables de entorno cargadas con éxito ===",
+    );
   } catch (e) {
-    debugPrint("=== [AutoDoc Init] Advertencia: No se pudo cargar .env: $e ===");
+    debugPrint(
+      "=== [AutoDoc Init] Advertencia: No se pudo cargar .env: $e ===",
+    );
   }
-  
+
   // 1. Inicializar Firebase
   try {
     debugPrint("=== [AutoDoc Init] Inicializando Firebase ===");
@@ -89,7 +92,8 @@ void main() async {
   try {
     if (!kIsWeb) {
       // Pass all uncaught Flutter framework errors to Crashlytics
-      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+      FlutterError.onError =
+          FirebaseCrashlytics.instance.recordFlutterFatalError;
       // Pass all uncaught asynchronous errors to Crashlytics
       PlatformDispatcher.instance.onError = (error, stack) {
         FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
@@ -107,24 +111,24 @@ void main() async {
       persistenceEnabled: true,
       cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
     );
-    debugPrint("=== [AutoDoc Init] Firestore offline persistence habilitado ===");
+    debugPrint(
+      "=== [AutoDoc Init] Firestore offline persistence habilitado ===",
+    );
   } catch (e) {
-    debugPrint("=== [AutoDoc Init] ERROR al habilitar Firestore persistence: $e ===");
+    debugPrint(
+      "=== [AutoDoc Init] ERROR al habilitar Firestore persistence: $e ===",
+    );
   }
 
   // 4. Configurar Firebase Messaging y permisos de notificaciones
   try {
     debugPrint("=== [AutoDoc Init] Configurando Firebase Messaging ===");
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-    
+
     final messaging = FirebaseMessaging.instance;
-    await messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    ).timeout(
-      const Duration(seconds: 5),
-    );
+    await messaging
+        .requestPermission(alert: true, badge: true, sound: true)
+        .timeout(const Duration(seconds: 5));
     debugPrint("=== [AutoDoc Init] Permisos de notificación configurados ===");
   } catch (e, stack) {
     debugPrint("=== [AutoDoc Init] ERROR en Firebase Messaging: $e ===");
@@ -137,32 +141,44 @@ void main() async {
     await NotificationService().initialize().timeout(
       const Duration(seconds: 5),
       onTimeout: () {
-        debugPrint("=== [AutoDoc Init] TIMEOUT en NotificationService.initialize(). Continuando... ===");
+        debugPrint(
+          "=== [AutoDoc Init] TIMEOUT en NotificationService.initialize(). Continuando... ===",
+        );
       },
     );
     debugPrint("=== [AutoDoc Init] NotificationService inicializado ===");
   } catch (e, stack) {
-    debugPrint("=== [AutoDoc Init] ERROR al inicializar NotificationService: $e ===");
+    debugPrint(
+      "=== [AutoDoc Init] ERROR al inicializar NotificationService: $e ===",
+    );
     debugPrint(stack.toString());
   }
 
   // 6. Inicializar Hive y cache de traducción
   try {
-    debugPrint("=== [AutoDoc Init] Inicializando Hive, offline_cache y TranslationService ===");
+    debugPrint(
+      "=== [AutoDoc Init] Inicializando Hive, offline_cache y TranslationService ===",
+    );
     await Hive.initFlutter();
     await Hive.openBox('offline_cache');
     await TranslationService().initialize().timeout(
       const Duration(seconds: 5),
       onTimeout: () {
-        debugPrint("=== [AutoDoc Init] TIMEOUT al inicializar TranslationService. Continuando... ===");
+        debugPrint(
+          "=== [AutoDoc Init] TIMEOUT al inicializar TranslationService. Continuando... ===",
+        );
       },
     );
-    debugPrint("=== [AutoDoc Init] Hive, offline_cache y TranslationService inicializados con éxito ===");
+    debugPrint(
+      "=== [AutoDoc Init] Hive, offline_cache y TranslationService inicializados con éxito ===",
+    );
   } catch (e, stack) {
-    debugPrint("=== [AutoDoc Init] ERROR al inicializar Hive/TranslationService: $e ===");
+    debugPrint(
+      "=== [AutoDoc Init] ERROR al inicializar Hive/TranslationService: $e ===",
+    );
     debugPrint(stack.toString());
   }
-  
+
   debugPrint("=== [AutoDoc Init] Inicialización completa. Lanzando runApp ===");
 
   // Crear providers base
@@ -172,8 +188,11 @@ void main() async {
 
   void checkAndFetchProfile() {
     if (authSessionProvider.isLoggedIn) {
-      if (userProfileProvider.userData?.idUsuario != authSessionProvider.currentUid) {
-        userProfileProvider.fetchUserData(authSessionProvider.currentUid);
+      if (userProfileProvider.userData?.idUsuario !=
+          (userProfileProvider.userData?.idUsuario ?? "")) {
+        userProfileProvider.fetchUserData(
+          (userProfileProvider.userData?.idUsuario ?? ""),
+        );
       }
     } else {
       userProfileProvider.clearUserData();
@@ -201,7 +220,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => ReservaProvider()),
         ChangeNotifierProvider(create: (_) => NotificationCenterProvider()),
-        ChangeNotifierProvider(create: (_) => UserSessionProvider()),
+        ChangeNotifierProvider(create: (_) => UserProfileProvider()),
       ],
       child: MyApp(
         authProvider: authSessionProvider,
@@ -215,7 +234,11 @@ class MyApp extends StatefulWidget {
   final AuthSessionProvider authProvider;
   final UserProfileProvider profileProvider;
 
-  const MyApp({super.key, required this.authProvider, required this.profileProvider});
+  const MyApp({
+    super.key,
+    required this.authProvider,
+    required this.profileProvider,
+  });
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -270,7 +293,7 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
     final languageProvider = context.watch<LanguageProvider>();
-    
+
     return MaterialApp.router(
       title: 'AutoDoc',
       debugShowCheckedModeBanner: false,

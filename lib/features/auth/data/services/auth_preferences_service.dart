@@ -45,4 +45,3 @@ class AuthPreferencesService {
     await prefs.setBool(_keyRememberMe, false);
   }
 }
-

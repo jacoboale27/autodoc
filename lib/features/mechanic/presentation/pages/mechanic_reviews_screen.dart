@@ -7,7 +7,7 @@ import '../../../../core/constants/firestore_collections.dart';
 import 'package:autodoc/core/models/review_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
-import 'package:autodoc/core/providers/user_session_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
 import 'package:autodoc/features/reviews/data/services/review_service.dart';
 import 'package:autodoc/core/utils/responsive.dart';
@@ -21,13 +21,11 @@ class MechanicReviewsScreen extends StatelessWidget {
     final isMobile = MediaQuery.of(context).size.width < 700;
     final colors = context.appColors;
     final theme = Theme.of(context);
-    final userSession = context.watch<UserSessionProvider>();
+    final userSession = context.watch<UserProfileProvider>();
     final userData = userSession.userData;
 
     if (userData == null || userData.idUsuario.isEmpty) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final tallerId = userData.idUsuario;
@@ -57,7 +55,9 @@ class MechanicReviewsScreen extends StatelessWidget {
                 if (!isMobile)
                   Container(
                     height: 64,
-                    padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 32)),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: Responsive.padding(context, 32),
+                    ),
                     alignment: Alignment.centerLeft,
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surface,
@@ -92,16 +92,24 @@ class MechanicReviewsScreen extends StatelessWidget {
                       return Column(
                         children: [
                           Padding(
-                            padding: EdgeInsets.all(Responsive.padding(context, 24)),
+                            padding: EdgeInsets.all(
+                              Responsive.padding(context, 24),
+                            ),
                             child: AppCard(
                               margin: EdgeInsets.zero,
-                              padding: EdgeInsets.all(Responsive.padding(context, 24)),
+                              padding: EdgeInsets.all(
+                                Responsive.padding(context, 24),
+                              ),
                               child: Row(
                                 children: [
                                   Container(
-                                    padding: EdgeInsets.all(Responsive.padding(context, 16)),
+                                    padding: EdgeInsets.all(
+                                      Responsive.padding(context, 16),
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: colors.warning.withValues(alpha: 0.15),
+                                      color: colors.warning.withValues(
+                                        alpha: 0.15,
+                                      ),
                                       borderRadius: BorderRadius.circular(16),
                                     ),
                                     child: Icon(
@@ -113,14 +121,18 @@ class MechanicReviewsScreen extends StatelessWidget {
                                   const SizedBox(width: 20),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           promedio > 0
                                               ? promedio.toStringAsFixed(1)
                                               : '—',
                                           style: GoogleFonts.inter(
-                                            fontSize: Responsive.fontSize(context, 32),
+                                            fontSize: Responsive.fontSize(
+                                              context,
+                                              32,
+                                            ),
                                             fontWeight: FontWeight.bold,
                                             color: colors.primary,
                                           ),
@@ -140,7 +152,9 @@ class MechanicReviewsScreen extends StatelessWidget {
                           ),
                           Expanded(
                             child: StreamBuilder<List<ReviewModel>>(
-                              stream: reviewService.watchReviewsForTaller(tallerId),
+                              stream: reviewService.watchReviewsForTaller(
+                                tallerId,
+                              ),
                               builder: (context, snapshot) {
                                 if (snapshot.connectionState ==
                                     ConnectionState.waiting) {
@@ -155,13 +169,18 @@ class MechanicReviewsScreen extends StatelessWidget {
                                 if (reviews.isEmpty) {
                                   return Center(
                                     child: Padding(
-                                      padding: EdgeInsets.all(Responsive.padding(context, 32)),
+                                      padding: EdgeInsets.all(
+                                        Responsive.padding(context, 32),
+                                      ),
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Icon(
                                             Icons.rate_review_outlined,
-                                            size: Responsive.iconSize(context, 56),
+                                            size: Responsive.iconSize(
+                                              context,
+                                              56,
+                                            ),
                                             color: colors.textSecondary
                                                 .withValues(alpha: 0.4),
                                           ),
@@ -189,11 +208,20 @@ class MechanicReviewsScreen extends StatelessWidget {
 
                                 return Column(
                                   children: [
-                                    _buildDistribution(reviews, colors, context),
+                                    _buildDistribution(
+                                      reviews,
+                                      colors,
+                                      context,
+                                    ),
                                     const SizedBox(height: 16),
                                     Expanded(
                                       child: ListView.separated(
-                                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                                        padding: const EdgeInsets.fromLTRB(
+                                          24,
+                                          0,
+                                          24,
+                                          24,
+                                        ),
                                         itemCount: reviews.length,
                                         separatorBuilder: (context, index) =>
                                             const SizedBox(height: 12),
@@ -201,72 +229,154 @@ class MechanicReviewsScreen extends StatelessWidget {
                                           final r = reviews[index];
                                           return AppCard(
                                             margin: EdgeInsets.zero,
-                                            padding: EdgeInsets.all(Responsive.padding(context, 16)),
+                                            padding: EdgeInsets.all(
+                                              Responsive.padding(context, 16),
+                                            ),
                                             child: Column(
                                               crossAxisAlignment:
                                                   CrossAxisAlignment.start,
                                               children: [
                                                 Row(
                                                   mainAxisAlignment:
-                                                      MainAxisAlignment.spaceBetween,
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
                                                   children: [
                                                     Row(
-                                                      children: List.generate(5, (i) {
+                                                      children: List.generate(5, (
+                                                        i,
+                                                      ) {
                                                         return Icon(
                                                           Icons.star,
-                                                          size: Responsive.iconSize(context, 16),
+                                                          size:
+                                                              Responsive.iconSize(
+                                                                context,
+                                                                16,
+                                                              ),
                                                           color: i < r.estrellas
                                                               ? colors.warning
-                                                              : colors.textSecondary
-                                                                  .withValues(
-                                                                      alpha: 0.2),
+                                                              : colors
+                                                                    .textSecondary
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.2,
+                                                                    ),
                                                         );
                                                       }),
                                                     ),
-                                                      Row(
-                                                        children: [
-                                                          Text(
-                                                            DateFormat('dd MMM yyyy')
-                                                                .format(r.fechaResenia),
-                                                            style: TextStyle(
-                                                              fontSize: Responsive.fontSize(context, 12),
-                                                              color: colors.textSecondary,
+                                                    Row(
+                                                      children: [
+                                                        Text(
+                                                          DateFormat(
+                                                            'dd MMM yyyy',
+                                                          ).format(
+                                                            r.fechaResenia,
+                                                          ),
+                                                          style: TextStyle(
+                                                            fontSize:
+                                                                Responsive.fontSize(
+                                                                  context,
+                                                                  12,
+                                                                ),
+                                                            color: colors
+                                                                .textSecondary,
+                                                          ),
+                                                        ),
+                                                        if (r.comentario !=
+                                                                null &&
+                                                            r
+                                                                .comentario!
+                                                                .isNotEmpty &&
+                                                            !r.isReported)
+                                                          IconButton(
+                                                            icon: Icon(
+                                                              Icons
+                                                                  .flag_outlined,
+                                                              size: 16,
+                                                              color: colors
+                                                                  .textSecondary,
+                                                            ),
+                                                            onPressed: () async {
+                                                              final confirm = await showDialog<bool>(
+                                                                context:
+                                                                    context,
+                                                                builder: (ctx) => AlertDialog(
+                                                                  title: const Text(
+                                                                    'Reportar Reseña',
+                                                                  ),
+                                                                  content:
+                                                                      const Text(
+                                                                        '¿Estás seguro de que deseas reportar esta reseña por lenguaje inapropiado o falso? Será revisada por el equipo de moderación.',
+                                                                      ),
+                                                                  actions: [
+                                                                    TextButton(
+                                                                      onPressed: () =>
+                                                                          Navigator.pop(
+                                                                            ctx,
+                                                                            false,
+                                                                          ),
+                                                                      child: const Text(
+                                                                        'Cancelar',
+                                                                      ),
+                                                                    ),
+                                                                    TextButton(
+                                                                      onPressed: () =>
+                                                                          Navigator.pop(
+                                                                            ctx,
+                                                                            true,
+                                                                          ),
+                                                                      child: const Text(
+                                                                        'Reportar',
+                                                                        style: TextStyle(
+                                                                          color:
+                                                                              Colors.red,
+                                                                        ),
+                                                                      ),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              );
+                                                              if (confirm ==
+                                                                  true) {
+                                                                await reviewService
+                                                                    .reportReview(
+                                                                      r.idResenia,
+                                                                    );
+                                                                if (context
+                                                                    .mounted) {
+                                                                  ScaffoldMessenger.of(
+                                                                    context,
+                                                                  ).showSnackBar(
+                                                                    const SnackBar(
+                                                                      content: Text(
+                                                                        'Reseña reportada para moderación.',
+                                                                      ),
+                                                                    ),
+                                                                  );
+                                                                }
+                                                              }
+                                                            },
+                                                          ),
+                                                        if (r.isReported)
+                                                          Padding(
+                                                            padding:
+                                                                const EdgeInsets.only(
+                                                                  left: 8.0,
+                                                                ),
+                                                            child: Icon(
+                                                              Icons.flag,
+                                                              size: 16,
+                                                              color:
+                                                                  colors.error,
                                                             ),
                                                           ),
-                                                          if (r.comentario != null && r.comentario!.isNotEmpty && !r.isReported)
-                                                            IconButton(
-                                                              icon: Icon(Icons.flag_outlined, size: 16, color: colors.textSecondary),
-                                                              onPressed: () async {
-                                                                final confirm = await showDialog<bool>(
-                                                                  context: context,
-                                                                  builder: (ctx) => AlertDialog(
-                                                                    title: const Text('Reportar Reseña'),
-                                                                    content: const Text('¿Estás seguro de que deseas reportar esta reseña por lenguaje inapropiado o falso? Será revisada por el equipo de moderación.'),
-                                                                    actions: [
-                                                                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-                                                                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Reportar', style: TextStyle(color: Colors.red))),
-                                                                    ],
-                                                                  ),
-                                                                );
-                                                                if (confirm == true) {
-                                                                  await reviewService.reportReview(r.idResenia);
-                                                                  if (context.mounted) {
-                                                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reseña reportada para moderación.')));
-                                                                  }
-                                                                }
-                                                              },
-                                                            ),
-                                                          if (r.isReported)
-                                                            Padding(
-                                                              padding: const EdgeInsets.only(left: 8.0),
-                                                              child: Icon(Icons.flag, size: 16, color: colors.error),
-                                                            ),
-                                                        ],
-                                                      ),
-                                                    ],
-                                                  ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
                                                 if (r.comentario != null &&
-                                                    r.comentario!.isNotEmpty) ...[
+                                                    r
+                                                        .comentario!
+                                                        .isNotEmpty) ...[
                                                   const SizedBox(height: 12),
                                                   TranslatedText(
                                                     r.comentario!,
@@ -299,7 +409,11 @@ class MechanicReviewsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDistribution(List<ReviewModel> reviews, AppColors colors, BuildContext context) {
+  Widget _buildDistribution(
+    List<ReviewModel> reviews,
+    AppColors colors,
+    BuildContext context,
+  ) {
     if (reviews.isEmpty) return const SizedBox.shrink();
 
     final counts = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
@@ -322,7 +436,10 @@ class MechanicReviewsScreen extends StatelessWidget {
                   children: [
                     Text(
                       '$i',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: colors.textPrimary),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: colors.textPrimary,
+                      ),
                     ),
                     Icon(Icons.star, size: 16, color: colors.warning),
                     const SizedBox(width: 8),
@@ -331,8 +448,12 @@ class MechanicReviewsScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
                           value: total > 0 ? (counts[i]! / total) : 0,
-                          backgroundColor: colors.textSecondary.withValues(alpha: 0.1),
-                          valueColor: AlwaysStoppedAnimation<Color>(colors.warning),
+                          backgroundColor: colors.textSecondary.withValues(
+                            alpha: 0.1,
+                          ),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            colors.warning,
+                          ),
                           minHeight: 8,
                         ),
                       ),
@@ -343,7 +464,10 @@ class MechanicReviewsScreen extends StatelessWidget {
                       child: Text(
                         '${counts[i]}',
                         textAlign: TextAlign.right,
-                        style: TextStyle(color: colors.textSecondary, fontSize: 12),
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   ],

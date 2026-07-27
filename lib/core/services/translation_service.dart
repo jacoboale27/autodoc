@@ -11,7 +11,8 @@ class TranslationService {
 
   Box<String>? _translationBox;
   final String _apiKey = AppSecrets.googleMapsApiKey;
-  final String _baseUrl = 'https://translation.googleapis.com/language/translate/v2';
+  final String _baseUrl =
+      'https://translation.googleapis.com/language/translate/v2';
 
   bool get isInitialized => _translationBox != null;
 
@@ -28,7 +29,7 @@ class TranslationService {
   String? translateSync(String text, String targetLanguage) {
     final cleanText = text.trim();
     if (cleanText.isEmpty) return '';
-    
+
     final targetLang = targetLanguage.toLowerCase();
     if (targetLang == 'es') return text;
 
@@ -42,7 +43,7 @@ class TranslationService {
   Future<String> translate(String text, String targetLanguage) async {
     final cleanText = text.trim();
     if (cleanText.isEmpty) return '';
-    
+
     final targetLang = targetLanguage.toLowerCase();
     if (targetLang == 'es') return text; // Base language is Spanish
 
@@ -58,7 +59,7 @@ class TranslationService {
         Uri.parse('$_baseUrl?key=$_apiKey'),
         headers: {
           'Content-Type': 'application/json',
-          // Cabeceras de seguridad requeridas por Google Cloud para validar peticiones REST 
+          // Cabeceras de seguridad requeridas por Google Cloud para validar peticiones REST
           // que usan una API Key restringida para la app de Android.
           'X-Android-Package': 'com.example.autodoc',
           'X-Android-Cert': '9520B26195264F6D2DD7178EB2C9708A31B131A2',
@@ -72,17 +73,22 @@ class TranslationService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final translatedText = data['data']['translations'][0]['translatedText'] as String;
+        final translatedText =
+            data['data']['translations'][0]['translatedText'] as String;
 
         // Save to cache
         if (_translationBox != null) {
           await _translationBox!.put(cacheKey, translatedText);
         }
-        
-        debugPrint("Translation API Fetch [Google Cloud] successful for '$cleanText' -> '$translatedText'");
+
+        debugPrint(
+          "Translation API Fetch [Google Cloud] successful for '$cleanText' -> '$translatedText'",
+        );
         return translatedText;
       } else {
-        debugPrint("Translation API responded with error: ${response.statusCode} - ${response.body}");
+        debugPrint(
+          "Translation API responded with error: ${response.statusCode} - ${response.body}",
+        );
         return text;
       }
     } catch (e) {

@@ -34,7 +34,9 @@ class ImagenChatCard extends StatelessWidget {
               errorBuilder: (context, error, stackTrace) => Container(
                 height: 150,
                 color: Colors.grey.shade300,
-                child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+                child: const Center(
+                  child: Icon(Icons.broken_image, color: Colors.grey),
+                ),
               ),
               loadingBuilder: (context, child, loadingProgress) {
                 if (loadingProgress == null) return child;
@@ -44,7 +46,8 @@ class ImagenChatCard extends StatelessWidget {
                   child: Center(
                     child: CircularProgressIndicator(
                       value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                          ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
                           : null,
                     ),
                   ),

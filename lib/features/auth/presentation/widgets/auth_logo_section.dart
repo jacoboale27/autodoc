@@ -20,7 +20,11 @@ class AuthLogoSection extends StatelessWidget {
             color: colors.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(20),
           ),
-          child: Icon(Icons.directions_car, color: colors.primary, size: Responsive.iconSize(context, 48)),
+          child: Icon(
+            Icons.directions_car,
+            color: colors.primary,
+            size: Responsive.iconSize(context, 48),
+          ),
         ),
         const SizedBox(height: 16),
         Text(

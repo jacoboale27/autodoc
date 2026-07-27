@@ -52,7 +52,9 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
   }
 
   Color _colorForAction(String accion) {
-    if (accion.contains('SUSPENDER') || accion.contains('RECHAZAR') || accion.contains('ELIMINAR')) {
+    if (accion.contains('SUSPENDER') ||
+        accion.contains('RECHAZAR') ||
+        accion.contains('ELIMINAR')) {
       return Colors.red;
     }
     if (accion.contains('REACTIVAR') || accion.contains('APROBAR')) {
@@ -76,7 +78,8 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
       if (_filterDateFrom != null && log.fecha.isBefore(_filterDateFrom!)) {
         return false;
       }
-      if (_filterDateTo != null && log.fecha.isAfter(_filterDateTo!.add(const Duration(days: 1)))) {
+      if (_filterDateTo != null &&
+          log.fecha.isAfter(_filterDateTo!.add(const Duration(days: 1)))) {
         return false;
       }
       return true;
@@ -113,7 +116,9 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('✅ ${filtered.length} registros copiados como CSV al portapapeles.'),
+          content: Text(
+            '✅ ${filtered.length} registros copiados como CSV al portapapeles.',
+          ),
           action: SnackBarAction(label: 'OK', onPressed: () {}),
         ),
       );
@@ -123,7 +128,8 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
   Future<void> _pickDateFrom() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _filterDateFrom ?? DateTime.now().subtract(const Duration(days: 30)),
+      initialDate:
+          _filterDateFrom ?? DateTime.now().subtract(const Duration(days: 30)),
       firstDate: DateTime(2024),
       lastDate: DateTime.now(),
     );
@@ -167,7 +173,9 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
       body: Column(
         children: [
           // Active filters chip row
-          if (_filterType != 'Todos' || _filterDateFrom != null || _filterDateTo != null)
+          if (_filterType != 'Todos' ||
+              _filterDateFrom != null ||
+              _filterDateTo != null)
             Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: Responsive.padding(context, 12),
@@ -193,7 +201,9 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
                     ),
                   Chip(
                     label: Text('${filtered.length} registros'),
-                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer,
                   ),
                 ],
               ),
@@ -210,19 +220,29 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.history, size: Responsive.iconSize(context, 64), color: Colors.grey[300]),
+                                Icon(
+                                  Icons.history,
+                                  size: Responsive.iconSize(context, 64),
+                                  color: Colors.grey[300],
+                                ),
                                 const SizedBox(height: 16),
                                 Text(
                                   context.l10n.adminNoRecentActivity,
-                                  style: TextStyle(color: Colors.grey[500], fontSize: Responsive.fontSize(context, 16)),
+                                  style: TextStyle(
+                                    color: Colors.grey[500],
+                                    fontSize: Responsive.fontSize(context, 16),
+                                  ),
                                 ),
                               ],
                             ),
                           )
                         : ListView.separated(
-                            padding: EdgeInsets.all(Responsive.padding(context, 16)),
+                            padding: EdgeInsets.all(
+                              Responsive.padding(context, 16),
+                            ),
                             itemCount: filtered.length,
-                            separatorBuilder: (context, i) => const SizedBox(height: 8),
+                            separatorBuilder: (context, i) =>
+                                const SizedBox(height: 8),
                             itemBuilder: (context, index) {
                               final log = filtered[index];
                               final actionColor = _colorForAction(log.accion);
@@ -231,18 +251,31 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  side: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)),
+                                  side: BorderSide(
+                                    color: Theme.of(
+                                      context,
+                                    ).dividerColor.withValues(alpha: 0.1),
+                                  ),
                                 ),
                                 child: Padding(
-                                  padding: EdgeInsets.all(Responsive.padding(context, 16)),
+                                  padding: EdgeInsets.all(
+                                    Responsive.padding(context, 16),
+                                  ),
                                   child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Container(
-                                        padding: EdgeInsets.all(Responsive.padding(context, 10)),
+                                        padding: EdgeInsets.all(
+                                          Responsive.padding(context, 10),
+                                        ),
                                         decoration: BoxDecoration(
-                                          color: actionColor.withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(12),
+                                          color: actionColor.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                         ),
                                         child: Icon(
                                           _iconForAction(log.accion),
@@ -253,40 +286,72 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
                                       const SizedBox(width: 14),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Row(
-                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
                                               children: [
                                                 Expanded(
                                                   child: Text(
-                                                    log.accion.replaceAll('_', ' '),
+                                                    log.accion.replaceAll(
+                                                      '_',
+                                                      ' ',
+                                                    ),
                                                     style: TextStyle(
-                                                      fontWeight: FontWeight.bold,
-                                                      fontSize: Responsive.fontSize(context, 14),
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize:
+                                                          Responsive.fontSize(
+                                                            context,
+                                                            14,
+                                                          ),
                                                       color: actionColor,
                                                     ),
                                                   ),
                                                 ),
                                                 Text(
-                                                  DateFormat('dd/MM/yy HH:mm').format(log.fecha),
-                                                  style: TextStyle(fontSize: Responsive.fontSize(context, 11), color: Colors.grey[500]),
+                                                  DateFormat(
+                                                    'dd/MM/yy HH:mm',
+                                                  ).format(log.fecha),
+                                                  style: TextStyle(
+                                                    fontSize:
+                                                        Responsive.fontSize(
+                                                          context,
+                                                          11,
+                                                        ),
+                                                    color: Colors.grey[500],
+                                                  ),
                                                 ),
                                               ],
                                             ),
                                             const SizedBox(height: 4),
                                             Text(
                                               log.detalle,
-                                              style: TextStyle(fontSize: Responsive.fontSize(context, 13), color: Colors.grey[700]),
+                                              style: TextStyle(
+                                                fontSize: Responsive.fontSize(
+                                                  context,
+                                                  13,
+                                                ),
+                                                color: Colors.grey[700],
+                                              ),
                                             ),
                                             const SizedBox(height: 6),
                                             Row(
                                               children: [
-                                                _buildTag(Icons.category, log.modulo),
+                                                _buildTag(
+                                                  Icons.category,
+                                                  log.modulo,
+                                                ),
                                                 const SizedBox(width: 8),
-                                                _buildTag(Icons.fingerprint, log.referenciaId.length > 12
-                                                    ? '${log.referenciaId.substring(0, 12)}...'
-                                                    : log.referenciaId),
+                                                _buildTag(
+                                                  Icons.fingerprint,
+                                                  log.referenciaId.length > 12
+                                                      ? '${log.referenciaId.substring(0, 12)}...'
+                                                      : log.referenciaId,
+                                                ),
                                               ],
                                             ),
                                           ],
@@ -312,96 +377,129 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
-        return StatefulBuilder(builder: (ctx, setSheetState) {
-          return Padding(
-            padding: EdgeInsets.all(Responsive.padding(context, 24)),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Filtros', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 20),
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.all(Responsive.padding(context, 24)),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Filtros',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
 
-                Text('Tipo de acción', style: Theme.of(context).textTheme.labelLarge),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: ['Todos', 'SUSPENDER', 'APROBAR', 'CAMBIAR', 'ELIMINAR'].map((type) {
-                    return ChoiceChip(
-                      label: Text(type),
-                      selected: _filterType == type,
-                      onSelected: (_) {
-                        setSheetState(() => _filterType = type);
-                        setState(() => _filterType = type);
-                      },
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 20),
+                  Text(
+                    'Tipo de acción',
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children:
+                        [
+                          'Todos',
+                          'SUSPENDER',
+                          'APROBAR',
+                          'CAMBIAR',
+                          'ELIMINAR',
+                        ].map((type) {
+                          return ChoiceChip(
+                            label: Text(type),
+                            selected: _filterType == type,
+                            onSelected: (_) {
+                              setSheetState(() => _filterType = type);
+                              setState(() => _filterType = type);
+                            },
+                          );
+                        }).toList(),
+                  ),
+                  const SizedBox(height: 20),
 
-                Text('Rango de fechas', style: Theme.of(context).textTheme.labelLarge),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.calendar_today, size: 16),
-                        label: Text(_filterDateFrom != null ? DateFormat('dd/MM/yy').format(_filterDateFrom!) : 'Desde'),
-                        onPressed: () async {
-                          await _pickDateFrom();
-                          setSheetState(() {});
-                        },
+                  Text(
+                    'Rango de fechas',
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.calendar_today, size: 16),
+                          label: Text(
+                            _filterDateFrom != null
+                                ? DateFormat(
+                                    'dd/MM/yy',
+                                  ).format(_filterDateFrom!)
+                                : 'Desde',
+                          ),
+                          onPressed: () async {
+                            await _pickDateFrom();
+                            setSheetState(() {});
+                          },
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.calendar_today, size: 16),
-                        label: Text(_filterDateTo != null ? DateFormat('dd/MM/yy').format(_filterDateTo!) : 'Hasta'),
-                        onPressed: () async {
-                          await _pickDateTo();
-                          setSheetState(() {});
-                        },
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.calendar_today, size: 16),
+                          label: Text(
+                            _filterDateTo != null
+                                ? DateFormat('dd/MM/yy').format(_filterDateTo!)
+                                : 'Hasta',
+                          ),
+                          onPressed: () async {
+                            await _pickDateTo();
+                            setSheetState(() {});
+                          },
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () {
-                          setState(() {
-                            _filterType = 'Todos';
-                            _filterDateFrom = null;
-                            _filterDateTo = null;
-                          });
-                          Navigator.pop(ctx);
-                        },
-                        child: const Text('Limpiar'),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            setState(() {
+                              _filterType = 'Todos';
+                              _filterDateFrom = null;
+                              _filterDateTo = null;
+                            });
+                            Navigator.pop(ctx);
+                          },
+                          child: const Text('Limpiar'),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Aplicar'),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Aplicar'),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        });
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
       },
     );
   }
 
   Widget _buildTag(IconData icon, String text) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 8), vertical: Responsive.padding(context, 3)),
+      padding: EdgeInsets.symmetric(
+        horizontal: Responsive.padding(context, 8),
+        vertical: Responsive.padding(context, 3),
+      ),
       decoration: BoxDecoration(
         color: Colors.grey.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6),
@@ -409,9 +507,19 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: Responsive.iconSize(context, 12), color: Colors.grey[600]),
+          Icon(
+            icon,
+            size: Responsive.iconSize(context, 12),
+            color: Colors.grey[600],
+          ),
           const SizedBox(width: 4),
-          Text(text, style: TextStyle(fontSize: Responsive.fontSize(context, 11), color: Colors.grey[700])),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: Responsive.fontSize(context, 11),
+              color: Colors.grey[700],
+            ),
+          ),
         ],
       ),
     );

@@ -16,11 +16,11 @@ void main() {
       if (textFields.evaluate().length >= 2) {
         final emailField = textFields.first;
         await tester.enterText(emailField, 'test@example.com');
-        
+
         final passwordField = textFields.last;
         await tester.enterText(passwordField, 'password123');
         await tester.pump();
-        
+
         // Tap login button - finding Elevated Button
         final loginButton = find.byType(ElevatedButton).first;
         if (loginButton.evaluate().isNotEmpty) {

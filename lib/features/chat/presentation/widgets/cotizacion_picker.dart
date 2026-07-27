@@ -59,7 +59,9 @@ class _CotizacionPickerState extends State<CotizacionPicker> {
               children: [
                 Text(
                   'Nueva Cotización',
-                  style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold),
+                  style: AppTextStyles.titleLarge.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
@@ -75,7 +77,8 @@ class _CotizacionPickerState extends State<CotizacionPicker> {
                 hintText: 'Ej. Cambio de Aceite + Filtros',
                 border: OutlineInputBorder(),
               ),
-              validator: (value) => value == null || value.trim().isEmpty ? 'Requerido' : null,
+              validator: (value) =>
+                  value == null || value.trim().isEmpty ? 'Requerido' : null,
               maxLines: 3,
             ),
             const SizedBox(height: 16),
@@ -87,10 +90,14 @@ class _CotizacionPickerState extends State<CotizacionPicker> {
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.attach_money),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) return 'Requerido';
-                if (double.tryParse(value.trim()) == null) return 'Valor inválido';
+                if (double.tryParse(value.trim()) == null) {
+                  return 'Valor inválido';
+                }
                 return null;
               },
             ),
@@ -104,7 +111,13 @@ class _CotizacionPickerState extends State<CotizacionPicker> {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: Text(context.l10n.chatGenerateAndSend, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                child: Text(
+                  context.l10n.chatGenerateAndSend,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
               ),
             ),
           ],

@@ -14,7 +14,9 @@ class AuthBottomNav extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 20),
       decoration: BoxDecoration(
         color: colors.surface,
-        border: Border(top: BorderSide(color: colors.outline.withValues(alpha: 0.2))),
+        border: Border(
+          top: BorderSide(color: colors.outline.withValues(alpha: 0.2)),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.02),
@@ -34,7 +36,12 @@ class AuthBottomNav extends StatelessWidget {
     );
   }
 
-  Widget _buildNavAction(BuildContext context, IconData icon, String label, AppColors colors) {
+  Widget _buildNavAction(
+    BuildContext context,
+    IconData icon,
+    String label,
+    AppColors colors,
+  ) {
     return GestureDetector(
       onTap: () {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -46,7 +53,12 @@ class AuthBottomNav extends StatelessWidget {
         children: [
           Icon(icon, size: 20, color: colors.textSecondary),
           const SizedBox(height: 4),
-          Text(label, style: AppTextStyles.labelSmall.copyWith(color: colors.textSecondary)),
+          Text(
+            label,
+            style: AppTextStyles.labelSmall.copyWith(
+              color: colors.textSecondary,
+            ),
+          ),
         ],
       ),
     );

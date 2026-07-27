@@ -8,7 +8,11 @@ class VehicleGalleryWidget extends StatelessWidget {
   final String vehicleId;
   final AppColors colors;
 
-  const VehicleGalleryWidget({super.key, required this.vehicleId, required this.colors});
+  const VehicleGalleryWidget({
+    super.key,
+    required this.vehicleId,
+    required this.colors,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -34,10 +38,15 @@ class VehicleGalleryWidget extends StatelessWidget {
                 icon: Icon(Icons.add_a_photo, color: colors.primary),
                 onPressed: () async {
                   final picker = ImagePicker();
-                  final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+                  final picked = await picker.pickImage(
+                    source: ImageSource.gallery,
+                    imageQuality: 70,
+                  );
                   if (picked != null) {
                     if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Subiendo foto...')));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Subiendo foto...')),
+                    );
                     await photoService.addPhoto(vehicleId, picked);
                   }
                 },
@@ -51,7 +60,10 @@ class VehicleGalleryWidget extends StatelessWidget {
                 return const Center(child: CircularProgressIndicator());
               }
               if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                return Text('No hay fotos en la galería.', style: TextStyle(color: colors.textSecondary));
+                return Text(
+                  'No hay fotos en la galería.',
+                  style: TextStyle(color: colors.textSecondary),
+                );
               }
 
               final fotos = snapshot.data!;
@@ -68,7 +80,15 @@ class VehicleGalleryWidget extends StatelessWidget {
                   final foto = fotos[index];
                   return GestureDetector(
                     onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => FullScreenImageViewer(foto: foto, vehicleId: vehicleId)));
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => FullScreenImageViewer(
+                            foto: foto,
+                            vehicleId: vehicleId,
+                          ),
+                        ),
+                      );
                     },
                     child: Hero(
                       tag: foto.id,
@@ -92,7 +112,11 @@ class FullScreenImageViewer extends StatelessWidget {
   final VehiclePhotoModel foto;
   final String vehicleId;
 
-  const FullScreenImageViewer({super.key, required this.foto, required this.vehicleId});
+  const FullScreenImageViewer({
+    super.key,
+    required this.foto,
+    required this.vehicleId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -112,8 +136,17 @@ class FullScreenImageViewer extends StatelessWidget {
                   title: const Text('Eliminar foto'),
                   content: const Text('¿Estás seguro de eliminar esta foto?'),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-                    TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Eliminar', style: TextStyle(color: Colors.red))),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Cancelar'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text(
+                        'Eliminar',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
                   ],
                 ),
               );
@@ -121,17 +154,18 @@ class FullScreenImageViewer extends StatelessWidget {
                 if (context.mounted) {
                   Navigator.pop(context); // close full screen
                 }
-                await VehiclePhotoService().deletePhoto(vehicleId, foto.id, foto.url);
+                await VehiclePhotoService().deletePhoto(
+                  vehicleId,
+                  foto.id,
+                  foto.url,
+                );
               }
             },
           ),
         ],
       ),
       body: Center(
-        child: Hero(
-          tag: foto.id,
-          child: Image.network(foto.url),
-        ),
+        child: Hero(tag: foto.id, child: Image.network(foto.url)),
       ),
     );
   }

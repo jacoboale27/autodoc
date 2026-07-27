@@ -3,10 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
-import 'package:autodoc/core/providers/user_session_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/reviews/data/services/review_service.dart';
 import 'package:autodoc/core/models/review_model.dart';
-import 'package:autodoc/core/providers/user_profile_provider.dart';
 
 /// Muestra un bottom sheet para calificar un taller/mecánico.
 Future<bool?> showReviewBottomSheet(
@@ -66,7 +65,10 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
       setState(() => _checking = false);
       return;
     }
-    final existing = await _reviewService.getUserReviewForTaller(userId, widget.tallerId);
+    final existing = await _reviewService.getUserReviewForTaller(
+      userId,
+      widget.tallerId,
+    );
     if (mounted) {
       setState(() {
         _existingReview = existing;
@@ -89,7 +91,7 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
   }
 
   Future<void> _submit() async {
-    final auth = context.read<UserSessionProvider>();
+    final auth = context.read<UserProfileProvider>();
     final userId = auth.userData?.idUsuario;
     if (userId == null) return;
 
@@ -111,7 +113,7 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
           idServicio: widget.idServicio,
         );
       }
-      
+
       if (mounted) {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -121,7 +123,9 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('StateError: ', ''))),
+          SnackBar(
+            content: Text(e.toString().replaceFirst('StateError: ', '')),
+          ),
         );
       }
     } finally {
@@ -162,10 +166,7 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
           const SizedBox(height: 4),
           Text(
             widget.tallerNombre,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: colors.textSecondary,
-            ),
+            style: GoogleFonts.inter(fontSize: 14, color: colors.textSecondary),
           ),
           const SizedBox(height: 24),
           if (_checking)
@@ -226,7 +227,11 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
             SizedBox(
               width: double.infinity,
               child: AppButton(
-                text: _isSubmitting ? 'Guardando...' : (_existingReview != null ? 'Actualizar reseña' : 'Publicar reseña'),
+                text: _isSubmitting
+                    ? 'Guardando...'
+                    : (_existingReview != null
+                          ? 'Actualizar reseña'
+                          : 'Publicar reseña'),
                 onPressed: (_isSubmitting || !_canEdit) ? null : _submit,
               ),
             ),

@@ -10,52 +10,86 @@ class AdminRepository {
 
   // Usuarios
   Future<List<UserModel>> getUsuarios() async {
-    final snapshot = await _firestore.collection(FirestoreCollections.usuarios).get();
-    return snapshot.docs.map((doc) => UserModel.fromMap(doc.data(), doc.id)).toList();
+    final snapshot = await _firestore
+        .collection(FirestoreCollections.usuarios)
+        .get();
+    return snapshot.docs
+        .map((doc) => UserModel.fromMap(doc.data(), doc.id))
+        .toList();
   }
 
   Future<void> updateUsuarioEstado(String uid, String nuevoEstado) async {
-    await _firestore.collection(FirestoreCollections.usuarios).doc(uid).update({'estado': nuevoEstado});
+    await _firestore.collection(FirestoreCollections.usuarios).doc(uid).update({
+      'estado': nuevoEstado,
+    });
   }
 
   Future<void> updateUsuarioRol(String uid, String nuevoRol) async {
-    await _firestore.collection(FirestoreCollections.usuarios).doc(uid).update({'rol': nuevoRol});
+    await _firestore.collection(FirestoreCollections.usuarios).doc(uid).update({
+      'rol': nuevoRol,
+    });
   }
 
   Future<void> deleteUsuario(String uid) async {
-    await _firestore.collection(FirestoreCollections.usuarios).doc(uid).delete();
+    await _firestore
+        .collection(FirestoreCollections.usuarios)
+        .doc(uid)
+        .delete();
   }
 
   // Talleres
   Future<List<WorkshopModel>> getTalleres() async {
-    final snapshot = await _firestore.collection(FirestoreCollections.talleres).get();
-    return snapshot.docs.map((doc) => WorkshopModel.fromMap(doc.data(), doc.id)).toList();
+    final snapshot = await _firestore
+        .collection(FirestoreCollections.talleres)
+        .get();
+    return snapshot.docs
+        .map((doc) => WorkshopModel.fromMap(doc.data(), doc.id))
+        .toList();
   }
 
   Future<void> updateTallerEstado(String idTaller, String nuevoEstado) async {
-    await _firestore.collection(FirestoreCollections.talleres).doc(idTaller).update({'estado': nuevoEstado});
+    await _firestore
+        .collection(FirestoreCollections.talleres)
+        .doc(idTaller)
+        .update({'estado': nuevoEstado});
   }
 
   Future<void> deleteTaller(String idTaller) async {
-    await _firestore.collection(FirestoreCollections.talleres).doc(idTaller).delete();
+    await _firestore
+        .collection(FirestoreCollections.talleres)
+        .doc(idTaller)
+        .delete();
   }
 
   // Reseñas
   Future<List<ReviewModel>> getResenias() async {
-    final snapshot = await _firestore.collection(FirestoreCollections.resenias).get();
-    return snapshot.docs.map((doc) => ReviewModel.fromMap(doc.data(), doc.id)).toList();
+    final snapshot = await _firestore
+        .collection(FirestoreCollections.resenias)
+        .get();
+    return snapshot.docs
+        .map((doc) => ReviewModel.fromMap(doc.data(), doc.id))
+        .toList();
   }
 
   Future<String?> deleteResenia(String idResenia) async {
-    final doc = await _firestore.collection(FirestoreCollections.resenias).doc(idResenia).get();
+    final doc = await _firestore
+        .collection(FirestoreCollections.resenias)
+        .doc(idResenia)
+        .get();
     final idTaller = doc.data()?['id_taller'] as String?;
-    await _firestore.collection(FirestoreCollections.resenias).doc(idResenia).delete();
+    await _firestore
+        .collection(FirestoreCollections.resenias)
+        .doc(idResenia)
+        .delete();
     return idTaller;
   }
 
   // Logs
   Future<void> registrarLog(AdminLogModel log) async {
-    await _firestore.collection(FirestoreCollections.adminLogs).doc(log.idLog).set(log.toMap());
+    await _firestore
+        .collection(FirestoreCollections.adminLogs)
+        .doc(log.idLog)
+        .set(log.toMap());
   }
 
   Future<List<AdminLogModel>> getLogs({int limit = 50}) async {
@@ -71,7 +105,10 @@ class AdminRepository {
 
   // Métricas (Dashboard)
   Future<int> countCollection(String collectionPath) async {
-    final aggregateQuery = await _firestore.collection(collectionPath).count().get();
+    final aggregateQuery = await _firestore
+        .collection(collectionPath)
+        .count()
+        .get();
     return aggregateQuery.count ?? 0;
   }
 }

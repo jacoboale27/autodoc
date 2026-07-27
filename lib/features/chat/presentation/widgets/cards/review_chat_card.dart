@@ -27,7 +27,8 @@ class ReviewChatCard extends StatelessWidget {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final String estado = metadata['estado'] ?? 'pendiente'; // pendiente, completada
+    final String estado =
+        metadata['estado'] ?? 'pendiente'; // pendiente, completada
 
     return Container(
       width: 280,
@@ -35,7 +36,11 @@ class ReviewChatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? colors.surfaceContainer : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isMe ? Colors.white30 : (isDark ? Colors.white12 : Colors.black12)),
+        border: Border.all(
+          color: isMe
+              ? Colors.white30
+              : (isDark ? Colors.white12 : Colors.black12),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,12 +48,20 @@ class ReviewChatCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: isMe ? Colors.black12 : (isDark ? Colors.black26 : Colors.grey.shade100),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              color: isMe
+                  ? Colors.black12
+                  : (isDark ? Colors.black26 : Colors.grey.shade100),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(12),
+              ),
             ),
             child: Row(
               children: [
-                Icon(Icons.star, size: 16, color: isMe ? Colors.white : colors.warning),
+                Icon(
+                  Icons.star,
+                  size: 16,
+                  color: isMe ? Colors.white : colors.warning,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'Servicio Finalizado',
@@ -87,7 +100,13 @@ class ReviewChatCard extends StatelessWidget {
                             if (!context.mounted) return;
                             final newMeta = Map<String, dynamic>.from(metadata);
                             newMeta['estado'] = 'completada';
-                            context.read<ChatProvider>().actualizarMetadatosMensaje(conversacionId, mensajeId, newMeta);
+                            context
+                                .read<ChatProvider>()
+                                .actualizarMetadatosMensaje(
+                                  conversacionId,
+                                  mensajeId,
+                                  newMeta,
+                                );
                           }
                         });
                       },
@@ -96,16 +115,29 @@ class ReviewChatCard extends StatelessWidget {
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                      child: Text(context.l10n.chatRateService, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      child: Text(
+                        context.l10n.chatRateService,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ] else if (estado == 'completada' && !isMe) ...[
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      const Icon(Icons.check_circle, color: Colors.green, size: 16),
+                      const Icon(
+                        Icons.check_circle,
+                        color: Colors.green,
+                        size: 16,
+                      ),
                       const SizedBox(width: 4),
-                      Text(context.l10n.chatReviewThanks, style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                      Text(
+                        context.l10n.chatReviewThanks,
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                 ],

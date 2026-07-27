@@ -18,7 +18,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
@@ -32,20 +33,28 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     // Navigate after checking auth state
     Future.delayed(const Duration(seconds: 3), () async {
       if (mounted) {
-        final authProvider = Provider.of<AuthSessionProvider>(context, listen: false);
-        final profileProvider = Provider.of<UserProfileProvider>(context, listen: false);
+        final authProvider = Provider.of<AuthSessionProvider>(
+          context,
+          listen: false,
+        );
+        final profileProvider = Provider.of<UserProfileProvider>(
+          context,
+          listen: false,
+        );
 
         if (mounted) {
           final user = authProvider.user;
           if (user != null) {
             // Usuario autenticado: esperar a que se cargue el perfil
             int attempts = 0;
-            while ((!profileProvider.hasAttemptedFetch || profileProvider.isLoading) && attempts < 10) {
+            while ((!profileProvider.hasAttemptedFetch ||
+                    profileProvider.isLoading) &&
+                attempts < 10) {
               await Future.delayed(const Duration(milliseconds: 500));
               attempts++;
             }
             if (!mounted) return;
-            
+
             final userData = profileProvider.userData;
             if (userData != null) {
               final role = userData.rol.trim().toLowerCase();
@@ -170,7 +179,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                 width: 100,
                                 height: 100,
                                 decoration: BoxDecoration(
-                                  color: colors.onPrimary.withValues(alpha: 0.1),
+                                  color: colors.onPrimary.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                               ),
@@ -184,7 +195,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(24),
                                   border: Border.all(
-                                    color: secondaryColor.withValues(alpha: 0.4),
+                                    color: secondaryColor.withValues(
+                                      alpha: 0.4,
+                                    ),
                                     width: 4,
                                   ),
                                 ),
@@ -213,37 +226,44 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                             ),
                           ],
                         ),
-                      ).animate().scale(delay: 200.ms, duration: 600.ms, curve: Curves.easeOutBack),
+                      ).animate().scale(
+                        delay: 200.ms,
+                        duration: 600.ms,
+                        curve: Curves.easeOutBack,
+                      ),
                       const SizedBox(height: 32),
                       // App Name
                       RichText(
-                        text: TextSpan(
-                          children: [
-                            TextSpan(
-                              text: 'Auto',
-                              style: GoogleFonts.montserratAlternates(
-                                textStyle: TextStyle(
-                                  color: accentColor,
-                                  fontSize: 48,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: -1,
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: 'Auto',
+                                  style: GoogleFonts.montserratAlternates(
+                                    textStyle: TextStyle(
+                                      color: accentColor,
+                                      fontSize: 48,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: -1,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                            TextSpan(
-                              text: 'Doc',
-                              style: GoogleFonts.montserratAlternates(
-                                textStyle: TextStyle(
-                                  color: secondaryColor,
-                                  fontSize: 48,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: -1,
+                                TextSpan(
+                                  text: 'Doc',
+                                  style: GoogleFonts.montserratAlternates(
+                                    textStyle: TextStyle(
+                                      color: secondaryColor,
+                                      fontSize: 48,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: -1,
+                                    ),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ).animate().fadeIn(delay: 400.ms, duration: 600.ms).slideY(begin: 0.2, end: 0),
+                          )
+                          .animate()
+                          .fadeIn(delay: 400.ms, duration: 600.ms)
+                          .slideY(begin: 0.2, end: 0),
                       const SizedBox(height: 8),
                       Text(
                         'DIAGNÓSTICO PROFESIONAL',
@@ -275,7 +295,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                 ),
                               ),
                               child: CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(secondaryColor),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  secondaryColor,
+                                ),
                                 strokeWidth: 4,
                               ),
                             ),

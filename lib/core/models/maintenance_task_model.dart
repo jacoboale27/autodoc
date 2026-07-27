@@ -23,7 +23,7 @@ class MaintenanceTask {
 
   MaintenanceStatus getStatus(int kilometrajeActual) {
     final now = DateTime.now();
-    
+
     // Cálculo por Kilometraje
     final kmDesdeUltimo = kilometrajeActual - ultimoKm;
     final kmRestantes = frecuenciaKm - kmDesdeUltimo;
@@ -49,9 +49,12 @@ class MaintenanceTask {
   String getStatusLabel(int kilometrajeActual) {
     final status = getStatus(kilometrajeActual);
     switch (status) {
-      case MaintenanceStatus.critical: return 'CRÍTICO';
-      case MaintenanceStatus.preventive: return 'PREVENTIVO';
-      case MaintenanceStatus.optimal: return 'ÓPTIMO';
+      case MaintenanceStatus.critical:
+        return 'CRÍTICO';
+      case MaintenanceStatus.preventive:
+        return 'PREVENTIVO';
+      case MaintenanceStatus.optimal:
+        return 'ÓPTIMO';
     }
   }
 

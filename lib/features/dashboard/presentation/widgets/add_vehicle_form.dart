@@ -26,22 +26,72 @@ class AddVehicleForm extends StatefulWidget {
 class _AddVehicleFormState extends State<AddVehicleForm> {
   int _currentStep = 0;
   bool _isFinishing = false; // Nueva variable para controlar el estado final
-  
+
   // Selection data
   String? _selectedBrand;
   String? _selectedModel;
   String _searchQuery = '';
   String _brandSearchQuery = '';
-  
+
   static const List<String> _popularMakes = [
-    'Toyota', 'Nissan', 'Honda', 'Hyundai', 'Kia', 'Chevrolet', 'Ford', 'Mazda', 
-    'Volkswagen', 'Renault', 'Peugeot', 'Suzuki', 'Mitsubishi', 'Subaru', 'BMW', 
-    'Mercedes-Benz', 'Audi', 'Jeep', 'Fiat', 'Dodge', 'Volvo', 'Lexus', 'Porsche', 
-    'Land Rover', 'Jaguar', 'Mini', 'Alfa Romeo', 'Acura', 'Infiniti', 'Lincoln', 
-    'Buick', 'Cadillac', 'Chrysler', 'GMC', 'Ram', 'Tesla', 'Seat', 'Skoda', 
-    'Citroen', 'Chery', 'MG', 'JAC', 'Changan', 'Geely', 'Great Wall', 'BYD', 
-    'Haval', 'SsangYong', 'Isuzu', 'Aston Martin', 'Ferrari', 'Lamborghini',
-    'Maserati', 'McLaren', 'Bentley', 'Rolls Royce', 'Genesis', 'Smart'
+    'Toyota',
+    'Nissan',
+    'Honda',
+    'Hyundai',
+    'Kia',
+    'Chevrolet',
+    'Ford',
+    'Mazda',
+    'Volkswagen',
+    'Renault',
+    'Peugeot',
+    'Suzuki',
+    'Mitsubishi',
+    'Subaru',
+    'BMW',
+    'Mercedes-Benz',
+    'Audi',
+    'Jeep',
+    'Fiat',
+    'Dodge',
+    'Volvo',
+    'Lexus',
+    'Porsche',
+    'Land Rover',
+    'Jaguar',
+    'Mini',
+    'Alfa Romeo',
+    'Acura',
+    'Infiniti',
+    'Lincoln',
+    'Buick',
+    'Cadillac',
+    'Chrysler',
+    'GMC',
+    'Ram',
+    'Tesla',
+    'Seat',
+    'Skoda',
+    'Citroen',
+    'Chery',
+    'MG',
+    'JAC',
+    'Changan',
+    'Geely',
+    'Great Wall',
+    'BYD',
+    'Haval',
+    'SsangYong',
+    'Isuzu',
+    'Aston Martin',
+    'Ferrari',
+    'Lamborghini',
+    'Maserati',
+    'McLaren',
+    'Bentley',
+    'Rolls Royce',
+    'Genesis',
+    'Smart',
   ];
 
   // API Data
@@ -60,7 +110,6 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
   final _kilometrajeController = TextEditingController();
   DateTime? _vencimientoTarjeta;
   DateTime? _vencimientoSoat;
-
 
   @override
   void initState() {
@@ -173,7 +222,11 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
           if (_currentStep > 0 && _currentStep < 3)
             IconButton(
               onPressed: _prevStep,
-              icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: colors.textPrimary),
+              icon: Icon(
+                Icons.arrow_back_ios_new_rounded,
+                size: 20,
+                color: colors.textPrimary,
+              ),
               padding: EdgeInsets.zero,
               alignment: Alignment.centerLeft,
             ),
@@ -196,35 +249,40 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
     );
   }
 
-
-
   Widget _buildBrandStep() {
     final colors = context.appColors;
-    final popularMakesLower = _popularMakes.map((e) => e.toLowerCase()).toList();
+    final popularMakesLower = _popularMakes
+        .map((e) => e.toLowerCase())
+        .toList();
 
     List<CarMake> filteredMakes;
-    
+
     if (_brandSearchQuery.trim().isEmpty) {
       filteredMakes = _allMakes
           .where((m) => popularMakesLower.contains(m.makeName.toLowerCase()))
           .toList();
-          
+
       filteredMakes.sort((a, b) {
-        return popularMakesLower.indexOf(a.makeName.toLowerCase())
+        return popularMakesLower
+            .indexOf(a.makeName.toLowerCase())
             .compareTo(popularMakesLower.indexOf(b.makeName.toLowerCase()));
       });
     } else {
       filteredMakes = _allMakes
-          .where((m) => m.makeName.toLowerCase().contains(_brandSearchQuery.trim().toLowerCase()))
+          .where(
+            (m) => m.makeName.toLowerCase().contains(
+              _brandSearchQuery.trim().toLowerCase(),
+            ),
+          )
           .take(50)
           .toList();
-          
+
       filteredMakes.sort((a, b) {
         final aLower = a.makeName.toLowerCase();
         final bLower = b.makeName.toLowerCase();
         final aIsPopular = popularMakesLower.contains(aLower);
         final bIsPopular = popularMakesLower.contains(bLower);
-        
+
         if (aIsPopular && !bIsPopular) return -1;
         if (!aIsPopular && bIsPopular) return 1;
         return aLower.compareTo(bLower);
@@ -235,14 +293,19 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
       key: const ValueKey(0),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildStepHeader(context.l10n.addVehicleBrand, context.l10n.addVehicleBrandSubtitle),
+        _buildStepHeader(
+          context.l10n.addVehicleBrand,
+          context.l10n.addVehicleBrandSubtitle,
+        ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: TextField(
             style: TextStyle(color: colors.textPrimary),
             decoration: InputDecoration(
               hintText: context.l10n.addVehicleSearchBrand,
-              hintStyle: TextStyle(color: colors.textSecondary.withValues(alpha: 0.5)),
+              hintStyle: TextStyle(
+                color: colors.textSecondary.withValues(alpha: 0.5),
+              ),
               prefixIcon: Icon(Icons.search, color: colors.textSecondary),
               filled: true,
               fillColor: colors.surfaceContainer,
@@ -262,44 +325,66 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
           child: _isLoadingMakes
               ? const Center(child: CircularProgressIndicator())
               : _makesError != null
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(context.l10n.addVehicleErrorBrands, style: const TextStyle(color: Colors.red)),
-                          TextButton(onPressed: _fetchAllMakes, child: Text(context.l10n.addVehicleRetry)),
-                        ],
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        context.l10n.addVehicleErrorBrands,
+                        style: const TextStyle(color: Colors.red),
                       ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      itemCount: filteredMakes.length + 1,
-                      itemBuilder: (context, index) {
-                        if (index == filteredMakes.length) {
-                          return ListTile(
-                            title: Text(context.l10n.addVehicleNotFoundBrand, style: TextStyle(fontStyle: FontStyle.italic, color: widget.primaryColor)),
-                            onTap: _showManualBrandInput,
-                          );
-                        }
-                        final make = filteredMakes[index];
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
-                            color: colors.surfaceContainer,
-                            borderRadius: BorderRadius.circular(12),
+                      TextButton(
+                        onPressed: _fetchAllMakes,
+                        child: Text(context.l10n.addVehicleRetry),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  itemCount: filteredMakes.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == filteredMakes.length) {
+                      return ListTile(
+                        title: Text(
+                          context.l10n.addVehicleNotFoundBrand,
+                          style: TextStyle(
+                            fontStyle: FontStyle.italic,
+                            color: widget.primaryColor,
                           ),
-                          child: ListTile(
-                            title: Text(make.makeName, style: TextStyle(fontWeight: FontWeight.w600, color: colors.textPrimary)),
-                            trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: colors.textSecondary),
-                            onTap: () {
-                              setState(() => _selectedBrand = make.makeName);
-                              _fetchModels(make.makeName);
-                              _nextStep();
-                            },
+                        ),
+                        onTap: _showManualBrandInput,
+                      );
+                    }
+                    final make = filteredMakes[index];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: colors.surfaceContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ListTile(
+                        title: Text(
+                          make.makeName,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: colors.textPrimary,
                           ),
-                        );
-                      },
-                    ),
+                        ),
+                        trailing: Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 14,
+                          color: colors.textSecondary,
+                        ),
+                        onTap: () {
+                          setState(() => _selectedBrand = make.makeName);
+                          _fetchModels(make.makeName);
+                          _nextStep();
+                        },
+                      ),
+                    );
+                  },
+                ),
         ),
       ],
     );
@@ -308,7 +393,9 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
   Widget _buildModelStep() {
     final colors = context.appColors;
     final filteredModels = _makeModels
-        .where((m) => m.modelName.toLowerCase().contains(_searchQuery.toLowerCase()))
+        .where(
+          (m) => m.modelName.toLowerCase().contains(_searchQuery.toLowerCase()),
+        )
         .take(50)
         .toList();
 
@@ -316,14 +403,19 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
       key: const ValueKey(1),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildStepHeader(context.l10n.addVehicleModel, context.l10n.addVehicleModelSubtitle(_selectedBrand ?? '')),
+        _buildStepHeader(
+          context.l10n.addVehicleModel,
+          context.l10n.addVehicleModelSubtitle(_selectedBrand ?? ''),
+        ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: TextField(
             style: TextStyle(color: colors.textPrimary),
             decoration: InputDecoration(
               hintText: context.l10n.addVehicleSearchModel,
-              hintStyle: TextStyle(color: colors.textSecondary.withValues(alpha: 0.5)),
+              hintStyle: TextStyle(
+                color: colors.textSecondary.withValues(alpha: 0.5),
+              ),
               prefixIcon: Icon(Icons.search, color: colors.textSecondary),
               filled: true,
               fillColor: colors.surfaceContainer,
@@ -343,43 +435,65 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
           child: _isLoadingModels
               ? const Center(child: CircularProgressIndicator())
               : _modelsError != null
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(context.l10n.addVehicleErrorModels, style: const TextStyle(color: Colors.red)),
-                          TextButton(onPressed: () => _fetchModels(_selectedBrand!), child: Text(context.l10n.addVehicleRetry)),
-                        ],
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        context.l10n.addVehicleErrorModels,
+                        style: const TextStyle(color: Colors.red),
                       ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      itemCount: filteredModels.length + 1,
-                      itemBuilder: (context, index) {
-                        if (index == filteredModels.length) {
-                          return ListTile(
-                            title: Text(context.l10n.addVehicleNotFoundModel, style: TextStyle(fontStyle: FontStyle.italic, color: widget.primaryColor)),
-                            onTap: _showManualModelInput,
-                          );
-                        }
-                        final model = filteredModels[index];
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
-                            color: colors.surfaceContainer,
-                            borderRadius: BorderRadius.circular(12),
+                      TextButton(
+                        onPressed: () => _fetchModels(_selectedBrand!),
+                        child: Text(context.l10n.addVehicleRetry),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  itemCount: filteredModels.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == filteredModels.length) {
+                      return ListTile(
+                        title: Text(
+                          context.l10n.addVehicleNotFoundModel,
+                          style: TextStyle(
+                            fontStyle: FontStyle.italic,
+                            color: widget.primaryColor,
                           ),
-                          child: ListTile(
-                            title: Text(model.modelName, style: TextStyle(fontWeight: FontWeight.w600, color: colors.textPrimary)),
-                            trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: colors.textSecondary),
-                            onTap: () {
-                              setState(() => _selectedModel = model.modelName);
-                              _nextStep();
-                            },
+                        ),
+                        onTap: _showManualModelInput,
+                      );
+                    }
+                    final model = filteredModels[index];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: colors.surfaceContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ListTile(
+                        title: Text(
+                          model.modelName,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: colors.textPrimary,
                           ),
-                        );
-                      },
-                    ),
+                        ),
+                        trailing: Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 14,
+                          color: colors.textSecondary,
+                        ),
+                        onTap: () {
+                          setState(() => _selectedModel = model.modelName);
+                          _nextStep();
+                        },
+                      ),
+                    );
+                  },
+                ),
         ),
       ],
     );
@@ -393,8 +507,17 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildStepHeader(context.l10n.addVehicleDetails, context.l10n.addVehicleDetailsSubtitle),
-          _buildTextField(context.l10n.addVehiclePlate, context.l10n.addVehiclePlateHint, _placaController, Icons.badge, formatters: [PlateFormatter()]),
+          _buildStepHeader(
+            context.l10n.addVehicleDetails,
+            context.l10n.addVehicleDetailsSubtitle,
+          ),
+          _buildTextField(
+            context.l10n.addVehiclePlate,
+            context.l10n.addVehiclePlateHint,
+            _placaController,
+            Icons.badge,
+            formatters: [PlateFormatter()],
+          ),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -409,15 +532,30 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.calendar_today, color: widget.primaryColor, size: 20),
+                        Icon(
+                          Icons.calendar_today,
+                          color: widget.primaryColor,
+                          size: 20,
+                        ),
                         const SizedBox(width: 12),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(context.l10n.addVehicleYear, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
                             Text(
-                              _anioController.text.isEmpty ? '2024' : _anioController.text,
-                              style: TextStyle(fontWeight: FontWeight.bold, color: colors.textPrimary),
+                              context.l10n.addVehicleYear,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                            Text(
+                              _anioController.text.isEmpty
+                                  ? '2024'
+                                  : _anioController.text,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: colors.textPrimary,
+                              ),
                             ),
                           ],
                         ),
@@ -427,17 +565,45 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                 ),
               ),
               const SizedBox(width: 12),
-              Expanded(child: _buildTextField(context.l10n.addVehicleColor, context.l10n.addVehicleColorHint, _colorController, Icons.palette)),
+              Expanded(
+                child: _buildTextField(
+                  context.l10n.addVehicleColor,
+                  context.l10n.addVehicleColorHint,
+                  _colorController,
+                  Icons.palette,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
-          _buildTextField(context.l10n.addVehicleMileage, '0', _kilometrajeController, Icons.speed, keyboardType: TextInputType.number),
+          _buildTextField(
+            context.l10n.addVehicleMileage,
+            '0',
+            _kilometrajeController,
+            Icons.speed,
+            keyboardType: TextInputType.number,
+          ),
           const SizedBox(height: 24),
-          Text(context.l10n.addVehicleDocs, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: colors.textPrimary)),
+          Text(
+            context.l10n.addVehicleDocs,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: colors.textPrimary,
+            ),
+          ),
           const SizedBox(height: 12),
-          _buildDatePicker(context.l10n.addVehicleCardExp, _vencimientoTarjeta, (d) => setState(() => _vencimientoTarjeta = d)),
+          _buildDatePicker(
+            context.l10n.addVehicleCardExp,
+            _vencimientoTarjeta,
+            (d) => setState(() => _vencimientoTarjeta = d),
+          ),
           const SizedBox(height: 12),
-          _buildDatePicker(context.l10n.addVehicleSoatExp, _vencimientoSoat, (d) => setState(() => _vencimientoSoat = d)),
+          _buildDatePicker(
+            context.l10n.addVehicleSoatExp,
+            _vencimientoSoat,
+            (d) => setState(() => _vencimientoSoat = d),
+          ),
           const SizedBox(height: 32),
           SizedBox(
             width: double.infinity,
@@ -445,39 +611,61 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
             child: ElevatedButton(
               onPressed: () {
                 if (_placaController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('El número de placa es obligatorio')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('El número de placa es obligatorio'),
+                    ),
+                  );
                   return;
                 }
-                
+
                 final anio = int.tryParse(_anioController.text);
                 final currentYear = DateTime.now().year;
                 if (anio == null || anio < 1900 || anio > currentYear) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Año inválido')));
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('Año inválido')));
                   return;
                 }
 
                 if (_colorController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('El color es obligatorio')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('El color es obligatorio')),
+                  );
                   return;
                 }
                 if (_colorController.text.length > 30) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('El color no debe exceder 30 caracteres')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('El color no debe exceder 30 caracteres'),
+                    ),
+                  );
                   return;
                 }
 
                 final km = int.tryParse(_kilometrajeController.text);
                 if (km == null || km < 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Kilometraje inválido')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Kilometraje inválido')),
+                  );
                   return;
                 }
-                
+
                 _nextStep();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: widget.primaryColor,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
-              child: Text(context.l10n.addVehicleFinish, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: Text(
+                context.l10n.addVehicleFinish,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 24),
@@ -498,11 +686,18 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
           const SizedBox(height: 24),
           Text(
             context.l10n.addVehicleSuccess,
-            style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold, color: colors.textPrimary),
+            style: GoogleFonts.inter(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: colors.textPrimary,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
-            context.l10n.addVehicleSuccessDesc(_selectedBrand ?? '', _selectedModel ?? ''),
+            context.l10n.addVehicleSuccessDesc(
+              _selectedBrand ?? '',
+              _selectedModel ?? '',
+            ),
             textAlign: TextAlign.center,
             style: TextStyle(color: colors.textSecondary),
           ),
@@ -510,7 +705,9 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: _getColorFromName(_colorController.text).withValues(alpha: 0.1),
+              color: _getColorFromName(
+                _colorController.text,
+              ).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(24),
             ),
             child: Column(
@@ -523,7 +720,11 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                 const SizedBox(height: 16),
                 Text(
                   '$_selectedBrand $_selectedModel',
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 20, color: colors.textPrimary),
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    color: colors.textPrimary,
+                  ),
                 ),
               ],
             ),
@@ -533,44 +734,53 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
             width: double.infinity,
             height: 56,
             child: ElevatedButton(
-              onPressed: _isFinishing 
-                ? null 
-                : () async {
-                    setState(() => _isFinishing = true);
-                    
-                    final vehicle = VehicleModel(
-                      idVehiculo: '', // Will be set by provider
-                      idPropietario: '', // Will be set by provider
-                      placa: _placaController.text,
-                      marca: _selectedBrand ?? '',
-                      modelo: _selectedModel ?? '',
-                      anio: int.tryParse(_anioController.text) ?? 0,
-                      color: _colorController.text,
-                      kilometrajeActual: int.tryParse(_kilometrajeController.text) ?? 0,
-                      vencimientoTarjeta: _vencimientoTarjeta,
-                      vencimientoSoat: _vencimientoSoat,
-                    );
-                    
-                    try {
-                      await widget.onFinish(vehicle);
-                    } catch (e) {
-                      // Si falla, permitimos reintentar
-                      if (mounted) {
-                        setState(() => _isFinishing = false);
+              onPressed: _isFinishing
+                  ? null
+                  : () async {
+                      setState(() => _isFinishing = true);
+
+                      final vehicle = VehicleModel(
+                        idVehiculo: '', // Will be set by provider
+                        idPropietario: '', // Will be set by provider
+                        placa: _placaController.text,
+                        marca: _selectedBrand ?? '',
+                        modelo: _selectedModel ?? '',
+                        anio: int.tryParse(_anioController.text) ?? 0,
+                        color: _colorController.text,
+                        kilometrajeActual:
+                            int.tryParse(_kilometrajeController.text) ?? 0,
+                        vencimientoTarjeta: _vencimientoTarjeta,
+                        vencimientoSoat: _vencimientoSoat,
+                      );
+
+                      try {
+                        await widget.onFinish(vehicle);
+                      } catch (e) {
+                        // Si falla, permitimos reintentar
+                        if (mounted) {
+                          setState(() => _isFinishing = false);
+                        }
                       }
-                    }
-                  },
+                    },
               style: ElevatedButton.styleFrom(
                 backgroundColor: widget.primaryColor,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
-              child: _isFinishing 
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                  )
-                : Text(context.l10n.addVehicleGoDashboard, style: const TextStyle(color: Colors.white)),
+              child: _isFinishing
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(
+                      context.l10n.addVehicleGoDashboard,
+                      style: const TextStyle(color: Colors.white),
+                    ),
             ),
           ),
         ],
@@ -578,22 +788,37 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
     );
   }
 
-
-  Widget _buildTextField(String label, String hint, TextEditingController controller, IconData icon, {TextInputType? keyboardType, List<dynamic>? formatters}) {
+  Widget _buildTextField(
+    String label,
+    String hint,
+    TextEditingController controller,
+    IconData icon, {
+    TextInputType? keyboardType,
+    List<dynamic>? formatters,
+  }) {
     final colors = context.appColors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.textSecondary)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: colors.textSecondary,
+          ),
+        ),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
           keyboardType: keyboardType,
           style: TextStyle(color: colors.textPrimary),
-          inputFormatters: formatters?.cast<TextInputFormatter>(), 
+          inputFormatters: formatters?.cast<TextInputFormatter>(),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: colors.textSecondary.withValues(alpha: 0.5)),
+            hintStyle: TextStyle(
+              color: colors.textSecondary.withValues(alpha: 0.5),
+            ),
             prefixIcon: Icon(icon, color: widget.primaryColor, size: 20),
             filled: true,
             fillColor: colors.surfaceContainer,
@@ -601,14 +826,21 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildDatePicker(String label, DateTime? value, Function(DateTime) onChanged) {
+  Widget _buildDatePicker(
+    String label,
+    DateTime? value,
+    Function(DateTime) onChanged,
+  ) {
     final colors = context.appColors;
     return InkWell(
       onTap: () async {
@@ -633,10 +865,18 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
                 Text(
-                  value != null ? DateFormat('dd/MM/yyyy').format(value) : context.l10n.addVehicleSelectDate,
-                  style: TextStyle(fontWeight: FontWeight.bold, color: colors.textPrimary),
+                  label,
+                  style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                ),
+                Text(
+                  value != null
+                      ? DateFormat('dd/MM/yyyy').format(value)
+                      : context.l10n.addVehicleSelectDate,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: colors.textPrimary,
+                  ),
                 ),
               ],
             ),
@@ -652,9 +892,15 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Ingresa la marca'),
-        content: TextField(controller: controller, decoration: const InputDecoration(hintText: 'Ej: Tesla')),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(hintText: 'Ej: Tesla'),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
           ElevatedButton(
             onPressed: () {
               setState(() {
@@ -678,9 +924,15 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Ingresa el modelo'),
-        content: TextField(controller: controller, decoration: const InputDecoration(hintText: 'Ej: Model 3')),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(hintText: 'Ej: Model 3'),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
           ElevatedButton(
             onPressed: () {
               setState(() => _selectedModel = controller.text);
@@ -695,7 +947,10 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
   }
 
   void _showYearPicker() {
-    final years = List.generate(50, (index) => (DateTime.now().year - index).toString());
+    final years = List.generate(
+      50,
+      (index) => (DateTime.now().year - index).toString(),
+    );
     showModalBottomSheet(
       context: context,
       backgroundColor: context.appColors.surface,
@@ -705,13 +960,28 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
           children: [
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Text('Selecciona el Año', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18, color: context.appColors.textPrimary)),
+              child: Text(
+                'Selecciona el Año',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: context.appColors.textPrimary,
+                ),
+              ),
             ),
             Expanded(
               child: ListView.builder(
                 itemCount: years.length,
                 itemBuilder: (context, index) => ListTile(
-                  title: Center(child: Text(years[index], style: TextStyle(fontSize: 20, color: context.appColors.textPrimary))),
+                  title: Center(
+                    child: Text(
+                      years[index],
+                      style: TextStyle(
+                        fontSize: 20,
+                        color: context.appColors.textPrimary,
+                      ),
+                    ),
+                  ),
                   onTap: () {
                     setState(() => _anioController.text = years[index]);
                     Navigator.pop(context);
@@ -727,16 +997,24 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
 
   Color _getColorFromName(String colorName) {
     switch (colorName.toLowerCase()) {
-      case 'rojo': return Colors.red;
-      case 'azul': return Colors.blue;
-      case 'verde': return Colors.green;
-      case 'amarillo': return Colors.yellow;
-      case 'negro': return Colors.black;
-      case 'blanco': return Colors.grey[400]!;
-      case 'gris': return Colors.grey;
-      case 'plateado': return Colors.blueGrey[200]!;
-      default: return widget.primaryColor;
+      case 'rojo':
+        return Colors.red;
+      case 'azul':
+        return Colors.blue;
+      case 'verde':
+        return Colors.green;
+      case 'amarillo':
+        return Colors.yellow;
+      case 'negro':
+        return Colors.black;
+      case 'blanco':
+        return Colors.grey[400]!;
+      case 'gris':
+        return Colors.grey;
+      case 'plateado':
+        return Colors.blueGrey[200]!;
+      default:
+        return widget.primaryColor;
     }
   }
 }
-

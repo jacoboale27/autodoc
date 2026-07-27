@@ -35,12 +35,8 @@ class ElSalvadorLicensePlate extends StatelessWidget {
         child: Stack(
           children: [
             // Flag Background
-            Positioned.fill(
-              child: CustomPaint(
-                painter: WavyFlagPainter(),
-              ),
-            ),
-            
+            Positioned.fill(child: CustomPaint(painter: WavyFlagPainter())),
+
             // Text Layer
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 6),
@@ -118,32 +114,52 @@ class WavyFlagPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..style = PaintingStyle.fill;
-    
+
     // Light Blue sections (Top and Bottom)
     final blueColor = const Color(0xFF0047AB).withValues(alpha: 0.2);
-    
+
     final path = Path();
-    
+
     // Top wave
     path.moveTo(0, 0);
     path.lineTo(size.width, 0);
     path.lineTo(size.width, size.height * 0.3);
-    path.quadraticBezierTo(size.width * 0.75, size.height * 0.2, size.width * 0.5, size.height * 0.3);
-    path.quadraticBezierTo(size.width * 0.25, size.height * 0.4, 0, size.height * 0.3);
+    path.quadraticBezierTo(
+      size.width * 0.75,
+      size.height * 0.2,
+      size.width * 0.5,
+      size.height * 0.3,
+    );
+    path.quadraticBezierTo(
+      size.width * 0.25,
+      size.height * 0.4,
+      0,
+      size.height * 0.3,
+    );
     path.close();
-    
+
     paint.color = blueColor;
     canvas.drawPath(path, paint);
-    
+
     // Bottom wave
     final path2 = Path();
     path2.moveTo(0, size.height);
     path2.lineTo(size.width, size.height);
     path2.lineTo(size.width, size.height * 0.7);
-    path2.quadraticBezierTo(size.width * 0.75, size.height * 0.8, size.width * 0.5, size.height * 0.7);
-    path2.quadraticBezierTo(size.width * 0.25, size.height * 0.6, 0, size.height * 0.7);
+    path2.quadraticBezierTo(
+      size.width * 0.75,
+      size.height * 0.8,
+      size.width * 0.5,
+      size.height * 0.7,
+    );
+    path2.quadraticBezierTo(
+      size.width * 0.25,
+      size.height * 0.6,
+      0,
+      size.height * 0.7,
+    );
     path2.close();
-    
+
     canvas.drawPath(path2, paint);
   }
 

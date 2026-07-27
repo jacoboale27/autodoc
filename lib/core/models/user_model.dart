@@ -121,18 +121,30 @@ class UserModel {
     }
 
     final rawId = map['id_usuario'] ?? map['idUsuario'] ?? map['id'];
-    final id = (rawId != null && rawId.toString().isNotEmpty) ? rawId.toString() : documentId;
+    final id = (rawId != null && rawId.toString().isNotEmpty)
+        ? rawId.toString()
+        : documentId;
 
     return UserModel(
       idUsuario: id,
-      nombreCompleto: (map['nombre_completo'] ?? map['nombreCompleto'] ?? map['nombre'] ?? '').toString(),
+      nombreCompleto:
+          (map['nombre_completo'] ??
+                  map['nombreCompleto'] ??
+                  map['nombre'] ??
+                  '')
+              .toString(),
       correo: (map['correo'] ?? map['email'] ?? '').toString(),
       rol: (map['rol'] ?? map['role'] ?? 'Propietario').toString(),
       fechaRegistro: parseDate(map['fecha_registro'] ?? map['fechaRegistro']),
-      talleresFavoritos: parseStringList(map['talleres_favoritos'] ?? map['talleresFavoritos']),
-      fotoPerfilUrl: (map['foto_perfil_url'] ?? map['foto_url'] ?? map['fotoPerfilUrl'])?.toString(),
+      talleresFavoritos: parseStringList(
+        map['talleres_favoritos'] ?? map['talleresFavoritos'],
+      ),
+      fotoPerfilUrl:
+          (map['foto_perfil_url'] ?? map['foto_url'] ?? map['fotoPerfilUrl'])
+              ?.toString(),
       especialidad: map['especialidad']?.toString(),
-      ubicacionMunicipio: (map['ubicacion_municipio'] ?? map['ubicacionMunicipio'])?.toString(),
+      ubicacionMunicipio:
+          (map['ubicacion_municipio'] ?? map['ubicacionMunicipio'])?.toString(),
       telefono: map['telefono']?.toString(),
       estado: (map['estado'] ?? 'activo').toString(),
       fcmToken: map['fcmToken']?.toString(),

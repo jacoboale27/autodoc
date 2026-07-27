@@ -8,7 +8,10 @@ class ChatRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Obtener stream de conversaciones de un usuario
-  Stream<List<ConversacionModel>> streamConversaciones(String userId, bool isMecanico) {
+  Stream<List<ConversacionModel>> streamConversaciones(
+    String userId,
+    bool isMecanico,
+  ) {
     return _firestore
         .collection(FirestoreCollections.conversaciones)
         .where(isMecanico ? 'id_mecanico' : 'id_propietario', isEqualTo: userId)
@@ -30,14 +33,18 @@ class ChatRepository {
         .collection(FirestoreCollections.mensajes)
         .orderBy('timestamp', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => MensajeModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => MensajeModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
   // Crear nueva conversación
   Future<String> crearConversacion(ConversacionModel conversacion) async {
-    final docRef = _firestore.collection(FirestoreCollections.conversaciones).doc();
+    final docRef = _firestore
+        .collection(FirestoreCollections.conversaciones)
+        .doc();
     final data = conversacion.toMap();
     data['id'] = docRef.id;
     await docRef.set(data);
@@ -63,8 +70,9 @@ class ChatRepository {
 
     if (snapshot.docs.isNotEmpty) {
       return ConversacionModel.fromMap(
-          snapshot.docs.first.data() as Map<String, dynamic>,
-          snapshot.docs.first.id);
+        snapshot.docs.first.data() as Map<String, dynamic>,
+        snapshot.docs.first.id,
+      );
     }
     return null;
   }
@@ -77,7 +85,7 @@ class ChatRepository {
     required bool isMecanicoRemitente,
   }) async {
     final batch = _firestore.batch();
-    
+
     // 1. Agregar mensaje
     final msgRef = _firestore
         .collection(FirestoreCollections.conversaciones)
@@ -87,8 +95,10 @@ class ChatRepository {
     batch.set(msgRef, mensaje.toMap());
 
     // 2. Actualizar conversación (último mensaje y contadores)
-    final convRef = _firestore.collection(FirestoreCollections.conversaciones).doc(conversacionId);
-    
+    final convRef = _firestore
+        .collection(FirestoreCollections.conversaciones)
+        .doc(conversacionId);
+
     Map<String, dynamic> updateData = {
       'ultimo_mensaje': mensaje.contenido,
       'ultimo_mensaje_ts': Timestamp.fromDate(mensaje.timestamp),
@@ -101,21 +111,27 @@ class ChatRepository {
     }
 
     batch.update(convRef, updateData);
-    
+
     await batch.commit();
   }
 
   // Marcar mensajes como leídos
-  Future<void> marcarComoLeidos(String conversacionId, bool isMecanico, String currentUserId) async {
-    final convRef = _firestore.collection(FirestoreCollections.conversaciones).doc(conversacionId);
-    
+  Future<void> marcarComoLeidos(
+    String conversacionId,
+    bool isMecanico,
+    String currentUserId,
+  ) async {
+    final convRef = _firestore
+        .collection(FirestoreCollections.conversaciones)
+        .doc(conversacionId);
+
     final batch = _firestore.batch();
-    
+
     // 1. Resetear contador de la conversación
     batch.update(convRef, {
       isMecanico ? 'no_leidos_mecanico' : 'no_leidos_propietario': 0,
     });
-    
+
     // 2. Actualizar estado de los mensajes no leídos del otro usuario a 'visto'
     final unreadMsgs = await _firestore
         .collection(FirestoreCollections.conversaciones)
@@ -123,19 +139,23 @@ class ChatRepository {
         .collection(FirestoreCollections.mensajes)
         .where('id_remitente', isNotEqualTo: currentUserId)
         .get();
-        
+
     for (var doc in unreadMsgs.docs) {
       final data = doc.data();
       if (data['estado'] != 'visto') {
         batch.update(doc.reference, {'estado': 'visto'});
       }
     }
-    
+
     await batch.commit();
   }
 
   // Actualizar metadatos de un mensaje
-  Future<void> actualizarMetadatosMensaje(String conversacionId, String mensajeId, Map<String, dynamic> metadata) async {
+  Future<void> actualizarMetadatosMensaje(
+    String conversacionId,
+    String mensajeId,
+    Map<String, dynamic> metadata,
+  ) async {
     await _firestore
         .collection(FirestoreCollections.conversaciones)
         .doc(conversacionId)
@@ -155,8 +175,11 @@ class ChatRepository {
 
   // Actualizar estado de la cotización
   Future<void> actualizarEstadoCotizacion(String id, String estado) async {
-    await _firestore.collection('cotizaciones').doc(id).update({'estado': estado});
+    await _firestore.collection('cotizaciones').doc(id).update({
+      'estado': estado,
+    });
   }
+
   // Delete message
   Future<void> deleteMensaje(String conversacionId, String mensajeId) async {
     await _firestore
@@ -164,11 +187,17 @@ class ChatRepository {
         .doc(conversacionId)
         .collection(FirestoreCollections.mensajes)
         .doc(mensajeId)
-        .update({'is_deleted': true, 'contenido': 'Este mensaje ha sido eliminado'});
+        .update({
+          'is_deleted': true,
+          'contenido': 'Este mensaje ha sido eliminado',
+        });
   }
 
   // Set typing status
-  Future<void> setTypingStatus(String conversacionId, String? typingUserId) async {
+  Future<void> setTypingStatus(
+    String conversacionId,
+    String? typingUserId,
+  ) async {
     await _firestore
         .collection(FirestoreCollections.conversaciones)
         .doc(conversacionId)

@@ -9,8 +9,8 @@ import 'package:autodoc/core/models/app_notification_model.dart';
 class NotificationCenterProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore;
 
-  NotificationCenterProvider({FirebaseFirestore? firestore}) 
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+  NotificationCenterProvider({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   List<AppNotification> _notifications = [];
   StreamSubscription? _subscription;
@@ -38,20 +38,20 @@ class NotificationCenterProvider extends ChangeNotifier {
         .limit(50) // Last 50 notifications
         .snapshots()
         .listen(
-      (snapshot) {
-        _notifications = snapshot.docs
-            .map((doc) => AppNotification.fromFirestore(doc))
-            .toList();
-        _isLoading = false;
-        _error = null;
-        notifyListeners();
-      },
-      onError: (e) {
-        _error = e.toString();
-        _isLoading = false;
-        notifyListeners();
-      },
-    );
+          (snapshot) {
+            _notifications = snapshot.docs
+                .map((doc) => AppNotification.fromFirestore(doc))
+                .toList();
+            _isLoading = false;
+            _error = null;
+            notifyListeners();
+          },
+          onError: (e) {
+            _error = e.toString();
+            _isLoading = false;
+            notifyListeners();
+          },
+        );
   }
 
   /// Mark a single notification as read

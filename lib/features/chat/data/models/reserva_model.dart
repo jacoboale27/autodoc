@@ -11,7 +11,8 @@ class ReservaModel {
   final DateTime? fechaHoraConfirmada;
   final String tipoServicio;
   final String? descripcion;
-  final String estado; // 'pendiente' | 'confirmada' | 'rechazada' | 'completada' | 'cancelada'
+  final String
+  estado; // 'pendiente' | 'confirmada' | 'rechazada' | 'completada' | 'cancelada'
   final double? cotizacionEstimada;
   final bool recordatorioEnviado24h;
   final bool recordatorioEnviado1h;
@@ -44,14 +45,16 @@ class ReservaModel {
       idVehiculo: map['id_vehiculo'] ?? '',
       idTaller: map['id_taller'] ?? '',
       fechaHoraPropuesta: (map['fecha_hora_propuesta'] as Timestamp).toDate(),
-      fechaHoraConfirmada: (map['fecha_hora_confirmada'] as Timestamp?)?.toDate(),
+      fechaHoraConfirmada: (map['fecha_hora_confirmada'] as Timestamp?)
+          ?.toDate(),
       tipoServicio: map['tipo_servicio'] ?? '',
       descripcion: map['descripcion'],
       estado: map['estado'] ?? 'pendiente',
       cotizacionEstimada: (map['cotizacion_estimada'] as num?)?.toDouble(),
       recordatorioEnviado24h: map['recordatorio_enviado_24h'] ?? false,
       recordatorioEnviado1h: map['recordatorio_enviado_1h'] ?? false,
-      fechaCreacion: (map['fecha_creacion'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      fechaCreacion:
+          (map['fecha_creacion'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
@@ -63,7 +66,8 @@ class ReservaModel {
       'id_vehiculo': idVehiculo,
       'id_taller': idTaller,
       'fecha_hora_propuesta': Timestamp.fromDate(fechaHoraPropuesta),
-      if (fechaHoraConfirmada != null) 'fecha_hora_confirmada': Timestamp.fromDate(fechaHoraConfirmada!),
+      if (fechaHoraConfirmada != null)
+        'fecha_hora_confirmada': Timestamp.fromDate(fechaHoraConfirmada!),
       'tipo_servicio': tipoServicio,
       if (descripcion != null) 'descripcion': descripcion,
       'estado': estado,

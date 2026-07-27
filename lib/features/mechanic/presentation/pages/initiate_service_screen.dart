@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
-import 'package:autodoc/core/providers/user_session_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:autodoc/core/models/alert_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
@@ -34,7 +34,10 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   Future<void> _pickInvoiceImage(ImageSource source) async {
     try {
       final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(source: source, imageQuality: 80);
+      final pickedFile = await picker.pickImage(
+        source: source,
+        imageQuality: 80,
+      );
       if (pickedFile != null) {
         setState(() {
           _invoiceImage = pickedFile;
@@ -50,7 +53,10 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     super.initState();
     _kmController.text = widget.vehicle.kilometrajeActual.toString();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AlertProvider>().fetchAlerts(widget.vehicle.idVehiculo, widget.vehicle);
+      context.read<AlertProvider>().fetchAlerts(
+        widget.vehicle.idVehiculo,
+        widget.vehicle,
+      );
     });
   }
 
@@ -66,7 +72,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     if (_kmController.text.isEmpty) {
       HapticFeedback.heavyImpact();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, ingresa el kilometraje actual')),
+        const SnackBar(
+          content: Text('Por favor, ingresa el kilometraje actual'),
+        ),
       );
       return;
     }
@@ -75,7 +83,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     if (nuevoKm == null || nuevoKm < widget.vehicle.kilometrajeActual) {
       HapticFeedback.heavyImpact();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('El kilometraje debe ser mayor o igual al actual')),
+        const SnackBar(
+          content: Text('El kilometraje debe ser mayor o igual al actual'),
+        ),
       );
       return;
     }
@@ -83,7 +93,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     if (_completedTaskIds.isEmpty) {
       HapticFeedback.heavyImpact();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecciona al menos una tarea realizada')),
+        const SnackBar(
+          content: Text('Selecciona al menos una tarea realizada'),
+        ),
       );
       return;
     }
@@ -92,9 +104,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
 
     try {
       final alertProvider = context.read<AlertProvider>();
-      final userSession = context.read<UserSessionProvider>();
+      final userSession = context.read<UserProfileProvider>();
       final tallerId = userSession.userData?.idUsuario ?? 'taller_anonimo';
-      
+
       final costoDouble = double.tryParse(_costoController.text);
 
       for (var taskId in _completedTaskIds) {
@@ -108,7 +120,10 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
         );
       }
 
-      await alertProvider.fetchAlerts(widget.vehicle.idVehiculo, widget.vehicle);
+      await alertProvider.fetchAlerts(
+        widget.vehicle.idVehiculo,
+        widget.vehicle,
+      );
 
       if (mounted) {
         HapticFeedback.lightImpact();
@@ -143,7 +158,10 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     return Scaffold(
       backgroundColor: colors.surface,
       appBar: AppBar(
-        title: Text('Iniciar Servicio', style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
+        title: Text(
+          'Iniciar Servicio',
+          style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: colors.surfaceContainer,
         foregroundColor: colors.primary,
         elevation: 0,
@@ -170,7 +188,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
             const SizedBox(height: 12),
             _buildMaintenanceTasks(alertProvider, colors),
             const SizedBox(height: 24),
-            
+
             _buildSectionTitle('COSTO DEL SERVICIO (OPCIONAL)', colors),
             const SizedBox(height: 12),
             _buildCostoInput(colors),
@@ -189,11 +207,15 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                 fillColor: colors.surfaceContainer,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2)),
+                  borderSide: BorderSide(
+                    color: colors.textSecondary.withValues(alpha: 0.2),
+                  ),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2)),
+                  borderSide: BorderSide(
+                    color: colors.textSecondary.withValues(alpha: 0.2),
+                  ),
                 ),
               ),
             ),
@@ -264,20 +286,34 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                 TextButton.icon(
                   onPressed: () => setState(() => _invoiceImage = null),
                   icon: Icon(Icons.delete, color: colors.error),
-                  label: Text('Eliminar', style: TextStyle(color: colors.error)),
+                  label: Text(
+                    'Eliminar',
+                    style: TextStyle(color: colors.error),
+                  ),
                 ),
               ],
             ),
           ] else ...[
-            Icon(Icons.receipt_long_outlined, size: Responsive.iconSize(context, 48), color: colors.textSecondary.withValues(alpha: 0.5)),
+            Icon(
+              Icons.receipt_long_outlined,
+              size: Responsive.iconSize(context, 48),
+              color: colors.textSecondary.withValues(alpha: 0.5),
+            ),
             const SizedBox(height: 12),
             Text(
               '¿Deseas adjuntar una foto de la factura?',
-              style: GoogleFonts.inter(fontSize: Responsive.fontSize(context, 14), fontWeight: FontWeight.w600, color: colors.textPrimary),
+              style: GoogleFonts.inter(
+                fontSize: Responsive.fontSize(context, 14),
+                fontWeight: FontWeight.w600,
+                color: colors.textPrimary,
+              ),
             ),
             Text(
               'Esto le servirá al propietario como comprobante legal.',
-              style: GoogleFonts.inter(fontSize: Responsive.fontSize(context, 12), color: colors.textSecondary),
+              style: GoogleFonts.inter(
+                fontSize: Responsive.fontSize(context, 12),
+                color: colors.textSecondary,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -291,7 +327,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.primary,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -302,7 +340,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: colors.primary,
                     side: BorderSide(color: colors.primary),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ],
@@ -329,7 +369,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     return Container(
       padding: EdgeInsets.all(Responsive.padding(context, 20)),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [colors.primary, colors.primary.withValues(alpha: 0.8)]),
+        gradient: LinearGradient(
+          colors: [colors.primary, colors.primary.withValues(alpha: 0.8)],
+        ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
@@ -349,7 +391,11 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                   color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Icon(Icons.directions_car, color: Colors.white, size: Responsive.iconSize(context, 32)),
+                child: Icon(
+                  Icons.directions_car,
+                  color: Colors.white,
+                  size: Responsive.iconSize(context, 32),
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -380,7 +426,10 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           const SizedBox(height: 16),
           Container(
             width: double.infinity,
-            padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 16), vertical: Responsive.padding(context, 10)),
+            padding: EdgeInsets.symmetric(
+              horizontal: Responsive.padding(context, 16),
+              vertical: Responsive.padding(context, 10),
+            ),
             decoration: BoxDecoration(
               color: colors.secondary.withValues(alpha: 0.9),
               borderRadius: BorderRadius.circular(12),
@@ -419,7 +468,10 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
       ),
-      padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 20), vertical: Responsive.padding(context, 8)),
+      padding: EdgeInsets.symmetric(
+        horizontal: Responsive.padding(context, 20),
+        vertical: Responsive.padding(context, 8),
+      ),
       child: Row(
         children: [
           Icon(Icons.speed, color: colors.primary),
@@ -442,7 +494,10 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           ),
           Text(
             'KM',
-            style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: colors.textSecondary),
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.bold,
+              color: colors.textSecondary,
+            ),
           ),
         ],
       ),
@@ -456,7 +511,10 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
       ),
-      padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 20), vertical: Responsive.padding(context, 8)),
+      padding: EdgeInsets.symmetric(
+        horizontal: Responsive.padding(context, 20),
+        vertical: Responsive.padding(context, 8),
+      ),
       child: Row(
         children: [
           Icon(Icons.attach_money, color: colors.secondary),
@@ -464,7 +522,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           Expanded(
             child: TextField(
               controller: _costoController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               style: GoogleFonts.inter(
                 fontSize: Responsive.fontSize(context, 18),
                 fontWeight: FontWeight.bold,
@@ -508,7 +568,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
 
     return Column(
       children: provider.activeAlerts.take(3).map((alert) {
-        final color = alert.prioridad == AlertPriority.high ? colors.error : colors.warning;
+        final color = alert.prioridad == AlertPriority.high
+            ? colors.error
+            : colors.warning;
         return Container(
           margin: const EdgeInsets.only(bottom: 8),
           padding: EdgeInsets.all(Responsive.padding(context, 12)),
@@ -519,7 +581,11 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           ),
           child: Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: color, size: Responsive.iconSize(context, 20)),
+              Icon(
+                Icons.warning_amber_rounded,
+                color: color,
+                size: Responsive.iconSize(context, 20),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -560,7 +626,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
             color: colors.surfaceContainer,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isSelected ? colors.secondary : colors.textSecondary.withValues(alpha: 0.2),
+              color: isSelected
+                  ? colors.secondary
+                  : colors.textSecondary.withValues(alpha: 0.2),
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -585,7 +653,10 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
             ),
             subtitle: Text(
               'Frecuencia: ${task.frecuenciaKm} km / ${task.frecuenciaMeses} meses',
-              style: GoogleFonts.inter(fontSize: Responsive.fontSize(context, 12), color: colors.textSecondary),
+              style: GoogleFonts.inter(
+                fontSize: Responsive.fontSize(context, 12),
+                color: colors.textSecondary,
+              ),
             ),
             secondary: _getStatusIcon(status, colors),
           ),

@@ -36,7 +36,10 @@ class TranslatedText extends StatelessWidget {
     }
 
     // 2. Try synchronous translation from Hive box
-    final syncTranslation = TranslationService().translateSync(text, targetLang);
+    final syncTranslation = TranslationService().translateSync(
+      text,
+      targetLang,
+    );
     if (syncTranslation != null) {
       return Text(
         syncTranslation,
@@ -53,7 +56,7 @@ class TranslatedText extends StatelessWidget {
       builder: (context, snapshot) {
         final displayText = snapshot.data ?? text;
         final isLoading = snapshot.connectionState == ConnectionState.waiting;
-        
+
         return AnimatedOpacity(
           duration: const Duration(milliseconds: 200),
           opacity: isLoading ? 0.7 : 1.0,

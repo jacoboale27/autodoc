@@ -14,9 +14,7 @@ class AdminSeedScreen extends StatelessWidget {
     if (!kDebugMode) {
       return Scaffold(
         appBar: AppBar(title: Text(context.l10n.adminAccessDenied)),
-        body: Center(
-          child: Text(context.l10n.adminAccessDeniedDesc),
-        ),
+        body: Center(child: Text(context.l10n.adminAccessDeniedDesc)),
       );
     }
 
@@ -31,17 +29,27 @@ class AdminSeedScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.security, size: Responsive.iconSize(context, 80), color: Colors.green),
+              Icon(
+                Icons.security,
+                size: Responsive.iconSize(context, 80),
+                color: Colors.green,
+              ),
               const SizedBox(height: 24),
               Text(
                 'Migración Completada',
-                style: GoogleFonts.inter(fontSize: Responsive.fontSize(context, 24), fontWeight: FontWeight.bold),
+                style: GoogleFonts.inter(
+                  fontSize: Responsive.fontSize(context, 24),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 16),
               Text(
                 'Las cuentas administrativas ya fueron configuradas y los secretos se eliminaron del código fuente por motivos de seguridad.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(fontSize: Responsive.fontSize(context, 16), color: Colors.grey[700]),
+                style: GoogleFonts.inter(
+                  fontSize: Responsive.fontSize(context, 16),
+                  color: Colors.grey[700],
+                ),
               ),
             ],
           ),

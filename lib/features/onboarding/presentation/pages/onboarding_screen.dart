@@ -21,20 +21,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final List<OnboardingContent> _contents = [
     OnboardingContent(
       title: 'Diagnóstico en tiempo real',
-      description: 'Mantén tu auto en perfecto estado con monitoreo constante de todos los sistemas críticos.',
-      imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAGuLOtm-XW2HPNRArFEVcOAhv4hjIEx54m69ca89JZltsaqO4rUiGxbdPpKpBfxUAJa9aaFgZgvBfpkuHNw3e-iB4vf5LdvMmYdGCpG0Ofiv6z19ojLhGPnUe_9SWK48pl1BzBU1o8xvEILNvboHlEBMSw6NX3RaCY_yF8ZD2518ipqAt_1SQgzQ8BcaGIXp2h2d-agNaSJs-1c2VDrS78ys74l0KTKt-F03N6pKA9uLD6jQniKaI_eh4WtUrbNdZPSHFAjloNDtM',
+      description:
+          'Mantén tu auto en perfecto estado con monitoreo constante de todos los sistemas críticos.',
+      imageUrl:
+          'https://lh3.googleusercontent.com/aida-public/AB6AXuAGuLOtm-XW2HPNRArFEVcOAhv4hjIEx54m69ca89JZltsaqO4rUiGxbdPpKpBfxUAJa9aaFgZgvBfpkuHNw3e-iB4vf5LdvMmYdGCpG0Ofiv6z19ojLhGPnUe_9SWK48pl1BzBU1o8xvEILNvboHlEBMSw6NX3RaCY_yF8ZD2518ipqAt_1SQgzQ8BcaGIXp2h2d-agNaSJs-1c2VDrS78ys74l0KTKt-F03N6pKA9uLD6jQniKaI_eh4WtUrbNdZPSHFAjloNDtM',
       features: ['Motor OK', 'Frenos Seguros'],
     ),
     OnboardingContent(
       title: 'Recordatorios Inteligentes',
-      description: 'Nunca más olvides un cambio de aceite o mantenimiento preventivo. Nosotros te avisamos.',
-      imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAGuLOtm-XW2HPNRArFEVcOAhv4hjIEx54m69ca89JZltsaqO4rUiGxbdPpKpBfxUAJa9aaFgZgvBfpkuHNw3e-iB4vf5LdvMmYdGCpG0Ofiv6z19ojLhGPnUe_9SWK48pl1BzBU1o8xvEILNvboHlEBMSw6NX3RaCY_yF8ZD2518ipqAt_1SQgzQ8BcaGIXp2h2d-agNaSJs-1c2VDrS78ys74l0KTKt-F03N6pKA9uLD6jQniKaI_eh4WtUrbNdZPSHFAjloNDtM', // Reusing placeholder as requested
+      description:
+          'Nunca más olvides un cambio de aceite o mantenimiento preventivo. Nosotros te avisamos.',
+      imageUrl:
+          'https://lh3.googleusercontent.com/aida-public/AB6AXuAGuLOtm-XW2HPNRArFEVcOAhv4hjIEx54m69ca89JZltsaqO4rUiGxbdPpKpBfxUAJa9aaFgZgvBfpkuHNw3e-iB4vf5LdvMmYdGCpG0Ofiv6z19ojLhGPnUe_9SWK48pl1BzBU1o8xvEILNvboHlEBMSw6NX3RaCY_yF8ZD2518ipqAt_1SQgzQ8BcaGIXp2h2d-agNaSJs-1c2VDrS78ys74l0KTKt-F03N6pKA9uLD6jQniKaI_eh4WtUrbNdZPSHFAjloNDtM', // Reusing placeholder as requested
       features: ['Aceite 80%', 'Llantas OK'],
     ),
     OnboardingContent(
       title: 'Tu auto te lo agradecerá',
-      description: 'Descubre una nueva forma de cuidar tu vehículo con recordatorios inteligentes y diagnósticos en tiempo real.',
-      imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAGuLOtm-XW2HPNRArFEVcOAhv4hjIEx54m69ca89JZltsaqO4rUiGxbdPpKpBfxUAJa9aaFgZgvBfpkuHNw3e-iB4vf5LdvMmYdGCpG0Ofiv6z19ojLhGPnUe_9SWK48pl1BzBU1o8xvEILNvboHlEBMSw6NX3RaCY_yF8ZD2518ipqAt_1SQgzQ8BcaGIXp2h2d-agNaSJs-1c2VDrS78ys74l0KTKt-F03N6pKA9uLD6jQniKaI_eh4WtUrbNdZPSHFAjloNDtM',
+      description:
+          'Descubre una nueva forma de cuidar tu vehículo con recordatorios inteligentes y diagnósticos en tiempo real.',
+      imageUrl:
+          'https://lh3.googleusercontent.com/aida-public/AB6AXuAGuLOtm-XW2HPNRArFEVcOAhv4hjIEx54m69ca89JZltsaqO4rUiGxbdPpKpBfxUAJa9aaFgZgvBfpkuHNw3e-iB4vf5LdvMmYdGCpG0Ofiv6z19ojLhGPnUe_9SWK48pl1BzBU1o8xvEILNvboHlEBMSw6NX3RaCY_yF8ZD2518ipqAt_1SQgzQ8BcaGIXp2h2d-agNaSJs-1c2VDrS78ys74l0KTKt-F03N6pKA9uLD6jQniKaI_eh4WtUrbNdZPSHFAjloNDtM',
       features: ['Motor OK', '100% Vida'],
     ),
   ];
@@ -54,7 +60,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             children: [
               // Top Bar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -67,7 +76,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           );
                         }
                       },
-                      icon: Icon(Icons.arrow_back, color: _currentPage > 0 ? colors.textPrimary : Colors.transparent),
+                      icon: Icon(
+                        Icons.arrow_back,
+                        color: _currentPage > 0
+                            ? colors.textPrimary
+                            : Colors.transparent,
+                      ),
                     ),
                     Text(
                       'AutoDoc',
@@ -78,7 +92,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ).animate().fadeIn(duration: 500.ms),
                     TextButton(
                       onPressed: () async {
-                        await AuthPreferencesService().setOnboardingCompleted(true);
+                        await AuthPreferencesService().setOnboardingCompleted(
+                          true,
+                        );
                         if (context.mounted) {
                           context.go('/login');
                         }
@@ -116,7 +132,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             // Illustration Section with Glassmorphism
                             ConstrainedBox(
                               constraints: BoxConstraints(
-                                maxHeight: MediaQuery.of(context).size.height * 0.4,
+                                maxHeight:
+                                    MediaQuery.of(context).size.height * 0.4,
                                 minHeight: 200,
                               ),
                               child: Stack(
@@ -124,99 +141,168 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 children: [
                                   // Decorative Blobs
                                   Positioned(
-                                    top: 20,
-                                    right: 20,
-                                    child: Container(
-                                      width: 100,
-                                      height: 100,
-                                      decoration: BoxDecoration(
-                                        color: colors.primary.withValues(alpha: 0.2),
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ).withBlur(30),
-                                  ).animate(target: _currentPage == index ? 1 : 0).scale(duration: 600.ms),
+                                        top: 20,
+                                        right: 20,
+                                        child: Container(
+                                          width: 100,
+                                          height: 100,
+                                          decoration: BoxDecoration(
+                                            color: colors.primary.withValues(
+                                              alpha: 0.2,
+                                            ),
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ).withBlur(30),
+                                      )
+                                      .animate(
+                                        target: _currentPage == index ? 1 : 0,
+                                      )
+                                      .scale(duration: 600.ms),
                                   Positioned(
-                                    bottom: 20,
-                                    left: 20,
-                                    child: Container(
-                                      width: 120,
-                                      height: 120,
-                                      decoration: BoxDecoration(
-                                        color: colors.secondary.withValues(alpha: 0.2),
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ).withBlur(40),
-                                  ).animate(target: _currentPage == index ? 1 : 0).scale(duration: 800.ms),
+                                        bottom: 20,
+                                        left: 20,
+                                        child: Container(
+                                          width: 120,
+                                          height: 120,
+                                          decoration: BoxDecoration(
+                                            color: colors.secondary.withValues(
+                                              alpha: 0.2,
+                                            ),
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ).withBlur(40),
+                                      )
+                                      .animate(
+                                        target: _currentPage == index ? 1 : 0,
+                                      )
+                                      .scale(duration: 800.ms),
                                   // Glass Panel
                                   LayoutBuilder(
                                     builder: (context, constraints) {
                                       return ClipRRect(
-                                        borderRadius: BorderRadius.circular(24),
-                                        child: BackdropFilter(
-                                          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                                          child: Container(
-                                            width: 280,
-                                            height: constraints.maxHeight,
-                                            decoration: BoxDecoration(
-                                              color: colors.surfaceContainer.withValues(alpha: isDark ? 0.6 : 0.8),
-                                              borderRadius: BorderRadius.circular(24),
-                                              border: Border.all(
-                                                color: colors.outline.withValues(alpha: 0.3),
-                                                width: 1.5,
-                                              ),
+                                            borderRadius: BorderRadius.circular(
+                                              24,
                                             ),
-                                            padding: const EdgeInsets.all(24),
-                                            child: Column(
-                                              children: [
-                                                Expanded(
-                                                  child: ClipRRect(
-                                                    borderRadius: BorderRadius.circular(16),
-                                                    child: CachedNetworkImage(
-                                                      imageUrl: content.imageUrl,
-                                                      fit: BoxFit.cover,
-                                                      placeholder: (context, url) => Container(color: colors.surfaceContainer),
-                                                    ),
+                                            child: BackdropFilter(
+                                              filter: ImageFilter.blur(
+                                                sigmaX: 12,
+                                                sigmaY: 12,
+                                              ),
+                                              child: Container(
+                                                width: 280,
+                                                height: constraints.maxHeight,
+                                                decoration: BoxDecoration(
+                                                  color: colors.surfaceContainer
+                                                      .withValues(
+                                                        alpha: isDark
+                                                            ? 0.6
+                                                            : 0.8,
+                                                      ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(24),
+                                                  border: Border.all(
+                                                    color: colors.outline
+                                                        .withValues(alpha: 0.3),
+                                                    width: 1.5,
                                                   ),
                                                 ),
-                                                const SizedBox(height: 16),
-                                                Row(
+                                                padding: const EdgeInsets.all(
+                                                  24,
+                                                ),
+                                                child: Column(
                                                   children: [
-                                                    _buildFeatureItem(content.features[0], Icons.check_circle, colors),
-                                                    const SizedBox(width: 8),
-                                                    _buildFeatureItem(content.features[1], index == 2 ? Icons.battery_full : Icons.speed, colors),
+                                                    Expanded(
+                                                      child: ClipRRect(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              16,
+                                                            ),
+                                                        child: CachedNetworkImage(
+                                                          imageUrl:
+                                                              content.imageUrl,
+                                                          fit: BoxFit.cover,
+                                                          placeholder:
+                                                              (
+                                                                context,
+                                                                url,
+                                                              ) => Container(
+                                                                color: colors
+                                                                    .surfaceContainer,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 16),
+                                                    Row(
+                                                      children: [
+                                                        _buildFeatureItem(
+                                                          content.features[0],
+                                                          Icons.check_circle,
+                                                          colors,
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 8,
+                                                        ),
+                                                        _buildFeatureItem(
+                                                          content.features[1],
+                                                          index == 2
+                                                              ? Icons
+                                                                    .battery_full
+                                                              : Icons.speed,
+                                                          colors,
+                                                        ),
+                                                      ],
+                                                    ),
                                                   ],
                                                 ),
-                                              ],
+                                              ),
                                             ),
-                                          ),
-                                        ),
-                                      ).animate(target: _currentPage == index ? 1 : 0).slideY(begin: 0.2, end: 0, duration: 500.ms).fadeIn();
-                                    }
+                                          )
+                                          .animate(
+                                            target: _currentPage == index
+                                                ? 1
+                                                : 0,
+                                          )
+                                          .slideY(
+                                            begin: 0.2,
+                                            end: 0,
+                                            duration: 500.ms,
+                                          )
+                                          .fadeIn();
+                                    },
                                   ),
                                 ],
                               ),
                             ),
-                    
+
                             const SizedBox(height: 32),
                             // Text Content
                             Text(
-                              content.title,
-                              textAlign: TextAlign.center,
-                              style: AppTextStyles.headlineMedium.copyWith(
-                                color: colors.textPrimary,
-                              ),
-                            ).animate(target: _currentPage == index ? 1 : 0).slideY(begin: 0.5, end: 0, duration: 600.ms).fadeIn(),
+                                  content.title,
+                                  textAlign: TextAlign.center,
+                                  style: AppTextStyles.headlineMedium.copyWith(
+                                    color: colors.textPrimary,
+                                  ),
+                                )
+                                .animate(target: _currentPage == index ? 1 : 0)
+                                .slideY(begin: 0.5, end: 0, duration: 600.ms)
+                                .fadeIn(),
                             const SizedBox(height: 16),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              child: Text(
-                                content.description,
-                                textAlign: TextAlign.center,
-                                style: AppTextStyles.bodyLarge.copyWith(
-                                  color: colors.textSecondary,
-                                ),
-                              ),
-                            ).animate(target: _currentPage == index ? 1 : 0).slideY(begin: 0.5, end: 0, duration: 700.ms).fadeIn(),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                  ),
+                                  child: Text(
+                                    content.description,
+                                    textAlign: TextAlign.center,
+                                    style: AppTextStyles.bodyLarge.copyWith(
+                                      color: colors.textSecondary,
+                                    ),
+                                  ),
+                                )
+                                .animate(target: _currentPage == index ? 1 : 0)
+                                .slideY(begin: 0.5, end: 0, duration: 700.ms)
+                                .fadeIn(),
                             const SizedBox(height: 20),
                           ],
                         ),
@@ -239,7 +325,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       height: 8,
                       width: _currentPage == index ? 32 : 8,
                       decoration: BoxDecoration(
-                        color: _currentPage == index ? colors.primary : colors.outline.withValues(alpha: 0.5),
+                        color: _currentPage == index
+                            ? colors.primary
+                            : colors.outline.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
@@ -259,7 +347,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       );
                     } else {
                       // Final Action: Navigate to Login
-                      await AuthPreferencesService().setOnboardingCompleted(true);
+                      await AuthPreferencesService().setOnboardingCompleted(
+                        true,
+                      );
                       if (context.mounted) {
                         context.go('/login');
                       }
@@ -285,7 +375,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            _currentPage == _contents.length - 1 ? 'Comenzar ahora' : 'Siguiente',
+                            _currentPage == _contents.length - 1
+                                ? 'Comenzar ahora'
+                                : 'Siguiente',
                             style: AppTextStyles.titleMedium.copyWith(
                               color: colors.onPrimary,
                             ),
@@ -351,7 +443,7 @@ class OnboardingContent {
 
 extension on Widget {
   Widget withBlur(double sigma) => ImageFiltered(
-        imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-        child: this,
-      );
+    imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+    child: this,
+  );
 }

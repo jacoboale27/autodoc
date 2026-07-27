@@ -10,9 +10,9 @@ import '../../data/repositories/chat_repository.dart';
 class ChatProvider extends ChangeNotifier {
   final ChatRepository _chatRepository;
 
-  ChatProvider({ChatRepository? repository}) 
-      : _chatRepository = repository ?? ChatRepository();
-  
+  ChatProvider({ChatRepository? repository})
+    : _chatRepository = repository ?? ChatRepository();
+
   List<ConversacionModel> _conversaciones = [];
   List<ConversacionModel> get conversaciones => _conversaciones;
 
@@ -21,15 +21,17 @@ class ChatProvider extends ChangeNotifier {
 
   StreamSubscription? _conversacionesSub;
   StreamSubscription? _mensajesSub;
-  
+
   bool _isLoading = false;
   bool get isLoading => _isLoading;
-  
+
   String? _error;
   String? get error => _error;
 
-  int get totalNoLeidosPropietario => _conversaciones.fold(0, (sum, item) => sum + item.noLeidosPropietario);
-  int get totalNoLeidosMecanico => _conversaciones.fold(0, (sum, item) => sum + item.noLeidosMecanico);
+  int get totalNoLeidosPropietario =>
+      _conversaciones.fold(0, (sum, item) => sum + item.noLeidosPropietario);
+  int get totalNoLeidosMecanico =>
+      _conversaciones.fold(0, (sum, item) => sum + item.noLeidosMecanico);
 
   @override
   void dispose() {
@@ -41,38 +43,42 @@ class ChatProvider extends ChangeNotifier {
   void inicializarConversaciones(String userId, bool isMecanico) {
     _conversacionesSub?.cancel();
     _error = null;
-    _conversacionesSub = _chatRepository.streamConversaciones(userId, isMecanico).listen(
-      (data) {
-        _error = null;
-        _conversaciones = data;
-        notifyListeners();
-      },
-      onError: (e) {
-        _error = e.toString();
-        notifyListeners();
-      },
-    );
+    _conversacionesSub = _chatRepository
+        .streamConversaciones(userId, isMecanico)
+        .listen(
+          (data) {
+            _error = null;
+            _conversaciones = data;
+            notifyListeners();
+          },
+          onError: (e) {
+            _error = e.toString();
+            notifyListeners();
+          },
+        );
   }
 
   void inicializarMensajes(String conversacionId) {
     _isLoading = true;
     _error = null;
     notifyListeners();
-    
+
     _mensajesSub?.cancel();
-    _mensajesSub = _chatRepository.streamMensajes(conversacionId).listen(
-      (data) {
-        _error = null;
-        _mensajesActuales = data;
-        _isLoading = false;
-        notifyListeners();
-      },
-      onError: (e) {
-        _error = e.toString();
-        _isLoading = false;
-        notifyListeners();
-      },
-    );
+    _mensajesSub = _chatRepository
+        .streamMensajes(conversacionId)
+        .listen(
+          (data) {
+            _error = null;
+            _mensajesActuales = data;
+            _isLoading = false;
+            notifyListeners();
+          },
+          onError: (e) {
+            _error = e.toString();
+            _isLoading = false;
+            notifyListeners();
+          },
+        );
   }
 
   Future<String> iniciarOCrearConversacion({
@@ -157,18 +163,34 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> marcarComoLeidos(String conversacionId, bool isMecanico, String currentUserId) async {
+  Future<void> marcarComoLeidos(
+    String conversacionId,
+    bool isMecanico,
+    String currentUserId,
+  ) async {
     try {
-      await _chatRepository.marcarComoLeidos(conversacionId, isMecanico, currentUserId);
+      await _chatRepository.marcarComoLeidos(
+        conversacionId,
+        isMecanico,
+        currentUserId,
+      );
     } catch (e) {
       _error = e.toString();
       notifyListeners();
     }
   }
 
-  Future<void> actualizarMetadatosMensaje(String conversacionId, String mensajeId, Map<String, dynamic> metadata) async {
+  Future<void> actualizarMetadatosMensaje(
+    String conversacionId,
+    String mensajeId,
+    Map<String, dynamic> metadata,
+  ) async {
     try {
-      await _chatRepository.actualizarMetadatosMensaje(conversacionId, mensajeId, metadata);
+      await _chatRepository.actualizarMetadatosMensaje(
+        conversacionId,
+        mensajeId,
+        metadata,
+      );
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -194,11 +216,14 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  Future<String?> subirImagenChat(String conversacionId, XFile imageFile) async {
+  Future<String?> subirImagenChat(
+    String conversacionId,
+    XFile imageFile,
+  ) async {
     try {
       _isLoading = true;
       notifyListeners();
-      
+
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
       final ref = FirebaseStorage.instance
           .ref()
@@ -209,7 +234,7 @@ class ChatProvider extends ChangeNotifier {
       final metadata = SettableMetadata(contentType: 'image/jpeg');
       await ref.putData(bytes, metadata);
       final url = await ref.getDownloadURL();
-      
+
       _isLoading = false;
       notifyListeners();
       return url;
@@ -220,6 +245,7 @@ class ChatProvider extends ChangeNotifier {
       return null;
     }
   }
+
   Future<void> deleteMensaje(String conversacionId, String mensajeId) async {
     try {
       await _chatRepository.deleteMensaje(conversacionId, mensajeId);
@@ -229,7 +255,10 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> setTypingStatus(String conversacionId, String? typingUserId) async {
+  Future<void> setTypingStatus(
+    String conversacionId,
+    String? typingUserId,
+  ) async {
     try {
       await _chatRepository.setTypingStatus(conversacionId, typingUserId);
     } catch (e) {

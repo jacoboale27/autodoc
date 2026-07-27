@@ -6,6 +6,7 @@ import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+
 class MechanicSidebar extends StatelessWidget {
   const MechanicSidebar({super.key});
 
@@ -43,7 +44,9 @@ class MechanicSidebar extends StatelessWidget {
         color: bgColor,
         border: Border(
           right: BorderSide(
-            color: isDark ? Colors.white10 : Colors.white.withValues(alpha: 0.4),
+            color: isDark
+                ? Colors.white10
+                : Colors.white.withValues(alpha: 0.4),
           ),
         ),
       ),
@@ -162,13 +165,13 @@ class MechanicSidebar extends StatelessWidget {
     final iconColor = isDestructive
         ? colors.error
         : isActive
-            ? colors.primary
-            : colors.textSecondary;
+        ? colors.primary
+        : colors.textSecondary;
     final titleColor = isDestructive
         ? colors.error
         : isActive
-            ? colors.textPrimary
-            : colors.textSecondary;
+        ? colors.textPrimary
+        : colors.textSecondary;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

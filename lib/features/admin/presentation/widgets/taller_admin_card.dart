@@ -21,17 +21,19 @@ class TallerAdminCard extends StatelessWidget {
     final statusColor = taller.estado == 'aprobado'
         ? Colors.green
         : taller.estado == 'suspendido'
-            ? Colors.red
-            : taller.estado == 'rechazado'
-                ? Colors.grey
-                : Colors.orange;
+        ? Colors.red
+        : taller.estado == 'rechazado'
+        ? Colors.grey
+        : Colors.orange;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)),
+        side: BorderSide(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -44,7 +46,10 @@ class TallerAdminCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     taller.nombre,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 _buildStatusChip(taller.estado, statusColor),
@@ -55,8 +60,14 @@ class TallerAdminCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _buildInfoChip(Icons.build_circle_outlined, taller.especialidad ?? 'General'),
-                _buildInfoChip(Icons.location_on_outlined, taller.ubicacionMunicipio ?? 'S.S.'),
+                _buildInfoChip(
+                  Icons.build_circle_outlined,
+                  taller.especialidad ?? 'General',
+                ),
+                _buildInfoChip(
+                  Icons.location_on_outlined,
+                  taller.ubicacionMunicipio ?? 'S.S.',
+                ),
                 _buildInfoChip(Icons.phone_outlined, taller.telefono ?? 'N/A'),
               ],
             ),
@@ -69,7 +80,9 @@ class TallerAdminCard extends StatelessWidget {
                 if (taller.estado == 'pendiente') ...[
                   TextButton(
                     onPressed: onRechazar,
-                    style: TextButton.styleFrom(foregroundColor: Colors.grey[600]),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.grey[600],
+                    ),
                     child: Text(context.l10n.adminReject),
                   ),
                   const SizedBox(width: 12),
@@ -79,7 +92,9 @@ class TallerAdminCard extends StatelessWidget {
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
                       elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     child: Text(context.l10n.adminApproveWorkshop),
                   ),
@@ -91,7 +106,9 @@ class TallerAdminCard extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.red,
                       side: const BorderSide(color: Colors.red),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ] else if (taller.estado == 'suspendido') ...[
@@ -103,7 +120,9 @@ class TallerAdminCard extends StatelessWidget {
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
                       elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ],
@@ -124,7 +143,12 @@ class TallerAdminCard extends StatelessWidget {
       ),
       child: Text(
         estado.toUpperCase(),
-        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }
@@ -141,10 +165,7 @@ class TallerAdminCard extends StatelessWidget {
         children: [
           Icon(icon, size: 16, color: Colors.grey[600]),
           const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(fontSize: 13, color: Colors.grey[800]),
-          ),
+          Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[800])),
         ],
       ),
     );

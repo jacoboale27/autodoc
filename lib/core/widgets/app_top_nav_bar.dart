@@ -20,7 +20,9 @@ class AppTopNavBar extends StatelessWidget {
     return Container(
       height: Responsive.size(context, 70),
       margin: EdgeInsets.all(Responsive.padding(context, 16)),
-      padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 24)),
+      padding: EdgeInsets.symmetric(
+        horizontal: Responsive.padding(context, 24),
+      ),
       decoration: BoxDecoration(
         color: colors.surfaceContainer.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(999),
@@ -48,7 +50,11 @@ class AppTopNavBar extends StatelessWidget {
                     color: colors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(Icons.directions_car, color: colors.primary, size: Responsive.iconSize(context, 20)),
+                  child: Icon(
+                    Icons.directions_car,
+                    color: colors.primary,
+                    size: Responsive.iconSize(context, 20),
+                  ),
                 ),
                 SizedBox(width: Responsive.padding(context, 12)),
                 Text(
@@ -63,9 +69,9 @@ class AppTopNavBar extends StatelessWidget {
               ],
             ),
           ),
-          
+
           const Spacer(),
-          
+
           // Nav Links
           _TopNavLink(
             title: 'Dashboard',
@@ -91,20 +97,28 @@ class AppTopNavBar extends StatelessWidget {
             isActive: currentPath == '/chat_list',
             onTap: () => context.push('/chat_list'),
           ),
-          
+
           const Spacer(),
-          
+
           // Theme & Language Toggles
           Consumer2<ThemeProvider, LanguageProvider>(
             builder: (context, themeProvider, languageProvider, _) {
               final isDark = themeProvider.themeMode == ThemeMode.dark;
-              final isEnglish = languageProvider.currentLocale.languageCode == 'en';
+              final isEnglish =
+                  languageProvider.currentLocale.languageCode == 'en';
               return Row(
                 children: [
                   IconButton(
-                    icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined, color: colors.textSecondary),
+                    icon: Icon(
+                      isDark
+                          ? Icons.light_mode_outlined
+                          : Icons.dark_mode_outlined,
+                      color: colors.textSecondary,
+                    ),
                     onPressed: () {
-                      themeProvider.setThemeMode(isDark ? ThemeMode.light : ThemeMode.dark);
+                      themeProvider.setThemeMode(
+                        isDark ? ThemeMode.light : ThemeMode.dark,
+                      );
                     },
                     tooltip: 'Theme',
                   ),
@@ -115,14 +129,23 @@ class AppTopNavBar extends StatelessWidget {
                     },
                     borderRadius: BorderRadius.circular(8),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        border: Border.all(color: colors.outline.withValues(alpha: 0.5)),
+                        border: Border.all(
+                          color: colors.outline.withValues(alpha: 0.5),
+                        ),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         isEnglish ? 'EN' : 'ES',
-                        style: TextStyle(fontWeight: FontWeight.bold, color: colors.textSecondary, fontSize: Responsive.fontSize(context, 12)),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: colors.textSecondary,
+                          fontSize: Responsive.fontSize(context, 12),
+                        ),
                       ),
                     ),
                   ),
@@ -131,7 +154,7 @@ class AppTopNavBar extends StatelessWidget {
               );
             },
           ),
-          
+
           // Notification Bell with Badge
           Consumer<NotificationCenterProvider>(
             builder: (context, notifProvider, _) {
@@ -142,7 +165,9 @@ class AppTopNavBar extends StatelessWidget {
                       notifProvider.hasUnread
                           ? Icons.notifications_active_rounded
                           : Icons.notifications_none_rounded,
-                      color: notifProvider.hasUnread ? colors.primary : colors.textSecondary,
+                      color: notifProvider.hasUnread
+                          ? colors.primary
+                          : colors.textSecondary,
                     ),
                     onPressed: () => context.push('/notifications'),
                     tooltip: 'Notificaciones',
@@ -157,10 +182,17 @@ class AppTopNavBar extends StatelessWidget {
                           color: colors.error,
                           shape: BoxShape.circle,
                         ),
-                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
                         child: Text(
                           '${notifProvider.unreadCount > 9 ? "9+" : notifProvider.unreadCount}',
-                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -170,7 +202,7 @@ class AppTopNavBar extends StatelessWidget {
             },
           ),
           SizedBox(width: Responsive.padding(context, 8)),
-          
+
           // Profile Action
           Consumer<UserProfileProvider>(
             builder: (context, userSession, _) {
@@ -191,7 +223,9 @@ class AppTopNavBar extends StatelessWidget {
                               user?.nombreCompleto.isNotEmpty == true
                                   ? user!.nombreCompleto[0].toUpperCase()
                                   : 'U',
-                              style: AppTextStyles.bodySmall.copyWith(color: colors.surface),
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: colors.surface,
+                              ),
                             )
                           : null,
                     ),
@@ -231,7 +265,7 @@ class _TopNavLink extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final color = isActive ? colors.primary : colors.textSecondary;
-    
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),

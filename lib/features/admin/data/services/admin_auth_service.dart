@@ -36,7 +36,10 @@ class AdminAuthService {
       if (user == null) return null;
 
       // Validate admin role in Firestore
-      final userDoc = await _firestore.collection(FirestoreCollections.usuarios).doc(user.uid).get();
+      final userDoc = await _firestore
+          .collection(FirestoreCollections.usuarios)
+          .doc(user.uid)
+          .get();
       if (!userDoc.exists) return null;
 
       final data = userDoc.data()!;
@@ -58,7 +61,10 @@ class AdminAuthService {
   /// Checks if a given UID belongs to an admin in Firestore.
   Future<bool> isAdmin(String uid) async {
     try {
-      final doc = await _firestore.collection(FirestoreCollections.usuarios).doc(uid).get();
+      final doc = await _firestore
+          .collection(FirestoreCollections.usuarios)
+          .doc(uid)
+          .get();
       if (!doc.exists) return false;
       final rol = (doc.data()?['rol'] as String? ?? '').trim().toLowerCase();
       return rol == 'administrador' || rol == 'admin';
@@ -70,7 +76,10 @@ class AdminAuthService {
   /// Retrieves admin user data by UID from Firestore.
   Future<UserModel?> getAdminByUid(String uid) async {
     try {
-      final doc = await _firestore.collection(FirestoreCollections.usuarios).doc(uid).get();
+      final doc = await _firestore
+          .collection(FirestoreCollections.usuarios)
+          .doc(uid)
+          .get();
       if (!doc.exists) return null;
 
       final data = doc.data()!;
@@ -158,19 +167,26 @@ class AdminAuthService {
         await credential.user!.updateDisplayName(nombre);
 
         // Create/update the Firestore user document
-        await _firestore.collection(FirestoreCollections.usuarios).doc(uid).set({
-          'id_usuario': uid,
-          'nombre_completo': nombre,
-          'correo': email,
-          'rol': rol,
-          'usuario': usuario,
-          'estado': 'activo',
-          'fecha_registro': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+        await _firestore
+            .collection(FirestoreCollections.usuarios)
+            .doc(uid)
+            .set({
+              'id_usuario': uid,
+              'nombre_completo': nombre,
+              'correo': email,
+              'rol': rol,
+              'usuario': usuario,
+              'estado': 'activo',
+              'fecha_registro': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
 
         results.add({'email': email, 'status': 'success', 'uid': uid});
       } catch (e) {
-        results.add({'email': email, 'status': 'error', 'detail': e.toString()});
+        results.add({
+          'email': email,
+          'status': 'error',
+          'detail': e.toString(),
+        });
       }
     }
 

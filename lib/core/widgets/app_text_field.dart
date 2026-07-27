@@ -54,18 +54,12 @@ class AppTextField extends StatelessWidget {
 
     final focusedBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppRadius.lg),
-      borderSide: BorderSide(
-        color: colors.primary,
-        width: 2,
-      ),
+      borderSide: BorderSide(color: colors.primary, width: 2),
     );
 
     final errorBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppRadius.lg),
-      borderSide: BorderSide(
-        color: colors.error,
-        width: 1,
-      ),
+      borderSide: BorderSide(color: colors.error, width: 1),
     );
 
     return Column(
@@ -93,9 +87,7 @@ class AppTextField extends StatelessWidget {
           textCapitalization: textCapitalization,
           readOnly: readOnly,
           onTap: onTap,
-          style: AppTextStyles.bodyLarge.copyWith(
-            color: colors.textPrimary,
-          ),
+          style: AppTextStyles.bodyLarge.copyWith(color: colors.textPrimary),
           decoration: InputDecoration(
             hintText: hintText,
             hintStyle: AppTextStyles.bodyLarge.copyWith(
@@ -119,7 +111,10 @@ class AppTextField extends StatelessWidget {
             focusedBorder: focusedBorder,
             errorBorder: errorBorder,
             focusedErrorBorder: errorBorder,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 16,
+            ),
           ),
         ),
       ],

@@ -12,7 +12,8 @@ class NotificationService {
   NotificationService._internal();
 
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
 
   bool _isInitialized = false;
 
@@ -20,12 +21,14 @@ class NotificationService {
     if (_isInitialized) return;
 
     // Inicializar configuraciones de flutter_local_notifications
-    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
+    const AndroidInitializationSettings androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const DarwinInitializationSettings iosSettings =
+        DarwinInitializationSettings(
+          requestAlertPermission: true,
+          requestBadgePermission: true,
+          requestSoundPermission: true,
+        );
     const InitializationSettings initSettings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
@@ -45,7 +48,10 @@ class NotificationService {
         importance: Importance.max,
       );
 
-      final androidPlugin = _localNotifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      final androidPlugin = _localNotifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       if (androidPlugin != null) {
         await androidPlugin.createNotificationChannel(channel);
       }
@@ -53,7 +59,7 @@ class NotificationService {
 
     // Escuchar notificaciones en primer plano
     FirebaseMessaging.onMessage.listen(_onForegroundMessage);
-    
+
     // Escuchar toques en notificaciones en segundo plano
     FirebaseMessaging.onMessageOpenedApp.listen(_onMessageOpenedApp);
 
@@ -61,8 +67,10 @@ class NotificationService {
   }
 
   void _onForegroundMessage(RemoteMessage message) {
-    debugPrint("Mensaje recibido en primer plano: ${message.notification?.title}");
-    
+    debugPrint(
+      "Mensaje recibido en primer plano: ${message.notification?.title}",
+    );
+
     final notification = message.notification;
     final android = message.notification?.android;
 
@@ -75,7 +83,8 @@ class NotificationService {
           android: AndroidNotificationDetails(
             'high_importance_channel',
             'Notificaciones Importantes',
-            channelDescription: 'Este canal se usa para notificaciones importantes.',
+            channelDescription:
+                'Este canal se usa para notificaciones importantes.',
             icon: '@mipmap/ic_launcher',
             importance: Importance.max,
             priority: Priority.high,
@@ -91,7 +100,9 @@ class NotificationService {
   }
 
   void _onMessageOpenedApp(RemoteMessage message) {
-    debugPrint("Notificación de FCM tocada desde segundo plano: ${message.data}");
+    debugPrint(
+      "Notificación de FCM tocada desde segundo plano: ${message.data}",
+    );
     // Manejar navegación basada en message.data
   }
 
@@ -104,17 +115,19 @@ class NotificationService {
       // Obtener el token FCM
       String? token = await _firebaseMessaging.getToken();
       if (token != null) {
-        await FirebaseFirestore.instance.collection(FirestoreCollections.usuarios).doc(user.uid).update({
-          'fcmToken': token,
-        });
+        await FirebaseFirestore.instance
+            .collection(FirestoreCollections.usuarios)
+            .doc(user.uid)
+            .update({'fcmToken': token});
         debugPrint("Token FCM guardado en Firestore: $token");
       }
 
       // Escuchar cambios en el token
       _firebaseMessaging.onTokenRefresh.listen((newToken) {
-        FirebaseFirestore.instance.collection(FirestoreCollections.usuarios).doc(user.uid).update({
-          'fcmToken': newToken,
-        });
+        FirebaseFirestore.instance
+            .collection(FirestoreCollections.usuarios)
+            .doc(user.uid)
+            .update({'fcmToken': newToken});
       });
     } catch (e) {
       debugPrint("Error guardando token FCM: $e");

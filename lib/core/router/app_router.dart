@@ -58,12 +58,7 @@ CustomTransitionPage<T> buildPageWithFadeThrough<T>({
 }
 
 /// Routes that don't require authentication
-const _publicRoutes = <String>{
-  '/',
-  '/login',
-  '/register',
-  '/onboarding',
-};
+const _publicRoutes = <String>{'/', '/login', '/register', '/onboarding'};
 
 /// Routes exclusively for Propietario role
 const _ownerRoutes = <String>{
@@ -120,7 +115,9 @@ String _homeForRole(String normalizedRole) {
 /// Checks if a path matches or starts with any route in the set
 bool _matchesRouteSet(String path, Set<String> routes) {
   for (final route in routes) {
-    if (path == route || path.startsWith('$route/') || path.startsWith('$route?')) {
+    if (path == route ||
+        path.startsWith('$route/') ||
+        path.startsWith('$route?')) {
       return true;
     }
   }
@@ -136,19 +133,28 @@ bool _matchesRouteSet(String path, Set<String> routes) {
 /// - /task_config: expects `MaintenanceTask`
 /// - /task_complete: expects `Map<String, dynamic>` with keys 'task' (MaintenanceTask) and 'currentKm' (int)
 /// Core redirect logic extracted for unit testing
-String? appRouterRedirect(AuthSessionProvider authProvider, UserProfileProvider profileProvider, BuildContext context, GoRouterState state) {
+String? appRouterRedirect(
+  AuthSessionProvider authProvider,
+  UserProfileProvider profileProvider,
+  BuildContext context,
+  GoRouterState state,
+) {
   final currentPath = state.uri.path;
   final isPublicRoute = _publicRoutes.contains(currentPath);
   final isLoggedIn = authProvider.isLoggedIn;
   final currentUid = authProvider.currentUid;
   final rawUserData = profileProvider.userData;
-  
+
   // Only consider userData valid if it matches currentUid or rawUserData was successfully fetched
-  final userData = (rawUserData != null && (rawUserData.idUsuario == currentUid || rawUserData.idUsuario.isEmpty))
+  final userData =
+      (rawUserData != null &&
+          (rawUserData.idUsuario == currentUid ||
+              rawUserData.idUsuario.isEmpty))
       ? rawUserData
       : null;
   final hasAttemptedFetch = profileProvider.hasAttemptedFetchFor(currentUid);
-  final isProfileLoading = profileProvider.isLoading || (isLoggedIn && !hasAttemptedFetch);
+  final isProfileLoading =
+      profileProvider.isLoading || (isLoggedIn && !hasAttemptedFetch);
 
   // --- 1. Unauthenticated user trying to access protected route ---
   if (!isLoggedIn && !isPublicRoute) {
@@ -159,16 +165,22 @@ String? appRouterRedirect(AuthSessionProvider authProvider, UserProfileProvider 
 
   // Wait if profile is loading or profile fetch for current UID has not completed
   if (isLoggedIn && (isProfileLoading || !hasAttemptedFetch)) {
-     // Allow the user to stay on splash or login/register while profile loads
-     if (currentPath == '/' || currentPath == '/login' || currentPath == '/register') return null;
-     // For any other route, stay put while loading — the router will re-evaluate
-     // when profileProvider notifies (via refreshListenable)
-     return null;
+    // Allow the user to stay on splash or login/register while profile loads
+    if (currentPath == '/' ||
+        currentPath == '/login' ||
+        currentPath == '/register') {
+      return null;
+    }
+    // For any other route, stay put while loading — the router will re-evaluate
+    // when profileProvider notifies (via refreshListenable)
+    return null;
   }
 
   // --- 2. Authenticated user on login/register → redirect to appropriate home or profile_setup ---
   if (isLoggedIn && (currentPath == '/login' || currentPath == '/register')) {
-    if (isProfileLoading || !hasAttemptedFetch) return null; // Wait for profile to load
+    if (isProfileLoading || !hasAttemptedFetch) {
+      return null; // Wait for profile to load
+    }
     if (userData == null) {
       // Do not redirect to /profile_setup if there was a network/fetch error
       if (profileProvider.error != null) return null;
@@ -183,7 +195,13 @@ String? appRouterRedirect(AuthSessionProvider authProvider, UserProfileProvider 
   }
 
   // --- 3. Authenticated user without profile accessing protected route → force profile setup ---
-  if (isLoggedIn && userData == null && !isProfileLoading && hasAttemptedFetch && profileProvider.error == null && currentPath != '/profile_setup' && !isPublicRoute) {
+  if (isLoggedIn &&
+      userData == null &&
+      !isProfileLoading &&
+      hasAttemptedFetch &&
+      profileProvider.error == null &&
+      currentPath != '/profile_setup' &&
+      !isPublicRoute) {
     return '/profile_setup';
   }
 
@@ -202,7 +220,9 @@ String? appRouterRedirect(AuthSessionProvider authProvider, UserProfileProvider 
     }
 
     // Chat routes are shared between owner and mechanic
-    if (currentPath.startsWith('/chat/') || currentPath == '/chat_list' || currentPath == '/reserva_detail') {
+    if (currentPath.startsWith('/chat/') ||
+        currentPath == '/chat_list' ||
+        currentPath == '/reserva_detail') {
       return null; // Allow — both roles use chat
     }
 
@@ -246,7 +266,10 @@ String? appRouterRedirect(AuthSessionProvider authProvider, UserProfileProvider 
 }
 
 /// App Router Definition with auth guards
-GoRouter createAppRouter(AuthSessionProvider authProvider, UserProfileProvider profileProvider) {
+GoRouter createAppRouter(
+  AuthSessionProvider authProvider,
+  UserProfileProvider profileProvider,
+) {
   return GoRouter(
     initialLocation: '/',
     refreshListenable: Listenable.merge([authProvider, profileProvider]),
@@ -255,25 +278,45 @@ GoRouter createAppRouter(AuthSessionProvider authProvider, UserProfileProvider p
     routes: [
       GoRoute(
         path: '/',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const SplashScreen()),
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const SplashScreen(),
+        ),
       ),
       GoRoute(
         path: '/onboarding',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const OnboardingScreen()),
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const OnboardingScreen(),
+        ),
       ),
       GoRoute(
         path: '/login',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const AuthScreen(isLogin: true)),
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const AuthScreen(isLogin: true),
+        ),
       ),
       GoRoute(
         path: '/register',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const AuthScreen(isLogin: false)),
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const AuthScreen(isLogin: false),
+        ),
       ),
       GoRoute(
         path: '/profile_setup',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const ProfileSetupScreen()),
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const ProfileSetupScreen(),
+        ),
       ),
-      
+
       // Main App Shell
       ShellRoute(
         builder: (context, state, child) {
@@ -282,95 +325,167 @@ GoRouter createAppRouter(AuthSessionProvider authProvider, UserProfileProvider p
         routes: [
           GoRoute(
             path: '/dashboard',
-            pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const DashboardScreen()),
+            pageBuilder: (context, state) => buildPageWithFadeThrough(
+              context: context,
+              state: state,
+              child: const DashboardScreen(),
+            ),
           ),
           GoRoute(
             path: '/garage',
-            pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const GarageScreen()),
+            pageBuilder: (context, state) => buildPageWithFadeThrough(
+              context: context,
+              state: state,
+              child: const GarageScreen(),
+            ),
           ),
           GoRoute(
             path: '/workshop_directory',
-            pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const WorkshopDirectoryScreen()),
+            pageBuilder: (context, state) => buildPageWithFadeThrough(
+              context: context,
+              state: state,
+              child: const WorkshopDirectoryScreen(),
+            ),
           ),
           GoRoute(
             path: '/user_profile',
-            pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const UserProfileScreen()),
+            pageBuilder: (context, state) => buildPageWithFadeThrough(
+              context: context,
+              state: state,
+              child: const UserProfileScreen(),
+            ),
           ),
           GoRoute(
             path: '/chat_list',
-            pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const ConversacionesListScreen()),
+            pageBuilder: (context, state) => buildPageWithFadeThrough(
+              context: context,
+              state: state,
+              child: const ConversacionesListScreen(),
+            ),
           ),
         ],
       ),
-      
+
       GoRoute(
         path: '/vehicle_profile',
         pageBuilder: (context, state) {
           final vehicle = state.extra as VehicleModel;
-          return buildPageWithFadeThrough(context: context, state: state, child: VehicleProfileScreen(vehicle: vehicle));
+          return buildPageWithFadeThrough(
+            context: context,
+            state: state,
+            child: VehicleProfileScreen(vehicle: vehicle),
+          );
         },
       ),
       GoRoute(
         path: '/alerts',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const AlertsScreen()),
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const AlertsScreen(),
+        ),
       ),
       GoRoute(
         path: '/service_history',
         pageBuilder: (context, state) {
           final vehicleId = state.extra as String;
-          return buildPageWithFadeThrough(context: context, state: state, child: ServiceHistoryScreen(vehicleId: vehicleId));
+          return buildPageWithFadeThrough(
+            context: context,
+            state: state,
+            child: ServiceHistoryScreen(vehicleId: vehicleId),
+          );
         },
       ),
       GoRoute(
         path: '/mechanic_search',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const VehicleSearchScreen()),
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const VehicleSearchScreen(),
+        ),
       ),
       GoRoute(
         path: '/mechanic_service_history',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const MechanicServiceHistoryScreen()),
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const MechanicServiceHistoryScreen(),
+        ),
       ),
       GoRoute(
         path: '/mechanic_dashboard',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const MechanicDashboardScreen()),
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const MechanicDashboardScreen(),
+        ),
       ),
       GoRoute(
         path: '/mechanic_pending',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const MechanicPendingScreen()),
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const MechanicPendingScreen(),
+        ),
       ),
       GoRoute(
         path: '/workshop_settings',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const WorkshopSettingsScreen()),
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const WorkshopSettingsScreen(),
+        ),
       ),
       GoRoute(
         path: '/mechanic_reviews',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const MechanicReviewsScreen()),
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const MechanicReviewsScreen(),
+        ),
       ),
       GoRoute(
         path: '/initiate_service',
         pageBuilder: (context, state) {
           final vehicle = state.extra as VehicleModel;
-          return buildPageWithFadeThrough(context: context, state: state, child: InitiateServiceScreen(vehicle: vehicle));
+          return buildPageWithFadeThrough(
+            context: context,
+            state: state,
+            child: InitiateServiceScreen(vehicle: vehicle),
+          );
         },
       ),
       GoRoute(
         path: '/chat/:id',
         pageBuilder: (context, state) {
           final id = state.pathParameters['id']!;
-          return buildPageWithFadeThrough(context: context, state: state, child: ChatScreen(conversacionId: id));
+          return buildPageWithFadeThrough(
+            context: context,
+            state: state,
+            child: ChatScreen(conversacionId: id),
+          );
         },
       ),
       GoRoute(
         path: '/reserva_detail',
         pageBuilder: (context, state) {
           final reserva = state.extra as ReservaModel;
-          return buildPageWithFadeThrough(context: context, state: state, child: ReservaDetailScreen(reserva: reserva));
+          return buildPageWithFadeThrough(
+            context: context,
+            state: state,
+            child: ReservaDetailScreen(reserva: reserva),
+          );
         },
       ),
       GoRoute(
         path: '/task_config',
         pageBuilder: (context, state) {
           final task = state.extra as MaintenanceTask;
-          return buildPageWithFadeThrough(context: context, state: state, child: TaskConfigScreen(task: task));
+          return buildPageWithFadeThrough(
+            context: context,
+            state: state,
+            child: TaskConfigScreen(task: task),
+          );
         },
       ),
       GoRoute(
@@ -389,35 +504,67 @@ GoRouter createAppRouter(AuthSessionProvider authProvider, UserProfileProvider p
       ),
       GoRoute(
         path: '/admin/dashboard',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const AdminDashboardScreen()),
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const AdminDashboardScreen(),
+        ),
       ),
       GoRoute(
         path: '/admin/usuarios',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const AdminUsuariosScreen()),
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const AdminUsuariosScreen(),
+        ),
       ),
       GoRoute(
         path: '/admin/talleres',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const AdminTalleresScreen()),
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const AdminTalleresScreen(),
+        ),
       ),
       GoRoute(
         path: '/admin/resenias',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const AdminReseniasScreen()),
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const AdminReseniasScreen(),
+        ),
       ),
       GoRoute(
         path: '/admin/logs',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const AdminLogsScreen()),
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const AdminLogsScreen(),
+        ),
       ),
       GoRoute(
         path: '/admin/seed',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const AdminSeedScreen()),
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const AdminSeedScreen(),
+        ),
       ),
       GoRoute(
         path: '/notifications',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const NotificationsScreen()),
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const NotificationsScreen(),
+        ),
       ),
       GoRoute(
         path: '/mechanic_pending',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(context: context, state: state, child: const MechanicPendingScreen()),
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const MechanicPendingScreen(),
+        ),
       ),
     ],
   );

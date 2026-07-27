@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 
 import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/core/models/service_record_model.dart';
-import 'package:autodoc/core/providers/user_session_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
@@ -19,23 +19,23 @@ class MechanicServiceHistoryScreen extends StatefulWidget {
   const MechanicServiceHistoryScreen({super.key});
 
   @override
-  State<MechanicServiceHistoryScreen> createState() => _MechanicServiceHistoryScreenState();
+  State<MechanicServiceHistoryScreen> createState() =>
+      _MechanicServiceHistoryScreenState();
 }
 
-class _MechanicServiceHistoryScreenState extends State<MechanicServiceHistoryScreen> {
+class _MechanicServiceHistoryScreenState
+    extends State<MechanicServiceHistoryScreen> {
   DateTimeRange? _dateRange;
 
   @override
   Widget build(BuildContext context) {
     final bool isMobile = MediaQuery.of(context).size.width < 700;
     final colors = context.appColors;
-    final userSession = context.watch<UserSessionProvider>();
+    final userSession = context.watch<UserProfileProvider>();
     final userData = userSession.userData;
 
     if (userData == null || userData.idUsuario.isEmpty) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final String mechanicId = userData.idUsuario;
@@ -68,11 +68,15 @@ class _MechanicServiceHistoryScreenState extends State<MechanicServiceHistoryScr
                 if (!isMobile)
                   Container(
                     height: 64,
-                    padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 32)),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: Responsive.padding(context, 32),
+                    ),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.surface,
                       border: Border(
-                        bottom: BorderSide(color: colors.textSecondary.withValues(alpha: 0.1)),
+                        bottom: BorderSide(
+                          color: colors.textSecondary.withValues(alpha: 0.1),
+                        ),
                       ),
                     ),
                     child: Row(
@@ -98,12 +102,16 @@ class _MechanicServiceHistoryScreenState extends State<MechanicServiceHistoryScr
                           backgroundColor: colors.surface,
                           foregroundColor: colors.primary,
                           elevation: 0,
-                          side: BorderSide(color: colors.primary.withValues(alpha: 0.2)),
+                          side: BorderSide(
+                            color: colors.primary.withValues(alpha: 0.2),
+                          ),
                         ),
                         icon: const Icon(Icons.date_range, size: 18),
-                        label: Text(_dateRange == null
-                            ? 'Filtrar por Fechas'
-                            : '${DateFormat('dd/MM/yy').format(_dateRange!.start)} - ${DateFormat('dd/MM/yy').format(_dateRange!.end)}'),
+                        label: Text(
+                          _dateRange == null
+                              ? 'Filtrar por Fechas'
+                              : '${DateFormat('dd/MM/yy').format(_dateRange!.start)} - ${DateFormat('dd/MM/yy').format(_dateRange!.end)}',
+                        ),
                         onPressed: () async {
                           final picked = await showDateRangePicker(
                             context: context,
@@ -146,26 +154,44 @@ class _MechanicServiceHistoryScreenState extends State<MechanicServiceHistoryScr
                         .snapshots(),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return AppSkeletonLayouts.listCards(itemCount: 5, cardHeight: 120);
+                        return AppSkeletonLayouts.listCards(
+                          itemCount: 5,
+                          cardHeight: 120,
+                        );
                       }
                       if (snapshot.hasError) {
-                        return Center(child: Text('Error: ${snapshot.error}', style: TextStyle(color: colors.textPrimary)));
+                        return Center(
+                          child: Text(
+                            'Error: ${snapshot.error}',
+                            style: TextStyle(color: colors.textPrimary),
+                          ),
+                        );
                       }
                       if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                         return Center(
-                          child: Text('No has realizado ningún servicio aún.',
-                              style: TextStyle(color: colors.textSecondary)),
+                          child: Text(
+                            'No has realizado ningún servicio aún.',
+                            style: TextStyle(color: colors.textSecondary),
+                          ),
                         );
                       }
 
                       final allRecords = snapshot.data!.docs
-                          .map((doc) => ServiceRecordModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+                          .map(
+                            (doc) => ServiceRecordModel.fromMap(
+                              doc.data() as Map<String, dynamic>,
+                              doc.id,
+                            ),
+                          )
                           .toList();
 
                       final filteredRecords = allRecords.where((record) {
                         if (_dateRange != null) {
                           final date = record.fecha;
-                          if (date.isBefore(_dateRange!.start) || date.isAfter(_dateRange!.end.add(const Duration(days: 1)))) {
+                          if (date.isBefore(_dateRange!.start) ||
+                              date.isAfter(
+                                _dateRange!.end.add(const Duration(days: 1)),
+                              )) {
                             return false;
                           }
                         }
@@ -174,13 +200,18 @@ class _MechanicServiceHistoryScreenState extends State<MechanicServiceHistoryScr
 
                       if (filteredRecords.isEmpty) {
                         return Center(
-                          child: Text('No hay servicios en este rango de fechas.',
-                              style: TextStyle(color: colors.textSecondary)),
+                          child: Text(
+                            'No hay servicios en este rango de fechas.',
+                            style: TextStyle(color: colors.textSecondary),
+                          ),
                         );
                       }
 
                       return ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         itemCount: filteredRecords.length,
                         itemBuilder: (context, index) {
                           final record = filteredRecords[index];
@@ -198,7 +229,10 @@ class _MechanicServiceHistoryScreenState extends State<MechanicServiceHistoryScr
     );
   }
 
-  Widget _buildMechanicServiceCard(ServiceRecordModel record, AppColors colors) {
+  Widget _buildMechanicServiceCard(
+    ServiceRecordModel record,
+    AppColors colors,
+  ) {
     return AppCard(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -230,10 +264,7 @@ class _MechanicServiceHistoryScreenState extends State<MechanicServiceHistoryScr
           const SizedBox(height: 8),
           Text(
             '${DateFormat('dd MMM yyyy').format(record.fecha)} • ${record.kilometrajeServicio ?? '--'} km',
-            style: TextStyle(
-              color: colors.textSecondary,
-              fontSize: 13,
-            ),
+            style: TextStyle(color: colors.textSecondary, fontSize: 13),
           ),
           if (record.descripcion != null && record.descripcion!.isNotEmpty) ...[
             const SizedBox(height: 8),

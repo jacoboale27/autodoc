@@ -24,7 +24,6 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-
   late bool _isLoginMode;
   bool _rememberMe = false;
   final _emailController = TextEditingController();
@@ -92,15 +91,17 @@ class _AuthScreenState extends State<AuthScreen> {
         child: Stack(
           children: [
             // Decorative blobs
-            Positioned.fill(child: AuthBackgroundBlobs(colors: colors, isDark: isDark)),
-            
+            Positioned.fill(
+              child: AuthBackgroundBlobs(colors: colors, isDark: isDark),
+            ),
+
             // Main Content
             Center(
               child: SingleChildScrollView(
                 padding: EdgeInsets.fromLTRB(
-                  Responsive.padding(context, 24), 
-                  Responsive.padding(context, 60), 
-                  Responsive.padding(context, 24), 
+                  Responsive.padding(context, 24),
+                  Responsive.padding(context, 60),
+                  Responsive.padding(context, 24),
                   Responsive.padding(context, 100),
                 ),
                 child: Column(
@@ -109,24 +110,36 @@ class _AuthScreenState extends State<AuthScreen> {
                     // Logo Section
                     AuthLogoSection(colors: colors),
                     const SizedBox(height: 32),
-                    
+
                     // Central Glassmorphism Card
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 300),
-                      child: _buildGlassCard(colors, isDark, key: ValueKey(_isLoginMode)),
+                      child: _buildGlassCard(
+                        colors,
+                        isDark,
+                        key: ValueKey(_isLoginMode),
+                      ),
                     ),
-                    
+
                     const SizedBox(height: 32),
                     // Bottom Switch Link
                     TextButton(
                       onPressed: _toggleMode,
                       child: RichText(
                         text: TextSpan(
-                          style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: colors.textSecondary,
+                          ),
                           children: [
-                            TextSpan(text: _isLoginMode ? context.l10n.authNoAccount : context.l10n.authHaveAccount),
                             TextSpan(
-                              text: _isLoginMode ? context.l10n.authRegisterFree : context.l10n.authLogin,
+                              text: _isLoginMode
+                                  ? context.l10n.authNoAccount
+                                  : context.l10n.authHaveAccount,
+                            ),
+                            TextSpan(
+                              text: _isLoginMode
+                                  ? context.l10n.authRegisterFree
+                                  : context.l10n.authLogin,
                               style: AppTextStyles.bodyMedium.copyWith(
                                 color: colors.primary,
                                 fontWeight: FontWeight.bold,
@@ -141,7 +154,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
             ),
-            
+
             // Bottom Navigation Bar for Mobile
             Positioned(
               bottom: 0,
@@ -155,19 +168,23 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-
   Widget _buildGlassCard(AppColors colors, bool isDark, {Key? key}) {
     return ClipRRect(
       key: key,
       borderRadius: BorderRadius.circular(24),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // Reduced blur for performance
+        filter: ImageFilter.blur(
+          sigmaX: 10,
+          sigmaY: 10,
+        ), // Reduced blur for performance
         child: Container(
           width: double.infinity,
           constraints: BoxConstraints(maxWidth: Responsive.size(context, 450)),
           padding: EdgeInsets.all(Responsive.padding(context, 32)),
           decoration: BoxDecoration(
-            color: colors.surfaceContainer.withValues(alpha: isDark ? 0.7 : 0.8),
+            color: colors.surfaceContainer.withValues(
+              alpha: isDark ? 0.7 : 0.8,
+            ),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: colors.outline.withValues(alpha: 0.5)),
             boxShadow: [
@@ -182,23 +199,33 @@ class _AuthScreenState extends State<AuthScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
-                _isLoginMode ? context.l10n.authWelcomeBack : context.l10n.authCreateAccount,
+                _isLoginMode
+                    ? context.l10n.authWelcomeBack
+                    : context.l10n.authCreateAccount,
                 style: AppTextStyles.headlineSmall.copyWith(
                   color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                _isLoginMode ? context.l10n.authEnterCredentials : context.l10n.authRegisterToManage,
+                _isLoginMode
+                    ? context.l10n.authEnterCredentials
+                    : context.l10n.authRegisterToManage,
                 textAlign: TextAlign.center,
-                style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: colors.textSecondary,
+                ),
               ),
               const SizedBox(height: 32),
-              
+
               // Form Fields
               _buildTextField(
-                label: _isLoginMode ? context.l10n.authEmailOrUserLabel : context.l10n.authEmailLabel,
-                hint: _isLoginMode ? context.l10n.authEmailOrUserHint : context.l10n.authEmailHint,
+                label: _isLoginMode
+                    ? context.l10n.authEmailOrUserLabel
+                    : context.l10n.authEmailLabel,
+                hint: _isLoginMode
+                    ? context.l10n.authEmailOrUserHint
+                    : context.l10n.authEmailHint,
                 icon: Icons.mail_outline,
                 colors: colors,
                 controller: _emailController,
@@ -212,7 +239,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 colors: colors,
                 controller: _passwordController,
               ),
-              
+
               const SizedBox(height: 12),
               // Extras
               Wrap(
@@ -233,7 +260,9 @@ class _AuthScreenState extends State<AuthScreen> {
                             setState(() => _rememberMe = value ?? false);
                           },
                           activeColor: colors.primary,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -241,7 +270,9 @@ class _AuthScreenState extends State<AuthScreen> {
                         onTap: () => setState(() => _rememberMe = !_rememberMe),
                         child: Text(
                           context.l10n.authRememberMe,
-                          style: AppTextStyles.labelMedium.copyWith(color: colors.textSecondary),
+                          style: AppTextStyles.labelMedium.copyWith(
+                            color: colors.textSecondary,
+                          ),
                         ),
                       ),
                     ],
@@ -263,24 +294,37 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                 ],
               ),
-              
+
               const SizedBox(height: 24),
               // Submit Button
               _buildSubmitButton(colors),
-              
+
               const SizedBox(height: 24),
               // Divider
               Row(
                 children: [
-                  Expanded(child: Divider(color: colors.outline.withValues(alpha: 0.5))),
+                  Expanded(
+                    child: Divider(
+                      color: colors.outline.withValues(alpha: 0.5),
+                    ),
+                  ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(context.l10n.authOrContinueWith, style: AppTextStyles.labelSmall.copyWith(color: colors.textSecondary)),
+                    child: Text(
+                      context.l10n.authOrContinueWith,
+                      style: AppTextStyles.labelSmall.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
                   ),
-                  Expanded(child: Divider(color: colors.outline.withValues(alpha: 0.5))),
+                  Expanded(
+                    child: Divider(
+                      color: colors.outline.withValues(alpha: 0.5),
+                    ),
+                  ),
                 ],
               ),
-              
+
               const SizedBox(height: 24),
               // Google Button
               _buildGoogleButton(colors),
@@ -324,8 +368,14 @@ class _AuthScreenState extends State<AuthScreen> {
             style: AppTextStyles.bodyLarge.copyWith(color: colors.textPrimary),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: AppTextStyles.bodyLarge.copyWith(color: colors.textSecondary),
-              prefixIcon: Icon(icon, color: colors.textSecondary, size: Responsive.iconSize(context, 20)),
+              hintStyle: AppTextStyles.bodyLarge.copyWith(
+                color: colors.textSecondary,
+              ),
+              prefixIcon: Icon(
+                icon,
+                color: colors.textSecondary,
+                size: Responsive.iconSize(context, 20),
+              ),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(vertical: 15),
             ),
@@ -367,9 +417,9 @@ class _AuthScreenState extends State<AuthScreen> {
       await _navigateAfterAuth(authProvider);
     } else if (authProvider.error != null) {
       HapticFeedback.heavyImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(authProvider.error!)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(authProvider.error!)));
     }
   }
 
@@ -386,9 +436,9 @@ class _AuthScreenState extends State<AuthScreen> {
     }
     if (!_isValidEmail(email)) {
       HapticFeedback.heavyImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.authEnterValidEmail)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.authEnterValidEmail)));
       return;
     }
     if (password.length < 6) {
@@ -404,22 +454,19 @@ class _AuthScreenState extends State<AuthScreen> {
 
     if (success) {
       HapticFeedback.lightImpact();
-      await _showEmailVerificationDialog(
-        isRegistration: true,
-        email: email,
-      );
+      await _showEmailVerificationDialog(isRegistration: true, email: email);
       if (mounted) context.go('/profile_setup');
     } else if (authProvider.error != null) {
       HapticFeedback.heavyImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(authProvider.error!)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(authProvider.error!)));
     }
   }
 
   Widget _buildSubmitButton(AppColors colors) {
     final authProvider = context.watch<AuthProvider>();
-    
+
     return Semantics(
       label: _isLoginMode ? 'Botón Iniciar sesión' : 'Botón Registrarse',
       button: true,
@@ -429,27 +476,37 @@ class _AuthScreenState extends State<AuthScreen> {
         height: 54,
         child: ElevatedButton(
           onPressed: authProvider.isLoading
-            ? null
-            : () async {
-                if (_isLoginMode) {
-                  await _handleEmailSignIn(authProvider);
-                } else {
-                  await _handleEmailRegister(authProvider);
-                }
-              },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: colors.primary,
-          foregroundColor: colors.onPrimary,
-          elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          textStyle: AppTextStyles.titleMedium,
-        ),
-        child: authProvider.isLoading 
-          ? SizedBox(
-              width: 24, height: 24, 
-              child: CircularProgressIndicator(color: colors.onPrimary, strokeWidth: 2)
-            ) 
-          : Text(_isLoginMode ? context.l10n.authLoginButton : context.l10n.authRegisterButton),
+              ? null
+              : () async {
+                  if (_isLoginMode) {
+                    await _handleEmailSignIn(authProvider);
+                  } else {
+                    await _handleEmailRegister(authProvider);
+                  }
+                },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: colors.primary,
+            foregroundColor: colors.onPrimary,
+            elevation: 4,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            textStyle: AppTextStyles.titleMedium,
+          ),
+          child: authProvider.isLoading
+              ? SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    color: colors.onPrimary,
+                    strokeWidth: 2,
+                  ),
+                )
+              : Text(
+                  _isLoginMode
+                      ? context.l10n.authLoginButton
+                      : context.l10n.authRegisterButton,
+                ),
         ),
       ),
     );
@@ -457,116 +514,131 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Widget _buildGoogleButton(AppColors colors) {
     final authProvider = context.read<AuthProvider>();
-    
+
     return Semantics(
       label: 'Botón Continuar con Google',
       button: true,
       child: OutlinedButton(
         onPressed: () async {
-        final success = await authProvider.signInWithGoogle();
-        if (success && mounted) {
-          HapticFeedback.lightImpact();
-          await _navigateAfterAuth(authProvider);
-        } else if (mounted && authProvider.error != null) {
-          HapticFeedback.heavyImpact();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(authProvider.error!)),
-          );
-        }
-      },
-      style: OutlinedButton.styleFrom(
-        minimumSize: const Size(double.infinity, 54),
-        side: BorderSide(color: colors.outline, width: 1.5),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        foregroundColor: colors.textPrimary,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Image.network(
-            'https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png',
-            height: 20,
-            errorBuilder: (context, error, stackTrace) => const Icon(Icons.g_mobiledata, size: 20, color: Colors.blue),
+          final success = await authProvider.signInWithGoogle();
+          if (success && mounted) {
+            HapticFeedback.lightImpact();
+            await _navigateAfterAuth(authProvider);
+          } else if (mounted && authProvider.error != null) {
+            HapticFeedback.heavyImpact();
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(authProvider.error!)));
+          }
+        },
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(double.infinity, 54),
+          side: BorderSide(color: colors.outline, width: 1.5),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              context.l10n.authGoogleLogin,
-              style: AppTextStyles.titleSmall,
-              overflow: TextOverflow.ellipsis,
+          foregroundColor: colors.textPrimary,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.network(
+              'https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png',
+              height: 20,
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.g_mobiledata, size: 20, color: Colors.blue),
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                context.l10n.authGoogleLogin,
+                style: AppTextStyles.titleSmall,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
     );
   }
 
   Future<void> _showForgotPasswordDialog() async {
     final colors = context.appColors;
     final resetEmailController = TextEditingController(
-      text: _isValidEmail(_emailController.text) ? _emailController.text.trim() : '',
+      text: _isValidEmail(_emailController.text)
+          ? _emailController.text.trim()
+          : '',
     );
 
     final sent = await showDialog<bool>(
       context: context,
       builder: (ctx) {
         return AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          context.l10n.authForgotPassTitle,
-          style: AppTextStyles.titleLarge,
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.l10n.authForgotPassDesc,
-              style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: resetEmailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                labelText: context.l10n.authEmailLabel,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                prefixIcon: const Icon(Icons.mail_outline),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            context.l10n.authForgotPassTitle,
+            style: AppTextStyles.titleLarge,
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.l10n.authForgotPassDesc,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: colors.textSecondary,
+                ),
               ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: resetEmailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: context.l10n.authEmailLabel,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  prefixIcon: const Icon(Icons.mail_outline),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(context.l10n.authCancel),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: colors.primary),
+              onPressed: () async {
+                final email = resetEmailController.text.trim();
+                if (!_isValidEmail(email)) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(content: Text(context.l10n.authInvalidEmail)),
+                  );
+                  return;
+                }
+                final authProvider = ctx.read<AuthProvider>();
+                final success = await authProvider.sendPasswordReset(email);
+                if (!ctx.mounted) return;
+                if (success) {
+                  Navigator.pop(ctx, true);
+                } else {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        authProvider.error ?? ctx.l10n.authSendEmailError,
+                      ),
+                    ),
+                  );
+                }
+              },
+              child: Text(context.l10n.authSendLink),
             ),
           ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(context.l10n.authCancel),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: colors.primary),
-            onPressed: () async {
-              final email = resetEmailController.text.trim();
-              if (!_isValidEmail(email)) {
-                ScaffoldMessenger.of(ctx).showSnackBar(
-                  SnackBar(content: Text(context.l10n.authInvalidEmail)),
-                );
-                return;
-              }
-              final authProvider = ctx.read<AuthProvider>();
-              final success = await authProvider.sendPasswordReset(email);
-              if (!ctx.mounted) return;
-              if (success) {
-                Navigator.pop(ctx, true);
-              } else {
-                ScaffoldMessenger.of(ctx).showSnackBar(
-                  SnackBar(content: Text(authProvider.error ?? ctx.l10n.authSendEmailError)),
-                );
-              }
-            },
-            child: Text(context.l10n.authSendLink),
-          ),
-        ],
         );
       },
     );
@@ -598,7 +670,9 @@ class _AuthScreenState extends State<AuthScreen> {
           context: context,
           barrierDismissible: !isRegistration,
           builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             title: Row(
               children: [
                 Icon(Icons.mark_email_unread_outlined, color: colors.primary),
@@ -619,24 +693,32 @@ class _AuthScreenState extends State<AuthScreen> {
                   isRegistration
                       ? context.l10n.authSentLinkTo
                       : context.l10n.authAccountNotVerified,
-                  style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: colors.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   email,
-                  style: AppTextStyles.titleMedium.copyWith(color: colors.primary),
+                  style: AppTextStyles.titleMedium.copyWith(
+                    color: colors.primary,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   context.l10n.authOpenLinkThenVerify,
-                  style: AppTextStyles.bodySmall.copyWith(color: colors.textSecondary),
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: colors.textSecondary,
+                  ),
                 ),
               ],
             ),
             actions: [
               if (isRegistration)
                 FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: colors.primary),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colors.primary,
+                  ),
                   onPressed: () => Navigator.pop(ctx, true),
                   child: Text(context.l10n.authUnderstood),
                 )
@@ -663,9 +745,12 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               if (!isRegistration)
                 FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: colors.primary),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colors.primary,
+                  ),
                   onPressed: () async {
-                    final verified = await authProvider.refreshEmailVerificationStatus();
+                    final verified = await authProvider
+                        .refreshEmailVerificationStatus();
                     if (!ctx.mounted) return;
                     if (verified) {
                       Navigator.pop(ctx, true);
@@ -690,5 +775,4 @@ class _AuthScreenState extends State<AuthScreen> {
         ) ??
         false;
   }
-
 }

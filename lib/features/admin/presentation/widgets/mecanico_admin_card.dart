@@ -22,8 +22,8 @@ class MecanicoAdminCard extends StatelessWidget {
     final estadoColor = usuario.estado == 'activo'
         ? colors.secondary
         : usuario.estado == 'suspendido'
-            ? colors.error
-            : colors.warning;
+        ? colors.error
+        : colors.warning;
 
     return AppCard(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -68,9 +68,17 @@ class MecanicoAdminCard extends StatelessWidget {
                   ],
                 ),
               ),
-              _chip(usuario.rol, colors.primary.withValues(alpha: 0.1), colors.primary),
+              _chip(
+                usuario.rol,
+                colors.primary.withValues(alpha: 0.1),
+                colors.primary,
+              ),
               const SizedBox(width: 6),
-              _chip(usuario.estado, estadoColor.withValues(alpha: 0.1), estadoColor),
+              _chip(
+                usuario.estado,
+                estadoColor.withValues(alpha: 0.1),
+                estadoColor,
+              ),
             ],
           ),
           const SizedBox(height: 12),

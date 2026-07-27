@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-/// Extracted from UserSessionProvider to reduce coupling.
+/// Extracted from UserProfileProvider to reduce coupling.
 class AuthSessionProvider with ChangeNotifier {
   User? _user;
 

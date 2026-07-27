@@ -27,8 +27,12 @@ class _TaskConfigScreenState extends State<TaskConfigScreen> {
   @override
   void initState() {
     super.initState();
-    _kmController = TextEditingController(text: widget.task.frecuenciaKm.toString());
-    _monthsController = TextEditingController(text: widget.task.frecuenciaMeses.toString());
+    _kmController = TextEditingController(
+      text: widget.task.frecuenciaKm.toString(),
+    );
+    _monthsController = TextEditingController(
+      text: widget.task.frecuenciaMeses.toString(),
+    );
   }
 
   @override
@@ -53,10 +57,7 @@ class _TaskConfigScreenState extends State<TaskConfigScreen> {
         ),
         title: Text(
           'Configurar Tarea',
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.bold,
-            color: primary,
-          ),
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: primary),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -64,7 +65,6 @@ class _TaskConfigScreenState extends State<TaskConfigScreen> {
       ),
       body: Column(
         children: [
-
           Expanded(
             child: SingleChildScrollView(
               padding: EdgeInsets.all(Responsive.padding(context, 20)),
@@ -83,24 +83,32 @@ class _TaskConfigScreenState extends State<TaskConfigScreen> {
                             color: primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(14),
                           ),
-                          child: Icon(Icons.build_circle_outlined,
-                              color: primary, size: Responsive.iconSize(context, 28)),
+                          child: Icon(
+                            Icons.build_circle_outlined,
+                            color: primary,
+                            size: Responsive.iconSize(context, 28),
+                          ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(widget.task.nombre,
-                                  style: GoogleFonts.inter(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: Responsive.fontSize(context, 17),
-                                      color: textColor)),
+                              Text(
+                                widget.task.nombre,
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: Responsive.fontSize(context, 17),
+                                  color: textColor,
+                                ),
+                              ),
                               const SizedBox(height: 4),
                               Text(
                                 'Último servicio: ${widget.task.ultimoKm} km',
                                 style: TextStyle(
-                                    fontSize: Responsive.fontSize(context, 13), color: subTextColor),
+                                  fontSize: Responsive.fontSize(context, 13),
+                                  color: subTextColor,
+                                ),
                               ),
                             ],
                           ),
@@ -110,13 +118,23 @@ class _TaskConfigScreenState extends State<TaskConfigScreen> {
                   ),
 
                   const SizedBox(height: 28),
-                  Text('FRECUENCIA DE MANTENIMIENTO',
-                      style: GoogleFonts.inter(
-                          fontSize: Responsive.fontSize(context, 11), fontWeight: FontWeight.w700,
-                          letterSpacing: 1.2, color: subTextColor)),
+                  Text(
+                    'FRECUENCIA DE MANTENIMIENTO',
+                    style: GoogleFonts.inter(
+                      fontSize: Responsive.fontSize(context, 11),
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                      color: subTextColor,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text('Ajusta cada cuántos kilómetros y meses se debe realizar este servicio.',
-                      style: GoogleFonts.inter(fontSize: Responsive.fontSize(context, 13), color: subTextColor)),
+                  Text(
+                    'Ajusta cada cuántos kilómetros y meses se debe realizar este servicio.',
+                    style: GoogleFonts.inter(
+                      fontSize: Responsive.fontSize(context, 13),
+                      color: subTextColor,
+                    ),
+                  ),
                   const SizedBox(height: 20),
 
                   AppTextField(
@@ -137,10 +155,15 @@ class _TaskConfigScreenState extends State<TaskConfigScreen> {
 
                   const SizedBox(height: 28),
                   // Quick presets
-                  Text('PREAJUSTES RÁPIDOS',
-                      style: GoogleFonts.inter(
-                          fontSize: Responsive.fontSize(context, 11), fontWeight: FontWeight.w700,
-                          letterSpacing: 1.2, color: subTextColor)),
+                  Text(
+                    'PREAJUSTES RÁPIDOS',
+                    style: GoogleFonts.inter(
+                      fontSize: Responsive.fontSize(context, 11),
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                      color: subTextColor,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 8,
@@ -169,11 +192,15 @@ class _TaskConfigScreenState extends State<TaskConfigScreen> {
     );
   }
 
-
-
   Widget _presetChip(String label, int km, int months, Color primary) {
     return ActionChip(
-      label: Text(label, style: GoogleFonts.inter(fontSize: Responsive.fontSize(context, 12), fontWeight: FontWeight.w600)),
+      label: Text(
+        label,
+        style: GoogleFonts.inter(
+          fontSize: Responsive.fontSize(context, 12),
+          fontWeight: FontWeight.w600,
+        ),
+      ),
       backgroundColor: primary.withValues(alpha: 0.1),
       labelStyle: TextStyle(color: primary),
       side: BorderSide(color: primary.withValues(alpha: 0.2)),
@@ -200,7 +227,9 @@ class _TaskConfigScreenState extends State<TaskConfigScreen> {
     setState(() => _isLoading = true);
     try {
       await context.read<AlertProvider>().userUpdateTaskFull(
-        widget.task.id, km, months,
+        widget.task.id,
+        km,
+        months,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -210,9 +239,9 @@ class _TaskConfigScreenState extends State<TaskConfigScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

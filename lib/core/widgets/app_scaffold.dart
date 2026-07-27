@@ -26,13 +26,13 @@ class AppScaffold extends StatelessWidget {
       appBar: appBar,
       body: Column(
         children: [
-        // AppTopNavBar is now handled by MainScaffold globally
-        // if (Responsive.isDesktop(context))
-        //   const Padding(
-        //     padding: EdgeInsets.only(top: 8.0),
-        //     child: AppTopNavBar(),
-        //   ),
-        Expanded(
+          // AppTopNavBar is now handled by MainScaffold globally
+          // if (Responsive.isDesktop(context))
+          //   const Padding(
+          //     padding: EdgeInsets.only(top: 8.0),
+          //     child: AppTopNavBar(),
+          //   ),
+          Expanded(
             child: useGradient
                 ? Container(
                     decoration: BoxDecoration(
@@ -51,7 +51,9 @@ class AppScaffold extends StatelessWidget {
           ),
         ],
       ),
-      bottomNavigationBar: Responsive.isDesktop(context) ? null : bottomNavigationBar,
+      bottomNavigationBar: Responsive.isDesktop(context)
+          ? null
+          : bottomNavigationBar,
       floatingActionButton: floatingActionButton,
     );
   }

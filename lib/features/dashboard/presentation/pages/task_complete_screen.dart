@@ -12,7 +12,11 @@ import 'package:autodoc/core/utils/responsive.dart';
 class TaskCompleteScreen extends StatefulWidget {
   final MaintenanceTask task;
   final int currentKm;
-  const TaskCompleteScreen({super.key, required this.task, required this.currentKm});
+  const TaskCompleteScreen({
+    super.key,
+    required this.task,
+    required this.currentKm,
+  });
 
   @override
   State<TaskCompleteScreen> createState() => _TaskCompleteScreenState();
@@ -57,8 +61,8 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
     final statusColor = status == MaintenanceStatus.critical
         ? Colors.red
         : status == MaintenanceStatus.preventive
-            ? Colors.amber[700]!
-            : Colors.green;
+        ? Colors.amber[700]!
+        : Colors.green;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -70,24 +74,34 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
               filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
               child: Container(
                 padding: EdgeInsets.only(
-                    top: MediaQuery.of(context).padding.top + 8,
-                    left: 8, right: 16, bottom: 12),
+                  top: MediaQuery.of(context).padding.top + 8,
+                  left: 8,
+                  right: 16,
+                  bottom: 12,
+                ),
                 decoration: BoxDecoration(
                   color: cardColor,
-                  border: Border(bottom: BorderSide(color: primary.withValues(alpha: 0.1))),
+                  border: Border(
+                    bottom: BorderSide(color: primary.withValues(alpha: 0.1)),
+                  ),
                 ),
                 child: Row(
                   children: [
                     IconButton(
-                      icon: Icon(Icons.arrow_back_ios_new,
-                          color: isDark ? Colors.white70 : Colors.grey[700]),
+                      icon: Icon(
+                        Icons.arrow_back_ios_new,
+                        color: isDark ? Colors.white70 : Colors.grey[700],
+                      ),
                       onPressed: () => Navigator.pop(context),
                     ),
-                    Text('Completar Servicio',
-                        style: GoogleFonts.inter(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: primary)),
+                    Text(
+                      'Completar Servicio',
+                      style: GoogleFonts.inter(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: primary,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -117,28 +131,44 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
                           Row(
                             children: [
                               Container(
-                                width: 52, height: 52,
+                                width: 52,
+                                height: 52,
                                 decoration: BoxDecoration(
-                                  color: statusColor.withValues(alpha: isDark ? 0.2 : 0.1),
+                                  color: statusColor.withValues(
+                                    alpha: isDark ? 0.2 : 0.1,
+                                  ),
                                   borderRadius: BorderRadius.circular(14),
                                 ),
-                                child: Icon(Icons.build_circle_outlined,
-                                    color: statusColor, size: 28),
+                                child: Icon(
+                                  Icons.build_circle_outlined,
+                                  color: statusColor,
+                                  size: 28,
+                                ),
                               ),
                               const SizedBox(width: 16),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(widget.task.nombre,
-                                        style: GoogleFonts.inter(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 17, color: textColor)),
+                                    Text(
+                                      widget.task.nombre,
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 17,
+                                        color: textColor,
+                                      ),
+                                    ),
                                     const SizedBox(height: 2),
-                                    Text(widget.task.getStatusLabel(widget.currentKm),
-                                        style: GoogleFonts.inter(
-                                            fontSize: 12, fontWeight: FontWeight.w600,
-                                            color: statusColor)),
+                                    Text(
+                                      widget.task.getStatusLabel(
+                                        widget.currentKm,
+                                      ),
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: statusColor,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -146,19 +176,50 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
                           ),
                           const SizedBox(height: 16),
                           Container(
-                            padding: EdgeInsets.all(Responsive.padding(context, 12)),
+                            padding: EdgeInsets.all(
+                              Responsive.padding(context, 12),
+                            ),
                             decoration: BoxDecoration(
-                              color: primary.withValues(alpha: isDark ? 0.1 : 0.05),
+                              color: primary.withValues(
+                                alpha: isDark ? 0.1 : 0.05,
+                              ),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
-                                _infoItem('Km Actual', NumberFormat('#,###').format(widget.currentKm), textColor, subTextColor),
-                                Container(width: 1, height: 30, color: subTextColor.withValues(alpha: 0.2)),
-                                _infoItem('Último', '${NumberFormat('#,###').format(widget.task.ultimoKm)} km', textColor, subTextColor),
-                                Container(width: 1, height: 30, color: subTextColor.withValues(alpha: 0.2)),
-                                _infoItem('Fecha', DateFormat('dd/MM/yy').format(widget.task.fechaUltimoServicio), textColor, subTextColor),
+                                _infoItem(
+                                  'Km Actual',
+                                  NumberFormat(
+                                    '#,###',
+                                  ).format(widget.currentKm),
+                                  textColor,
+                                  subTextColor,
+                                ),
+                                Container(
+                                  width: 1,
+                                  height: 30,
+                                  color: subTextColor.withValues(alpha: 0.2),
+                                ),
+                                _infoItem(
+                                  'Último',
+                                  '${NumberFormat('#,###').format(widget.task.ultimoKm)} km',
+                                  textColor,
+                                  subTextColor,
+                                ),
+                                Container(
+                                  width: 1,
+                                  height: 30,
+                                  color: subTextColor.withValues(alpha: 0.2),
+                                ),
+                                _infoItem(
+                                  'Fecha',
+                                  DateFormat(
+                                    'dd/MM/yy',
+                                  ).format(widget.task.fechaUltimoServicio),
+                                  textColor,
+                                  subTextColor,
+                                ),
                               ],
                             ),
                           ),
@@ -168,13 +229,20 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
                   ),
 
                   const SizedBox(height: 28),
-                  Text('DETALLES DEL SERVICIO',
-                      style: GoogleFonts.inter(
-                          fontSize: 11, fontWeight: FontWeight.w700,
-                          letterSpacing: 1.2, color: subTextColor)),
+                  Text(
+                    'DETALLES DEL SERVICIO',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                      color: subTextColor,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text('Registra la información del mantenimiento realizado.',
-                      style: GoogleFonts.inter(fontSize: 13, color: subTextColor)),
+                  Text(
+                    'Registra la información del mantenimiento realizado.',
+                    style: GoogleFonts.inter(fontSize: 13, color: subTextColor),
+                  ),
                   const SizedBox(height: 20),
 
                   // Cost field
@@ -184,18 +252,27 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
                     child: TextField(
                       controller: _costController,
                       keyboardType: TextInputType.number,
-                      style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
+                      style: GoogleFonts.inter(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
                       decoration: InputDecoration(
                         prefixText: '\$ ',
                         prefixStyle: TextStyle(fontSize: 18, color: textColor),
                         hintText: '0.00',
-                        hintStyle: TextStyle(color: subTextColor.withValues(alpha: 0.5)),
+                        hintStyle: TextStyle(
+                          color: subTextColor.withValues(alpha: 0.5),
+                        ),
                         border: InputBorder.none,
                         isDense: true,
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),
-                    isDark: isDark, primary: primary, cardColor: cardColor, borderColor: borderColor,
+                    isDark: isDark,
+                    primary: primary,
+                    cardColor: cardColor,
+                    borderColor: borderColor,
                   ),
                   const SizedBox(height: 12),
 
@@ -209,23 +286,36 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
                       style: GoogleFonts.inter(fontSize: 14, color: textColor),
                       decoration: InputDecoration(
                         hintText: 'Ej: Se usó aceite sintético 5W-30...',
-                        hintStyle: TextStyle(color: subTextColor.withValues(alpha: 0.5), fontSize: 13),
+                        hintStyle: TextStyle(
+                          color: subTextColor.withValues(alpha: 0.5),
+                          fontSize: 13,
+                        ),
                         border: InputBorder.none,
                         isDense: true,
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),
-                    isDark: isDark, primary: primary, cardColor: cardColor, borderColor: borderColor,
+                    isDark: isDark,
+                    primary: primary,
+                    cardColor: cardColor,
+                    borderColor: borderColor,
                   ),
 
                   const SizedBox(height: 24),
-                  Text('EVIDENCIA (RECIBO O FOTO)',
-                      style: GoogleFonts.inter(
-                          fontSize: 11, fontWeight: FontWeight.w700,
-                          letterSpacing: 1.2, color: subTextColor)),
+                  Text(
+                    'EVIDENCIA (RECIBO O FOTO)',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                      color: subTextColor,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text('Para validar el servicio, adjunta una foto del recibo o de la pieza cambiada.',
-                      style: GoogleFonts.inter(fontSize: 13, color: subTextColor)),
+                  Text(
+                    'Para validar el servicio, adjunta una foto del recibo o de la pieza cambiada.',
+                    style: GoogleFonts.inter(fontSize: 13, color: subTextColor),
+                  ),
                   const SizedBox(height: 12),
 
                   if (_receiptImage != null)
@@ -236,12 +326,17 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
                           height: 180,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.green.withValues(alpha: 0.3), width: 2),
+                            border: Border.all(
+                              color: Colors.green.withValues(alpha: 0.3),
+                              width: 2,
+                            ),
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(14),
                             child: FutureBuilder<List<int>>(
-                              future: _receiptImage!.readAsBytes().then((b) => b.toList()),
+                              future: _receiptImage!.readAsBytes().then(
+                                (b) => b.toList(),
+                              ),
                               builder: (context, snapshot) {
                                 if (snapshot.hasData) {
                                   return Image.memory(
@@ -249,29 +344,42 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
                                     fit: BoxFit.cover,
                                   );
                                 }
-                                return const Center(child: CircularProgressIndicator());
+                                return const Center(
+                                  child: CircularProgressIndicator(),
+                                );
                               },
                             ),
                           ),
                         ),
                         Positioned(
-                          top: 8, right: 8,
+                          top: 8,
+                          right: 8,
                           child: GestureDetector(
                             onTap: () => setState(() => _receiptImage = null),
                             child: Container(
-                              padding: EdgeInsets.all(Responsive.padding(context, 6)),
+                              padding: EdgeInsets.all(
+                                Responsive.padding(context, 6),
+                              ),
                               decoration: const BoxDecoration(
                                 color: Colors.black54,
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.close, color: Colors.white, size: 18),
+                              child: const Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 18,
+                              ),
                             ),
                           ),
                         ),
                         Positioned(
-                          bottom: 8, left: 8,
+                          bottom: 8,
+                          left: 8,
                           child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: Responsive.padding(context, 10), vertical: Responsive.padding(context, 4)),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: Responsive.padding(context, 10),
+                              vertical: Responsive.padding(context, 4),
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.green,
                               borderRadius: BorderRadius.circular(8),
@@ -279,10 +387,20 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.check, color: Colors.white, size: 14),
+                                const Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 14,
+                                ),
                                 const SizedBox(width: 4),
-                                Text('Imagen adjunta', style: GoogleFonts.inter(
-                                    color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                                Text(
+                                  'Imagen adjunta',
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -297,7 +415,10 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
                             icon: Icons.camera_alt,
                             label: 'Cámara',
                             onTap: () => _pickImage(ImageSource.camera),
-                            isDark: isDark, primary: primary, cardColor: cardColor, borderColor: borderColor,
+                            isDark: isDark,
+                            primary: primary,
+                            cardColor: cardColor,
+                            borderColor: borderColor,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -306,7 +427,10 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
                             icon: Icons.photo_library,
                             label: 'Galería',
                             onTap: () => _pickImage(ImageSource.gallery),
-                            isDark: isDark, primary: primary, cardColor: cardColor, borderColor: borderColor,
+                            isDark: isDark,
+                            primary: primary,
+                            cardColor: cardColor,
+                            borderColor: borderColor,
                           ),
                         ),
                       ],
@@ -318,13 +442,26 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
                     width: double.infinity,
                     height: 52,
                     child: ElevatedButton.icon(
-                      onPressed: (_isLoading || _receiptImage == null) ? null : _submitCompletion,
+                      onPressed: (_isLoading || _receiptImage == null)
+                          ? null
+                          : _submitCompletion,
                       icon: _isLoading
-                          ? const SizedBox(width: 18, height: 18,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
                           : const Icon(Icons.check_circle),
-                      label: Text(_isLoading ? 'Guardando...' : 'Confirmar y Validar',
-                          style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15)),
+                      label: Text(
+                        _isLoading ? 'Guardando...' : 'Confirmar y Validar',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primary,
                         foregroundColor: Colors.white,
@@ -332,7 +469,8 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
                         disabledForegroundColor: Colors.white54,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                     ),
                   ),
@@ -340,8 +478,13 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Center(
-                        child: Text('* Se requiere evidencia fotográfica para validar',
-                            style: GoogleFonts.inter(fontSize: 11, color: Colors.red.withValues(alpha: 0.7))),
+                        child: Text(
+                          '* Se requiere evidencia fotográfica para validar',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            color: Colors.red.withValues(alpha: 0.7),
+                          ),
+                        ),
                       ),
                     ),
                   const SizedBox(height: 40),
@@ -354,13 +497,27 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
     );
   }
 
-  Widget _infoItem(String label, String value, Color textColor, Color subTextColor) {
+  Widget _infoItem(
+    String label,
+    String value,
+    Color textColor,
+    Color subTextColor,
+  ) {
     return Column(
       children: [
-        Text(label, style: GoogleFonts.inter(fontSize: 10, color: subTextColor)),
+        Text(
+          label,
+          style: GoogleFonts.inter(fontSize: 10, color: subTextColor),
+        ),
         const SizedBox(height: 2),
-        Text(value, style: GoogleFonts.inter(
-            fontSize: 13, fontWeight: FontWeight.bold, color: textColor)),
+        Text(
+          value,
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: textColor,
+          ),
+        ),
       ],
     );
   }
@@ -390,9 +547,14 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: GoogleFonts.inter(
-                    fontSize: 12, fontWeight: FontWeight.w600,
-                    color: primary.withValues(alpha: 0.7))),
+                Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: primary.withValues(alpha: 0.7),
+                  ),
+                ),
                 const SizedBox(height: 6),
                 child,
               ],
@@ -419,14 +581,23 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
         decoration: BoxDecoration(
           color: cardColor,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: primary.withValues(alpha: 0.2), style: BorderStyle.solid),
+          border: Border.all(
+            color: primary.withValues(alpha: 0.2),
+            style: BorderStyle.solid,
+          ),
         ),
         child: Column(
           children: [
             Icon(icon, color: primary, size: 28),
             const SizedBox(height: 8),
-            Text(label, style: GoogleFonts.inter(
-                fontSize: 13, fontWeight: FontWeight.w600, color: primary)),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: primary,
+              ),
+            ),
           ],
         ),
       ),
@@ -446,15 +617,17 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Servicio validado y registrado en historial ✓')),
+          const SnackBar(
+            content: Text('Servicio validado y registrado en historial ✓'),
+          ),
         );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
         setState(() => _isLoading = false);
       }
     }
