@@ -214,4 +214,12 @@ class VehicleProvider with ChangeNotifier {
       return null;
     }
   }
+  void clearVehicles() {
+    _vehicles = [];
+    _selectedVehicle = null;
+    _recentSearches.clear();
+    _error = null;
+    _isLoading = false;
+    notifyListeners();
+  }
 }

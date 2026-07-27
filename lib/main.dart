@@ -167,6 +167,7 @@ void main() async {
   // Crear providers base
   final authSessionProvider = AuthSessionProvider();
   final userProfileProvider = UserProfileProvider();
+  final vehicleProvider = VehicleProvider();
 
   void checkAndFetchProfile() {
     if (authSessionProvider.isLoggedIn) {
@@ -175,6 +176,7 @@ void main() async {
       }
     } else {
       userProfileProvider.clearUserData();
+      vehicleProvider.clearVehicles();
     }
   }
 
@@ -191,7 +193,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider.value(value: authSessionProvider),
         ChangeNotifierProvider.value(value: userProfileProvider),
-        ChangeNotifierProvider(create: (_) => VehicleProvider()),
+        ChangeNotifierProvider.value(value: vehicleProvider),
         ChangeNotifierProvider(create: (_) => AlertProvider()),
         ChangeNotifierProvider(create: (_) => AdminProvider()),
         ChangeNotifierProvider(create: (_) => AdminDashboardProvider()),
