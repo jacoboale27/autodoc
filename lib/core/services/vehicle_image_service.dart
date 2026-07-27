@@ -5,11 +5,10 @@ import '../constants/firestore_collections.dart';
 import 'package:flutter/foundation.dart';
 import 'package:autodoc/config/secrets.dart';
 
-/// Servicio para obtener y gestionar imágenes de vehículos de forma eficiente usando Google Custom Search API.
+/// Servicio para obtener y gestionar imágenes de vehículos de concesionario usando SearchAPI.io (Google Images Engine).
 class VehicleImageService {
-  static const String _apiKey = AppSecrets.googleCustomSearchApiKey;
-  static const String _cx = AppSecrets.googleCustomSearchCx;
-  static const String _baseUrl = 'https://www.googleapis.com/customsearch/v1';
+  static String get _searchApiKey => AppSecrets.vehicleImageApiKey;
+  static const String _searchApiUrl = 'https://www.searchapi.io/api/v1/search';
   static const String _defaultImage = 'assets/images/default_vehicle.png';
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -17,11 +16,10 @@ class VehicleImageService {
   /// Obtiene la imagen de un vehículo de forma eficiente.
   /// 
   /// Lógica de Persistencia:
-  /// 1. Verifica primero en Cloud Firestore si el vehículo ya tiene una [foto_url].
-  /// 2. Si la tiene, la retorna directamente.
-  /// 3. Si NO la tiene, realiza una búsqueda en Google Custom Search API optimizada para fotos de concesionario.
-  /// 4. Toma el primer resultado válido, actualiza Firestore y retorna la URL.
-  /// 5. En caso de error, retorna una imagen por defecto.
+  /// 1. Verifica primero en Cloud Firestore si el vehículo ya tiene una [foto_url] válida.
+  /// 2. Si la tiene y no es la imagen por defecto, la retorna.
+  /// 3. Si NO la tiene, realiza la búsqueda de fotos estilo concesionario con fondo sólido en SearchAPI.io.
+  /// 4. Actualiza Firestore si es necesario y retorna la URL.
   Future<String> getVehicleImage({
     required String vehicleId,
     required String brand,
@@ -36,24 +34,24 @@ class VehicleImageService {
         
         if (doc.exists) {
           final data = doc.data();
-          if (data != null && data['foto_url'] != null && (data['foto_url'] as String).isNotEmpty) {
+          if (data != null && data['foto_url'] != null && (data['foto_url'] as String).isNotEmpty && data['foto_url'] != _defaultImage) {
             return data['foto_url'];
           }
         }
       }
 
-      // 2. Si NO la tiene, hace la petición a Google Custom Search API
-      final String? imageUrl = await _fetchFromGoogleCustomSearchApi(brand, model, year, color);
+      // 2. Si NO la tiene o tiene la por defecto, hace la búsqueda en SearchAPI.io
+      final String? imageUrl = await _fetchFromSearchApi(brand, model, year, color);
 
-      if (imageUrl != null) {
-        // 3. Actualiza el documento del vehículo en Firestore solo si vehicleId no está vacío
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        // 3. Actualiza el documento del vehículo en Firestore si vehicleId no está vacío
         if (vehicleId.isNotEmpty) {
           try {
             await _firestore.collection(FirestoreCollections.vehiculos).doc(vehicleId).update({
               'foto_url': imageUrl,
             });
           } catch (e) {
-            debugPrint('Nota: No se pudo actualizar Firestore porque el doc no existe aún: $e');
+            debugPrint('Nota: No se pudo actualizar Firestore porque el doc no existe aún (se guardará al crear el vehículo): $e');
           }
         }
         return imageUrl;
@@ -67,44 +65,58 @@ class VehicleImageService {
     }
   }
 
-  /// Realiza la búsqueda optimizada en Google Custom Search API para fotos de concesionario con fondo sólido.
-  Future<String?> _fetchFromGoogleCustomSearchApi(String brand, String model, int year, String color) async {
+  /// Realiza la búsqueda de fotos estilo concesionario con fondo sólido usando SearchAPI.io
+  Future<String?> _fetchFromSearchApi(String brand, String model, int year, String color) async {
     try {
-      // Query parametrizado para fotos estilo concesionario / estudio con fondo sólido
-      final String query = "$brand $model $year $color dealership studio photo solid background";
+      final String cleanBrand = brand.trim();
+      final String cleanModel = model.trim();
+      final String cleanColor = color.trim();
       
-      final url = Uri.parse(_baseUrl).replace(queryParameters: {
-        'key': _apiKey,
-        'cx': _cx,
+      // Query de búsqueda optimizado para fotos de catálogo / concesionario
+      final String query = "$cleanBrand $cleanModel $year $cleanColor studio dealership white background".trim();
+      
+      final url = Uri.parse(_searchApiUrl).replace(queryParameters: {
+        'api_key': _searchApiKey,
+        'engine': 'google_images',
         'q': query,
-        'searchType': 'image',
-        'imgType': 'photo',
-        'num': '5',
       });
 
-      debugPrint('[Google Custom Search API] Realizando búsqueda de foto estilo concesionario: "$query"');
+      debugPrint('[SearchAPI.io] Realizando búsqueda de foto de concesionario: "$query"');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final List? items = data['items'];
+        final List? items = data['images'] ?? data['images_results'];
         
         if (items != null && items.isNotEmpty) {
           for (var item in items) {
-            final String? link = item['link']?.toString();
-            if (link != null && (link.startsWith('http://') || link.startsWith('https://'))) {
-              debugPrint('[Google Custom Search API] Imagen de concesionario encontrada: $link');
-              return link;
+            String? candidateUrl;
+
+            // Extraer link según estructura devuelta por SearchAPI.io
+            if (item is Map) {
+              if (item['original'] != null) {
+                if (item['original'] is Map) {
+                  candidateUrl = item['original']['link']?.toString();
+                } else {
+                  candidateUrl = item['original']?.toString();
+                }
+              }
+              candidateUrl ??= item['link']?.toString() ?? item['thumbnail']?.toString() ?? item['source_url']?.toString();
+            }
+
+            if (candidateUrl != null && candidateUrl.startsWith('http')) {
+              debugPrint('[SearchAPI.io] ¡Imagen de concesionario obtenida con éxito! URL: $candidateUrl');
+              return candidateUrl;
             }
           }
         } else {
-          debugPrint('[Google Custom Search API] No se encontraron elementos en la búsqueda.');
+          debugPrint('[SearchAPI.io] No se encontraron imágenes para la consulta: $query');
         }
       } else {
-        debugPrint('[Google Custom Search API] Respuesta de error (${response.statusCode}): ${response.body}');
+        debugPrint('[SearchAPI.io] Error de servidor (${response.statusCode}): ${response.body}');
       }
     } catch (e) {
-      debugPrint('Error en petición a Google Custom Search API: $e');
+      debugPrint('Error en petición a SearchAPI.io: $e');
     }
     
     return null;

@@ -48,7 +48,7 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions web = FirebaseOptions(
+  static FirebaseOptions get web => FirebaseOptions(
     apiKey: AppSecrets.firebaseWebApiKey,
     appId: AppSecrets.firebaseAppIdWeb,
     messagingSenderId: AppSecrets.firebaseMessagingSenderId,
@@ -59,7 +59,7 @@ class DefaultFirebaseOptions {
     measurementId: AppSecrets.firebaseMeasurementId,
   );
 
-  static const FirebaseOptions android = FirebaseOptions(
+  static FirebaseOptions get android => FirebaseOptions(
     apiKey: AppSecrets.firebaseAndroidApiKey,
     appId: AppSecrets.firebaseAppIdAndroid,
     messagingSenderId: AppSecrets.firebaseMessagingSenderId,
@@ -68,7 +68,7 @@ class DefaultFirebaseOptions {
     storageBucket: AppSecrets.firebaseStorageBucket,
   );
 
-  static const FirebaseOptions ios = FirebaseOptions(
+  static FirebaseOptions get ios => FirebaseOptions(
     apiKey: AppSecrets.firebaseIosApiKey,
     appId: AppSecrets.firebaseAppIdIos,
     messagingSenderId: AppSecrets.firebaseMessagingSenderId,

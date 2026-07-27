@@ -81,6 +81,7 @@ dependencies:
   url_launcher: ^6.3.2
 
   mobile_scanner: any
+  flutter_dotenv: ^6.0.1
 flutter_native_splash:
   color: "#522C81"
   android: true
@@ -120,6 +121,7 @@ flutter:
 
   assets:
     - assets/images/
+    - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

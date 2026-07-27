@@ -3,10 +3,12 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:autodoc/config/secrets.dart';
+
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    serverClientId: kIsWeb ? null : '702895874700-ffjqoc3c4a8uca611o7r86k06g91213d.apps.googleusercontent.com',
+    serverClientId: kIsWeb ? null : (AppSecrets.firebaseIosClientId.isNotEmpty ? AppSecrets.firebaseIosClientId : null),
   );
 
   // Stream of auth changes

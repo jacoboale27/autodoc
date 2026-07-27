@@ -10,6 +10,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 
 import 'package:autodoc/core/providers/language_provider.dart';
@@ -63,6 +64,14 @@ String? _resolveNotificationRoute(Map<String, dynamic> data) {
 void main() async {
   usePathUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 0. Cargar variables de entorno
+  try {
+    await dotenv.load(fileName: ".env");
+    debugPrint("=== [AutoDoc Init] Variables de entorno cargadas con éxito ===");
+  } catch (e) {
+    debugPrint("=== [AutoDoc Init] Advertencia: No se pudo cargar .env: $e ===");
+  }
   
   // 1. Inicializar Firebase
   try {
