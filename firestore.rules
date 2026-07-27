@@ -19,11 +19,9 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
     }
 
-    // Verifica si el usuario actual tiene rol de Administrador o Propietario principal
+    // Verifica si el usuario actual tiene rol de Administrador
     function isAdmin() {
-      return isAuthenticated() && 
-        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
-        getUserData().rol in ['Administrador', 'admin', 'Propietario'];
+      return getUserData().rol in ['Administrador', 'admin'];
     }
 
     // Verifica si el usuario actual tiene rol de Mecánico
@@ -285,18 +283,6 @@ service cloud.firestore {
       allow delete: if isOwner(userId) || isAdmin();
     }
 
-    // --- REGLA CATCH-ALL ADMIN ---
-    // IMPORTANTE: Esta regla existe como safety net para que los administradores
-    // puedan acceder a colecciones no explícitamente listadas arriba
-    // (e.g. colecciones futuras o de debug). En producción, se recomienda
-    // auditar periódicamente qué colecciones caen bajo esta regla y agregar
-    // reglas explícitas para cada una.
-    // 
-    // NOTA: Las reglas más específicas arriba tienen prioridad sobre esta.
-    // Si un documento ya tiene reglas explícitas, esta regla NO las sobreescribe
-    // para usuarios no-admin.
-    match /{document=**} {
-      allow read, write: if isAdmin();
-    }
+
   }
 }

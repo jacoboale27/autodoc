@@ -11,7 +11,7 @@ service firebase.storage {
     function isAdmin() {
       return isAuthenticated() &&
         firestore.exists(/databases/(default)/documents/usuarios/$(request.auth.uid)) &&
-        firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.rol in ['Administrador', 'admin', 'Propietario'];
+        firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.rol in ['Administrador', 'admin'];
     }
 
     // Verifica si el usuario es propietario de un vehículo
