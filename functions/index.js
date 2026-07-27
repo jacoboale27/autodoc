@@ -73,7 +73,10 @@ exports.checkAlertsDaily = functions.pubsub.schedule('every 24 hours').onRun(asy
 
   try {
     while (true) {
-      let q = db.collection('alertas').where('estado', '==', 'Pendiente').limit(limit);
+      let q = db.collection('alertas')
+        .where('estado', '==', 'Pendiente')
+        .orderBy(admin.firestore.FieldPath.documentId())
+        .limit(limit);
       if (lastDoc) {
         q = q.startAfter(lastDoc);
       }
@@ -476,7 +479,10 @@ exports.sendReservationReminders = functions.pubsub.schedule('every 24 hours').o
 
   try {
     while (true) {
-      let q = db.collection('reservas').where('estado', '==', 'aprobada').limit(limit);
+      let q = db.collection('reservas')
+        .where('estado', '==', 'aprobada')
+        .orderBy(admin.firestore.FieldPath.documentId())
+        .limit(limit);
       if (lastDoc) {
         q = q.startAfter(lastDoc);
       }
@@ -541,30 +547,19 @@ exports.onUserDelete = functions.auth.user().onDelete(async (user) => {
     await db.collection('usuarios').doc(userId).delete();
     console.log(`User document ${userId} deleted.`);
 
-    // 2. Delete all vehicles owned by the user
-    const vehiculosSnapshot = await db.collection('vehiculos').where('id_propietario', '==', userId).get();
-    
-    for (const vehiculoDoc of vehiculosSnapshot.docs) {
-      const vehiculoId = vehiculoDoc.id;
-      
-      // Delete alerts for this vehicle in batches of 500
-      await new Promise((resolve, reject) => {
-        deleteQueryBatch(db, db.collection('alertas').where('id_vehiculo', '==', vehiculoId).limit(500), resolve, reject);
-      });
-
-      // Delete services for this vehicle in batches of 500
-      await new Promise((resolve, reject) => {
-        deleteQueryBatch(db, db.collection('servicios').where('id_vehiculo', '==', vehiculoId).limit(500), resolve, reject);
-      });
-
-      // Finally, delete the vehicle
-      await db.collection('vehiculos').doc(vehiculoId).delete();
-      console.log(`Vehicle ${vehiculoId} and its related data deleted.`);
-    }
-
-    // Ensure all vehicle documents owned by user are batch deleted
+    // 2. Delete all vehicles owned by the user (onVehicleDelete will handle their related data)
     await new Promise((resolve, reject) => {
       deleteQueryBatch(db, db.collection('vehiculos').where('id_propietario', '==', userId).limit(500), resolve, reject);
+    });
+
+    // 3. Delete reviews (resenias) left by the user
+    await new Promise((resolve, reject) => {
+      deleteQueryBatch(db, db.collection('resenias').where('id_usuario', '==', userId).limit(500), resolve, reject);
+    });
+
+    // 4. Delete reservations (reservas) made by the user
+    await new Promise((resolve, reject) => {
+      deleteQueryBatch(db, db.collection('reservas').where('id_propietario', '==', userId).limit(500), resolve, reject);
     });
     
     // 3. Delete user's profile picture

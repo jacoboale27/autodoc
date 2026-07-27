@@ -21,7 +21,9 @@ service cloud.firestore {
 
     // Verifica si el usuario actual tiene rol de Administrador
     function isAdmin() {
-      return getUserData().rol in ['Administrador', 'admin'];
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+        getUserData().rol in ['Administrador', 'admin'];
     }
 
     // Verifica si el usuario actual tiene rol de Mecánico
