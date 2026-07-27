@@ -36,7 +36,7 @@ void main() {
     final colors = context.appColors;
 
     // Verify primary color from light theme tokens
-    expect(colors.primary, const Color(0xFF522C81));
+    expect(colors.primary, AppPalette.lightPrimary);
     
     // Verify background color
     expect(Theme.of(context).scaffoldBackgroundColor, colors.surface);
@@ -57,6 +57,6 @@ void main() {
 
     expect(find.byType(AppSkeleton), findsOneWidget);
     final context = tester.element(find.byType(AppSkeleton));
-    expect(context.appColors.primary, const Color(0xFF522C81));
+    expect(context.appColors.primary, AppPalette.lightPrimary);
   });
 }
