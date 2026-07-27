@@ -1,5 +1,6 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const firestore = require('@google-cloud/firestore');
 admin.initializeApp();
 
 const db = admin.firestore();
@@ -563,5 +564,28 @@ exports.onVehicleDelete = functions.firestore.document('vehiculos/{vehicleId}').
 
   } catch (error) {
     console.error(`Error cleaning up data for vehicle ${vehicleId}:`, error);
+  }
+});
+
+/**
+ * 8. Scheduled function for automated Firestore backup (C-03).
+ * Runs every 24 hours to export the database to Google Cloud Storage.
+ */
+exports.scheduledFirestoreExport = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
+  const projectId = process.env.GCP_PROJECT || process.env.GCLOUD_PROJECT;
+  const client = new firestore.v1.FirestoreAdminClient();
+  const databaseName = client.databasePath(projectId, '(default)');
+  const bucket = 'gs://' + projectId + '-backups';
+
+  try {
+    const [response] = await client.exportDocuments({
+      name: databaseName,
+      outputUriPrefix: bucket,
+    });
+    console.log(`Export operation initiated: ${response.name}`);
+    return response;
+  } catch (error) {
+    console.error('Error exporting Firestore database:', error);
+    throw error;
   }
 });
