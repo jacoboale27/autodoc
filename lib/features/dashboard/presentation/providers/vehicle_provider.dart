@@ -26,11 +26,19 @@ class VehicleProvider with ChangeNotifier {
   String? get error => _error;
   List<VehicleModel> get recentSearches => _recentSearches;
 
-  Future<Box> _getCacheBox() async {
-    if (Hive.isBoxOpen('offline_cache')) {
-      return Hive.box('offline_cache');
+  Future<Box?> _getCacheBox() async {
+    try {
+      if (Hive.isBoxOpen('offline_cache')) {
+        return Hive.box('offline_cache');
+      }
+      if (Hive.homePath == null) {
+        return null;
+      }
+      return await Hive.openBox('offline_cache');
+    } catch (e) {
+      debugPrint("Hive box 'offline_cache' not available: $e");
+      return null;
     }
-    return await Hive.openBox('offline_cache');
   }
 
   Future<void> _initCache() async {
@@ -49,6 +57,7 @@ class VehicleProvider with ChangeNotifier {
   Future<void> _cacheVehicles(List<VehicleModel> vehiculos) async {
     try {
       final box = await _getCacheBox();
+      if (box == null) return;
       final jsonList = vehiculos.map((v) => v.toJson()).toList();
       await box.put('user_vehicles', jsonList);
     } catch (e) {
@@ -59,6 +68,7 @@ class VehicleProvider with ChangeNotifier {
   Future<List<VehicleModel>> _loadCachedVehicles() async {
     try {
       final box = await _getCacheBox();
+      if (box == null) return [];
       final cachedData = box.get('user_vehicles');
       if (cachedData != null && cachedData is List) {
         return cachedData
@@ -292,6 +302,7 @@ class VehicleProvider with ChangeNotifier {
   Future<void> _clearHiveCache() async {
     try {
       final box = await _getCacheBox();
+      if (box == null) return;
       await box.delete('user_vehicles');
     } catch (e) {
       debugPrint("Error clearing Hive vehicles cache: $e");

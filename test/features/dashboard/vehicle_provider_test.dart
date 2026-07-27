@@ -95,6 +95,7 @@ void main() {
       ];
       when(mockVehicleService.getVehiclesByOwner('owner')).thenAnswer((_) async => vehicles);
       when(mockVehicleService.getSharedVehicles('owner')).thenAnswer((_) async => []);
+      when(mockVehicleService.updateVehicle(any)).thenAnswer((_) async {});
 
       await vehicleProvider.fetchVehicles('owner');
       expect(vehicleProvider.selectedVehicle?.idVehiculo, '1');
