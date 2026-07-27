@@ -31,9 +31,6 @@ class VehicleProvider with ChangeNotifier {
       if (Hive.isBoxOpen('offline_cache')) {
         return Hive.box('offline_cache');
       }
-      if (Hive.homePath == null) {
-        return null;
-      }
       return await Hive.openBox('offline_cache');
     } catch (e) {
       debugPrint("Hive box 'offline_cache' not available: $e");
