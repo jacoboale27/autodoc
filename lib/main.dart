@@ -188,11 +188,10 @@ void main() async {
 
   void checkAndFetchProfile() {
     if (authSessionProvider.isLoggedIn) {
-      if (userProfileProvider.userData?.idUsuario !=
-          (userProfileProvider.userData?.idUsuario ?? "")) {
-        userProfileProvider.fetchUserData(
-          (userProfileProvider.userData?.idUsuario ?? ""),
-        );
+      final currentUid = authSessionProvider.currentUid;
+      if (currentUid.isNotEmpty &&
+          userProfileProvider.userData?.idUsuario != currentUid) {
+        userProfileProvider.fetchUserData(currentUid);
       }
     } else {
       userProfileProvider.clearUserData();
@@ -220,7 +219,6 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => ReservaProvider()),
         ChangeNotifierProvider(create: (_) => NotificationCenterProvider()),
-        ChangeNotifierProvider(create: (_) => UserProfileProvider()),
       ],
       child: MyApp(
         authProvider: authSessionProvider,
