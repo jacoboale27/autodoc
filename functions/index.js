@@ -31,6 +31,35 @@ async function writeNotification(userId, notification) {
 }
 
 /**
+ * Helper: Batch delete documents matching a query in chunks of max 500 operations to prevent OOM/Timeouts.
+ * 
+ * @param {object} db - Firestore database instance
+ * @param {object} query - Firestore query object with .limit(500)
+ * @param {function} resolve - Promise resolve callback
+ * @param {function} [reject] - Promise reject callback
+ */
+async function deleteQueryBatch(db, query, resolve, reject) {
+  try {
+    const snapshot = await query.get();
+    if (snapshot.size === 0) {
+      resolve();
+      return;
+    }
+    const batch = db.batch();
+    snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+    process.nextTick(() => deleteQueryBatch(db, query, resolve, reject));
+  } catch (error) {
+    if (reject) {
+      reject(error);
+    } else {
+      throw error;
+    }
+  }
+}
+
+
+/**
  * 1. Scheduled function to check alerts (alertas) daily.
  * Notifies the user if an alert is expiring in 7 days or less, or already expired.
  */
@@ -494,22 +523,25 @@ exports.onUserDelete = functions.auth.user().onDelete(async (user) => {
     for (const vehiculoDoc of vehiculosSnapshot.docs) {
       const vehiculoId = vehiculoDoc.id;
       
-      // Delete alerts for this vehicle
-      const alertasSnapshot = await db.collection('alertas').where('id_vehiculo', '==', vehiculoId).get();
-      for (const alertaDoc of alertasSnapshot.docs) {
-        await db.collection('alertas').doc(alertaDoc.id).delete();
-      }
+      // Delete alerts for this vehicle in batches of 500
+      await new Promise((resolve, reject) => {
+        deleteQueryBatch(db, db.collection('alertas').where('id_vehiculo', '==', vehiculoId).limit(500), resolve, reject);
+      });
 
-      // Delete services for this vehicle
-      const serviciosSnapshot = await db.collection('servicios').where('id_vehiculo', '==', vehiculoId).get();
-      for (const servicioDoc of serviciosSnapshot.docs) {
-        await db.collection('servicios').doc(servicioDoc.id).delete();
-      }
+      // Delete services for this vehicle in batches of 500
+      await new Promise((resolve, reject) => {
+        deleteQueryBatch(db, db.collection('servicios').where('id_vehiculo', '==', vehiculoId).limit(500), resolve, reject);
+      });
 
       // Finally, delete the vehicle
       await db.collection('vehiculos').doc(vehiculoId).delete();
       console.log(`Vehicle ${vehiculoId} and its related data deleted.`);
     }
+
+    // Ensure all vehicle documents owned by user are batch deleted
+    await new Promise((resolve, reject) => {
+      deleteQueryBatch(db, db.collection('vehiculos').where('id_propietario', '==', userId).limit(500), resolve, reject);
+    });
     
     // 3. Delete user's profile picture
     try {
@@ -533,25 +565,26 @@ exports.onVehicleDelete = functions.firestore.document('vehiculos/{vehicleId}').
   console.log(`Vehicle ${vehicleId} deleted. Cleaning up related data...`);
 
   try {
-    const batch = db.batch();
+    // 1. Delete alerts in batches of 500
+    await new Promise((resolve, reject) => {
+      deleteQueryBatch(db, db.collection('alertas').where('id_vehiculo', '==', vehicleId).limit(500), resolve, reject);
+    });
 
-    // 1. Delete alerts
-    const alertas = await db.collection('alertas').where('id_vehiculo', '==', vehicleId).get();
-    alertas.docs.forEach(doc => batch.delete(doc.ref));
+    // 2. Delete mantenimientos in batches of 500
+    await new Promise((resolve, reject) => {
+      deleteQueryBatch(db, db.collection('mantenimientos').where('id_vehiculo', '==', vehicleId).limit(500), resolve, reject);
+    });
 
-    // 2. Delete mantenimientos
-    const mantenimientos = await db.collection('mantenimientos').where('id_vehiculo', '==', vehicleId).get();
-    mantenimientos.docs.forEach(doc => batch.delete(doc.ref));
+    // 3. Delete servicios in batches of 500
+    await new Promise((resolve, reject) => {
+      deleteQueryBatch(db, db.collection('servicios').where('id_vehiculo', '==', vehicleId).limit(500), resolve, reject);
+    });
 
-    // 3. Delete servicios
-    const servicios = await db.collection('servicios').where('id_vehiculo', '==', vehicleId).get();
-    servicios.docs.forEach(doc => batch.delete(doc.ref));
+    // 4. Delete historial_mantenimientos in batches of 500
+    await new Promise((resolve, reject) => {
+      deleteQueryBatch(db, db.collection('historial_mantenimientos').where('id_vehiculo', '==', vehicleId).limit(500), resolve, reject);
+    });
 
-    // 4. Delete historial_mantenimientos
-    const historial = await db.collection('historial_mantenimientos').where('id_vehiculo', '==', vehicleId).get();
-    historial.docs.forEach(doc => batch.delete(doc.ref));
-
-    await batch.commit();
     console.log(`Firestore data for vehicle ${vehicleId} deleted.`);
 
     // 5. Delete storage files
