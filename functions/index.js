@@ -68,66 +68,78 @@ exports.checkAlertsDaily = functions.pubsub.schedule('every 24 hours').onRun(asy
   const futureDate = new Date();
   futureDate.setDate(now.getDate() + 7);
 
+  const limit = 500;
+  let lastDoc = null;
+
   try {
-    const alertasSnapshot = await db.collection('alertas').where('estado', '==', 'Pendiente').get();
-    
-    for (const doc of alertasSnapshot.docs) {
-      const alerta = doc.data();
-      let fechaLimite;
-      
-      if (alerta.fecha_limite && alerta.fecha_limite.toDate) {
-        fechaLimite = alerta.fecha_limite.toDate();
-      } else if (typeof alerta.fecha_limite === 'string') {
-        fechaLimite = new Date(alerta.fecha_limite);
-      } else {
-        continue; // No valid date
+    while (true) {
+      let q = db.collection('alertas').where('estado', '==', 'Pendiente').limit(limit);
+      if (lastDoc) {
+        q = q.startAfter(lastDoc);
       }
+      const alertasSnapshot = await q.get();
+      if (alertasSnapshot.empty) break;
 
-      if (fechaLimite <= futureDate) {
-        // Find the vehicle owner
-        const vehiculoId = alerta.id_vehiculo;
-        if (!vehiculoId) continue;
+      for (const doc of alertasSnapshot.docs) {
+        const alerta = doc.data();
+        let fechaLimite;
+        
+        if (alerta.fecha_limite && alerta.fecha_limite.toDate) {
+          fechaLimite = alerta.fecha_limite.toDate();
+        } else if (typeof alerta.fecha_limite === 'string') {
+          fechaLimite = new Date(alerta.fecha_limite);
+        } else {
+          continue; // No valid date
+        }
 
-        const vehiculoDoc = await db.collection('vehiculos').doc(vehiculoId).get();
-        if (!vehiculoDoc.exists) continue;
+        if (fechaLimite <= futureDate) {
+          // Find the vehicle owner
+          const vehiculoId = alerta.id_vehiculo;
+          if (!vehiculoId) continue;
 
-        const ownerId = vehiculoDoc.data().id_propietario;
-        if (!ownerId) continue;
+          const vehiculoDoc = await db.collection('vehiculos').doc(vehiculoId).get();
+          if (!vehiculoDoc.exists) continue;
 
-        const userDoc = await db.collection('usuarios').doc(ownerId).get();
-        if (!userDoc.exists) continue;
+          const ownerId = vehiculoDoc.data().id_propietario;
+          if (!ownerId) continue;
 
-        const fcmToken = userDoc.data().fcmToken;
-        if (!fcmToken) continue;
+          const userDoc = await db.collection('usuarios').doc(ownerId).get();
+          if (!userDoc.exists) continue;
 
-        const isExpired = fechaLimite < now;
-        const title = isExpired ? '¡Alerta Vencida!' : 'Alerta por Vencer';
-        const body = isExpired 
-            ? `La alerta de ${alerta.tipo_alerta} para tu vehículo ${vehiculoDoc.data().placa} ya venció.`
-            : `La alerta de ${alerta.tipo_alerta} para tu vehículo ${vehiculoDoc.data().placa} está por vencer.`;
+          const fcmToken = userDoc.data().fcmToken;
+          if (!fcmToken) continue;
 
-        await messaging.send({
-          token: fcmToken,
-          notification: {
-            title: title,
+          const isExpired = fechaLimite < now;
+          const title = isExpired ? '¡Alerta Vencida!' : 'Alerta por Vencer';
+          const body = isExpired 
+              ? `La alerta de ${alerta.tipo_alerta} para tu vehículo ${vehiculoDoc.data().placa} ya venció.`
+              : `La alerta de ${alerta.tipo_alerta} para tu vehículo ${vehiculoDoc.data().placa} está por vencer.`;
+
+          await messaging.send({
+            token: fcmToken,
+            notification: {
+              title: title,
+              body: body,
+            },
+            data: {
+              type: 'alerta',
+              alertaId: doc.id,
+              vehiculoId: vehiculoId
+            }
+          });
+
+          // Persist in notification center
+          await writeNotification(ownerId, {
+            tipo: 'alerta',
+            titulo: title,
             body: body,
-          },
-          data: {
-            type: 'alerta',
-            alertaId: doc.id,
-            vehiculoId: vehiculoId
-          }
-        });
-
-        // Persist in notification center
-        await writeNotification(ownerId, {
-          tipo: 'alerta',
-          titulo: title,
-          body: body,
-          deepLink: '/alerts',
-          metadata: { alertaId: doc.id, vehiculoId: vehiculoId },
-        });
+            deepLink: '/alerts',
+            metadata: { alertaId: doc.id, vehiculoId: vehiculoId },
+          });
+        }
       }
+
+      lastDoc = alertasSnapshot.docs[alertasSnapshot.docs.length - 1];
     }
   } catch (error) {
     console.error('Error checking alerts:', error);
@@ -459,43 +471,55 @@ exports.sendReservationReminders = functions.pubsub.schedule('every 24 hours').o
   tomorrow.setDate(tomorrow.getDate() + 1);
   const dateString = tomorrow.toISOString().split('T')[0]; // Assuming format 'YYYY-MM-DD'
 
-  try {
-    const reservasSnapshot = await db.collection('reservas').where('estado', '==', 'aprobada').get();
-    
-    for (const doc of reservasSnapshot.docs) {
-      const reserva = doc.data();
-      
-      // Simple check to see if the date starts with tomorrow's date
-      if (reserva.fecha && reserva.fecha.startsWith(dateString)) {
-        
-        // Notify Owner
-        if (reserva.id_propietario) {
-          const ownerDoc = await db.collection('usuarios').doc(reserva.id_propietario).get();
-          if (ownerDoc.exists && ownerDoc.data().fcmToken) {
-            await messaging.send({
-              token: ownerDoc.data().fcmToken,
-              notification: {
-                title: 'Recordatorio de Cita',
-                body: `Tienes una cita programada para mañana a las ${reserva.hora || 'la hora acordada'}.`
-              }
-            });
-          }
-        }
+  const limit = 500;
+  let lastDoc = null;
 
-        // Notify Mechanic
-        if (reserva.id_mecanico) {
-          const mechanicDoc = await db.collection('usuarios').doc(reserva.id_mecanico).get();
-          if (mechanicDoc.exists && mechanicDoc.data().fcmToken) {
-            await messaging.send({
-              token: mechanicDoc.data().fcmToken,
-              notification: {
-                title: 'Recordatorio de Cita',
-                body: `Tienes una cita programada para mañana con el vehículo del cliente.`
-              }
-            });
+  try {
+    while (true) {
+      let q = db.collection('reservas').where('estado', '==', 'aprobada').limit(limit);
+      if (lastDoc) {
+        q = q.startAfter(lastDoc);
+      }
+      const reservasSnapshot = await q.get();
+      if (reservasSnapshot.empty) break;
+
+      for (const doc of reservasSnapshot.docs) {
+        const reserva = doc.data();
+        
+        // Simple check to see if the date starts with tomorrow's date
+        if (reserva.fecha && reserva.fecha.startsWith(dateString)) {
+          
+          // Notify Owner
+          if (reserva.id_propietario) {
+            const ownerDoc = await db.collection('usuarios').doc(reserva.id_propietario).get();
+            if (ownerDoc.exists && ownerDoc.data().fcmToken) {
+              await messaging.send({
+                token: ownerDoc.data().fcmToken,
+                notification: {
+                  title: 'Recordatorio de Cita',
+                  body: `Tienes una cita programada para mañana a las ${reserva.hora || 'la hora acordada'}.`
+                }
+              });
+            }
+          }
+
+          // Notify Mechanic
+          if (reserva.id_mecanico) {
+            const mechanicDoc = await db.collection('usuarios').doc(reserva.id_mecanico).get();
+            if (mechanicDoc.exists && mechanicDoc.data().fcmToken) {
+              await messaging.send({
+                token: mechanicDoc.data().fcmToken,
+                notification: {
+                  title: 'Recordatorio de Cita',
+                  body: `Tienes una cita programada para mañana con el vehículo del cliente.`
+                }
+              });
+            }
           }
         }
       }
+
+      lastDoc = reservasSnapshot.docs[reservasSnapshot.docs.length - 1];
     }
   } catch (error) {
     console.error('Error in sendReservationReminders:', error);
