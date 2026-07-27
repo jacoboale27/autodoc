@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../../../../core/models/vehicle_model.dart';
 import '../../../../core/services/vehicle_image_service.dart';
 import '../../data/services/vehicle_service.dart';
@@ -9,27 +10,75 @@ class VehicleProvider with ChangeNotifier {
 
   VehicleProvider({VehicleService? vehicleService, VehicleImageService? imageService})
       : _vehicleService = vehicleService ?? VehicleService(),
-        _imageService = imageService ?? VehicleImageService();
+        _imageService = imageService ?? VehicleImageService() {
+    _initCache();
+  }
+
   List<VehicleModel> _vehicles = [];
   VehicleModel? _selectedVehicle;
-   bool _isLoading = false;
-   String? _error;
-   final List<VehicleModel> _recentSearches = [];
- 
-   List<VehicleModel> get vehicles => _vehicles;
-   VehicleModel? get selectedVehicle => _selectedVehicle;
-   bool get isLoading => _isLoading;
-   String? get error => _error;
-   List<VehicleModel> get recentSearches => _recentSearches;
- 
-   void addRecentSearch(VehicleModel vehicle) {
-     _recentSearches.removeWhere((v) => v.placa == vehicle.placa);
-     _recentSearches.insert(0, vehicle);
-     if (_recentSearches.length > 5) {
-       _recentSearches.removeLast();
-     }
-     notifyListeners();
-   }
+  bool _isLoading = false;
+  String? _error;
+  final List<VehicleModel> _recentSearches = [];
+
+  List<VehicleModel> get vehicles => _vehicles;
+  VehicleModel? get selectedVehicle => _selectedVehicle;
+  bool get isLoading => _isLoading;
+  String? get error => _error;
+  List<VehicleModel> get recentSearches => _recentSearches;
+
+  Future<Box> _getCacheBox() async {
+    if (Hive.isBoxOpen('offline_cache')) {
+      return Hive.box('offline_cache');
+    }
+    return await Hive.openBox('offline_cache');
+  }
+
+  Future<void> _initCache() async {
+    final cached = await _loadCachedVehicles();
+    if (cached.isNotEmpty && _vehicles.isEmpty) {
+      _vehicles = cached;
+      try {
+        _selectedVehicle = _vehicles.firstWhere((v) => v.isPrimary);
+      } catch (_) {
+        _selectedVehicle = _vehicles.first;
+      }
+      notifyListeners();
+    }
+  }
+
+  Future<void> _cacheVehicles(List<VehicleModel> vehiculos) async {
+    try {
+      final box = await _getCacheBox();
+      final jsonList = vehiculos.map((v) => v.toJson()).toList();
+      await box.put('user_vehicles', jsonList);
+    } catch (e) {
+      debugPrint("Error caching vehicles to Hive: $e");
+    }
+  }
+
+  Future<List<VehicleModel>> _loadCachedVehicles() async {
+    try {
+      final box = await _getCacheBox();
+      final cachedData = box.get('user_vehicles');
+      if (cachedData != null && cachedData is List) {
+        return cachedData
+            .map((item) => VehicleModel.fromJson(Map<String, dynamic>.from(item as Map)))
+            .toList();
+      }
+    } catch (e) {
+      debugPrint("Error reading cached vehicles from Hive: $e");
+    }
+    return [];
+  }
+
+  void addRecentSearch(VehicleModel vehicle) {
+    _recentSearches.removeWhere((v) => v.placa == vehicle.placa);
+    _recentSearches.insert(0, vehicle);
+    if (_recentSearches.length > 5) {
+      _recentSearches.removeLast();
+    }
+    notifyListeners();
+  }
 
   void _setLoading(bool value) {
     _isLoading = value;
@@ -67,9 +116,24 @@ class VehicleProvider with ChangeNotifier {
       } else {
         _selectedVehicle = null;
       }
+      
+      await _cacheVehicles(_vehicles);
+
       _setLoading(false);
     } catch (e) {
-      _setError(e.toString());
+      final cached = await _loadCachedVehicles();
+      if (cached.isNotEmpty) {
+        _vehicles = cached;
+        if (_vehicles.isNotEmpty) {
+          try {
+            _selectedVehicle = _vehicles.firstWhere((v) => v.isPrimary);
+          } catch (_) {
+            _selectedVehicle = _vehicles.first;
+          }
+        }
+      } else {
+        _setError(e.toString());
+      }
       _setLoading(false);
     }
   }
@@ -214,12 +278,23 @@ class VehicleProvider with ChangeNotifier {
       return null;
     }
   }
+
   void clearVehicles() {
     _vehicles = [];
     _selectedVehicle = null;
     _recentSearches.clear();
     _error = null;
     _isLoading = false;
+    _clearHiveCache();
     notifyListeners();
+  }
+
+  Future<void> _clearHiveCache() async {
+    try {
+      final box = await _getCacheBox();
+      await box.delete('user_vehicles');
+    } catch (e) {
+      debugPrint("Error clearing Hive vehicles cache: $e");
+    }
   }
 }

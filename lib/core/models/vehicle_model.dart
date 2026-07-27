@@ -86,7 +86,33 @@ class VehicleModel {
     };
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id_vehiculo': idVehiculo,
+      'id_propietario': idPropietario,
+      'placa': placa,
+      'marca': marca,
+      'modelo': modelo,
+      'anio': anio,
+      'color': color,
+      'kilometraje_actual': kilometrajeActual,
+      'vencimiento_tarjeta': vencimientoTarjeta?.toIso8601String(),
+      'vencimiento_soat': vencimientoSoat?.toIso8601String(),
+      'foto_url': fotoUrl,
+      'es_principal': isPrimary,
+      'shared_with': sharedWith,
+      'notas': notas,
+    };
+  }
+
   factory VehicleModel.fromMap(Map<String, dynamic> map, String documentId) {
+    DateTime? parseDate(dynamic val) {
+      if (val == null) return null;
+      if (val is Timestamp) return val.toDate();
+      if (val is String) return DateTime.tryParse(val);
+      return null;
+    }
+
     return VehicleModel(
       idVehiculo: map['id_vehiculo'] ?? documentId,
       idPropietario: map['id_propietario'] ?? '',
@@ -96,12 +122,16 @@ class VehicleModel {
       anio: map['anio'],
       color: map['color'],
       kilometrajeActual: map['kilometraje_actual'] ?? 0,
-      vencimientoTarjeta: (map['vencimiento_tarjeta'] as Timestamp?)?.toDate(),
-      vencimientoSoat: (map['vencimiento_soat'] as Timestamp?)?.toDate(),
+      vencimientoTarjeta: parseDate(map['vencimiento_tarjeta']),
+      vencimientoSoat: parseDate(map['vencimiento_soat']),
       fotoUrl: map['foto_url'],
       isPrimary: map['es_principal'] ?? false,
       sharedWith: List<String>.from(map['shared_with'] ?? []),
       notas: List<String>.from(map['notas'] ?? []),
     );
+  }
+
+  factory VehicleModel.fromJson(Map<String, dynamic> map) {
+    return VehicleModel.fromMap(map, map['id_vehiculo'] ?? '');
   }
 }

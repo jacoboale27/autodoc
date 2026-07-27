@@ -82,6 +82,7 @@ dependencies:
 
   mobile_scanner: any
   flutter_dotenv: ^6.0.1
+  path_provider: ^2.1.6
 flutter_native_splash:
   color: "#522C81"
   android: true

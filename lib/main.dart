@@ -148,15 +148,16 @@ void main() async {
 
   // 6. Inicializar Hive y cache de traducción
   try {
-    debugPrint("=== [AutoDoc Init] Inicializando Hive y TranslationService ===");
+    debugPrint("=== [AutoDoc Init] Inicializando Hive, offline_cache y TranslationService ===");
     await Hive.initFlutter();
+    await Hive.openBox('offline_cache');
     await TranslationService().initialize().timeout(
       const Duration(seconds: 5),
       onTimeout: () {
         debugPrint("=== [AutoDoc Init] TIMEOUT al inicializar TranslationService. Continuando... ===");
       },
     );
-    debugPrint("=== [AutoDoc Init] TranslationService inicializado con éxito ===");
+    debugPrint("=== [AutoDoc Init] Hive, offline_cache y TranslationService inicializados con éxito ===");
   } catch (e, stack) {
     debugPrint("=== [AutoDoc Init] ERROR al inicializar Hive/TranslationService: $e ===");
     debugPrint(stack.toString());
