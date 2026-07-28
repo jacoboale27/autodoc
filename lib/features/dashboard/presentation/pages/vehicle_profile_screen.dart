@@ -704,14 +704,14 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
       },
     );
 
-    if (pickedDate != null && mounted) {
+    if (pickedDate != null && context.mounted) {
       final updatedVehicle = isTarjeta
           ? vehicle.copyWith(vencimientoTarjeta: pickedDate)
           : vehicle.copyWith(vencimientoSoat: pickedDate);
 
       final success = await vehicleProvider.updateVehicle(updatedVehicle);
 
-      if (mounted) {
+      if (context.mounted) {
         if (success) {
           UiUtils.showSuccessSnackbar(context, l10n.vpDateUpdatedSuccess);
         } else {
