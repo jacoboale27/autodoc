@@ -6,6 +6,7 @@ import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/reviews/data/services/review_service.dart';
 import 'package:autodoc/core/models/review_model.dart';
+import 'package:autodoc/core/utils/ui_utils.dart';
 
 /// Muestra un bottom sheet para calificar un taller/mecánico.
 Future<bool?> showReviewBottomSheet(
@@ -116,16 +117,13 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
 
       if (mounted) {
         Navigator.pop(context, true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('¡Gracias por tu reseña!')),
-        );
+        UiUtils.showSuccessSnackbar(context, '¡Gracias por tu reseña!');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceFirst('StateError: ', '')),
-          ),
+        UiUtils.showErrorSnackbar(
+          context,
+          e.toString().replaceFirst('StateError: ', ''),
         );
       }
     } finally {

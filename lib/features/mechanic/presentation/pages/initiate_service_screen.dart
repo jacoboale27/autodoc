@@ -13,6 +13,7 @@ import 'package:autodoc/core/models/alert_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/utils/ui_utils.dart';
 
 class InitiateServiceScreen extends StatefulWidget {
   final VehicleModel vehicle;
@@ -71,10 +72,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   Future<void> _handleFinalizeService() async {
     if (_kmController.text.isEmpty) {
       HapticFeedback.heavyImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Por favor, ingresa el kilometraje actual'),
-        ),
+      UiUtils.showErrorSnackbar(
+        context,
+        'Por favor, ingresa el kilometraje actual',
       );
       return;
     }
@@ -82,20 +82,18 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     final nuevoKm = int.tryParse(_kmController.text);
     if (nuevoKm == null || nuevoKm < widget.vehicle.kilometrajeActual) {
       HapticFeedback.heavyImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('El kilometraje debe ser mayor o igual al actual'),
-        ),
+      UiUtils.showErrorSnackbar(
+        context,
+        'El kilometraje debe ser mayor o igual al actual',
       );
       return;
     }
 
     if (_completedTaskIds.isEmpty) {
       HapticFeedback.heavyImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Selecciona al menos una tarea realizada'),
-        ),
+      UiUtils.showErrorSnackbar(
+        context,
+        'Selecciona al menos una tarea realizada',
       );
       return;
     }
@@ -127,23 +125,13 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
 
       if (mounted) {
         HapticFeedback.lightImpact();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Servicio registrado exitosamente'),
-            backgroundColor: context.appColors.secondary,
-          ),
-        );
+        UiUtils.showSuccessSnackbar(context, 'Servicio registrado exitosamente');
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
         HapticFeedback.heavyImpact();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al registrar servicio: $e'),
-            backgroundColor: context.appColors.error,
-          ),
-        );
+        UiUtils.showErrorSnackbar(context, 'Error al registrar servicio: $e');
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);

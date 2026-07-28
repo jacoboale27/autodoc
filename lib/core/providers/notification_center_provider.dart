@@ -64,7 +64,8 @@ class NotificationCenterProvider extends ChangeNotifier {
           .doc(notificationId)
           .update({'leida': true});
     } catch (e) {
-      debugPrint('Error marking notification as read: $e');
+      _error = e.toString();
+      notifyListeners();
     }
   }
 
@@ -83,7 +84,8 @@ class NotificationCenterProvider extends ChangeNotifier {
       }
       await batch.commit();
     } catch (e) {
-      debugPrint('Error marking all notifications as read: $e');
+      _error = e.toString();
+      notifyListeners();
     }
   }
 
@@ -97,7 +99,8 @@ class NotificationCenterProvider extends ChangeNotifier {
           .doc(notificationId)
           .delete();
     } catch (e) {
-      debugPrint('Error deleting notification: $e');
+      _error = e.toString();
+      notifyListeners();
     }
   }
 

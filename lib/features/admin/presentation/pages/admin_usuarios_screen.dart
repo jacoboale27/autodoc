@@ -7,6 +7,7 @@ import '../widgets/account_row.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/utils/ui_utils.dart';
 
 class AdminUsuariosScreen extends StatefulWidget {
   const AdminUsuariosScreen({super.key});
@@ -169,21 +170,11 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
     // Show success/error snackbar
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (provider.successMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(provider.successMessage!),
-            backgroundColor: colors.secondary,
-          ),
-        );
+        UiUtils.showSuccessSnackbar(context, provider.successMessage!);
         provider.clearMessages();
       }
       if (provider.error != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(provider.error!),
-            backgroundColor: colors.error,
-          ),
-        );
+        UiUtils.showErrorSnackbar(context, provider.error!);
         provider.clearMessages();
       }
     });

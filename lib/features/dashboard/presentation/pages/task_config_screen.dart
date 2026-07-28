@@ -10,6 +10,7 @@ import 'package:autodoc/core/widgets/app_scaffold.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/utils/ui_utils.dart';
 
 class TaskConfigScreen extends StatefulWidget {
   final MaintenanceTask task;
@@ -218,9 +219,7 @@ class _TaskConfigScreenState extends State<TaskConfigScreen> {
     final km = int.tryParse(_kmController.text);
     final months = int.tryParse(_monthsController.text);
     if (km == null || km <= 0 || months == null || months <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa valores válidos mayores a 0')),
-      );
+      UiUtils.showErrorSnackbar(context, 'Ingresa valores válidos mayores a 0');
       return;
     }
 
@@ -232,16 +231,15 @@ class _TaskConfigScreenState extends State<TaskConfigScreen> {
         months,
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Configuración guardada correctamente')),
+        UiUtils.showSuccessSnackbar(
+          context,
+          'Configuración guardada correctamente',
         );
         context.pop();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        UiUtils.showErrorSnackbar(context, 'Error: $e');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

@@ -19,6 +19,7 @@ import 'package:uuid/uuid.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/utils/ui_utils.dart';
 
 class GarageScreen extends StatelessWidget {
   const GarageScreen({super.key});
@@ -357,20 +358,16 @@ class GarageScreen extends StatelessWidget {
     if (!context.mounted) return;
 
     if (success) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            context.l10n.garageNowPrimary(
-              '${vehicle.marca ?? ''} ${vehicle.modelo ?? ''}'.trim(),
-            ),
-          ),
+      UiUtils.showSuccessSnackbar(
+        context,
+        context.l10n.garageNowPrimary(
+          '${vehicle.marca ?? ''} ${vehicle.modelo ?? ''}'.trim(),
         ),
       );
     } else {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(provider.error ?? context.l10n.garageMakePrimaryError),
-        ),
+      UiUtils.showErrorSnackbar(
+        context,
+        provider.error ?? context.l10n.garageMakePrimaryError,
       );
     }
   }
@@ -403,12 +400,9 @@ class GarageScreen extends StatelessWidget {
             if (context.mounted) Navigator.pop(context);
           } else {
             if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    vehicleProvider.error ?? context.l10n.garageAddVehicleError,
-                  ),
-                ),
+              UiUtils.showErrorSnackbar(
+                context,
+                vehicleProvider.error ?? context.l10n.garageAddVehicleError,
               );
             }
           }

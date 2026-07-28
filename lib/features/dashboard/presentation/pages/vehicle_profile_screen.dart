@@ -21,6 +21,7 @@ import '../widgets/share_vehicle_sheet.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
+import 'package:autodoc/core/utils/ui_utils.dart';
 
 class VehicleProfileScreen extends StatefulWidget {
   final VehicleModel vehicle;
@@ -713,14 +714,11 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
 
       if (mounted) {
         if (success) {
-          messenger.showSnackBar(
-            SnackBar(content: Text(l10n.vpDateUpdatedSuccess)),
-          );
+          UiUtils.showSuccessSnackbar(context, l10n.vpDateUpdatedSuccess);
         } else {
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text(vehicleProvider.error ?? l10n.vpDateUpdateError),
-            ),
+          UiUtils.showErrorSnackbar(
+            context,
+            vehicleProvider.error ?? l10n.vpDateUpdateError,
           );
         }
       }
@@ -902,18 +900,14 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                 if (context.mounted) {
                   if (success) {
                     context.pop();
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text(context.l10n.vpMileageUpdatedSuccess),
-                      ),
+                    UiUtils.showSuccessSnackbar(
+                      context,
+                      context.l10n.vpMileageUpdatedSuccess,
                     );
                   } else {
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          vehicleProvider.error ?? context.l10n.vpUpdateError,
-                        ),
-                      ),
+                    UiUtils.showErrorSnackbar(
+                      context,
+                      vehicleProvider.error ?? context.l10n.vpUpdateError,
                     );
                   }
                 }
@@ -1002,10 +996,9 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                   if (context.mounted) {
                     if (!isValid) {
                       setState(() => isVerifying = false);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(context.l10n.vpIncorrectPassword),
-                        ),
+                      UiUtils.showErrorSnackbar(
+                        context,
+                        context.l10n.vpIncorrectPassword,
                       );
                       return;
                     }
@@ -1018,20 +1011,17 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                     if (context.mounted) {
                       setState(() => isVerifying = false);
                       if (success) {
-                        final messenger = ScaffoldMessenger.of(context);
                         context.pop(); // Close dialog
                         context.pop(); // Go back to previous screen
-                        messenger.showSnackBar(
-                          SnackBar(content: Text(context.l10n.vpDeleteSuccess)),
+                        UiUtils.showSuccessSnackbar(
+                          context,
+                          context.l10n.vpDeleteSuccess,
                         );
                       } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              vehicleProvider.error ??
-                                  context.l10n.vpDeleteError,
-                            ),
-                          ),
+                        UiUtils.showErrorSnackbar(
+                          context,
+                          vehicleProvider.error ??
+                              context.l10n.vpDeleteError,
                         );
                       }
                     }

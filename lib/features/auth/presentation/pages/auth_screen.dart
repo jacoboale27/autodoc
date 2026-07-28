@@ -14,6 +14,7 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/utils/ui_utils.dart';
 
 class AuthScreen extends StatefulWidget {
   final bool isLogin;
@@ -417,9 +418,7 @@ class _AuthScreenState extends State<AuthScreen> {
       await _navigateAfterAuth(authProvider);
     } else if (authProvider.error != null) {
       HapticFeedback.heavyImpact();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(authProvider.error!)));
+      UiUtils.showErrorSnackbar(context, authProvider.error!);
     }
   }
 
@@ -429,23 +428,17 @@ class _AuthScreenState extends State<AuthScreen> {
 
     if (email.isEmpty || password.isEmpty) {
       HapticFeedback.heavyImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.authCompleteCredentials)),
-      );
+      UiUtils.showErrorSnackbar(context, context.l10n.authCompleteCredentials);
       return;
     }
     if (!_isValidEmail(email)) {
       HapticFeedback.heavyImpact();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.l10n.authEnterValidEmail)));
+      UiUtils.showErrorSnackbar(context, context.l10n.authEnterValidEmail);
       return;
     }
     if (password.length < 6) {
       HapticFeedback.heavyImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.authPasswordTooShort)),
-      );
+      UiUtils.showErrorSnackbar(context, context.l10n.authPasswordTooShort);
       return;
     }
 
@@ -458,9 +451,7 @@ class _AuthScreenState extends State<AuthScreen> {
       if (mounted) context.go('/profile_setup');
     } else if (authProvider.error != null) {
       HapticFeedback.heavyImpact();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(authProvider.error!)));
+      UiUtils.showErrorSnackbar(context, authProvider.error!);
     }
   }
 
@@ -526,9 +517,7 @@ class _AuthScreenState extends State<AuthScreen> {
             await _navigateAfterAuth(authProvider);
           } else if (mounted && authProvider.error != null) {
             HapticFeedback.heavyImpact();
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(authProvider.error!)));
+            UiUtils.showErrorSnackbar(context, authProvider.error!);
           }
         },
         style: OutlinedButton.styleFrom(

@@ -19,6 +19,7 @@ import 'package:uuid/uuid.dart';
 
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/utils/ui_utils.dart';
 import '../widgets/add_vehicle_form.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -565,12 +566,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             if (context.mounted) Navigator.pop(context);
           } else {
             if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    vehicleProvider.error ?? context.l10n.dashAddVehicleError,
-                  ),
-                ),
+              UiUtils.showErrorSnackbar(
+                context,
+                vehicleProvider.error ?? context.l10n.dashAddVehicleError,
               );
             }
           }

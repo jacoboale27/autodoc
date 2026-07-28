@@ -7,6 +7,7 @@ import 'package:autodoc/features/chat/presentation/providers/reserva_provider.da
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/utils/ui_utils.dart';
 
 class ReservaDetailScreen extends StatefulWidget {
   final ReservaModel reserva;
@@ -38,16 +39,16 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
       }
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.l10n.chatReservationSuccess(nuevoEstado)),
-          ),
+        UiUtils.showSuccessSnackbar(
+          context,
+          context.l10n.chatReservationSuccess(nuevoEstado),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.adminError(e.toString()))),
+        UiUtils.showErrorSnackbar(
+          context,
+          context.l10n.adminError(e.toString()),
         );
       }
     } finally {

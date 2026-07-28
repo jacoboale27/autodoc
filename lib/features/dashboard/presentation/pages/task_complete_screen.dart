@@ -8,6 +8,7 @@ import 'package:autodoc/features/dashboard/presentation/providers/alert_provider
 import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:intl/intl.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/utils/ui_utils.dart';
 
 class TaskCompleteScreen extends StatefulWidget {
   final MaintenanceTask task;
@@ -616,18 +617,15 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
         receiptImage: _receiptImage,
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Servicio validado y registrado en historial ✓'),
-          ),
+        UiUtils.showSuccessSnackbar(
+          context,
+          'Servicio validado y registrado en historial ✓',
         );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        UiUtils.showErrorSnackbar(context, 'Error: $e');
         setState(() => _isLoading = false);
       }
     }
