@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:autodoc/core/services/push_notification_service.dart';
 
 /// Extracted from UserProfileProvider to reduce coupling.
 class AuthSessionProvider with ChangeNotifier {
@@ -16,6 +17,9 @@ class AuthSessionProvider with ChangeNotifier {
       (User? user) {
         _user = user;
         _error = null;
+        if (user != null) {
+          PushNotificationService().updateUserToken(user.uid);
+        }
         notifyListeners();
       },
       onError: (e) {

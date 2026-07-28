@@ -31,11 +31,7 @@ import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart'
 import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
 import 'package:autodoc/core/providers/notification_center_provider.dart';
 
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  debugPrint("Manejando mensaje en background: ${message.messageId}");
-}
+import 'package:autodoc/core/services/push_notification_service.dart';
 
 /// Resolves the deep link destination route from a push notification payload.
 /// Returns null if no routing action should be taken.
@@ -123,16 +119,11 @@ void main() async {
 
   // 4. Configurar Firebase Messaging y permisos de notificaciones
   try {
-    debugPrint("=== [AutoDoc Init] Configurando Firebase Messaging ===");
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-    final messaging = FirebaseMessaging.instance;
-    await messaging
-        .requestPermission(alert: true, badge: true, sound: true)
-        .timeout(const Duration(seconds: 5));
-    debugPrint("=== [AutoDoc Init] Permisos de notificación configurados ===");
+    debugPrint("=== [AutoDoc Init] Inicializando PushNotificationService ===");
+    await PushNotificationService().initialize();
+    debugPrint("=== [AutoDoc Init] PushNotificationService inicializado ===");
   } catch (e, stack) {
-    debugPrint("=== [AutoDoc Init] ERROR en Firebase Messaging: $e ===");
+    debugPrint("=== [AutoDoc Init] ERROR en PushNotificationService: $e ===");
     debugPrint(stack.toString());
   }
 
