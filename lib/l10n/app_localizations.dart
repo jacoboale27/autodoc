@@ -98,2122 +98,2122 @@ abstract class AppLocalizations {
     Locale('es'),
   ];
 
-  /// El nombre de la aplicación
+  /// The name of the application
   ///
-  /// In es, this message translates to:
+  /// In en, this message translates to:
   /// **'AutoDoc'**
   String get appName;
 
   /// No description provided for @navPlatform.
   ///
-  /// In es, this message translates to:
-  /// **'Plataforma'**
+  /// In en, this message translates to:
+  /// **'Platform'**
   String get navPlatform;
 
   /// No description provided for @navOwners.
   ///
-  /// In es, this message translates to:
-  /// **'Para Dueños'**
+  /// In en, this message translates to:
+  /// **'For Owners'**
   String get navOwners;
 
   /// No description provided for @navWorkshops.
   ///
-  /// In es, this message translates to:
-  /// **'Talleres'**
+  /// In en, this message translates to:
+  /// **'Workshops'**
   String get navWorkshops;
 
   /// No description provided for @navLogin.
   ///
-  /// In es, this message translates to:
-  /// **'Login'**
+  /// In en, this message translates to:
+  /// **'Log In'**
   String get navLogin;
 
   /// No description provided for @navTryFree.
   ///
-  /// In es, this message translates to:
-  /// **'Probar Gratis'**
+  /// In en, this message translates to:
+  /// **'Try for Free'**
   String get navTryFree;
 
   /// No description provided for @authNoAccount.
   ///
-  /// In es, this message translates to:
-  /// **'¿No tienes una cuenta? '**
+  /// In en, this message translates to:
+  /// **'Don\'t have an account? '**
   String get authNoAccount;
 
   /// No description provided for @authHaveAccount.
   ///
-  /// In es, this message translates to:
-  /// **'¿Ya tienes una cuenta? '**
+  /// In en, this message translates to:
+  /// **'Already have an account? '**
   String get authHaveAccount;
 
   /// No description provided for @authRegisterFree.
   ///
-  /// In es, this message translates to:
-  /// **'Regístrate gratis'**
+  /// In en, this message translates to:
+  /// **'Sign up for free'**
   String get authRegisterFree;
 
   /// No description provided for @authLogin.
   ///
-  /// In es, this message translates to:
-  /// **'Inicia sesión'**
+  /// In en, this message translates to:
+  /// **'Log in'**
   String get authLogin;
 
   /// No description provided for @authCopilotSubtitle.
   ///
-  /// In es, this message translates to:
-  /// **'Tu copiloto para el control total de tu vehículo'**
+  /// In en, this message translates to:
+  /// **'Your copilot for total vehicle control'**
   String get authCopilotSubtitle;
 
   /// No description provided for @authWelcomeBack.
   ///
-  /// In es, this message translates to:
-  /// **'Bienvenido de nuevo'**
+  /// In en, this message translates to:
+  /// **'Welcome back'**
   String get authWelcomeBack;
 
   /// No description provided for @authCreateAccount.
   ///
-  /// In es, this message translates to:
-  /// **'Crea tu cuenta'**
+  /// In en, this message translates to:
+  /// **'Create your account'**
   String get authCreateAccount;
 
   /// No description provided for @authEnterCredentials.
   ///
-  /// In es, this message translates to:
-  /// **'Ingresa tus credenciales para acceder'**
+  /// In en, this message translates to:
+  /// **'Enter your credentials to access'**
   String get authEnterCredentials;
 
   /// No description provided for @authRegisterToManage.
   ///
-  /// In es, this message translates to:
-  /// **'Regístrate para comenzar a gestionar tus documentos'**
+  /// In en, this message translates to:
+  /// **'Sign up to start managing your documents'**
   String get authRegisterToManage;
 
   /// No description provided for @authEmailOrUserLabel.
   ///
-  /// In es, this message translates to:
-  /// **'Correo o usuario'**
+  /// In en, this message translates to:
+  /// **'Email or Username'**
   String get authEmailOrUserLabel;
 
   /// No description provided for @authEmailLabel.
   ///
-  /// In es, this message translates to:
-  /// **'Correo electrónico'**
+  /// In en, this message translates to:
+  /// **'Email'**
   String get authEmailLabel;
 
   /// No description provided for @authEmailOrUserHint.
   ///
-  /// In es, this message translates to:
-  /// **'nombre@ejemplo.com o usuario'**
+  /// In en, this message translates to:
+  /// **'name@example.com or username'**
   String get authEmailOrUserHint;
 
   /// No description provided for @authEmailHint.
   ///
-  /// In es, this message translates to:
-  /// **'nombre@ejemplo.com'**
+  /// In en, this message translates to:
+  /// **'name@example.com'**
   String get authEmailHint;
 
   /// No description provided for @authPasswordLabel.
   ///
-  /// In es, this message translates to:
-  /// **'Contraseña'**
+  /// In en, this message translates to:
+  /// **'Password'**
   String get authPasswordLabel;
 
   /// No description provided for @authPasswordHint.
   ///
-  /// In es, this message translates to:
+  /// In en, this message translates to:
   /// **'••••••••'**
   String get authPasswordHint;
 
   /// No description provided for @authRememberMe.
   ///
-  /// In es, this message translates to:
-  /// **'Recordarme'**
+  /// In en, this message translates to:
+  /// **'Remember me'**
   String get authRememberMe;
 
   /// No description provided for @authForgotPassword.
   ///
-  /// In es, this message translates to:
-  /// **'¿Olvidaste tu contraseña?'**
+  /// In en, this message translates to:
+  /// **'Forgot your password?'**
   String get authForgotPassword;
 
   /// No description provided for @authLoginButton.
   ///
-  /// In es, this message translates to:
-  /// **'Iniciar Sesión'**
+  /// In en, this message translates to:
+  /// **'Log In'**
   String get authLoginButton;
 
   /// No description provided for @authRegisterButton.
   ///
-  /// In es, this message translates to:
-  /// **'Registrarse'**
+  /// In en, this message translates to:
+  /// **'Sign Up'**
   String get authRegisterButton;
 
   /// No description provided for @authOrContinueWith.
   ///
-  /// In es, this message translates to:
-  /// **'O CONTINUAR CON'**
+  /// In en, this message translates to:
+  /// **'OR CONTINUE WITH'**
   String get authOrContinueWith;
 
   /// No description provided for @authGoogleLogin.
   ///
-  /// In es, this message translates to:
-  /// **'Entrar con Google'**
+  /// In en, this message translates to:
+  /// **'Log in with Google'**
   String get authGoogleLogin;
 
   /// No description provided for @authTabLogin.
   ///
-  /// In es, this message translates to:
-  /// **'Login'**
+  /// In en, this message translates to:
+  /// **'Log In'**
   String get authTabLogin;
 
   /// No description provided for @authTabRegister.
   ///
-  /// In es, this message translates to:
-  /// **'Registro'**
+  /// In en, this message translates to:
+  /// **'Sign Up'**
   String get authTabRegister;
 
   /// No description provided for @authTabSupport.
   ///
-  /// In es, this message translates to:
-  /// **'Soporte'**
+  /// In en, this message translates to:
+  /// **'Support'**
   String get authTabSupport;
 
   /// No description provided for @authForgotPassTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Recuperar contraseña'**
+  /// In en, this message translates to:
+  /// **'Recover Password'**
   String get authForgotPassTitle;
 
   /// No description provided for @authForgotPassDesc.
   ///
-  /// In es, this message translates to:
-  /// **'Te enviaremos un enlace a tu correo para restablecer la contraseña.'**
+  /// In en, this message translates to:
+  /// **'We will send a link to your email to reset your password.'**
   String get authForgotPassDesc;
 
   /// No description provided for @authCancel.
   ///
-  /// In es, this message translates to:
-  /// **'Cancelar'**
+  /// In en, this message translates to:
+  /// **'Cancel'**
   String get authCancel;
 
   /// No description provided for @authSendLink.
   ///
-  /// In es, this message translates to:
-  /// **'Enviar enlace'**
+  /// In en, this message translates to:
+  /// **'Send link'**
   String get authSendLink;
 
   /// No description provided for @authInvalidEmail.
   ///
-  /// In es, this message translates to:
-  /// **'Ingresa un correo válido.'**
+  /// In en, this message translates to:
+  /// **'Enter a valid email.'**
   String get authInvalidEmail;
 
   /// No description provided for @authSendEmailError.
   ///
-  /// In es, this message translates to:
-  /// **'No se pudo enviar el correo.'**
+  /// In en, this message translates to:
+  /// **'Could not send the email.'**
   String get authSendEmailError;
 
   /// No description provided for @authCheckInbox.
   ///
-  /// In es, this message translates to:
-  /// **'Revisa tu bandeja de entrada en '**
+  /// In en, this message translates to:
+  /// **'Check your inbox at '**
   String get authCheckInbox;
 
   /// No description provided for @authAndSpam.
   ///
-  /// In es, this message translates to:
-  /// **' (y la carpeta de spam).'**
+  /// In en, this message translates to:
+  /// **' (and the spam folder).'**
   String get authAndSpam;
 
   /// No description provided for @authVerifyEmailTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Verifica tu correo'**
+  /// In en, this message translates to:
+  /// **'Verify your email'**
   String get authVerifyEmailTitle;
 
   /// No description provided for @authSentLinkTo.
   ///
-  /// In es, this message translates to:
-  /// **'Enviamos un enlace de verificación a:'**
+  /// In en, this message translates to:
+  /// **'We sent a verification link to:'**
   String get authSentLinkTo;
 
   /// No description provided for @authAccountNotVerified.
   ///
-  /// In es, this message translates to:
-  /// **'Tu cuenta aún no está verificada. Revisa el correo enviado a:'**
+  /// In en, this message translates to:
+  /// **'Your account is not verified yet. Check the email sent to:'**
   String get authAccountNotVerified;
 
   /// No description provided for @authOpenLinkThenVerify.
   ///
-  /// In es, this message translates to:
-  /// **'Abre el enlace del correo y luego pulsa \"Ya verifiqué\" para continuar.'**
+  /// In en, this message translates to:
+  /// **'Open the link in the email and then press \"I already verified\" to continue.'**
   String get authOpenLinkThenVerify;
 
   /// No description provided for @authUnderstood.
   ///
-  /// In es, this message translates to:
-  /// **'Entendido'**
+  /// In en, this message translates to:
+  /// **'Understood'**
   String get authUnderstood;
 
   /// No description provided for @authContinueWithoutVerify.
   ///
-  /// In es, this message translates to:
-  /// **'Continuar sin verificar'**
+  /// In en, this message translates to:
+  /// **'Continue without verifying'**
   String get authContinueWithoutVerify;
 
   /// No description provided for @authResendEmail.
   ///
-  /// In es, this message translates to:
-  /// **'Reenviar correo'**
+  /// In en, this message translates to:
+  /// **'Resend email'**
   String get authResendEmail;
 
   /// No description provided for @authEmailResent.
   ///
-  /// In es, this message translates to:
-  /// **'Correo de verificación reenviado.'**
+  /// In en, this message translates to:
+  /// **'Verification email resent.'**
   String get authEmailResent;
 
   /// No description provided for @authResendError.
   ///
-  /// In es, this message translates to:
-  /// **'No se pudo reenviar.'**
+  /// In en, this message translates to:
+  /// **'Could not resend.'**
   String get authResendError;
 
   /// No description provided for @authAlreadyVerified.
   ///
-  /// In es, this message translates to:
-  /// **'Ya verifiqué'**
+  /// In en, this message translates to:
+  /// **'I already verified'**
   String get authAlreadyVerified;
 
   /// No description provided for @authEmailVerifiedSuccess.
   ///
-  /// In es, this message translates to:
-  /// **'¡Correo verificado correctamente!'**
+  /// In en, this message translates to:
+  /// **'Email verified successfully!'**
   String get authEmailVerifiedSuccess;
 
   /// No description provided for @authVerificationNotDetected.
   ///
-  /// In es, this message translates to:
-  /// **'Aún no detectamos la verificación. Abre el enlace del correo e inténtalo de nuevo.'**
+  /// In en, this message translates to:
+  /// **'We still don\'t detect the verification. Open the link in the email and try again.'**
   String get authVerificationNotDetected;
 
   /// No description provided for @authSupportCenter.
   ///
-  /// In es, this message translates to:
-  /// **'Centro de soporte'**
+  /// In en, this message translates to:
+  /// **'Support Center'**
   String get authSupportCenter;
 
   /// No description provided for @authSupportDesc.
   ///
-  /// In es, this message translates to:
-  /// **'¿Necesitas ayuda con tu cuenta, verificación de correo o acceso?'**
+  /// In en, this message translates to:
+  /// **'Need help with your account, email verification, or access?'**
   String get authSupportDesc;
 
   /// No description provided for @authSupportEmail.
   ///
-  /// In es, this message translates to:
-  /// **'Correo de soporte'**
+  /// In en, this message translates to:
+  /// **'Support email'**
   String get authSupportEmail;
 
   /// No description provided for @authEmailCopied.
   ///
-  /// In es, this message translates to:
-  /// **'Correo copiado al portapapeles'**
+  /// In en, this message translates to:
+  /// **'Email copied to clipboard'**
   String get authEmailCopied;
 
   /// No description provided for @authEmailVerification.
   ///
-  /// In es, this message translates to:
-  /// **'Verificación de correo'**
+  /// In en, this message translates to:
+  /// **'Email verification'**
   String get authEmailVerification;
 
   /// No description provided for @authEmailNotReceived.
   ///
-  /// In es, this message translates to:
-  /// **'No llegó el correo → revisa spam o reenvía desde login'**
+  /// In en, this message translates to:
+  /// **'Email didn\'t arrive → check spam or resend from login'**
   String get authEmailNotReceived;
 
   /// No description provided for @authLoginToResend.
   ///
-  /// In es, this message translates to:
-  /// **'Inicia sesión con tu correo para reenviar la verificación.'**
+  /// In en, this message translates to:
+  /// **'Log in with your email to resend verification.'**
   String get authLoginToResend;
 
   /// No description provided for @authForgotPassTileTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Olvidé mi contraseña'**
+  /// In en, this message translates to:
+  /// **'I forgot my password'**
   String get authForgotPassTileTitle;
 
   /// No description provided for @authReceiveRecoveryLink.
   ///
-  /// In es, this message translates to:
-  /// **'Recibe un enlace de recuperación por correo'**
+  /// In en, this message translates to:
+  /// **'Receive a recovery link by email'**
   String get authReceiveRecoveryLink;
 
   /// No description provided for @authSupportHours.
   ///
-  /// In es, this message translates to:
-  /// **'Horario de atención: Lun–Vie 8:00–18:00'**
+  /// In en, this message translates to:
+  /// **'Support hours: Mon–Fri 8:00–18:00'**
   String get authSupportHours;
 
   /// No description provided for @heroBadge.
   ///
-  /// In es, this message translates to:
-  /// **'CONTROL TOTAL EN TU MANO'**
+  /// In en, this message translates to:
+  /// **'TOTAL CONTROL IN YOUR HANDS'**
   String get heroBadge;
 
   /// No description provided for @heroTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Tu Garaje Virtual,\nElevado'**
+  /// In en, this message translates to:
+  /// **'Your Virtual Garage,\nElevated'**
   String get heroTitle;
 
   /// No description provided for @heroSubtitle.
   ///
-  /// In es, this message translates to:
-  /// **'Digitaliza tu vehículo hoy. Historial clínico certificado, alertas inteligentes de SOAT y mantenimientos, conectado con los mejores talleres.'**
+  /// In en, this message translates to:
+  /// **'Digitize your vehicle today. Certified clinical history, smart SOAT and maintenance alerts, connected with the best workshops.'**
   String get heroSubtitle;
 
   /// No description provided for @heroStartGarage.
   ///
-  /// In es, this message translates to:
-  /// **'Comenzar mi Garaje'**
+  /// In en, this message translates to:
+  /// **'Start my Garage'**
   String get heroStartGarage;
 
   /// No description provided for @heroViewDirectory.
   ///
-  /// In es, this message translates to:
-  /// **'Ver Directorio'**
+  /// In en, this message translates to:
+  /// **'View Directory'**
   String get heroViewDirectory;
 
   /// No description provided for @commandCenterTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Centro de Control'**
+  /// In en, this message translates to:
+  /// **'Command Center'**
   String get commandCenterTitle;
 
   /// No description provided for @commandCenterSubtitle.
   ///
-  /// In es, this message translates to:
-  /// **'Todo lo que necesitas en un solo lugar'**
+  /// In en, this message translates to:
+  /// **'Everything you need in one place'**
   String get commandCenterSubtitle;
 
   /// No description provided for @tabGarageTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Garaje'**
+  /// In en, this message translates to:
+  /// **'Garage'**
   String get tabGarageTitle;
 
   /// No description provided for @tabGarageSubtitle.
   ///
-  /// In es, this message translates to:
-  /// **'Tus vehículos'**
+  /// In en, this message translates to:
+  /// **'Your vehicles'**
   String get tabGarageSubtitle;
 
   /// No description provided for @tabHistoryTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Historial'**
+  /// In en, this message translates to:
+  /// **'History'**
   String get tabHistoryTitle;
 
   /// No description provided for @tabHistorySubtitle.
   ///
-  /// In es, this message translates to:
-  /// **'Servicios'**
+  /// In en, this message translates to:
+  /// **'Services'**
   String get tabHistorySubtitle;
 
   /// No description provided for @tabAlertsTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Alertas'**
+  /// In en, this message translates to:
+  /// **'Alerts'**
   String get tabAlertsTitle;
 
   /// No description provided for @tabAlertsSubtitle.
   ///
-  /// In es, this message translates to:
-  /// **'Recordatorios'**
+  /// In en, this message translates to:
+  /// **'Reminders'**
   String get tabAlertsSubtitle;
 
   /// No description provided for @tabSyncTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Sincronizar'**
+  /// In en, this message translates to:
+  /// **'Sync'**
   String get tabSyncTitle;
 
   /// No description provided for @tabSyncSubtitle.
   ///
-  /// In es, this message translates to:
-  /// **'Datos'**
+  /// In en, this message translates to:
+  /// **'Data'**
   String get tabSyncSubtitle;
 
   /// No description provided for @valuePropTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Por qué elegir AutoDoc'**
+  /// In en, this message translates to:
+  /// **'Why choose AutoDoc'**
   String get valuePropTitle;
 
   /// No description provided for @valuePropSubtitle.
   ///
-  /// In es, this message translates to:
-  /// **'Beneficios exclusivos'**
+  /// In en, this message translates to:
+  /// **'Exclusive benefits'**
   String get valuePropSubtitle;
 
   /// No description provided for @statSatisfaction.
   ///
-  /// In es, this message translates to:
-  /// **'99% Satisfacción'**
+  /// In en, this message translates to:
+  /// **'99% Satisfaction'**
   String get statSatisfaction;
 
   /// No description provided for @statWorkshops.
   ///
-  /// In es, this message translates to:
-  /// **'+500 Talleres'**
+  /// In en, this message translates to:
+  /// **'+500 Workshops'**
   String get statWorkshops;
 
   /// No description provided for @footerDesc.
   ///
-  /// In es, this message translates to:
-  /// **'La mejor app para el cuidado de tu vehículo'**
+  /// In en, this message translates to:
+  /// **'The best app for your vehicle care'**
   String get footerDesc;
 
   /// No description provided for @footerOwners.
   ///
-  /// In es, this message translates to:
-  /// **'Para Propietarios'**
+  /// In en, this message translates to:
+  /// **'For Owners'**
   String get footerOwners;
 
   /// No description provided for @footerWorkshops.
   ///
-  /// In es, this message translates to:
-  /// **'Para Talleres'**
+  /// In en, this message translates to:
+  /// **'For Workshops'**
   String get footerWorkshops;
 
   /// No description provided for @footerSocial.
   ///
-  /// In es, this message translates to:
-  /// **'Redes Sociales'**
+  /// In en, this message translates to:
+  /// **'Social Media'**
   String get footerSocial;
 
   /// No description provided for @footerCopyright.
   ///
-  /// In es, this message translates to:
-  /// **'© 2026 AutoDoc. Todos los derechos reservados.'**
+  /// In en, this message translates to:
+  /// **'© 2026 AutoDoc. All rights reserved.'**
   String get footerCopyright;
 
   /// No description provided for @dashHello.
   ///
-  /// In es, this message translates to:
-  /// **'Hola, {userName} 👋'**
+  /// In en, this message translates to:
+  /// **'Hello, {userName} 👋'**
   String dashHello(String userName);
 
   /// No description provided for @dashReadyForRoad.
   ///
-  /// In es, this message translates to:
-  /// **'¿Listo para la carretera hoy?'**
+  /// In en, this message translates to:
+  /// **'Ready for the road today?'**
   String get dashReadyForRoad;
 
   /// No description provided for @dashMaintCritical.
   ///
-  /// In es, this message translates to:
-  /// **'Mantenimiento vencido — atención inmediata'**
+  /// In en, this message translates to:
+  /// **'Maintenance overdue — immediate attention'**
   String get dashMaintCritical;
 
   /// No description provided for @dashMaintWarning.
   ///
-  /// In es, this message translates to:
-  /// **'Mantenimiento próximo — revisa las alertas'**
+  /// In en, this message translates to:
+  /// **'Upcoming maintenance — check alerts'**
   String get dashMaintWarning;
 
   /// No description provided for @dashMaintOptimal.
   ///
-  /// In es, this message translates to:
-  /// **'Vehículo en buen estado'**
+  /// In en, this message translates to:
+  /// **'Vehicle in good condition'**
   String get dashMaintOptimal;
 
   /// No description provided for @dashMaintStatusLabel.
   ///
-  /// In es, this message translates to:
-  /// **'Estado de Mantenimiento'**
+  /// In en, this message translates to:
+  /// **'Maintenance Status'**
   String get dashMaintStatusLabel;
 
   /// No description provided for @dashNoVehicles.
   ///
-  /// In es, this message translates to:
-  /// **'No hay vehiculos registrados'**
+  /// In en, this message translates to:
+  /// **'No vehicles registered'**
   String get dashNoVehicles;
 
   /// No description provided for @dashNoVehiclesDesc.
   ///
-  /// In es, this message translates to:
-  /// **'Añade tu primer vehículo para empezar a controlar su mantenimiento y estado.'**
+  /// In en, this message translates to:
+  /// **'Add your first vehicle to start tracking its maintenance and status.'**
   String get dashNoVehiclesDesc;
 
   /// No description provided for @dashRegisterVehicle.
   ///
-  /// In es, this message translates to:
-  /// **'Registrar Vehículo'**
+  /// In en, this message translates to:
+  /// **'Register Vehicle'**
   String get dashRegisterVehicle;
 
   /// No description provided for @dashMainVehicle.
   ///
-  /// In es, this message translates to:
-  /// **'VEHICULO PRINCIPAL'**
+  /// In en, this message translates to:
+  /// **'MAIN VEHICLE'**
   String get dashMainVehicle;
 
   /// No description provided for @dashLicensePlate.
   ///
-  /// In es, this message translates to:
-  /// **'Placa: {placa}'**
+  /// In en, this message translates to:
+  /// **'License plate: {placa}'**
   String dashLicensePlate(String placa);
 
   /// No description provided for @dashMileage.
   ///
-  /// In es, this message translates to:
-  /// **'KILOMETRAJE'**
+  /// In en, this message translates to:
+  /// **'MILEAGE'**
   String get dashMileage;
 
   /// No description provided for @dashKm.
   ///
-  /// In es, this message translates to:
+  /// In en, this message translates to:
   /// **'km'**
   String get dashKm;
 
   /// No description provided for @dashViewVehicleState.
   ///
-  /// In es, this message translates to:
-  /// **'Ver Estado del Vehículo'**
+  /// In en, this message translates to:
+  /// **'View Vehicle Status'**
   String get dashViewVehicleState;
 
   /// No description provided for @dashAddVehicleError.
   ///
-  /// In es, this message translates to:
-  /// **'Error al agregar vehiculo'**
+  /// In en, this message translates to:
+  /// **'Error adding vehicle'**
   String get dashAddVehicleError;
 
   /// No description provided for @dashActiveAlerts.
   ///
-  /// In es, this message translates to:
-  /// **'Alertas Activas'**
+  /// In en, this message translates to:
+  /// **'Active Alerts'**
   String get dashActiveAlerts;
 
   /// No description provided for @dashViewAll.
   ///
-  /// In es, this message translates to:
-  /// **'Ver Todas'**
+  /// In en, this message translates to:
+  /// **'View All'**
   String get dashViewAll;
 
   /// No description provided for @dashNoAlertsPending.
   ///
-  /// In es, this message translates to:
-  /// **'¡Excelente! No tienes alertas pendientes.'**
+  /// In en, this message translates to:
+  /// **'Excellent! You have no pending alerts.'**
   String get dashNoAlertsPending;
 
   /// No description provided for @dashNearbyWorkshops.
   ///
-  /// In es, this message translates to:
-  /// **'Talleres Cercanos'**
+  /// In en, this message translates to:
+  /// **'Nearby Workshops'**
   String get dashNearbyWorkshops;
 
   /// No description provided for @dashViewAllWorkshops.
   ///
-  /// In es, this message translates to:
-  /// **'Ver todos'**
+  /// In en, this message translates to:
+  /// **'View all'**
   String get dashViewAllWorkshops;
 
   /// No description provided for @garageMyVehicles.
   ///
-  /// In es, this message translates to:
-  /// **'Mis Vehículos'**
+  /// In en, this message translates to:
+  /// **'My Vehicles'**
   String get garageMyVehicles;
 
   /// No description provided for @garageNoVehicles.
   ///
-  /// In es, this message translates to:
-  /// **'No tienes vehículos en tu garaje'**
+  /// In en, this message translates to:
+  /// **'You don\'t have vehicles in your garage'**
   String get garageNoVehicles;
 
   /// No description provided for @garageOptimal.
   ///
-  /// In es, this message translates to:
-  /// **'Óptimo'**
+  /// In en, this message translates to:
+  /// **'Optimal'**
   String get garageOptimal;
 
   /// No description provided for @garageSuggestedReview.
   ///
-  /// In es, this message translates to:
-  /// **'Revisión Sugerida'**
+  /// In en, this message translates to:
+  /// **'Suggested Review'**
   String get garageSuggestedReview;
 
   /// No description provided for @garageMakePrimary.
   ///
-  /// In es, this message translates to:
-  /// **'Hacer Principal'**
+  /// In en, this message translates to:
+  /// **'Make Primary'**
   String get garageMakePrimary;
 
   /// No description provided for @garageNowPrimary.
   ///
-  /// In es, this message translates to:
-  /// **'{vehicleName} es ahora tu vehículo principal'**
+  /// In en, this message translates to:
+  /// **'{vehicleName} is now your primary vehicle'**
   String garageNowPrimary(String vehicleName);
 
   /// No description provided for @garageMakePrimaryError.
   ///
-  /// In es, this message translates to:
-  /// **'No se pudo establecer el vehículo principal'**
+  /// In en, this message translates to:
+  /// **'Could not set primary vehicle'**
   String get garageMakePrimaryError;
 
   /// No description provided for @garageAddVehicleError.
   ///
-  /// In es, this message translates to:
-  /// **'Error al agregar vehiculo'**
+  /// In en, this message translates to:
+  /// **'Error adding vehicle'**
   String get garageAddVehicleError;
 
   /// No description provided for @vpProfileTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Perfil del Vehículo'**
+  /// In en, this message translates to:
+  /// **'Vehicle Profile'**
   String get vpProfileTitle;
 
   /// No description provided for @vpShareVehicle.
   ///
-  /// In es, this message translates to:
-  /// **'Compartir Vehículo'**
+  /// In en, this message translates to:
+  /// **'Share Vehicle'**
   String get vpShareVehicle;
 
   /// No description provided for @vpDeleteVehicle.
   ///
-  /// In es, this message translates to:
-  /// **'Eliminar Vehículo'**
+  /// In en, this message translates to:
+  /// **'Delete Vehicle'**
   String get vpDeleteVehicle;
 
   /// No description provided for @vpActiveStatus.
   ///
-  /// In es, this message translates to:
-  /// **'ACTIVO'**
+  /// In en, this message translates to:
+  /// **'ACTIVE'**
   String get vpActiveStatus;
 
   /// No description provided for @vpOwnerPersonal.
   ///
-  /// In es, this message translates to:
-  /// **'Propietario: Personal'**
+  /// In en, this message translates to:
+  /// **'Owner: Personal'**
   String get vpOwnerPersonal;
 
   /// No description provided for @vpYear.
   ///
-  /// In es, this message translates to:
-  /// **'Año'**
+  /// In en, this message translates to:
+  /// **'Year'**
   String get vpYear;
 
   /// No description provided for @vpColor.
   ///
-  /// In es, this message translates to:
+  /// In en, this message translates to:
   /// **'Color'**
   String get vpColor;
 
   /// No description provided for @vpMileage.
   ///
-  /// In es, this message translates to:
-  /// **'Kilometraje'**
+  /// In en, this message translates to:
+  /// **'Mileage'**
   String get vpMileage;
 
   /// No description provided for @vpKm.
   ///
-  /// In es, this message translates to:
+  /// In en, this message translates to:
   /// **'km'**
   String get vpKm;
 
   /// No description provided for @vpBrand.
   ///
-  /// In es, this message translates to:
-  /// **'Marca'**
+  /// In en, this message translates to:
+  /// **'Brand'**
   String get vpBrand;
 
   /// No description provided for @vpDocAndAlerts.
   ///
-  /// In es, this message translates to:
-  /// **'Documentación y Alertas'**
+  /// In en, this message translates to:
+  /// **'Documentation and Alerts'**
   String get vpDocAndAlerts;
 
   /// No description provided for @vpCirculationCard.
   ///
-  /// In es, this message translates to:
-  /// **'Tarjeta de Circulación'**
+  /// In en, this message translates to:
+  /// **'Circulation Card'**
   String get vpCirculationCard;
 
   /// No description provided for @vpSoatInsurance.
   ///
-  /// In es, this message translates to:
-  /// **'Seguro SOAT'**
+  /// In en, this message translates to:
+  /// **'SOAT Insurance'**
   String get vpSoatInsurance;
 
   /// No description provided for @vpDateNotRegistered.
   ///
-  /// In es, this message translates to:
-  /// **'Fecha no registrada'**
+  /// In en, this message translates to:
+  /// **'Date not registered'**
   String get vpDateNotRegistered;
 
   /// No description provided for @vpUpdate.
   ///
-  /// In es, this message translates to:
-  /// **'Actualizar'**
+  /// In en, this message translates to:
+  /// **'Update'**
   String get vpUpdate;
 
   /// No description provided for @vpExpiredOn.
   ///
-  /// In es, this message translates to:
-  /// **'Vencido el {date}'**
+  /// In en, this message translates to:
+  /// **'Expired on {date}'**
   String vpExpiredOn(String date);
 
   /// No description provided for @vpExpiresInDays.
   ///
-  /// In es, this message translates to:
-  /// **'Vence en {days} días ({date})'**
+  /// In en, this message translates to:
+  /// **'Expires in {days} days ({date})'**
   String vpExpiresInDays(String days, String date);
 
   /// No description provided for @vpRenew.
   ///
-  /// In es, this message translates to:
-  /// **'Renovar'**
+  /// In en, this message translates to:
+  /// **'Renew'**
   String get vpRenew;
 
   /// No description provided for @vpUpdateMileage.
   ///
-  /// In es, this message translates to:
-  /// **'Actualizar Kilometraje'**
+  /// In en, this message translates to:
+  /// **'Update Mileage'**
   String get vpUpdateMileage;
 
   /// No description provided for @vpEnterNewMileage.
   ///
-  /// In es, this message translates to:
-  /// **'Ingresa el kilometraje actual. Debe ser mayor a {km} km.'**
+  /// In en, this message translates to:
+  /// **'Enter the current mileage. It must be greater than {km} km.'**
   String vpEnterNewMileage(String km);
 
   /// No description provided for @vpNewMileageLabel.
   ///
-  /// In es, this message translates to:
-  /// **'Nuevo Kilometraje'**
+  /// In en, this message translates to:
+  /// **'New Mileage'**
   String get vpNewMileageLabel;
 
   /// No description provided for @vpEnterValue.
   ///
-  /// In es, this message translates to:
-  /// **'Ingresa un valor'**
+  /// In en, this message translates to:
+  /// **'Enter a value'**
   String get vpEnterValue;
 
   /// No description provided for @vpEnterValidNumber.
   ///
-  /// In es, this message translates to:
-  /// **'Ingresa un número válido'**
+  /// In en, this message translates to:
+  /// **'Enter a valid number'**
   String get vpEnterValidNumber;
 
   /// No description provided for @vpMustBeGreaterThan.
   ///
-  /// In es, this message translates to:
-  /// **'Debe ser mayor a {km}'**
+  /// In en, this message translates to:
+  /// **'Must be greater than {km}'**
   String vpMustBeGreaterThan(String km);
 
   /// No description provided for @vpSave.
   ///
-  /// In es, this message translates to:
-  /// **'Guardar'**
+  /// In en, this message translates to:
+  /// **'Save'**
   String get vpSave;
 
   /// No description provided for @vpMileageUpdatedSuccess.
   ///
-  /// In es, this message translates to:
-  /// **'Kilometraje actualizado correctamente'**
+  /// In en, this message translates to:
+  /// **'Mileage updated successfully'**
   String get vpMileageUpdatedSuccess;
 
   /// No description provided for @vpUpdateError.
   ///
-  /// In es, this message translates to:
-  /// **'Error al actualizar'**
+  /// In en, this message translates to:
+  /// **'Update error'**
   String get vpUpdateError;
 
   /// No description provided for @vpConfirmDelete.
   ///
-  /// In es, this message translates to:
-  /// **'¿Estás seguro que deseas eliminar el {brand} {model}? Esta acción no se puede deshacer.'**
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete the {brand} {model}? This action cannot be undone.'**
   String vpConfirmDelete(String brand, String model);
 
   /// No description provided for @vpEnterPassword.
   ///
-  /// In es, this message translates to:
-  /// **'Ingresa tu contraseña'**
+  /// In en, this message translates to:
+  /// **'Enter your password'**
   String get vpEnterPassword;
 
   /// No description provided for @vpIncorrectPassword.
   ///
-  /// In es, this message translates to:
-  /// **'Contraseña incorrecta'**
+  /// In en, this message translates to:
+  /// **'Incorrect password'**
   String get vpIncorrectPassword;
 
   /// No description provided for @vpDeleteSuccess.
   ///
-  /// In es, this message translates to:
-  /// **'Vehículo eliminado correctamente'**
+  /// In en, this message translates to:
+  /// **'Vehicle deleted successfully'**
   String get vpDeleteSuccess;
 
   /// No description provided for @vpDeleteError.
   ///
-  /// In es, this message translates to:
-  /// **'Error al eliminar'**
+  /// In en, this message translates to:
+  /// **'Error deleting vehicle'**
   String get vpDeleteError;
 
   /// No description provided for @vpQuickActions.
   ///
-  /// In es, this message translates to:
-  /// **'Acciones Rápidas'**
+  /// In en, this message translates to:
+  /// **'Quick Actions'**
   String get vpQuickActions;
 
   /// No description provided for @vpHistory.
   ///
-  /// In es, this message translates to:
-  /// **'Historial'**
+  /// In en, this message translates to:
+  /// **'History'**
   String get vpHistory;
 
   /// No description provided for @vpServices.
   ///
-  /// In es, this message translates to:
-  /// **'Servicios'**
+  /// In en, this message translates to:
+  /// **'Services'**
   String get vpServices;
 
   /// No description provided for @vpPapers.
   ///
-  /// In es, this message translates to:
-  /// **'Papeles'**
+  /// In en, this message translates to:
+  /// **'Papers'**
   String get vpPapers;
 
   /// No description provided for @vpDateUpdatedSuccess.
   ///
-  /// In es, this message translates to:
-  /// **'Fecha actualizada correctamente'**
+  /// In en, this message translates to:
+  /// **'Date updated successfully'**
   String get vpDateUpdatedSuccess;
 
   /// No description provided for @vpDateUpdateError.
   ///
-  /// In es, this message translates to:
-  /// **'Error al actualizar fecha'**
+  /// In en, this message translates to:
+  /// **'Error updating date'**
   String get vpDateUpdateError;
 
   /// No description provided for @alertsSelectVehicle.
   ///
-  /// In es, this message translates to:
-  /// **'Selecciona un vehículo primero'**
+  /// In en, this message translates to:
+  /// **'Select a vehicle first'**
   String get alertsSelectVehicle;
 
   /// No description provided for @alertsTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Alertas'**
+  /// In en, this message translates to:
+  /// **'Alerts'**
   String get alertsTitle;
 
   /// No description provided for @alertsUpdateMileage.
   ///
-  /// In es, this message translates to:
-  /// **'Actualizar Kilometraje'**
+  /// In en, this message translates to:
+  /// **'Update Mileage'**
   String get alertsUpdateMileage;
 
   /// No description provided for @alertsTabAll.
   ///
-  /// In es, this message translates to:
-  /// **'Todas'**
+  /// In en, this message translates to:
+  /// **'All'**
   String get alertsTabAll;
 
   /// No description provided for @alertsTabUrgent.
   ///
-  /// In es, this message translates to:
-  /// **'Urgentes'**
+  /// In en, this message translates to:
+  /// **'Urgent'**
   String get alertsTabUrgent;
 
   /// No description provided for @alertsTabUpcoming.
   ///
-  /// In es, this message translates to:
-  /// **'Próximas'**
+  /// In en, this message translates to:
+  /// **'Upcoming'**
   String get alertsTabUpcoming;
 
   /// No description provided for @alertsAllGood.
   ///
-  /// In es, this message translates to:
-  /// **'¡Todo al día!'**
+  /// In en, this message translates to:
+  /// **'All up to date!'**
   String get alertsAllGood;
 
   /// No description provided for @alertsNoAlertsInCategory.
   ///
-  /// In es, this message translates to:
-  /// **'No hay alertas en esta categoría.'**
+  /// In en, this message translates to:
+  /// **'No alerts in this category.'**
   String get alertsNoAlertsInCategory;
 
   /// No description provided for @alertsHighPriority.
   ///
-  /// In es, this message translates to:
-  /// **'Prioridad Alta'**
+  /// In en, this message translates to:
+  /// **'High Priority'**
   String get alertsHighPriority;
 
   /// No description provided for @alertsPendingCount.
   ///
-  /// In es, this message translates to:
-  /// **'{count} pendientes'**
+  /// In en, this message translates to:
+  /// **'{count} pending'**
   String alertsPendingCount(String count);
 
   /// No description provided for @alertsUpcomingExpirations.
   ///
-  /// In es, this message translates to:
-  /// **'Próximos Vencimientos'**
+  /// In en, this message translates to:
+  /// **'Upcoming Expirations'**
   String get alertsUpcomingExpirations;
 
   /// No description provided for @alertsEventsCount.
   ///
-  /// In es, this message translates to:
-  /// **'{count} eventos'**
+  /// In en, this message translates to:
+  /// **'{count} events'**
   String alertsEventsCount(String count);
 
   /// No description provided for @alertsSuggestions.
   ///
-  /// In es, this message translates to:
-  /// **'Sugerencias'**
+  /// In en, this message translates to:
+  /// **'Suggestions'**
   String get alertsSuggestions;
 
   /// No description provided for @alertsCurrentMileage.
   ///
-  /// In es, this message translates to:
-  /// **'Kilometraje actual: '**
+  /// In en, this message translates to:
+  /// **'Current mileage: '**
   String get alertsCurrentMileage;
 
   /// No description provided for @alertsOverdue.
   ///
-  /// In es, this message translates to:
-  /// **'Superado por {km} km. ¡Atención inmediata!'**
+  /// In en, this message translates to:
+  /// **'Overdue by {km} km. Immediate attention!'**
   String alertsOverdue(String km);
 
   /// No description provided for @alertsMissingKm.
   ///
-  /// In es, this message translates to:
-  /// **'Faltan {km} km para la revisión programada.'**
+  /// In en, this message translates to:
+  /// **'{km} km left for scheduled review.'**
   String alertsMissingKm(String km);
 
   /// No description provided for @alertsNextServiceApprox.
   ///
-  /// In es, this message translates to:
-  /// **'Próximo servicio en {km} km aprox.'**
+  /// In en, this message translates to:
+  /// **'Next service in approx {km} km.'**
   String alertsNextServiceApprox(String km);
 
   /// No description provided for @alertsLastKm.
   ///
-  /// In es, this message translates to:
-  /// **'Último: {km} km'**
+  /// In en, this message translates to:
+  /// **'Last: {km} km'**
   String alertsLastKm(String km);
 
   /// No description provided for @alertsEveryKm.
   ///
-  /// In es, this message translates to:
-  /// **'Cada {km} km'**
+  /// In en, this message translates to:
+  /// **'Every {km} km'**
   String alertsEveryKm(String km);
 
   /// No description provided for @alertsConfig.
   ///
-  /// In es, this message translates to:
-  /// **'Configurar'**
+  /// In en, this message translates to:
+  /// **'Configure'**
   String get alertsConfig;
 
   /// No description provided for @alertsComplete.
   ///
-  /// In es, this message translates to:
-  /// **'Completar'**
+  /// In en, this message translates to:
+  /// **'Complete'**
   String get alertsComplete;
 
   /// No description provided for @alertsSave.
   ///
-  /// In es, this message translates to:
-  /// **'Guardar'**
+  /// In en, this message translates to:
+  /// **'Save'**
   String get alertsSave;
 
   /// No description provided for @alertsCancel.
   ///
-  /// In es, this message translates to:
-  /// **'Cancelar'**
+  /// In en, this message translates to:
+  /// **'Cancel'**
   String get alertsCancel;
 
   /// No description provided for @alertsNewMileage.
   ///
-  /// In es, this message translates to:
-  /// **'Nuevo Kilometraje'**
+  /// In en, this message translates to:
+  /// **'New Mileage'**
   String get alertsNewMileage;
 
   /// No description provided for @histTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Historial de Servicios'**
+  /// In en, this message translates to:
+  /// **'Service History'**
   String get histTitle;
 
   /// No description provided for @histTabAll.
   ///
-  /// In es, this message translates to:
-  /// **'Todos'**
+  /// In en, this message translates to:
+  /// **'All'**
   String get histTabAll;
 
   /// No description provided for @histTabManual.
   ///
-  /// In es, this message translates to:
+  /// In en, this message translates to:
   /// **'Manual'**
   String get histTabManual;
 
   /// No description provided for @histTabWorkshop.
   ///
-  /// In es, this message translates to:
-  /// **'Taller'**
+  /// In en, this message translates to:
+  /// **'Workshop'**
   String get histTabWorkshop;
 
   /// No description provided for @histNoServices.
   ///
-  /// In es, this message translates to:
-  /// **'No hay servicios registrados'**
+  /// In en, this message translates to:
+  /// **'No services registered'**
   String get histNoServices;
 
   /// No description provided for @histNoServicesDesc.
   ///
-  /// In es, this message translates to:
-  /// **'Los mantenimientos aparecerán aquí'**
+  /// In en, this message translates to:
+  /// **'Maintenances will appear here'**
   String get histNoServicesDesc;
 
   /// No description provided for @histOwner.
   ///
-  /// In es, this message translates to:
-  /// **'Propietario'**
+  /// In en, this message translates to:
+  /// **'Owner'**
   String get histOwner;
 
   /// No description provided for @histWorkshop.
   ///
-  /// In es, this message translates to:
-  /// **'Taller'**
+  /// In en, this message translates to:
+  /// **'Workshop'**
   String get histWorkshop;
 
   /// No description provided for @histEvidence.
   ///
-  /// In es, this message translates to:
-  /// **'Evidencia'**
+  /// In en, this message translates to:
+  /// **'Evidence'**
   String get histEvidence;
 
   /// No description provided for @histReviewWorkshop.
   ///
-  /// In es, this message translates to:
-  /// **'Reseñar taller'**
+  /// In en, this message translates to:
+  /// **'Review workshop'**
   String get histReviewWorkshop;
 
   /// No description provided for @wdErrorLoading.
   ///
-  /// In es, this message translates to:
-  /// **'Error al cargar talleres'**
+  /// In en, this message translates to:
+  /// **'Error loading workshops'**
   String get wdErrorLoading;
 
   /// No description provided for @wdNoWorkshopsFound.
   ///
-  /// In es, this message translates to:
-  /// **'No se encontraron talleres'**
+  /// In en, this message translates to:
+  /// **'No workshops found'**
   String get wdNoWorkshopsFound;
 
   /// No description provided for @wdTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Directorio de Talleres'**
+  /// In en, this message translates to:
+  /// **'Workshop Directory'**
   String get wdTitle;
 
   /// No description provided for @wdSearchHint.
   ///
-  /// In es, this message translates to:
-  /// **'Buscar mecánicos o servicios...'**
+  /// In en, this message translates to:
+  /// **'Search mechanics or services...'**
   String get wdSearchHint;
 
   /// No description provided for @wdFilterMunicipality.
   ///
-  /// In es, this message translates to:
-  /// **'Municipio'**
+  /// In en, this message translates to:
+  /// **'Municipality'**
   String get wdFilterMunicipality;
 
   /// No description provided for @wdFilterSpecialty.
   ///
-  /// In es, this message translates to:
-  /// **'Especialidad'**
+  /// In en, this message translates to:
+  /// **'Specialty'**
   String get wdFilterSpecialty;
 
   /// No description provided for @wdFilterRating.
   ///
-  /// In es, this message translates to:
+  /// In en, this message translates to:
   /// **'Rating'**
   String get wdFilterRating;
 
   /// No description provided for @wdYourLocation.
   ///
-  /// In es, this message translates to:
-  /// **'Tu Ubicación'**
+  /// In en, this message translates to:
+  /// **'Your Location'**
   String get wdYourLocation;
 
   /// No description provided for @wdWorkshop.
   ///
-  /// In es, this message translates to:
-  /// **'Taller'**
+  /// In en, this message translates to:
+  /// **'Workshop'**
   String get wdWorkshop;
 
   /// No description provided for @wdGeneralMechanics.
   ///
-  /// In es, this message translates to:
-  /// **'Mecánica General'**
+  /// In en, this message translates to:
+  /// **'General Mechanics'**
   String get wdGeneralMechanics;
 
   /// No description provided for @wdMechanics.
   ///
-  /// In es, this message translates to:
-  /// **'Mecánica'**
+  /// In en, this message translates to:
+  /// **'Mechanics'**
   String get wdMechanics;
 
   /// No description provided for @wdDistanceKm.
   ///
-  /// In es, this message translates to:
-  /// **'A {km} km'**
+  /// In en, this message translates to:
+  /// **'{km} km away'**
   String wdDistanceKm(String km);
 
   /// No description provided for @wdWorkshopsOnMap.
   ///
-  /// In es, this message translates to:
-  /// **'{count} talleres en el mapa'**
+  /// In en, this message translates to:
+  /// **'{count} workshops on map'**
   String wdWorkshopsOnMap(String count);
 
   /// No description provided for @wdNoLocationCount.
   ///
-  /// In es, this message translates to:
-  /// **'{count} sin ubicación'**
+  /// In en, this message translates to:
+  /// **'{count} without location'**
   String wdNoLocationCount(String count);
 
   /// No description provided for @wdNoPhoneRegistered.
   ///
-  /// In es, this message translates to:
-  /// **'Este taller no tiene teléfono registrado'**
+  /// In en, this message translates to:
+  /// **'This workshop has no registered phone'**
   String get wdNoPhoneRegistered;
 
   /// No description provided for @wdContactName.
   ///
-  /// In es, this message translates to:
-  /// **'Contactar a {name}'**
+  /// In en, this message translates to:
+  /// **'Contact {name}'**
   String wdContactName(String name);
 
   /// No description provided for @wdCopy.
   ///
-  /// In es, this message translates to:
-  /// **'Copiar'**
+  /// In en, this message translates to:
+  /// **'Copy'**
   String get wdCopy;
 
   /// No description provided for @wdClose.
   ///
-  /// In es, this message translates to:
-  /// **'Cerrar'**
+  /// In en, this message translates to:
+  /// **'Close'**
   String get wdClose;
 
   /// No description provided for @wdPhoneCopied.
   ///
-  /// In es, this message translates to:
-  /// **'Teléfono copiado al portapapeles'**
+  /// In en, this message translates to:
+  /// **'Phone copied to clipboard'**
   String get wdPhoneCopied;
 
   /// No description provided for @wdNamelessWorkshop.
   ///
-  /// In es, this message translates to:
-  /// **'Taller Sin Nombre'**
+  /// In en, this message translates to:
+  /// **'Nameless Workshop'**
   String get wdNamelessWorkshop;
 
   /// No description provided for @wdLocationNotSpecified.
   ///
-  /// In es, this message translates to:
-  /// **'Ubicación no especificada'**
+  /// In en, this message translates to:
+  /// **'Location not specified'**
   String get wdLocationNotSpecified;
 
   /// No description provided for @wdSpecialtyIs.
   ///
-  /// In es, this message translates to:
-  /// **'Especialidad: {specialty}'**
+  /// In en, this message translates to:
+  /// **'Specialty: {specialty}'**
   String wdSpecialtyIs(String specialty);
 
   /// No description provided for @wdReviewsCount.
   ///
-  /// In es, this message translates to:
-  /// **'{count} reseñas'**
+  /// In en, this message translates to:
+  /// **'{count} reviews'**
   String wdReviewsCount(String count);
 
   /// No description provided for @wdReviewCount.
   ///
-  /// In es, this message translates to:
-  /// **'{count} reseña'**
+  /// In en, this message translates to:
+  /// **'{count} review'**
   String wdReviewCount(String count);
 
   /// No description provided for @wdReview.
   ///
-  /// In es, this message translates to:
-  /// **'Reseñar'**
+  /// In en, this message translates to:
+  /// **'Review'**
   String get wdReview;
 
   /// No description provided for @wdContact.
   ///
-  /// In es, this message translates to:
-  /// **'Contactar'**
+  /// In en, this message translates to:
+  /// **'Contact'**
   String get wdContact;
 
   /// No description provided for @upErrorUploadingImage.
   ///
-  /// In es, this message translates to:
+  /// In en, this message translates to:
   /// **'Error uploading image: {error}'**
   String upErrorUploadingImage(String error);
 
   /// No description provided for @upProfileUpdatedSuccess.
   ///
-  /// In es, this message translates to:
-  /// **'Perfil actualizado correctamente'**
+  /// In en, this message translates to:
+  /// **'Profile updated successfully'**
   String get upProfileUpdatedSuccess;
 
   /// No description provided for @upProfileTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Perfil'**
+  /// In en, this message translates to:
+  /// **'Profile'**
   String get upProfileTitle;
 
   /// No description provided for @upProfileDataNotFound.
   ///
-  /// In es, this message translates to:
-  /// **'Datos de perfil no encontrados'**
+  /// In en, this message translates to:
+  /// **'Profile data not found'**
   String get upProfileDataNotFound;
 
   /// No description provided for @upPleaseCompleteSetup.
   ///
-  /// In es, this message translates to:
-  /// **'Por favor completa la configuración de tu perfil.'**
+  /// In en, this message translates to:
+  /// **'Please complete your profile setup.'**
   String get upPleaseCompleteSetup;
 
   /// No description provided for @upSetupProfile.
   ///
-  /// In es, this message translates to:
-  /// **'Configurar Perfil'**
+  /// In en, this message translates to:
+  /// **'Setup Profile'**
   String get upSetupProfile;
 
   /// No description provided for @upSignOut.
   ///
-  /// In es, this message translates to:
-  /// **'Cerrar Sesión'**
+  /// In en, this message translates to:
+  /// **'Sign Out'**
   String get upSignOut;
 
   /// No description provided for @upSaveChanges.
   ///
-  /// In es, this message translates to:
-  /// **'Guardar Cambios'**
+  /// In en, this message translates to:
+  /// **'Save Changes'**
   String get upSaveChanges;
 
   /// No description provided for @upMyProfile.
   ///
-  /// In es, this message translates to:
-  /// **'Mi Perfil'**
+  /// In en, this message translates to:
+  /// **'My Profile'**
   String get upMyProfile;
 
   /// No description provided for @upFullName.
   ///
-  /// In es, this message translates to:
-  /// **'Nombre Completo'**
+  /// In en, this message translates to:
+  /// **'Full Name'**
   String get upFullName;
 
   /// No description provided for @upEmailAddress.
   ///
-  /// In es, this message translates to:
-  /// **'Correo Electrónico'**
+  /// In en, this message translates to:
+  /// **'Email Address'**
   String get upEmailAddress;
 
   /// No description provided for @upMemberSince.
   ///
-  /// In es, this message translates to:
-  /// **'Miembro desde'**
+  /// In en, this message translates to:
+  /// **'Member Since'**
   String get upMemberSince;
 
   /// No description provided for @upSettings.
   ///
-  /// In es, this message translates to:
-  /// **'Ajustes'**
+  /// In en, this message translates to:
+  /// **'Settings'**
   String get upSettings;
 
   /// No description provided for @upDarkMode.
   ///
-  /// In es, this message translates to:
-  /// **'Modo Oscuro'**
+  /// In en, this message translates to:
+  /// **'Dark Mode'**
   String get upDarkMode;
 
   /// No description provided for @upSwitchTheme.
   ///
-  /// In es, this message translates to:
-  /// **'Alternar entre modo claro y oscuro'**
+  /// In en, this message translates to:
+  /// **'Switch between light and dark theme'**
   String get upSwitchTheme;
 
   /// No description provided for @upFollowSystem.
   ///
-  /// In es, this message translates to:
-  /// **'Seguir el Sistema'**
+  /// In en, this message translates to:
+  /// **'Follow System'**
   String get upFollowSystem;
 
   /// No description provided for @upUseSystemTheme.
   ///
-  /// In es, this message translates to:
-  /// **'Usar el tema predeterminado del sistema'**
+  /// In en, this message translates to:
+  /// **'Use system default theme'**
   String get upUseSystemTheme;
 
   /// No description provided for @adminDashboardTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Dashboard Administrador'**
+  /// In en, this message translates to:
+  /// **'Admin Dashboard'**
   String get adminDashboardTitle;
 
   /// No description provided for @adminDashboardWelcome.
   ///
-  /// In es, this message translates to:
-  /// **'¡Bienvenido, {name}!'**
+  /// In en, this message translates to:
+  /// **'Welcome, {name}!'**
   String adminDashboardWelcome(String name);
 
   /// No description provided for @adminDashboardSubtitle.
   ///
-  /// In es, this message translates to:
-  /// **'Panel de control administrativo'**
+  /// In en, this message translates to:
+  /// **'Administrative control panel'**
   String get adminDashboardSubtitle;
 
   /// No description provided for @adminGlobalMetricsTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Métricas Globales'**
+  /// In en, this message translates to:
+  /// **'Global Metrics'**
   String get adminGlobalMetricsTitle;
 
   /// No description provided for @adminMetricsUsers.
   ///
-  /// In es, this message translates to:
-  /// **'Usuarios'**
+  /// In en, this message translates to:
+  /// **'Users'**
   String get adminMetricsUsers;
 
   /// No description provided for @adminMetricsWorkshops.
   ///
-  /// In es, this message translates to:
-  /// **'Talleres'**
+  /// In en, this message translates to:
+  /// **'Workshops'**
   String get adminMetricsWorkshops;
 
   /// No description provided for @adminMetricsVehicles.
   ///
-  /// In es, this message translates to:
-  /// **'Vehículos'**
+  /// In en, this message translates to:
+  /// **'Vehicles'**
   String get adminMetricsVehicles;
 
   /// No description provided for @adminMetricsServices.
   ///
-  /// In es, this message translates to:
-  /// **'Servicios'**
+  /// In en, this message translates to:
+  /// **'Services'**
   String get adminMetricsServices;
 
   /// No description provided for @adminMetricsAlerts.
   ///
-  /// In es, this message translates to:
-  /// **'Alertas'**
+  /// In en, this message translates to:
+  /// **'Alerts'**
   String get adminMetricsAlerts;
 
   /// No description provided for @adminMetricsReviews.
   ///
-  /// In es, this message translates to:
-  /// **'Reseñas'**
+  /// In en, this message translates to:
+  /// **'Reviews'**
   String get adminMetricsReviews;
 
   /// No description provided for @adminQuickActionsTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Acciones Rápidas'**
+  /// In en, this message translates to:
+  /// **'Quick Actions'**
   String get adminQuickActionsTitle;
 
   /// No description provided for @adminQuickActionManageUsers.
   ///
-  /// In es, this message translates to:
-  /// **'Gestionar Usuarios'**
+  /// In en, this message translates to:
+  /// **'Manage Users'**
   String get adminQuickActionManageUsers;
 
   /// No description provided for @adminQuickActionManageWorkshops.
   ///
-  /// In es, this message translates to:
-  /// **'Gestionar Talleres'**
+  /// In en, this message translates to:
+  /// **'Manage Workshops'**
   String get adminQuickActionManageWorkshops;
 
   /// No description provided for @adminQuickActionModerateReviews.
   ///
-  /// In es, this message translates to:
-  /// **'Moderar Reseñas'**
+  /// In en, this message translates to:
+  /// **'Moderate Reviews'**
   String get adminQuickActionModerateReviews;
 
   /// No description provided for @adminQuickActionViewLogs.
   ///
-  /// In es, this message translates to:
-  /// **'Ver Actividad'**
+  /// In en, this message translates to:
+  /// **'View Activity'**
   String get adminQuickActionViewLogs;
 
   /// No description provided for @adminRecentActivityTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Actividad Reciente'**
+  /// In en, this message translates to:
+  /// **'Recent Activity'**
   String get adminRecentActivityTitle;
 
   /// No description provided for @adminNoRecentActivity.
   ///
-  /// In es, this message translates to:
-  /// **'Sin actividad reciente'**
+  /// In en, this message translates to:
+  /// **'No recent activity'**
   String get adminNoRecentActivity;
 
   /// No description provided for @adminViewAllLogs.
   ///
-  /// In es, this message translates to:
-  /// **'Ver todo el registro'**
+  /// In en, this message translates to:
+  /// **'View all logs'**
   String get adminViewAllLogs;
 
   /// No description provided for @authCompleteCredentials.
   ///
-  /// In es, this message translates to:
-  /// **'Completa correo y contraseña.'**
+  /// In en, this message translates to:
+  /// **'Fill in email and password.'**
   String get authCompleteCredentials;
 
   /// No description provided for @authEnterValidEmail.
   ///
-  /// In es, this message translates to:
-  /// **'Ingresa un correo electrónico válido.'**
+  /// In en, this message translates to:
+  /// **'Enter a valid email address.'**
   String get authEnterValidEmail;
 
   /// No description provided for @authPasswordTooShort.
   ///
-  /// In es, this message translates to:
-  /// **'La contraseña debe tener al menos 6 caracteres.'**
+  /// In en, this message translates to:
+  /// **'Password must be at least 6 characters.'**
   String get authPasswordTooShort;
 
   /// No description provided for @addVehicleBrand.
   ///
-  /// In es, this message translates to:
-  /// **'Marca'**
+  /// In en, this message translates to:
+  /// **'Brand'**
   String get addVehicleBrand;
 
   /// No description provided for @addVehicleBrandSubtitle.
   ///
-  /// In es, this message translates to:
-  /// **'¿Cuál es la marca de tu vehículo?'**
+  /// In en, this message translates to:
+  /// **'What is the brand of your vehicle?'**
   String get addVehicleBrandSubtitle;
 
   /// No description provided for @addVehicleSearchBrand.
   ///
-  /// In es, this message translates to:
-  /// **'Buscar marca...'**
+  /// In en, this message translates to:
+  /// **'Search brand...'**
   String get addVehicleSearchBrand;
 
   /// No description provided for @addVehicleErrorBrands.
   ///
-  /// In es, this message translates to:
-  /// **'Error al cargar marcas'**
+  /// In en, this message translates to:
+  /// **'Error loading brands'**
   String get addVehicleErrorBrands;
 
   /// No description provided for @addVehicleRetry.
   ///
-  /// In es, this message translates to:
-  /// **'Reintentar'**
+  /// In en, this message translates to:
+  /// **'Retry'**
   String get addVehicleRetry;
 
   /// No description provided for @addVehicleNotFoundBrand.
   ///
-  /// In es, this message translates to:
-  /// **'No encuentro mi marca...'**
+  /// In en, this message translates to:
+  /// **'I can\'t find my brand...'**
   String get addVehicleNotFoundBrand;
 
   /// No description provided for @addVehicleModel.
   ///
-  /// In es, this message translates to:
-  /// **'Modelo'**
+  /// In en, this message translates to:
+  /// **'Model'**
   String get addVehicleModel;
 
   /// No description provided for @addVehicleModelSubtitle.
   ///
-  /// In es, this message translates to:
-  /// **'Selecciona el modelo de tu {brand}'**
+  /// In en, this message translates to:
+  /// **'Select the model of your {brand}'**
   String addVehicleModelSubtitle(String brand);
 
   /// No description provided for @addVehicleSearchModel.
   ///
-  /// In es, this message translates to:
-  /// **'Buscar modelo...'**
+  /// In en, this message translates to:
+  /// **'Search model...'**
   String get addVehicleSearchModel;
 
   /// No description provided for @addVehicleErrorModels.
   ///
-  /// In es, this message translates to:
-  /// **'Error al cargar modelos'**
+  /// In en, this message translates to:
+  /// **'Error loading models'**
   String get addVehicleErrorModels;
 
   /// No description provided for @addVehicleNotFoundModel.
   ///
-  /// In es, this message translates to:
-  /// **'No encuentro mi modelo...'**
+  /// In en, this message translates to:
+  /// **'I can\'t find my model...'**
   String get addVehicleNotFoundModel;
 
   /// No description provided for @addVehicleDetails.
   ///
-  /// In es, this message translates to:
-  /// **'Detalles finales'**
+  /// In en, this message translates to:
+  /// **'Final Details'**
   String get addVehicleDetails;
 
   /// No description provided for @addVehicleDetailsSubtitle.
   ///
-  /// In es, this message translates to:
-  /// **'Completa la información restante'**
+  /// In en, this message translates to:
+  /// **'Complete the remaining information'**
   String get addVehicleDetailsSubtitle;
 
   /// No description provided for @addVehiclePlate.
   ///
-  /// In es, this message translates to:
-  /// **'Número de Placa'**
+  /// In en, this message translates to:
+  /// **'License Plate'**
   String get addVehiclePlate;
 
   /// No description provided for @addVehiclePlateHint.
   ///
-  /// In es, this message translates to:
+  /// In en, this message translates to:
   /// **'e.g. P123-456'**
   String get addVehiclePlateHint;
 
   /// No description provided for @addVehicleYear.
   ///
-  /// In es, this message translates to:
-  /// **'Año'**
+  /// In en, this message translates to:
+  /// **'Year'**
   String get addVehicleYear;
 
   /// No description provided for @addVehicleColor.
   ///
-  /// In es, this message translates to:
+  /// In en, this message translates to:
   /// **'Color'**
   String get addVehicleColor;
 
   /// No description provided for @addVehicleColorHint.
   ///
-  /// In es, this message translates to:
-  /// **'Gris'**
+  /// In en, this message translates to:
+  /// **'Gray'**
   String get addVehicleColorHint;
 
   /// No description provided for @addVehicleMileage.
   ///
-  /// In es, this message translates to:
-  /// **'Kilometraje Actual'**
+  /// In en, this message translates to:
+  /// **'Current Mileage'**
   String get addVehicleMileage;
 
   /// No description provided for @addVehicleDocs.
   ///
-  /// In es, this message translates to:
-  /// **'Documentación'**
+  /// In en, this message translates to:
+  /// **'Documentation'**
   String get addVehicleDocs;
 
   /// No description provided for @addVehicleCardExp.
   ///
-  /// In es, this message translates to:
-  /// **'Vencimiento Tarjeta'**
+  /// In en, this message translates to:
+  /// **'Card Expiration'**
   String get addVehicleCardExp;
 
   /// No description provided for @addVehicleSoatExp.
   ///
-  /// In es, this message translates to:
-  /// **'Vencimiento SOAT'**
+  /// In en, this message translates to:
+  /// **'SOAT Expiration'**
   String get addVehicleSoatExp;
 
   /// No description provided for @addVehicleFinish.
   ///
-  /// In es, this message translates to:
-  /// **'Finalizar Registro'**
+  /// In en, this message translates to:
+  /// **'Finish Registration'**
   String get addVehicleFinish;
 
   /// No description provided for @addVehicleSuccess.
   ///
-  /// In es, this message translates to:
-  /// **'¡Vehículo Registrado!'**
+  /// In en, this message translates to:
+  /// **'Vehicle Registered!'**
   String get addVehicleSuccess;
 
   /// No description provided for @addVehicleSuccessDesc.
   ///
-  /// In es, this message translates to:
-  /// **'Tu {brand} {model} ya está en el garaje.'**
+  /// In en, this message translates to:
+  /// **'Your {brand} {model} is now in the garage.'**
   String addVehicleSuccessDesc(String brand, String model);
 
   /// No description provided for @addVehicleGoDashboard.
   ///
-  /// In es, this message translates to:
-  /// **'Ir al Dashboard'**
+  /// In en, this message translates to:
+  /// **'Go to Dashboard'**
   String get addVehicleGoDashboard;
 
   /// No description provided for @addVehicleSelectDate.
   ///
-  /// In es, this message translates to:
-  /// **'Seleccionar fecha'**
+  /// In en, this message translates to:
+  /// **'Select date'**
   String get addVehicleSelectDate;
 
   /// No description provided for @histTotalSpent.
   ///
-  /// In es, this message translates to:
-  /// **'Total gastado'**
+  /// In en, this message translates to:
+  /// **'Total spent'**
   String get histTotalSpent;
 
   /// No description provided for @histServicesCount.
   ///
-  /// In es, this message translates to:
-  /// **'Servicios'**
+  /// In en, this message translates to:
+  /// **'Services'**
   String get histServicesCount;
 
   /// No description provided for @histAverage.
   ///
-  /// In es, this message translates to:
-  /// **'Promedio'**
+  /// In en, this message translates to:
+  /// **'Average'**
   String get histAverage;
 
   /// No description provided for @vpQuickNotes.
   ///
-  /// In es, this message translates to:
-  /// **'Notas Rápidas'**
+  /// In en, this message translates to:
+  /// **'Quick Notes'**
   String get vpQuickNotes;
 
   /// No description provided for @pdfHistoryTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Historial de Servicios'**
+  /// In en, this message translates to:
+  /// **'Service History'**
   String get pdfHistoryTitle;
 
   /// No description provided for @pdfVehicle.
   ///
-  /// In es, this message translates to:
-  /// **'Vehículo: {brand} {model} ({year})'**
+  /// In en, this message translates to:
+  /// **'Vehicle: {brand} {model} ({year})'**
   String pdfVehicle(String brand, String model, String year);
 
   /// No description provided for @pdfPlate.
   ///
-  /// In es, this message translates to:
-  /// **'Placa: {plate}'**
+  /// In en, this message translates to:
+  /// **'Plate: {plate}'**
   String pdfPlate(String plate);
 
   /// No description provided for @pdfReportDate.
   ///
-  /// In es, this message translates to:
-  /// **'Fecha de Reporte: {date}'**
+  /// In en, this message translates to:
+  /// **'Report Date: {date}'**
   String pdfReportDate(String date);
 
   /// No description provided for @pdfTotalServices.
   ///
-  /// In es, this message translates to:
-  /// **'Total de Servicios: {count}'**
+  /// In en, this message translates to:
+  /// **'Total Services: {count}'**
   String pdfTotalServices(String count);
 
   /// No description provided for @pdfTotalSpent.
   ///
-  /// In es, this message translates to:
-  /// **'Gasto Total: \${amount}'**
+  /// In en, this message translates to:
+  /// **'Total Spent: \${amount}'**
   String pdfTotalSpent(String amount);
 
   /// No description provided for @adminLogsTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Registro de Actividad'**
+  /// In en, this message translates to:
+  /// **'Activity Log'**
   String get adminLogsTitle;
 
   /// No description provided for @adminDeleteReview.
   ///
-  /// In es, this message translates to:
-  /// **'Eliminar Reseña'**
+  /// In en, this message translates to:
+  /// **'Delete Review'**
   String get adminDeleteReview;
 
   /// No description provided for @adminCancel.
   ///
-  /// In es, this message translates to:
-  /// **'Cancelar'**
+  /// In en, this message translates to:
+  /// **'Cancel'**
   String get adminCancel;
 
   /// No description provided for @adminDelete.
   ///
-  /// In es, this message translates to:
-  /// **'Eliminar'**
+  /// In en, this message translates to:
+  /// **'Delete'**
   String get adminDelete;
 
   /// No description provided for @adminModerateReviews.
   ///
-  /// In es, this message translates to:
-  /// **'Moderación de Reseñas'**
+  /// In en, this message translates to:
+  /// **'Review Moderation'**
   String get adminModerateReviews;
 
   /// No description provided for @adminAccessDenied.
   ///
-  /// In es, this message translates to:
-  /// **'Acceso Denegado'**
+  /// In en, this message translates to:
+  /// **'Access Denied'**
   String get adminAccessDenied;
 
   /// No description provided for @adminAccessDeniedDesc.
   ///
-  /// In es, this message translates to:
-  /// **'Esta pantalla solo está disponible en entorno de desarrollo.'**
+  /// In en, this message translates to:
+  /// **'This screen is only available in a development environment.'**
   String get adminAccessDeniedDesc;
 
   /// No description provided for @adminConfigAdmins.
   ///
-  /// In es, this message translates to:
-  /// **'Configurar Administradores'**
+  /// In en, this message translates to:
+  /// **'Configure Administrators'**
   String get adminConfigAdmins;
 
   /// No description provided for @adminConfirm.
   ///
-  /// In es, this message translates to:
-  /// **'Confirmar'**
+  /// In en, this message translates to:
+  /// **'Confirm'**
   String get adminConfirm;
 
   /// No description provided for @adminManageWorkshops.
   ///
-  /// In es, this message translates to:
-  /// **'Gestión de Talleres'**
+  /// In en, this message translates to:
+  /// **'Workshop Management'**
   String get adminManageWorkshops;
 
   /// No description provided for @adminChangeRole.
   ///
-  /// In es, this message translates to:
-  /// **'Cambiar Rol de Usuario'**
+  /// In en, this message translates to:
+  /// **'Change User Role'**
   String get adminChangeRole;
 
   /// No description provided for @adminSelectNewRole.
   ///
-  /// In es, this message translates to:
-  /// **'Selecciona el nuevo rol:'**
+  /// In en, this message translates to:
+  /// **'Select the new role:'**
   String get adminSelectNewRole;
 
   /// No description provided for @adminManageUsers.
   ///
-  /// In es, this message translates to:
-  /// **'Gestión de Usuarios'**
+  /// In en, this message translates to:
+  /// **'User Management'**
   String get adminManageUsers;
 
   /// No description provided for @adminSuspendAccount.
   ///
-  /// In es, this message translates to:
-  /// **'Suspender Cuenta'**
+  /// In en, this message translates to:
+  /// **'Suspend Account'**
   String get adminSuspendAccount;
 
   /// No description provided for @adminReactivateAccount.
   ///
-  /// In es, this message translates to:
-  /// **'Reactivar Cuenta'**
+  /// In en, this message translates to:
+  /// **'Reactivate Account'**
   String get adminReactivateAccount;
 
   /// No description provided for @adminChangeUserRole.
   ///
-  /// In es, this message translates to:
-  /// **'Cambiar Rol'**
+  /// In en, this message translates to:
+  /// **'Change Role'**
   String get adminChangeUserRole;
 
   /// No description provided for @adminNoTrendData.
   ///
-  /// In es, this message translates to:
-  /// **'No hay datos de tendencias disponibles.'**
+  /// In en, this message translates to:
+  /// **'No trend data available.'**
   String get adminNoTrendData;
 
   /// No description provided for @adminReject.
   ///
-  /// In es, this message translates to:
-  /// **'Rechazar'**
+  /// In en, this message translates to:
+  /// **'Reject'**
   String get adminReject;
 
   /// No description provided for @adminApproveWorkshop.
   ///
-  /// In es, this message translates to:
-  /// **'Aprobar Taller'**
+  /// In en, this message translates to:
+  /// **'Approve Workshop'**
   String get adminApproveWorkshop;
 
   /// No description provided for @adminSuspend.
   ///
-  /// In es, this message translates to:
-  /// **'Suspender'**
+  /// In en, this message translates to:
+  /// **'Suspend'**
   String get adminSuspend;
 
   /// No description provided for @adminReactivate.
   ///
-  /// In es, this message translates to:
-  /// **'Reactivar'**
+  /// In en, this message translates to:
+  /// **'Reactivate'**
   String get adminReactivate;
 
   /// No description provided for @adminError.
   ///
-  /// In es, this message translates to:
+  /// In en, this message translates to:
   /// **'Error: {error}'**
   String adminError(String error);
 
   /// No description provided for @chatOpeningSection.
   ///
-  /// In es, this message translates to:
-  /// **'Abriendo sección de {label}...'**
+  /// In en, this message translates to:
+  /// **'Opening {label} section...'**
   String chatOpeningSection(String label);
 
   /// No description provided for @chatDeleteMessage.
   ///
-  /// In es, this message translates to:
-  /// **'Eliminar mensaje'**
+  /// In en, this message translates to:
+  /// **'Delete message'**
   String get chatDeleteMessage;
 
   /// No description provided for @chatCamera.
   ///
-  /// In es, this message translates to:
-  /// **'Cámara'**
+  /// In en, this message translates to:
+  /// **'Camera'**
   String get chatCamera;
 
   /// No description provided for @chatGallery.
   ///
-  /// In es, this message translates to:
-  /// **'Galería'**
+  /// In en, this message translates to:
+  /// **'Gallery'**
   String get chatGallery;
 
   /// No description provided for @chatShareVehicle.
   ///
-  /// In es, this message translates to:
-  /// **'Compartir Vehículo'**
+  /// In en, this message translates to:
+  /// **'Share Vehicle'**
   String get chatShareVehicle;
 
   /// No description provided for @chatNewReservation.
   ///
-  /// In es, this message translates to:
-  /// **'Nueva Reserva'**
+  /// In en, this message translates to:
+  /// **'New Reservation'**
   String get chatNewReservation;
 
   /// No description provided for @chatSendQuote.
   ///
-  /// In es, this message translates to:
-  /// **'Enviar Cotización'**
+  /// In en, this message translates to:
+  /// **'Send Quote'**
   String get chatSendQuote;
 
   /// No description provided for @chatRequestRating.
   ///
-  /// In es, this message translates to:
-  /// **'Solicitar Calificación'**
+  /// In en, this message translates to:
+  /// **'Request Rating'**
   String get chatRequestRating;
 
   /// No description provided for @chatUploadImageError.
   ///
-  /// In es, this message translates to:
-  /// **'Error al subir imagen'**
+  /// In en, this message translates to:
+  /// **'Error uploading image'**
   String get chatUploadImageError;
 
   /// No description provided for @chatReservationSuccess.
   ///
-  /// In es, this message translates to:
-  /// **'Reserva {status} exitosamente'**
+  /// In en, this message translates to:
+  /// **'Reservation {status} successfully'**
   String chatReservationSuccess(String status);
 
   /// No description provided for @chatReservationDetail.
   ///
-  /// In es, this message translates to:
-  /// **'Detalle de Cita'**
+  /// In en, this message translates to:
+  /// **'Appointment Detail'**
   String get chatReservationDetail;
 
   /// No description provided for @coreAppTitle.
   ///
-  /// In es, this message translates to:
-  /// **'AutoDoc Taller'**
+  /// In en, this message translates to:
+  /// **'AutoDoc Workshop'**
   String get coreAppTitle;
 
   /// No description provided for @chatViewFullHistory.
   ///
-  /// In es, this message translates to:
-  /// **'Ver Historial Completo'**
+  /// In en, this message translates to:
+  /// **'View Full History'**
   String get chatViewFullHistory;
 
   /// No description provided for @chatConfirmProposal.
   ///
-  /// In es, this message translates to:
-  /// **'Confirmar Propuesta'**
+  /// In en, this message translates to:
+  /// **'Confirm Proposal'**
   String get chatConfirmProposal;
 
   /// No description provided for @chatGenerateAndSend.
   ///
-  /// In es, this message translates to:
-  /// **'Generar y Enviar'**
+  /// In en, this message translates to:
+  /// **'Generate and Send'**
   String get chatGenerateAndSend;
 
   /// No description provided for @chatRateService.
   ///
-  /// In es, this message translates to:
-  /// **'Calificar Servicio'**
+  /// In en, this message translates to:
+  /// **'Rate Service'**
   String get chatRateService;
 
   /// No description provided for @chatReviewThanks.
   ///
-  /// In es, this message translates to:
-  /// **'¡Gracias por tu reseña!'**
+  /// In en, this message translates to:
+  /// **'Thank you for your review!'**
   String get chatReviewThanks;
 
   /// No description provided for @chatAccept.
   ///
-  /// In es, this message translates to:
-  /// **'Aceptar'**
+  /// In en, this message translates to:
+  /// **'Accept'**
   String get chatAccept;
 
   /// No description provided for @chatReject.
   ///
-  /// In es, this message translates to:
-  /// **'Rechazar'**
+  /// In en, this message translates to:
+  /// **'Reject'**
   String get chatReject;
 
   /// No description provided for @chatViewDetail.
   ///
-  /// In es, this message translates to:
-  /// **'Ver detalle'**
+  /// In en, this message translates to:
+  /// **'View detail'**
   String get chatViewDetail;
 
   /// No description provided for @chatService.
   ///
-  /// In es, this message translates to:
-  /// **'Servicio'**
+  /// In en, this message translates to:
+  /// **'Service'**
   String get chatService;
 
   /// No description provided for @chatDate.
   ///
-  /// In es, this message translates to:
-  /// **'Fecha'**
+  /// In en, this message translates to:
+  /// **'Date'**
   String get chatDate;
 
   /// No description provided for @chatTime.
   ///
-  /// In es, this message translates to:
-  /// **'Hora'**
+  /// In en, this message translates to:
+  /// **'Time'**
   String get chatTime;
 
   /// No description provided for @chatVehicleId.
   ///
-  /// In es, this message translates to:
-  /// **'Vehículo ID'**
+  /// In en, this message translates to:
+  /// **'Vehicle ID'**
   String get chatVehicleId;
 
   /// No description provided for @chatAcceptAppointment.
   ///
-  /// In es, this message translates to:
-  /// **'Aceptar Cita'**
+  /// In en, this message translates to:
+  /// **'Accept Appointment'**
   String get chatAcceptAppointment;
 
   /// No description provided for @chatRejectReschedule.
   ///
-  /// In es, this message translates to:
-  /// **'Rechazar / Reprogramar'**
+  /// In en, this message translates to:
+  /// **'Reject / Reschedule'**
   String get chatRejectReschedule;
 
   /// No description provided for @chatConfirmDelete.
   ///
-  /// In es, this message translates to:
-  /// **'¿Estás seguro de que quieres eliminar este mensaje para todos?'**
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this message for everyone?'**
   String get chatConfirmDelete;
 
   /// No description provided for @notifications.
   ///
-  /// In es, this message translates to:
-  /// **'Notificaciones'**
+  /// In en, this message translates to:
+  /// **'Notifications'**
   String get notifications;
 
   /// No description provided for @noNotifications.
   ///
-  /// In es, this message translates to:
-  /// **'No tienes notificaciones'**
+  /// In en, this message translates to:
+  /// **'You have no notifications'**
   String get noNotifications;
 
   /// No description provided for @markAllRead.
   ///
-  /// In es, this message translates to:
-  /// **'Marcar todo como leído'**
+  /// In en, this message translates to:
+  /// **'Mark all as read'**
   String get markAllRead;
 
   /// No description provided for @upLanguage.
   ///
-  /// In es, this message translates to:
-  /// **'Idioma / Language'**
+  /// In en, this message translates to:
+  /// **'Language / Idioma'**
   String get upLanguage;
 
   /// No description provided for @upLanguageDesc.
   ///
-  /// In es, this message translates to:
-  /// **'EN (Activado) / ES (Desactivado)'**
+  /// In en, this message translates to:
+  /// **'EN (Enabled) / ES (Disabled)'**
   String get upLanguageDesc;
 
   /// No description provided for @upAbout.
   ///
-  /// In es, this message translates to:
-  /// **'Acerca de AutoDoc'**
+  /// In en, this message translates to:
+  /// **'About AutoDoc'**
   String get upAbout;
 
   /// No description provided for @upAboutDesc.
   ///
-  /// In es, this message translates to:
-  /// **'Versión, créditos y legal'**
+  /// In en, this message translates to:
+  /// **'Version, credits and legal'**
   String get upAboutDesc;
 
   /// No description provided for @upDeleteAccountTitle.
   ///
-  /// In es, this message translates to:
-  /// **'Eliminar Cuenta'**
+  /// In en, this message translates to:
+  /// **'Delete Account'**
   String get upDeleteAccountTitle;
 
   /// No description provided for @upDeleteAccountConfirm.
   ///
-  /// In es, this message translates to:
-  /// **'¿Estás seguro de que deseas eliminar tu cuenta? Esta acción no se puede deshacer y perderás todos tus datos.'**
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete your account? This action cannot be undone and you will lose all your data.'**
   String get upDeleteAccountConfirm;
 
   /// No description provided for @upEnterPasswordConfirm.
   ///
-  /// In es, this message translates to:
-  /// **'Para confirmar, ingresa tu contraseña:'**
+  /// In en, this message translates to:
+  /// **'To confirm, enter your password:'**
   String get upEnterPasswordConfirm;
 
   /// No description provided for @upPasswordLabel.
   ///
-  /// In es, this message translates to:
-  /// **'Contraseña'**
+  /// In en, this message translates to:
+  /// **'Password'**
   String get upPasswordLabel;
 
   /// No description provided for @upGoogleReauthConfirm.
   ///
-  /// In es, this message translates to:
-  /// **'Para confirmar, deberás volver a iniciar sesión con Google.'**
+  /// In en, this message translates to:
+  /// **'To confirm, you must sign in with Google again.'**
   String get upGoogleReauthConfirm;
 
   /// No description provided for @upPasswordEmpty.
   ///
-  /// In es, this message translates to:
-  /// **'La contraseña no puede estar vacía.'**
+  /// In en, this message translates to:
+  /// **'Password cannot be empty.'**
   String get upPasswordEmpty;
 
   /// No description provided for @upPasswordIncorrect.
   ///
-  /// In es, this message translates to:
-  /// **'Contraseña incorrecta.'**
+  /// In en, this message translates to:
+  /// **'Incorrect password.'**
   String get upPasswordIncorrect;
 
   /// No description provided for @upGoogleReauthFailed.
   ///
-  /// In es, this message translates to:
-  /// **'No se pudo re-autenticar con Google.'**
+  /// In en, this message translates to:
+  /// **'Could not re-authenticate with Google.'**
   String get upGoogleReauthFailed;
 
   /// No description provided for @upDeleteAccountError.
   ///
-  /// In es, this message translates to:
-  /// **'Error al eliminar la cuenta: {error}'**
+  /// In en, this message translates to:
+  /// **'Error deleting account: {error}'**
   String upDeleteAccountError(String error);
 
   /// No description provided for @upCancel.
   ///
-  /// In es, this message translates to:
-  /// **'Cancelar'**
+  /// In en, this message translates to:
+  /// **'Cancel'**
   String get upCancel;
 
   /// No description provided for @upDelete.
   ///
-  /// In es, this message translates to:
-  /// **'Eliminar'**
+  /// In en, this message translates to:
+  /// **'Delete'**
   String get upDelete;
 
   /// No description provided for @upDeleteAccount.
   ///
-  /// In es, this message translates to:
-  /// **'Eliminar cuenta'**
+  /// In en, this message translates to:
+  /// **'Delete account'**
   String get upDeleteAccount;
 }
 

@@ -10,7 +10,7 @@ void main() {
     test('updateUserToken updates token in Firestore', () async {
       final mockMessaging = MockFirebaseMessaging();
       final mockFirestore = MockFirebaseFirestore();
-      
+
       final mockCollection = MockCollectionReference<Map<String, dynamic>>();
       final mockDoc = MockDocumentReference<Map<String, dynamic>>();
 

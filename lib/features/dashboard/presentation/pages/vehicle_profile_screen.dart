@@ -1017,8 +1017,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                       } else {
                         UiUtils.showErrorSnackbar(
                           context,
-                          vehicleProvider.error ??
-                              context.l10n.vpDeleteError,
+                          vehicleProvider.error ?? context.l10n.vpDeleteError,
                         );
                       }
                     }

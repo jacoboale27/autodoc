@@ -41,10 +41,16 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+        withData: kIsWeb,
       );
-      if (result != null && result.files.single.path != null) {
+      if (result != null) {
+        final file = result.files.single;
         setState(() {
-          _invoiceImage = XFile(result.files.single.path!);
+          if (kIsWeb && file.bytes != null) {
+            _invoiceImage = XFile.fromData(file.bytes!, name: file.name);
+          } else if (file.path != null) {
+            _invoiceImage = XFile(file.path!);
+          }
         });
       }
     } catch (e) {
@@ -259,48 +265,37 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           if (_invoiceImage != null) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: FutureBuilder<List<int>>(
-                future: _invoiceImage!.readAsBytes().then((b) => b.toList()),
-                builder: (context, snapshot) {
-                  if (snapshot.hasData) {
-                    if (_isInvoicePdf) {
-                      return Container(
-                        height: 200,
-                        width: double.infinity,
-                        color: colors.primary.withValues(alpha: 0.1),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.picture_as_pdf,
-                              size: Responsive.iconSize(context, 64),
-                              color: colors.error,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _invoiceImage!.name,
-                              style: GoogleFonts.inter(
-                                fontWeight: FontWeight.bold,
-                                color: colors.textPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                    return Image.memory(
-                      Uint8List.fromList(snapshot.data!),
-                      height: 200,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    );
-                  }
-                  return const SizedBox(
+              child: _isInvoicePdf 
+                ? Container(
                     height: 200,
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                },
-              ),
+                    width: double.infinity,
+                    color: colors.primary.withValues(alpha: 0.1),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.picture_as_pdf, size: Responsive.iconSize(context, 64), color: colors.error),
+                        const SizedBox(height: 8),
+                        Text(_invoiceImage!.name, style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: colors.textPrimary)),
+                      ],
+                    ),
+                  )
+                : FutureBuilder<List<int>>(
+                    future: _invoiceImage!.readAsBytes().then((b) => b.toList()),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData) {
+                        return Image.memory(
+                          Uint8List.fromList(snapshot.data!),
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        );
+                      }
+                      return const SizedBox(
+                        height: 200,
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    },
+                  ),
             ),
             const SizedBox(height: 12),
             Row(

@@ -12,7 +12,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 class PushNotificationService {
   static PushNotificationService? _instance;
-  
+
   final FirebaseMessaging _messaging;
   final FirebaseFirestore _firestore;
 

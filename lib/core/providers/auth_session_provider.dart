@@ -14,8 +14,8 @@ class AuthSessionProvider with ChangeNotifier {
 
   final FirebaseAuth _firebaseAuth;
 
-  AuthSessionProvider({FirebaseAuth? firebaseAuth}) 
-      : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance {
+  AuthSessionProvider({FirebaseAuth? firebaseAuth})
+    : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance {
     _firebaseAuth.idTokenChanges().listen(
       (User? user) {
         _user = user;
