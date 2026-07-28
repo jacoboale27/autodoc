@@ -352,7 +352,6 @@ class GarageScreen extends StatelessWidget {
     VehicleModel vehicle,
     VehicleProvider provider,
   ) async {
-    final messenger = ScaffoldMessenger.of(context);
     final success = await provider.setAsPrimary(vehicle);
 
     if (!context.mounted) return;

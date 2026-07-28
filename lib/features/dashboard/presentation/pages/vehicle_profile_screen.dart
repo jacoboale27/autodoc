@@ -685,7 +685,6 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     bool isTarjeta,
   ) async {
     final vehicleProvider = context.read<VehicleProvider>();
-    final messenger = ScaffoldMessenger.of(context);
     final l10n = context.l10n;
 
     final DateTime? pickedDate = await showDatePicker(
@@ -892,7 +891,6 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                 );
 
                 final vehicleProvider = context.read<VehicleProvider>();
-                final messenger = ScaffoldMessenger.of(context);
                 final success = await vehicleProvider.updateVehicle(
                   updatedVehicle,
                 );

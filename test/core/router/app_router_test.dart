@@ -26,6 +26,12 @@ class FakeAuthSessionProvider extends ChangeNotifier
   User? get user => null;
 
   @override
+  String? get error => null;
+
+  @override
+  void clearError() {}
+
+  @override
   Future<void> refreshUser() async {}
 }
 
