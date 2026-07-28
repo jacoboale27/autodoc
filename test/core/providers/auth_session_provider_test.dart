@@ -1,25 +1,10 @@
 import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:autodoc/core/providers/auth_session_provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:mockito/mockito.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/services/push_notification_service.dart';
-
-class MockFirebaseAuth extends Mock implements FirebaseAuth {
-  final StreamController<User?> _controller = StreamController<User?>.broadcast();
-  
-  @override
-  Stream<User?> idTokenChanges() => _controller.stream;
-
-  void emitUser(User? user) {
-    _controller.add(user);
-  }
-}
-
-class MockUser extends Mock implements User {
-  @override
-  String get uid => 'user123';
-}
+import '../../helpers/test_helpers.mocks.dart';
 
 class FakePushNotificationService extends Fake implements PushNotificationService {
   bool updateUserTokenCalled = false;
@@ -42,16 +27,23 @@ void main() {
       
       PushNotificationService.setInstanceForTesting(fakePushService);
 
+      final streamController = StreamController<User?>.broadcast();
+      when(mockAuth.idTokenChanges()).thenAnswer((_) => streamController.stream);
+
       final provider = AuthSessionProvider(firebaseAuth: mockAuth);
       
       final mockUser = MockUser();
-      mockAuth.emitUser(mockUser);
+      when(mockUser.uid).thenReturn('user123');
+      
+      streamController.add(mockUser);
       
       await Future.delayed(Duration.zero);
 
       expect(provider.isLoggedIn, true);
       expect(fakePushService.updateUserTokenCalled, true);
       expect(fakePushService.updatedUserId, 'user123');
+      
+      streamController.close();
     });
 
     test('does not update FCM token on user logout', () async {
@@ -60,14 +52,19 @@ void main() {
       
       PushNotificationService.setInstanceForTesting(fakePushService);
 
+      final streamController = StreamController<User?>.broadcast();
+      when(mockAuth.idTokenChanges()).thenAnswer((_) => streamController.stream);
+
       final provider = AuthSessionProvider(firebaseAuth: mockAuth);
       
-      mockAuth.emitUser(null);
+      streamController.add(null);
       
       await Future.delayed(Duration.zero);
 
       expect(provider.isLoggedIn, false);
       expect(fakePushService.updateUserTokenCalled, false);
+      
+      streamController.close();
     });
   });
 }
