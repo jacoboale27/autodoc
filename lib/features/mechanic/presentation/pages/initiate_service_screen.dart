@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
@@ -32,13 +33,29 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   bool _isSaving = false;
   XFile? _invoiceImage;
 
-  Future<void> _pickInvoiceImage(ImageSource source) async {
+  bool get _isInvoicePdf =>
+      _invoiceImage?.name.toLowerCase().endsWith('.pdf') ?? false;
+
+  Future<void> _pickInvoiceDocument() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+      );
+      if (result != null && result.files.single.path != null) {
+        setState(() {
+          _invoiceImage = XFile(result.files.single.path!);
+        });
+      }
+    } catch (e) {
+      debugPrint("Error al seleccionar documento: $e");
+    }
+  }
+
+  Future<void> _pickInvoiceCamera() async {
     try {
       final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(
-        source: source,
-        imageQuality: 80,
-      );
+      final pickedFile = await picker.pickImage(source: ImageSource.camera);
       if (pickedFile != null) {
         setState(() {
           _invoiceImage = pickedFile;
@@ -125,7 +142,10 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
 
       if (mounted) {
         HapticFeedback.lightImpact();
-        UiUtils.showSuccessSnackbar(context, 'Servicio registrado exitosamente');
+        UiUtils.showSuccessSnackbar(
+          context,
+          'Servicio registrado exitosamente',
+        );
         Navigator.pop(context);
       }
     } catch (e) {
@@ -243,6 +263,31 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                 future: _invoiceImage!.readAsBytes().then((b) => b.toList()),
                 builder: (context, snapshot) {
                   if (snapshot.hasData) {
+                    if (_isInvoicePdf) {
+                      return Container(
+                        height: 200,
+                        width: double.infinity,
+                        color: colors.primary.withValues(alpha: 0.1),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.picture_as_pdf,
+                              size: Responsive.iconSize(context, 64),
+                              color: colors.error,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _invoiceImage!.name,
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.bold,
+                                color: colors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
                     return Image.memory(
                       Uint8List.fromList(snapshot.data!),
                       height: 200,
@@ -262,14 +307,14 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 TextButton.icon(
-                  onPressed: () => _pickInvoiceImage(ImageSource.camera),
+                  onPressed: () => _pickInvoiceCamera(),
                   icon: const Icon(Icons.camera_alt),
                   label: const Text('Tomar otra'),
                 ),
                 TextButton.icon(
-                  onPressed: () => _pickInvoiceImage(ImageSource.gallery),
-                  icon: const Icon(Icons.photo_library),
-                  label: const Text('Galería'),
+                  onPressed: () => _pickInvoiceDocument(),
+                  icon: const Icon(Icons.folder),
+                  label: const Text('Archivo'),
                 ),
                 TextButton.icon(
                   onPressed: () => setState(() => _invoiceImage = null),
@@ -309,7 +354,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 ElevatedButton.icon(
-                  onPressed: () => _pickInvoiceImage(ImageSource.camera),
+                  onPressed: () => _pickInvoiceCamera(),
                   icon: const Icon(Icons.camera_alt),
                   label: const Text('Cámara'),
                   style: ElevatedButton.styleFrom(
@@ -322,9 +367,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                 ),
                 const SizedBox(width: 12),
                 OutlinedButton.icon(
-                  onPressed: () => _pickInvoiceImage(ImageSource.gallery),
-                  icon: const Icon(Icons.photo_library),
-                  label: const Text('Galería'),
+                  onPressed: () => _pickInvoiceDocument(),
+                  icon: const Icon(Icons.folder),
+                  label: const Text('Archivo / PDF'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: colors.primary,
                     side: BorderSide(color: colors.primary),

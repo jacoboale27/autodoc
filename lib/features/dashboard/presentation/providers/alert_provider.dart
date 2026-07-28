@@ -9,6 +9,7 @@ import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/core/constants/storage_paths.dart';
+import 'package:autodoc/features/dashboard/data/services/invoice_upload_service.dart';
 
 class AlertProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore;
@@ -317,13 +318,19 @@ class AlertProvider extends ChangeNotifier {
         );
 
         if (receiptImage != null) {
+          final metadataInfo = InvoiceUploadService.getFileMetadata(
+            receiptImage.name,
+          );
+          final extension = metadataInfo['extension']!;
+          final contentType = metadataInfo['contentType']!;
+
           final ref = _storage
               .ref()
               .child(StoragePaths.facturas)
               .child(task.vehicleId)
-              .child('${DateTime.now().millisecondsSinceEpoch}.jpg');
+              .child('${DateTime.now().millisecondsSinceEpoch}$extension');
           final bytes = await receiptImage.readAsBytes();
-          final metadata = SettableMetadata(contentType: 'image/jpeg');
+          final metadata = SettableMetadata(contentType: contentType);
           await ref.putData(bytes, metadata);
           receiptUrl = await ref.getDownloadURL();
         }
@@ -462,13 +469,19 @@ class AlertProvider extends ChangeNotifier {
 
       String? receiptUrl;
       if (receiptImage != null) {
+        final metadataInfo = InvoiceUploadService.getFileMetadata(
+          receiptImage.name,
+        );
+        final extension = metadataInfo['extension']!;
+        final contentType = metadataInfo['contentType']!;
+
         final ref = _storage
             .ref()
             .child(StoragePaths.facturas)
             .child(vehicleId)
-            .child('${DateTime.now().millisecondsSinceEpoch}.jpg');
+            .child('${DateTime.now().millisecondsSinceEpoch}$extension');
         final bytes = await receiptImage.readAsBytes();
-        final metadata = SettableMetadata(contentType: 'image/jpeg');
+        final metadata = SettableMetadata(contentType: contentType);
         await ref.putData(bytes, metadata);
         receiptUrl = await ref.getDownloadURL();
       }
