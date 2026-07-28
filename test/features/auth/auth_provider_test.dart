@@ -207,6 +207,38 @@ void main() {
     );
   });
 
+  group('AuthProvider — signInWithGoogle', () {
+    test(
+      'AuthProvider — signInWithGoogle success bypasses extra steps',
+      () async {
+        final mockCredential = _MockUserCredential();
+        final mockUser = _MockUser();
+        when(mockCredential.user).thenReturn(mockUser);
+        when(
+          mockAuthService.signInWithGoogle(),
+        ).thenAnswer((_) async => mockCredential);
+
+        final result = await authProvider.signInWithGoogle();
+
+        expect(result, true);
+        expect(authProvider.isLoading, false);
+        expect(authProvider.error, null);
+        verify(mockAuthService.signInWithGoogle()).called(1);
+      },
+    );
+
+    test('signInWithGoogle failure returns false with error', () async {
+      when(mockAuthService.signInWithGoogle()).thenThrow('Google Auth Error');
+
+      final result = await authProvider.signInWithGoogle();
+
+      expect(result, false);
+      expect(authProvider.isLoading, false);
+      expect(authProvider.error, 'Google Auth Error');
+      verify(mockAuthService.signInWithGoogle()).called(1);
+    });
+  });
+
   group('AuthProvider — clearError', () {
     test('clearError sets error to null', () async {
       when(
