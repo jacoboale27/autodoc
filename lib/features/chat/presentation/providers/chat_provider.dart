@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:hive/hive.dart';
 import '../../data/models/conversacion_model.dart';
 import '../../data/models/mensaje_model.dart';
 import '../../data/models/cotizacion_model.dart';
@@ -61,6 +62,27 @@ class ChatProvider extends ChangeNotifier {
   void inicializarMensajes(String conversacionId) {
     _isLoading = true;
     _error = null;
+
+    // Load from cache first
+    try {
+      if (Hive.isBoxOpen('mensajes')) {
+        final box = Hive.box<MensajeModel>('mensajes');
+        final prefix = '${conversacionId}_';
+        final cached = box
+            .toMap()
+            .entries
+            .where((e) => e.key.toString().startsWith(prefix))
+            .map((e) => e.value)
+            .toList();
+        if (cached.isNotEmpty) {
+          cached.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+          _mensajesActuales = cached;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading cache: $e');
+    }
+
     notifyListeners();
 
     _mensajesSub?.cancel();
@@ -70,6 +92,19 @@ class ChatProvider extends ChangeNotifier {
           (data) {
             _error = null;
             _mensajesActuales = data;
+
+            // Actualizar cache
+            try {
+              if (Hive.isBoxOpen('mensajes')) {
+                final box = Hive.box<MensajeModel>('mensajes');
+                for (final m in data) {
+                  box.put('${conversacionId}_${m.id}', m);
+                }
+              }
+            } catch (e) {
+              debugPrint('Error saving cache: $e');
+            }
+
             _isLoading = false;
             notifyListeners();
           },

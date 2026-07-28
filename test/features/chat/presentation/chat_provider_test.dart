@@ -6,17 +6,35 @@ import 'package:autodoc/features/chat/data/models/conversacion_model.dart';
 import 'package:autodoc/features/chat/data/models/mensaje_model.dart';
 import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
 import 'package:autodoc/features/chat/data/repositories/chat_repository.dart';
+import 'package:hive/hive.dart';
+import 'dart:io';
 
 /// ChatProvider unit tests.
 ///
 /// Note: ChatProvider uses ChatRepository internally (Firestore-based).
 /// These tests verify provider state management and observable contract
 /// without network calls (using a test-safe instantiation).
-class MockChatRepository extends Mock implements ChatRepository {}
+class MockChatRepository extends Mock implements ChatRepository {
+  @override
+  Stream<List<MensajeModel>> streamMensajes(String conversacionId) {
+    return Stream.value([]);
+  }
+}
 
 void main() {
   late ChatProvider chatProvider;
   late MockChatRepository mockChatRepository;
+
+  setUpAll(() async {
+    final tempDir = Directory.systemTemp.createTempSync();
+    Hive.init(tempDir.path);
+    Hive.registerAdapter(MensajeModelAdapter());
+    await Hive.openBox<MensajeModel>('mensajes');
+  });
+
+  tearDownAll(() async {
+    await Hive.close();
+  });
 
   setUp(() {
     mockChatRepository = MockChatRepository();
@@ -193,6 +211,28 @@ void main() {
       expect(map.containsKey('id_propietario'), isTrue);
       expect(map.containsKey('id_mecanico'), isTrue);
       expect(map.containsKey('ultimo_mensaje'), isTrue);
+    });
+  });
+
+  group('ChatProvider — Cache', () {
+    test('ChatProvider loads cached messages instantly', () async {
+      // Pre-fill cache
+      final box = Hive.box<MensajeModel>('mensajes');
+      final msg = MensajeModel(
+        id: '123',
+        idRemitente: 'user',
+        contenido: 'hello cache',
+        timestamp: DateTime.now(),
+      );
+      await box.put('conv_cache_test_123', msg);
+
+      chatProvider.inicializarMensajes('conv_cache_test');
+      expect(
+        chatProvider.mensajesActuales,
+        isNotEmpty,
+        reason: 'Cache should load messages instantly',
+      );
+      expect(chatProvider.mensajesActuales.first.contenido, 'hello cache');
     });
   });
 }

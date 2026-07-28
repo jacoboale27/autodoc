@@ -30,6 +30,7 @@ import 'package:autodoc/core/services/notification_service.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
 import 'package:autodoc/core/providers/notification_center_provider.dart';
+import 'package:autodoc/features/chat/data/models/mensaje_model.dart';
 
 import 'package:autodoc/core/services/push_notification_service.dart';
 
@@ -152,7 +153,9 @@ void main() async {
       "=== [AutoDoc Init] Inicializando Hive, offline_cache y TranslationService ===",
     );
     await Hive.initFlutter();
+    Hive.registerAdapter(MensajeModelAdapter());
     await Hive.openBox('offline_cache');
+    await Hive.openBox<MensajeModel>('mensajes');
     await TranslationService().initialize().timeout(
       const Duration(seconds: 5),
       onTimeout: () {

@@ -1,15 +1,35 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hive/hive.dart';
 
+part 'mensaje_model.g.dart';
+
+@HiveType(typeId: 0)
 class MensajeModel {
+  @HiveField(0)
   final String id;
+
+  @HiveField(1)
   final String idRemitente;
+
+  @HiveField(2)
   final String contenido;
-  final String
-  tipo; // 'texto' | 'imagen' | 'vehiculo_card' | 'reserva_card' | 'cotizacion_card'
+
+  @HiveField(3)
+  final String tipo; // 'texto' | 'imagen' | 'vehiculo_card' | 'reserva_card' | 'cotizacion_card'
+
+  @HiveField(4)
   final Map<String, dynamic>? metadata;
+
+  @HiveField(5)
   final DateTime timestamp;
+
+  @HiveField(6)
   final String estado; // 'enviado' | 'entregado' | 'visto'
+
+  @HiveField(7)
   final String? urlArchivo;
+
+  @HiveField(8)
   final bool isDeleted;
 
   MensajeModel({
