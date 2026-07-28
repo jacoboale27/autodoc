@@ -11,13 +11,28 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 class PushNotificationService {
-  static final PushNotificationService _instance =
-      PushNotificationService._internal();
-  factory PushNotificationService() => _instance;
-  PushNotificationService._internal();
+  static PushNotificationService? _instance;
+  
+  final FirebaseMessaging _messaging;
+  final FirebaseFirestore _firestore;
 
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  factory PushNotificationService({
+    FirebaseMessaging? messaging,
+    FirebaseFirestore? firestore,
+  }) {
+    _instance ??= PushNotificationService._internal(
+      messaging ?? FirebaseMessaging.instance,
+      firestore ?? FirebaseFirestore.instance,
+    );
+    return _instance!;
+  }
+
+  PushNotificationService._internal(this._messaging, this._firestore);
+
+  @visibleForTesting
+  static void setInstanceForTesting(PushNotificationService mock) {
+    _instance = mock;
+  }
 
   Future<void> initialize() async {
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);

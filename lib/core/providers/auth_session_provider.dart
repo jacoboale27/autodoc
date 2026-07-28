@@ -12,8 +12,11 @@ class AuthSessionProvider with ChangeNotifier {
   String get currentUid => _user?.uid ?? '';
   String? get error => _error;
 
-  AuthSessionProvider() {
-    FirebaseAuth.instance.idTokenChanges().listen(
+  final FirebaseAuth _firebaseAuth;
+
+  AuthSessionProvider({FirebaseAuth? firebaseAuth}) 
+      : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance {
+    _firebaseAuth.idTokenChanges().listen(
       (User? user) {
         _user = user;
         _error = null;
@@ -32,8 +35,8 @@ class AuthSessionProvider with ChangeNotifier {
   /// Force refresh from FirebaseAuth (e.g. after email verification)
   Future<void> refreshUser() async {
     try {
-      await FirebaseAuth.instance.currentUser?.reload();
-      _user = FirebaseAuth.instance.currentUser;
+      await _firebaseAuth.currentUser?.reload();
+      _user = _firebaseAuth.currentUser;
       _error = null;
       notifyListeners();
     } catch (e) {
