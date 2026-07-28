@@ -13,6 +13,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 
+import 'package:autodoc/core/utils/map_injector.dart';
 import 'package:autodoc/core/providers/language_provider.dart';
 import 'package:autodoc/core/services/translation_service.dart';
 import 'package:autodoc/firebase_options.dart';
@@ -67,6 +68,12 @@ void main() async {
     debugPrint(
       "=== [AutoDoc Init] Variables de entorno cargadas con éxito ===",
     );
+    if (kIsWeb) {
+      final mapsKey = dotenv.env['GOOGLE_MAPS_API_KEY'];
+      if (mapsKey != null && mapsKey.isNotEmpty) {
+        injectGoogleMapsScript(mapsKey);
+      }
+    }
   } catch (e) {
     debugPrint(
       "=== [AutoDoc Init] Advertencia: No se pudo cargar .env: $e ===",
