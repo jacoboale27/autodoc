@@ -711,15 +711,14 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
 
       final success = await vehicleProvider.updateVehicle(updatedVehicle);
 
-      if (context.mounted) {
-        if (success) {
-          UiUtils.showSuccessSnackbar(context, l10n.vpDateUpdatedSuccess);
-        } else {
-          UiUtils.showErrorSnackbar(
-            context,
-            vehicleProvider.error ?? l10n.vpDateUpdateError,
-          );
-        }
+      if (!context.mounted) return;
+      if (success) {
+        UiUtils.showSuccessSnackbar(context, l10n.vpDateUpdatedSuccess);
+      } else {
+        UiUtils.showErrorSnackbar(
+          context,
+          vehicleProvider.error ?? l10n.vpDateUpdateError,
+        );
       }
     }
   }
