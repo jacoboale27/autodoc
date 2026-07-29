@@ -26,5 +26,7 @@ import 'package:firebase_auth/firebase_auth.dart';
   DocumentReference,
   Query,
   QuerySnapshot,
+  QueryDocumentSnapshot,
+  WriteBatch,
 ])
 void main() {}

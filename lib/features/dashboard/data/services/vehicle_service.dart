@@ -3,8 +3,11 @@ import '../../../../core/models/vehicle_model.dart';
 import '../../../../core/constants/firestore_collections.dart';
 
 class VehicleService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore;
   final String _collection = FirestoreCollections.vehiculos;
+
+  VehicleService({FirebaseFirestore? firestore}) 
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
   Future<List<VehicleModel>> getVehiclesByOwner(String ownerId) async {
     try {
@@ -45,7 +48,22 @@ class VehicleService {
 
   Future<void> deleteVehicle(String vehicleId) async {
     try {
-      await _firestore.collection(_collection).doc(vehicleId).delete();
+      final batch = _firestore.batch();
+      
+      final vehicleRef = _firestore.collection(_collection).doc(vehicleId);
+      batch.delete(vehicleRef);
+
+      final services = await _firestore.collection(FirestoreCollections.servicios).where('id_vehiculo', isEqualTo: vehicleId).get();
+      for (var doc in services.docs) {
+        batch.delete(doc.reference);
+      }
+      
+      final alerts = await _firestore.collection(FirestoreCollections.alertas).where('id_vehiculo', isEqualTo: vehicleId).get();
+      for (var doc in alerts.docs) {
+        batch.delete(doc.reference);
+      }
+
+      await batch.commit();
     } catch (e) {
       throw 'Error al eliminar vehículo: $e';
     }
