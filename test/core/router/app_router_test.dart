@@ -191,4 +191,25 @@ void main() {
       '/mechanic_dashboard',
     );
   });
+
+  testWidgets('Renders 404 page on unknown route', (WidgetTester tester) async {
+    final authProvider = FakeAuthSessionProvider(isLoggedIn: true, currentUid: 'uid_1');
+    final ownerUser = UserModel(
+      idUsuario: 'uid_1',
+      nombreCompleto: 'Juan Owner',
+      correo: 'owner@test.com',
+      rol: 'Propietario',
+      fechaRegistro: DateTime.now(),
+    );
+    final profileProvider = FakeUserProfileProvider(userData: ownerUser, hasAttemptedFetch: true);
+    final router = createAppRouter(
+      authProvider,
+      profileProvider,
+      initialLocation: '/non_existent_route',
+    );
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+
+    expect(find.text('Página no encontrada (404)'), findsOneWidget);
+  });
 }

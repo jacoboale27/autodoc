@@ -268,13 +268,17 @@ String? appRouterRedirect(
 /// App Router Definition with auth guards
 GoRouter createAppRouter(
   AuthSessionProvider authProvider,
-  UserProfileProvider profileProvider,
-) {
+  UserProfileProvider profileProvider, {
+  String initialLocation = '/',
+}) {
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: initialLocation,
     refreshListenable: Listenable.merge([authProvider, profileProvider]),
     redirect: (BuildContext context, GoRouterState state) =>
         appRouterRedirect(authProvider, profileProvider, context, state),
+    errorBuilder: (context, state) => const Scaffold(
+      body: Center(child: Text('Página no encontrada (404)')),
+    ),
     routes: [
       GoRoute(
         path: '/',
@@ -556,14 +560,6 @@ GoRouter createAppRouter(
           context: context,
           state: state,
           child: const NotificationsScreen(),
-        ),
-      ),
-      GoRoute(
-        path: '/mechanic_pending',
-        pageBuilder: (context, state) => buildPageWithFadeThrough(
-          context: context,
-          state: state,
-          child: const MechanicPendingScreen(),
         ),
       ),
     ],
