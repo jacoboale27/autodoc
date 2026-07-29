@@ -6,8 +6,12 @@ import 'package:autodoc/firebase_options.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  debugPrint("Manejando mensaje en background: ${message.messageId}");
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
+  debugPrint("Handling a background message: ${message.messageId}");
 }
 
 class PushNotificationService {

@@ -85,8 +85,13 @@ void main() async {
   // 1. Inicializar Firebase
   debugPrint("=== [AutoDoc Init] Inicializando Firebase ===");
   final firebaseResult = await FirebaseBootstrap.initialize(
-    () =>
-        Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform),
+    () async {
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      }
+    },
   );
   if (!firebaseResult.isReady) {
     debugPrint(
