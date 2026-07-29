@@ -6,8 +6,8 @@ class VehicleService {
   final FirebaseFirestore _firestore;
   final String _collection = FirestoreCollections.vehiculos;
 
-  VehicleService({FirebaseFirestore? firestore}) 
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+  VehicleService({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   Future<List<VehicleModel>> getVehiclesByOwner(String ownerId) async {
     try {
@@ -49,16 +49,22 @@ class VehicleService {
   Future<void> deleteVehicle(String vehicleId) async {
     try {
       final batch = _firestore.batch();
-      
+
       final vehicleRef = _firestore.collection(_collection).doc(vehicleId);
       batch.delete(vehicleRef);
 
-      final services = await _firestore.collection(FirestoreCollections.servicios).where('id_vehiculo', isEqualTo: vehicleId).get();
+      final services = await _firestore
+          .collection(FirestoreCollections.servicios)
+          .where('id_vehiculo', isEqualTo: vehicleId)
+          .get();
       for (var doc in services.docs) {
         batch.delete(doc.reference);
       }
-      
-      final alerts = await _firestore.collection(FirestoreCollections.alertas).where('id_vehiculo', isEqualTo: vehicleId).get();
+
+      final alerts = await _firestore
+          .collection(FirestoreCollections.alertas)
+          .where('id_vehiculo', isEqualTo: vehicleId)
+          .get();
       for (var doc in alerts.docs) {
         batch.delete(doc.reference);
       }

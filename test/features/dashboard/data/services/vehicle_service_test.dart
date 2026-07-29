@@ -54,16 +54,28 @@ void main() {
 
     when(mockFirestore.batch()).thenReturn(fakeBatch);
 
-    when(mockFirestore.collection(FirestoreCollections.vehiculos)).thenReturn(mockVehiclesCollection);
+    when(
+      mockFirestore.collection(FirestoreCollections.vehiculos),
+    ).thenReturn(mockVehiclesCollection);
     when(mockVehiclesCollection.doc('v1')).thenReturn(mockVehicleDoc);
 
-    when(mockFirestore.collection(FirestoreCollections.servicios)).thenReturn(mockServiciosCollection);
-    when(mockServiciosCollection.where('id_vehiculo', isEqualTo: 'v1')).thenReturn(mockServiciosQuery);
-    when(mockServiciosQuery.get()).thenAnswer((_) async => mockServiciosSnapshot);
+    when(
+      mockFirestore.collection(FirestoreCollections.servicios),
+    ).thenReturn(mockServiciosCollection);
+    when(
+      mockServiciosCollection.where('id_vehiculo', isEqualTo: 'v1'),
+    ).thenReturn(mockServiciosQuery);
+    when(
+      mockServiciosQuery.get(),
+    ).thenAnswer((_) async => mockServiciosSnapshot);
     when(mockServiciosSnapshot.docs).thenReturn([]);
 
-    when(mockFirestore.collection(FirestoreCollections.alertas)).thenReturn(mockAlertasCollection);
-    when(mockAlertasCollection.where('id_vehiculo', isEqualTo: 'v1')).thenReturn(mockAlertasQuery);
+    when(
+      mockFirestore.collection(FirestoreCollections.alertas),
+    ).thenReturn(mockAlertasCollection);
+    when(
+      mockAlertasCollection.where('id_vehiculo', isEqualTo: 'v1'),
+    ).thenReturn(mockAlertasQuery);
     when(mockAlertasQuery.get()).thenAnswer((_) async => mockAlertasSnapshot);
     when(mockAlertasSnapshot.docs).thenReturn([]);
 
@@ -71,13 +83,19 @@ void main() {
   });
 
   group('VehicleService Tests', () {
-    test('Check that deleting a vehicle wraps Firestore calls in a WriteBatch', () async {
-      await vehicleService.deleteVehicle('v1');
+    test(
+      'Check that deleting a vehicle wraps Firestore calls in a WriteBatch',
+      () async {
+        await vehicleService.deleteVehicle('v1');
 
-      verify(mockFirestore.batch()).called(1);
-      expect(fakeBatch.deleted.length, 1); // Only the vehicle ref, since related are empty
-      expect(fakeBatch.deleted.first, mockVehicleDoc);
-      expect(fakeBatch.isCommitted, true);
-    });
+        verify(mockFirestore.batch()).called(1);
+        expect(
+          fakeBatch.deleted.length,
+          1,
+        ); // Only the vehicle ref, since related are empty
+        expect(fakeBatch.deleted.first, mockVehicleDoc);
+        expect(fakeBatch.isCommitted, true);
+      },
+    );
   });
 }
