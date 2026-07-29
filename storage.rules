@@ -55,7 +55,13 @@ service firebase.storage {
     // Reglas para imágenes de chat
     // Solo participantes de la conversación (autenticados)
     match /chat_images/{conversacionId}/{fileName} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isAuthenticated() && (
+        isAdmin() || (
+          firestore.exists(/databases/(default)/documents/conversaciones/$(conversacionId)) &&
+          (firestore.get(/databases/(default)/documents/conversaciones/$(conversacionId)).data.id_propietario == request.auth.uid ||
+           firestore.get(/databases/(default)/documents/conversaciones/$(conversacionId)).data.id_mecanico == request.auth.uid)
+        )
+      );
     }
 
     // Reglas para imágenes de vehículos
