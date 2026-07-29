@@ -67,6 +67,7 @@ void main() async {
   // 0. Cargar variables de entorno
   try {
     if (kIsWeb) {
+      WidgetsBinding.instance.ensureSemantics();
       final mapsKey = AppSecrets.googleMapsApiKey;
       if (mapsKey.isNotEmpty) {
         injectGoogleMapsScript(mapsKey);
@@ -80,22 +81,20 @@ void main() async {
 
   // 1. Inicializar Firebase
   debugPrint("=== [AutoDoc Init] Inicializando Firebase ===");
-  final firebaseResult = await FirebaseBootstrap.initialize(
-    () async {
-      try {
-        await Firebase.initializeApp(
-          options: DefaultFirebaseOptions.currentPlatform,
-        );
-      } catch (e) {
-        if (e.toString().contains('duplicate-app')) {
-          debugPrint('Firebase ya estaba inicializado (posible Hot Restart).');
-          Firebase.app(); // Asegurarnos de que Dart recupere la instancia
-        } else {
-          rethrow;
-        }
+  final firebaseResult = await FirebaseBootstrap.initialize(() async {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } catch (e) {
+      if (e.toString().contains('duplicate-app')) {
+        debugPrint('Firebase ya estaba inicializado (posible Hot Restart).');
+        Firebase.app(); // Asegurarnos de que Dart recupere la instancia
+      } else {
+        rethrow;
       }
-    },
-  );
+    }
+  });
   if (!firebaseResult.isReady) {
     debugPrint(
       "=== [AutoDoc Init] ERROR al inicializar Firebase: ${firebaseResult.error} ===",
