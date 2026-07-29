@@ -4,28 +4,31 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _i4;
-import 'dart:typed_data' as _i17;
+import 'dart:typed_data' as _i19;
 
-import 'package:autodoc/core/models/user_model.dart' as _i10;
-import 'package:autodoc/core/models/vehicle_model.dart' as _i12;
-import 'package:autodoc/core/services/vehicle_image_service.dart' as _i13;
+import 'package:autodoc/core/models/user_model.dart' as _i12;
+import 'package:autodoc/core/models/vehicle_model.dart' as _i14;
+import 'package:autodoc/core/services/vehicle_image_service.dart' as _i15;
 import 'package:autodoc/features/admin/data/services/admin_auth_service.dart'
-    as _i9;
-import 'package:autodoc/features/auth/data/services/auth_service.dart' as _i8;
-import 'package:autodoc/features/dashboard/data/services/vehicle_service.dart'
     as _i11;
+import 'package:autodoc/features/auth/data/services/auth_service.dart' as _i10;
+import 'package:autodoc/features/dashboard/data/services/vehicle_service.dart'
+    as _i13;
 import 'package:autodoc/features/profile/data/services/user_service.dart'
-    as _i15;
+    as _i17;
 import 'package:cloud_firestore/cloud_firestore.dart' as _i3;
+import 'package:cloud_functions/cloud_functions.dart' as _i9;
+import 'package:cloud_functions_platform_interface/cloud_functions_platform_interface.dart'
+    as _i8;
 import 'package:firebase_auth/firebase_auth.dart' as _i7;
 import 'package:firebase_core/firebase_core.dart' as _i2;
-import 'package:firebase_messaging/firebase_messaging.dart' as _i18;
+import 'package:firebase_messaging/firebase_messaging.dart' as _i20;
 import 'package:firebase_messaging_platform_interface/firebase_messaging_platform_interface.dart'
     as _i6;
 import 'package:firebase_storage/firebase_storage.dart' as _i5;
-import 'package:image_picker/image_picker.dart' as _i16;
+import 'package:image_picker/image_picker.dart' as _i18;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i14;
+import 'package:mockito/src/dummies.dart' as _i16;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -305,10 +308,31 @@ class _FakeSnapshotMetadata_24 extends _i1.SmartFake
         );
 }
 
+class _FakeFirebaseFunctionsPlatform_25 extends _i1.SmartFake
+    implements _i8.FirebaseFunctionsPlatform {
+  _FakeFirebaseFunctionsPlatform_25(
+    Object parent,
+    Invocation parentInvocation,
+  ) : super(
+          parent,
+          parentInvocation,
+        );
+}
+
+class _FakeHttpsCallable_26 extends _i1.SmartFake implements _i9.HttpsCallable {
+  _FakeHttpsCallable_26(
+    Object parent,
+    Invocation parentInvocation,
+  ) : super(
+          parent,
+          parentInvocation,
+        );
+}
+
 /// A class which mocks [AuthService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockAuthService extends _i1.Mock implements _i8.AuthService {
+class MockAuthService extends _i1.Mock implements _i10.AuthService {
   MockAuthService() {
     _i1.throwOnMissingStub(this);
   }
@@ -435,13 +459,13 @@ class MockAuthService extends _i1.Mock implements _i8.AuthService {
 /// A class which mocks [AdminAuthService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockAdminAuthService extends _i1.Mock implements _i9.AdminAuthService {
+class MockAdminAuthService extends _i1.Mock implements _i11.AdminAuthService {
   MockAdminAuthService() {
     _i1.throwOnMissingStub(this);
   }
 
   @override
-  _i4.Future<_i10.UserModel?> loginAsAdmin(
+  _i4.Future<_i12.UserModel?> loginAsAdmin(
     String? input,
     String? password,
   ) =>
@@ -453,8 +477,8 @@ class MockAdminAuthService extends _i1.Mock implements _i9.AdminAuthService {
             password,
           ],
         ),
-        returnValue: _i4.Future<_i10.UserModel?>.value(),
-      ) as _i4.Future<_i10.UserModel?>);
+        returnValue: _i4.Future<_i12.UserModel?>.value(),
+      ) as _i4.Future<_i12.UserModel?>);
 
   @override
   _i4.Future<bool> isAdmin(String? uid) => (super.noSuchMethod(
@@ -466,13 +490,13 @@ class MockAdminAuthService extends _i1.Mock implements _i9.AdminAuthService {
       ) as _i4.Future<bool>);
 
   @override
-  _i4.Future<_i10.UserModel?> getAdminByUid(String? uid) => (super.noSuchMethod(
+  _i4.Future<_i12.UserModel?> getAdminByUid(String? uid) => (super.noSuchMethod(
         Invocation.method(
           #getAdminByUid,
           [uid],
         ),
-        returnValue: _i4.Future<_i10.UserModel?>.value(),
-      ) as _i4.Future<_i10.UserModel?>);
+        returnValue: _i4.Future<_i12.UserModel?>.value(),
+      ) as _i4.Future<_i12.UserModel?>);
 
   @override
   _i4.Future<List<Map<String, String>>> seedAdminAccounts(
@@ -490,24 +514,24 @@ class MockAdminAuthService extends _i1.Mock implements _i9.AdminAuthService {
 /// A class which mocks [VehicleService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockVehicleService extends _i1.Mock implements _i11.VehicleService {
+class MockVehicleService extends _i1.Mock implements _i13.VehicleService {
   MockVehicleService() {
     _i1.throwOnMissingStub(this);
   }
 
   @override
-  _i4.Future<List<_i12.VehicleModel>> getVehiclesByOwner(String? ownerId) =>
+  _i4.Future<List<_i14.VehicleModel>> getVehiclesByOwner(String? ownerId) =>
       (super.noSuchMethod(
         Invocation.method(
           #getVehiclesByOwner,
           [ownerId],
         ),
         returnValue:
-            _i4.Future<List<_i12.VehicleModel>>.value(<_i12.VehicleModel>[]),
-      ) as _i4.Future<List<_i12.VehicleModel>>);
+            _i4.Future<List<_i14.VehicleModel>>.value(<_i14.VehicleModel>[]),
+      ) as _i4.Future<List<_i14.VehicleModel>>);
 
   @override
-  _i4.Future<void> addVehicle(_i12.VehicleModel? vehicle) =>
+  _i4.Future<void> addVehicle(_i14.VehicleModel? vehicle) =>
       (super.noSuchMethod(
         Invocation.method(
           #addVehicle,
@@ -518,7 +542,7 @@ class MockVehicleService extends _i1.Mock implements _i11.VehicleService {
       ) as _i4.Future<void>);
 
   @override
-  _i4.Future<void> updateVehicle(_i12.VehicleModel? vehicle) =>
+  _i4.Future<void> updateVehicle(_i14.VehicleModel? vehicle) =>
       (super.noSuchMethod(
         Invocation.method(
           #updateVehicle,
@@ -539,25 +563,25 @@ class MockVehicleService extends _i1.Mock implements _i11.VehicleService {
       ) as _i4.Future<void>);
 
   @override
-  _i4.Future<_i12.VehicleModel?> getVehicleByPlate(String? plate) =>
+  _i4.Future<_i14.VehicleModel?> getVehicleByPlate(String? plate) =>
       (super.noSuchMethod(
         Invocation.method(
           #getVehicleByPlate,
           [plate],
         ),
-        returnValue: _i4.Future<_i12.VehicleModel?>.value(),
-      ) as _i4.Future<_i12.VehicleModel?>);
+        returnValue: _i4.Future<_i14.VehicleModel?>.value(),
+      ) as _i4.Future<_i14.VehicleModel?>);
 
   @override
-  _i4.Future<List<_i12.VehicleModel>> getSharedVehicles(String? userId) =>
+  _i4.Future<List<_i14.VehicleModel>> getSharedVehicles(String? userId) =>
       (super.noSuchMethod(
         Invocation.method(
           #getSharedVehicles,
           [userId],
         ),
         returnValue:
-            _i4.Future<List<_i12.VehicleModel>>.value(<_i12.VehicleModel>[]),
-      ) as _i4.Future<List<_i12.VehicleModel>>);
+            _i4.Future<List<_i14.VehicleModel>>.value(<_i14.VehicleModel>[]),
+      ) as _i4.Future<List<_i14.VehicleModel>>);
 
   @override
   _i4.Future<Map<String, dynamic>> getExpenseSummary(String? vehicleId) =>
@@ -619,7 +643,7 @@ class MockVehicleService extends _i1.Mock implements _i11.VehicleService {
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockVehicleImageService extends _i1.Mock
-    implements _i13.VehicleImageService {
+    implements _i15.VehicleImageService {
   MockVehicleImageService() {
     _i1.throwOnMissingStub(this);
   }
@@ -644,7 +668,7 @@ class MockVehicleImageService extends _i1.Mock
             #color: color,
           },
         ),
-        returnValue: _i4.Future<String>.value(_i14.dummyValue<String>(
+        returnValue: _i4.Future<String>.value(_i16.dummyValue<String>(
           this,
           Invocation.method(
             #getVehicleImage,
@@ -664,23 +688,23 @@ class MockVehicleImageService extends _i1.Mock
 /// A class which mocks [UserService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockUserService extends _i1.Mock implements _i15.UserService {
+class MockUserService extends _i1.Mock implements _i17.UserService {
   MockUserService() {
     _i1.throwOnMissingStub(this);
   }
 
   @override
-  _i4.Future<_i10.UserModel?> getUserData(String? userId) =>
+  _i4.Future<_i12.UserModel?> getUserData(String? userId) =>
       (super.noSuchMethod(
         Invocation.method(
           #getUserData,
           [userId],
         ),
-        returnValue: _i4.Future<_i10.UserModel?>.value(),
-      ) as _i4.Future<_i10.UserModel?>);
+        returnValue: _i4.Future<_i12.UserModel?>.value(),
+      ) as _i4.Future<_i12.UserModel?>);
 
   @override
-  _i4.Future<void> updateUserData(_i10.UserModel? user) => (super.noSuchMethod(
+  _i4.Future<void> updateUserData(_i12.UserModel? user) => (super.noSuchMethod(
         Invocation.method(
           #updateUserData,
           [user],
@@ -690,7 +714,7 @@ class MockUserService extends _i1.Mock implements _i15.UserService {
       ) as _i4.Future<void>);
 
   @override
-  _i4.Future<void> createUserData(_i10.UserModel? user) => (super.noSuchMethod(
+  _i4.Future<void> createUserData(_i12.UserModel? user) => (super.noSuchMethod(
         Invocation.method(
           #createUserData,
           [user],
@@ -702,7 +726,7 @@ class MockUserService extends _i1.Mock implements _i15.UserService {
   @override
   _i4.Future<String> uploadProfilePhoto(
     String? userId,
-    _i16.XFile? imageFile,
+    _i18.XFile? imageFile,
   ) =>
       (super.noSuchMethod(
         Invocation.method(
@@ -712,7 +736,7 @@ class MockUserService extends _i1.Mock implements _i15.UserService {
             imageFile,
           ],
         ),
-        returnValue: _i4.Future<String>.value(_i14.dummyValue<String>(
+        returnValue: _i4.Future<String>.value(_i16.dummyValue<String>(
           this,
           Invocation.method(
             #uploadProfilePhoto,
@@ -788,7 +812,7 @@ class MockFirebaseFirestore extends _i1.Mock implements _i3.FirebaseFirestore {
   @override
   String get databaseId => (super.noSuchMethod(
         Invocation.getter(#databaseId),
-        returnValue: _i14.dummyValue<String>(
+        returnValue: _i16.dummyValue<String>(
           this,
           Invocation.getter(#databaseId),
         ),
@@ -870,7 +894,7 @@ class MockFirebaseFirestore extends _i1.Mock implements _i3.FirebaseFirestore {
       ) as _i4.Future<void>);
 
   @override
-  _i3.LoadBundleTask loadBundle(_i17.Uint8List? bundle) => (super.noSuchMethod(
+  _i3.LoadBundleTask loadBundle(_i19.Uint8List? bundle) => (super.noSuchMethod(
         Invocation.method(
           #loadBundle,
           [bundle],
@@ -1036,8 +1060,8 @@ class MockFirebaseFirestore extends _i1.Mock implements _i3.FirebaseFirestore {
             #maxAttempts: maxAttempts,
           },
         ),
-        returnValue: _i14.ifNotNull(
-              _i14.dummyValueOrNull<T>(
+        returnValue: _i16.ifNotNull(
+              _i16.dummyValueOrNull<T>(
                 this,
                 Invocation.method(
                   #runTransaction,
@@ -1139,7 +1163,7 @@ class MockFirebaseStorage extends _i1.Mock implements _i5.FirebaseStorage {
   @override
   String get bucket => (super.noSuchMethod(
         Invocation.getter(#bucket),
-        returnValue: _i14.dummyValue<String>(
+        returnValue: _i16.dummyValue<String>(
           this,
           Invocation.getter(#bucket),
         ),
@@ -1267,7 +1291,7 @@ class MockFirebaseStorage extends _i1.Mock implements _i5.FirebaseStorage {
 /// A class which mocks [FirebaseMessaging].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockFirebaseMessaging extends _i1.Mock implements _i18.FirebaseMessaging {
+class MockFirebaseMessaging extends _i1.Mock implements _i20.FirebaseMessaging {
   MockFirebaseMessaging() {
     _i1.throwOnMissingStub(this);
   }
@@ -1949,7 +1973,7 @@ class MockFirebaseAuth extends _i1.Mock implements _i7.FirebaseAuth {
           #verifyPasswordResetCode,
           [code],
         ),
-        returnValue: _i4.Future<String>.value(_i14.dummyValue<String>(
+        returnValue: _i4.Future<String>.value(_i16.dummyValue<String>(
           this,
           Invocation.method(
             #verifyPasswordResetCode,
@@ -2100,7 +2124,7 @@ class MockUser extends _i1.Mock implements _i7.User {
   @override
   String get uid => (super.noSuchMethod(
         Invocation.getter(#uid),
-        returnValue: _i14.dummyValue<String>(
+        returnValue: _i16.dummyValue<String>(
           this,
           Invocation.getter(#uid),
         ),
@@ -2435,7 +2459,7 @@ class MockCollectionReference<T extends Object?> extends _i1.Mock
   @override
   String get id => (super.noSuchMethod(
         Invocation.getter(#id),
-        returnValue: _i14.dummyValue<String>(
+        returnValue: _i16.dummyValue<String>(
           this,
           Invocation.getter(#id),
         ),
@@ -2444,7 +2468,7 @@ class MockCollectionReference<T extends Object?> extends _i1.Mock
   @override
   String get path => (super.noSuchMethod(
         Invocation.getter(#path),
-        returnValue: _i14.dummyValue<String>(
+        returnValue: _i16.dummyValue<String>(
           this,
           Invocation.getter(#path),
         ),
@@ -2937,7 +2961,7 @@ class MockDocumentReference<T extends Object?> extends _i1.Mock
   @override
   String get id => (super.noSuchMethod(
         Invocation.getter(#id),
-        returnValue: _i14.dummyValue<String>(
+        returnValue: _i16.dummyValue<String>(
           this,
           Invocation.getter(#id),
         ),
@@ -2955,7 +2979,7 @@ class MockDocumentReference<T extends Object?> extends _i1.Mock
   @override
   String get path => (super.noSuchMethod(
         Invocation.getter(#path),
-        returnValue: _i14.dummyValue<String>(
+        returnValue: _i16.dummyValue<String>(
           this,
           Invocation.getter(#path),
         ),
@@ -3555,4 +3579,250 @@ class MockQuerySnapshot<T extends Object?> extends _i1.Mock
         Invocation.getter(#size),
         returnValue: 0,
       ) as int);
+}
+
+/// A class which mocks [QueryDocumentSnapshot].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockQueryDocumentSnapshot<T extends Object?> extends _i1.Mock
+    implements _i3.QueryDocumentSnapshot<T> {
+  MockQueryDocumentSnapshot() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  String get id => (super.noSuchMethod(
+        Invocation.getter(#id),
+        returnValue: _i16.dummyValue<String>(
+          this,
+          Invocation.getter(#id),
+        ),
+      ) as String);
+
+  @override
+  _i3.DocumentReference<T> get reference => (super.noSuchMethod(
+        Invocation.getter(#reference),
+        returnValue: _FakeDocumentReference_7<T>(
+          this,
+          Invocation.getter(#reference),
+        ),
+      ) as _i3.DocumentReference<T>);
+
+  @override
+  _i3.SnapshotMetadata get metadata => (super.noSuchMethod(
+        Invocation.getter(#metadata),
+        returnValue: _FakeSnapshotMetadata_24(
+          this,
+          Invocation.getter(#metadata),
+        ),
+      ) as _i3.SnapshotMetadata);
+
+  @override
+  bool get exists => (super.noSuchMethod(
+        Invocation.getter(#exists),
+        returnValue: false,
+      ) as bool);
+
+  @override
+  T data() => (super.noSuchMethod(
+        Invocation.method(
+          #data,
+          [],
+        ),
+        returnValue: _i16.dummyValue<T>(
+          this,
+          Invocation.method(
+            #data,
+            [],
+          ),
+        ),
+      ) as T);
+
+  @override
+  dynamic get(Object? field) => super.noSuchMethod(Invocation.method(
+        #get,
+        [field],
+      ));
+
+  @override
+  dynamic operator [](Object? field) => super.noSuchMethod(Invocation.method(
+        #[],
+        [field],
+      ));
+}
+
+/// A class which mocks [WriteBatch].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockWriteBatch extends _i1.Mock implements _i3.WriteBatch {
+  MockWriteBatch() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  _i4.Future<void> commit() => (super.noSuchMethod(
+        Invocation.method(
+          #commit,
+          [],
+        ),
+        returnValue: _i4.Future<void>.value(),
+        returnValueForMissingStub: _i4.Future<void>.value(),
+      ) as _i4.Future<void>);
+
+  @override
+  void delete(_i3.DocumentReference<Object?>? document) => super.noSuchMethod(
+        Invocation.method(
+          #delete,
+          [document],
+        ),
+        returnValueForMissingStub: null,
+      );
+
+  @override
+  void set<T>(
+    _i3.DocumentReference<T>? document,
+    T? data, [
+    _i3.SetOptions? options,
+  ]) =>
+      super.noSuchMethod(
+        Invocation.method(
+          #set,
+          [
+            document,
+            data,
+            options,
+          ],
+        ),
+        returnValueForMissingStub: null,
+      );
+
+  @override
+  void update<T>(
+    _i3.DocumentReference<T>? document,
+    T? data,
+  ) =>
+      super.noSuchMethod(
+        Invocation.method(
+          #update,
+          [
+            document,
+            data,
+          ],
+        ),
+        returnValueForMissingStub: null,
+      );
+}
+
+/// A class which mocks [FirebaseFunctions].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockFirebaseFunctions extends _i1.Mock implements _i9.FirebaseFunctions {
+  MockFirebaseFunctions() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  _i2.FirebaseApp get app => (super.noSuchMethod(
+        Invocation.getter(#app),
+        returnValue: _FakeFirebaseApp_0(
+          this,
+          Invocation.getter(#app),
+        ),
+      ) as _i2.FirebaseApp);
+
+  @override
+  _i8.FirebaseFunctionsPlatform get delegate => (super.noSuchMethod(
+        Invocation.getter(#delegate),
+        returnValue: _FakeFirebaseFunctionsPlatform_25(
+          this,
+          Invocation.getter(#delegate),
+        ),
+      ) as _i8.FirebaseFunctionsPlatform);
+
+  @override
+  Map<dynamic, dynamic> get pluginConstants => (super.noSuchMethod(
+        Invocation.getter(#pluginConstants),
+        returnValue: <dynamic, dynamic>{},
+      ) as Map<dynamic, dynamic>);
+
+  @override
+  _i9.HttpsCallable httpsCallable(
+    String? name, {
+    _i9.HttpsCallableOptions? options,
+  }) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #httpsCallable,
+          [name],
+          {#options: options},
+        ),
+        returnValue: _FakeHttpsCallable_26(
+          this,
+          Invocation.method(
+            #httpsCallable,
+            [name],
+            {#options: options},
+          ),
+        ),
+      ) as _i9.HttpsCallable);
+
+  @override
+  _i9.HttpsCallable httpsCallableFromUrl(
+    String? url, {
+    _i9.HttpsCallableOptions? options,
+  }) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #httpsCallableFromUrl,
+          [url],
+          {#options: options},
+        ),
+        returnValue: _FakeHttpsCallable_26(
+          this,
+          Invocation.method(
+            #httpsCallableFromUrl,
+            [url],
+            {#options: options},
+          ),
+        ),
+      ) as _i9.HttpsCallable);
+
+  @override
+  _i9.HttpsCallable httpsCallableFromUri(
+    Uri? uri, {
+    _i9.HttpsCallableOptions? options,
+  }) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #httpsCallableFromUri,
+          [uri],
+          {#options: options},
+        ),
+        returnValue: _FakeHttpsCallable_26(
+          this,
+          Invocation.method(
+            #httpsCallableFromUri,
+            [uri],
+            {#options: options},
+          ),
+        ),
+      ) as _i9.HttpsCallable);
+
+  @override
+  void useFunctionsEmulator(
+    String? host,
+    int? port, {
+    bool? automaticHostMapping = true,
+  }) =>
+      super.noSuchMethod(
+        Invocation.method(
+          #useFunctionsEmulator,
+          [
+            host,
+            port,
+          ],
+          {#automaticHostMapping: automaticHostMapping},
+        ),
+        returnValueForMissingStub: null,
+      );
 }

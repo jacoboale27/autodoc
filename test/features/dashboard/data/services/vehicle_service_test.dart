@@ -18,7 +18,7 @@ class FakeWriteBatch implements WriteBatch {
   void set<T>(DocumentReference<T> document, T data, [SetOptions? options]) {}
 
   @override
-  void update(DocumentReference document, Map<Object, Object?> data) {}
+  void update<T>(DocumentReference<T> document, T data) {}
 
   @override
   Future<void> commit() async {
@@ -28,6 +28,7 @@ class FakeWriteBatch implements WriteBatch {
 
 void main() {
   late MockFirebaseFirestore mockFirestore;
+  late MockFirebaseFunctions mockFunctions;
   late FakeWriteBatch fakeBatch;
   late MockCollectionReference<Map<String, dynamic>> mockVehiclesCollection;
   late MockCollectionReference<Map<String, dynamic>> mockServiciosCollection;
@@ -42,6 +43,7 @@ void main() {
 
   setUp(() {
     mockFirestore = MockFirebaseFirestore();
+    mockFunctions = MockFirebaseFunctions();
     fakeBatch = FakeWriteBatch();
     mockVehiclesCollection = MockCollectionReference();
     mockServiciosCollection = MockCollectionReference();
@@ -79,7 +81,10 @@ void main() {
     when(mockAlertasQuery.get()).thenAnswer((_) async => mockAlertasSnapshot);
     when(mockAlertasSnapshot.docs).thenReturn([]);
 
-    vehicleService = VehicleService(firestore: mockFirestore);
+    vehicleService = VehicleService(
+      firestore: mockFirestore,
+      functions: mockFunctions,
+    );
   });
 
   group('VehicleService Tests', () {
