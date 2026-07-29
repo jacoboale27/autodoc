@@ -104,8 +104,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
         child: Column(
           children: [
             // Header
-            if (!ResponsiveBreakpoints.of(context).largerThan(TABLET))
-              _buildHeader(colors, isDark),
+            _buildHeader(colors, isDark),
             // Search Bar
             _buildSearchBar(colors, isDark),
             // Filters
@@ -274,9 +273,10 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
   }
 
   Widget _buildHeader(AppColors colors, bool isDark) {
+    final isDesktop = ResponsiveBreakpoints.of(context).largerThan(TABLET);
     return Container(
       padding: EdgeInsets.all(Responsive.padding(context, 16)),
-      decoration: BoxDecoration(
+      decoration: isDesktop ? null : BoxDecoration(
         color: isDark
             ? const Color(0xFF1E293B).withValues(alpha: 0.8)
             : Colors.white.withValues(alpha: 0.8),
@@ -285,20 +285,23 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
         ),
       ),
       child: Row(
+        mainAxisAlignment: isDesktop ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
-          IconButton(
-            icon: Icon(Icons.arrow_back, color: colors.textPrimary),
-            onPressed: () => context.pop(),
-          ),
-          Text(
-            context.l10n.wdTitle,
-            style: GoogleFonts.inter(
-              fontSize: Responsive.fontSize(context, 20),
-              fontWeight: FontWeight.bold,
-              color: colors.textPrimary,
+          if (!isDesktop) ...[
+            IconButton(
+              icon: Icon(Icons.arrow_back, color: colors.textPrimary),
+              onPressed: () => context.pop(),
             ),
-          ),
-          const Spacer(),
+            Text(
+              context.l10n.wdTitle,
+              style: GoogleFonts.inter(
+                fontSize: Responsive.fontSize(context, 20),
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+              ),
+            ),
+            const Spacer(),
+          ],
           // Toggle Map/List
           Container(
             decoration: BoxDecoration(

@@ -38,8 +38,7 @@ class GarageScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            if (!ResponsiveBreakpoints.of(context).largerThan(TABLET))
-              _buildHeader(context, colors),
+            _buildHeader(context, colors),
             Expanded(
               child: vehicleProvider.isLoading
                   ? AppSkeletonLayouts.listCards(itemCount: 3, cardHeight: 140)
@@ -80,30 +79,33 @@ class GarageScreen extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context, AppColors colors) {
+    final isDesktop = ResponsiveBreakpoints.of(context).largerThan(TABLET);
     return Container(
       padding: EdgeInsets.all(Responsive.padding(context, 16)),
-      decoration: BoxDecoration(
+      decoration: isDesktop ? null : BoxDecoration(
         color: colors.surfaceContainer.withValues(alpha: 0.8),
         border: Border(
           bottom: BorderSide(color: colors.primary.withValues(alpha: 0.1)),
         ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: isDesktop ? MainAxisAlignment.end : MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back),
-            color: colors.primary,
-            onPressed: () => context.pop(),
-          ),
-          Text(
-            context.l10n.garageMyVehicles,
-            style: GoogleFonts.inter(
-              fontSize: Responsive.fontSize(context, 18),
-              fontWeight: FontWeight.bold,
-              color: colors.textPrimary,
+          if (!isDesktop) ...[
+            IconButton(
+              icon: const Icon(Icons.arrow_back),
+              color: colors.primary,
+              onPressed: () => context.pop(),
             ),
-          ),
+            Text(
+              context.l10n.garageMyVehicles,
+              style: GoogleFonts.inter(
+                fontSize: Responsive.fontSize(context, 18),
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+              ),
+            ),
+          ],
           Container(
             decoration: BoxDecoration(
               color: colors.primary,
