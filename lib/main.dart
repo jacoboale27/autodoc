@@ -10,8 +10,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
+import 'package:autodoc/config/secrets.dart';
 
 import 'package:autodoc/core/utils/map_injector.dart';
 import 'package:autodoc/core/bootstrap/firebase_bootstrap.dart';
@@ -66,19 +66,15 @@ void main() async {
 
   // 0. Cargar variables de entorno
   try {
-    await dotenv.load(fileName: "app.env");
-    debugPrint(
-      "=== [AutoDoc Init] Variables de entorno cargadas con éxito ===",
-    );
     if (kIsWeb) {
-      final mapsKey = dotenv.env['GOOGLE_MAPS_API_KEY'];
-      if (mapsKey != null && mapsKey.isNotEmpty) {
+      final mapsKey = AppSecrets.googleMapsApiKey;
+      if (mapsKey.isNotEmpty) {
         injectGoogleMapsScript(mapsKey);
       }
     }
   } catch (e) {
     debugPrint(
-      "=== [AutoDoc Init] Advertencia: No se pudo cargar .env: $e ===",
+      "=== [AutoDoc Init] Advertencia al configurar variables de entorno: $e ===",
     );
   }
 

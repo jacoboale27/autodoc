@@ -83,7 +83,11 @@ service cloud.firestore {
 
     // 3. Tabla de Vehículos
     match /vehiculos/{vehiculoId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        resource.data.id_propietario == request.auth.uid 
+        || isMecanico() 
+        || isAdmin()
+      );
       
       // Solo el propietario registrado del vehículo puede crearlo o eliminarlo
       allow create: if isAuthenticated() && request.resource.data.id_propietario == request.auth.uid;
@@ -100,7 +104,11 @@ service cloud.firestore {
 
     // 4. Tabla de Servicios (Historial de Mantenimiento)
     match /servicios/{servicioId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        isVehicleOwner(resource.data.id_vehiculo)
+        || isMecanico()
+        || isAdmin()
+      );
       
       // Solo mecánicos y administradores pueden registrar nuevos servicios/mantenimientos
       allow create: if isAuthenticated() && (isMecanico() || isAdmin());
