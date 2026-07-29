@@ -29,6 +29,8 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   final TextEditingController _kmController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _costoController = TextEditingController();
+  final TextEditingController _manoDeObraController = TextEditingController();
+  final List<Map<String, dynamic>> _materiales = [];
   final Set<String> _completedTaskIds = {};
   bool _isSaving = false;
   XFile? _invoiceImage;
@@ -77,6 +79,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   void initState() {
     super.initState();
     _kmController.text = widget.vehicle.kilometrajeActual.toString();
+    _manoDeObraController.addListener(_updateTotalCost);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AlertProvider>().fetchAlerts(
         widget.vehicle.idVehiculo,
@@ -85,11 +88,27 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     });
   }
 
+  void _updateTotalCost() {
+    double totalMateriales = 0;
+    for (var m in _materiales) {
+      double subtotal = (m['cantidad'] as num).toDouble() * (m['precioUnitario'] as num).toDouble();
+      totalMateriales += subtotal;
+    }
+    double manoDeObra = double.tryParse(_manoDeObraController.text) ?? 0;
+    double total = totalMateriales + manoDeObra;
+    if (total > 0) {
+      _costoController.text = total.toStringAsFixed(2);
+    } else {
+      _costoController.text = '';
+    }
+  }
+
   @override
   void dispose() {
     _kmController.dispose();
     _notesController.dispose();
     _costoController.dispose();
+    _manoDeObraController.dispose();
     super.dispose();
   }
 
@@ -130,6 +149,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       final tallerId = userSession.userData?.idUsuario ?? 'taller_anonimo';
 
       final costoDouble = double.tryParse(_costoController.text);
+      final manoDeObraDouble = double.tryParse(_manoDeObraController.text);
 
       for (var taskId in _completedTaskIds) {
         await alertProvider.tallerUpdateService(
@@ -138,6 +158,8 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           tallerId: tallerId,
           descripcion: _notesController.text,
           costo: costoDouble,
+          manoDeObra: manoDeObraDouble,
+          materiales: _materiales,
           receiptImage: _invoiceImage,
         );
       }
@@ -204,7 +226,17 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
             _buildMaintenanceTasks(alertProvider, colors),
             const SizedBox(height: 24),
 
-            _buildSectionTitle('COSTO DEL SERVICIO (OPCIONAL)', colors),
+            _buildSectionTitle('MATERIALES / REPUESTOS', colors),
+            const SizedBox(height: 12),
+            _buildMaterialesList(colors),
+            const SizedBox(height: 24),
+
+            _buildSectionTitle('MANO DE OBRA', colors),
+            const SizedBox(height: 12),
+            _buildManoDeObraInput(colors),
+            const SizedBox(height: 24),
+
+            _buildSectionTitle('COSTO DEL SERVICIO (TOTAL)', colors),
             const SizedBox(height: 12),
             _buildCostoInput(colors),
             const SizedBox(height: 24),
@@ -551,6 +583,42 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           Expanded(
             child: TextField(
               controller: _costoController,
+              readOnly: true,
+              style: GoogleFonts.inter(
+                fontSize: Responsive.fontSize(context, 18),
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+              ),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                hintText: 'Calculado automáticamente',
+                hintStyle: GoogleFonts.inter(color: colors.textSecondary),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildManoDeObraInput(AppColors colors) {
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surfaceContainer,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: Responsive.padding(context, 20),
+        vertical: Responsive.padding(context, 8),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.build_circle_outlined, color: colors.secondary),
+          const SizedBox(width: 16),
+          Expanded(
+            child: TextField(
+              controller: _manoDeObraController,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
@@ -561,13 +629,174 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
               ),
               decoration: InputDecoration(
                 border: InputBorder.none,
-                hintText: 'Ej. 150.00',
+                hintText: 'Costo mano de obra',
                 hintStyle: GoogleFonts.inter(color: colors.textSecondary),
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMaterialesList(AppColors colors) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_materiales.isEmpty)
+          Text(
+            'No hay materiales agregados.',
+            style: GoogleFonts.inter(color: colors.textSecondary),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _materiales.length,
+            itemBuilder: (context, index) {
+              final item = _materiales[index];
+              final subtotal = (item['cantidad'] as num).toDouble() *
+                  (item['precioUnitario'] as num).toDouble();
+              return Card(
+                color: colors.surfaceContainer,
+                margin: const EdgeInsets.only(bottom: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: colors.textSecondary.withValues(alpha: 0.2),
+                  ),
+                ),
+                elevation: 0,
+                child: ListTile(
+                  title: Text(
+                    item['nombre'],
+                    style: GoogleFonts.inter(
+                        fontWeight: FontWeight.bold, color: colors.textPrimary),
+                  ),
+                  subtitle: Text(
+                    'Cant: ${item['cantidad']} | P.U: \$${(item['precioUnitario'] as num).toStringAsFixed(2)}',
+                    style: GoogleFonts.inter(color: colors.textSecondary),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '\$${subtotal.toStringAsFixed(2)}',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          color: colors.primary,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.delete, color: colors.error),
+                        onPressed: () {
+                          setState(() {
+                            _materiales.removeAt(index);
+                            _updateTotalCost();
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () => _showAddMaterialDialog(colors),
+          icon: const Icon(Icons.add),
+          label: const Text('Agregar Material/Repuesto'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: colors.primary,
+            side: BorderSide(color: colors.primary),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showAddMaterialDialog(AppColors colors) async {
+    final nombreController = TextEditingController();
+    final cantidadController = TextEditingController();
+    final precioController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: colors.surface,
+          title: Text(
+            'Agregar Material',
+            style: GoogleFonts.montserrat(
+                fontWeight: FontWeight.bold, color: colors.textPrimary),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nombreController,
+                style: GoogleFonts.inter(color: colors.textPrimary),
+                decoration: InputDecoration(
+                  labelText: 'Nombre o descripción',
+                  labelStyle: TextStyle(color: colors.textSecondary),
+                ),
+              ),
+              TextField(
+                controller: cantidadController,
+                keyboardType: TextInputType.number,
+                style: GoogleFonts.inter(color: colors.textPrimary),
+                decoration: InputDecoration(
+                  labelText: 'Cantidad',
+                  labelStyle: TextStyle(color: colors.textSecondary),
+                ),
+              ),
+              TextField(
+                controller: precioController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                style: GoogleFonts.inter(color: colors.textPrimary),
+                decoration: InputDecoration(
+                  labelText: 'Precio Unitario',
+                  labelStyle: TextStyle(color: colors.textSecondary),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancelar', style: TextStyle(color: colors.textSecondary)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final nombre = nombreController.text.trim();
+                final cantidad = double.tryParse(cantidadController.text);
+                final precio = double.tryParse(precioController.text);
+
+                if (nombre.isNotEmpty && cantidad != null && precio != null) {
+                  setState(() {
+                    _materiales.add({
+                      'nombre': nombre,
+                      'cantidad': cantidad,
+                      'precioUnitario': precio,
+                    });
+                    _updateTotalCost();
+                  });
+                  Navigator.pop(context);
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.primary,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Agregar'),
+            ),
+          ],
+        );
+      },
     );
   }
 

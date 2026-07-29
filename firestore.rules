@@ -71,8 +71,12 @@ service cloud.firestore {
       // Mecánicos y Administradores pueden registrar talleres
       allow create: if isAuthenticated() && (isMecanico() || isAdmin());
       
-      // Mecánicos pueden actualizar la información de su taller; los admins tienen acceso total
-      allow update: if isAuthenticated() && (isMecanico() || isAdmin());
+      // Mecánicos pueden actualizar la información de su taller; los admins tienen acceso total.
+      // Usuarios normales solo pueden actualizar la calificación y total de reseñas.
+      allow update: if isAuthenticated() && (
+        isMecanico() || isAdmin() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['calificacion_promedio', 'total_resenias'])
+      );
       
       allow delete: if isAdmin();
     }

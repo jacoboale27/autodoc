@@ -29,6 +29,7 @@ class _CotizacionPickerState extends State<CotizacionPicker> {
       final desc = _descController.text.trim();
       final total = double.tryParse(_totalController.text.trim()) ?? 0.0;
       widget.onConfirm(desc, total);
+      Navigator.pop(context);
     }
   }
 
