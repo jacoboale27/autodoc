@@ -12,6 +12,7 @@ import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_scaffold.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
+import 'package:responsive_framework/responsive_framework.dart';
 import 'package:autodoc/core/widgets/app_skeleton.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 
@@ -103,7 +104,8 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
         child: Column(
           children: [
             // Header
-            _buildHeader(colors, isDark),
+            if (!ResponsiveBreakpoints.of(context).largerThan(TABLET))
+              _buildHeader(colors, isDark),
             // Search Bar
             _buildSearchBar(colors, isDark),
             // Filters

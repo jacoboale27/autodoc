@@ -14,6 +14,7 @@ import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_scaffold.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
+import 'package:responsive_framework/responsive_framework.dart';
 import '../widgets/add_vehicle_form.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
@@ -37,7 +38,8 @@ class GarageScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(context, colors),
+            if (!ResponsiveBreakpoints.of(context).largerThan(TABLET))
+              _buildHeader(context, colors),
             Expanded(
               child: vehicleProvider.isLoading
                   ? AppSkeletonLayouts.listCards(itemCount: 3, cardHeight: 140)

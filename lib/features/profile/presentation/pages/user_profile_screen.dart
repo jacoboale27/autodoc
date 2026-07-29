@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:responsive_framework/responsive_framework.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -115,7 +116,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
     if (user == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(context.l10n.upProfileTitle)),
+        appBar: ResponsiveBreakpoints.of(context).largerThan(TABLET) ? null : AppBar(title: Text(context.l10n.upProfileTitle)),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -174,7 +175,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              _buildAppBar(context, primaryPurple, textColor),
+              if (!ResponsiveBreakpoints.of(context).largerThan(TABLET))
+                _buildAppBar(context, primaryPurple, textColor),
               Expanded(
                 child: SingleChildScrollView(
                   padding: EdgeInsets.all(Responsive.padding(context, 24.0)),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:responsive_framework/responsive_framework.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
@@ -46,7 +47,7 @@ class _ConversacionesListScreenState extends State<ConversacionesListScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? colors.surfaceContainer : colors.surface,
-      appBar: AppBar(
+      appBar: ResponsiveBreakpoints.of(context).largerThan(TABLET) ? null : AppBar(
         title: Text(
           'Mensajes',
           style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold),
