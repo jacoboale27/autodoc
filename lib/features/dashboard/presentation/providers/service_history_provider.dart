@@ -4,6 +4,11 @@ import '../../../../core/models/service_record_model.dart';
 import '../../../../core/constants/firestore_collections.dart';
 
 class ServiceHistoryProvider with ChangeNotifier {
+  final FirebaseFirestore _firestore;
+
+  ServiceHistoryProvider({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
+
   DocumentSnapshot? _lastDocument;
   bool _hasMore = true;
   bool _isLoading = false;
@@ -34,7 +39,7 @@ class ServiceHistoryProvider with ChangeNotifier {
     }
 
     try {
-      var query = FirebaseFirestore.instance
+      var query = _firestore
           .collection(FirestoreCollections.servicios)
           .where('id_vehiculo', isEqualTo: vehicleId)
           .orderBy('fecha', descending: true)
@@ -48,15 +53,12 @@ class ServiceHistoryProvider with ChangeNotifier {
 
       if (snapshot.docs.isNotEmpty) {
         _lastDocument = snapshot.docs.last;
+        final newServices = snapshot.docs
+            .map((doc) => ServiceRecordModel.fromMap(doc.data(), doc.id))
+            .toList();
+        final existingIds = _services.map((s) => s.idServicio).toSet();
         _services.addAll(
-          snapshot.docs
-              .map(
-                (doc) => ServiceRecordModel.fromMap(
-                  doc.data(),
-                  doc.id,
-                ),
-              )
-              .toList(),
+          newServices.where((s) => !existingIds.contains(s.idServicio)),
         );
       }
 
