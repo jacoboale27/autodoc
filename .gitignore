@@ -53,6 +53,7 @@ analysis_output.txt
 build_help.txt
 help.txt
 users.json
+staged_diff.txt
 
 # Agents and tools
 .agents/
@@ -67,7 +68,5 @@ node_modules/
 
 testsprite_tests\tmp\config.json
 graphify-out/
-
-.worktrees/
 
 .worktrees/
