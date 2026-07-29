@@ -38,16 +38,17 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
 
   Future<void> _pickInvoiceDocument() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
-        withData: kIsWeb,
       );
       if (result != null) {
         final file = result.files.single;
+        final webBytes = kIsWeb ? await file.readAsBytes() : null;
+        if (!mounted) return;
         setState(() {
-          if (kIsWeb && file.bytes != null) {
-            _invoiceImage = XFile.fromData(file.bytes!, name: file.name);
+          if (webBytes != null) {
+            _invoiceImage = XFile.fromData(webBytes, name: file.name);
           } else if (file.path != null) {
             _invoiceImage = XFile(file.path!);
           }

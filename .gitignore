@@ -41,6 +41,7 @@ app.*.map.json
 
 # Security and Secrets
 .env
+app.env
 !.env.example
 DEV_SETUP.md
 ios/Runner/GoogleService-Info.plist

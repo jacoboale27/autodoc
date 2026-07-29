@@ -14,6 +14,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 
 import 'package:autodoc/core/utils/map_injector.dart';
+import 'package:autodoc/core/bootstrap/firebase_bootstrap.dart';
 import 'package:autodoc/core/providers/language_provider.dart';
 import 'package:autodoc/core/services/translation_service.dart';
 import 'package:autodoc/firebase_options.dart';
@@ -34,6 +35,7 @@ import 'package:autodoc/core/providers/notification_center_provider.dart';
 import 'package:autodoc/features/chat/data/models/mensaje_model.dart';
 
 import 'package:autodoc/core/services/push_notification_service.dart';
+import 'package:autodoc/core/widgets/firebase_initialization_error_screen.dart';
 
 /// Resolves the deep link destination route from a push notification payload.
 /// Returns null if no routing action should be taken.
@@ -64,7 +66,7 @@ void main() async {
 
   // 0. Cargar variables de entorno
   try {
-    await dotenv.load(fileName: ".env");
+    await dotenv.load(fileName: "app.env");
     debugPrint(
       "=== [AutoDoc Init] Variables de entorno cargadas con éxito ===",
     );
@@ -81,16 +83,19 @@ void main() async {
   }
 
   // 1. Inicializar Firebase
-  try {
-    debugPrint("=== [AutoDoc Init] Inicializando Firebase ===");
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
+  debugPrint("=== [AutoDoc Init] Inicializando Firebase ===");
+  final firebaseResult = await FirebaseBootstrap.initialize(
+    () =>
+        Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform),
+  );
+  if (!firebaseResult.isReady) {
+    debugPrint(
+      "=== [AutoDoc Init] ERROR al inicializar Firebase: ${firebaseResult.error} ===",
     );
-    debugPrint("=== [AutoDoc Init] Firebase inicializado con éxito ===");
-  } catch (e, stack) {
-    debugPrint("=== [AutoDoc Init] ERROR al inicializar Firebase: $e ===");
-    debugPrint(stack.toString());
+    runApp(const FirebaseInitializationErrorApp());
+    return;
   }
+  debugPrint("=== [AutoDoc Init] Firebase inicializado con éxito ===");
 
   // 2. Configurar Firebase Crashlytics
   try {
