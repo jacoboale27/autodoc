@@ -86,10 +86,17 @@ void main() async {
   debugPrint("=== [AutoDoc Init] Inicializando Firebase ===");
   final firebaseResult = await FirebaseBootstrap.initialize(
     () async {
-      if (Firebase.apps.isEmpty) {
+      try {
         await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform,
         );
+      } catch (e) {
+        if (e.toString().contains('duplicate-app')) {
+          debugPrint('Firebase ya estaba inicializado (posible Hot Restart).');
+          Firebase.app(); // Asegurarnos de que Dart recupere la instancia
+        } else {
+          rethrow;
+        }
       }
     },
   );
