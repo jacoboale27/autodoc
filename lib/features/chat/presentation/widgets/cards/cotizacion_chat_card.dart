@@ -29,6 +29,8 @@ class CotizacionChatCard extends StatelessWidget {
     final double precioRaw = metadata['total']?.toDouble() ?? 0.0;
     final String estado =
         metadata['estado'] ?? 'pendiente'; // pendiente, aceptada, rechazada
+    final double? manoDeObra = metadata['mano_de_obra']?.toDouble();
+    final List<dynamic>? materiales = metadata['materiales'] as List<dynamic>?;
 
     Color badgeColor = Colors.orange;
     String badgeText = 'Pendiente';
@@ -117,6 +119,60 @@ class CotizacionChatCard extends StatelessWidget {
                     color: isMe ? Colors.white : colors.textPrimary,
                   ),
                 ),
+                if (materiales != null && materiales.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'Materiales:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isMe ? Colors.white70 : colors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  ...materiales.map((m) {
+                    final nombre = m['nombre'] ?? 'Item';
+                    final cantidad = m['cantidad'] ?? 1;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '- $nombre (x$cantidad)',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isMe ? Colors.white : colors.textPrimary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ],
+                if (manoDeObra != null) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Mano de obra:',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isMe ? Colors.white70 : colors.textSecondary,
+                        ),
+                      ),
+                      Text(
+                        '\$${manoDeObra.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isMe ? Colors.white : colors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 12),
                 const Divider(height: 1, color: Colors.black12),
                 const SizedBox(height: 12),

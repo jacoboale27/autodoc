@@ -10,6 +10,8 @@ class CotizacionModel {
   final double total;
   final String estado; // 'pendiente', 'aceptada', 'rechazada'
   final DateTime fecha;
+  final double? manoDeObra;
+  final List<Map<String, dynamic>>? materiales;
 
   CotizacionModel({
     required this.id,
@@ -21,6 +23,8 @@ class CotizacionModel {
     required this.total,
     this.estado = 'pendiente',
     required this.fecha,
+    this.manoDeObra,
+    this.materiales,
   });
 
   factory CotizacionModel.fromMap(Map<String, dynamic> map, String documentId) {
@@ -34,6 +38,10 @@ class CotizacionModel {
       total: (map['total'] ?? 0.0).toDouble(),
       estado: map['estado'] ?? 'pendiente',
       fecha: (map['fecha'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      manoDeObra: map['mano_de_obra']?.toDouble(),
+      materiales: map['materiales'] != null
+          ? List<Map<String, dynamic>>.from(map['materiales'])
+          : null,
     );
   }
 
@@ -47,6 +55,8 @@ class CotizacionModel {
       'total': total,
       'estado': estado,
       'fecha': Timestamp.fromDate(fecha),
+      if (manoDeObra != null) 'mano_de_obra': manoDeObra,
+      if (materiales != null) 'materiales': materiales,
     };
   }
 }

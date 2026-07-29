@@ -610,7 +610,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       backgroundColor: Colors.transparent,
                       isScrollControlled: true,
                       builder: (context) => CotizacionPicker(
-                        onConfirm: (descripcion, total) async {
+                        onConfirm: (descripcion, total, manoDeObra, materiales) async {
                           final provider = context.read<ChatProvider>();
 
                           // Guardar cotización en la base de datos
@@ -626,6 +626,8 @@ class _ChatScreenState extends State<ChatScreen> {
                             descripcion: descripcion,
                             total: total,
                             fecha: DateTime.now(),
+                            manoDeObra: manoDeObra,
+                            materiales: materiales,
                           );
 
                           final cotizacionId = await provider.crearCotizacion(
@@ -645,6 +647,8 @@ class _ChatScreenState extends State<ChatScreen> {
                               'descripcion': descripcion,
                               'total': total,
                               'estado': 'pendiente',
+                              if (manoDeObra != null) 'manoDeObra': manoDeObra,
+                              if (materiales != null) 'materiales': materiales,
                             },
                           );
                         },

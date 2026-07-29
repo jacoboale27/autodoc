@@ -6,6 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
@@ -34,6 +36,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   final Set<String> _completedTaskIds = {};
   bool _isSaving = false;
   XFile? _invoiceImage;
+
+  bool _hasApprovedQuote = false;
+  CotizacionModel? _approvedQuote;
 
   bool get _isInvoicePdf =>
       _invoiceImage?.name.toLowerCase().endsWith('.pdf') ?? false;
@@ -85,6 +90,26 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
         widget.vehicle.idVehiculo,
         widget.vehicle,
       );
+    });
+
+    FirebaseFirestore.instance
+        .collection('cotizaciones')
+        .where('id_vehiculo', isEqualTo: widget.vehicle.idVehiculo)
+        .where('estado', isEqualTo: 'aceptada')
+        .orderBy('fecha', descending: true)
+        .limit(1)
+        .get()
+        .then((snapshot) {
+      if (snapshot.docs.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _hasApprovedQuote = true;
+            _approvedQuote = CotizacionModel.fromMap(
+                snapshot.docs.first.data(), snapshot.docs.first.id);
+            _costoController.text = _approvedQuote!.total.toStringAsFixed(2);
+          });
+        }
+      }
     });
   }
 
@@ -149,7 +174,8 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       final tallerId = userSession.userData?.idUsuario ?? 'taller_anonimo';
 
       final costoDouble = double.tryParse(_costoController.text);
-      final manoDeObraDouble = double.tryParse(_manoDeObraController.text);
+      final manoDeObraDouble = _hasApprovedQuote ? _approvedQuote?.manoDeObra : double.tryParse(_manoDeObraController.text);
+      final materialesList = _hasApprovedQuote ? _approvedQuote?.materiales : _materiales;
 
       for (var taskId in _completedTaskIds) {
         await alertProvider.tallerUpdateService(
@@ -159,7 +185,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           descripcion: _notesController.text,
           costo: costoDouble,
           manoDeObra: manoDeObraDouble,
-          materiales: _materiales,
+          materiales: materialesList,
           receiptImage: _invoiceImage,
         );
       }
@@ -226,15 +252,45 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
             _buildMaintenanceTasks(alertProvider, colors),
             const SizedBox(height: 24),
 
-            _buildSectionTitle('MATERIALES / REPUESTOS', colors),
-            const SizedBox(height: 12),
-            _buildMaterialesList(colors),
-            const SizedBox(height: 24),
+            if (_hasApprovedQuote) ...[
+              Container(
+                padding: EdgeInsets.all(Responsive.padding(context, 16)),
+                decoration: BoxDecoration(
+                  color: colors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.primary.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: colors.primary),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'El cliente aprobó una cotización previa por \$${_approvedQuote!.total.toStringAsFixed(2)}. El desglose ya está registrado.',
+                        style: GoogleFonts.inter(
+                          color: colors.primary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: Responsive.fontSize(context, 14),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
 
-            _buildSectionTitle('MANO DE OBRA', colors),
-            const SizedBox(height: 12),
-            _buildManoDeObraInput(colors),
-            const SizedBox(height: 24),
+            if (!_hasApprovedQuote) ...[
+              _buildSectionTitle('MATERIALES / REPUESTOS', colors),
+              const SizedBox(height: 12),
+              _buildMaterialesList(colors),
+              const SizedBox(height: 24),
+
+              _buildSectionTitle('MANO DE OBRA', colors),
+              const SizedBox(height: 12),
+              _buildManoDeObraInput(colors),
+              const SizedBox(height: 24),
+            ],
 
             _buildSectionTitle('COSTO DEL SERVICIO (TOTAL)', colors),
             const SizedBox(height: 12),
