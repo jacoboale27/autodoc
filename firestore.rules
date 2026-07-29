@@ -53,7 +53,7 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       
       // Permitir la creación de su propio perfil de usuario durante registro/onboarding
-      allow create: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.rol == 'Propietario';
       
       // El usuario puede editar su propio perfil básico (excepto el campo 'rol' para evitar escalamiento de privilegios)
       // Los administradores tienen acceso completo para cambiar roles o estados
@@ -104,16 +104,13 @@ service cloud.firestore {
 
     // 4. Tabla de Servicios (Historial de Mantenimiento)
     match /servicios/{servicioId} {
+      allow create: if isAuthenticated() && (isAdmin() || (isMecanico() && request.resource.data.id_taller == request.auth.uid));
       allow read: if isAuthenticated() && (
         isVehicleOwner(resource.data.id_vehiculo)
-        || isMecanico()
         || isAdmin()
+        || (isMecanico() && resource.data.id_taller == request.auth.uid)
       );
-      
-      // Solo mecánicos y administradores pueden registrar nuevos servicios/mantenimientos
-      allow create: if isAuthenticated() && (isMecanico() || isAdmin());
-      
-      allow update: if isAuthenticated() && (isMecanico() || isAdmin());
+      allow update: if isAuthenticated() && (isAdmin() || (isMecanico() && resource.data.id_taller == request.auth.uid));
       
       allow delete: if isAdmin();
     }
