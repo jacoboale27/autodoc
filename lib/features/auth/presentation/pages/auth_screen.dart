@@ -105,53 +105,56 @@ class _AuthScreenState extends State<AuthScreen> {
                   Responsive.padding(context, 24),
                   Responsive.padding(context, 100),
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Logo Section
-                    AuthLogoSection(colors: colors),
-                    const SizedBox(height: 32),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Logo Section
+                      AuthLogoSection(colors: colors),
+                      const SizedBox(height: 32),
 
-                    // Central Glassmorphism Card
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: _buildGlassCard(
-                        colors,
-                        isDark,
-                        key: ValueKey(_isLoginMode),
-                      ),
-                    ),
-
-                    const SizedBox(height: 32),
-                    // Bottom Switch Link
-                    TextButton(
-                      onPressed: _toggleMode,
-                      child: RichText(
-                        text: TextSpan(
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: colors.textSecondary,
-                          ),
-                          children: [
-                            TextSpan(
-                              text: _isLoginMode
-                                  ? context.l10n.authNoAccount
-                                  : context.l10n.authHaveAccount,
-                            ),
-                            TextSpan(
-                              text: _isLoginMode
-                                  ? context.l10n.authRegisterFree
-                                  : context.l10n.authLogin,
-                              style: AppTextStyles.bodyMedium.copyWith(
-                                color: colors.primary,
-                                fontWeight: FontWeight.bold,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                          ],
+                      // Central Glassmorphism Card
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        child: _buildGlassCard(
+                          colors,
+                          isDark,
+                          key: ValueKey(_isLoginMode),
                         ),
                       ),
-                    ),
-                  ],
+
+                      const SizedBox(height: 32),
+                      // Bottom Switch Link
+                      TextButton(
+                        onPressed: _toggleMode,
+                        child: RichText(
+                          text: TextSpan(
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: colors.textSecondary,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: _isLoginMode
+                                    ? context.l10n.authNoAccount
+                                    : context.l10n.authHaveAccount,
+                              ),
+                              TextSpan(
+                                text: _isLoginMode
+                                    ? context.l10n.authRegisterFree
+                                    : context.l10n.authLogin,
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  color: colors.primary,
+                                  fontWeight: FontWeight.bold,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

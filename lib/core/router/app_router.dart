@@ -5,6 +5,7 @@ import 'package:animations/animations.dart';
 import 'package:autodoc/features/splash/presentation/pages/splash_screen.dart';
 import 'package:autodoc/features/onboarding/presentation/pages/onboarding_screen.dart';
 import 'package:autodoc/features/auth/presentation/pages/auth_screen.dart';
+import 'package:autodoc/features/auth/presentation/screens/login_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/dashboard_screen.dart';
 import 'package:autodoc/features/profile/presentation/pages/profile_setup_screen.dart';
 import 'package:autodoc/features/profile/presentation/pages/user_profile_screen.dart';
@@ -276,9 +277,8 @@ GoRouter createAppRouter(
     refreshListenable: Listenable.merge([authProvider, profileProvider]),
     redirect: (BuildContext context, GoRouterState state) =>
         appRouterRedirect(authProvider, profileProvider, context, state),
-    errorBuilder: (context, state) => const Scaffold(
-      body: Center(child: Text('Página no encontrada (404)')),
-    ),
+    errorBuilder: (context, state) =>
+        const Scaffold(body: Center(child: Text('Página no encontrada (404)'))),
     routes: [
       GoRoute(
         path: '/',
@@ -301,7 +301,7 @@ GoRouter createAppRouter(
         pageBuilder: (context, state) => buildPageWithFadeThrough(
           context: context,
           state: state,
-          child: const AuthScreen(isLogin: true),
+          child: const LoginScreen(),
         ),
       ),
       GoRoute(
