@@ -647,8 +647,8 @@ class _ChatScreenState extends State<ChatScreen> {
                               'descripcion': descripcion,
                               'total': total,
                               'estado': 'pendiente',
-                              if (manoDeObra != null) 'manoDeObra': manoDeObra,
-                              if (materiales != null) 'materiales': materiales,
+                              'manoDeObra': ?manoDeObra,
+                              'materiales': ?materiales,
                             },
                           );
                         },

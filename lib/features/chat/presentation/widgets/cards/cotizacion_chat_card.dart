@@ -149,7 +149,7 @@ class CotizacionChatCard extends StatelessWidget {
                         ],
                       ),
                     );
-                  }).toList(),
+                  }),
                 ],
                 if (manoDeObra != null) ...[
                   const SizedBox(height: 8),
