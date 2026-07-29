@@ -70,6 +70,9 @@ exports.checkAlertsDaily = functions.pubsub.schedule('every 24 hours').onRun(asy
 
   const limit = 500;
   let lastDoc = null;
+  
+  const vehiculosCache = {};
+  const usuariosCache = {};
 
   try {
     while (true) {
@@ -100,23 +103,31 @@ exports.checkAlertsDaily = functions.pubsub.schedule('every 24 hours').onRun(asy
           const vehiculoId = alerta.id_vehiculo;
           if (!vehiculoId) continue;
 
-          const vehiculoDoc = await db.collection('vehiculos').doc(vehiculoId).get();
-          if (!vehiculoDoc.exists) continue;
+          if (!vehiculosCache[vehiculoId]) {
+            const vehiculoDoc = await db.collection('vehiculos').doc(vehiculoId).get();
+            vehiculosCache[vehiculoId] = vehiculoDoc.exists ? vehiculoDoc.data() : null;
+          }
+          const vehiculoData = vehiculosCache[vehiculoId];
+          if (!vehiculoData) continue;
 
-          const ownerId = vehiculoDoc.data().id_propietario;
+          const ownerId = vehiculoData.id_propietario;
           if (!ownerId) continue;
 
-          const userDoc = await db.collection('usuarios').doc(ownerId).get();
-          if (!userDoc.exists) continue;
+          if (!usuariosCache[ownerId]) {
+            const userDoc = await db.collection('usuarios').doc(ownerId).get();
+            usuariosCache[ownerId] = userDoc.exists ? userDoc.data() : null;
+          }
+          const userData = usuariosCache[ownerId];
+          if (!userData) continue;
 
-          const fcmToken = userDoc.data().fcmToken;
+          const fcmToken = userData.fcmToken;
           if (!fcmToken) continue;
 
           const isExpired = fechaLimite < now;
           const title = isExpired ? '¡Alerta Vencida!' : 'Alerta por Vencer';
           const body = isExpired 
-              ? `La alerta de ${alerta.tipo_alerta} para tu vehículo ${vehiculoDoc.data().placa} ya venció.`
-              : `La alerta de ${alerta.tipo_alerta} para tu vehículo ${vehiculoDoc.data().placa} está por vencer.`;
+              ? `La alerta de ${alerta.tipo_alerta} para tu vehículo ${vehiculoData.placa} ya venció.`
+              : `La alerta de ${alerta.tipo_alerta} para tu vehículo ${vehiculoData.placa} está por vencer.`;
 
           await messaging.send({
             token: fcmToken,
