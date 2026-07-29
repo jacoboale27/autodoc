@@ -81,7 +81,6 @@ dependencies:
   url_launcher: ^6.3.2
 
   mobile_scanner: any
-  flutter_dotenv: ^6.0.1
   path_provider: ^2.1.6
   file_picker: ^12.0.0-beta.7
   web: ^1.1.1
