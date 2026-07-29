@@ -924,6 +924,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     final passwordController = TextEditingController();
     final formKey = GlobalKey<FormState>();
     bool isVerifying = false;
+    final isEmailUser = context.read<AuthProvider>().isEmailPasswordUser;
 
     showDialog(
       context: context,
@@ -949,26 +950,28 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                   ),
                   style: TextStyle(fontSize: 14, color: colors.textPrimary),
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: passwordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.vpEnterPassword,
-                    labelStyle: TextStyle(color: colors.textSecondary),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                if (isEmailUser) ...[
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.vpEnterPassword,
+                      labelStyle: TextStyle(color: colors.textSecondary),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      prefixIcon: Icon(Icons.lock, color: colors.primary),
                     ),
-                    prefixIcon: Icon(Icons.lock, color: colors.primary),
+                    style: TextStyle(color: colors.textPrimary),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return context.l10n.vpEnterPassword;
+                      }
+                      return null;
+                    },
                   ),
-                  style: TextStyle(color: colors.textPrimary),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return context.l10n.vpEnterPassword;
-                    }
-                    return null;
-                  },
-                ),
+                ],
               ],
             ),
           ),
@@ -986,21 +989,24 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
 
                   final vehicleProvider = context.read<VehicleProvider>();
 
-                  final isValid = await context
-                      .read<AuthProvider>()
-                      .verifyPassword(passwordController.text);
+                  if (isEmailUser) {
+                    final isValid = await context
+                        .read<AuthProvider>()
+                        .verifyPassword(passwordController.text);
 
-                  if (context.mounted) {
-                    if (!isValid) {
-                      setState(() => isVerifying = false);
-                      UiUtils.showErrorSnackbar(
-                        context,
-                        context.l10n.vpIncorrectPassword,
-                      );
-                      return;
+                    if (context.mounted) {
+                      if (!isValid) {
+                        setState(() => isVerifying = false);
+                        UiUtils.showErrorSnackbar(
+                          context,
+                          context.l10n.vpIncorrectPassword,
+                        );
+                        return;
+                      }
                     }
+                  }
 
-                    final success = await vehicleProvider.deleteVehicle(
+                  final success = await vehicleProvider.deleteVehicle(
                       vehicle.idVehiculo,
                       vehicle.idPropietario,
                     );
@@ -1021,7 +1027,6 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                         );
                       }
                     }
-                  }
                 }
               },
               // type: AppButtonType.primary, // Default is primary

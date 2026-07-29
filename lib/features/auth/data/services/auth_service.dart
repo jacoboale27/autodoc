@@ -8,11 +8,11 @@ import 'package:autodoc/config/secrets.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    serverClientId: kIsWeb
-        ? null
-        : (AppSecrets.firebaseIosClientId.isNotEmpty
-              ? AppSecrets.firebaseIosClientId
-              : null),
+    clientId: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS
+        ? (AppSecrets.firebaseIosClientId.isNotEmpty
+            ? AppSecrets.firebaseIosClientId
+            : null)
+        : null,
   );
 
   // Stream of auth changes
@@ -21,7 +21,12 @@ class AuthService {
   // Sign in with Google
   Future<UserCredential?> signInWithGoogle() async {
     try {
-      // Trigger the authentication flow
+      if (kIsWeb) {
+        final GoogleAuthProvider authProvider = GoogleAuthProvider();
+        return await _auth.signInWithPopup(authProvider);
+      }
+
+      // Trigger the authentication flow for mobile
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
       if (googleUser == null) return null; // Cancelled by user
