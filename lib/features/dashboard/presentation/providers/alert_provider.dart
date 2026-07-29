@@ -519,19 +519,12 @@ class AlertProvider extends ChangeNotifier {
             'descripcion': descripcion,
           });
 
-      // 5. Actualizar el kilometraje del vehículo si es mayor
-      if (task != null) {
-        final vehicleRef = _firestore
-            .collection(FirestoreCollections.vehiculos)
-            .doc(vehicleId);
-        final vDoc = await vehicleRef.get();
-        if (vDoc.exists) {
-          int currentKm = vDoc.data()?['kilometraje_actual'] ?? 0;
-          if (nuevoKilometraje > currentKm) {
-            await vehicleRef.update({'kilometraje_actual': nuevoKilometraje});
-          }
-        }
-      }
+      // 5. El kilometraje del vehículo lo actualiza la Cloud Function
+      // requestReviewOnServiceComplete (trigger onCreate de 'servicios'),
+      // que corre con privilegios de Admin SDK justo después del paso 3.
+      // Evita que el cliente necesite leer/escribir el vehículo aquí, lo
+      // cual podría chocar con la propagación del vínculo taller-vehículo
+      // en la primera visita de un cliente nuevo.
 
       // 6. Actualizar la tarea local
       if (taskIndex != -1) {

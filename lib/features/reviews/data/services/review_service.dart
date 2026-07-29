@@ -88,7 +88,9 @@ class ReviewService {
     }
 
     await docRef.set(data);
-    await recalculateTallerRating(tallerId);
+    // La recalculación de calificacion_promedio/total_resenias ahora la hace
+    // exclusivamente la Cloud Function aggregateRatings (trigger onWrite de
+    // resenias). El cliente ya no puede ni debe escribir esas métricas.
   }
 
   Future<void> updateReview({
@@ -110,28 +112,11 @@ class ReviewService {
           : comentario?.trim(),
       'fecha_resenia': FieldValue.serverTimestamp(),
     });
-
-    await recalculateTallerRating(tallerId);
+    // aggregateRatings (Cloud Function) recalcula el promedio en el backend.
   }
 
   Future<void> reportReview(String reviewId) async {
     final docRef = _resenias.doc(reviewId);
     await docRef.update({'is_reported': true});
-  }
-
-  Future<void> recalculateTallerRating(String tallerId) async {
-    final reviews = await getReviewsForTaller(tallerId);
-    final total = reviews.length;
-    final promedio = total == 0
-        ? 0.0
-        : reviews.map((r) => r.estrellas).reduce((a, b) => a + b) / total;
-
-    await _firestore
-        .collection(FirestoreCollections.talleres)
-        .doc(tallerId)
-        .update({
-          'calificacion_promedio': double.parse(promedio.toStringAsFixed(1)),
-          'total_resenias': total,
-        });
   }
 }

@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../../../../core/models/vehicle_model.dart';
 import '../../../../core/constants/firestore_collections.dart';
 
 class VehicleService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFunctions _functions = FirebaseFunctions.instance;
   final String _collection = FirestoreCollections.vehiculos;
 
   Future<List<VehicleModel>> getVehiclesByOwner(String ownerId) async {
@@ -51,19 +53,34 @@ class VehicleService {
     }
   }
 
+  /// Busca un vehículo por placa para que un mecánico inicie el primer
+  /// servicio a un cliente nuevo. Pasa por la Cloud Function
+  /// `buscarVehiculoPorPlaca` en vez de leer `/vehiculos` directamente:
+  /// las reglas de seguridad solo permiten leer el documento completo al
+  /// propietario o a un taller ya vinculado, así que esta llamada devuelve
+  /// únicamente los campos identificatorios necesarios para la pantalla de
+  /// inicio de servicio (sin exponer al propietario ni otros datos).
   Future<VehicleModel?> getVehicleByPlate(String plate) async {
     try {
-      final snapshot = await _firestore
-          .collection(_collection)
-          .where('placa', isEqualTo: plate)
-          .limit(1)
-          .get();
+      final result = await _functions
+          .httpsCallable('buscarVehiculoPorPlaca')
+          .call({'placa': plate});
 
-      if (snapshot.docs.isEmpty) return null;
-      return VehicleModel.fromMap(
-        snapshot.docs.first.data(),
-        snapshot.docs.first.id,
+      final data = result.data as Map?;
+      if (data == null) return null;
+
+      return VehicleModel(
+        idVehiculo: data['id_vehiculo'] as String,
+        idPropietario: '',
+        placa: data['placa'] as String? ?? plate,
+        marca: data['marca'] as String?,
+        modelo: data['modelo'] as String?,
+        anio: (data['anio'] as num?)?.toInt(),
+        color: data['color'] as String?,
+        kilometrajeActual: (data['kilometraje_actual'] as num?)?.toInt() ?? 0,
       );
+    } on FirebaseFunctionsException catch (e) {
+      throw 'Error al buscar vehículo por placa: ${e.message ?? e.code}';
     } catch (e) {
       throw 'Error al buscar vehículo por placa: $e';
     }

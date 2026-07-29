@@ -5,7 +5,6 @@ import '../../../../core/models/review_model.dart';
 import '../../../../core/models/admin_log_model.dart';
 import '../../../../core/utils/role_utils.dart';
 import '../../data/services/admin_service.dart';
-import '../../../reviews/data/services/review_service.dart';
 
 class AdminProvider with ChangeNotifier {
   final AdminService _adminService = AdminService();
@@ -218,14 +217,9 @@ class AdminProvider with ChangeNotifier {
   ) async {
     _setLoading(true);
     try {
-      final idTaller = await _adminService.eliminarResenia(
-        adminUid,
-        idResenia,
-        motivo,
-      );
-      if (idTaller != null && idTaller.isNotEmpty) {
-        await ReviewService().recalculateTallerRating(idTaller);
-      }
+      await _adminService.eliminarResenia(adminUid, idResenia, motivo);
+      // aggregateRatings (Cloud Function) recalcula el promedio en el backend
+      // automáticamente al detectar el borrado de la reseña.
       _setSuccess('Reseña eliminada');
       _resenias = await _adminService.fetchResenias();
     } catch (e) {

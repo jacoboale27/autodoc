@@ -38,16 +38,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (!_isInitialized) {
       final userSession = context.read<UserProfileProvider>();
       if (userSession.userData != null) {
-        final vehicleProvider = context.read<VehicleProvider>();
-        vehicleProvider.fetchVehicles(userSession.userData!.idUsuario).then((
-          _,
-        ) {
-          if (mounted && vehicleProvider.selectedVehicle != null) {
-            context.read<AlertProvider>().fetchAlerts(
-              vehicleProvider.selectedVehicle!.idVehiculo,
-              vehicleProvider.selectedVehicle!,
-            );
-          }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final vehicleProvider = context.read<VehicleProvider>();
+          vehicleProvider.fetchVehicles(userSession.userData!.idUsuario).then((
+            _,
+          ) {
+            if (mounted && vehicleProvider.selectedVehicle != null) {
+              context.read<AlertProvider>().fetchAlerts(
+                vehicleProvider.selectedVehicle!.idVehiculo,
+                vehicleProvider.selectedVehicle!,
+              );
+            }
+          });
         });
       }
       _isInitialized = true;

@@ -55,9 +55,12 @@ service cloud.firestore {
       // Permitir la creación de su propio perfil de usuario durante registro/onboarding
       allow create: if isOwner(userId) && request.resource.data.rol == 'Propietario';
       
-      // El usuario puede editar su propio perfil básico (excepto el campo 'rol' para evitar escalamiento de privilegios)
-      // Los administradores tienen acceso completo para cambiar roles o estados
-      allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['rol']))
+      // El usuario puede editar su propio perfil básico, pero no puede tocar
+      // 'rol' (escalamiento de privilegios) ni las métricas agregadas de
+      // reputación, que solo debe escribir el backend (aggregateRatings).
+      // Los administradores tienen acceso completo para cambiar roles o estados.
+      allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data)
+                          .affectedKeys().hasAny(['rol', 'calificacion_promedio', 'total_resenias']))
                     || isAdmin();
       
       allow delete: if isAdmin();
@@ -71,9 +74,13 @@ service cloud.firestore {
       // Mecánicos y Administradores pueden registrar talleres
       allow create: if isAuthenticated() && (isMecanico() || isAdmin());
       
-      // Mecánicos pueden actualizar la información de su taller; los admins tienen acceso total.
+      // Mecánicos pueden actualizar la información de su taller, pero no las
+      // métricas agregadas de reputación (solo el backend puede escribirlas).
+      // Los admins tienen acceso total.
       allow update: if isAuthenticated() && (
-        isMecanico() || isAdmin()
+        (isMecanico() && !request.resource.data.diff(resource.data)
+            .affectedKeys().hasAny(['calificacion_promedio', 'total_resenias']))
+        || isAdmin()
       );
       
       allow delete: if isAdmin();
@@ -81,21 +88,30 @@ service cloud.firestore {
 
     // 3. Tabla de Vehículos
     match /vehiculos/{vehiculoId} {
+      // Un mecánico solo puede leer el vehículo si su taller ya tiene una
+      // relación de servicio con él (talleres_vinculados, poblado por la
+      // Cloud Function requestReviewOnServiceComplete al crear un servicio).
+      // La búsqueda de vehículos nuevos por placa NO usa esta regla: pasa
+      // por la Cloud Function callable buscarVehiculoPorPlaca, que devuelve
+      // solo datos identificatorios sin exponer el documento completo.
       allow read: if isAuthenticated() && (
-        resource.data.id_propietario == request.auth.uid 
-        || isMecanico() 
+        resource.data.id_propietario == request.auth.uid
         || isAdmin()
+        || (isMecanico() && resource.data.get('talleres_vinculados', []).hasAny([request.auth.uid]))
       );
-      
+
       // Solo el propietario registrado del vehículo puede crearlo o eliminarlo
       allow create: if isAuthenticated() && request.resource.data.id_propietario == request.auth.uid;
       allow delete: if isAuthenticated() && resource.data.id_propietario == request.auth.uid;
-      
-      // El propietario puede modificar todo su vehículo. 
-      // Un Mecánico puede actualizar el vehículo únicamente para reportar el 'kilometraje_actual'
+
+      // El propietario puede modificar todo su vehículo.
+      // Un mecánico de un taller ya vinculado puede actualizar el vehículo
+      // únicamente para reportar el 'kilometraje_actual'.
       allow update: if isAuthenticated() && (
-        resource.data.id_propietario == request.auth.uid 
-        || (isMecanico() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['kilometraje_actual']))
+        resource.data.id_propietario == request.auth.uid
+        || (isMecanico()
+            && resource.data.get('talleres_vinculados', []).hasAny([request.auth.uid])
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['kilometraje_actual']))
         || isAdmin()
       );
     }

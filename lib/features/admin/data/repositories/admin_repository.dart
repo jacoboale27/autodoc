@@ -9,9 +9,10 @@ class AdminRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Usuarios
-  Future<List<UserModel>> getUsuarios() async {
+  Future<List<UserModel>> getUsuarios({int limit = 100}) async {
     final snapshot = await _firestore
         .collection(FirestoreCollections.usuarios)
+        .limit(limit)
         .get();
     return snapshot.docs
         .map((doc) => UserModel.fromMap(doc.data(), doc.id))
@@ -38,9 +39,10 @@ class AdminRepository {
   }
 
   // Talleres
-  Future<List<WorkshopModel>> getTalleres() async {
+  Future<List<WorkshopModel>> getTalleres({int limit = 100}) async {
     final snapshot = await _firestore
         .collection(FirestoreCollections.talleres)
+        .limit(limit)
         .get();
     return snapshot.docs
         .map((doc) => WorkshopModel.fromMap(doc.data(), doc.id))
@@ -62,9 +64,10 @@ class AdminRepository {
   }
 
   // Reseñas
-  Future<List<ReviewModel>> getResenias() async {
+  Future<List<ReviewModel>> getResenias({int limit = 100}) async {
     final snapshot = await _firestore
         .collection(FirestoreCollections.resenias)
+        .limit(limit)
         .get();
     return snapshot.docs
         .map((doc) => ReviewModel.fromMap(doc.data(), doc.id))

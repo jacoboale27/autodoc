@@ -7,10 +7,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 class WorkshopService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Stream<List<UserModel>> getWorkshopsStream() {
+  Stream<List<UserModel>> getWorkshopsStream({int limit = 50}) {
     return _firestore
         .collection(FirestoreCollections.usuarios)
         .where('rol', whereIn: mechanicFirestoreRoles)
+        .limit(limit)
         .snapshots()
         .map((snapshot) {
           return snapshot.docs
@@ -19,10 +20,11 @@ class WorkshopService {
         });
   }
 
-  Future<List<UserModel>> getWorkshops() async {
+  Future<List<UserModel>> getWorkshops({int limit = 50}) async {
     final snapshot = await _firestore
         .collection(FirestoreCollections.usuarios)
         .where('rol', whereIn: mechanicFirestoreRoles)
+        .limit(limit)
         .get();
     return snapshot.docs
         .map((doc) => UserModel.fromMap(doc.data(), doc.id))

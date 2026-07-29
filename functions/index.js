@@ -261,6 +261,27 @@ exports.requestReviewOnServiceComplete = functions.firestore
       const vehiculoDoc = await db.collection('vehiculos').doc(vehiculoId).get();
       if (!vehiculoDoc.exists) return null;
 
+      // Vincula el taller al vehículo para que las reglas de seguridad le
+      // permitan leer/actualizar ese vehículo (tenant isolation, ver
+      // firestore.rules match /vehiculos). Se hace vía Admin SDK porque el
+      // cliente no tiene permiso de escribir este campo directamente.
+      const vehicleUpdate = {
+        talleres_vinculados: admin.firestore.FieldValue.arrayUnion(tallerId),
+      };
+
+      // Actualiza el kilometraje aquí mismo (server-side) en vez de que el
+      // cliente lea/escriba el vehículo justo después de crear el servicio:
+      // en la primera visita de un cliente nuevo, ese vinculo recién se está
+      // creando en este mismo trigger, y una escritura del cliente en
+      // paralelo podría llegar antes de que se propague.
+      const nuevoKm = serviceData.kilometraje_servicio;
+      const kmActual = vehiculoDoc.data().kilometraje_actual || 0;
+      if (typeof nuevoKm === 'number' && nuevoKm > kmActual) {
+        vehicleUpdate.kilometraje_actual = nuevoKm;
+      }
+
+      await vehiculoDoc.ref.update(vehicleUpdate);
+
       const ownerId = vehiculoDoc.data().id_propietario;
       if (!ownerId) return null;
 
@@ -677,4 +698,52 @@ exports.aggregateRatings = functions.firestore
       total_resenias: total
     });
   });
+
+/**
+ * 10. Callable: search a vehicle by plate for mechanics onboarding a
+ * walk-in customer they have no prior service relationship with.
+ *
+ * Returns only non-sensitive identifying fields. It intentionally does NOT
+ * expose id_propietario or any other owner data — full vehicle documents
+ * stay protected by firestore.rules (owner, admin, or talleres_vinculados).
+ */
+exports.buscarVehiculoPorPlaca = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  }
+
+  const callerDoc = await db.collection('usuarios').doc(context.auth.uid).get();
+  const rol = callerDoc.exists ? callerDoc.data().rol : null;
+  if (!['Mecanico', 'Taller'].includes(rol)) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'Solo mecánicos pueden buscar vehículos por placa.'
+    );
+  }
+
+  const placa = (data && data.placa ? String(data.placa) : '').trim().toUpperCase();
+  if (!placa) {
+    throw new functions.https.HttpsError('invalid-argument', 'Debes indicar una placa.');
+  }
+
+  const snapshot = await db
+    .collection('vehiculos')
+    .where('placa', '==', placa)
+    .limit(1)
+    .get();
+
+  if (snapshot.empty) return null;
+
+  const doc = snapshot.docs[0];
+  const v = doc.data();
+  return {
+    id_vehiculo: doc.id,
+    placa: v.placa || placa,
+    marca: v.marca || null,
+    modelo: v.modelo || null,
+    anio: v.anio || null,
+    color: v.color || null,
+    kilometraje_actual: v.kilometraje_actual || 0,
+  };
+});
 
