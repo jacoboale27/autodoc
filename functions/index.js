@@ -652,3 +652,29 @@ exports.scheduledFirestoreExport = functions.pubsub.schedule('every 24 hours').o
     throw error;
   }
 });
+
+/**
+ * 9. Aggregate ratings on review write.
+ */
+exports.aggregateRatings = functions.firestore
+  .document('resenias/{reseniaId}')
+  .onWrite(async (change, context) => {
+    const resenia = change.after.exists ? change.after.data() : change.before.data();
+    const tallerId = resenia.id_taller;
+    if (!tallerId) return null;
+
+    const reseniasSnap = await db.collection('resenias').where('id_taller', '==', tallerId).get();
+    let total = 0;
+    let sum = 0;
+    reseniasSnap.forEach(doc => {
+      total++;
+      sum += doc.data().estrellas || 0;
+    });
+
+    const avg = total > 0 ? sum / total : 0;
+    await db.collection('usuarios').doc(tallerId).update({
+      calificacion_promedio: avg,
+      total_resenias: total
+    });
+  });
+
