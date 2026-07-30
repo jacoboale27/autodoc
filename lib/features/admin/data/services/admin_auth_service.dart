@@ -7,8 +7,12 @@ import '../../../../core/constants/firestore_collections.dart';
 /// Admin credentials are stored in Firebase Auth as real users, and their
 /// admin status is validated via the 'Usuarios' Firestore collection (rol == 'Administrador').
 class AdminAuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth;
+  final FirebaseFirestore _firestore;
+
+  AdminAuthService({FirebaseAuth? auth, FirebaseFirestore? firestore})
+    : _auth = auth ?? FirebaseAuth.instance,
+      _firestore = firestore ?? FirebaseFirestore.instance;
 
   /// Attempts to sign in as an administrator.
   /// 1. If [input] is not an email, tries to resolve it as a username from Firestore.
@@ -35,18 +39,23 @@ class AdminAuthService {
       final user = credential.user;
       if (user == null) return null;
 
-      // Validate admin role in Firestore
+      // Validar rol de administrador en Firestore
       final userDoc = await _firestore
           .collection(FirestoreCollections.usuarios)
           .doc(user.uid)
           .get();
-      if (!userDoc.exists) return null;
+
+      if (!userDoc.exists) {
+        await _auth.signOut();
+        return null;
+      }
 
       final data = userDoc.data()!;
       final rol = (data['rol'] as String? ?? '').trim().toLowerCase();
 
       if (rol != 'administrador' && rol != 'admin') {
-        // Not an admin — sign out and return null
+        // No es administrador: cerrar la sesion que acabamos de abrir.
+        await _auth.signOut();
         return null;
       }
 
