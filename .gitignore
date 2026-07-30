@@ -65,6 +65,7 @@ staged_diff.txt
 /coverage/
 .firebase/
 node_modules/
+test_rules/node_modules/
 
 testsprite_tests\tmp\config.json
 graphify-out/

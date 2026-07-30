@@ -1,0 +1,12 @@
+{
+  "name": "autodoc-rules-tests",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore,storage --project autodoc-rules-test \"jest --runInBand --forceExit\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
+    "jest": "^29.7.0"
+  }
+}
