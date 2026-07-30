@@ -67,6 +67,16 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Inject Google Sign-In client ID into web/index.html
+        run: |
+          if [ -z "${{ secrets.GOOGLE_SIGNIN_CLIENT_ID_WEB }}" ]; then
+            echo "❌ Falta el secreto GOOGLE_SIGNIN_CLIENT_ID_WEB"
+            exit 1
+          fi
+          sed -i "s|\$GOOGLE_SIGNIN_CLIENT_ID_WEB|${{ secrets.GOOGLE_SIGNIN_CLIENT_ID_WEB }}|g" web/index.html
+          grep -q 'YOUR_GOOGLE_CLIENT_ID' web/index.html && { echo "❌ Quedo el marcador sin sustituir"; exit 1; } || true
+          echo "✅ client ID inyectado"
+
       - name: Build Flutter Web (release)
         run: flutter build web --release --no-web-resources-cdn --dart-define=FLAVOR=dev
 
@@ -99,6 +109,16 @@ jobs:
 
       - name: Install Flutter dependencies
         run: flutter pub get
+
+      - name: Inject Google Sign-In client ID into web/index.html
+        run: |
+          if [ -z "${{ secrets.GOOGLE_SIGNIN_CLIENT_ID_WEB }}" ]; then
+            echo "❌ Falta el secreto GOOGLE_SIGNIN_CLIENT_ID_WEB"
+            exit 1
+          fi
+          sed -i "s|\$GOOGLE_SIGNIN_CLIENT_ID_WEB|${{ secrets.GOOGLE_SIGNIN_CLIENT_ID_WEB }}|g" web/index.html
+          grep -q 'YOUR_GOOGLE_CLIENT_ID' web/index.html && { echo "❌ Quedo el marcador sin sustituir"; exit 1; } || true
+          echo "✅ client ID inyectado"
 
       - name: Build Flutter Web for staging
         run: flutter build web --release --no-web-resources-cdn --dart-define=FLAVOR=staging
@@ -142,6 +162,16 @@ jobs:
 
       - name: Install Flutter dependencies
         run: flutter pub get
+
+      - name: Inject Google Sign-In client ID into web/index.html
+        run: |
+          if [ -z "${{ secrets.GOOGLE_SIGNIN_CLIENT_ID_WEB }}" ]; then
+            echo "❌ Falta el secreto GOOGLE_SIGNIN_CLIENT_ID_WEB"
+            exit 1
+          fi
+          sed -i "s|\$GOOGLE_SIGNIN_CLIENT_ID_WEB|${{ secrets.GOOGLE_SIGNIN_CLIENT_ID_WEB }}|g" web/index.html
+          grep -q 'YOUR_GOOGLE_CLIENT_ID' web/index.html && { echo "❌ Quedo el marcador sin sustituir"; exit 1; } || true
+          echo "✅ client ID inyectado"
 
       - name: Build Flutter Web for production
         run: flutter build web --release --no-web-resources-cdn --dart-define=FLAVOR=prod

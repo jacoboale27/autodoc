@@ -9,7 +9,7 @@ import 'package:autodoc/config/secrets.dart';
 class VehicleImageService {
   static String get _searchApiKey => AppSecrets.vehicleImageApiKey;
   static const String _searchApiUrl = 'https://www.searchapi.io/api/v1/search';
-  static const String _defaultImage = 'assets/images/default_vehicle.png';
+  static const String _defaultImage = 'assets/images/default_vehicle.jpg';
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 

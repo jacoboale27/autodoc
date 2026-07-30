@@ -19,7 +19,7 @@ class VehicleImageWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const String placeholderAsset = 'assets/images/default_vehicle.png';
+    const String placeholderAsset = 'assets/images/default_vehicle.jpg';
 
     // Si la URL es nula o vacía, mostrar placeholder
     if (imageUrl == null || imageUrl!.isEmpty) {
