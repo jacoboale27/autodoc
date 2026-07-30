@@ -60,9 +60,20 @@ class AdminAuthService {
       }
 
       return UserModel.fromMap(data, user.uid);
-    } on FirebaseAuthException {
+    } on FirebaseAuthException catch (_) {
+      // Auth pudo haber tenido exito parcial (p. ej. credenciales validas
+      // pero fallo posterior); nunca dejar una sesion viva en un retorno null.
+      if (_auth.currentUser != null) {
+        await _auth.signOut();
+      }
       return null;
     } catch (_) {
+      // La autenticacion pudo haber tenido exito y la excepcion venir de la
+      // consulta a Firestore (sin conexion, PERMISSION_DENIED, etc.). No
+      // dejar la sesion de Firebase Auth viva si vamos a retornar null.
+      if (_auth.currentUser != null) {
+        await _auth.signOut();
+      }
       return null;
     }
   }
