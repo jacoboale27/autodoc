@@ -39,6 +39,7 @@ import 'package:autodoc/features/chat/data/models/reserva_model.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/notifications_screen.dart';
+import 'package:autodoc/core/models/user_model.dart';
 
 CustomTransitionPage<T> buildPageWithFadeThrough<T>({
   required BuildContext context,
@@ -90,6 +91,7 @@ const _adminRoutes = <String>{
   '/admin/talleres',
   '/admin/resenias',
   '/admin/logs',
+  '/admin/seed',
 };
 
 /// Determines the normalized role string
@@ -133,6 +135,94 @@ bool _matchesRouteSet(String path, Set<String> routes) {
 /// - /initiate_service: expects `VehicleModel`
 /// - /task_config: expects `MaintenanceTask`
 /// - /task_complete: expects `Map<String, dynamic>` with keys 'task' (MaintenanceTask) and 'currentKm' (int)
+/// Núcleo de decisión del enrutado, sin dependencias de Flutter ni de go_router.
+/// `appRouterRedirect` es un adaptador sobre esta función; los tests la invocan
+/// directamente.
+String? resolveRedirect({
+  required bool isLoggedIn,
+  required UserModel? userData,
+  required bool isLoading,
+  required bool hasAttemptedFetch,
+  required String? profileError,
+  required String currentPath,
+  String? redirectParam,
+}) {
+  final isPublicRoute = _publicRoutes.contains(currentPath);
+  final isProfileLoading = isLoading || (isLoggedIn && !hasAttemptedFetch);
+
+  if (!isLoggedIn && !isPublicRoute) return '/login';
+
+  // Mientras el perfil se carga no se puede decidir el rol, asi que no se
+  // permite montar ninguna ruta protegida: se retiene en el splash. Devolver
+  // null aqui permitia renderizar la pantalla de otro rol en una carga en frio,
+  // que es como un token de taller llegaba a ver /dashboard.
+  if (isLoggedIn && (isProfileLoading || !hasAttemptedFetch)) {
+    if (currentPath == '/' ||
+        currentPath == '/login' ||
+        currentPath == '/register') {
+      return null;
+    }
+    return '/';
+  }
+
+  if (isLoggedIn && (currentPath == '/login' || currentPath == '/register')) {
+    if (userData == null) {
+      if (profileError != null) return null;
+      return '/profile_setup';
+    }
+    if (redirectParam != null && redirectParam.isNotEmpty) {
+      return Uri.decodeComponent(redirectParam);
+    }
+    return _homeForRole(_normalizeRole(userData.rol));
+  }
+
+  if (isLoggedIn &&
+      userData == null &&
+      profileError == null &&
+      currentPath != '/profile_setup' &&
+      !isPublicRoute) {
+    return '/profile_setup';
+  }
+
+  if (isLoggedIn && userData != null) {
+    final role = _normalizeRole(userData.rol);
+    final home = _homeForRole(role);
+
+    final estado = userData.estado.trim().toLowerCase();
+    if (role == 'mechanic' && (estado == 'pendiente' || estado == 'pending')) {
+      return currentPath == '/mechanic_pending' ? null : '/mechanic_pending';
+    }
+
+    if (currentPath.startsWith('/chat/') ||
+        currentPath == '/chat_list' ||
+        currentPath.startsWith('/reserva_detail')) {
+      return null;
+    }
+
+    if (currentPath == '/task_config' || currentPath == '/task_complete') {
+      return (role != 'owner' && role != 'admin') ? home : null;
+    }
+
+    if (currentPath == '/profile_setup') return home;
+
+    if (role == 'owner' &&
+        (_matchesRouteSet(currentPath, _mechanicRoutes) ||
+            _matchesRouteSet(currentPath, _adminRoutes))) {
+      return '/dashboard';
+    }
+    if (role == 'mechanic' &&
+        (_matchesRouteSet(currentPath, _ownerRoutes) ||
+            _matchesRouteSet(currentPath, _adminRoutes))) {
+      return '/mechanic_dashboard';
+    }
+    if (role != 'admin' && _matchesRouteSet(currentPath, _adminRoutes)) {
+      return home;
+    }
+  }
+
+  return null;
+}
+
 /// Core redirect logic extracted for unit testing
 String? appRouterRedirect(
   AuthSessionProvider authProvider,
@@ -140,130 +230,24 @@ String? appRouterRedirect(
   BuildContext context,
   GoRouterState state,
 ) {
-  final currentPath = state.uri.path;
-  final isPublicRoute = _publicRoutes.contains(currentPath);
-  final isLoggedIn = authProvider.isLoggedIn;
   final currentUid = authProvider.currentUid;
   final rawUserData = profileProvider.userData;
-
-  // Only consider userData valid if it matches currentUid or rawUserData was successfully fetched
   final userData =
       (rawUserData != null &&
-          (rawUserData.idUsuario == currentUid ||
-              rawUserData.idUsuario.isEmpty))
-      ? rawUserData
-      : null;
-  final hasAttemptedFetch = profileProvider.hasAttemptedFetchFor(currentUid);
-  final isProfileLoading =
-      profileProvider.isLoading || (isLoggedIn && !hasAttemptedFetch);
+              (rawUserData.idUsuario == currentUid ||
+                  rawUserData.idUsuario.isEmpty))
+          ? rawUserData
+          : null;
 
-  // --- 1. Unauthenticated user trying to access protected route ---
-  if (!isLoggedIn && !isPublicRoute) {
-    // Persist intended destination as query param for post-login redirect
-    // Never allow unauthenticated access to /profile_setup
-    return '/login';
-  }
-
-  // Wait if profile is loading or profile fetch for current UID has not completed
-  if (isLoggedIn && (isProfileLoading || !hasAttemptedFetch)) {
-    // Allow the user to stay on splash or login/register while profile loads
-    if (currentPath == '/' ||
-        currentPath == '/login' ||
-        currentPath == '/register') {
-      return null;
-    }
-    // For any other route, stay put while loading — the router will re-evaluate
-    // when profileProvider notifies (via refreshListenable)
-    return null;
-  }
-
-  // --- 2. Authenticated user on login/register → redirect to appropriate home or profile_setup ---
-  if (isLoggedIn && (currentPath == '/login' || currentPath == '/register')) {
-    if (isProfileLoading || !hasAttemptedFetch) {
-      return null; // Wait for profile to load
-    }
-    if (userData == null) {
-      // Do not redirect to /profile_setup if there was a network/fetch error
-      if (profileProvider.error != null) return null;
-      return '/profile_setup';
-    }
-    // Check if there's a pending redirect
-    final redirectParam = state.uri.queryParameters['redirect'];
-    if (redirectParam != null && redirectParam.isNotEmpty) {
-      return Uri.decodeComponent(redirectParam);
-    }
-    return _homeForRole(_normalizeRole(userData.rol));
-  }
-
-  // --- 3. Authenticated user without profile accessing protected route → force profile setup ---
-  if (isLoggedIn &&
-      userData == null &&
-      !isProfileLoading &&
-      hasAttemptedFetch &&
-      profileProvider.error == null &&
-      currentPath != '/profile_setup' &&
-      !isPublicRoute) {
-    return '/profile_setup';
-  }
-
-  // --- 4. Role-based access control ---
-  if (isLoggedIn && userData != null) {
-    final role = _normalizeRole(userData.rol);
-    final home = _homeForRole(role);
-
-    // Mechanic pending approval: block dashboard access until approved
-    final estado = userData.estado.trim().toLowerCase();
-    if (role == 'mechanic' && (estado == 'pendiente' || estado == 'pending')) {
-      if (currentPath != '/mechanic_pending') {
-        return '/mechanic_pending';
-      }
-      return null; // Already on pending screen
-    }
-
-    // Chat routes are shared between owner and mechanic
-    if (currentPath.startsWith('/chat/') ||
-        currentPath == '/chat_list' ||
-        currentPath == '/reserva_detail') {
-      return null; // Allow — both roles use chat
-    }
-
-    // Task config/complete routes are for owners
-    if (currentPath == '/task_config' || currentPath == '/task_complete') {
-      if (role != 'owner' && role != 'admin') {
-        return home;
-      }
-      return null;
-    }
-
-    // If user already has a valid profile, redirect from profile_setup to their home dashboard
-    if (currentPath == '/profile_setup') {
-      return home;
-    }
-
-    // Owner trying to access mechanic routes → redirect to owner home
-    if (role == 'owner' && _matchesRouteSet(currentPath, _mechanicRoutes)) {
-      return '/dashboard';
-    }
-    if (role == 'owner' && _matchesRouteSet(currentPath, _adminRoutes)) {
-      return '/dashboard';
-    }
-
-    // Mechanic trying to access owner routes → redirect to mechanic home
-    if (role == 'mechanic' && _matchesRouteSet(currentPath, _ownerRoutes)) {
-      return '/mechanic_dashboard';
-    }
-    if (role == 'mechanic' && _matchesRouteSet(currentPath, _adminRoutes)) {
-      return '/mechanic_dashboard';
-    }
-
-    // Non-admin trying to access admin routes → redirect to their home
-    if (role != 'admin' && _matchesRouteSet(currentPath, _adminRoutes)) {
-      return home;
-    }
-  }
-
-  // --- 5. No redirect needed ---
-  return null;
+  return resolveRedirect(
+    isLoggedIn: authProvider.isLoggedIn,
+    userData: userData,
+    isLoading: profileProvider.isLoading,
+    hasAttemptedFetch: profileProvider.hasAttemptedFetchFor(currentUid),
+    profileError: profileProvider.error,
+    currentPath: state.uri.path,
+    redirectParam: state.uri.queryParameters['redirect'],
+  );
 }
 
 /// App Router Definition with auth guards
