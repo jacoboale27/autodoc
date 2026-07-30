@@ -54,6 +54,17 @@ describe('usuarios', () => {
     );
   });
 
+  test('un usuario NO puede autoaprobarse cambiando su propio estado', async () => {
+    // I2: 'estado' se proyecta a 'talleres' y el directorio publico filtra
+    // por estado == 'aprobado' (workshop_service.dart). Sin esta exclusion,
+    // cualquier mecanico podia aparecer como verificado sin pasar por
+    // admin_service.dart.
+    const db = await withRole(env, UIDS.taller1, 'Taller', { estado: 'pendiente' });
+    await assertFails(
+      db.collection('usuarios').doc(UIDS.taller1).update({ estado: 'aprobado' }),
+    );
+  });
+
   test('un usuario SI puede editar su nombre', async () => {
     const db = await withRole(env, UIDS.owner1, 'Propietario');
     await assertSucceeds(

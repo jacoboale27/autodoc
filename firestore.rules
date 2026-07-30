@@ -70,8 +70,11 @@ service cloud.firestore {
       // 'rol' (escalamiento de privilegios) ni las métricas agregadas de
       // reputación, que solo debe escribir el backend (aggregateRatings).
       // Los administradores tienen acceso completo para cambiar roles o estados.
+      // 'estado' tambien queda excluido: es el campo que el directorio publico
+      // de talleres usa para filtrar por 'aprobado' (ver publishTallerProfile),
+      // asi que un mecanico no puede autoaprobarse saltandose admin_service.
       allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data)
-                          .affectedKeys().hasAny(['rol', 'calificacion_promedio', 'total_resenias']))
+                          .affectedKeys().hasAny(['rol', 'calificacion_promedio', 'total_resenias', 'estado']))
                     || isAdmin();
       
       allow delete: if isAdmin();
