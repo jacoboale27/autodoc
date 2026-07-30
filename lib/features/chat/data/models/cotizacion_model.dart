@@ -69,6 +69,18 @@ class CotizacionModel {
   /// el beneficio ya está reflejado en el costo de cada renglón).
   double get total => items.fold(0.0, (acc, i) => acc + i.subtotal);
 
+  /// Compatibilidad con el registro de servicio en persona (que guarda mano
+  /// de obra por separado): este desglose por renglones no la distingue.
+  double? get manoDeObra => null;
+
+  /// Compatibilidad con el registro de servicio en persona, que espera una
+  /// lista de materiales con esta forma (nombre/cantidad/precio).
+  List<Map<String, dynamic>> get materiales => items
+      .map(
+        (i) => {'nombre': i.material, 'cantidad': i.cantidad, 'precio': i.costo},
+      )
+      .toList();
+
   factory CotizacionModel.fromMap(Map<String, dynamic> map, String documentId) {
     final rawItems = map['items'] as List? ?? const [];
     return CotizacionModel(

@@ -127,7 +127,7 @@ Run: `flutter test test/core/bootstrap/firebase_bootstrap_test.dart test/core/wi
 - [ ] **Step 1: Replace only `FIREBASE_WEB_API_KEY` in `.env`**
 
 ```text
-FIREBASE_WEB_API_KEY=AIzaSyDanDOsuDv2_3nGm40m5Yd7djPJ8hwWHII
+FIREBASE_WEB_API_KEY=YOUR_API_KEY_HERE
 ```
 
 - [ ] **Step 2: Upgrade `file_picker` and resolve packages**

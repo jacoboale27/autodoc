@@ -148,15 +148,16 @@ void main() {
         id: '',
         idMecanico: 'mec1',
         idPropietario: 'prop1',
-        total: 150.00,
-        descripcion: 'Cambio de aceite y filtro',
+        items: [
+          CotizacionItem(material: 'Cambio de aceite y filtro', cantidad: 1, costo: 150.00),
+        ],
         estado: 'pendiente',
         fecha: DateTime(2026, 7, 1),
       );
 
       expect(cotizacion.total, 150.00);
       expect(cotizacion.estado, 'pendiente');
-      expect(cotizacion.descripcion, 'Cambio de aceite y filtro');
+      expect(cotizacion.resumen, 'Cambio de aceite y filtro');
     });
 
     test('CotizacionModel estado transitions are valid strings', () {
@@ -166,8 +167,7 @@ void main() {
           id: '',
           idMecanico: 'm',
           idPropietario: 'p',
-          total: 100,
-          descripcion: 'Test',
+          items: [CotizacionItem(material: 'Test', cantidad: 1, costo: 100)],
           estado: estado,
           fecha: DateTime.now(),
         );

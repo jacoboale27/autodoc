@@ -10,6 +10,8 @@ class ServiceRecordModel {
   final double? costo;
   final String? fotoFacturaUrl;
   final String? descripcion;
+  final double? manoDeObra;
+  final List<Map<String, dynamic>>? materiales;
 
   ServiceRecordModel({
     required this.idServicio,
@@ -21,6 +23,8 @@ class ServiceRecordModel {
     this.costo,
     this.fotoFacturaUrl,
     this.descripcion,
+    this.manoDeObra,
+    this.materiales,
   });
 
   ServiceRecordModel copyWith({
@@ -33,6 +37,8 @@ class ServiceRecordModel {
     double? costo,
     String? fotoFacturaUrl,
     String? descripcion,
+    double? manoDeObra,
+    List<Map<String, dynamic>>? materiales,
   }) {
     return ServiceRecordModel(
       idServicio: idServicio ?? this.idServicio,
@@ -44,6 +50,8 @@ class ServiceRecordModel {
       costo: costo ?? this.costo,
       fotoFacturaUrl: fotoFacturaUrl ?? this.fotoFacturaUrl,
       descripcion: descripcion ?? this.descripcion,
+      manoDeObra: manoDeObra ?? this.manoDeObra,
+      materiales: materiales ?? this.materiales,
     );
   }
 
@@ -58,6 +66,8 @@ class ServiceRecordModel {
       'costo': costo,
       'foto_factura_url': fotoFacturaUrl,
       'descripcion': descripcion,
+      'mano_de_obra': manoDeObra,
+      'materiales': materiales,
     };
   }
 
@@ -75,6 +85,8 @@ class ServiceRecordModel {
       costo: map['costo']?.toDouble(),
       fotoFacturaUrl: map['foto_factura_url'],
       descripcion: map['descripcion'],
+      manoDeObra: map['mano_de_obra']?.toDouble(),
+      materiales: map['materiales'] != null ? List<Map<String, dynamic>>.from(map['materiales']) : null,
     );
   }
 }

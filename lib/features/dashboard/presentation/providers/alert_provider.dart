@@ -285,6 +285,8 @@ class AlertProvider extends ChangeNotifier {
     required int currentKm,
     required double cost,
     required String notes,
+    double? manoDeObra,
+    List<Map<String, dynamic>>? materiales,
     XFile? receiptImage,
   }) async {
     _isLoading = true;
@@ -346,6 +348,8 @@ class AlertProvider extends ChangeNotifier {
               ? notes
               : 'Mantenimiento registrado manualmente por el propietario',
           'costo': cost,
+          'mano_de_obra': manoDeObra,
+          'materiales': materiales,
           'foto_factura_url': receiptUrl,
         });
       }
@@ -445,6 +449,8 @@ class AlertProvider extends ChangeNotifier {
     required String tallerId,
     required String descripcion,
     double? costo,
+    double? manoDeObra,
+    List<Map<String, dynamic>>? materiales,
     XFile? receiptImage,
   }) async {
     _isLoading = true;
@@ -495,6 +501,8 @@ class AlertProvider extends ChangeNotifier {
         'kilometraje_servicio': nuevoKilometraje,
         'descripcion': descripcion,
         'costo': costo,
+        'mano_de_obra': manoDeObra,
+        'materiales': materiales,
         'foto_factura_url': receiptUrl,
       });
 
