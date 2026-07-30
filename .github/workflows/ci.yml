@@ -74,7 +74,7 @@ jobs:
             exit 1
           fi
           sed -i "s|\$GOOGLE_SIGNIN_CLIENT_ID_WEB|${{ secrets.GOOGLE_SIGNIN_CLIENT_ID_WEB }}|g" web/index.html
-          grep -q 'YOUR_GOOGLE_CLIENT_ID' web/index.html && { echo "❌ Quedo el marcador sin sustituir"; exit 1; } || true
+          grep -q '\$GOOGLE_SIGNIN_CLIENT_ID_WEB' web/index.html && { echo "❌ Quedo el marcador sin sustituir"; exit 1; } || true
           echo "✅ client ID inyectado"
 
       - name: Build Flutter Web (release)
@@ -117,7 +117,7 @@ jobs:
             exit 1
           fi
           sed -i "s|\$GOOGLE_SIGNIN_CLIENT_ID_WEB|${{ secrets.GOOGLE_SIGNIN_CLIENT_ID_WEB }}|g" web/index.html
-          grep -q 'YOUR_GOOGLE_CLIENT_ID' web/index.html && { echo "❌ Quedo el marcador sin sustituir"; exit 1; } || true
+          grep -q '\$GOOGLE_SIGNIN_CLIENT_ID_WEB' web/index.html && { echo "❌ Quedo el marcador sin sustituir"; exit 1; } || true
           echo "✅ client ID inyectado"
 
       - name: Build Flutter Web for staging
@@ -170,7 +170,7 @@ jobs:
             exit 1
           fi
           sed -i "s|\$GOOGLE_SIGNIN_CLIENT_ID_WEB|${{ secrets.GOOGLE_SIGNIN_CLIENT_ID_WEB }}|g" web/index.html
-          grep -q 'YOUR_GOOGLE_CLIENT_ID' web/index.html && { echo "❌ Quedo el marcador sin sustituir"; exit 1; } || true
+          grep -q '\$GOOGLE_SIGNIN_CLIENT_ID_WEB' web/index.html && { echo "❌ Quedo el marcador sin sustituir"; exit 1; } || true
           echo "✅ client ID inyectado"
 
       - name: Build Flutter Web for production
