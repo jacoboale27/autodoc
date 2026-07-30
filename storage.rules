@@ -28,12 +28,30 @@ service firebase.storage {
         firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.rol in ['Mecanico', 'Taller'];
     }
 
+    // Toda escritura de imagen: maximo 5 MB y tipo de imagen permitido.
+    // Se excluye deliberadamente image/svg+xml: un SVG puede contener script
+    // y se serviria desde el dominio del propio proyecto.
+    function esImagenValida() {
+      return request.resource.size < 5 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/(jpeg|jpg|png|webp)');
+    }
+
+    // Mecanico cuyo taller esta vinculado al vehiculo.
+    function isVinculadoAlVehiculo(vehicleId) {
+      return isMecanico() &&
+        firestore.exists(/databases/(default)/documents/vehiculos/$(vehicleId)) &&
+        firestore.get(/databases/(default)/documents/vehiculos/$(vehicleId))
+          .data.get('talleres_vinculados', []).hasAny([request.auth.uid]);
+    }
+
     // Reglas para fotos de perfil
     // Cualquier usuario de la app puede leer las fotos de perfil
     // Solo el propietario puede subir o modificar su propia foto de perfil
     match /perfiles/{fileId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (fileId == request.auth.uid || fileId == request.auth.uid + '.jpg');
+      allow write: if isAuthenticated()
+        && esImagenValida()
+        && fileId.matches('^' + request.auth.uid + '(\\.(jpg|jpeg|png|webp))?$');
     }
 
     // Reglas para facturas y recibos de mantenimiento
@@ -42,36 +60,44 @@ service firebase.storage {
     match /facturas/{vehicleId}/{fileName} {
       allow read: if isAuthenticated() && (
         isVehicleOwner(vehicleId)
-        || isMecanico()
+        || isVinculadoAlVehiculo(vehicleId)
         || isAdmin()
       );
-      allow write: if isAuthenticated() && (
-        isVehicleOwner(vehicleId)
-        || isMecanico()
-        || isAdmin()
-      );
+      allow write: if isAuthenticated()
+        && esImagenValida()
+        && (isVehicleOwner(vehicleId) || isVinculadoAlVehiculo(vehicleId) || isAdmin());
+      // Las facturas son el rastro documental del producto: solo un admin las borra.
+      allow delete: if isAdmin();
     }
 
     // Reglas para imágenes de chat
     // Solo participantes de la conversación (autenticados)
     match /chat_images/{conversacionId}/{fileName} {
-      allow read, write: if isAuthenticated() && (
+      allow read: if isAuthenticated() && (
         isAdmin() || (
           firestore.exists(/databases/(default)/documents/conversaciones/$(conversacionId)) &&
           (firestore.get(/databases/(default)/documents/conversaciones/$(conversacionId)).data.id_propietario == request.auth.uid ||
            firestore.get(/databases/(default)/documents/conversaciones/$(conversacionId)).data.id_mecanico == request.auth.uid)
         )
       );
+      allow write: if isAuthenticated() && esImagenValida() && (
+        firestore.exists(/databases/(default)/documents/conversaciones/$(conversacionId)) &&
+        (firestore.get(/databases/(default)/documents/conversaciones/$(conversacionId)).data.id_propietario == request.auth.uid ||
+         firestore.get(/databases/(default)/documents/conversaciones/$(conversacionId)).data.id_mecanico == request.auth.uid)
+      );
     }
 
     // Reglas para imágenes de vehículos
     match /vehiculos/{vehicleId}/{fileName} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (
+      allow read: if isAuthenticated() && (
         isVehicleOwner(vehicleId)
-        || isMecanico()
+        || isVinculadoAlVehiculo(vehicleId)
         || isAdmin()
       );
+      allow write: if isAuthenticated()
+        && esImagenValida()
+        && (isVehicleOwner(vehicleId) || isAdmin());
+      allow delete: if isAuthenticated() && (isVehicleOwner(vehicleId) || isAdmin());
     }
   }
 }
