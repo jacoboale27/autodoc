@@ -142,10 +142,23 @@ service cloud.firestore {
       // fuga de "cualquier vehiculo, en cualquier momento" a "solo vehiculos
       // que ningun taller ha atendido todavia". Un vehiculo que ya tiene un
       // taller vinculado deja de poder ser secuestrado por uno distinto sin
-      // pasar por el mismo taller. El cierre completo (por ejemplo, exigir
-      // una reserva/cotizacion aceptada real, o una confirmacion fisica del
-      // propietario tipo QR/OTP) requiere una decision de producto que queda
-      // fuera de esta tanda; ver el informe de la Fase C para el detalle.
+      // pasar por el mismo taller.
+      //
+      // CIERRE COMPLETO (tarea C1-cierre): ya implementado. El trigger
+      // requestReviewOnServiceComplete (functions/index.js) ya NO otorga
+      // talleres_vinculados automaticamente cuando el vehiculo nunca tuvo
+      // taller vinculado: en su lugar marca taller_pendiente_confirmacion
+      // en el vehiculo y notifica al propietario (writeNotification + FCM).
+      // El vinculo permanente solo se otorga cuando el propietario confirma
+      // explicitamente desde su panel (VehicleService.confirmarVinculoTaller
+      // / rechazarVinculoTaller), una escritura directa sobre su propio
+      // /vehiculos ya permitida por la clausula de "allow update" de abajo
+      // (resource.data.id_propietario == request.auth.uid, sin restriccion
+      // de campos) — no requirio ningun cambio de regla nueva. La regla de
+      // 'servicios' create de aqui abajo sigue siendo necesaria tal cual
+      // esta: permite crear el servicio del walk-in (que dispara el
+      // trigger), porque el vinculo permanente ahora depende de ese paso
+      // posterior fuera de esta coleccion.
       allow create: if isAuthenticated() && (
         isAdmin() ||
         (isMecanico() && request.resource.data.id_taller == request.auth.uid

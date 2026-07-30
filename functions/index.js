@@ -261,13 +261,29 @@ exports.requestReviewOnServiceComplete = functions.firestore
       const vehiculoDoc = await db.collection('vehiculos').doc(vehiculoId).get();
       if (!vehiculoDoc.exists) return null;
 
-      // Vincula el taller al vehículo para que las reglas de seguridad le
-      // permitan leer/actualizar ese vehículo (tenant isolation, ver
-      // firestore.rules match /vehiculos). Se hace vía Admin SDK porque el
-      // cliente no tiene permiso de escribir este campo directamente.
-      const vehicleUpdate = {
-        talleres_vinculados: admin.firestore.FieldValue.arrayUnion(tallerId),
-      };
+      // Cierre del hallazgo C1 (ver firestore.rules:126-148): solo se vincula
+      // automáticamente el taller si YA existía una relación previa (visita
+      // recurrente, sin riesgo nuevo). Si el vehículo nunca tuvo taller
+      // vinculado, no se otorga acceso permanente aquí: se marca
+      // `taller_pendiente_confirmacion` y se le pide confirmación explícita
+      // al propietario (ver confirmarVinculoTaller/rechazarVinculoTaller en
+      // VehicleService, y el banner en dashboard_screen.dart). El caso
+      // "vehículo ya vinculado a OTRO taller distinto" no puede ocurrir aquí
+      // porque firestore.rules:149-159 ya impide crear el `servicios`
+      // correspondiente.
+      const talleresVinculados = vehiculoDoc.data().talleres_vinculados || [];
+      const yaVinculado = talleresVinculados.includes(tallerId);
+
+      const vehicleUpdate = {};
+      if (yaVinculado) {
+        // Vincula el taller al vehículo para que las reglas de seguridad le
+        // permitan leer/actualizar ese vehículo (tenant isolation, ver
+        // firestore.rules match /vehiculos). Se hace vía Admin SDK porque el
+        // cliente no tiene permiso de escribir este campo directamente.
+        vehicleUpdate.talleres_vinculados = admin.firestore.FieldValue.arrayUnion(tallerId);
+      } else {
+        vehicleUpdate.taller_pendiente_confirmacion = tallerId;
+      }
 
       // Actualiza el kilometraje aquí mismo (server-side) en vez de que el
       // cliente lea/escriba el vehículo justo después de crear el servicio:
@@ -314,6 +330,32 @@ exports.requestReviewOnServiceComplete = functions.firestore
         deepLink: '/workshop_directory',
         metadata: { tallerId, serviceId: context.params.serviceId },
       });
+
+      // Si es un vehículo nunca antes vinculado, pide confirmación explícita
+      // del propietario antes de otorgar acceso permanente al historial.
+      if (!yaVinculado) {
+        await messaging.send({
+          token: fcmToken,
+          notification: {
+            title: 'Nuevo taller quiere acceder al historial de tu vehículo',
+            body: `${tallerName} atendió tu vehículo ${vehiculoDoc.data().placa} y solicita acceso a su historial. Confírmalo desde tu panel.`
+          },
+          data: {
+            type: 'confirmacion_taller',
+            tallerId: tallerId,
+            vehiculoId: vehiculoId,
+            serviceId: context.params.serviceId
+          }
+        });
+
+        await writeNotification(ownerId, {
+          tipo: 'confirmacion_taller',
+          titulo: 'Nuevo taller quiere acceder al historial de tu vehículo',
+          body: `${tallerName} atendió tu vehículo ${vehiculoDoc.data().placa} y solicita acceso a su historial. Confírmalo desde tu panel.`,
+          deepLink: '/dashboard',
+          metadata: { tallerId, vehiculoId, serviceId: context.params.serviceId },
+        });
+      }
     } catch (error) {
       console.error('Error sending review request:', error);
     }

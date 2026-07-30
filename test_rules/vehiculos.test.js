@@ -70,4 +70,62 @@ describe('vehiculos', () => {
     await seed(env, seedVehiculo('v1', UIDS.owner1));
     await assertFails(anon(env).collection('vehiculos').get());
   });
+
+  // Cierre C1: confirmacion del propietario para talleres_vinculados/taller_pendiente_confirmacion
+  test('un taller vinculado NO puede escribir talleres_vinculados directamente', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await seed(env, seedVehiculo('v-vinc', UIDS.owner1, [UIDS.taller1]));
+    await assertFails(
+      db.collection('vehiculos').doc('v-vinc').update({
+        talleres_vinculados: [UIDS.taller1, UIDS.taller2],
+      }),
+    );
+  });
+
+  test('un taller vinculado NO puede escribir taller_pendiente_confirmacion directamente', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await seed(env, seedVehiculo('v-vinc', UIDS.owner1, [UIDS.taller1]));
+    await assertFails(
+      db.collection('vehiculos').doc('v-vinc').update({
+        taller_pendiente_confirmacion: UIDS.taller1,
+      }),
+    );
+  });
+
+  test('el propietario SI puede confirmar el vinculo de un taller pendiente', async () => {
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await seed(env, async (s) => {
+      await s.collection('vehiculos').doc('v-pend').set({
+        id_vehiculo: 'v-pend',
+        id_propietario: UIDS.owner1,
+        placa: 'P-v-pend',
+        talleres_vinculados: [],
+        taller_pendiente_confirmacion: UIDS.taller1,
+      });
+    });
+    await assertSucceeds(
+      db.collection('vehiculos').doc('v-pend').update({
+        talleres_vinculados: [UIDS.taller1],
+        taller_pendiente_confirmacion: null,
+      }),
+    );
+  });
+
+  test('el propietario SI puede rechazar el vinculo de un taller pendiente', async () => {
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await seed(env, async (s) => {
+      await s.collection('vehiculos').doc('v-pend').set({
+        id_vehiculo: 'v-pend',
+        id_propietario: UIDS.owner1,
+        placa: 'P-v-pend',
+        talleres_vinculados: [],
+        taller_pendiente_confirmacion: UIDS.taller1,
+      });
+    });
+    await assertSucceeds(
+      db.collection('vehiculos').doc('v-pend').update({
+        taller_pendiente_confirmacion: null,
+      }),
+    );
+  });
 });
