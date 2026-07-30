@@ -235,9 +235,13 @@ service cloud.firestore {
          isAdmin());
       allow create: if isAuthenticated() &&
         request.resource.data.id_propietario == request.auth.uid;
+      // El mecanico solo puede actualizar la reserva que le corresponde a el
+      // (mismo patron que 'cotizaciones'); antes cualquier mecanico
+      // autenticado podia modificar la reserva de cualquier otro.
       allow update: if isAuthenticated() && (
         resource.data.id_propietario == request.auth.uid ||
-        isMecanico() || isAdmin()
+        resource.data.id_mecanico == request.auth.uid ||
+        isAdmin()
       );
     }
 
