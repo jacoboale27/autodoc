@@ -50,8 +50,11 @@ service cloud.firestore {
 
     // 1. Tabla de Usuarios
     match /usuarios/{userId} {
-      allow read: if isAuthenticated();
-      
+      // Cada usuario lee unicamente su propio documento. El perfil publico de
+      // los talleres vive en la coleccion `talleres`, proyectado por la Cloud
+      // Function publishTallerProfile.
+      allow read: if isOwner(userId) || isAdmin();
+
       // Permitir la creación de su propio perfil de usuario durante registro/onboarding
       allow create: if isOwner(userId) && request.resource.data.rol == 'Propietario';
       
