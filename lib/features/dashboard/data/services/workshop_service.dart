@@ -34,8 +34,11 @@ class WorkshopService {
   }
 
   Future<UserModel?> getWorkshopById(String id) async {
+    // I1 (Fase C, revision de correcciones): 'usuarios' quedo cerrada a solo
+    // lectura del propio documento (Tarea 8); el perfil publico del taller
+    // vive en 'talleres', proyectado por publishTallerProfile.
     final doc = await _firestore
-        .collection(FirestoreCollections.usuarios)
+        .collection(FirestoreCollections.talleres)
         .doc(id)
         .get();
     if (doc.exists) {

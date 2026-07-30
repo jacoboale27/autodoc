@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/firestore_collections.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 
 class ShareVehicleSheet extends StatefulWidget {
@@ -20,6 +21,7 @@ class ShareVehicleSheet extends StatefulWidget {
 class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
   final _emailController = TextEditingController();
   final _firestore = FirebaseFirestore.instance;
+  final _functions = FirebaseFunctions.instance;
   bool _isLoading = false;
   List<Map<String, String>> _sharedUsers = []; // {uid, email, name}
 
@@ -29,22 +31,31 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
     _loadSharedUsers();
   }
 
+  // I1 (Fase C, revision de correcciones): 'usuarios' quedo cerrada a solo
+  // lectura del propio documento (Tarea 8), asi que ya no se puede leer
+  // usuarios/{uid} de cada usuario compartido directamente. La resolucion
+  // pasa por la Cloud Function callable `obtenerUsuariosCompartidos`, que
+  // verifica server-side que el llamante es el propietario del vehiculo.
   Future<void> _loadSharedUsers() async {
-    final users = <Map<String, String>>[];
-    for (var uid in widget.vehicle.sharedWith) {
-      final doc = await _firestore
-          .collection(FirestoreCollections.usuarios)
-          .doc(uid)
-          .get();
-      if (doc.exists) {
-        users.add({
-          'uid': uid,
-          'email': doc.data()?['correo'] ?? '',
-          'name': doc.data()?['nombre_completo'] ?? 'Sin nombre',
-        });
-      }
+    try {
+      final result = await _functions
+          .httpsCallable('obtenerUsuariosCompartidos')
+          .call({'vehicleId': widget.vehicle.idVehiculo});
+      final data = (result.data as List?) ?? [];
+      final users = data
+          .map(
+            (u) => {
+              'uid': (u as Map)['uid']?.toString() ?? '',
+              'email': u['correo']?.toString() ?? '',
+              'name': u['nombre']?.toString() ?? 'Sin nombre',
+            },
+          )
+          .toList();
+      if (mounted) setState(() => _sharedUsers = users);
+    } catch (e) {
+      // No bloquea la hoja de compartir si la resolucion falla; el usuario
+      // simplemente vera la lista de compartidos vacia.
     }
-    if (mounted) setState(() => _sharedUsers = users);
   }
 
   @override
@@ -305,20 +316,24 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
 
     setState(() => _isLoading = true);
     try {
-      // Find user by email in Usuarios collection
-      final query = await _firestore
-          .collection(FirestoreCollections.usuarios)
-          .where('correo', isEqualTo: email)
-          .limit(1)
-          .get();
+      // I1 (Fase C, revision de correcciones): la busqueda por correo sobre
+      // 'usuarios' ya no es posible desde el cliente (Tarea 8 cerro esa
+      // coleccion a solo lectura del propio documento). Se resuelve via la
+      // Cloud Function callable `buscarPropietarioPorCorreo`, que verifica
+      // que el llamante es el propietario del vehiculo y solo devuelve
+      // cuentas con rol Propietario.
+      final result = await _functions
+          .httpsCallable('buscarPropietarioPorCorreo')
+          .call({'vehicleId': widget.vehicle.idVehiculo, 'correo': email});
+      final data = result.data as Map?;
 
-      if (query.docs.isEmpty) {
+      if (data == null) {
         _showSnack('No se encontró un usuario con ese correo');
         setState(() => _isLoading = false);
         return;
       }
 
-      final targetUid = query.docs.first.id;
+      final targetUid = data['uid'] as String;
 
       if (targetUid == widget.vehicle.idPropietario) {
         _showSnack('No puedes compartir contigo mismo');

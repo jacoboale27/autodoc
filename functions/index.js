@@ -747,4 +747,106 @@ exports.buscarVehiculoPorPlaca = functions.https.onCall(async (data, context) =>
   };
 });
 
+/**
+ * 11. Callable: resuelve los datos publicos (uid, correo, nombre) de los
+ * usuarios con quienes el propietario ya comparte un vehiculo.
+ *
+ * Necesaria desde la Tarea 8 (Fase C): 'usuarios' quedo cerrada a solo
+ * lectura del propio documento, lo que rompio share_vehicle_sheet.dart, que
+ * antes leia usuarios/{uid} de cada uid en vehiculo.shared_with. Esta
+ * funcion corre con Admin SDK y solo devuelve datos de los uids que YA
+ * figuran en shared_with del vehiculo del propio llamante, verificado aqui
+ * server-side (no confia en una lista que mande el cliente).
+ */
+exports.obtenerUsuariosCompartidos = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  }
+
+  const vehicleId = data && data.vehicleId ? String(data.vehicleId) : '';
+  if (!vehicleId) {
+    throw new functions.https.HttpsError('invalid-argument', 'Debes indicar el vehiculo.');
+  }
+
+  const vehiculoDoc = await db.collection('vehiculos').doc(vehicleId).get();
+  if (!vehiculoDoc.exists) {
+    throw new functions.https.HttpsError('not-found', 'Vehículo no encontrado.');
+  }
+  if (vehiculoDoc.data().id_propietario !== context.auth.uid) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'Solo el propietario del vehículo puede ver con quién lo comparte.'
+    );
+  }
+
+  const sharedWith = Array.isArray(vehiculoDoc.data().shared_with)
+    ? vehiculoDoc.data().shared_with
+    : [];
+
+  const usuarios = await Promise.all(
+    sharedWith.map(async (uid) => {
+      const doc = await db.collection('usuarios').doc(String(uid)).get();
+      if (!doc.exists) return null;
+      const d = doc.data();
+      return {
+        uid: doc.id,
+        correo: d.correo || '',
+        nombre: d.nombre_completo || 'Sin nombre',
+      };
+    })
+  );
+
+  return usuarios.filter(Boolean);
+});
+
+/**
+ * 12. Callable: busca un propietario por correo para compartir un vehiculo.
+ *
+ * Igual que buscarVehiculoPorPlaca, resuelve del lado del servidor lo que
+ * 'usuarios' ya no expone al cliente. Solo el propietario del vehiculo que
+ * quiere compartir puede llamarla, y solo devuelve cuentas con rol
+ * 'Propietario' (compartir vehiculo es entre propietarios, no expone
+ * cuentas de mecanico/admin por correo).
+ */
+exports.buscarPropietarioPorCorreo = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  }
+
+  const vehicleId = data && data.vehicleId ? String(data.vehicleId) : '';
+  const correo = (data && data.correo ? String(data.correo) : '').trim().toLowerCase();
+  if (!vehicleId || !correo) {
+    throw new functions.https.HttpsError('invalid-argument', 'Debes indicar el vehiculo y el correo.');
+  }
+
+  const vehiculoDoc = await db.collection('vehiculos').doc(vehicleId).get();
+  if (!vehiculoDoc.exists) {
+    throw new functions.https.HttpsError('not-found', 'Vehículo no encontrado.');
+  }
+  if (vehiculoDoc.data().id_propietario !== context.auth.uid) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'Solo el propietario del vehículo puede compartirlo.'
+    );
+  }
+
+  const snapshot = await db
+    .collection('usuarios')
+    .where('correo', '==', correo)
+    .limit(1)
+    .get();
+
+  if (snapshot.empty) return null;
+
+  const doc = snapshot.docs[0];
+  const d = doc.data();
+  if (d.rol !== 'Propietario') return null;
+
+  return {
+    uid: doc.id,
+    correo: d.correo || correo,
+    nombre: d.nombre_completo || 'Sin nombre',
+  };
+});
+
 exports.publishTallerProfile = require('./src/publishTallerProfile').publishTallerProfile;

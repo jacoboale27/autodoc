@@ -640,11 +640,21 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
     ServiceRecordModel record,
   ) async {
     final tallerId = record.idTaller!;
-    final snap = await FirebaseFirestore.instance
-        .collection(FirestoreCollections.usuarios)
-        .doc(tallerId)
-        .get();
-    final nombre = snap.data()?['nombre_completo'] as String? ?? 'Taller';
+    // I1 (Fase C, revision de correcciones): 'usuarios' quedo cerrada a solo
+    // lectura del propio documento (Tarea 8); el perfil publico del taller
+    // (incluido su nombre) vive en 'talleres', proyectado por
+    // publishTallerProfile. Se protege con try/catch: si la lectura falla
+    // (p. ej. taller aun no proyectado) igual se abre la hoja de resenia.
+    String nombre = 'Taller';
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection(FirestoreCollections.talleres)
+          .doc(tallerId)
+          .get();
+      nombre = snap.data()?['nombre'] as String? ?? 'Taller';
+    } catch (_) {
+      // Se conserva el nombre por defecto; no bloquea la resenia.
+    }
     if (!context.mounted) return;
     await showReviewBottomSheet(
       context,
