@@ -15,8 +15,8 @@ import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class ServiceHistoryScreen extends StatefulWidget {
-  final String vehicleId;
-  const ServiceHistoryScreen({super.key, required this.vehicleId});
+  final String vehiculoId;
+  const ServiceHistoryScreen({super.key, required this.vehiculoId});
 
   @override
   State<ServiceHistoryScreen> createState() => _ServiceHistoryScreenState();
@@ -189,7 +189,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection(FirestoreCollections.servicios)
-                  .where('id_vehiculo', isEqualTo: widget.vehicleId)
+                  .where('id_vehiculo', isEqualTo: widget.vehiculoId)
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {

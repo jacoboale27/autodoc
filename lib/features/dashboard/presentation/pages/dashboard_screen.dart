@@ -677,8 +677,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               width: double.infinity,
               child: AppButton(
                 text: context.l10n.dashViewVehicleState,
-                onPressed: () =>
-                    context.push('/vehicle_profile', extra: vehicle),
+                onPressed: () => context.push(
+                  '/vehicle_profile/${vehicle.idVehiculo}',
+                  extra: vehicle,
+                ),
                 icon: const Icon(
                   Icons.arrow_forward_rounded,
                   size: 16,

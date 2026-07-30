@@ -162,7 +162,8 @@ class GarageScreen extends StatelessWidget {
     String? currentUserId,
   ) {
     return AppCard(
-      onTap: () => context.push('/vehicle_profile', extra: vehicle),
+      onTap: () =>
+          context.push('/vehicle_profile/${vehicle.idVehiculo}', extra: vehicle),
       margin: const EdgeInsets.only(bottom: 16),
       padding: EdgeInsets.zero,
       child: ClipRRect(

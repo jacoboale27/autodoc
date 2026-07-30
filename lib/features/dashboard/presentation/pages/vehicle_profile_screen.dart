@@ -4,10 +4,12 @@ import '../widgets/vehicle_gallery_widget.dart';
 import '../widgets/expense_summary_card.dart';
 import '../../data/services/vehicle_service.dart';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:autodoc/core/widgets/vehicle_image_widget.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import '../providers/vehicle_provider.dart';
 import '../widgets/license_plate_widget.dart';
@@ -17,6 +19,7 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_scaffold.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/missing_argument_screen.dart';
 import '../widgets/share_vehicle_sheet.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
@@ -24,31 +27,80 @@ import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
 
 class VehicleProfileScreen extends StatefulWidget {
-  final VehicleModel vehicle;
+  final String vehiculoId;
+  final VehicleModel? vehiculoPrecargado;
 
-  const VehicleProfileScreen({super.key, required this.vehicle});
+  const VehicleProfileScreen({
+    super.key,
+    required this.vehiculoId,
+    this.vehiculoPrecargado,
+  });
 
   @override
   State<VehicleProfileScreen> createState() => _VehicleProfileScreenState();
 }
 
 class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
-  late VehicleModel _currentVehicle;
+  VehicleModel? _currentVehicle;
+  bool _cargando = false;
+  String? _errorCarga;
 
   @override
   void initState() {
     super.initState();
-    _currentVehicle = widget.vehicle;
+    _currentVehicle = widget.vehiculoPrecargado;
+    if (_currentVehicle == null) _cargarVehiculo();
+  }
+
+  Future<void> _cargarVehiculo() async {
+    setState(() {
+      _cargando = true;
+      _errorCarga = null;
+    });
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection(FirestoreCollections.vehiculos)
+          .doc(widget.vehiculoId)
+          .get();
+      if (!mounted) return;
+      if (!doc.exists) {
+        setState(() {
+          _cargando = false;
+          _errorCarga = 'notFound';
+        });
+        return;
+      }
+      setState(() {
+        _currentVehicle = VehicleModel.fromMap(doc.data()!, doc.id);
+        _cargando = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _cargando = false;
+        _errorCarga = 'error';
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_cargando) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_errorCarga != null || _currentVehicle == null) {
+      return const MissingArgumentScreen(
+        mensaje: 'No se pudo cargar este vehículo.',
+        rutaVuelta: '/garage',
+      );
+    }
+
     final colors = context.appColors;
 
     final vehicleProvider = context.watch<VehicleProvider>();
     final vehicle = vehicleProvider.vehicles.firstWhere(
-      (v) => v.idVehiculo == _currentVehicle.idVehiculo,
-      orElse: () => _currentVehicle,
+      (v) => v.idVehiculo == _currentVehicle!.idVehiculo,
+      orElse: () => _currentVehicle!,
     );
 
     return AppScaffold(
@@ -746,7 +798,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                 colors.primary,
                 colors,
                 onTap: () {
-                  context.push('/service_history', extra: vehicle.idVehiculo);
+                  context.push('/service_history/${vehicle.idVehiculo}');
                 },
               ),
               const SizedBox(width: 12),

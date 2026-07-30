@@ -243,7 +243,10 @@ class ReservaChatCard extends StatelessWidget {
                         estado: estado,
                         fechaCreacion: DateTime.now(),
                       );
-                      context.push('/reserva_detail', extra: reserva);
+                      context.push(
+                        '/reserva_detail/${reserva.id}',
+                        extra: reserva,
+                      );
                     },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: isMe ? Colors.white : colors.primary,

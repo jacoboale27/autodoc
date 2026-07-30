@@ -584,7 +584,7 @@ exports.notifyOnReservationStatusChange = functions.firestore
         tipo: 'reserva',
         titulo: title,
         body: body,
-        deepLink: '/reserva_detail',
+        deepLink: `/reserva_detail/${context.params.reservaId}`,
         metadata: { reservaId: context.params.reservaId },
       });
     } catch (error) {

@@ -68,7 +68,10 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
       if (vehicle != null) {
         vehicleProvider.addRecentSearch(vehicle);
         if (mounted) {
-          context.push('/initiate_service', extra: vehicle);
+          context.push(
+            '/initiate_service/${vehicle.idVehiculo}',
+            extra: vehicle,
+          );
         }
       } else {
         if (mounted) {
@@ -357,7 +360,10 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
   Widget _buildRecentItem(dynamic vehicle, AppColors colors) {
     return InkWell(
       onTap: () {
-        context.push('/initiate_service', extra: vehicle);
+        context.push(
+          '/initiate_service/${vehicle.idVehiculo}',
+          extra: vehicle,
+        );
       },
       borderRadius: BorderRadius.circular(12),
       child: Padding(

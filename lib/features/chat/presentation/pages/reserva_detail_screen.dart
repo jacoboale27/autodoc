@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/missing_argument_screen.dart';
 import 'package:autodoc/features/chat/data/models/reserva_model.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
@@ -10,9 +13,14 @@ import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
 
 class ReservaDetailScreen extends StatefulWidget {
-  final ReservaModel reserva;
+  final String reservaId;
+  final ReservaModel? reservaPrecargada;
 
-  const ReservaDetailScreen({super.key, required this.reserva});
+  const ReservaDetailScreen({
+    super.key,
+    required this.reservaId,
+    this.reservaPrecargada,
+  });
 
   @override
   State<ReservaDetailScreen> createState() => _ReservaDetailScreenState();
@@ -20,6 +28,47 @@ class ReservaDetailScreen extends StatefulWidget {
 
 class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
   bool _isLoading = false;
+  ReservaModel? _reserva;
+  bool _cargando = false;
+  String? _errorCarga;
+
+  @override
+  void initState() {
+    super.initState();
+    _reserva = widget.reservaPrecargada;
+    if (_reserva == null) _cargarReserva();
+  }
+
+  Future<void> _cargarReserva() async {
+    setState(() {
+      _cargando = true;
+      _errorCarga = null;
+    });
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection(FirestoreCollections.reservas)
+          .doc(widget.reservaId)
+          .get();
+      if (!mounted) return;
+      if (!doc.exists) {
+        setState(() {
+          _cargando = false;
+          _errorCarga = 'notFound';
+        });
+        return;
+      }
+      setState(() {
+        _reserva = ReservaModel.fromMap(doc.data()!, doc.id);
+        _cargando = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _cargando = false;
+        _errorCarga = 'error';
+      });
+    }
+  }
 
   Future<void> _cambiarEstado(String nuevoEstado) async {
     setState(() => _isLoading = true);
@@ -27,13 +76,13 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
       final reservaProvider = context.read<ReservaProvider>();
       if (nuevoEstado == 'confirmada') {
         await reservaProvider.cambiarEstadoReserva(
-          widget.reserva.id,
+          _reserva!.id,
           'confirmada',
           fechaConfirmada: DateTime.now(),
         );
       } else {
         await reservaProvider.cambiarEstadoReserva(
-          widget.reserva.id,
+          _reserva!.id,
           nuevoEstado,
         );
       }
@@ -60,12 +109,22 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_cargando) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_errorCarga != null || _reserva == null) {
+      return const MissingArgumentScreen(
+        mensaje: 'No se pudo cargar esta reserva.',
+        rutaVuelta: '/chat_list',
+      );
+    }
+
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final userSession = context.watch<UserProfileProvider>();
     final isMecanico = userSession.userData?.rol == 'Mecanico';
-    final reserva = widget.reserva;
+    final reserva = _reserva!;
 
     final estadoColor = reserva.estado == 'confirmada'
         ? Colors.green

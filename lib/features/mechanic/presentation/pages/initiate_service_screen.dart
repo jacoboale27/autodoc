@@ -15,19 +15,30 @@ import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:autodoc/core/models/alert_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/missing_argument_screen.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
+import 'package:autodoc/core/constants/firestore_collections.dart';
 
 class InitiateServiceScreen extends StatefulWidget {
-  final VehicleModel vehicle;
+  final String vehiculoId;
+  final VehicleModel? vehiculoPrecargado;
 
-  const InitiateServiceScreen({super.key, required this.vehicle});
+  const InitiateServiceScreen({
+    super.key,
+    required this.vehiculoId,
+    this.vehiculoPrecargado,
+  });
 
   @override
   State<InitiateServiceScreen> createState() => _InitiateServiceScreenState();
 }
 
 class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
+  VehicleModel? _vehiculo;
+  bool _cargando = false;
+  String? _errorCarga;
+
   final TextEditingController _kmController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _costoController = TextEditingController();
@@ -83,18 +94,61 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   @override
   void initState() {
     super.initState();
-    _kmController.text = widget.vehicle.kilometrajeActual.toString();
     _manoDeObraController.addListener(_updateTotalCost);
+    _vehiculo = widget.vehiculoPrecargado;
+    if (_vehiculo != null) {
+      _onVehiculoListo();
+    } else {
+      _cargarVehiculo();
+    }
+  }
+
+  Future<void> _cargarVehiculo() async {
+    setState(() {
+      _cargando = true;
+      _errorCarga = null;
+    });
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection(FirestoreCollections.vehiculos)
+          .doc(widget.vehiculoId)
+          .get();
+      if (!mounted) return;
+      if (!doc.exists) {
+        setState(() {
+          _cargando = false;
+          _errorCarga = 'notFound';
+        });
+        return;
+      }
+      setState(() {
+        _vehiculo = VehicleModel.fromMap(doc.data()!, doc.id);
+        _cargando = false;
+      });
+      _onVehiculoListo();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _cargando = false;
+        _errorCarga = 'error';
+      });
+    }
+  }
+
+  void _onVehiculoListo() {
+    final vehiculo = _vehiculo!;
+    _kmController.text = vehiculo.kilometrajeActual.toString();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<AlertProvider>().fetchAlerts(
-        widget.vehicle.idVehiculo,
-        widget.vehicle,
+        vehiculo.idVehiculo,
+        vehiculo,
       );
     });
 
     FirebaseFirestore.instance
         .collection('cotizaciones')
-        .where('id_vehiculo', isEqualTo: widget.vehicle.idVehiculo)
+        .where('id_vehiculo', isEqualTo: vehiculo.idVehiculo)
         .where('estado', isEqualTo: 'aceptada')
         .orderBy('fecha', descending: true)
         .limit(1)
@@ -148,7 +202,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     }
 
     final nuevoKm = int.tryParse(_kmController.text);
-    if (nuevoKm == null || nuevoKm < widget.vehicle.kilometrajeActual) {
+    if (nuevoKm == null || nuevoKm < _vehiculo!.kilometrajeActual) {
       HapticFeedback.heavyImpact();
       UiUtils.showErrorSnackbar(
         context,
@@ -191,8 +245,8 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       }
 
       await alertProvider.fetchAlerts(
-        widget.vehicle.idVehiculo,
-        widget.vehicle,
+        _vehiculo!.idVehiculo,
+        _vehiculo!,
       );
 
       if (mounted) {
@@ -215,6 +269,16 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_cargando) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_errorCarga != null || _vehiculo == null) {
+      return const MissingArgumentScreen(
+        mensaje: 'No se pudo cargar el vehículo del servicio.',
+        rutaVuelta: '/mechanic_dashboard',
+      );
+    }
+
     final alertProvider = context.watch<AlertProvider>();
     final colors = context.appColors;
 
@@ -520,7 +584,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${widget.vehicle.marca} ${widget.vehicle.modelo}',
+                      '${_vehiculo!.marca} ${_vehiculo!.modelo}',
                       style: GoogleFonts.montserrat(
                         color: Colors.white,
                         fontSize: Responsive.fontSize(context, 18),
@@ -529,7 +593,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                       overflow: TextOverflow.visible,
                     ),
                     Text(
-                      'Placa: ${widget.vehicle.placa}',
+                      'Placa: ${_vehiculo!.placa}',
                       style: GoogleFonts.inter(
                         color: Colors.white.withValues(alpha: 0.8),
                         fontSize: Responsive.fontSize(context, 14),
@@ -563,7 +627,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                   ),
                 ),
                 Text(
-                  '${widget.vehicle.kilometrajeActual} KM',
+                  '${_vehiculo!.kilometrajeActual} KM',
                   style: GoogleFonts.inter(
                     color: colors.primary,
                     fontWeight: FontWeight.bold,
@@ -932,7 +996,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     return Column(
       children: provider.maintenanceTasks.map((task) {
         final isSelected = _completedTaskIds.contains(task.id);
-        final status = task.getStatus(widget.vehicle.kilometrajeActual);
+        final status = task.getStatus(_vehiculo!.kilometrajeActual);
 
         return Container(
           margin: const EdgeInsets.only(bottom: 12),

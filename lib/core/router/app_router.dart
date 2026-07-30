@@ -40,6 +40,7 @@ import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/notifications_screen.dart';
 import 'package:autodoc/core/models/user_model.dart';
+import 'package:autodoc/core/widgets/missing_argument_screen.dart';
 
 CustomTransitionPage<T> buildPageWithFadeThrough<T>({
   required BuildContext context,
@@ -129,10 +130,12 @@ bool _matchesRouteSet(String path, Set<String> routes) {
 
 /// App Router Definition with auth guards
 ///
-/// Route expectations (extra parameters):
-/// - /vehicle_profile: expects `VehicleModel`
-/// - /service_history: expects `String` (vehicleId)
-/// - /initiate_service: expects `VehicleModel`
+/// Route expectations:
+/// - /vehicle_profile/:vehiculoId   — extra opcional: VehicleModel (precarga)
+/// - /service_history/:vehiculoId   — extra opcional: VehicleModel (precarga)
+/// - /initiate_service/:vehiculoId  — extra opcional: VehicleModel (precarga)
+/// - /reserva_detail/:reservaId     — extra opcional: ReservaModel (precarga)
+/// Ninguna pantalla depende de `extra`: todas resuelven el argumento desde su id.
 /// - /task_config: expects `MaintenanceTask`
 /// - /task_complete: expects `Map<String, dynamic>` with keys 'task' (MaintenanceTask) and 'currentKm' (int)
 /// Núcleo de decisión del enrutado, sin dependencias de Flutter ni de go_router.
@@ -355,13 +358,27 @@ GoRouter createAppRouter(
       ),
 
       GoRoute(
-        path: '/vehicle_profile',
+        path: '/vehicle_profile/:vehiculoId',
         pageBuilder: (context, state) {
-          final vehicle = state.extra as VehicleModel;
+          final id = state.pathParameters['vehiculoId'];
+          if (id == null || id.isEmpty) {
+            return buildPageWithFadeThrough(
+              context: context,
+              state: state,
+              child: const MissingArgumentScreen(
+                mensaje: 'No se indicó ningún vehículo.',
+              ),
+            );
+          }
           return buildPageWithFadeThrough(
             context: context,
             state: state,
-            child: VehicleProfileScreen(vehicle: vehicle),
+            child: VehicleProfileScreen(
+              vehiculoId: id,
+              vehiculoPrecargado: state.extra is VehicleModel
+                  ? state.extra as VehicleModel
+                  : null,
+            ),
           );
         },
       ),
@@ -374,13 +391,22 @@ GoRouter createAppRouter(
         ),
       ),
       GoRoute(
-        path: '/service_history',
+        path: '/service_history/:vehiculoId',
         pageBuilder: (context, state) {
-          final vehicleId = state.extra as String;
+          final id = state.pathParameters['vehiculoId'];
+          if (id == null || id.isEmpty) {
+            return buildPageWithFadeThrough(
+              context: context,
+              state: state,
+              child: const MissingArgumentScreen(
+                mensaje: 'No se indicó ningún vehículo.',
+              ),
+            );
+          }
           return buildPageWithFadeThrough(
             context: context,
             state: state,
-            child: ServiceHistoryScreen(vehicleId: vehicleId),
+            child: ServiceHistoryScreen(vehiculoId: id),
           );
         },
       ),
@@ -433,13 +459,28 @@ GoRouter createAppRouter(
         ),
       ),
       GoRoute(
-        path: '/initiate_service',
+        path: '/initiate_service/:vehiculoId',
         pageBuilder: (context, state) {
-          final vehicle = state.extra as VehicleModel;
+          final id = state.pathParameters['vehiculoId'];
+          if (id == null || id.isEmpty) {
+            return buildPageWithFadeThrough(
+              context: context,
+              state: state,
+              child: const MissingArgumentScreen(
+                mensaje: 'No se indicó ningún vehículo.',
+                rutaVuelta: '/mechanic_dashboard',
+              ),
+            );
+          }
           return buildPageWithFadeThrough(
             context: context,
             state: state,
-            child: InitiateServiceScreen(vehicle: vehicle),
+            child: InitiateServiceScreen(
+              vehiculoId: id,
+              vehiculoPrecargado: state.extra is VehicleModel
+                  ? state.extra as VehicleModel
+                  : null,
+            ),
           );
         },
       ),
@@ -455,13 +496,28 @@ GoRouter createAppRouter(
         },
       ),
       GoRoute(
-        path: '/reserva_detail',
+        path: '/reserva_detail/:reservaId',
         pageBuilder: (context, state) {
-          final reserva = state.extra as ReservaModel;
+          final id = state.pathParameters['reservaId'];
+          if (id == null || id.isEmpty) {
+            return buildPageWithFadeThrough(
+              context: context,
+              state: state,
+              child: const MissingArgumentScreen(
+                mensaje: 'No se indicó ninguna reserva.',
+                rutaVuelta: '/chat_list',
+              ),
+            );
+          }
           return buildPageWithFadeThrough(
             context: context,
             state: state,
-            child: ReservaDetailScreen(reserva: reserva),
+            child: ReservaDetailScreen(
+              reservaId: id,
+              reservaPrecargada: state.extra is ReservaModel
+                  ? state.extra as ReservaModel
+                  : null,
+            ),
           );
         },
       ),
