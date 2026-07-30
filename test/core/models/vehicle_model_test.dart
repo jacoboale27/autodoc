@@ -42,5 +42,47 @@ void main() {
         // Method not found, safely ignore
       }
     });
+
+    // Cierre C1: talleresVinculados/tallerPendienteConfirmacion deben
+    // sobrevivir un round-trip toMap/fromMap con las mismas claves que usa
+    // el trigger de Cloud Functions (talleres_vinculados,
+    // taller_pendiente_confirmacion).
+    test(
+      'talleresVinculados y tallerPendienteConfirmacion sobreviven toMap/fromMap',
+      () {
+        final model = VehicleModel(
+          idVehiculo: '1',
+          idPropietario: '2',
+          placa: '3',
+          talleresVinculados: const ['taller1'],
+          tallerPendienteConfirmacion: 'taller2',
+        );
+
+        final map = model.toMap();
+        expect(map['talleres_vinculados'], ['taller1']);
+        expect(map['taller_pendiente_confirmacion'], 'taller2');
+
+        final fromMapModel = VehicleModel.fromMap(map, 'id');
+        expect(fromMapModel.talleresVinculados, ['taller1']);
+        expect(fromMapModel.tallerPendienteConfirmacion, 'taller2');
+      },
+    );
+
+    test(
+      'talleresVinculados y tallerPendienteConfirmacion tienen defaults seguros',
+      () {
+        final model = VehicleModel(
+          idVehiculo: '1',
+          idPropietario: '2',
+          placa: '3',
+        );
+        expect(model.talleresVinculados, isEmpty);
+        expect(model.tallerPendienteConfirmacion, isNull);
+
+        final fromMapModel = VehicleModel.fromMap({}, 'id');
+        expect(fromMapModel.talleresVinculados, isEmpty);
+        expect(fromMapModel.tallerPendienteConfirmacion, isNull);
+      },
+    );
   });
 }

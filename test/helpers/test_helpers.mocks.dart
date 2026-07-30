@@ -553,6 +553,34 @@ class MockVehicleService extends _i1.Mock implements _i13.VehicleService {
       ) as _i4.Future<void>);
 
   @override
+  _i4.Future<void> confirmarVinculoTaller(
+    String? vehiculoId,
+    String? tallerId,
+  ) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #confirmarVinculoTaller,
+          [
+            vehiculoId,
+            tallerId,
+          ],
+        ),
+        returnValue: _i4.Future<void>.value(),
+        returnValueForMissingStub: _i4.Future<void>.value(),
+      ) as _i4.Future<void>);
+
+  @override
+  _i4.Future<void> rechazarVinculoTaller(String? vehiculoId) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #rechazarVinculoTaller,
+          [vehiculoId],
+        ),
+        returnValue: _i4.Future<void>.value(),
+        returnValueForMissingStub: _i4.Future<void>.value(),
+      ) as _i4.Future<void>);
+
+  @override
   _i4.Future<void> deleteVehicle(String? vehicleId) => (super.noSuchMethod(
         Invocation.method(
           #deleteVehicle,

@@ -102,6 +102,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     _buildHeader(context, isDark, textColor, subTextColor),
                     const SizedBox(height: 8),
+                    if (vehicle?.tallerPendienteConfirmacion != null) ...[
+                      _buildTallerPendienteBanner(
+                        context,
+                        vehicleProvider,
+                        vehicle!,
+                        primaryPurple,
+                        isDark,
+                        textColor,
+                        subTextColor,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     if (isLoading)
                       AppSkeletonLayouts.dashboard()
                     else if (vehicle == null)
@@ -243,6 +255,114 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Banner de confirmación del hallazgo C1: cuando un taller atendió un
+  /// vehículo que nunca tuvo taller vinculado, el trigger
+  /// requestReviewOnServiceComplete marca `taller_pendiente_confirmacion`
+  /// en vez de vincularlo automáticamente. El propietario debe confirmar o
+  /// rechazar explícitamente antes de otorgar acceso permanente al
+  /// historial (ver VehicleProvider.confirmarVinculoTaller /
+  /// rechazarVinculoTaller).
+  Widget _buildTallerPendienteBanner(
+    BuildContext context,
+    VehicleProvider vehicleProvider,
+    VehicleModel vehicle,
+    Color primary,
+    bool isDark,
+    Color textColor,
+    Color subTextColor,
+  ) {
+    final tallerId = vehicle.tallerPendienteConfirmacion;
+    if (tallerId == null) return const SizedBox.shrink();
+
+    final colors = context.appColors;
+
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: Responsive.padding(context, 24),
+      ),
+      child: AppCard(
+        padding: const EdgeInsets.all(16),
+        margin: EdgeInsets.zero,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.build_circle_outlined, color: colors.warning),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    context.l10n.dashTallerPendienteTitulo,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              context.l10n.dashTallerPendienteDesc,
+              style: TextStyle(color: subTextColor, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      final success = await vehicleProvider
+                          .confirmarVinculoTaller(vehicle.idVehiculo, tallerId);
+                      if (!success && context.mounted) {
+                        UiUtils.showErrorSnackbar(
+                          context,
+                          vehicleProvider.error ??
+                              context.l10n.dashTallerPendienteConfirmError,
+                        );
+                      }
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: primary,
+                      side: BorderSide(color: primary),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      minimumSize: Size.zero,
+                    ),
+                    child: Text(context.l10n.chatAccept),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      final success = await vehicleProvider
+                          .rechazarVinculoTaller(vehicle.idVehiculo);
+                      if (!success && context.mounted) {
+                        UiUtils.showErrorSnackbar(
+                          context,
+                          vehicleProvider.error ??
+                              context.l10n.dashTallerPendienteRechazarError,
+                        );
+                      }
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      minimumSize: Size.zero,
+                    ),
+                    child: Text(context.l10n.chatReject),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

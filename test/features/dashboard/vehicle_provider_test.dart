@@ -167,5 +167,104 @@ void main() {
         mockVehicleService.updateVehicle(argThat(isA<VehicleModel>())),
       ).called(greaterThan(0));
     });
+
+    // Cierre C1: confirmarVinculoTaller/rechazarVinculoTaller delegan en
+    // VehicleService y refrescan el vehiculo seleccionado.
+    test('confirmarVinculoTaller success refreshes selected vehicle', () async {
+      final vehicle = VehicleModel(
+        idVehiculo: '1',
+        idPropietario: 'owner',
+        placa: 'ABC',
+        marca: 'Toyota',
+        modelo: 'Corolla',
+        anio: 2020,
+        tallerPendienteConfirmacion: 'taller1',
+      );
+      when(
+        mockVehicleService.getVehiclesByOwner('owner'),
+      ).thenAnswer((_) async => [vehicle]);
+      when(
+        mockVehicleService.getSharedVehicles('owner'),
+      ).thenAnswer((_) async => []);
+
+      await vehicleProvider.fetchVehicles('owner');
+      expect(vehicleProvider.selectedVehicle?.idVehiculo, '1');
+
+      when(
+        mockVehicleService.confirmarVinculoTaller('1', 'taller1'),
+      ).thenAnswer((_) async {});
+
+      final result = await vehicleProvider.confirmarVinculoTaller(
+        '1',
+        'taller1',
+      );
+
+      expect(result, true);
+      expect(vehicleProvider.error, null);
+      verify(mockVehicleService.confirmarVinculoTaller('1', 'taller1'))
+          .called(1);
+    });
+
+    test('confirmarVinculoTaller failure sets error', () async {
+      final vehicle = VehicleModel(
+        idVehiculo: '1',
+        idPropietario: 'owner',
+        placa: 'ABC',
+        marca: 'Toyota',
+        modelo: 'Corolla',
+        anio: 2020,
+        tallerPendienteConfirmacion: 'taller1',
+      );
+      when(
+        mockVehicleService.getVehiclesByOwner('owner'),
+      ).thenAnswer((_) async => [vehicle]);
+      when(
+        mockVehicleService.getSharedVehicles('owner'),
+      ).thenAnswer((_) async => []);
+
+      await vehicleProvider.fetchVehicles('owner');
+
+      when(
+        mockVehicleService.confirmarVinculoTaller('1', 'taller1'),
+      ).thenThrow('Error al confirmar vínculo con el taller: boom');
+
+      final result = await vehicleProvider.confirmarVinculoTaller(
+        '1',
+        'taller1',
+      );
+
+      expect(result, false);
+      expect(vehicleProvider.error, isNotNull);
+    });
+
+    test('rechazarVinculoTaller success refreshes selected vehicle', () async {
+      final vehicle = VehicleModel(
+        idVehiculo: '1',
+        idPropietario: 'owner',
+        placa: 'ABC',
+        marca: 'Toyota',
+        modelo: 'Corolla',
+        anio: 2020,
+        tallerPendienteConfirmacion: 'taller1',
+      );
+      when(
+        mockVehicleService.getVehiclesByOwner('owner'),
+      ).thenAnswer((_) async => [vehicle]);
+      when(
+        mockVehicleService.getSharedVehicles('owner'),
+      ).thenAnswer((_) async => []);
+
+      await vehicleProvider.fetchVehicles('owner');
+
+      when(
+        mockVehicleService.rechazarVinculoTaller('1'),
+      ).thenAnswer((_) async {});
+
+      final result = await vehicleProvider.rechazarVinculoTaller('1');
+
+      expect(result, true);
+      expect(vehicleProvider.error, null);
+      verify(mockVehicleService.rechazarVinculoTaller('1')).called(1);
+    });
   });
 }

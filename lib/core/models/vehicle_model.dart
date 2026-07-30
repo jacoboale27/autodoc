@@ -15,6 +15,8 @@ class VehicleModel {
   final bool isPrimary;
   final List<String> sharedWith; // UIDs de usuarios con acceso
   final List<String> notas;
+  final List<String> talleresVinculados;
+  final String? tallerPendienteConfirmacion;
 
   VehicleModel({
     required this.idVehiculo,
@@ -31,6 +33,8 @@ class VehicleModel {
     this.isPrimary = false,
     this.sharedWith = const [],
     this.notas = const [],
+    this.talleresVinculados = const [],
+    this.tallerPendienteConfirmacion,
   });
 
   VehicleModel copyWith({
@@ -48,6 +52,8 @@ class VehicleModel {
     bool? isPrimary,
     List<String>? sharedWith,
     List<String>? notas,
+    List<String>? talleresVinculados,
+    String? tallerPendienteConfirmacion,
   }) {
     return VehicleModel(
       idVehiculo: idVehiculo ?? this.idVehiculo,
@@ -64,6 +70,9 @@ class VehicleModel {
       isPrimary: isPrimary ?? this.isPrimary,
       sharedWith: sharedWith ?? this.sharedWith,
       notas: notas ?? this.notas,
+      talleresVinculados: talleresVinculados ?? this.talleresVinculados,
+      tallerPendienteConfirmacion:
+          tallerPendienteConfirmacion ?? this.tallerPendienteConfirmacion,
     );
   }
 
@@ -87,6 +96,8 @@ class VehicleModel {
       'es_principal': isPrimary,
       'shared_with': sharedWith,
       'notas': notas,
+      'talleres_vinculados': talleresVinculados,
+      'taller_pendiente_confirmacion': tallerPendienteConfirmacion,
     };
   }
 
@@ -106,6 +117,8 @@ class VehicleModel {
       'es_principal': isPrimary,
       'shared_with': sharedWith,
       'notas': notas,
+      'talleres_vinculados': talleresVinculados,
+      'taller_pendiente_confirmacion': tallerPendienteConfirmacion,
     };
   }
 
@@ -132,6 +145,8 @@ class VehicleModel {
       isPrimary: map['es_principal'] ?? false,
       sharedWith: List<String>.from(map['shared_with'] ?? []),
       notas: List<String>.from(map['notas'] ?? []),
+      talleresVinculados: List<String>.from(map['talleres_vinculados'] ?? []),
+      tallerPendienteConfirmacion: map['taller_pendiente_confirmacion'],
     );
   }
 

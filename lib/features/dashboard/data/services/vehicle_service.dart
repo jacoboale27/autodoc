@@ -49,6 +49,34 @@ class VehicleService {
     }
   }
 
+  /// Confirma el vínculo permanente de un taller pendiente de confirmación
+  /// (cierre del hallazgo C1: ver comentario en
+  /// functions/index.js#requestReviewOnServiceComplete). Usa un update
+  /// parcial (no `vehicle.toMap()` completo) para no pisar otros campos
+  /// que puedan estar cambiando concurrentemente.
+  Future<void> confirmarVinculoTaller(String vehiculoId, String tallerId) async {
+    try {
+      await _firestore.collection(_collection).doc(vehiculoId).update({
+        'talleres_vinculados': FieldValue.arrayUnion([tallerId]),
+        'taller_pendiente_confirmacion': FieldValue.delete(),
+      });
+    } catch (e) {
+      throw 'Error al confirmar vínculo con el taller: $e';
+    }
+  }
+
+  /// Rechaza el vínculo pendiente de un taller: el taller no obtiene acceso
+  /// permanente al historial del vehículo.
+  Future<void> rechazarVinculoTaller(String vehiculoId) async {
+    try {
+      await _firestore.collection(_collection).doc(vehiculoId).update({
+        'taller_pendiente_confirmacion': FieldValue.delete(),
+      });
+    } catch (e) {
+      throw 'Error al rechazar el vínculo con el taller: $e';
+    }
+  }
+
   Future<void> deleteVehicle(String vehicleId) async {
     try {
       final batch = _firestore.batch();

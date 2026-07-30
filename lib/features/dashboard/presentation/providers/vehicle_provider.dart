@@ -294,6 +294,45 @@ class VehicleProvider with ChangeNotifier {
     }
   }
 
+  /// Confirma el vínculo permanente de un taller pendiente de confirmación
+  /// sobre el vehículo indicado (cierre del hallazgo C1). Tras confirmar,
+  /// refresca el vehículo seleccionado desde Firestore.
+  Future<bool> confirmarVinculoTaller(String vehiculoId, String tallerId) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _vehicleService.confirmarVinculoTaller(vehiculoId, tallerId);
+      if (_selectedVehicle != null && _selectedVehicle!.idVehiculo == vehiculoId) {
+        await fetchVehicles(_selectedVehicle!.idPropietario);
+      }
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  /// Rechaza el vínculo pendiente de un taller sobre el vehículo indicado.
+  /// Tras rechazar, refresca el vehículo seleccionado desde Firestore.
+  Future<bool> rechazarVinculoTaller(String vehiculoId) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _vehicleService.rechazarVinculoTaller(vehiculoId);
+      if (_selectedVehicle != null && _selectedVehicle!.idVehiculo == vehiculoId) {
+        await fetchVehicles(_selectedVehicle!.idPropietario);
+      }
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
   Future<VehicleModel?> findVehicleByPlate(String plate) async {
     _setLoading(true);
     _setError(null);

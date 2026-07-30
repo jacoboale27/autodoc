@@ -338,6 +338,20 @@ class AppLocalizationsEs extends AppLocalizations {
   String get dashViewAllWorkshops => 'Ver todos';
 
   @override
+  String get dashTallerPendienteTitulo =>
+      'Un taller nuevo quiere acceder al historial';
+
+  @override
+  String get dashTallerPendienteDesc =>
+      'Un taller que atendió a este vehículo solicita acceso permanente a su historial de mantenimiento. Confírmalo solo si reconoces la visita.';
+
+  @override
+  String get dashTallerPendienteConfirmError => 'Error al confirmar el taller';
+
+  @override
+  String get dashTallerPendienteRechazarError => 'Error al rechazar el taller';
+
+  @override
   String get garageMyVehicles => 'Mis Vehículos';
 
   @override

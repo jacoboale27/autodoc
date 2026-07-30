@@ -102,5 +102,39 @@ void main() {
         expect(fakeBatch.isCommitted, true);
       },
     );
+
+    // Cierre C1 (confirmacion del propietario para talleres_vinculados):
+    // confirmarVinculoTaller/rechazarVinculoTaller deben hacer un update
+    // parcial del documento, no un toMap() completo.
+    test(
+      'confirmarVinculoTaller hace un update parcial con arrayUnion y borra el pendiente',
+      () async {
+        when(mockVehicleDoc.update(any)).thenAnswer((_) async {});
+
+        await vehicleService.confirmarVinculoTaller('v1', 'taller1');
+
+        final captured = verify(mockVehicleDoc.update(captureAny)).captured;
+        expect(captured.length, 1);
+        final Map<Object, Object?> data = captured.first;
+        expect(data.containsKey('talleres_vinculados'), true);
+        expect(data['talleres_vinculados'], isA<FieldValue>());
+        expect(data['taller_pendiente_confirmacion'], isA<FieldValue>());
+      },
+    );
+
+    test(
+      'rechazarVinculoTaller solo borra taller_pendiente_confirmacion',
+      () async {
+        when(mockVehicleDoc.update(any)).thenAnswer((_) async {});
+
+        await vehicleService.rechazarVinculoTaller('v1');
+
+        final captured = verify(mockVehicleDoc.update(captureAny)).captured;
+        expect(captured.length, 1);
+        final Map<Object, Object?> data = captured.first;
+        expect(data.length, 1);
+        expect(data['taller_pendiente_confirmacion'], isA<FieldValue>());
+      },
+    );
   });
 }
