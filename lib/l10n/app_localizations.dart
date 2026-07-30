@@ -728,10 +728,22 @@ abstract class AppLocalizations {
   /// **'A new workshop wants access to the history'**
   String get dashTallerPendienteTitulo;
 
+  /// No description provided for @dashTallerPendienteSolicitante.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested by: {tallerName}'**
+  String dashTallerPendienteSolicitante(String tallerName);
+
+  /// No description provided for @dashTallerPendienteNombreDesconocido.
+  ///
+  /// In en, this message translates to:
+  /// **'A workshop'**
+  String get dashTallerPendienteNombreDesconocido;
+
   /// No description provided for @dashTallerPendienteDesc.
   ///
   /// In en, this message translates to:
-  /// **'A workshop that serviced this vehicle is requesting permanent access to its maintenance history. Confirm only if you recognize the visit.'**
+  /// **'This workshop is requesting permanent access to this vehicle\'s maintenance history. Confirm only if you recognize this visit.'**
   String get dashTallerPendienteDesc;
 
   /// No description provided for @dashTallerPendienteConfirmError.

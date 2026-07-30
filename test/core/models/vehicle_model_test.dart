@@ -43,12 +43,62 @@ void main() {
       }
     });
 
-    // Cierre C1: talleresVinculados/tallerPendienteConfirmacion deben
-    // sobrevivir un round-trip toMap/fromMap con las mismas claves que usa
-    // el trigger de Cloud Functions (talleres_vinculados,
-    // taller_pendiente_confirmacion).
+    // Cierre C1: talleresVinculados/tallerPendienteConfirmacion (y los
+    // campos denormalizados/rechazo agregados en la ronda de correccion
+    // adversarial) deben sobrevivir un round-trip via fromMap con las
+    // mismas claves que usa el trigger de Cloud Functions.
     test(
-      'talleresVinculados y tallerPendienteConfirmacion sobreviven toMap/fromMap',
+      'campos de vinculo/confirmacion sobreviven un round-trip via fromMap',
+      () {
+        final map = {
+          'id_vehiculo': '1',
+          'id_propietario': '2',
+          'placa': '3',
+          'talleres_vinculados': ['taller1'],
+          'taller_pendiente_confirmacion': 'taller2',
+          'taller_pendiente_nombre': 'Taller Dos',
+          'taller_pendiente_servicio_id': 'serv-1',
+          'talleres_rechazados': ['taller3'],
+        };
+
+        final fromMapModel = VehicleModel.fromMap(map, 'id');
+        expect(fromMapModel.talleresVinculados, ['taller1']);
+        expect(fromMapModel.tallerPendienteConfirmacion, 'taller2');
+        expect(fromMapModel.tallerPendienteNombre, 'Taller Dos');
+        expect(fromMapModel.tallerPendienteServicioId, 'serv-1');
+        expect(fromMapModel.talleresRechazados, ['taller3']);
+      },
+    );
+
+    test('campos de vinculo/confirmacion tienen defaults seguros', () {
+      final model = VehicleModel(
+        idVehiculo: '1',
+        idPropietario: '2',
+        placa: '3',
+      );
+      expect(model.talleresVinculados, isEmpty);
+      expect(model.tallerPendienteConfirmacion, isNull);
+      expect(model.tallerPendienteNombre, isNull);
+      expect(model.tallerPendienteServicioId, isNull);
+      expect(model.talleresRechazados, isEmpty);
+
+      final fromMapModel = VehicleModel.fromMap({}, 'id');
+      expect(fromMapModel.talleresVinculados, isEmpty);
+      expect(fromMapModel.tallerPendienteConfirmacion, isNull);
+      expect(fromMapModel.tallerPendienteNombre, isNull);
+      expect(fromMapModel.tallerPendienteServicioId, isNull);
+      expect(fromMapModel.talleresRechazados, isEmpty);
+    });
+
+    // Cierre I-2 (revision adversarial): toMap() -- usado por
+    // VehicleService.updateVehicle para escribir el documento completo
+    // desde ediciones normales del dueno -- NO debe incluir los campos
+    // server/consentimiento-owned. Si los incluyera, un update de
+    // formulario cualquiera (mileage, foto, etc.) con un modelo local
+    // desactualizado podria pisar o borrar silenciosamente el estado de
+    // vinculo escrito por el trigger de Cloud Functions.
+    test(
+      'toMap() NO incluye los campos server-owned de vinculo/confirmacion',
       () {
         final model = VehicleModel(
           idVehiculo: '1',
@@ -56,33 +106,42 @@ void main() {
           placa: '3',
           talleresVinculados: const ['taller1'],
           tallerPendienteConfirmacion: 'taller2',
+          tallerPendienteNombre: 'Taller Dos',
+          tallerPendienteServicioId: 'serv-1',
+          talleresRechazados: const ['taller3'],
         );
 
         final map = model.toMap();
-        expect(map['talleres_vinculados'], ['taller1']);
-        expect(map['taller_pendiente_confirmacion'], 'taller2');
-
-        final fromMapModel = VehicleModel.fromMap(map, 'id');
-        expect(fromMapModel.talleresVinculados, ['taller1']);
-        expect(fromMapModel.tallerPendienteConfirmacion, 'taller2');
+        expect(map.containsKey('talleres_vinculados'), false);
+        expect(map.containsKey('taller_pendiente_confirmacion'), false);
+        expect(map.containsKey('taller_pendiente_nombre'), false);
+        expect(map.containsKey('taller_pendiente_servicio_id'), false);
+        expect(map.containsKey('talleres_rechazados'), false);
       },
     );
 
-    test(
-      'talleresVinculados y tallerPendienteConfirmacion tienen defaults seguros',
-      () {
-        final model = VehicleModel(
-          idVehiculo: '1',
-          idPropietario: '2',
-          placa: '3',
-        );
-        expect(model.talleresVinculados, isEmpty);
-        expect(model.tallerPendienteConfirmacion, isNull);
+    // toJson() SI debe incluirlos: alimenta el cache local (Hive) que
+    // VehicleProvider usa para reconstruir selectedVehicle offline, y ese
+    // estado (incluido el banner de confirmacion pendiente) debe reflejar
+    // lo que ya escribio el trigger, no perderse en el cache.
+    test('toJson() SI incluye los campos de vinculo/confirmacion', () {
+      final model = VehicleModel(
+        idVehiculo: '1',
+        idPropietario: '2',
+        placa: '3',
+        talleresVinculados: const ['taller1'],
+        tallerPendienteConfirmacion: 'taller2',
+        tallerPendienteNombre: 'Taller Dos',
+        tallerPendienteServicioId: 'serv-1',
+        talleresRechazados: const ['taller3'],
+      );
 
-        final fromMapModel = VehicleModel.fromMap({}, 'id');
-        expect(fromMapModel.talleresVinculados, isEmpty);
-        expect(fromMapModel.tallerPendienteConfirmacion, isNull);
-      },
-    );
+      final json = model.toJson();
+      expect(json['talleres_vinculados'], ['taller1']);
+      expect(json['taller_pendiente_confirmacion'], 'taller2');
+      expect(json['taller_pendiente_nombre'], 'Taller Dos');
+      expect(json['taller_pendiente_servicio_id'], 'serv-1');
+      expect(json['talleres_rechazados'], ['taller3']);
+    });
   });
 }

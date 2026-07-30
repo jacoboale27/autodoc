@@ -266,6 +266,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   /// rechazar explícitamente antes de otorgar acceso permanente al
   /// historial (ver VehicleProvider.confirmarVinculoTaller /
   /// rechazarVinculoTaller).
+  ///
+  /// Cierre C-1 de la revisión adversarial: el banner debe mostrar QUIÉN
+  /// pide acceso (nombre del taller denormalizado por el trigger en
+  /// `taller_pendiente_nombre`) y a qué vehículo (placa), no un texto
+  /// genérico — de lo contrario el propietario no puede distinguir una
+  /// visita real de un intento de secuestro con el mismo texto.
   Widget _buildTallerPendienteBanner(
     BuildContext context,
     VehicleProvider vehicleProvider,
@@ -279,6 +285,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (tallerId == null) return const SizedBox.shrink();
 
     final colors = context.appColors;
+    final tallerNombre =
+        vehicle.tallerPendienteNombre ??
+        context.l10n.dashTallerPendienteNombreDesconocido;
 
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -305,6 +314,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(Icons.storefront_outlined, size: 16, color: primary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    context.l10n.dashTallerPendienteSolicitante(tallerNombre),
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: textColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              context.l10n.dashLicensePlate(vehicle.placa),
+              style: TextStyle(color: subTextColor, fontSize: 12),
             ),
             const SizedBox(height: 8),
             Text(
@@ -341,7 +372,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: OutlinedButton(
                     onPressed: () async {
                       final success = await vehicleProvider
-                          .rechazarVinculoTaller(vehicle.idVehiculo);
+                          .rechazarVinculoTaller(vehicle.idVehiculo, tallerId);
                       if (!success && context.mounted) {
                         UiUtils.showErrorSnackbar(
                           context,

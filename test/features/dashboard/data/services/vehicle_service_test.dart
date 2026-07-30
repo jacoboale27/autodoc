@@ -119,21 +119,30 @@ void main() {
         expect(data.containsKey('talleres_vinculados'), true);
         expect(data['talleres_vinculados'], isA<FieldValue>());
         expect(data['taller_pendiente_confirmacion'], isA<FieldValue>());
+        expect(data['taller_pendiente_nombre'], isA<FieldValue>());
+        expect(data['taller_pendiente_servicio_id'], isA<FieldValue>());
       },
     );
 
+    // Cierre I-1 (revision adversarial): rechazar debe registrar el taller
+    // en talleres_rechazados, ademas de limpiar los campos de pendiente,
+    // para que el trigger de Cloud Functions no vuelva a marcarlo como
+    // pendiente sobre este vehiculo.
     test(
-      'rechazarVinculoTaller solo borra taller_pendiente_confirmacion',
+      'rechazarVinculoTaller borra el pendiente y registra el taller en talleres_rechazados',
       () async {
         when(mockVehicleDoc.update(any)).thenAnswer((_) async {});
 
-        await vehicleService.rechazarVinculoTaller('v1');
+        await vehicleService.rechazarVinculoTaller('v1', 'taller1');
 
         final captured = verify(mockVehicleDoc.update(captureAny)).captured;
         expect(captured.length, 1);
         final Map<Object, Object?> data = captured.first;
-        expect(data.length, 1);
         expect(data['taller_pendiente_confirmacion'], isA<FieldValue>());
+        expect(data['taller_pendiente_nombre'], isA<FieldValue>());
+        expect(data['taller_pendiente_servicio_id'], isA<FieldValue>());
+        expect(data.containsKey('talleres_rechazados'), true);
+        expect(data['talleres_rechazados'], isA<FieldValue>());
       },
     );
   });

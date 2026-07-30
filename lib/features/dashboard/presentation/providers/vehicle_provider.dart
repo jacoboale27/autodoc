@@ -297,12 +297,16 @@ class VehicleProvider with ChangeNotifier {
   /// Confirma el vínculo permanente de un taller pendiente de confirmación
   /// sobre el vehículo indicado (cierre del hallazgo C1). Tras confirmar,
   /// refresca el vehículo seleccionado desde Firestore.
-  Future<bool> confirmarVinculoTaller(String vehiculoId, String tallerId) async {
+  Future<bool> confirmarVinculoTaller(
+    String vehiculoId,
+    String tallerId,
+  ) async {
     _setLoading(true);
     _setError(null);
     try {
       await _vehicleService.confirmarVinculoTaller(vehiculoId, tallerId);
-      if (_selectedVehicle != null && _selectedVehicle!.idVehiculo == vehiculoId) {
+      if (_selectedVehicle != null &&
+          _selectedVehicle!.idVehiculo == vehiculoId) {
         await fetchVehicles(_selectedVehicle!.idPropietario);
       }
       _setLoading(false);
@@ -316,12 +320,13 @@ class VehicleProvider with ChangeNotifier {
 
   /// Rechaza el vínculo pendiente de un taller sobre el vehículo indicado.
   /// Tras rechazar, refresca el vehículo seleccionado desde Firestore.
-  Future<bool> rechazarVinculoTaller(String vehiculoId) async {
+  Future<bool> rechazarVinculoTaller(String vehiculoId, String tallerId) async {
     _setLoading(true);
     _setError(null);
     try {
-      await _vehicleService.rechazarVinculoTaller(vehiculoId);
-      if (_selectedVehicle != null && _selectedVehicle!.idVehiculo == vehiculoId) {
+      await _vehicleService.rechazarVinculoTaller(vehiculoId, tallerId);
+      if (_selectedVehicle != null &&
+          _selectedVehicle!.idVehiculo == vehiculoId) {
         await fetchVehicles(_selectedVehicle!.idPropietario);
       }
       _setLoading(false);

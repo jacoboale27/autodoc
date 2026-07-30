@@ -54,11 +54,16 @@ class VehicleService {
   /// functions/index.js#requestReviewOnServiceComplete). Usa un update
   /// parcial (no `vehicle.toMap()` completo) para no pisar otros campos
   /// que puedan estar cambiando concurrentemente.
-  Future<void> confirmarVinculoTaller(String vehiculoId, String tallerId) async {
+  Future<void> confirmarVinculoTaller(
+    String vehiculoId,
+    String tallerId,
+  ) async {
     try {
       await _firestore.collection(_collection).doc(vehiculoId).update({
         'talleres_vinculados': FieldValue.arrayUnion([tallerId]),
         'taller_pendiente_confirmacion': FieldValue.delete(),
+        'taller_pendiente_nombre': FieldValue.delete(),
+        'taller_pendiente_servicio_id': FieldValue.delete(),
       });
     } catch (e) {
       throw 'Error al confirmar vínculo con el taller: $e';
@@ -66,11 +71,19 @@ class VehicleService {
   }
 
   /// Rechaza el vínculo pendiente de un taller: el taller no obtiene acceso
-  /// permanente al historial del vehículo.
-  Future<void> rechazarVinculoTaller(String vehiculoId) async {
+  /// permanente al historial del vehículo. Registra `tallerId` en
+  /// `talleres_rechazados` (cierre I-1 de la revisión adversarial de la
+  /// tarea C1) para que el trigger de Cloud Functions no vuelva a marcar a
+  /// ese mismo taller como pendiente sobre este vehículo — sin esto, un
+  /// taller rechazado podía crear otro `servicios` falso inmediatamente y
+  /// re-armar el banner de confirmación indefinidamente.
+  Future<void> rechazarVinculoTaller(String vehiculoId, String tallerId) async {
     try {
       await _firestore.collection(_collection).doc(vehiculoId).update({
         'taller_pendiente_confirmacion': FieldValue.delete(),
+        'taller_pendiente_nombre': FieldValue.delete(),
+        'taller_pendiente_servicio_id': FieldValue.delete(),
+        'talleres_rechazados': FieldValue.arrayUnion([tallerId]),
       });
     } catch (e) {
       throw 'Error al rechazar el vínculo con el taller: $e';

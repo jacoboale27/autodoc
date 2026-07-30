@@ -122,7 +122,16 @@
   "dashNearbyWorkshops": "Nearby Workshops",
   "dashViewAllWorkshops": "View all",
   "dashTallerPendienteTitulo": "A new workshop wants access to the history",
-  "dashTallerPendienteDesc": "A workshop that serviced this vehicle is requesting permanent access to its maintenance history. Confirm only if you recognize the visit.",
+  "dashTallerPendienteSolicitante": "Requested by: {tallerName}",
+  "@dashTallerPendienteSolicitante": {
+    "placeholders": {
+      "tallerName": {
+        "type": "String"
+      }
+    }
+  },
+  "dashTallerPendienteNombreDesconocido": "A workshop",
+  "dashTallerPendienteDesc": "This workshop is requesting permanent access to this vehicle's maintenance history. Confirm only if you recognize this visit.",
   "dashTallerPendienteConfirmError": "Error confirming the workshop",
   "dashTallerPendienteRechazarError": "Error rejecting the workshop",
   "garageMyVehicles": "My Vehicles",

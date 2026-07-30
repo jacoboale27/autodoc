@@ -201,8 +201,9 @@ void main() {
 
       expect(result, true);
       expect(vehicleProvider.error, null);
-      verify(mockVehicleService.confirmarVinculoTaller('1', 'taller1'))
-          .called(1);
+      verify(
+        mockVehicleService.confirmarVinculoTaller('1', 'taller1'),
+      ).called(1);
     });
 
     test('confirmarVinculoTaller failure sets error', () async {
@@ -257,14 +258,19 @@ void main() {
       await vehicleProvider.fetchVehicles('owner');
 
       when(
-        mockVehicleService.rechazarVinculoTaller('1'),
+        mockVehicleService.rechazarVinculoTaller('1', 'taller1'),
       ).thenAnswer((_) async {});
 
-      final result = await vehicleProvider.rechazarVinculoTaller('1');
+      final result = await vehicleProvider.rechazarVinculoTaller(
+        '1',
+        'taller1',
+      );
 
       expect(result, true);
       expect(vehicleProvider.error, null);
-      verify(mockVehicleService.rechazarVinculoTaller('1')).called(1);
+      verify(
+        mockVehicleService.rechazarVinculoTaller('1', 'taller1'),
+      ).called(1);
     });
   });
 }

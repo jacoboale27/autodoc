@@ -342,8 +342,16 @@ class AppLocalizationsEs extends AppLocalizations {
       'Un taller nuevo quiere acceder al historial';
 
   @override
+  String dashTallerPendienteSolicitante(String tallerName) {
+    return 'Solicitante: $tallerName';
+  }
+
+  @override
+  String get dashTallerPendienteNombreDesconocido => 'Un taller';
+
+  @override
   String get dashTallerPendienteDesc =>
-      'Un taller que atendió a este vehículo solicita acceso permanente a su historial de mantenimiento. Confírmalo solo si reconoces la visita.';
+      'Este taller solicita acceso permanente al historial de mantenimiento de este vehículo. Confírmalo solo si reconoces esta visita.';
 
   @override
   String get dashTallerPendienteConfirmError => 'Error al confirmar el taller';
