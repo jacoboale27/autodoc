@@ -123,7 +123,40 @@ service cloud.firestore {
 
     // 4. Tabla de Servicios (Historial de Mantenimiento)
     match /servicios/{servicioId} {
-      allow create: if isAuthenticated() && (isAdmin() || (isMecanico() && request.resource.data.id_taller == request.auth.uid));
+      // MITIGACION PARCIAL (hallazgo critico C1 de la revision adversarial de
+      // Fase C): la version anterior permitia a cualquier mecanico crear un
+      // 'servicios' para CUALQUIER id_vehiculo con solo poner su propio uid
+      // en id_taller, lo que el trigger requestReviewOnServiceComplete
+      // traducia automaticamente en un talleres_vinculados permanente sobre
+      // el vehiculo de otro, reabriendo exactamente la fuga que la Tarea 9
+      // cerro (ver isVinculadoAlVehiculo). No existe hoy en el modelo de
+      // datos un campo fiable de "reserva o cotizacion aceptada" referenciado
+      // desde 'servicios' que las reglas puedan verificar con get()/exists():
+      // ni reservas ni cotizaciones se referencian por id desde el documento
+      // de servicio, y la busqueda de vehiculo por placa (Cloud Function
+      // buscarVehiculoPorPlaca) esta deliberadamente abierta a cualquier
+      // mecanico para soportar el flujo real de "cliente que llega sin cita"
+      // (ver vehicle_search_screen.dart -> initiate_service_screen.dart),
+      // que por diseno no tiene ninguna relacion previa que verificar.
+      // Como mitigacion NO rompe ese flujo legitimo: reduce el alcance de la
+      // fuga de "cualquier vehiculo, en cualquier momento" a "solo vehiculos
+      // que ningun taller ha atendido todavia". Un vehiculo que ya tiene un
+      // taller vinculado deja de poder ser secuestrado por uno distinto sin
+      // pasar por el mismo taller. El cierre completo (por ejemplo, exigir
+      // una reserva/cotizacion aceptada real, o una confirmacion fisica del
+      // propietario tipo QR/OTP) requiere una decision de producto que queda
+      // fuera de esta tanda; ver el informe de la Fase C para el detalle.
+      allow create: if isAuthenticated() && (
+        isAdmin() ||
+        (isMecanico() && request.resource.data.id_taller == request.auth.uid
+          && exists(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
+          && (
+            get(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
+              .data.get('talleres_vinculados', []).size() == 0
+            || get(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
+                 .data.get('talleres_vinculados', []).hasAny([request.auth.uid])
+          ))
+      );
       allow read: if isAuthenticated() && (
         isVehicleOwner(resource.data.id_vehiculo)
         || isAdmin()
