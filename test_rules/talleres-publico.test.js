@@ -56,6 +56,70 @@ describe('datos legitimamente publicos', () => {
     });
     await assertFails(db.collection('resenias').doc('r1').update({ id_taller: UIDS.taller2 }));
   });
+
+  test('un usuario NO puede resenar con un id_taller distinto al del servicio real', async () => {
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await seed(env, async (s) => {
+      await s.collection('vehiculos').doc('v1').set({
+        id_vehiculo: 'v1', id_propietario: UIDS.owner1, marca: 'Test',
+      });
+      await s.collection('servicios').doc('s1').set({
+        id_servicio: 's1', id_vehiculo: 'v1', id_taller: UIDS.taller1,
+      });
+    });
+    await assertFails(
+      db.collection('resenias').add({
+        id_usuario: UIDS.owner1, id_taller: UIDS.taller2, estrellas: 5,
+        comentario: 'sabotaje de reputacion', id_servicio: 's1',
+      }),
+    );
+  });
+
+  test('un usuario SI puede resenar con el id_taller correcto del servicio real', async () => {
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await seed(env, async (s) => {
+      await s.collection('vehiculos').doc('v1').set({
+        id_vehiculo: 'v1', id_propietario: UIDS.owner1, marca: 'Test',
+      });
+      await s.collection('servicios').doc('s1').set({
+        id_servicio: 's1', id_vehiculo: 'v1', id_taller: UIDS.taller1,
+      });
+    });
+    await assertSucceeds(
+      db.collection('resenias').add({
+        id_usuario: UIDS.owner1, id_taller: UIDS.taller1, estrellas: 5,
+        comentario: 'buen servicio', id_servicio: 's1',
+      }),
+    );
+  });
+
+  test('el autor SI puede actualizar comentario, estrellas y fecha_resenia (flujo real de la app)', async () => {
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await seed(env, async (s) => {
+      await s.collection('resenias').doc('r1').set({
+        id_resenia: 'r1', id_usuario: UIDS.owner1, id_taller: UIDS.taller1, estrellas: 3,
+        comentario: 'inicial',
+      });
+    });
+    await assertSucceeds(
+      db.collection('resenias').doc('r1').update({
+        comentario: 'editado', estrellas: 5, fecha_resenia: new Date(),
+      }),
+    );
+  });
+
+  test('el autor NO puede modificar campos fuera de comentario/estrellas/fecha_resenia', async () => {
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await seed(env, async (s) => {
+      await s.collection('resenias').doc('r1').set({
+        id_resenia: 'r1', id_usuario: UIDS.owner1, id_taller: UIDS.taller1, estrellas: 3,
+        comentario: 'inicial',
+      });
+    });
+    await assertFails(
+      db.collection('resenias').doc('r1').update({ id_usuario: UIDS.owner2 }),
+    );
+  });
 });
 
 describe('proyeccion de perfil publico', () => {

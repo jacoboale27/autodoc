@@ -164,19 +164,25 @@ service cloud.firestore {
     match /resenias/{reseniaId} {
       allow read: if isAuthenticated();
 
-      // Solo se puede resenar un servicio real, propio, y una sola vez.
+      // Solo se puede resenar un servicio real, propio, y una sola vez, y el
+      // id_taller debe coincidir con el taller real del servicio (el cliente
+      // no puede apuntar la resenia a un taller arbitrario).
       allow create: if isAuthenticated()
         && request.resource.data.id_usuario == request.auth.uid
         && exists(/databases/$(database)/documents/servicios/$(request.resource.data.id_servicio))
         && isVehicleOwner(
              get(/databases/$(database)/documents/servicios/$(request.resource.data.id_servicio))
-               .data.id_vehiculo);
+               .data.id_vehiculo)
+        && request.resource.data.id_taller ==
+             get(/databases/$(database)/documents/servicios/$(request.resource.data.id_servicio))
+               .data.id_taller;
 
-      // El autor puede corregir su texto y su puntuacion, nada mas.
+      // El autor puede corregir su texto, puntuacion y la marca de tiempo de
+      // edicion (fecha_resenia, que ReviewService.updateReview siempre reescribe).
       allow update: if isAuthenticated()
         && resource.data.id_usuario == request.auth.uid
         && request.resource.data.diff(resource.data)
-             .affectedKeys().hasOnly(['comentario', 'estrellas']);
+             .affectedKeys().hasOnly(['comentario', 'estrellas', 'fecha_resenia']);
 
       // El autor original o el administrador (moderación de comentarios ofensivos) pueden eliminarla
       allow delete: if isAuthenticated() && (resource.data.id_usuario == request.auth.uid || isAdmin());
