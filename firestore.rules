@@ -45,6 +45,14 @@ service cloud.firestore {
         getVehicleOwner(vehiculoId) == request.auth.uid;
     }
 
+    // Verifica que el usuario es un mecanico cuyo taller esta vinculado al vehiculo.
+    function isVinculadoAlVehiculo(vehiculoId) {
+      return isMecanico() &&
+        exists(/databases/$(database)/documents/vehiculos/$(vehiculoId)) &&
+        get(/databases/$(database)/documents/vehiculos/$(vehiculoId))
+          .data.get('talleres_vinculados', []).hasAny([request.auth.uid]);
+    }
+
 
     // --- REGLAS POR COLECCIÓN ---
 
@@ -71,13 +79,12 @@ service cloud.firestore {
 
     // 2. Tabla de Talleres
     match /talleres/{tallerId} {
-      // El directorio de talleres es de lectura pública
+      // El directorio de talleres es de lectura publica.
       allow read: if true;
-      
-      // Solo el backend (Cloud Functions vía Admin SDK) y Administradores pueden escribir
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      
+
+      // Solo la Cloud Function publishTallerProfile (Admin SDK) escribe aqui.
+      allow create, update: if isAdmin();
+
       allow delete: if isAdmin();
     }
 
@@ -130,10 +137,10 @@ service cloud.firestore {
       // Lectura: propietario del vehículo vinculado, mecánico con relación, o admin
       allow read: if isAuthenticated() && (
         isVehicleOwner(resource.data.id_vehiculo)
-        || isMecanico()
+        || isVinculadoAlVehiculo(resource.data.id_vehiculo)
         || isAdmin()
       );
-      
+
       // Creación: propietario del vehículo o admin
       allow create: if isAuthenticated() && (
         isVehicleOwner(request.resource.data.id_vehiculo)
@@ -155,15 +162,22 @@ service cloud.firestore {
 
     // 6. Tabla de Reseñas
     match /resenias/{reseniaId} {
-      // Las reseñas son de lectura pública para alimentar el directorio de talleres
-      allow read: if true;
-      
-      // Solo el usuario autor de la reseña puede crearla
-      allow create: if isAuthenticated() && request.resource.data.id_usuario == request.auth.uid;
-      
-      // Solo el autor original puede editar su comentario/estrellas
-      allow update: if isAuthenticated() && resource.data.id_usuario == request.auth.uid;
-      
+      allow read: if isAuthenticated();
+
+      // Solo se puede resenar un servicio real, propio, y una sola vez.
+      allow create: if isAuthenticated()
+        && request.resource.data.id_usuario == request.auth.uid
+        && exists(/databases/$(database)/documents/servicios/$(request.resource.data.id_servicio))
+        && isVehicleOwner(
+             get(/databases/$(database)/documents/servicios/$(request.resource.data.id_servicio))
+               .data.id_vehiculo);
+
+      // El autor puede corregir su texto y su puntuacion, nada mas.
+      allow update: if isAuthenticated()
+        && resource.data.id_usuario == request.auth.uid
+        && request.resource.data.diff(resource.data)
+             .affectedKeys().hasOnly(['comentario', 'estrellas']);
+
       // El autor original o el administrador (moderación de comentarios ofensivos) pueden eliminarla
       allow delete: if isAuthenticated() && (resource.data.id_usuario == request.auth.uid || isAdmin());
     }
@@ -237,10 +251,10 @@ service cloud.firestore {
     match /mantenimientos/{mantenimientoId} {
       allow read: if isAuthenticated() && (
         isVehicleOwner(resource.data.id_vehiculo)
-        || isMecanico()
+        || isVinculadoAlVehiculo(resource.data.id_vehiculo)
         || isAdmin()
       );
-      
+
       allow create: if isAuthenticated() && (
         isVehicleOwner(request.resource.data.id_vehiculo)
         || isAdmin()
@@ -248,7 +262,7 @@ service cloud.firestore {
 
       allow update: if isAuthenticated() && (
         isVehicleOwner(resource.data.id_vehiculo)
-        || isMecanico()
+        || isVinculadoAlVehiculo(resource.data.id_vehiculo)
         || isAdmin()
       );
 
@@ -264,17 +278,19 @@ service cloud.firestore {
     match /historial_mantenimientos/{historialId} {
       allow read: if isAuthenticated() && (
         isVehicleOwner(resource.data.id_vehiculo)
-        || isMecanico()
+        || isVinculadoAlVehiculo(resource.data.id_vehiculo)
         || isAdmin()
       );
 
       allow create: if isAuthenticated() && (
-        isMecanico()
+        (isVinculadoAlVehiculo(request.resource.data.id_vehiculo)
+          && request.resource.data.id_taller == request.auth.uid)
         || isAdmin()
       );
 
       allow update: if isAuthenticated() && (
-        isMecanico()
+        (isVinculadoAlVehiculo(resource.data.id_vehiculo)
+          && resource.data.id_taller == request.auth.uid)
         || isAdmin()
       );
 
