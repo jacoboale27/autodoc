@@ -146,7 +146,7 @@ class UserModel {
       ubicacionMunicipio:
           (map['ubicacion_municipio'] ?? map['ubicacionMunicipio'])?.toString(),
       telefono: map['telefono']?.toString(),
-      estado: (map['estado'] ?? 'activo').toString(),
+      estado: (map['estado'] ?? 'pendiente').toString(),
       fcmToken: map['fcmToken']?.toString(),
       departamento: map['departamento']?.toString(),
       municipio: map['municipio']?.toString(),

@@ -86,3 +86,37 @@ describe('alcance del rol mecanico (regresion de la fuga verificada)', () => {
     );
   });
 });
+
+describe('estado de aprobacion del mecanico', () => {
+  test('un mecanico PENDIENTE no accede a datos aunque este vinculado', async () => {
+    await seed(env, async (s) => {
+      await s.collection('usuarios').doc(UIDS.taller1).set({
+        id_usuario: UIDS.taller1, rol: 'Taller', estado: 'pendiente',
+      });
+      await s.collection('vehiculos').doc('v1').set({
+        id_vehiculo: 'v1', id_propietario: UIDS.owner1,
+        talleres_vinculados: [UIDS.taller1],
+      });
+      await s.collection('historial_mantenimientos').doc('h1').set({
+        id_vehiculo: 'v1', id_taller: UIDS.taller1,
+      });
+    });
+    const db = env.authenticatedContext(UIDS.taller1).firestore();
+    await assertFails(db.collection('vehiculos').doc('v1').get());
+    await assertFails(db.collection('historial_mantenimientos').doc('h1').get());
+  });
+
+  test('un mecanico SIN campo estado tampoco accede (fail-closed)', async () => {
+    await seed(env, async (s) => {
+      await s.collection('usuarios').doc(UIDS.taller1).set({
+        id_usuario: UIDS.taller1, rol: 'Taller',
+      });
+      await s.collection('vehiculos').doc('v1').set({
+        id_vehiculo: 'v1', id_propietario: UIDS.owner1,
+        talleres_vinculados: [UIDS.taller1],
+      });
+    });
+    const db = env.authenticatedContext(UIDS.taller1).firestore();
+    await assertFails(db.collection('vehiculos').doc('v1').get());
+  });
+});

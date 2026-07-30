@@ -26,11 +26,14 @@ service cloud.firestore {
         getUserData().rol in ['Administrador', 'admin'];
     }
 
-    // Verifica si el usuario actual tiene rol de Mecánico
+    // Verifica si el usuario actual tiene rol de Mecánico APROBADO. Un taller
+    // pendiente de aprobacion no accede a datos: el bloqueo del enrutador no
+    // basta, la API es accesible directamente.
     function isMecanico() {
-      return isAuthenticated() && 
+      return isAuthenticated() &&
         exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
-        getUserData().rol in ['Mecanico', 'Taller'];
+        getUserData().rol in ['Mecanico', 'Taller'] &&
+        getUserData().get('estado', 'pendiente') in ['aprobado', 'activo'];
     }
 
     // Obtiene el propietario de un vehículo
