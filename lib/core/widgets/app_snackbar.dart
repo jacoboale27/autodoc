@@ -11,6 +11,12 @@ class AppSnackbar {
     SnackbarType type = SnackbarType.info,
   }) {
     final colors = context.appColors;
+    // Capturamos el ScaffoldMessenger AHORA, mientras el context todavía es
+    // válido: muchas llamadas hacen Navigator.pop justo antes de mostrar el
+    // snackbar, y si buscáramos el ScaffoldMessenger dentro del onPressed
+    // (que se ejecuta después, al tocar "OK"), el context ya podría estar
+    // desmontado y el botón no haría nada.
+    final messenger = ScaffoldMessenger.of(context);
 
     Color backgroundColor;
     IconData icon;
@@ -55,14 +61,12 @@ class AppSnackbar {
       duration: const Duration(seconds: 4),
       action: SnackBarAction(
         label: 'OK',
-        textColor: Colors.white.withValues(alpha: 0.8),
-        onPressed: () {
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        },
+        textColor: Colors.white,
+        onPressed: messenger.hideCurrentSnackBar,
       ),
     );
 
-    ScaffoldMessenger.of(context)
+    messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(snackBar);
   }

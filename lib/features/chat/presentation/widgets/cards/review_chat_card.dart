@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/review_sheet.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
+import 'package:autodoc/features/reviews/data/services/review_service.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/utils/ui_utils.dart';
 
 class ReviewChatCard extends StatelessWidget {
   final Map<String, dynamic> metadata;
@@ -21,6 +24,42 @@ class ReviewChatCard extends StatelessWidget {
     required this.mensajeId,
     required this.conversacionId,
   });
+
+  Future<void> _onRatePressed(BuildContext context) async {
+    final userId = context.read<UserProfileProvider>().userData?.idUsuario;
+    if (userId == null) return;
+
+    final idServicio = await ReviewService().findReviewableServiceId(
+      userId,
+      tallerId,
+    );
+    if (!context.mounted) return;
+
+    if (idServicio == null) {
+      UiUtils.showErrorSnackbar(
+        context,
+        'Debes completar un servicio con este taller antes de reseñarlo.',
+      );
+      return;
+    }
+
+    final result = await showReviewBottomSheet(
+      context,
+      tallerId: tallerId,
+      tallerNombre: metadata['tallerNombre'] ?? 'Taller',
+      idServicio: idServicio,
+    );
+    if (result == true) {
+      if (!context.mounted) return;
+      final newMeta = Map<String, dynamic>.from(metadata);
+      newMeta['estado'] = 'completada';
+      context.read<ChatProvider>().actualizarMetadatosMensaje(
+        conversacionId,
+        mensajeId,
+        newMeta,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -89,27 +128,7 @@ class ReviewChatCard extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
-                        // Abrir modal de review
-                        showReviewBottomSheet(
-                          context,
-                          tallerId: tallerId,
-                          tallerNombre: metadata['tallerNombre'] ?? 'Taller',
-                        ).then((result) {
-                          if (result == true) {
-                            if (!context.mounted) return;
-                            final newMeta = Map<String, dynamic>.from(metadata);
-                            newMeta['estado'] = 'completada';
-                            context
-                                .read<ChatProvider>()
-                                .actualizarMetadatosMensaje(
-                                  conversacionId,
-                                  mensajeId,
-                                  newMeta,
-                                );
-                          }
-                        });
-                      },
+                      onPressed: () => _onRatePressed(context),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: colors.primary,
                         foregroundColor: Colors.white,

@@ -1,9 +1,10 @@
 import 'dart:ui';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:intl/intl.dart';
@@ -29,11 +30,48 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
   XFile? _receiptImage;
   bool _isLoading = false;
 
-  Future<void> _pickImage(ImageSource source) async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: source, imageQuality: 70);
-    if (pickedFile != null) {
-      setState(() => _receiptImage = pickedFile);
+  Future<void> _pickImageCamera() async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 70,
+      );
+      if (pickedFile != null) {
+        setState(() => _receiptImage = pickedFile);
+      }
+    } catch (e) {
+      if (mounted) {
+        UiUtils.showErrorSnackbar(
+          context,
+          'No se pudo acceder a la cámara en este dispositivo.',
+        );
+      }
+    }
+  }
+
+  Future<void> _pickImageGallery() async {
+    try {
+      final result = await FilePicker.pickFiles(type: FileType.image);
+      if (result == null) return;
+      final file = result.files.single;
+      final webBytes = kIsWeb ? await file.readAsBytes() : null;
+      XFile? picked;
+      if (webBytes != null) {
+        picked = XFile.fromData(webBytes, name: file.name);
+      } else if (file.path != null) {
+        picked = XFile(file.path!, name: file.name);
+      }
+      if (picked != null) {
+        setState(() => _receiptImage = picked);
+      }
+    } catch (e) {
+      if (mounted) {
+        UiUtils.showErrorSnackbar(
+          context,
+          'No se pudo abrir la galería en este dispositivo.',
+        );
+      }
     }
   }
 
@@ -415,7 +453,7 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
                           child: _photoButton(
                             icon: Icons.camera_alt,
                             label: 'Cámara',
-                            onTap: () => _pickImage(ImageSource.camera),
+                            onTap: _pickImageCamera,
                             isDark: isDark,
                             primary: primary,
                             cardColor: cardColor,
@@ -427,7 +465,7 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
                           child: _photoButton(
                             icon: Icons.photo_library,
                             label: 'Galería',
-                            onTap: () => _pickImage(ImageSource.gallery),
+                            onTap: _pickImageGallery,
                             isDark: isDark,
                             primary: primary,
                             cardColor: cardColor,

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:autodoc/core/widgets/review_sheet.dart';
+import 'package:autodoc/features/reviews/data/services/review_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/firestore_collections.dart';
@@ -23,6 +25,7 @@ class ServiceHistoryScreen extends StatefulWidget {
 }
 
 class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
+  final _reviewService = ReviewService();
   String _filter = 'Todos'; // 'Todos', 'Manual', 'Taller'
   DateTimeRange? _dateRange;
 
@@ -615,23 +618,62 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
               record.idTaller != null &&
               record.idTaller!.isNotEmpty) ...[
             const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: () => _resenarTaller(context, record),
-                icon: Icon(Icons.star_outline, size: 18, color: colors.warning),
-                label: Text(
-                  context.l10n.histReviewWorkshop,
-                  style: TextStyle(
-                    color: colors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
+            _buildReviewAction(record, colors),
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildReviewAction(ServiceRecordModel record, AppColors colors) {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return const SizedBox.shrink();
+
+    return FutureBuilder(
+      future: _reviewService.getUserReviewForService(
+        userId,
+        record.idServicio,
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox.shrink();
+        }
+        final alreadyReviewed = snapshot.data != null;
+        return Align(
+          alignment: Alignment.centerRight,
+          child: alreadyReviewed
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_circle, size: 16, color: colors.secondary),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Ya reseñado',
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                )
+              : TextButton.icon(
+                  onPressed: () => _resenarTaller(context, record),
+                  icon: Icon(
+                    Icons.star_outline,
+                    size: 18,
+                    color: colors.warning,
+                  ),
+                  label: Text(
+                    context.l10n.histReviewWorkshop,
+                    style: TextStyle(
+                      color: colors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+        );
+      },
     );
   }
 
@@ -646,12 +688,13 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
         .get();
     final nombre = snap.data()?['nombre_completo'] as String? ?? 'Taller';
     if (!context.mounted) return;
-    await showReviewBottomSheet(
+    final result = await showReviewBottomSheet(
       context,
       tallerId: tallerId,
       tallerNombre: nombre,
       idServicio: record.idServicio,
     );
+    if (result == true && mounted) setState(() {});
   }
 
   void _showImageDialog(BuildContext context, String imageUrl) {

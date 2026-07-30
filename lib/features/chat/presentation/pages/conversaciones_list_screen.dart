@@ -10,6 +10,7 @@ import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/utils/role_utils.dart';
 
 class ConversacionesListScreen extends StatefulWidget {
   const ConversacionesListScreen({super.key});
@@ -20,18 +21,26 @@ class ConversacionesListScreen extends StatefulWidget {
 }
 
 class _ConversacionesListScreenState extends State<ConversacionesListScreen> {
-  @override
-  void initState() {
-    super.initState();
+  String? _initializedUserId;
+  bool? _initializedAsMecanico;
+
+  /// Se re-evalúa en cada build (no solo en initState): si el perfil del
+  /// usuario todavía no había cargado la primera vez, esto reintenta la
+  /// suscripción en cuanto los datos estén disponibles, en vez de dejar la
+  /// lista vacía para siempre.
+  void _ensureConversacionesInitialized(String? userId, bool isMecanico) {
+    if (userId == null) return;
+    if (_initializedUserId == userId && _initializedAsMecanico == isMecanico) {
+      return;
+    }
+    _initializedUserId = userId;
+    _initializedAsMecanico = isMecanico;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final user = context.read<AuthSessionProvider>().user;
-      final userData = context.read<UserProfileProvider>().userData;
-      if (user != null) {
-        context.read<ChatProvider>().inicializarConversaciones(
-          user.uid,
-          userData?.rol == 'Mecanico',
-        );
-      }
+      if (!mounted) return;
+      context.read<ChatProvider>().inicializarConversaciones(
+        userId,
+        isMecanico,
+      );
     });
   }
 
@@ -43,7 +52,10 @@ class _ConversacionesListScreenState extends State<ConversacionesListScreen> {
 
     final chatProvider = context.watch<ChatProvider>();
     final userSession = context.watch<UserProfileProvider>();
-    final isMecanico = userSession.userData?.rol == 'Mecanico';
+    final authSession = context.watch<AuthSessionProvider>();
+    final isMecanico = isMechanicRole(userSession.userData?.rol);
+
+    _ensureConversacionesInitialized(authSession.user?.uid, isMecanico);
 
     return Scaffold(
       backgroundColor: isDark ? colors.surfaceContainer : colors.surface,

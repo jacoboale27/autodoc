@@ -4,6 +4,7 @@ class ReviewModel {
   final String idResenia;
   final String idUsuario;
   final String idTaller;
+  final String idServicio;
   final int estrellas;
   final String? comentario;
   final DateTime fechaResenia;
@@ -13,6 +14,7 @@ class ReviewModel {
     required this.idResenia,
     required this.idUsuario,
     required this.idTaller,
+    required this.idServicio,
     required this.estrellas,
     this.comentario,
     required this.fechaResenia,
@@ -23,6 +25,7 @@ class ReviewModel {
     String? idResenia,
     String? idUsuario,
     String? idTaller,
+    String? idServicio,
     int? estrellas,
     String? comentario,
     DateTime? fechaResenia,
@@ -32,6 +35,7 @@ class ReviewModel {
       idResenia: idResenia ?? this.idResenia,
       idUsuario: idUsuario ?? this.idUsuario,
       idTaller: idTaller ?? this.idTaller,
+      idServicio: idServicio ?? this.idServicio,
       estrellas: estrellas ?? this.estrellas,
       comentario: comentario ?? this.comentario,
       fechaResenia: fechaResenia ?? this.fechaResenia,
@@ -44,6 +48,7 @@ class ReviewModel {
       'id_resenia': idResenia,
       'id_usuario': idUsuario,
       'id_taller': idTaller,
+      'id_servicio': idServicio,
       'estrellas': estrellas,
       'comentario': comentario,
       'fecha_resenia': Timestamp.fromDate(fechaResenia),
@@ -56,6 +61,7 @@ class ReviewModel {
       idResenia: map['id_resenia'] ?? documentId,
       idUsuario: map['id_usuario'] ?? '',
       idTaller: map['id_taller'] ?? '',
+      idServicio: map['id_servicio'] ?? '',
       estrellas: map['estrellas'] ?? 5,
       comentario: map['comentario'],
       fechaResenia:

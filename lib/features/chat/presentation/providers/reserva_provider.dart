@@ -62,6 +62,17 @@ class ReservaProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> reprogramarReserva(String reservaId, DateTime nuevaFecha) async {
+    try {
+      await _reservaRepository.reprogramarReserva(reservaId, nuevaFecha);
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> cambiarEstadoReserva(
     String reservaId,
     String estado, {

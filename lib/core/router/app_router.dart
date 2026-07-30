@@ -34,10 +34,25 @@ import 'package:autodoc/core/widgets/main_scaffold.dart';
 import 'package:autodoc/features/chat/presentation/pages/conversaciones_list_screen.dart';
 import 'package:autodoc/features/chat/presentation/pages/chat_screen.dart';
 import 'package:autodoc/features/chat/presentation/pages/reserva_detail_screen.dart';
-import 'package:autodoc/features/chat/data/models/reserva_model.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/notifications_screen.dart';
+
+/// Resolves the `VehicleModel` passed via `extra`, tolerating the case
+/// where it arrives as a raw `Map` (e.g. after a route state restoration
+/// round-trip) instead of the original object, so navigation doesn't
+/// crash with a type-cast error.
+VehicleModel? _resolveVehicleExtra(Object? extra) {
+  if (extra is VehicleModel) return extra;
+  if (extra is Map) {
+    try {
+      return VehicleModel.fromJson(Map<String, dynamic>.from(extra));
+    } catch (_) {
+      return null;
+    }
+  }
+  return null;
+}
 
 CustomTransitionPage<T> buildPageWithFadeThrough<T>({
   required BuildContext context,
@@ -368,8 +383,10 @@ GoRouter createAppRouter(
 
       GoRoute(
         path: '/vehicle_profile',
+        redirect: (context, state) =>
+            _resolveVehicleExtra(state.extra) == null ? '/garage' : null,
         pageBuilder: (context, state) {
-          final vehicle = state.extra as VehicleModel;
+          final vehicle = _resolveVehicleExtra(state.extra)!;
           return buildPageWithFadeThrough(
             context: context,
             state: state,
@@ -446,8 +463,11 @@ GoRouter createAppRouter(
       ),
       GoRoute(
         path: '/initiate_service',
+        redirect: (context, state) => _resolveVehicleExtra(state.extra) == null
+            ? '/mechanic_search'
+            : null,
         pageBuilder: (context, state) {
-          final vehicle = state.extra as VehicleModel;
+          final vehicle = _resolveVehicleExtra(state.extra)!;
           return buildPageWithFadeThrough(
             context: context,
             state: state,
@@ -468,12 +488,14 @@ GoRouter createAppRouter(
       ),
       GoRoute(
         path: '/reserva_detail',
+        redirect: (context, state) =>
+            state.extra is String ? null : '/chat_list',
         pageBuilder: (context, state) {
-          final reserva = state.extra as ReservaModel;
+          final reservaId = state.extra as String;
           return buildPageWithFadeThrough(
             context: context,
             state: state,
-            child: ReservaDetailScreen(reserva: reserva),
+            child: ReservaDetailScreen(reservaId: reservaId),
           );
         },
       ),

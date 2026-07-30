@@ -17,8 +17,10 @@ import 'package:autodoc/core/widgets/app_skeleton.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 
 import 'package:autodoc/core/widgets/review_sheet.dart';
+import 'package:autodoc/features/reviews/data/services/review_service.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/utils/ui_utils.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
@@ -32,6 +34,7 @@ class WorkshopDirectoryScreen extends StatefulWidget {
 }
 
 class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
+  final _reviewService = ReviewService();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   bool _showFavorites = false;
@@ -53,6 +56,36 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
     super.initState();
     _requestLocationPermission();
     _loadFilters();
+  }
+
+  Future<void> _reviewWorkshop(
+    BuildContext context,
+    String tallerId,
+    String tallerNombre,
+  ) async {
+    final userId = context.read<UserProfileProvider>().userData?.idUsuario;
+    if (userId == null) return;
+
+    final idServicio = await _reviewService.findReviewableServiceId(
+      userId,
+      tallerId,
+    );
+    if (!context.mounted) return;
+
+    if (idServicio == null) {
+      UiUtils.showErrorSnackbar(
+        context,
+        'Debes completar un servicio con este taller antes de reseñarlo.',
+      );
+      return;
+    }
+
+    await showReviewBottomSheet(
+      context,
+      tallerId: tallerId,
+      tallerNombre: tallerNombre,
+      idServicio: idServicio,
+    );
   }
 
   Future<void> _loadFilters() async {
@@ -198,7 +231,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                     items = items.where((item) {
                       final data = item['data'] as Map<String, dynamic>;
                       final rating =
-                          data['calificacion_promedio']?.toDouble() ?? 5.0;
+                          data['calificacion_promedio']?.toDouble() ?? 0.0;
                       return rating >= _minRating!;
                     }).toList();
                   }
@@ -772,7 +805,8 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
   ) {
     final name = data['nombre_completo'] ?? context.l10n.wdWorkshop;
     final spec = data['especialidad'] ?? context.l10n.wdGeneralMechanics;
-    final rating = data['calificacion_promedio']?.toDouble() ?? 5.0;
+    final rating = data['calificacion_promedio']?.toDouble() ?? 0.0;
+    final reviewsCount = data['total_resenias'] ?? 0;
     final location = data['ubicacion_municipio'] ?? '';
 
     return GestureDetector(
@@ -827,7 +861,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                         ),
                         const SizedBox(width: 2),
                         Text(
-                          rating.toStringAsFixed(1),
+                          reviewsCount > 0 ? rating.toStringAsFixed(1) : 'Nuevo',
                           style: TextStyle(
                             fontSize: Responsive.fontSize(context, 11),
                             fontWeight: FontWeight.bold,
@@ -888,7 +922,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
     final name = data['nombre_completo'] ?? context.l10n.wdNamelessWorkshop;
     final imageUrl = data['foto_url'] ?? data['foto_perfil_url'];
     final specialty = data['especialidad'] ?? context.l10n.wdGeneralMechanics;
-    final rating = data['calificacion_promedio']?.toDouble() ?? 5.0;
+    final rating = data['calificacion_promedio']?.toDouble() ?? 0.0;
     final reviewsCount = data['total_resenias'] ?? 0;
     final location =
         data['ubicacion_municipio'] ?? context.l10n.wdLocationNotSpecified;
@@ -959,7 +993,9 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              rating.toStringAsFixed(1),
+                              reviewsCount > 0
+                                  ? rating.toStringAsFixed(1)
+                                  : 'Nuevo',
                               style: TextStyle(
                                 fontSize: Responsive.fontSize(context, 12),
                                 fontWeight: FontWeight.bold,
@@ -1073,11 +1109,8 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             TextButton.icon(
-                              onPressed: () => showReviewBottomSheet(
-                                context,
-                                tallerId: tallerId,
-                                tallerNombre: name,
-                              ),
+                              onPressed: () =>
+                                  _reviewWorkshop(context, tallerId, name),
                               icon: Icon(
                                 Icons.star_outline,
                                 size: Responsive.iconSize(context, 18),

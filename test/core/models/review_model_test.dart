@@ -9,6 +9,7 @@ void main() {
         idResenia: '1',
         idUsuario: 'u1',
         idTaller: 't1',
+        idServicio: 's1',
         estrellas: 5,
         comentario: 'c',
         fechaResenia: DateTime(2023, 1, 1),
@@ -22,6 +23,7 @@ void main() {
         idResenia: '1',
         idUsuario: 'u1',
         idTaller: 't1',
+        idServicio: 's1',
         estrellas: 5,
         comentario: 'c',
         fechaResenia: DateTime(2023, 1, 1),
@@ -38,6 +40,7 @@ void main() {
         idResenia: '1',
         idUsuario: 'u1',
         idTaller: 't1',
+        idServicio: 's1',
         estrellas: 5,
         comentario: 'c',
         fechaResenia: DateTime(2023, 1, 1),
@@ -53,3 +56,4 @@ void main() {
     });
   });
 }
+
