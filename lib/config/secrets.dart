@@ -48,4 +48,8 @@ class AppSecrets {
       const String.fromEnvironment('GOOGLE_CUSTOM_SEARCH_API_KEY', defaultValue: '');
   static String get googleCustomSearchCx =>
       const String.fromEnvironment('GOOGLE_CUSTOM_SEARCH_CX', defaultValue: '');
+
+  // Google Sign-In (web)
+  static String get googleSignInClientIdWeb =>
+      const String.fromEnvironment('GOOGLE_SIGNIN_CLIENT_ID_WEB', defaultValue: '');
 }
