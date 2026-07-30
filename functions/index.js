@@ -803,10 +803,26 @@ exports.obtenerUsuariosCompartidos = functions.https.onCall(async (data, context
  * 12. Callable: busca un propietario por correo para compartir un vehiculo.
  *
  * Igual que buscarVehiculoPorPlaca, resuelve del lado del servidor lo que
- * 'usuarios' ya no expone al cliente. Solo el propietario del vehiculo que
- * quiere compartir puede llamarla, y solo devuelve cuentas con rol
- * 'Propietario' (compartir vehiculo es entre propietarios, no expone
- * cuentas de mecanico/admin por correo).
+ * 'usuarios' ya no expone al cliente.
+ *
+ * Lo que el gate de "vehicleId + soy su propietario" SI protege: exige que
+ * quien llama tenga una cuenta real con rol Propietario y sea dueno de ALGUN
+ * vehiculo, y solo devuelve cuentas con rol 'Propietario' (nunca expone
+ * mecanicos/admins por correo).
+ *
+ * Lo que el gate NO protege (hallazgo Important, revision de la 2a ronda de
+ * Fase C): 'vehiculos' create solo exige id_propietario == auth.uid
+ * (firestore.rules), asi que cualquier cuenta Propietario puede crearse un
+ * vehiculo desechable en un solo write y usarlo para pasar este chequeo. En
+ * la practica esta funcion es, para cualquier cuenta Propietario, un oraculo
+ * correo -> (uid, nombre_completo) sobre toda la poblacion de propietarios,
+ * sin limite de tasa. No es una regresion respecto al estado anterior a la
+ * Fase C (antes el cliente podia consultar 'usuarios' por correo
+ * directamente), pero SI reabre parcialmente lo que la Tarea 8 buscaba
+ * cerrar. Deliberadamente NO se agrega aqui un rate-limiter ad-hoc: el
+ * cierre real de este vector depende de App Check (Fase E, Tarea 14 del
+ * plan), que verifica que la llamada viene de la app real y no de un script,
+ * y es donde corresponde resolverlo sin duplicar infraestructura fragil.
  */
 exports.buscarPropietarioPorCorreo = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
