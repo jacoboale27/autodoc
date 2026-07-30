@@ -97,6 +97,14 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "talleres",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "estado", "order": "ASCENDING" },
+        { "fieldPath": "calificacion_promedio", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

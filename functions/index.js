@@ -747,3 +747,4 @@ exports.buscarVehiculoPorPlaca = functions.https.onCall(async (data, context) =>
   };
 });
 
+exports.publishTallerProfile = require('./src/publishTallerProfile').publishTallerProfile;

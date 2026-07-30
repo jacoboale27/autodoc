@@ -17,18 +17,6 @@ describe('datos legitimamente publicos', () => {
     await assertSucceeds(anon(env).collection('talleres').get());
   });
 
-  test('talleres NO expone correo ni telefono personal', async () => {
-    await seed(env, async (s) => {
-      await s.collection('talleres').doc(UIDS.taller1).set({
-        id_taller: UIDS.taller1, nombre: 'Taller Uno', especialidad: 'Motores',
-      });
-    });
-    const snap = await anon(env).collection('talleres').get();
-    const campos = Object.keys(snap.docs[0].data());
-    expect(campos).not.toContain('correo');
-    expect(campos).not.toContain('telefono');
-  });
-
   test('las resenias NO son legibles sin autenticar', async () => {
     await seed(env, async (s) => {
       await s.collection('resenias').doc('r1').set({
@@ -67,5 +55,16 @@ describe('datos legitimamente publicos', () => {
       });
     });
     await assertFails(db.collection('resenias').doc('r1').update({ id_taller: UIDS.taller2 }));
+  });
+});
+
+describe('proyeccion de perfil publico', () => {
+  test('un mecanico NO puede escribir directamente en talleres', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db.collection('talleres').doc(UIDS.taller1).set({
+        id_taller: UIDS.taller1, nombre: 'Autoproclamado',
+      }),
+    );
   });
 });

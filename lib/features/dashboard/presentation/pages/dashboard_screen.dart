@@ -803,7 +803,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
           StreamBuilder<List<UserModel>>(
-            stream: WorkshopService().getWorkshopsStream(),
+            stream: WorkshopService().getWorkshopsStream(limit: 5),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());

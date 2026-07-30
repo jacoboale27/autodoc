@@ -9,8 +9,9 @@ class WorkshopService {
 
   Stream<List<UserModel>> getWorkshopsStream({int limit = 50}) {
     return _firestore
-        .collection(FirestoreCollections.usuarios)
-        .where('rol', whereIn: mechanicFirestoreRoles)
+        .collection(FirestoreCollections.talleres)
+        .where('estado', isEqualTo: 'aprobado')
+        .orderBy('calificacion_promedio', descending: true)
         .limit(limit)
         .snapshots()
         .map((snapshot) {
@@ -22,8 +23,9 @@ class WorkshopService {
 
   Future<List<UserModel>> getWorkshops({int limit = 50}) async {
     final snapshot = await _firestore
-        .collection(FirestoreCollections.usuarios)
-        .where('rol', whereIn: mechanicFirestoreRoles)
+        .collection(FirestoreCollections.talleres)
+        .where('estado', isEqualTo: 'aprobado')
+        .orderBy('calificacion_promedio', descending: true)
         .limit(limit)
         .get();
     return snapshot.docs

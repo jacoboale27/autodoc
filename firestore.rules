@@ -71,17 +71,9 @@ service cloud.firestore {
       // El directorio de talleres es de lectura pública
       allow read: if true;
       
-      // Mecánicos y Administradores pueden registrar talleres
-      allow create: if isAuthenticated() && (isMecanico() || isAdmin());
-      
-      // Mecánicos pueden actualizar la información de su taller, pero no las
-      // métricas agregadas de reputación (solo el backend puede escribirlas).
-      // Los admins tienen acceso total.
-      allow update: if isAuthenticated() && (
-        (isMecanico() && !request.resource.data.diff(resource.data)
-            .affectedKeys().hasAny(['calificacion_promedio', 'total_resenias']))
-        || isAdmin()
-      );
+      // Solo el backend (Cloud Functions vía Admin SDK) y Administradores pueden escribir
+      allow create: if isAdmin();
+      allow update: if isAdmin();
       
       allow delete: if isAdmin();
     }
