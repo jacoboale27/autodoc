@@ -128,4 +128,43 @@ describe('vehiculos', () => {
       }),
     );
   });
+
+  // Cierre I-1 (revision adversarial de la tarea C1): talleres_rechazados
+  // debe tener la misma proteccion de escritura que talleres_vinculados/
+  // taller_pendiente_confirmacion -- el mecanico no puede manipularlo (por
+  // ejemplo, para borrarse a si mismo de la lista de rechazados y forzar
+  // un reintento), solo el propietario.
+  test('un taller vinculado NO puede escribir talleres_rechazados directamente', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await seed(env, seedVehiculo('v-vinc', UIDS.owner1, [UIDS.taller1]));
+    await assertFails(
+      db.collection('vehiculos').doc('v-vinc').update({
+        talleres_rechazados: [],
+      }),
+    );
+  });
+
+  test('el propietario SI puede registrar un taller como rechazado', async () => {
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await seed(env, async (s) => {
+      await s.collection('vehiculos').doc('v-pend').set({
+        id_vehiculo: 'v-pend',
+        id_propietario: UIDS.owner1,
+        placa: 'P-v-pend',
+        talleres_vinculados: [],
+        taller_pendiente_confirmacion: UIDS.taller1,
+        taller_pendiente_nombre: 'Taller Uno',
+        taller_pendiente_servicio_id: 'serv-1',
+        talleres_rechazados: [],
+      });
+    });
+    await assertSucceeds(
+      db.collection('vehiculos').doc('v-pend').update({
+        taller_pendiente_confirmacion: null,
+        taller_pendiente_nombre: null,
+        taller_pendiente_servicio_id: null,
+        talleres_rechazados: [UIDS.taller1],
+      }),
+    );
+  });
 });

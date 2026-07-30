@@ -261,6 +261,14 @@ exports.requestReviewOnServiceComplete = functions.firestore
       const vehiculoDoc = await db.collection('vehiculos').doc(vehiculoId).get();
       if (!vehiculoDoc.exists) return null;
 
+      // Nombre del taller, usado tanto en la notificación de reseña como
+      // (si aplica) en el dato denormalizado taller_pendiente_nombre. Se
+      // obtiene antes de decidir el update del vehículo porque el banner de
+      // confirmación (cierre C-1, ver mas abajo) necesita mostrar QUIEN
+      // pide acceso, no solo un texto generico.
+      const tallerDoc = await db.collection('usuarios').doc(tallerId).get();
+      const tallerName = tallerDoc.exists ? (tallerDoc.data().nombre_completo || 'el taller') : 'el taller';
+
       // Cierre del hallazgo C1 (ver firestore.rules:126-148): solo se vincula
       // automáticamente el taller si YA existía una relación previa (visita
       // recurrente, sin riesgo nuevo). Si el vehículo nunca tuvo taller
@@ -274,6 +282,27 @@ exports.requestReviewOnServiceComplete = functions.firestore
       const talleresVinculados = vehiculoDoc.data().talleres_vinculados || [];
       const yaVinculado = talleresVinculados.includes(tallerId);
 
+      // Cierre C-1 (revisión adversarial): si ya hay una solicitud pendiente
+      // de OTRO taller distinto, NO la pisamos. Sin esto, un atacante podía
+      // crear un `servicios` falso justo después de una visita legítima y
+      // reemplazar silenciosamente el taller_pendiente_confirmacion real
+      // por el suyo, indistinguibles para el propietario en el banner.
+      const pendienteActual = vehiculoDoc.data().taller_pendiente_confirmacion || null;
+      const haySolicitudDeOtroTaller =
+        pendienteActual !== null && pendienteActual !== tallerId;
+
+      // Cierre I-1 (revisión adversarial): si el propietario ya rechazó
+      // explícitamente a este taller para este vehículo, no se le vuelve a
+      // marcar como pendiente. Sin esto, el mismo taller podía reintentar
+      // gratis creando otro `servicios` falso inmediatamente después de un
+      // rechazo, re-armando el banner indefinidamente y contaminando el
+      // historial con un registro de servicio falso por intento.
+      const talleresRechazados = vehiculoDoc.data().talleres_rechazados || [];
+      const yaRechazado = talleresRechazados.includes(tallerId);
+
+      const debeMarcarPendiente =
+        !yaVinculado && !haySolicitudDeOtroTaller && !yaRechazado;
+
       const vehicleUpdate = {};
       if (yaVinculado) {
         // Vincula el taller al vehículo para que las reglas de seguridad le
@@ -281,9 +310,19 @@ exports.requestReviewOnServiceComplete = functions.firestore
         // firestore.rules match /vehiculos). Se hace vía Admin SDK porque el
         // cliente no tiene permiso de escribir este campo directamente.
         vehicleUpdate.talleres_vinculados = admin.firestore.FieldValue.arrayUnion(tallerId);
-      } else {
+      } else if (debeMarcarPendiente) {
         vehicleUpdate.taller_pendiente_confirmacion = tallerId;
+        // Denormalizado para que el banner de confirmación pueda mostrar
+        // quién pide acceso (nombre del taller) y a qué servicio
+        // corresponde, en vez de un texto genérico indistinguible de un
+        // intento de secuestro (cierre C-1).
+        vehicleUpdate.taller_pendiente_nombre = tallerName;
+        vehicleUpdate.taller_pendiente_servicio_id = context.params.serviceId;
       }
+      // Si !yaVinculado && !debeMarcarPendiente (hay otra solicitud pendiente
+      // o el taller ya fue rechazado), no se toca ningún campo de vínculo:
+      // el `servicios` walk-in igual se crea (regla ya lo permite), pero no
+      // se otorga ni se solicita ningún acceso permanente nuevo.
 
       // Actualiza el kilometraje aquí mismo (server-side) en vez de que el
       // cliente lea/escriba el vehículo justo después de crear el servicio:
@@ -296,7 +335,9 @@ exports.requestReviewOnServiceComplete = functions.firestore
         vehicleUpdate.kilometraje_actual = nuevoKm;
       }
 
-      await vehiculoDoc.ref.update(vehicleUpdate);
+      if (Object.keys(vehicleUpdate).length > 0) {
+        await vehiculoDoc.ref.update(vehicleUpdate);
+      }
 
       const ownerId = vehiculoDoc.data().id_propietario;
       if (!ownerId) return null;
@@ -306,21 +347,28 @@ exports.requestReviewOnServiceComplete = functions.firestore
 
       if (!fcmToken) return null;
 
-      const tallerDoc = await db.collection('usuarios').doc(tallerId).get();
-      const tallerName = tallerDoc.exists ? (tallerDoc.data().nombre_completo || 'el taller') : 'el taller';
-
-      await messaging.send({
-        token: fcmToken,
-        notification: {
-          title: '¿Qué tal te fue en tu servicio?',
-          body: `Tu vehículo ${vehiculoDoc.data().placa} fue atendido en ${tallerName}. Por favor, déjales una reseña.`
-        },
-        data: {
-          type: 'review',
-          tallerId: tallerId,
-          serviceId: context.params.serviceId
-        }
-      });
+      // Cierre I-3 (revisión adversarial): el push FCM se envía en su
+      // propio try/catch para que, si falla (token inválido/expirado, algo
+      // rutinario), el registro persistente del centro de notificaciones
+      // (writeNotification) se escriba igual. Antes, un fallo de
+      // messaging.send() para el prompt de consentimiento de seguridad
+      // dejaba al propietario sin ningún rastro de la solicitud.
+      try {
+        await messaging.send({
+          token: fcmToken,
+          notification: {
+            title: '¿Qué tal te fue en tu servicio?',
+            body: `Tu vehículo ${vehiculoDoc.data().placa} fue atendido en ${tallerName}. Por favor, déjales una reseña.`
+          },
+          data: {
+            type: 'review',
+            tallerId: tallerId,
+            serviceId: context.params.serviceId
+          }
+        });
+      } catch (fcmError) {
+        console.error('Error sending FCM review push:', fcmError);
+      }
 
       // Persist in notification center
       await writeNotification(ownerId, {
@@ -331,22 +379,27 @@ exports.requestReviewOnServiceComplete = functions.firestore
         metadata: { tallerId, serviceId: context.params.serviceId },
       });
 
-      // Si es un vehículo nunca antes vinculado, pide confirmación explícita
-      // del propietario antes de otorgar acceso permanente al historial.
-      if (!yaVinculado) {
-        await messaging.send({
-          token: fcmToken,
-          notification: {
-            title: 'Nuevo taller quiere acceder al historial de tu vehículo',
-            body: `${tallerName} atendió tu vehículo ${vehiculoDoc.data().placa} y solicita acceso a su historial. Confírmalo desde tu panel.`
-          },
-          data: {
-            type: 'confirmacion_taller',
-            tallerId: tallerId,
-            vehiculoId: vehiculoId,
-            serviceId: context.params.serviceId
-          }
-        });
+      // Si corresponde marcar una solicitud pendiente nueva, pide
+      // confirmación explícita del propietario antes de otorgar acceso
+      // permanente al historial.
+      if (debeMarcarPendiente) {
+        try {
+          await messaging.send({
+            token: fcmToken,
+            notification: {
+              title: 'Nuevo taller quiere acceder al historial de tu vehículo',
+              body: `${tallerName} atendió tu vehículo ${vehiculoDoc.data().placa} y solicita acceso a su historial. Confírmalo desde tu panel.`
+            },
+            data: {
+              type: 'confirmacion_taller',
+              tallerId: tallerId,
+              vehiculoId: vehiculoId,
+              serviceId: context.params.serviceId
+            }
+          });
+        } catch (fcmError) {
+          console.error('Error sending FCM confirmacion_taller push:', fcmError);
+        }
 
         await writeNotification(ownerId, {
           tipo: 'confirmacion_taller',
