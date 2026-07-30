@@ -94,4 +94,37 @@ describe('storage: aislamiento de facturas', () => {
     const st = env.authenticatedContext(UIDS.owner2).storage();
     await assertFails(st.ref('vehiculos/v1/foto.jpg').getDownloadURL());
   });
+
+  // I3: esImagenValida() (Tarea 10) bloqueaba PDF en TODA ruta, incluida
+  // facturas/, pero la app soporta explicitamente adjuntar la factura como
+  // PDF (invoice_upload_service.dart, initiate_service_screen.dart).
+  test('el propietario del vehiculo SI puede subir una factura en PDF', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedVehiculo('v1', UIDS.owner1);
+    const st = env.authenticatedContext(UIDS.owner1).storage();
+    await assertSucceeds(
+      st.ref('facturas/v1/f.pdf').put(imagen(100), { contentType: 'application/pdf' }),
+    );
+  });
+
+  test('un taller vinculado SI puede subir la factura del servicio en PDF', async () => {
+    await seedUsuario(UIDS.taller1, 'Taller');
+    await seedVehiculo('v1', UIDS.owner1, [UIDS.taller1]);
+    const st = env.authenticatedContext(UIDS.taller1).storage();
+    await assertSucceeds(
+      st.ref('facturas/v1/f.pdf').put(imagen(100), { contentType: 'application/pdf' }),
+    );
+  });
+
+  test('sigue rechazando tipos peligrosos en facturas (SVG/HTML)', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedVehiculo('v1', UIDS.owner1);
+    const st = env.authenticatedContext(UIDS.owner1).storage();
+    await assertFails(
+      st.ref('facturas/v1/f.svg').put(imagen(10), { contentType: 'image/svg+xml' }),
+    );
+    await assertFails(
+      st.ref('facturas/v1/f.html').put(imagen(10), { contentType: 'text/html' }),
+    );
+  });
 });

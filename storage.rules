@@ -36,6 +36,15 @@ service firebase.storage {
         request.resource.contentType.matches('image/(jpeg|jpg|png|webp)');
     }
 
+    // Facturas: ademas de imagen, la app soporta subir el comprobante como
+    // PDF (ver invoice_upload_service.dart e initiate_service_screen.dart).
+    // Mismo limite de 5 MB; se sigue excluyendo SVG/HTML explicitamente.
+    function esFacturaValida() {
+      return request.resource.size < 5 * 1024 * 1024 &&
+        (request.resource.contentType.matches('image/(jpeg|jpg|png|webp)') ||
+         request.resource.contentType == 'application/pdf');
+    }
+
     // Mecanico cuyo taller esta vinculado al vehiculo.
     function isVinculadoAlVehiculo(vehicleId) {
       return isMecanico() &&
@@ -64,7 +73,7 @@ service firebase.storage {
         || isAdmin()
       );
       allow write: if isAuthenticated()
-        && esImagenValida()
+        && esFacturaValida()
         && (isVehicleOwner(vehicleId) || isVinculadoAlVehiculo(vehicleId) || isAdmin());
       // Las facturas son el rastro documental del producto: solo un admin las borra.
       allow delete: if isAdmin();
