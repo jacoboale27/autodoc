@@ -68,7 +68,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Flutter Web (release)
-        run: flutter build web --release --dart-define=FLAVOR=dev
+        run: flutter build web --release --no-web-resources-cdn --dart-define=FLAVOR=dev
 
   # ─────────────────────────────────────────
   # Deploy to Staging (on merge to staging branch)
@@ -101,7 +101,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Flutter Web for staging
-        run: flutter build web --release --dart-define=FLAVOR=staging
+        run: flutter build web --release --no-web-resources-cdn --dart-define=FLAVOR=staging
 
       - name: Deploy Cloud Functions to Staging
         run: firebase deploy --only functions --project ${{ secrets.FIREBASE_PROJECT_STAGING }}
@@ -144,7 +144,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Flutter Web for production
-        run: flutter build web --release --dart-define=FLAVOR=prod
+        run: flutter build web --release --no-web-resources-cdn --dart-define=FLAVOR=prod
 
       - name: Deploy Firestore Rules & Indexes to Production
         run: firebase deploy --only firestore --project ${{ secrets.FIREBASE_PROJECT_PROD }}
