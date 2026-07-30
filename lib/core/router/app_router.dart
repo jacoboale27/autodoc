@@ -116,6 +116,33 @@ String _homeForRole(String normalizedRole) {
   }
 }
 
+/// Resuelve el widget hijo de una ruta que depende de un id de path
+/// parameter (`:vehiculoId`, `:reservaId`, ...): si el id no llega (null o
+/// vacío) devuelve [MissingArgumentScreen] con `mensajeFaltante`; si llega,
+/// delega en `buildScreen`.
+///
+/// Se extrae como función pura y pública (igual que `resolveRedirect`) para
+/// poder probarla sin depender del parseo de URLs de go_router — una
+/// navegación real nunca entrega un pathParameter vacío para un segmento
+/// `:id` (go_router exige al menos un carácter por segmento), pero esta
+/// guarda es la última línea de defensa contra una pantalla en blanco si
+/// esa garantía cambiara o si el router se invoca programáticamente con un
+/// `GoRouterState` construido a mano.
+Widget resolveRouteChild({
+  required String? id,
+  required String mensajeFaltante,
+  String rutaVuelta = '/dashboard',
+  required Widget Function(String id) buildScreen,
+}) {
+  if (id == null || id.isEmpty) {
+    return MissingArgumentScreen(
+      mensaje: mensajeFaltante,
+      rutaVuelta: rutaVuelta,
+    );
+  }
+  return buildScreen(id);
+}
+
 /// Checks if a path matches or starts with any route in the set
 bool _matchesRouteSet(String path, Set<String> routes) {
   for (final route in routes) {
@@ -237,10 +264,10 @@ String? appRouterRedirect(
   final rawUserData = profileProvider.userData;
   final userData =
       (rawUserData != null &&
-              (rawUserData.idUsuario == currentUid ||
-                  rawUserData.idUsuario.isEmpty))
-          ? rawUserData
-          : null;
+          (rawUserData.idUsuario == currentUid ||
+              rawUserData.idUsuario.isEmpty))
+      ? rawUserData
+      : null;
 
   return resolveRedirect(
     isLoggedIn: authProvider.isLoggedIn,
@@ -359,28 +386,20 @@ GoRouter createAppRouter(
 
       GoRoute(
         path: '/vehicle_profile/:vehiculoId',
-        pageBuilder: (context, state) {
-          final id = state.pathParameters['vehiculoId'];
-          if (id == null || id.isEmpty) {
-            return buildPageWithFadeThrough(
-              context: context,
-              state: state,
-              child: const MissingArgumentScreen(
-                mensaje: 'No se indicó ningún vehículo.',
-              ),
-            );
-          }
-          return buildPageWithFadeThrough(
-            context: context,
-            state: state,
-            child: VehicleProfileScreen(
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: resolveRouteChild(
+            id: state.pathParameters['vehiculoId'],
+            mensajeFaltante: 'No se indicó ningún vehículo.',
+            buildScreen: (id) => VehicleProfileScreen(
               vehiculoId: id,
               vehiculoPrecargado: state.extra is VehicleModel
                   ? state.extra as VehicleModel
                   : null,
             ),
-          );
-        },
+          ),
+        ),
       ),
       GoRoute(
         path: '/alerts',
@@ -392,23 +411,15 @@ GoRouter createAppRouter(
       ),
       GoRoute(
         path: '/service_history/:vehiculoId',
-        pageBuilder: (context, state) {
-          final id = state.pathParameters['vehiculoId'];
-          if (id == null || id.isEmpty) {
-            return buildPageWithFadeThrough(
-              context: context,
-              state: state,
-              child: const MissingArgumentScreen(
-                mensaje: 'No se indicó ningún vehículo.',
-              ),
-            );
-          }
-          return buildPageWithFadeThrough(
-            context: context,
-            state: state,
-            child: ServiceHistoryScreen(vehiculoId: id),
-          );
-        },
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: resolveRouteChild(
+            id: state.pathParameters['vehiculoId'],
+            mensajeFaltante: 'No se indicó ningún vehículo.',
+            buildScreen: (id) => ServiceHistoryScreen(vehiculoId: id),
+          ),
+        ),
       ),
       GoRoute(
         path: '/mechanic_search',
@@ -460,29 +471,21 @@ GoRouter createAppRouter(
       ),
       GoRoute(
         path: '/initiate_service/:vehiculoId',
-        pageBuilder: (context, state) {
-          final id = state.pathParameters['vehiculoId'];
-          if (id == null || id.isEmpty) {
-            return buildPageWithFadeThrough(
-              context: context,
-              state: state,
-              child: const MissingArgumentScreen(
-                mensaje: 'No se indicó ningún vehículo.',
-                rutaVuelta: '/mechanic_dashboard',
-              ),
-            );
-          }
-          return buildPageWithFadeThrough(
-            context: context,
-            state: state,
-            child: InitiateServiceScreen(
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: resolveRouteChild(
+            id: state.pathParameters['vehiculoId'],
+            mensajeFaltante: 'No se indicó ningún vehículo.',
+            rutaVuelta: '/mechanic_dashboard',
+            buildScreen: (id) => InitiateServiceScreen(
               vehiculoId: id,
               vehiculoPrecargado: state.extra is VehicleModel
                   ? state.extra as VehicleModel
                   : null,
             ),
-          );
-        },
+          ),
+        ),
       ),
       GoRoute(
         path: '/chat/:id',
@@ -497,29 +500,21 @@ GoRouter createAppRouter(
       ),
       GoRoute(
         path: '/reserva_detail/:reservaId',
-        pageBuilder: (context, state) {
-          final id = state.pathParameters['reservaId'];
-          if (id == null || id.isEmpty) {
-            return buildPageWithFadeThrough(
-              context: context,
-              state: state,
-              child: const MissingArgumentScreen(
-                mensaje: 'No se indicó ninguna reserva.',
-                rutaVuelta: '/chat_list',
-              ),
-            );
-          }
-          return buildPageWithFadeThrough(
-            context: context,
-            state: state,
-            child: ReservaDetailScreen(
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: resolveRouteChild(
+            id: state.pathParameters['reservaId'],
+            mensajeFaltante: 'No se indicó ninguna reserva.',
+            rutaVuelta: '/chat_list',
+            buildScreen: (id) => ReservaDetailScreen(
               reservaId: id,
               reservaPrecargada: state.extra is ReservaModel
                   ? state.extra as ReservaModel
                   : null,
             ),
-          );
-        },
+          ),
+        ),
       ),
       GoRoute(
         path: '/task_config',

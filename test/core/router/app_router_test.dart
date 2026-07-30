@@ -5,6 +5,7 @@ import 'package:autodoc/core/router/app_router.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/models/user_model.dart';
+import 'package:autodoc/core/widgets/missing_argument_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class FakeAuthSessionProvider extends ChangeNotifier
@@ -193,7 +194,10 @@ void main() {
   });
 
   testWidgets('Renders 404 page on unknown route', (WidgetTester tester) async {
-    final authProvider = FakeAuthSessionProvider(isLoggedIn: true, currentUid: 'uid_1');
+    final authProvider = FakeAuthSessionProvider(
+      isLoggedIn: true,
+      currentUid: 'uid_1',
+    );
     final ownerUser = UserModel(
       idUsuario: 'uid_1',
       nombreCompleto: 'Juan Owner',
@@ -201,7 +205,10 @@ void main() {
       rol: 'Propietario',
       fechaRegistro: DateTime.now(),
     );
-    final profileProvider = FakeUserProfileProvider(userData: ownerUser, hasAttemptedFetch: true);
+    final profileProvider = FakeUserProfileProvider(
+      userData: ownerUser,
+      hasAttemptedFetch: true,
+    );
     final router = createAppRouter(
       authProvider,
       profileProvider,
@@ -212,4 +219,94 @@ void main() {
 
     expect(find.text('Página no encontrada (404)'), findsOneWidget);
   });
+
+  group('resolveRouteChild — guarda de id ausente/vacío (C-03)', () {
+    // Las 4 rutas que dependian de `state.extra` (/vehicle_profile,
+    // /service_history, /initiate_service, /reserva_detail) delegan en esta
+    // funcion pura para decidir entre mostrar MissingArgumentScreen o la
+    // pantalla real. Se prueba directamente porque go_router nunca entrega
+    // un pathParameter `:id` vacio a traves de una navegacion real (el
+    // patron `[^/]+` exige al menos un caracter), asi que este es el unico
+    // punto donde la rama "id ausente" es ejercitable de forma
+    // determinista.
+    test('id nulo devuelve MissingArgumentScreen con el mensaje indicado', () {
+      final child = resolveRouteChild(
+        id: null,
+        mensajeFaltante: 'No se indicó ningún vehículo.',
+        buildScreen: (id) => Text(id),
+      );
+
+      expect(child, isA<MissingArgumentScreen>());
+      expect(
+        (child as MissingArgumentScreen).mensaje,
+        'No se indicó ningún vehículo.',
+      );
+      expect(child.rutaVuelta, '/dashboard');
+    });
+
+    test(
+      'id vacío devuelve MissingArgumentScreen con la rutaVuelta indicada',
+      () {
+        final child = resolveRouteChild(
+          id: '',
+          mensajeFaltante: 'No se indicó ninguna reserva.',
+          rutaVuelta: '/chat_list',
+          buildScreen: (id) => Text(id),
+        );
+
+        expect(child, isA<MissingArgumentScreen>());
+        expect((child as MissingArgumentScreen).rutaVuelta, '/chat_list');
+      },
+    );
+
+    test('id presente delega en buildScreen en vez de mostrar el fallback', () {
+      final child = resolveRouteChild(
+        id: 'vehiculo-123',
+        mensajeFaltante: 'No se indicó ningún vehículo.',
+        buildScreen: (id) => Text('vehiculo:$id'),
+      );
+
+      expect(child, isA<Text>());
+      expect((child as Text).data, 'vehiculo:vehiculo-123');
+    });
+  });
+
+  testWidgets(
+    'Navegar a una URL mal formada de las rutas con id nunca deja una '
+    'pantalla en blanco',
+    (WidgetTester tester) async {
+      final authProvider = FakeAuthSessionProvider(
+        isLoggedIn: true,
+        currentUid: 'uid_1',
+      );
+      final ownerUser = UserModel(
+        idUsuario: 'uid_1',
+        nombreCompleto: 'Juan Owner',
+        correo: 'owner@test.com',
+        rol: 'Propietario',
+        fechaRegistro: DateTime.now(),
+      );
+      final profileProvider = FakeUserProfileProvider(
+        userData: ownerUser,
+        hasAttemptedFetch: true,
+      );
+      // '/vehicle_profile/' (sin id) no matchea el patron
+      // '/vehicle_profile/:vehiculoId' (go_router exige >=1 caracter por
+      // segmento), asi que cae en el errorBuilder de la app -- que ya
+      // muestra texto visible, no una pantalla vacia. Esto documenta y
+      // fija ese comportamiento: la regresion de C-03 (pantalla en blanco
+      // por un `extra` nulo) no puede reaparecer en esta URL.
+      final router = createAppRouter(
+        authProvider,
+        profileProvider,
+        initialLocation: '/vehicle_profile/',
+      );
+
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Text), findsWidgets);
+      expect(find.text('Página no encontrada (404)'), findsOneWidget);
+    },
+  );
 }

@@ -9,6 +9,28 @@ import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/l10n/app_localizations.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
+/// Normaliza un `deepLink` legado: antes de la Tarea 12, `/reserva_detail`
+/// se guardaba sin id (dependía de `state.extra`, que ya no existe en la
+/// ruta). Los documentos de notificación escritos antes de ese cambio siguen
+/// teniendo ese deep link "pelado" en Firestore -- sin esta normalización,
+/// tocar esa notificación cae en el 404 del router en vez de abrir la
+/// reserva. Si el `metadata` trae el id de la reserva, se reconstruye la
+/// ruta nueva; si no, se redirige a una ruta segura en vez del 404.
+///
+/// Público (sin `_`) para poder probarlo directamente desde
+/// `test/features/dashboard/notifications_screen_test.dart`.
+String normalizeDeepLink(AppNotification notif) {
+  final deepLink = notif.deepLink;
+  if (deepLink == '/reserva_detail') {
+    final reservaId = notif.metadata?['reservaId'] as String?;
+    if (reservaId != null && reservaId.isNotEmpty) {
+      return '/reserva_detail/$reservaId';
+    }
+    return '/chat_list';
+  }
+  return deepLink!;
+}
+
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
 
@@ -100,7 +122,7 @@ class NotificationsScreen extends StatelessWidget {
             }
             // Navigate to deep link
             if (notif.deepLink != null && notif.deepLink!.isNotEmpty) {
-              context.push(notif.deepLink!);
+              context.push(normalizeDeepLink(notif));
             }
           },
           onDismiss: () => provider.deleteNotification(userId, notif.id),

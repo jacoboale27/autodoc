@@ -16,10 +16,16 @@ class ReservaDetailScreen extends StatefulWidget {
   final String reservaId;
   final ReservaModel? reservaPrecargada;
 
+  /// Instancia de Firestore a usar. Por defecto `FirebaseFirestore.instance`;
+  /// inyectable para pruebas de widget (p. ej. con `FakeFirebaseFirestore`)
+  /// sin depender del singleton real.
+  final FirebaseFirestore? firestore;
+
   const ReservaDetailScreen({
     super.key,
     required this.reservaId,
     this.reservaPrecargada,
+    this.firestore,
   });
 
   @override
@@ -31,6 +37,9 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
   ReservaModel? _reserva;
   bool _cargando = false;
   String? _errorCarga;
+
+  FirebaseFirestore get _firestore =>
+      widget.firestore ?? FirebaseFirestore.instance;
 
   @override
   void initState() {
@@ -45,7 +54,7 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
       _errorCarga = null;
     });
     try {
-      final doc = await FirebaseFirestore.instance
+      final doc = await _firestore
           .collection(FirestoreCollections.reservas)
           .doc(widget.reservaId)
           .get();
@@ -81,10 +90,7 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
           fechaConfirmada: DateTime.now(),
         );
       } else {
-        await reservaProvider.cambiarEstadoReserva(
-          _reserva!.id,
-          nuevoEstado,
-        );
+        await reservaProvider.cambiarEstadoReserva(_reserva!.id, nuevoEstado);
       }
       if (mounted) {
         Navigator.pop(context);
