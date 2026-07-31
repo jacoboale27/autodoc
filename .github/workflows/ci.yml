@@ -30,22 +30,54 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed .
+
       - name: Run flutter analyze
-        run: flutter analyze --no-fatal-infos
+        run: flutter analyze
 
       - name: Run unit & widget tests
         run: flutter test --coverage
 
-      - name: Check test coverage threshold (55%)
+      - name: Install lcov
+        run: sudo apt-get update && sudo apt-get install -y lcov bc
+
+      - name: Check test coverage threshold
         run: |
           COVERAGE=$(lcov --summary coverage/lcov.info 2>&1 | grep "lines" | awk '{print $2}' | sed 's/%//')
           echo "Coverage: $COVERAGE%"
-          if (( $(echo "$COVERAGE < 55" | bc -l) )); then
-            echo "❌ Coverage $COVERAGE% is below minimum 55%"
+          MIN=25
+          if (( $(echo "$COVERAGE < $MIN" | bc -l) )); then
+            echo "❌ Coverage $COVERAGE% está por debajo del mínimo $MIN%"
             exit 1
           fi
-          echo "✅ Coverage $COVERAGE% passes threshold"
-        continue-on-error: true  # Don't block until coverage is built up
+          echo "✅ Coverage $COVERAGE% pasa el umbral"
+
+  # ─────────────────────────────────────────
+  # PR Check: Firestore & Storage rules tests
+  # ─────────────────────────────────────────
+  rules_tests:
+    name: Firestore & Storage Rules Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Install rules test dependencies
+        working-directory: test_rules
+        run: npm ci
+
+      - name: Run rules tests against the emulator
+        working-directory: test_rules
+        run: npm test
 
   # ─────────────────────────────────────────
   # PR Check: Flutter Web build smoke test
@@ -78,7 +110,10 @@ jobs:
           echo "✅ client ID inyectado"
 
       - name: Build Flutter Web (release)
-        run: flutter build web --release --no-web-resources-cdn --dart-define=FLAVOR=dev
+        # RECAPTCHA_SITE_KEY es opcional: si el secreto aun no esta configurado en el
+        # repo, App Check simplemente queda sin site key (tolerante a fallos por diseno
+        # de la Tarea 14) y el build no se bloquea.
+        run: flutter build web --release --no-web-resources-cdn --dart-define=FLAVOR=dev --dart-define=RECAPTCHA_SITE_KEY=${{ secrets.RECAPTCHA_SITE_KEY }}
 
   # ─────────────────────────────────────────
   # Deploy to Staging (on merge to staging branch)
@@ -86,7 +121,7 @@ jobs:
   deploy_staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: [analyze_and_test, build_web_smoke]
+    needs: [analyze_and_test, rules_tests, build_web_smoke]
     if: github.ref == 'refs/heads/staging' && github.event_name == 'push'
     environment: staging
     steps:
@@ -121,7 +156,10 @@ jobs:
           echo "✅ client ID inyectado"
 
       - name: Build Flutter Web for staging
-        run: flutter build web --release --no-web-resources-cdn --dart-define=FLAVOR=staging
+        # RECAPTCHA_SITE_KEY es opcional: si el secreto aun no esta configurado en el
+        # repo, App Check simplemente queda sin site key (tolerante a fallos por diseno
+        # de la Tarea 14) y el build no se bloquea.
+        run: flutter build web --release --no-web-resources-cdn --dart-define=FLAVOR=staging --dart-define=RECAPTCHA_SITE_KEY=${{ secrets.RECAPTCHA_SITE_KEY }}
 
       - name: Deploy Cloud Functions to Staging
         run: firebase deploy --only functions --project ${{ secrets.FIREBASE_PROJECT_STAGING }}
@@ -139,7 +177,7 @@ jobs:
   deploy_production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [analyze_and_test, build_web_smoke]
+    needs: [analyze_and_test, rules_tests, build_web_smoke]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
     steps:
@@ -174,7 +212,10 @@ jobs:
           echo "✅ client ID inyectado"
 
       - name: Build Flutter Web for production
-        run: flutter build web --release --no-web-resources-cdn --dart-define=FLAVOR=prod
+        # RECAPTCHA_SITE_KEY es opcional: si el secreto aun no esta configurado en el
+        # repo, App Check simplemente queda sin site key (tolerante a fallos por diseno
+        # de la Tarea 14) y el build no se bloquea.
+        run: flutter build web --release --no-web-resources-cdn --dart-define=FLAVOR=prod --dart-define=RECAPTCHA_SITE_KEY=${{ secrets.RECAPTCHA_SITE_KEY }}
 
       - name: Deploy Firestore Rules & Indexes to Production
         run: firebase deploy --only firestore --project ${{ secrets.FIREBASE_PROJECT_PROD }}
@@ -196,8 +237,23 @@ jobs:
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
-      - name: Create GitHub Release tag
-        if: success()
+      - name: Post-deploy smoke test
         run: |
-          echo "✅ Production deployment successful!"
-          echo "Version: $(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}')"
+          URL="https://autodoc-6ef5a.web.app"
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" "$URL")
+          if [ "$CODE" != "200" ]; then echo "❌ Hosting responde $CODE"; exit 1; fi
+          if ! curl -s "$URL" | grep -q 'flutter_bootstrap.js'; then
+            echo "❌ index.html no referencia flutter_bootstrap.js"; exit 1
+          fi
+          CC=$(curl -s -I "$URL/main.dart.js" | grep -i '^cache-control' || true)
+          echo "Cache-Control de main.dart.js: $CC"
+          if echo "$CC" | grep -qi 'immutable'; then
+            echo "❌ main.dart.js sigue marcado como immutable"; exit 1
+          fi
+          echo "✅ Smoke test correcto"
+
+      - name: Create version tag
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}')
+          git tag "v$VERSION"
+          git push origin "v$VERSION"
