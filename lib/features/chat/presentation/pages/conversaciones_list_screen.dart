@@ -47,14 +47,18 @@ class _ConversacionesListScreenState extends State<ConversacionesListScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? colors.surfaceContainer : colors.surface,
-      appBar: ResponsiveBreakpoints.of(context).largerThan(TABLET) ? null : AppBar(
-        title: Text(
-          'Mensajes',
-          style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
+      appBar: ResponsiveBreakpoints.of(context).largerThan(TABLET)
+          ? null
+          : AppBar(
+              title: Text(
+                'Mensajes',
+                style: AppTextStyles.titleLarge.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+            ),
       body: chatProvider.error != null
           ? Center(
               child: Text(

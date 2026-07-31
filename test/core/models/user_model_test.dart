@@ -49,19 +49,25 @@ void main() {
       }
     });
 
-    test('estado por defecto es pendiente cuando el campo falta (fail-closed)', () {
-      final u = UserModel.fromMap(
-        {'id_usuario': 'u1', 'correo': 'u@x.com', 'rol': 'Taller'},
-        'u1',
-      );
-      expect(u.estado, 'pendiente');
-    });
+    test(
+      'estado por defecto es pendiente cuando el campo falta (fail-closed)',
+      () {
+        final u = UserModel.fromMap({
+          'id_usuario': 'u1',
+          'correo': 'u@x.com',
+          'rol': 'Taller',
+        }, 'u1');
+        expect(u.estado, 'pendiente');
+      },
+    );
 
     test('estado explicito se respeta', () {
-      final u = UserModel.fromMap(
-        {'id_usuario': 'u1', 'correo': 'u@x.com', 'rol': 'Taller', 'estado': 'aprobado'},
-        'u1',
-      );
+      final u = UserModel.fromMap({
+        'id_usuario': 'u1',
+        'correo': 'u@x.com',
+        'rol': 'Taller',
+        'estado': 'aprobado',
+      }, 'u1');
       expect(u.estado, 'aprobado');
     });
   });

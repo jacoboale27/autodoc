@@ -610,48 +610,48 @@ class _ChatScreenState extends State<ChatScreen> {
                       backgroundColor: Colors.transparent,
                       isScrollControlled: true,
                       builder: (context) => CotizacionPicker(
-                        onConfirm: (descripcion, total, manoDeObra, materiales) async {
-                          final provider = context.read<ChatProvider>();
+                        onConfirm:
+                            (descripcion, total, manoDeObra, materiales) async {
+                              final provider = context.read<ChatProvider>();
 
-                          // Guardar cotización en la base de datos
-                          final cotizacion = CotizacionModel(
-                            id: '',
-                            idPropietario: receptorId,
-                            idMecanico: userId,
-                            idVehiculo: provider.conversaciones
-                                .where((c) => c.id == widget.conversacionId)
-                                .firstOrNull
-                                ?.idVehiculo,
-                            idTaller: userId,
-                            descripcion: descripcion,
-                            total: total,
-                            fecha: DateTime.now(),
-                            manoDeObra: manoDeObra,
-                            materiales: materiales,
-                          );
+                              // Guardar cotización en la base de datos
+                              final cotizacion = CotizacionModel(
+                                id: '',
+                                idPropietario: receptorId,
+                                idMecanico: userId,
+                                idVehiculo: provider.conversaciones
+                                    .where((c) => c.id == widget.conversacionId)
+                                    .firstOrNull
+                                    ?.idVehiculo,
+                                idTaller: userId,
+                                descripcion: descripcion,
+                                total: total,
+                                fecha: DateTime.now(),
+                                manoDeObra: manoDeObra,
+                                materiales: materiales,
+                              );
 
-                          final cotizacionId = await provider.crearCotizacion(
-                            cotizacion,
-                          );
+                              final cotizacionId = await provider
+                                  .crearCotizacion(cotizacion);
 
-                          provider.enviarMensaje(
-                            conversacionId: widget.conversacionId,
-                            contenido:
-                                'He creado una nueva cotización para tu vehículo.',
-                            remitenteId: userId,
-                            receptorId: receptorId,
-                            isMecanicoRemitente: isMecanico,
-                            tipo: 'cotizacion_card',
-                            metadata: {
-                              'id_cotizacion': cotizacionId,
-                              'descripcion': descripcion,
-                              'total': total,
-                              'estado': 'pendiente',
-                              'manoDeObra': ?manoDeObra,
-                              'materiales': ?materiales,
+                              provider.enviarMensaje(
+                                conversacionId: widget.conversacionId,
+                                contenido:
+                                    'He creado una nueva cotización para tu vehículo.',
+                                remitenteId: userId,
+                                receptorId: receptorId,
+                                isMecanicoRemitente: isMecanico,
+                                tipo: 'cotizacion_card',
+                                metadata: {
+                                  'id_cotizacion': cotizacionId,
+                                  'descripcion': descripcion,
+                                  'total': total,
+                                  'estado': 'pendiente',
+                                  'manoDeObra': ?manoDeObra,
+                                  'materiales': ?materiales,
+                                },
+                              );
                             },
-                          );
-                        },
                       ),
                     );
                   },

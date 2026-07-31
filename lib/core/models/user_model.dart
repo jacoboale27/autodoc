@@ -150,8 +150,16 @@ class UserModel {
       fcmToken: map['fcmToken']?.toString(),
       departamento: map['departamento']?.toString(),
       municipio: map['municipio']?.toString(),
-      latitud: parseDouble(map['latitud']) ?? (map['ubicacion'] is GeoPoint ? (map['ubicacion'] as GeoPoint).latitude : null),
-      longitud: parseDouble(map['longitud']) ?? (map['ubicacion'] is GeoPoint ? (map['ubicacion'] as GeoPoint).longitude : null),
+      latitud:
+          parseDouble(map['latitud']) ??
+          (map['ubicacion'] is GeoPoint
+              ? (map['ubicacion'] as GeoPoint).latitude
+              : null),
+      longitud:
+          parseDouble(map['longitud']) ??
+          (map['ubicacion'] is GeoPoint
+              ? (map['ubicacion'] as GeoPoint).longitude
+              : null),
     );
   }
 }

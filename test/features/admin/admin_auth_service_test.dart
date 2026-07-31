@@ -33,24 +33,27 @@ void main() {
       },
     );
 
-    test('devuelve el UserModel y mantiene la sesion si SI es administrador', () async {
-      final auth = MockFirebaseAuth(
-        mockUser: MockUser(uid: 'uid-admin', email: 'a@x.com'),
-      );
-      final firestore = FakeFirebaseFirestore();
-      await firestore.collection('usuarios').doc('uid-admin').set({
-        'id_usuario': 'uid-admin',
-        'correo': 'a@x.com',
-        'rol': 'Administrador',
-        'nombre_completo': 'Admin',
-      });
+    test(
+      'devuelve el UserModel y mantiene la sesion si SI es administrador',
+      () async {
+        final auth = MockFirebaseAuth(
+          mockUser: MockUser(uid: 'uid-admin', email: 'a@x.com'),
+        );
+        final firestore = FakeFirebaseFirestore();
+        await firestore.collection('usuarios').doc('uid-admin').set({
+          'id_usuario': 'uid-admin',
+          'correo': 'a@x.com',
+          'rol': 'Administrador',
+          'nombre_completo': 'Admin',
+        });
 
-      final service = AdminAuthService(auth: auth, firestore: firestore);
-      final result = await service.loginAsAdmin('a@x.com', 'password123');
+        final service = AdminAuthService(auth: auth, firestore: firestore);
+        final result = await service.loginAsAdmin('a@x.com', 'password123');
 
-      expect(result, isNotNull);
-      expect(auth.currentUser, isNotNull);
-    });
+        expect(result, isNotNull);
+        expect(auth.currentUser, isNotNull);
+      },
+    );
 
     test(
       'cierra la sesion cuando la autenticacion tiene exito pero la consulta '
@@ -69,9 +72,7 @@ void main() {
         final firestore = MockFirebaseFirestore();
         final collection = MockCollectionReference<Map<String, dynamic>>();
         final docRef = MockDocumentReference<Map<String, dynamic>>();
-        when(
-          firestore.collection('usuarios'),
-        ).thenReturn(collection);
+        when(firestore.collection('usuarios')).thenReturn(collection);
         when(collection.doc('uid-admin')).thenReturn(docRef);
         when(docRef.get()).thenThrow(Exception('network-error'));
 

@@ -10,8 +10,8 @@ class AuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     clientId: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS
         ? (AppSecrets.firebaseIosClientId.isNotEmpty
-            ? AppSecrets.firebaseIosClientId
-            : null)
+              ? AppSecrets.firebaseIosClientId
+              : null)
         : null,
   );
 

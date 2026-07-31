@@ -48,7 +48,8 @@ void main() {
       expect(
         fakeRepository.lastUpdatedEstado,
         'activo',
-        reason: "usa 'activo', no 'aprobado', para converger en un unico "
+        reason:
+            "usa 'activo', no 'aprobado', para converger en un unico "
             'valor real de aprobacion (ver task-fased-fixwave-brief.md).',
       );
       expect(fakeRepository.lastLog?.adminUid, 'admin1');

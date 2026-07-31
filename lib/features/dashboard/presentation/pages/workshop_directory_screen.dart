@@ -276,16 +276,22 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
     final isDesktop = ResponsiveBreakpoints.of(context).largerThan(TABLET);
     return Container(
       padding: EdgeInsets.all(Responsive.padding(context, 16)),
-      decoration: isDesktop ? null : BoxDecoration(
-        color: isDark
-            ? const Color(0xFF1E293B).withValues(alpha: 0.8)
-            : Colors.white.withValues(alpha: 0.8),
-        border: Border(
-          bottom: BorderSide(color: colors.primary.withValues(alpha: 0.1)),
-        ),
-      ),
+      decoration: isDesktop
+          ? null
+          : BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF1E293B).withValues(alpha: 0.8)
+                  : Colors.white.withValues(alpha: 0.8),
+              border: Border(
+                bottom: BorderSide(
+                  color: colors.primary.withValues(alpha: 0.1),
+                ),
+              ),
+            ),
       child: Row(
-        mainAxisAlignment: isDesktop ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isDesktop
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: [
           if (!isDesktop) ...[
             IconButton(

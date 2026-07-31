@@ -82,14 +82,20 @@ class GarageScreen extends StatelessWidget {
     final isDesktop = ResponsiveBreakpoints.of(context).largerThan(TABLET);
     return Container(
       padding: EdgeInsets.all(Responsive.padding(context, 16)),
-      decoration: isDesktop ? null : BoxDecoration(
-        color: colors.surfaceContainer.withValues(alpha: 0.8),
-        border: Border(
-          bottom: BorderSide(color: colors.primary.withValues(alpha: 0.1)),
-        ),
-      ),
+      decoration: isDesktop
+          ? null
+          : BoxDecoration(
+              color: colors.surfaceContainer.withValues(alpha: 0.8),
+              border: Border(
+                bottom: BorderSide(
+                  color: colors.primary.withValues(alpha: 0.1),
+                ),
+              ),
+            ),
       child: Row(
-        mainAxisAlignment: isDesktop ? MainAxisAlignment.end : MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: isDesktop
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.spaceBetween,
         children: [
           if (!isDesktop) ...[
             IconButton(
@@ -162,8 +168,10 @@ class GarageScreen extends StatelessWidget {
     String? currentUserId,
   ) {
     return AppCard(
-      onTap: () =>
-          context.push('/vehicle_profile/${vehicle.idVehiculo}', extra: vehicle),
+      onTap: () => context.push(
+        '/vehicle_profile/${vehicle.idVehiculo}',
+        extra: vehicle,
+      ),
       margin: const EdgeInsets.only(bottom: 16),
       padding: EdgeInsets.zero,
       child: ClipRRect(

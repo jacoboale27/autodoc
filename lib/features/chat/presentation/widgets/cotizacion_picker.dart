@@ -9,7 +9,8 @@ class CotizacionPicker extends StatefulWidget {
     double total,
     double? manoDeObra,
     List<Map<String, dynamic>>? materiales,
-  ) onConfirm;
+  )
+  onConfirm;
 
   const CotizacionPicker({super.key, required this.onConfirm});
 
@@ -64,11 +65,7 @@ class _CotizacionPickerState extends State<CotizacionPicker> {
     final price = double.tryParse(_matPriceController.text.trim()) ?? 0.0;
     if (name.isNotEmpty && qty > 0 && price > 0) {
       setState(() {
-        _materiales.add({
-          'nombre': name,
-          'cantidad': qty,
-          'precio': price,
-        });
+        _materiales.add({'nombre': name, 'cantidad': qty, 'precio': price});
         _matNameController.clear();
         _matQtyController.clear();
         _matPriceController.clear();
@@ -89,8 +86,13 @@ class _CotizacionPickerState extends State<CotizacionPicker> {
       final desc = _descController.text.trim();
       final total = double.tryParse(_totalController.text.trim()) ?? 0.0;
       final mano = double.tryParse(_manoDeObraController.text.trim());
-      
-      widget.onConfirm(desc, total, mano, _materiales.isEmpty ? null : _materiales);
+
+      widget.onConfirm(
+        desc,
+        total,
+        mano,
+        _materiales.isEmpty ? null : _materiales,
+      );
       Navigator.pop(context);
     }
   }
@@ -147,7 +149,9 @@ class _CotizacionPickerState extends State<CotizacionPicker> {
                         border: OutlineInputBorder(),
                       ),
                       validator: (value) =>
-                          value == null || value.trim().isEmpty ? 'Requerido' : null,
+                          value == null || value.trim().isEmpty
+                          ? 'Requerido'
+                          : null,
                       maxLines: 2,
                     ),
                     const SizedBox(height: 16),
@@ -210,7 +214,10 @@ class _CotizacionPickerState extends State<CotizacionPicker> {
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.add_circle, color: Colors.green),
+                          icon: const Icon(
+                            Icons.add_circle,
+                            color: Colors.green,
+                          ),
                           onPressed: _addMaterial,
                         ),
                       ],
@@ -249,7 +256,9 @@ class _CotizacionPickerState extends State<CotizacionPicker> {
                         prefixIcon: Icon(Icons.attach_money),
                       ),
                       validator: (value) {
-                        if (value == null || value.trim().isEmpty || value == '0.00') {
+                        if (value == null ||
+                            value.trim().isEmpty ||
+                            value == '0.00') {
                           return 'Requerido';
                         }
                         return null;

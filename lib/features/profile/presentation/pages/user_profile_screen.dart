@@ -116,7 +116,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
     if (user == null) {
       return Scaffold(
-        appBar: ResponsiveBreakpoints.of(context).largerThan(TABLET) ? null : AppBar(title: Text(context.l10n.upProfileTitle)),
+        appBar: ResponsiveBreakpoints.of(context).largerThan(TABLET)
+            ? null
+            : AppBar(title: Text(context.l10n.upProfileTitle)),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

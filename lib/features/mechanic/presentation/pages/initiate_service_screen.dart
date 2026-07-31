@@ -140,10 +140,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     _kmController.text = vehiculo.kilometrajeActual.toString();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<AlertProvider>().fetchAlerts(
-        vehiculo.idVehiculo,
-        vehiculo,
-      );
+      context.read<AlertProvider>().fetchAlerts(vehiculo.idVehiculo, vehiculo);
     });
 
     FirebaseFirestore.instance
@@ -154,23 +151,29 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
         .limit(1)
         .get()
         .then((snapshot) {
-      if (snapshot.docs.isNotEmpty) {
-        if (mounted) {
-          setState(() {
-            _hasApprovedQuote = true;
-            _approvedQuote = CotizacionModel.fromMap(
-                snapshot.docs.first.data(), snapshot.docs.first.id);
-            _costoController.text = _approvedQuote!.total.toStringAsFixed(2);
-          });
-        }
-      }
-    });
+          if (snapshot.docs.isNotEmpty) {
+            if (mounted) {
+              setState(() {
+                _hasApprovedQuote = true;
+                _approvedQuote = CotizacionModel.fromMap(
+                  snapshot.docs.first.data(),
+                  snapshot.docs.first.id,
+                );
+                _costoController.text = _approvedQuote!.total.toStringAsFixed(
+                  2,
+                );
+              });
+            }
+          }
+        });
   }
 
   void _updateTotalCost() {
     double totalMateriales = 0;
     for (var m in _materiales) {
-      double subtotal = (m['cantidad'] as num).toDouble() * (m['precioUnitario'] as num).toDouble();
+      double subtotal =
+          (m['cantidad'] as num).toDouble() *
+          (m['precioUnitario'] as num).toDouble();
       totalMateriales += subtotal;
     }
     double manoDeObra = double.tryParse(_manoDeObraController.text) ?? 0;
@@ -228,8 +231,12 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       final tallerId = userSession.userData?.idUsuario ?? 'taller_anonimo';
 
       final costoDouble = double.tryParse(_costoController.text);
-      final manoDeObraDouble = _hasApprovedQuote ? _approvedQuote?.manoDeObra : double.tryParse(_manoDeObraController.text);
-      final materialesList = _hasApprovedQuote ? _approvedQuote?.materiales : _materiales;
+      final manoDeObraDouble = _hasApprovedQuote
+          ? _approvedQuote?.manoDeObra
+          : double.tryParse(_manoDeObraController.text);
+      final materialesList = _hasApprovedQuote
+          ? _approvedQuote?.materiales
+          : _materiales;
 
       for (var taskId in _completedTaskIds) {
         await alertProvider.tallerUpdateService(
@@ -244,10 +251,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
         );
       }
 
-      await alertProvider.fetchAlerts(
-        _vehiculo!.idVehiculo,
-        _vehiculo!,
-      );
+      await alertProvider.fetchAlerts(_vehiculo!.idVehiculo, _vehiculo!);
 
       if (mounted) {
         HapticFeedback.lightImpact();
@@ -322,7 +326,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                 decoration: BoxDecoration(
                   color: colors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: colors.primary.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: colors.primary.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -418,37 +424,49 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           if (_invoiceImage != null) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: _isInvoicePdf 
-                ? Container(
-                    height: 200,
-                    width: double.infinity,
-                    color: colors.primary.withValues(alpha: 0.1),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.picture_as_pdf, size: Responsive.iconSize(context, 64), color: colors.error),
-                        const SizedBox(height: 8),
-                        Text(_invoiceImage!.name, style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: colors.textPrimary)),
-                      ],
-                    ),
-                  )
-                : FutureBuilder<List<int>>(
-                    future: _invoiceImage!.readAsBytes().then((b) => b.toList()),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData) {
-                        return Image.memory(
-                          Uint8List.fromList(snapshot.data!),
+              child: _isInvoicePdf
+                  ? Container(
+                      height: 200,
+                      width: double.infinity,
+                      color: colors.primary.withValues(alpha: 0.1),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.picture_as_pdf,
+                            size: Responsive.iconSize(context, 64),
+                            color: colors.error,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _invoiceImage!.name,
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.bold,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : FutureBuilder<List<int>>(
+                      future: _invoiceImage!.readAsBytes().then(
+                        (b) => b.toList(),
+                      ),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData) {
+                          return Image.memory(
+                            Uint8List.fromList(snapshot.data!),
+                            height: 200,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          );
+                        }
+                        return const SizedBox(
                           height: 200,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
+                          child: Center(child: CircularProgressIndicator()),
                         );
-                      }
-                      return const SizedBox(
-                        height: 200,
-                        child: Center(child: CircularProgressIndicator()),
-                      );
-                    },
-                  ),
+                      },
+                    ),
             ),
             const SizedBox(height: 12),
             Row(
@@ -775,7 +793,8 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
             itemCount: _materiales.length,
             itemBuilder: (context, index) {
               final item = _materiales[index];
-              final subtotal = (item['cantidad'] as num).toDouble() *
+              final subtotal =
+                  (item['cantidad'] as num).toDouble() *
                   (item['precioUnitario'] as num).toDouble();
               return Card(
                 color: colors.surfaceContainer,
@@ -791,7 +810,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                   title: Text(
                     item['nombre'],
                     style: GoogleFonts.inter(
-                        fontWeight: FontWeight.bold, color: colors.textPrimary),
+                      fontWeight: FontWeight.bold,
+                      color: colors.textPrimary,
+                    ),
                   ),
                   subtitle: Text(
                     'Cant: ${item['cantidad']} | P.U: \$${(item['precioUnitario'] as num).toStringAsFixed(2)}',
@@ -852,7 +873,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           title: Text(
             'Agregar Material',
             style: GoogleFonts.montserrat(
-                fontWeight: FontWeight.bold, color: colors.textPrimary),
+              fontWeight: FontWeight.bold,
+              color: colors.textPrimary,
+            ),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -876,7 +899,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
               ),
               TextField(
                 controller: precioController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 style: GoogleFonts.inter(color: colors.textPrimary),
                 decoration: InputDecoration(
                   labelText: 'Precio Unitario',
@@ -888,7 +913,10 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Cancelar', style: TextStyle(color: colors.textSecondary)),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(color: colors.textSecondary),
+              ),
             ),
             ElevatedButton(
               onPressed: () {

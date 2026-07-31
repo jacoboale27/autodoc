@@ -1059,26 +1059,26 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                   }
 
                   final success = await vehicleProvider.deleteVehicle(
-                      vehicle.idVehiculo,
-                      vehicle.idPropietario,
-                    );
+                    vehicle.idVehiculo,
+                    vehicle.idPropietario,
+                  );
 
-                    if (context.mounted) {
-                      setState(() => isVerifying = false);
-                      if (success) {
-                        context.pop(); // Close dialog
-                        context.pop(); // Go back to previous screen
-                        UiUtils.showSuccessSnackbar(
-                          context,
-                          context.l10n.vpDeleteSuccess,
-                        );
-                      } else {
-                        UiUtils.showErrorSnackbar(
-                          context,
-                          vehicleProvider.error ?? context.l10n.vpDeleteError,
-                        );
-                      }
+                  if (context.mounted) {
+                    setState(() => isVerifying = false);
+                    if (success) {
+                      context.pop(); // Close dialog
+                      context.pop(); // Go back to previous screen
+                      UiUtils.showSuccessSnackbar(
+                        context,
+                        context.l10n.vpDeleteSuccess,
+                      );
+                    } else {
+                      UiUtils.showErrorSnackbar(
+                        context,
+                        vehicleProvider.error ?? context.l10n.vpDeleteError,
+                      );
                     }
+                  }
                 }
               },
               // type: AppButtonType.primary, // Default is primary

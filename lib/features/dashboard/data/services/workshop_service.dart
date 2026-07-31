@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/core/models/user_model.dart';
-import 'package:autodoc/core/utils/role_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class WorkshopService {

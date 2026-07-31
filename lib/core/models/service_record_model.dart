@@ -86,7 +86,9 @@ class ServiceRecordModel {
       fotoFacturaUrl: map['foto_factura_url'],
       descripcion: map['descripcion'],
       manoDeObra: map['mano_de_obra']?.toDouble(),
-      materiales: map['materiales'] != null ? List<Map<String, dynamic>>.from(map['materiales']) : null,
+      materiales: map['materiales'] != null
+          ? List<Map<String, dynamic>>.from(map['materiales'])
+          : null,
     );
   }
 }

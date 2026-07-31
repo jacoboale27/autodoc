@@ -4,14 +4,15 @@ import 'package:autodoc/core/router/app_router.dart';
 
 // `fechaRegistro` es obligatorio en el constructor de UserModel
 // (lib/core/models/user_model.dart:25).
-UserModel _user(String uid, String rol, {String estado = 'activo'}) => UserModel(
-  idUsuario: uid,
-  correo: '$uid@test.com',
-  nombreCompleto: 'Usuario $uid',
-  rol: rol,
-  fechaRegistro: DateTime(2026, 1, 1),
-  estado: estado,
-);
+UserModel _user(String uid, String rol, {String estado = 'activo'}) =>
+    UserModel(
+      idUsuario: uid,
+      correo: '$uid@test.com',
+      nombreCompleto: 'Usuario $uid',
+      rol: rol,
+      fechaRegistro: DateTime(2026, 1, 1),
+      estado: estado,
+    );
 
 String? _redirect({
   required String currentPath,
@@ -30,14 +31,18 @@ String? _redirect({
 
 void main() {
   group('guarda del router durante la carga de perfil', () {
-    test('no permite una ruta protegida mientras el perfil aun no se ha leido', () {
-      expect(
-        _redirect(currentPath: '/dashboard', hasAttemptedFetch: false),
-        '/?redirect=%2Fdashboard',
-        reason: 'debe retener en el splash preservando el destino, no descartarlo ni '
-            'renderizar la pantalla del rol equivocado',
-      );
-    });
+    test(
+      'no permite una ruta protegida mientras el perfil aun no se ha leido',
+      () {
+        expect(
+          _redirect(currentPath: '/dashboard', hasAttemptedFetch: false),
+          '/?redirect=%2Fdashboard',
+          reason:
+              'debe retener en el splash preservando el destino, no descartarlo ni '
+              'renderizar la pantalla del rol equivocado',
+        );
+      },
+    );
 
     test('no permite una ruta de mecanico mientras el perfil carga', () {
       expect(
@@ -59,7 +64,8 @@ void main() {
             hasAttemptedFetch: false,
           ),
           '/?redirect=%2Fvehicle_profile%2Fabc',
-          reason: 'la Tarea 12 habilito estas rutas por id; retenerlas en un "/" '
+          reason:
+              'la Tarea 12 habilito estas rutas por id; retenerlas en un "/" '
               'fijo rompe F5 y los deep links de notificaciones push en frio',
         );
       },
@@ -69,21 +75,30 @@ void main() {
   group('guarda de rutas admin', () {
     test('un taller NO puede acceder a /admin/seed', () {
       expect(
-        _redirect(currentPath: '/admin/seed', userData: _user('uid-t', 'Taller')),
+        _redirect(
+          currentPath: '/admin/seed',
+          userData: _user('uid-t', 'Taller'),
+        ),
         '/mechanic_dashboard',
       );
     });
 
     test('un propietario NO puede acceder a /admin/seed', () {
       expect(
-        _redirect(currentPath: '/admin/seed', userData: _user('uid-o', 'Propietario')),
+        _redirect(
+          currentPath: '/admin/seed',
+          userData: _user('uid-o', 'Propietario'),
+        ),
         '/dashboard',
       );
     });
 
     test('un admin SI puede acceder a /admin/seed', () {
       expect(
-        _redirect(currentPath: '/admin/seed', userData: _user('uid-a', 'Administrador')),
+        _redirect(
+          currentPath: '/admin/seed',
+          userData: _user('uid-a', 'Administrador'),
+        ),
         isNull,
       );
     });
@@ -92,14 +107,20 @@ void main() {
   group('separacion de roles', () {
     test('un taller NO puede acceder al dashboard de propietario', () {
       expect(
-        _redirect(currentPath: '/dashboard', userData: _user('uid-t', 'Taller')),
+        _redirect(
+          currentPath: '/dashboard',
+          userData: _user('uid-t', 'Taller'),
+        ),
         '/mechanic_dashboard',
       );
     });
 
     test('un propietario NO puede acceder al panel de taller', () {
       expect(
-        _redirect(currentPath: '/mechanic_dashboard', userData: _user('uid-o', 'Propietario')),
+        _redirect(
+          currentPath: '/mechanic_dashboard',
+          userData: _user('uid-o', 'Propietario'),
+        ),
         '/dashboard',
       );
     });
@@ -147,11 +168,17 @@ void main() {
   group('rutas de chat con parametro', () {
     test('/reserva_detail/:id sigue permitido para ambos roles', () {
       expect(
-        _redirect(currentPath: '/reserva_detail/r1', userData: _user('uid-t', 'Taller')),
+        _redirect(
+          currentPath: '/reserva_detail/r1',
+          userData: _user('uid-t', 'Taller'),
+        ),
         isNull,
       );
       expect(
-        _redirect(currentPath: '/reserva_detail/r1', userData: _user('uid-o', 'Propietario')),
+        _redirect(
+          currentPath: '/reserva_detail/r1',
+          userData: _user('uid-o', 'Propietario'),
+        ),
         isNull,
       );
     });

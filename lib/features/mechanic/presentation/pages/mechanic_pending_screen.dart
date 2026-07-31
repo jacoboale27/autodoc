@@ -3,7 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
-import 'package:autodoc/core/router/app_router.dart' show estadosMecanicoAprobado;
+import 'package:autodoc/core/router/app_router.dart'
+    show estadosMecanicoAprobado;
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
