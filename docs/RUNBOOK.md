@@ -69,6 +69,51 @@ sobre el proyecto `autodoc-6ef5a`:
 4. **Eliminar la clave antigua**, no solo restringirla: está en el historial
    de git de forma permanente y no se puede considerar segura mientras exista.
 
+### Pendiente 3 — Esquema de nombres de secretos en GitHub (fix wave Fase E)
+
+`.github/workflows/ci.yml` usa dos esquemas de nombres de secretos distintos
+que **no** son inconsistentes por accidente, sino que dependen de si el
+secreto está atado a un GitHub **Environment** o es un secreto de
+**repositorio**:
+
+- Los jobs `deploy_staging` y `deploy_production` declaran
+  `environment: staging` y `environment: production` respectivamente
+  (`.github/workflows/ci.yml`, ver la línea `environment:` dentro de cada
+  job). Esto significa que un secreto de **Environment** con el mismo
+  nombre (p. ej. `FIREBASE_WEB_API_KEY`) resuelve a un **valor distinto**
+  según el job que lo consulte — sin necesidad de sufijos como `_STAGING`/
+  `_PROD` en el nombre.
+- `FIREBASE_PROJECT_STAGING` y `FIREBASE_PROJECT_PROD` (usados en los pasos
+  `firebase deploy --project ...` de `deploy_staging`/`deploy_production`)
+  son nombres heredados de antes de que existiera el patrón de Environments:
+  como cada entorno necesita un id de proyecto distinto en el mismo paso de
+  despliegue, se optó por sufijar el nombre en vez de depender de
+  Environments. Son secretos de **repositorio** (un solo par nombre/valor,
+  visible en ambos jobs), y eso es intencional para estos dos secretos en
+  particular.
+
+**Regla para configurar cada secreto nuevo en GitHub (Settings):**
+
+| Secreto | Dónde configurarlo |
+|---|---|
+| `FIREBASE_WEB_API_KEY`, `FIREBASE_APP_ID_WEB`, `FIREBASE_MEASUREMENT_ID`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_PROJECT_ID`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_STORAGE_BUCKET`, `GOOGLE_MAPS_API_KEY`, `VEHICLE_IMAGE_API_KEY`, `GOOGLE_CUSTOM_SEARCH_API_KEY`, `GOOGLE_CUSTOM_SEARCH_CX`, `RECAPTCHA_SITE_KEY`, `GOOGLE_SIGNIN_CLIENT_ID_WEB` | **Settings → Environments → `staging`** y **Settings → Environments → `production`** por separado, mismo nombre, **valor distinto** en cada uno. **NO** en Settings → Secrets and variables → Actions (nivel repositorio) — si se configuran ahí, `deploy_staging` y `deploy_production` compartirían el mismo valor y el bundle de staging quedaría apuntando al proyecto de producción `autodoc-6ef5a` (justo lo que las restricciones globales del plan prohíben). |
+| `FIREBASE_PROJECT_STAGING`, `FIREBASE_PROJECT_PROD`, `FIREBASE_TOKEN` | Settings → Secrets and variables → Actions (nivel repositorio) — nombres ya sufijados por entorno o de uso compartido; no requieren Environments. |
+
+**Limitación conocida — el job `build_web_smoke` NO declara `environment:`.**
+A diferencia de `deploy_staging`/`deploy_production`, el job
+`build_web_smoke` (`.github/workflows/ci.yml`, jobs `build_web_smoke:`) no
+tiene una línea `environment:`, así que no puede resolver secretos de
+Environment de forma diferenciada — solo ve secretos de repositorio (o, si
+existieran, los de cualquier Environment sin restricción de branch
+asociada, dependiendo de la configuración de protección). En la práctica
+esto es aceptable porque ese job solo hace un build de humo con
+`FLAVOR=dev` y no despliega nada, pero si en el futuro se necesita que
+`dev` tenga su propia configuración de Firebase, habría que añadir
+`environment: dev` (u otro nombre) a ese job. No se modifica en este fix
+wave — es una decisión que afecta el comportamiento de aprobación/protección
+del job y debe tomarla una persona con acceso real a la configuración de
+GitHub del repositorio, no un agente.
+
 ---
 
 ## Entornos
@@ -348,22 +393,88 @@ clientes antiguos en caché:
    → App Check, con enforcement **desactivado**. Revisar en las métricas el
    porcentaje de peticiones con token válido.
 2. **Enforcement** (semana 2, si el porcentaje supera el 98 %): activar el
-   enforcement en Firestore, Storage y Functions, uno a uno, verificando entre
-   cada paso.
+   enforcement en Firestore y Storage desde la consola (ver distinción con
+   Functions más abajo), uno a uno, verificando entre cada paso.
 
 Requisito previo: la Tarea 1 de este plan (cabeceras de caché) debe estar en
 producción, porque de lo contrario los clientes antiguos sin App Check quedan
 atrapados en caché y el enforcement los expulsaría de forma permanente.
 
-**Nota sobre CI/CD:** los workflows actuales (`.github/workflows/ci.yml` y
-`flutter_ci.yml`) no pasan `--dart-define=RECAPTCHA_SITE_KEY=...` en ningún
-paso de `flutter build web`, a diferencia de `GOOGLE_SIGNIN_CLIENT_ID_WEB`, que
-sí se inyecta vía `sed` en `web/index.html`. Mientras esto no se corrija, todos
-los builds de web (dev/staging/prod) activan App Check con una site key vacía;
-el modo tolerante a fallos evita que esto bloquee el arranque, pero el cliente
-web no emitirá tokens válidos hasta que se añada el secreto
-`RECAPTCHA_SITE_KEY` a los workflows y se pase como `--dart-define` en el paso
-`flutter build web`. Este ajuste queda fuera del alcance de esta tarea.
+**Dos entornos, dos site keys.** Desde la Fase E existen dos proyectos de
+Firebase/Google Cloud independientes — `staging`/`autodoc-staging` y
+`production`/`autodoc-6ef5a` — y las claves de sitio de reCAPTCHA Enterprise
+están atadas a un proyecto de GCP concreto y a una lista de dominios
+permitidos: la clave de producción no sirve para el dominio de staging (y
+viceversa). Cada entorno necesita su **propia** clave de sitio, registrada
+como el secreto de GitHub `RECAPTCHA_SITE_KEY` en el Environment
+correspondiente (ver "Esquema de nombres de secretos" en la sección de
+Acciones manuales pendientes). App Check debe validarse primero en staging
+con su propia `RECAPTCHA_SITE_KEY`, siguiendo la misma regla de "reglas
+primero en staging" que ya aplica a Firestore/Storage en este runbook (ver
+`## Entornos` más arriba).
+
+**Firestore/Storage vs. Cloud Functions — el enforcement NO es simétrico.**
+Para Firestore y Storage, activar el enforcement de App Check es un ajuste de
+consola (Firebase Console → App Check → seleccionar el producto → Enforce).
+Para Cloud Functions **no basta con un toggle**: este repo usa Cloud
+Functions **v1** (`functions/index.js`, `require('firebase-functions')`), y
+en v1 el enforcement de App Check se implementa a **nivel de código**,
+revisando `context.app` dentro de cada `onCall` y rechazando la llamada si es
+`undefined` — no existe un ajuste de consola equivalente para v1. Hoy
+**ningún** `onCall` de `functions/index.js` verifica `context.app`, así que
+activar App Check en la consola no protege las Functions de este proyecto en
+absoluto; solo protege Firestore y Storage. Implementar esa verificación de
+código es trabajo pendiente, ver "Trabajo pendiente / deuda conocida" más
+abajo — no se implementó en la Fase E ni en este fix wave.
+
+**Nota sobre CI/CD (actualizada, Fase E fix wave):** `flutter_ci.yml` ya no
+existe — la Tarea 15 lo eliminó por completo. El único workflow de web es
+`.github/workflows/ci.yml`, y hoy **sí** pasa `--dart-define=RECAPTCHA_SITE_KEY=...`
+en los 3 pasos `flutter build web` (`build_web_smoke`, `deploy_staging`,
+`deploy_production` — ver los pasos "Build Flutter Web (release)" / "Build
+Flutter Web for staging" / "Build Flutter Web for production" en ese archivo).
+Además, el fix wave de la revisión final de Fase E conectó ahí mismo el resto
+de secretos que `lib/config/secrets.dart` necesita para que la app funcione en
+tiempo de ejecución (`FIREBASE_WEB_API_KEY`, `FIREBASE_APP_ID_WEB`,
+`FIREBASE_MEASUREMENT_ID`, `FIREBASE_MESSAGING_SENDER_ID`,
+`FIREBASE_PROJECT_ID`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_STORAGE_BUCKET`,
+`GOOGLE_MAPS_API_KEY`, `VEHICLE_IMAGE_API_KEY`, `GOOGLE_CUSTOM_SEARCH_API_KEY`,
+`GOOGLE_CUSTOM_SEARCH_CX`), que hasta entonces NO se pasaban a
+`flutter build web` en CI pese a estar ya disponibles en el job (la Tarea 16
+los usaba solo para el service worker). Sigue existiendo el modo tolerante a
+fallos si `RECAPTCHA_SITE_KEY` está vacío (App Check no bloquea el arranque),
+pero el cliente web no emitirá tokens válidos hasta que el secreto esté
+realmente configurado en GitHub (ver "Esquema de nombres de secretos" más
+abajo).
+
+---
+
+## Trabajo pendiente / deuda conocida
+
+### `buscarPropietarioPorCorreo` sigue expuesto a enumeración sin límite de tasa
+
+`functions/index.js:922` (`exports.buscarPropietarioPorCorreo`), con el
+comentario explicativo en `functions/index.js:897-921`: la Fase C cerró
+parcialmente el hallazgo Important de que esta función actúa, para cualquier
+cuenta con rol Propietario, como un oráculo `correo -> (uid, nombre_completo)`
+sobre toda la población de propietarios, sin límite de tasa (una cuenta
+Propietario puede crearse un vehículo desechable en un solo write para pasar
+el gate de `vehicleId + soy su propietario`). El comentario en el código
+diferia deliberadamente el cierre completo de este hallazgo a "App Check
+(Fase E, Tarea 14 del plan)", asumiendo que el enforcement de App Check en
+Functions bloquearía las llamadas que no vengan de la app real.
+
+Con la Fase E terminada, ese enforcement **no existe todavía**: como se
+explica arriba, las Cloud Functions v1 de este repo requieren verificar
+`context.app` a nivel de código en cada `onCall`, y ningún `onCall` de
+`functions/index.js` lo hace hoy — activar App Check en la consola de
+Firebase no protege esta función. El hallazgo queda, por tanto, **abierto sin
+dueño**: no se implementó en la Fase E ni en este fix wave (que es
+deliberadamente solo de documentación/CI, no de cambios de comportamiento en
+producción). Cerrarlo requiere una tarea propia que añada la verificación de
+`context.app` en `buscarPropietarioPorCorreo` (y evalúe si conviene
+extenderla a otros `onCall` sensibles), con su propia revisión — no debe
+implementarse como un fix de documentación.
 
 ---
 
