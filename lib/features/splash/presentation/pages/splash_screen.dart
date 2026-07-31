@@ -57,13 +57,26 @@ class _SplashScreenState extends State<SplashScreen>
 
             final userData = profileProvider.userData;
             if (userData != null) {
-              final role = userData.rol.trim().toLowerCase();
-              if (role == 'taller' || role == 'mecanico') {
-                context.go('/mechanic_dashboard');
-              } else if (role == 'admin' || role == 'administrador') {
-                context.go('/admin/dashboard');
+              // Si `resolveRedirect` retuvo al usuario en el splash mientras
+              // el perfil cargaba (F5 o deep link a una ruta con id, o
+              // notificacion push en frio), preservo el destino original en
+              // vez de mandarlo siempre a la home del rol. `resolveRedirect`
+              // corrige la ruta en la siguiente evaluacion del guard si no
+              // es valida para este rol, asi que no hace falta validarla aqui.
+              final redirectParam = GoRouterState.of(
+                context,
+              ).uri.queryParameters['redirect'];
+              if (redirectParam != null && redirectParam.isNotEmpty) {
+                context.go(Uri.decodeComponent(redirectParam));
               } else {
-                context.go('/dashboard');
+                final role = userData.rol.trim().toLowerCase();
+                if (role == 'taller' || role == 'mecanico') {
+                  context.go('/mechanic_dashboard');
+                } else if (role == 'admin' || role == 'administrador') {
+                  context.go('/admin/dashboard');
+                } else {
+                  context.go('/dashboard');
+                }
               }
             } else {
               // Si no tiene datos de perfil aún, enviarlo a completar perfil

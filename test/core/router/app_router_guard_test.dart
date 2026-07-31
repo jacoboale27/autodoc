@@ -33,21 +33,37 @@ void main() {
     test('no permite una ruta protegida mientras el perfil aun no se ha leido', () {
       expect(
         _redirect(currentPath: '/dashboard', hasAttemptedFetch: false),
-        '/',
-        reason: 'debe retener en el splash, no renderizar la pantalla del rol equivocado',
+        '/?redirect=%2Fdashboard',
+        reason: 'debe retener en el splash preservando el destino, no descartarlo ni '
+            'renderizar la pantalla del rol equivocado',
       );
     });
 
     test('no permite una ruta de mecanico mientras el perfil carga', () {
       expect(
         _redirect(currentPath: '/mechanic_dashboard', hasAttemptedFetch: false),
-        '/',
+        '/?redirect=%2Fmechanic_dashboard',
       );
     });
 
     test('permite quedarse en el splash mientras carga', () {
       expect(_redirect(currentPath: '/', hasAttemptedFetch: false), isNull);
     });
+
+    test(
+      'preserva una ruta con id (deep link) como redirect en vez de descartarla',
+      () {
+        expect(
+          _redirect(
+            currentPath: '/vehicle_profile/abc',
+            hasAttemptedFetch: false,
+          ),
+          '/?redirect=%2Fvehicle_profile%2Fabc',
+          reason: 'la Tarea 12 habilito estas rutas por id; retenerlas en un "/" '
+              'fijo rompe F5 y los deep links de notificaciones push en frio',
+        );
+      },
+    );
   });
 
   group('guarda de rutas admin', () {
@@ -109,6 +125,23 @@ void main() {
         isNull,
       );
     });
+
+    test(
+      'un mecanico suspendido es enviado a /mechanic_pending, no dejado pasar',
+      () {
+        // `suspenderUsuario` (admin_service.dart) escribe estado:'suspendido'.
+        // El enrutador usaba una lista de BLOQUEO ({'pendiente','pending'})
+        // que dejaba pasar 'suspendido' a /mechanic_dashboard aunque
+        // isMecanico() en firestore.rules le niegue toda lectura ahi.
+        expect(
+          _redirect(
+            currentPath: '/mechanic_dashboard',
+            userData: _user('uid-t', 'Taller', estado: 'suspendido'),
+          ),
+          '/mechanic_pending',
+        );
+      },
+    );
   });
 
   group('rutas de chat con parametro', () {

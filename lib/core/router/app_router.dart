@@ -85,6 +85,14 @@ const _mechanicRoutes = <String>{
   '/mechanic_pending',
 };
 
+/// Valores de `usuarios/{uid}.estado` que permiten a un mecanico/taller
+/// acceder a la app. Espejo exacto de `isMecanico()` en `firestore.rules`
+/// (`getUserData().get('estado', 'pendiente') in ['aprobado', 'activo']`):
+/// cualquier otro valor (incluido ausente, 'pendiente' o 'suspendido') se
+/// retiene en `/mechanic_pending`. `mechanic_pending_screen.dart` referencia
+/// esta misma constante — si cambia aqui, cambia alli tambien.
+const estadosMecanicoAprobado = <String>{'aprobado', 'activo'};
+
 /// Routes exclusively for Admin role
 const _adminRoutes = <String>{
   '/admin/dashboard',
@@ -192,7 +200,12 @@ String? resolveRedirect({
         currentPath == '/register') {
       return null;
     }
-    return '/';
+    // Preserva el destino solicitado (recarga de una ruta con id, deep link
+    // de notificacion push en frio) como query param, mismo formato que ya
+    // usa la rama de login/register de esta funcion mas abajo
+    // (`redirectParam` / `Uri.decodeComponent`). El splash lo lee y navega
+    // ahi una vez el perfil termina de cargar.
+    return '/?redirect=${Uri.encodeComponent(currentPath)}';
   }
 
   if (isLoggedIn && (currentPath == '/login' || currentPath == '/register')) {
@@ -219,7 +232,7 @@ String? resolveRedirect({
     final home = _homeForRole(role);
 
     final estado = userData.estado.trim().toLowerCase();
-    if (role == 'mechanic' && (estado == 'pendiente' || estado == 'pending')) {
+    if (role == 'mechanic' && !estadosMecanicoAprobado.contains(estado)) {
       return currentPath == '/mechanic_pending' ? null : '/mechanic_pending';
     }
 

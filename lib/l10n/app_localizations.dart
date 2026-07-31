@@ -1922,6 +1922,12 @@ abstract class AppLocalizations {
   /// **'User Management'**
   String get adminManageUsers;
 
+  /// No description provided for @adminApproveAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve Account'**
+  String get adminApproveAccount;
+
   /// No description provided for @adminSuspendAccount.
   ///
   /// In en, this message translates to:

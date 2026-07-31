@@ -103,6 +103,19 @@ class AdminProvider with ChangeNotifier {
     }
   }
 
+  Future<void> aprobarUsuario(String adminUid, String targetUid) async {
+    _setLoading(true);
+    try {
+      await _adminService.aprobarUsuario(adminUid, targetUid);
+      _setSuccess('Usuario aprobado correctamente');
+      await fetchUsuarios();
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   Future<void> suspenderUsuario(
     String adminUid,
     String targetUid,

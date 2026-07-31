@@ -4,6 +4,7 @@ import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class AccountRow extends StatelessWidget {
   final UserModel usuario;
+  final VoidCallback onAprobar;
   final VoidCallback onSuspender;
   final VoidCallback onReactivar;
   final VoidCallback onCambiarRol;
@@ -12,6 +13,7 @@ class AccountRow extends StatelessWidget {
   const AccountRow({
     super.key,
     required this.usuario,
+    required this.onAprobar,
     required this.onSuspender,
     required this.onReactivar,
     required this.onCambiarRol,
@@ -79,11 +81,20 @@ class AccountRow extends StatelessWidget {
       ),
       trailing: PopupMenuButton<String>(
         onSelected: (value) {
+          if (value == 'aprobar') onAprobar();
           if (value == 'suspender') onSuspender();
           if (value == 'reactivar') onReactivar();
           if (value == 'rol') onCambiarRol();
         },
         itemBuilder: (context) => [
+          if (usuario.estado != 'activo' && usuario.estado != 'suspendido')
+            PopupMenuItem(
+              value: 'aprobar',
+              child: Text(
+                context.l10n.adminApproveAccount,
+                style: const TextStyle(color: Colors.green),
+              ),
+            ),
           if (usuario.estado == 'activo' && !isCurrentAdmin)
             PopupMenuItem(
               value: 'suspender',

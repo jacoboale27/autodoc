@@ -546,6 +546,7 @@
   "adminChangeRole": "Cambiar Rol de Usuario",
   "adminSelectNewRole": "Selecciona el nuevo rol:",
   "adminManageUsers": "Gestión de Usuarios",
+  "adminApproveAccount": "Aprobar Cuenta",
   "adminSuspendAccount": "Suspender Cuenta",
   "adminReactivateAccount": "Reactivar Cuenta",
   "adminChangeUserRole": "Cambiar Rol",

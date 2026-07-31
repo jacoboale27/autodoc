@@ -41,6 +41,20 @@ void main() {
   });
 
   group('AdminService Tests', () {
+    test('aprobarUsuario updates state to activo and logs action', () async {
+      await adminService.aprobarUsuario('admin1', 'user1');
+
+      expect(fakeRepository.lastUpdatedUid, 'user1');
+      expect(
+        fakeRepository.lastUpdatedEstado,
+        'activo',
+        reason: "usa 'activo', no 'aprobado', para converger en un unico "
+            'valor real de aprobacion (ver task-fased-fixwave-brief.md).',
+      );
+      expect(fakeRepository.lastLog?.adminUid, 'admin1');
+      expect(fakeRepository.lastLog?.accion, 'APROBAR_USUARIO');
+    });
+
     test('suspenderUsuario updates state and logs action', () async {
       await adminService.suspenderUsuario(
         'admin1',

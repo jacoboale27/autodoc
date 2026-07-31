@@ -1004,6 +1004,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get adminManageUsers => 'Gestión de Usuarios';
 
   @override
+  String get adminApproveAccount => 'Aprobar Cuenta';
+
+  @override
   String get adminSuspendAccount => 'Suspender Cuenta';
 
   @override

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
+import 'package:autodoc/core/router/app_router.dart' show estadosMecanicoAprobado;
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
@@ -33,8 +34,11 @@ class _MechanicPendingScreenState extends State<MechanicPendingScreen> {
 
     final userData = session.userData;
     if (userData != null) {
-      final estado = (userData.estado).toLowerCase();
-      if (estado == 'activo' || estado == 'active') {
+      // Mismo conjunto de valores de aprobacion que `resolveRedirect` en
+      // app_router.dart y que `isMecanico()` en firestore.rules — deben
+      // mantenerse sincronizados.
+      final estado = userData.estado.trim().toLowerCase();
+      if (estadosMecanicoAprobado.contains(estado)) {
         // Approved! Navigate to mechanic dashboard
         context.go('/mechanic_dashboard');
       } else {

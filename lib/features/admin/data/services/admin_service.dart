@@ -39,6 +39,22 @@ class AdminService {
     return await _repository.getUsuarios();
   }
 
+  /// Aprueba una cuenta de mecanico/taller que esta en `estado == 'pendiente'`
+  /// (o sin el campo `estado`), habilitando su acceso via `isMecanico()` en
+  /// `firestore.rules`. Usa `'activo'` (no `'aprobado'`) para converger en un
+  /// unico valor "aprobado" real; `'aprobado'` sigue siendo aceptado por las
+  /// reglas solo por retrocompatibilidad con datos migrados.
+  Future<void> aprobarUsuario(String adminUid, String targetUid) async {
+    await _repository.updateUsuarioEstado(targetUid, 'activo');
+    await _logAction(
+      adminUid,
+      'APROBAR_USUARIO',
+      'Usuarios',
+      targetUid,
+      'Cuenta de mecanico aprobada',
+    );
+  }
+
   Future<void> suspenderUsuario(
     String adminUid,
     String targetUid,

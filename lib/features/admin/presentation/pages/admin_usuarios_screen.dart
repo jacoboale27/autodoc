@@ -293,6 +293,12 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                               return AccountRow(
                                 usuario: usuario,
                                 isCurrentAdmin: usuario.idUsuario == currentUid,
+                                onAprobar: () {
+                                  provider.aprobarUsuario(
+                                    currentUid,
+                                    usuario.idUsuario,
+                                  );
+                                },
                                 onSuspender: () {
                                   _mostrarDialogoMotivo(
                                     context,
