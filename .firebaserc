@@ -1,6 +1,8 @@
 {
   "projects": {
-    "default": "autodoc-6ef5a"
+    "default": "autodoc-staging",
+    "staging": "autodoc-staging",
+    "production": "autodoc-6ef5a"
   },
   "targets": {
     "autodoc-6ef5a": {
@@ -10,6 +12,13 @@
         ],
         "landing": [
           "autodoc-landing-6ef5a"
+        ]
+      }
+    },
+    "autodoc-staging": {
+      "hosting": {
+        "app": [
+          "autodoc-staging"
         ]
       }
     }

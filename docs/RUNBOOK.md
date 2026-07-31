@@ -6,6 +6,73 @@ Este documento cubre los procedimientos operacionales para mantener AutoDoc en p
 
 ---
 
+## ⚠️ Acciones manuales pendientes (requieren consola/facturación)
+
+Estas dos acciones son parte de la Tarea 16 del plan de corrección de
+hallazgos críticos (`.superpowers/sdd/2026-07-29-correccion-hallazgos-criticos/task-16-brief.md`,
+Steps 1 y 6), pero **ningún agente puede ejecutarlas**: requieren autenticación
+real contra Google Cloud/Firebase y, en el caso del Step 1, permisos de
+facturación en la organización. Debe ejecutarlas una persona con esas
+credenciales.
+
+### Pendiente 1 — Crear el proyecto de staging (Step 1 del brief)
+
+```bash
+firebase projects:create autodoc-staging --display-name "AutoDoc Staging"
+firebase use --add
+```
+
+Seleccionar `autodoc-staging` y asignarle el alias `staging`. Requiere
+permisos de facturación en la organización.
+
+**Mientras este paso no se ejecute**, el alias `staging` declarado en
+`.firebaserc` (ver `## Entornos` más abajo) apunta a un proyecto Firebase que
+todavía no existe, así que **cualquier despliegue a staging (job
+`deploy_staging` en `.github/workflows/ci.yml`) fallará**. Esto es el
+comportamiento esperado hasta que se complete este paso — no es un defecto de
+la configuración añadida en la Tarea 16.
+
+### Pendiente 2 — Rotar la clave de Google Maps expuesta (Step 6 del brief)
+
+La clave `***REMOVED-GOOGLE-MAPS-API-KEY***` quedó expuesta en el
+historial de git del proyecto `autodoc-6ef5a` (commit `89e9f6b` en adelante).
+Retirarla del árbol de trabajo no la revoca: sigue siendo válida y accesible
+por cualquiera con acceso al historial. Ejecutar en Google Cloud Console,
+sobre el proyecto `autodoc-6ef5a`:
+
+1. APIs y servicios → Credenciales → localizar la clave
+   `***REMOVED-GOOGLE-MAPS-API-KEY***`.
+2. Crear una **clave nueva** restringida por: referrers HTTP
+   (`https://autodoc-6ef5a.web.app/*`, `https://autodocsv.com/*`,
+   `http://localhost:*`) y por APIs (solo Maps JavaScript API y las que
+   realmente se usen).
+3. Guardar la clave nueva como secreto `GOOGLE_MAPS_API_KEY` en GitHub y en el
+   `.env` local.
+4. **Eliminar la clave antigua**, no solo restringirla: está en el historial
+   de git de forma permanente y no se puede considerar segura mientras exista.
+
+---
+
+## Entornos
+
+| Alias | Proyecto Firebase | Uso | Datos |
+|---|---|---|---|
+| `staging` | `autodoc-staging` | Desarrollo y QA. **Alias por defecto.** | Sintéticos, desechables |
+| `production` | `autodoc-6ef5a` | Producción | Reales. Nunca para pruebas |
+
+Reglas de operación:
+- `firebase deploy` sin `--project` va a **staging** por diseño.
+- Toda regla de Firestore o Storage se despliega **primero** en staging, donde
+  CI la valida con `test_rules/`, y solo después en producción.
+- Desarrollo local: `firebase emulators:start`. Nunca apuntar a `production`.
+- Los datos de prueba presentes hoy en producción («wowow», «Mecánico 1»,
+  «Gola», placa «128») deben migrarse a staging y eliminarse de producción.
+
+> **Nota:** el alias `staging` en `.firebaserc` apunta a `autodoc-staging`,
+> que aún no existe hasta que se complete el "Pendiente 1" de arriba.
+
+---
+
 ## 1. Acceso a herramientas de operación
 
 | Herramienta | URL / Comando |
