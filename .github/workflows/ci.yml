@@ -121,6 +121,30 @@ jobs:
           fi
           sed -i "s|\$GOOGLE_SIGNIN_CLIENT_ID_WEB|${{ secrets.GOOGLE_SIGNIN_CLIENT_ID_WEB }}|g" web/index.html
           grep -q '\$GOOGLE_SIGNIN_CLIENT_ID_WEB' web/index.html && { echo "❌ Quedo el marcador sin sustituir"; exit 1; } || true
+          if [ -z "${{ secrets.FIREBASE_WEB_API_KEY }}" ]; then
+            echo "❌ Falta el secreto FIREBASE_WEB_API_KEY"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_APP_ID_WEB }}" ]; then
+            echo "❌ Falta el secreto FIREBASE_APP_ID_WEB"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}" ]; then
+            echo "❌ Falta el secreto FIREBASE_MESSAGING_SENDER_ID"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_PROJECT_ID }}" ]; then
+            echo "❌ Falta el secreto FIREBASE_PROJECT_ID"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_AUTH_DOMAIN }}" ]; then
+            echo "❌ Falta el secreto FIREBASE_AUTH_DOMAIN"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_STORAGE_BUCKET }}" ]; then
+            echo "❌ Falta el secreto FIREBASE_STORAGE_BUCKET"
+            exit 1
+          fi
           sed -i \
             -e "s|\$FIREBASE_WEB_API_KEY|${{ secrets.FIREBASE_WEB_API_KEY }}|g" \
             -e "s|\$FIREBASE_APP_ID_WEB|${{ secrets.FIREBASE_APP_ID_WEB }}|g" \
@@ -176,6 +200,30 @@ jobs:
           fi
           sed -i "s|\$GOOGLE_SIGNIN_CLIENT_ID_WEB|${{ secrets.GOOGLE_SIGNIN_CLIENT_ID_WEB }}|g" web/index.html
           grep -q '\$GOOGLE_SIGNIN_CLIENT_ID_WEB' web/index.html && { echo "❌ Quedo el marcador sin sustituir"; exit 1; } || true
+          if [ -z "${{ secrets.FIREBASE_WEB_API_KEY }}" ]; then
+            echo "❌ Falta el secreto FIREBASE_WEB_API_KEY"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_APP_ID_WEB }}" ]; then
+            echo "❌ Falta el secreto FIREBASE_APP_ID_WEB"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}" ]; then
+            echo "❌ Falta el secreto FIREBASE_MESSAGING_SENDER_ID"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_PROJECT_ID }}" ]; then
+            echo "❌ Falta el secreto FIREBASE_PROJECT_ID"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_AUTH_DOMAIN }}" ]; then
+            echo "❌ Falta el secreto FIREBASE_AUTH_DOMAIN"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_STORAGE_BUCKET }}" ]; then
+            echo "❌ Falta el secreto FIREBASE_STORAGE_BUCKET"
+            exit 1
+          fi
           sed -i \
             -e "s|\$FIREBASE_WEB_API_KEY|${{ secrets.FIREBASE_WEB_API_KEY }}|g" \
             -e "s|\$FIREBASE_APP_ID_WEB|${{ secrets.FIREBASE_APP_ID_WEB }}|g" \
@@ -257,6 +305,30 @@ jobs:
           fi
           sed -i "s|\$GOOGLE_SIGNIN_CLIENT_ID_WEB|${{ secrets.GOOGLE_SIGNIN_CLIENT_ID_WEB }}|g" web/index.html
           grep -q '\$GOOGLE_SIGNIN_CLIENT_ID_WEB' web/index.html && { echo "❌ Quedo el marcador sin sustituir"; exit 1; } || true
+          if [ -z "${{ secrets.FIREBASE_WEB_API_KEY }}" ]; then
+            echo "❌ Falta el secreto FIREBASE_WEB_API_KEY"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_APP_ID_WEB }}" ]; then
+            echo "❌ Falta el secreto FIREBASE_APP_ID_WEB"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}" ]; then
+            echo "❌ Falta el secreto FIREBASE_MESSAGING_SENDER_ID"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_PROJECT_ID }}" ]; then
+            echo "❌ Falta el secreto FIREBASE_PROJECT_ID"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_AUTH_DOMAIN }}" ]; then
+            echo "❌ Falta el secreto FIREBASE_AUTH_DOMAIN"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_STORAGE_BUCKET }}" ]; then
+            echo "❌ Falta el secreto FIREBASE_STORAGE_BUCKET"
+            exit 1
+          fi
           sed -i \
             -e "s|\$FIREBASE_WEB_API_KEY|${{ secrets.FIREBASE_WEB_API_KEY }}|g" \
             -e "s|\$FIREBASE_APP_ID_WEB|${{ secrets.FIREBASE_APP_ID_WEB }}|g" \

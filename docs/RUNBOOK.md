@@ -32,6 +32,24 @@ todavía no existe, así que **cualquier despliegue a staging (job
 comportamiento esperado hasta que se complete este paso — no es un defecto de
 la configuración añadida en la Tarea 16.
 
+**Falta también el target de hosting `landing` para staging.** `firebase.json`
+declara dos configuraciones de hosting, `app` y `landing` (target `landing`,
+`source: landing-web`), pero `.firebaserc` solo define el target `hosting.app`
+para `autodoc-staging` — no existe un target `landing` en staging. En cuanto
+`autodoc-staging` exista, ejecutar antes del primer `firebase deploy --only
+hosting --project staging`:
+
+```bash
+firebase target:apply hosting landing <landing-site-id> --project autodoc-staging
+```
+
+donde `<landing-site-id>` es el sitio de Firebase Hosting que se cree para la
+landing de staging (Firebase Console → Hosting → Add another site, dentro del
+proyecto `autodoc-staging`). Sin este paso, `firebase deploy --only hosting
+--project staging` fallará con `Error: Hosting target landing not
+configured` — no es una regresión de esta tarea; staging no tenía ningún
+target de hosting configurado antes de la Tarea 16.
+
 ### Pendiente 2 — Rotar la clave de Google Maps expuesta (Step 6 del brief)
 
 La clave `***REMOVED-GOOGLE-MAPS-API-KEY***` quedó expuesta en el
