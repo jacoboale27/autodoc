@@ -14,7 +14,7 @@ module.exports = defineConfig({
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } }
   ],
   webServer: {
-    command: 'cd .. && flutter run -d web-server --web-port=5555 --web-renderer html',
+    command: 'cd .. && flutter run -d web-server --web-port=5555',
     port: 5555,
     timeout: 120 * 1000,
     reuseExistingServer: true
