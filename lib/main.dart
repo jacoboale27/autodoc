@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:autodoc/l10n/app_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:provider/provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -103,6 +104,19 @@ void main() async {
     return;
   }
   debugPrint("=== [AutoDoc Init] Firebase inicializado con éxito ===");
+
+  try {
+    await FirebaseAppCheck.instance.activate(
+      providerWeb: ReCaptchaEnterpriseProvider(AppSecrets.recaptchaSiteKey),
+      providerAndroid: const AndroidPlayIntegrityProvider(),
+      providerApple: const AppleDeviceCheckProvider(),
+    );
+    debugPrint("=== [AutoDoc Init] App Check activado ===");
+  } catch (e) {
+    // No bloquear el arranque si App Check falla: se despliega primero en modo
+    // monitorizacion y solo despues se activa el enforcement en la consola.
+    debugPrint("=== [AutoDoc Init] App Check no disponible: $e ===");
+  }
 
   // 2. Configurar Firebase Crashlytics
   try {

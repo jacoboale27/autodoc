@@ -254,4 +254,32 @@ gcloud firestore import gs://[PROJECT_ID]-backups/[BACKUP_ID] \
 
 ---
 
+## App Check — activación
+
+App Check debe desplegarse en **dos fases** para no dejar fuera a usuarios con
+clientes antiguos en caché:
+
+1. **Monitorización** (semana 1): registrar las apps en la consola de Firebase
+   → App Check, con enforcement **desactivado**. Revisar en las métricas el
+   porcentaje de peticiones con token válido.
+2. **Enforcement** (semana 2, si el porcentaje supera el 98 %): activar el
+   enforcement en Firestore, Storage y Functions, uno a uno, verificando entre
+   cada paso.
+
+Requisito previo: la Tarea 1 de este plan (cabeceras de caché) debe estar en
+producción, porque de lo contrario los clientes antiguos sin App Check quedan
+atrapados en caché y el enforcement los expulsaría de forma permanente.
+
+**Nota sobre CI/CD:** los workflows actuales (`.github/workflows/ci.yml` y
+`flutter_ci.yml`) no pasan `--dart-define=RECAPTCHA_SITE_KEY=...` en ningún
+paso de `flutter build web`, a diferencia de `GOOGLE_SIGNIN_CLIENT_ID_WEB`, que
+sí se inyecta vía `sed` en `web/index.html`. Mientras esto no se corrija, todos
+los builds de web (dev/staging/prod) activan App Check con una site key vacía;
+el modo tolerante a fallos evita que esto bloquee el arranque, pero el cliente
+web no emitirá tokens válidos hasta que se añada el secreto
+`RECAPTCHA_SITE_KEY` a los workflows y se pase como `--dart-define` en el paso
+`flutter build web`. Este ajuste queda fuera del alcance de esta tarea.
+
+---
+
 *Documento mantenido en `docs/RUNBOOK.md`. Actualizar con cada cambio operacional significativo.*

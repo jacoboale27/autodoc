@@ -8,8 +8,10 @@ class AppSecrets {
       const String.fromEnvironment('FIREBASE_MEASUREMENT_ID', defaultValue: '');
 
   // Firebase Android
-  static String get firebaseAndroidApiKey =>
-      const String.fromEnvironment('FIREBASE_ANDROID_API_KEY', defaultValue: '');
+  static String get firebaseAndroidApiKey => const String.fromEnvironment(
+    'FIREBASE_ANDROID_API_KEY',
+    defaultValue: '',
+  );
   static String get firebaseAppIdAndroid =>
       const String.fromEnvironment('FIREBASE_APP_ID_ANDROID', defaultValue: '');
 
@@ -24,8 +26,10 @@ class AppSecrets {
       const String.fromEnvironment('FIREBASE_IOS_BUNDLE_ID', defaultValue: '');
 
   // Shared Firebase
-  static String get firebaseMessagingSenderId =>
-      const String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID', defaultValue: '');
+  static String get firebaseMessagingSenderId => const String.fromEnvironment(
+    'FIREBASE_MESSAGING_SENDER_ID',
+    defaultValue: '',
+  );
   static String get firebaseProjectId =>
       const String.fromEnvironment('FIREBASE_PROJECT_ID', defaultValue: '');
   static String get firebaseAuthDomain =>
@@ -44,12 +48,20 @@ class AppSecrets {
       const String.fromEnvironment('GOOGLE_MAPS_API_KEY', defaultValue: '');
 
   // Google Custom Search API (Opcional)
-  static String get googleCustomSearchApiKey =>
-      const String.fromEnvironment('GOOGLE_CUSTOM_SEARCH_API_KEY', defaultValue: '');
+  static String get googleCustomSearchApiKey => const String.fromEnvironment(
+    'GOOGLE_CUSTOM_SEARCH_API_KEY',
+    defaultValue: '',
+  );
   static String get googleCustomSearchCx =>
       const String.fromEnvironment('GOOGLE_CUSTOM_SEARCH_CX', defaultValue: '');
 
   // Google Sign-In (web)
-  static String get googleSignInClientIdWeb =>
-      const String.fromEnvironment('GOOGLE_SIGNIN_CLIENT_ID_WEB', defaultValue: '');
+  static String get googleSignInClientIdWeb => const String.fromEnvironment(
+    'GOOGLE_SIGNIN_CLIENT_ID_WEB',
+    defaultValue: '',
+  );
+
+  // App Check (web) — clave de sitio de reCAPTCHA Enterprise
+  static String get recaptchaSiteKey =>
+      const String.fromEnvironment('RECAPTCHA_SITE_KEY', defaultValue: '');
 }
