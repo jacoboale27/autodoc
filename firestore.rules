@@ -258,13 +258,28 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/servicios/$(request.resource.data.id_servicio))
         && isOwnFinishedService(request.resource.data.id_servicio, request.resource.data.id_taller);
 
-      // El autor puede corregir su texto, puntuacion y la marca de tiempo de
-      // edicion (fecha_resenia, que ReviewService.updateReview siempre
+      // El autor puede corregir su texto, puntuacion, fotos y la marca de tiempo
+      // de edicion (fecha_resenia, que ReviewService.updateReview siempre
       // reescribe); no se permite reasignar id_servicio/id_taller/id_usuario.
-      allow update: if isAuthenticated()
-        && resource.data.id_usuario == request.auth.uid
-        && request.resource.data.diff(resource.data)
-             .affectedKeys().hasOnly(['comentario', 'estrellas', 'fecha_resenia']);
+      //
+      // El taller dueño de la reseña puede escribir unicamente respuesta_taller
+      // (derecho a réplica), sin poder tocar el contenido original.
+      //
+      // Cualquier usuario autenticado puede marcar is_reported=true (reportar),
+      // pero no puede usar ese mismo update para tocar ningun otro campo, ni
+      // puede revertirlo a false (solo el admin puede des-reportar, vía delete
+      // o mediante el propio panel de moderación que solo expone "eliminar").
+      allow update: if isAuthenticated() && (
+        (resource.data.id_usuario == request.auth.uid
+          && request.resource.data.diff(resource.data)
+               .affectedKeys().hasOnly(['comentario', 'estrellas', 'fecha_resenia', 'fotos']))
+        || (resource.data.id_taller == request.auth.uid
+          && request.resource.data.diff(resource.data)
+               .affectedKeys().hasOnly(['respuesta_taller']))
+        || (request.resource.data.diff(resource.data)
+              .affectedKeys().hasOnly(['is_reported'])
+            && request.resource.data.is_reported == true)
+      ) || isAdmin();
 
       // El autor original o el administrador (moderación de comentarios ofensivos) pueden eliminarla
       allow delete: if isAuthenticated() && (resource.data.id_usuario == request.auth.uid || isAdmin());
