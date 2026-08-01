@@ -29,7 +29,7 @@ void main() {
       });
       await firestore.collection(FirestoreCollections.usuarios).add({
         'nombre_completo': 'Taller X',
-        'rol': 'Taller',
+        'rol': 'Mecanico',
         'fecha_registro': Timestamp.fromDate(now),
       });
 

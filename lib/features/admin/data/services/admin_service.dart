@@ -7,6 +7,7 @@ import '../../../../core/models/review_model.dart';
 import '../../../../core/models/admin_log_model.dart';
 import '../repositories/admin_repository.dart';
 import '../../../../core/constants/firestore_collections.dart';
+import '../../../../core/utils/role_utils.dart';
 
 class AdminService {
   final AdminRepository _repository;
@@ -318,12 +319,8 @@ class AdminService {
                   usuariosPorMes[key] = (usuariosPorMes[key] ?? 0) + 1;
                 }
 
-                final rol = (data['rol'] as String?)?.toLowerCase() ?? '';
-                final esTaller =
-                    rol.contains('taller') ||
-                    rol.contains('mecanico') ||
-                    rol.contains('mecánico');
-                if (esTaller && talleresPorMes.containsKey(key)) {
+                if (isMechanicRole(data['rol'] as String?) &&
+                    talleresPorMes.containsKey(key)) {
                   talleresPorMes[key] = (talleresPorMes[key] ?? 0) + 1;
                 }
               }
