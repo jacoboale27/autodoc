@@ -18,6 +18,8 @@ class AdminReseniasScreen extends StatefulWidget {
 }
 
 class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
+  bool _soloReportadas = false;
+
   @override
   void initState() {
     super.initState();
@@ -85,6 +87,9 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<AdminProvider>();
     final colors = context.appColors;
+    final reseniasFiltradas = provider.resenias
+        .where((r) => !_soloReportadas || r.isReported)
+        .toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -94,119 +99,167 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
       drawer: const AdminSidebar(),
       body: provider.isLoading
           ? Center(child: CircularProgressIndicator(color: colors.primary))
-          : RefreshIndicator(
-              color: colors.primary,
-              onRefresh: provider.fetchAllData,
-              child: provider.resenias.isEmpty
-                  ? Center(
-                      child: Text(
-                        'No hay reseñas registradas',
-                        style: TextStyle(color: colors.textSecondary),
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: EdgeInsets.all(Responsive.padding(context, 16)),
-                      itemCount: provider.resenias.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final resenia = provider.resenias[index];
-                        return AppCard(
-                          padding: EdgeInsets.all(
-                            Responsive.padding(context, 16),
-                          ),
-                          margin: EdgeInsets.zero,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: List.generate(5, (i) {
-                                      return Icon(
-                                        Icons.star,
-                                        size: Responsive.iconSize(context, 18),
-                                        color: i < resenia.estrellas
-                                            ? colors.warning
-                                            : colors.textSecondary.withValues(
-                                                alpha: 0.2,
-                                              ),
-                                      );
-                                    }),
-                                  ),
-                                  Text(
-                                    DateFormat(
-                                      'dd/MM/yyyy',
-                                    ).format(resenia.fechaResenia),
-                                    style: TextStyle(
-                                      fontSize: Responsive.fontSize(
-                                        context,
-                                        12,
-                                      ),
-                                      color: colors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              TranslatedText(
-                                resenia.comentario ?? 'Sin comentario',
-                                style: TextStyle(
-                                  fontSize: Responsive.fontSize(context, 15),
+          : Column(
+              children: [
+                SwitchListTile(
+                  title: const Text('Mostrar solo reportadas'),
+                  value: _soloReportadas,
+                  activeThumbColor: colors.error,
+                  onChanged: (value) {
+                    setState(() => _soloReportadas = value);
+                  },
+                ),
+                Expanded(
+                  child: RefreshIndicator(
+                    color: colors.primary,
+                    onRefresh: provider.fetchAllData,
+                    child: reseniasFiltradas.isEmpty
+                        ? Center(
+                            child: Text(
+                              _soloReportadas
+                                  ? 'No hay reseñas reportadas'
+                                  : 'No hay reseñas registradas',
+                              style: TextStyle(color: colors.textSecondary),
+                            ),
+                          )
+                        : ListView.separated(
+                            padding: EdgeInsets.all(
+                              Responsive.padding(context, 16),
+                            ),
+                            itemCount: reseniasFiltradas.length,
+                            separatorBuilder: (context, index) =>
+                                const SizedBox(height: 12),
+                            itemBuilder: (context, index) {
+                              final resenia = reseniasFiltradas[index];
+                              return AppCard(
+                                padding: EdgeInsets.all(
+                                  Responsive.padding(context, 16),
                                 ),
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Taller: ${provider.nombreTaller(resenia.idTaller)}',
-                                        style: TextStyle(
-                                          fontSize: Responsive.fontSize(
-                                            context,
-                                            12,
+                                margin: EdgeInsets.zero,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            ...List.generate(5, (i) {
+                                              return Icon(
+                                                Icons.star,
+                                                size: Responsive.iconSize(
+                                                  context,
+                                                  18,
+                                                ),
+                                                color: i < resenia.estrellas
+                                                    ? colors.warning
+                                                    : colors.textSecondary
+                                                          .withValues(
+                                                            alpha: 0.2,
+                                                          ),
+                                              );
+                                            }),
+                                            if (resenia.isReported) ...[
+                                              const SizedBox(width: 8),
+                                              Chip(
+                                                label: const Text('Reportada'),
+                                                backgroundColor:
+                                                    Colors.red.shade100,
+                                                labelStyle: TextStyle(
+                                                  color: Colors.red.shade900,
+                                                  fontSize: Responsive.fontSize(
+                                                    context,
+                                                    11,
+                                                  ),
+                                                ),
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                                materialTapTargetSize:
+                                                    MaterialTapTargetSize
+                                                        .shrinkWrap,
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                        Text(
+                                          DateFormat(
+                                            'dd/MM/yyyy',
+                                          ).format(resenia.fechaResenia),
+                                          style: TextStyle(
+                                            fontSize: Responsive.fontSize(
+                                              context,
+                                              12,
+                                            ),
+                                            color: colors.textSecondary,
                                           ),
-                                          fontWeight: FontWeight.bold,
-                                          color: colors.textPrimary,
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TranslatedText(
+                                      resenia.comentario ?? 'Sin comentario',
+                                      style: TextStyle(
+                                        fontSize: Responsive.fontSize(
+                                          context,
+                                          15,
                                         ),
                                       ),
-                                      Text(
-                                        'Cliente: ${provider.nombreUsuario(resenia.idUsuario)}',
-                                        style: TextStyle(
-                                          fontSize: Responsive.fontSize(
-                                            context,
-                                            12,
-                                          ),
-                                          color: colors.textSecondary,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Taller: ${provider.nombreTaller(resenia.idTaller)}',
+                                              style: TextStyle(
+                                                fontSize: Responsive.fontSize(
+                                                  context,
+                                                  12,
+                                                ),
+                                                fontWeight: FontWeight.bold,
+                                                color: colors.textPrimary,
+                                              ),
+                                            ),
+                                            Text(
+                                              'Cliente: ${provider.nombreUsuario(resenia.idUsuario)}',
+                                              style: TextStyle(
+                                                fontSize: Responsive.fontSize(
+                                                  context,
+                                                  12,
+                                                ),
+                                                color: colors.textSecondary,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                  IconButton(
-                                    onPressed: () => _mostrarConfirmarEliminar(
-                                      context,
-                                      resenia.idResenia,
+                                        IconButton(
+                                          onPressed: () =>
+                                              _mostrarConfirmarEliminar(
+                                                context,
+                                                resenia.idResenia,
+                                              ),
+                                          icon: Icon(
+                                            Icons.delete_outline,
+                                            color: colors.error,
+                                          ),
+                                          tooltip: 'Eliminar reseña',
+                                        ),
+                                      ],
                                     ),
-                                    icon: Icon(
-                                      Icons.delete_outline,
-                                      color: colors.error,
-                                    ),
-                                    tooltip: 'Eliminar reseña',
-                                  ),
-                                ],
-                              ),
-                            ],
+                                  ],
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
+                  ),
+                ),
+              ],
             ),
     );
   }
