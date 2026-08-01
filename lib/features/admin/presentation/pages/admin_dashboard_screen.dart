@@ -7,6 +7,8 @@ import '../providers/admin_provider.dart';
 import '../widgets/admin_sidebar.dart';
 import '../widgets/metric_card.dart';
 import '../widgets/services_trend_chart.dart';
+import '../widgets/user_growth_chart.dart';
+import '../widgets/workshops_growth_chart.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
@@ -110,6 +112,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         provider.metrics['serviciosPorMes'] ?? {},
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    _buildGrowthCharts(context, provider),
                     const SizedBox(height: 32),
                     _buildSectionTitle(
                       context,
@@ -261,6 +265,40 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           icon: Icons.rate_review,
           color: colors.primary,
         ),
+      ],
+    );
+  }
+
+  Widget _buildGrowthCharts(
+    BuildContext context,
+    AdminDashboardProvider provider,
+  ) {
+    final userGrowthChart = UserGrowthChart(
+      dataPorMes: Map<String, int>.from(
+        provider.metrics['usuariosPorMes'] ?? {},
+      ),
+    );
+    final workshopsGrowthChart = WorkshopsGrowthChart(
+      dataPorMes: Map<String, int>.from(
+        provider.metrics['talleresPorMes'] ?? {},
+      ),
+    );
+
+    if (Responsive.isMobile(context)) {
+      return Column(
+        children: [
+          userGrowthChart,
+          const SizedBox(height: 16),
+          workshopsGrowthChart,
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(child: userGrowthChart),
+        const SizedBox(width: 16),
+        Expanded(child: workshopsGrowthChart),
       ],
     );
   }
