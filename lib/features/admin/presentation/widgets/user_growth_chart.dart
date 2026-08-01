@@ -28,7 +28,7 @@ class UserGrowthChart extends StatelessWidget {
     List<String> monthsOrder = [];
     for (int i = 5; i >= 0; i--) {
       final date = DateTime(now.year, now.month - i, 1);
-      monthsOrder.add('${date.year}-${date.month}');
+      monthsOrder.add('${date.year}-${date.month.toString().padLeft(2, '0')}');
     }
 
     final spots = monthsOrder.asMap().entries.map((entry) {

@@ -44,4 +44,32 @@ void main() {
     expect(find.byType(WorkshopsGrowthChart), findsOneWidget);
     expect(find.byType(BarChart), findsOneWidget);
   });
+
+  testWidgets(
+    'WorkshopsGrowthChart plotea el valor real para una clave zero-padded '
+    '(yyyy-MM) del mes actual, no 0',
+    (tester) async {
+      final now = DateTime.now();
+      final currentMonthKey =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}';
+
+      await tester.pumpWidget(
+        _wrap(WorkshopsGrowthChart(dataPorMes: {currentMonthKey: 17})),
+      );
+
+      final barChart = tester.widget<BarChart>(find.byType(BarChart));
+      final barGroups = barChart.data.barGroups;
+
+      // El mes actual es siempre el último grupo de la ventana de 6 meses.
+      final lastGroup = barGroups.last;
+      expect(
+        lastGroup.barRods.single.toY,
+        17,
+        reason:
+            'Si la clave del mapa no coincide con la clave zero-padded '
+            'generada por el widget (yyyy-MM), el valor real cae a 0 '
+            'silenciosamente.',
+      );
+    },
+  );
 }

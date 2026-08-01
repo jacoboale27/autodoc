@@ -40,4 +40,29 @@ void main() {
     expect(find.byType(UserGrowthChart), findsOneWidget);
     expect(find.byType(LineChart), findsOneWidget);
   });
+
+  testWidgets('UserGrowthChart plotea el valor real para una clave zero-padded '
+      '(yyyy-MM) del mes actual, no 0', (tester) async {
+    final now = DateTime.now();
+    final currentMonthKey =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}';
+
+    await tester.pumpWidget(
+      _wrap(UserGrowthChart(dataPorMes: {currentMonthKey: 42})),
+    );
+
+    final lineChart = tester.widget<LineChart>(find.byType(LineChart));
+    final spots = lineChart.data.lineBarsData.single.spots;
+
+    // El mes actual es siempre el último punto de la ventana de 6 meses.
+    final lastSpot = spots.last;
+    expect(
+      lastSpot.y,
+      42,
+      reason:
+          'Si la clave del mapa no coincide con la clave zero-padded '
+          'generada por el widget (yyyy-MM), el valor real cae a 0 '
+          'silenciosamente.',
+    );
+  });
 }
