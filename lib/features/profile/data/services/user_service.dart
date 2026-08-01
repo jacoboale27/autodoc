@@ -36,6 +36,9 @@ class UserService {
     try {
       final updateData = user.toMap();
       updateData.remove('rol');
+      updateData.remove('estado');
+      updateData.remove('calificacion_promedio');
+      updateData.remove('total_resenias');
       await _firestore
           .collection(_collection)
           .doc(user.idUsuario)
@@ -54,6 +57,9 @@ class UserService {
       if (doc.exists) {
         final updateData = user.toMap();
         updateData.remove('rol');
+        updateData.remove('estado');
+        updateData.remove('calificacion_promedio');
+        updateData.remove('total_resenias');
         await _firestore
             .collection(_collection)
             .doc(user.idUsuario)

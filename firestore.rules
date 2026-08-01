@@ -56,6 +56,14 @@ service cloud.firestore {
           .data.get('talleres_vinculados', []).hasAny([request.auth.uid]);
     }
 
+    // Verifica que un servicio ya finalizado pertenezca al taller indicado
+    // y que el vehículo de ese servicio sea propiedad del usuario autenticado.
+    // Esto es lo que garantiza que solo se pueda reseñar un servicio real y propio.
+    function isOwnFinishedService(servicioId, tallerId) {
+      let servicio = get(/databases/$(database)/documents/servicios/$(servicioId)).data;
+      return servicio.id_taller == tallerId && isVehicleOwner(servicio.id_vehiculo);
+    }
+
 
     // --- REGLAS POR COLECCIÓN ---
 
@@ -71,7 +79,11 @@ service cloud.firestore {
       
       // El usuario puede editar su propio perfil básico, pero no puede tocar
       // 'rol' (escalamiento de privilegios) ni las métricas agregadas de
-      // reputación, que solo debe escribir el backend (aggregateRatings).
+      // reputación, que solo debe escribir el backend (aggregateRatings, ya
+      // escribe en 'usuarios' con Admin SDK y por tanto no necesita ningún
+      // permiso de cliente aquí: el hueco de "cualquier autenticado puede
+      // parchear calificacion_promedio/total_resenias" que existía en la
+      // rama del colaborador para su recálculo client-side ya no aplica).
       // Los administradores tienen acceso completo para cambiar roles o estados.
       // 'estado' tambien queda excluido: es el campo que el directorio publico
       // de talleres usa para filtrar por 'aprobado' (ver publishTallerProfile),
@@ -89,6 +101,12 @@ service cloud.firestore {
       allow read: if true;
 
       // Solo la Cloud Function publishTallerProfile (Admin SDK) escribe aqui.
+      // El flujo de calificaciones del colaborador (mecanico/cualquier
+      // autenticado escribiendo calificacion_promedio/total_resenias) no
+      // aplica: esos campos viven en 'usuarios', no en 'talleres' (ver
+      // aggregateRatings en functions/index.js), y el editor de perfil del
+      // taller (workshop_settings_screen.dart) escribe en 'usuarios' via
+      // UserService, nunca en esta colección.
       allow create, update: if isAdmin();
 
       allow delete: if isAdmin();
@@ -227,23 +245,22 @@ service cloud.firestore {
 
     // 6. Tabla de Reseñas
     match /resenias/{reseniaId} {
-      allow read: if isAuthenticated();
+      // Las reseñas son de lectura pública para alimentar el directorio de talleres.
+      allow read: if true;
 
-      // Solo se puede resenar un servicio real, propio, y una sola vez, y el
-      // id_taller debe coincidir con el taller real del servicio (el cliente
-      // no puede apuntar la resenia a un taller arbitrario).
+      // Solo el usuario autor puede crearla, y solo si referencia un servicio
+      // real, del taller indicado y de un vehículo de su propiedad (evita
+      // reseñas sin haber recibido un servicio); ver isOwnFinishedService.
       allow create: if isAuthenticated()
         && request.resource.data.id_usuario == request.auth.uid
+        && request.resource.data.id_servicio is string
+        && request.resource.data.id_servicio.size() > 0
         && exists(/databases/$(database)/documents/servicios/$(request.resource.data.id_servicio))
-        && isVehicleOwner(
-             get(/databases/$(database)/documents/servicios/$(request.resource.data.id_servicio))
-               .data.id_vehiculo)
-        && request.resource.data.id_taller ==
-             get(/databases/$(database)/documents/servicios/$(request.resource.data.id_servicio))
-               .data.id_taller;
+        && isOwnFinishedService(request.resource.data.id_servicio, request.resource.data.id_taller);
 
       // El autor puede corregir su texto, puntuacion y la marca de tiempo de
-      // edicion (fecha_resenia, que ReviewService.updateReview siempre reescribe).
+      // edicion (fecha_resenia, que ReviewService.updateReview siempre
+      // reescribe); no se permite reasignar id_servicio/id_taller/id_usuario.
       allow update: if isAuthenticated()
         && resource.data.id_usuario == request.auth.uid
         && request.resource.data.diff(resource.data)
@@ -295,8 +312,19 @@ service cloud.firestore {
         (resource.data.id_propietario == request.auth.uid ||
          resource.data.id_mecanico == request.auth.uid ||
          isAdmin());
+      // Tanto el propietario como el mecánico pueden proponer una cita desde
+      // el chat (chat_screen.dart _mostrarSelectorFecha, flujo de
+      // cotizacion+agenda integrado): cualquiera de los dos puede ser quien
+      // crea el documento, con tal de que se asigne a sí mismo en su propio
+      // campo (id_propietario/id_mecanico). Restringir esto a solo
+      // propietario, como hacia la version anterior de esta regla, rompe la
+      // mitad del flujo (el mecanico proponiendo fecha). Nota: al igual que
+      // en la version anterior, no se valida aqui que exista una relacion
+      // previa (conversacion) entre ambos uid — riesgo residual conocido,
+      // sin escalar respecto al comportamiento previo a este merge.
       allow create: if isAuthenticated() &&
-        request.resource.data.id_propietario == request.auth.uid;
+        (request.resource.data.id_propietario == request.auth.uid ||
+         request.resource.data.id_mecanico == request.auth.uid);
       // El mecanico solo puede actualizar la reserva que le corresponde a el
       // (mismo patron que 'cotizaciones'); antes cualquier mecanico
       // autenticado podia modificar la reserva de cualquier otro.

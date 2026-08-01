@@ -139,6 +139,28 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
   Future<void> _saveSettings() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_selectedDept == null || _selectedMuni == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Selecciona tu departamento y municipio.'),
+          backgroundColor: context.appColors.error,
+        ),
+      );
+      return;
+    }
+
+    if (_latitude == null || _longitude == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Registra tu ubicación geográfica (por GPS o en el mapa) para que los clientes puedan confiar en tu taller.',
+          ),
+          backgroundColor: context.appColors.error,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -339,6 +361,10 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                                           'Ej: Mecánica General, Frenos, Transmisión...',
                                       colors: colors,
                                       isDark: isDark,
+                                      validator: (value) =>
+                                          value == null || value.trim().isEmpty
+                                          ? 'Requerido'
+                                          : null,
                                     ),
                                     const SizedBox(height: 20),
                                     _buildDropdownField(
@@ -378,7 +404,7 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                                     _buildCoordinatesPicker(colors, isDark),
                                     const SizedBox(height: 20),
                                     _buildInputField(
-                                      label: 'Teléfono de Contacto',
+                                      label: 'Teléfono de Contacto (opcional)',
                                       controller: _phoneController,
                                       icon: Icons.phone,
                                       keyboardType: TextInputType.phone,
@@ -386,8 +412,9 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                                       colors: colors,
                                       isDark: isDark,
                                       validator: (value) {
-                                        if (value == null || value.isEmpty) {
-                                          return 'Por favor, ingresa un número de teléfono';
+                                        if (value == null ||
+                                            value.trim().isEmpty) {
+                                          return null; // No es obligatorio
                                         }
                                         final digits = value.replaceAll(
                                           RegExp(r'\D'),

@@ -17,6 +17,8 @@ class UserModel {
   final String? municipio;
   final double? latitud;
   final double? longitud;
+  final double calificacionPromedio;
+  final int totalResenias;
 
   UserModel({
     required this.idUsuario,
@@ -35,6 +37,8 @@ class UserModel {
     this.municipio,
     this.latitud,
     this.longitud,
+    this.calificacionPromedio = 0.0,
+    this.totalResenias = 0,
   });
 
   UserModel copyWith({
@@ -54,6 +58,8 @@ class UserModel {
     String? municipio,
     double? latitud,
     double? longitud,
+    double? calificacionPromedio,
+    int? totalResenias,
   }) {
     return UserModel(
       idUsuario: idUsuario ?? this.idUsuario,
@@ -72,6 +78,8 @@ class UserModel {
       municipio: municipio ?? this.municipio,
       latitud: latitud ?? this.latitud,
       longitud: longitud ?? this.longitud,
+      calificacionPromedio: calificacionPromedio ?? this.calificacionPromedio,
+      totalResenias: totalResenias ?? this.totalResenias,
     );
   }
 
@@ -93,6 +101,8 @@ class UserModel {
       if (municipio != null) 'municipio': municipio,
       if (latitud != null) 'latitud': latitud,
       if (longitud != null) 'longitud': longitud,
+      'calificacion_promedio': calificacionPromedio,
+      'total_resenias': totalResenias,
     };
   }
 
@@ -160,6 +170,8 @@ class UserModel {
           (map['ubicacion'] is GeoPoint
               ? (map['ubicacion'] as GeoPoint).longitude
               : null),
+      calificacionPromedio: parseDouble(map['calificacion_promedio']) ?? 0.0,
+      totalResenias: (map['total_resenias'] as num?)?.toInt() ?? 0,
     );
   }
 }

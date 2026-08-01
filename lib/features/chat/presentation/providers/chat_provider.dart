@@ -251,6 +251,17 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> finalizarServicioDesdeCotizacion(String cotizacionId) async {
+    try {
+      await _chatRepository.finalizarServicioDesdeCotizacion(cotizacionId);
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<String?> subirImagenChat(
     String conversacionId,
     XFile imageFile,

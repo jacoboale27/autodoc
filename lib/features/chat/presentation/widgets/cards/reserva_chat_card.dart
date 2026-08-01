@@ -5,8 +5,12 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
+import 'package:autodoc/core/utils/role_utils.dart';
+import 'package:autodoc/core/utils/mechanic_profile_utils.dart';
+import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
+import 'package:autodoc/features/chat/presentation/widgets/cotizacion_picker.dart';
 import 'package:go_router/go_router.dart';
-import 'package:autodoc/features/chat/data/models/reserva_model.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class ReservaChatCard extends StatelessWidget {
@@ -23,15 +27,125 @@ class ReservaChatCard extends StatelessWidget {
     required this.conversacionId,
   });
 
+  Future<void> _actualizar(
+    BuildContext context,
+    String estado, {
+    DateTime? fechaConfirmada,
+  }) async {
+    final newMeta = Map<String, dynamic>.from(metadata);
+    newMeta['estado'] = estado;
+    final provider = context.read<ChatProvider>();
+    final reservaProvider = context.read<ReservaProvider>();
+    await provider.actualizarMetadatosMensaje(
+      conversacionId,
+      mensajeId,
+      newMeta,
+    );
+    final reservaId = metadata['id_reserva'];
+    if (reservaId != null) {
+      await reservaProvider.cambiarEstadoReserva(
+        reservaId,
+        estado,
+        fechaConfirmada: fechaConfirmada,
+      );
+    }
+  }
+
+  Future<void> _cotizarYAceptar(BuildContext context, DateTime fecha) async {
+    final mechanicUser = context.read<UserProfileProvider>().userData;
+    final userId = mechanicUser?.idUsuario;
+    if (userId == null) return;
+
+    if (!isMechanicProfileComplete(mechanicUser)) {
+      final missing = missingMechanicProfileFields(mechanicUser);
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Completa tu perfil de taller'),
+          content: Text(
+            'Para poder enviar cotizaciones, primero debes completar en tu '
+            'perfil: ${missing.join(', ')}.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                context.push('/workshop_settings');
+              },
+              child: const Text('Completar perfil'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final chatProvider = context.read<ChatProvider>();
+    final conversacion = chatProvider.conversaciones
+        .where((c) => c.id == conversacionId)
+        .firstOrNull;
+    final receptorId = conversacion?.idPropietario;
+    if (receptorId == null || receptorId.isEmpty) return;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => CotizacionPicker(
+        initialFecha: fecha,
+        subtitle: 'Estás cotizando la cita que propuso el cliente.',
+        onConfirm: (items, fechaPropuesta) async {
+          final cotizacion = CotizacionModel(
+            id: '',
+            idPropietario: receptorId,
+            idMecanico: userId,
+            idVehiculo: conversacion?.idVehiculo,
+            idTaller: userId,
+            items: items,
+            fechaPropuesta: fechaPropuesta,
+            fecha: DateTime.now(),
+          );
+
+          final cotizacionId = await chatProvider.crearCotizacion(cotizacion);
+
+          await chatProvider.enviarMensaje(
+            conversacionId: conversacionId,
+            contenido: 'He enviado una cotización para tu cita solicitada.',
+            remitenteId: userId,
+            receptorId: receptorId,
+            isMecanicoRemitente: true,
+            tipo: 'cotizacion_card',
+            metadata: {'id_cotizacion': cotizacionId, 'estado': 'pendiente'},
+          );
+
+          if (!context.mounted) return;
+          await _actualizar(
+            context,
+            'cotizada',
+            fechaConfirmada: fechaPropuesta,
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isMecanico = isMechanicRole(
+      context.watch<UserProfileProvider>().userData?.rol,
+    );
 
     final String fechaRaw = metadata['fecha'] ?? '';
     final String hora = metadata['hora'] ?? '';
     final String estado =
-        metadata['estado'] ?? 'pendiente'; // pendiente, aceptada, rechazada
+        metadata['estado'] ??
+        'pendiente'; // pendiente, aceptada, rechazada, cotizada
 
     DateTime? fecha;
     if (fechaRaw.isNotEmpty) {
@@ -46,6 +160,9 @@ class ReservaChatCard extends StatelessWidget {
     } else if (estado == 'rechazada') {
       badgeColor = Colors.red;
       badgeText = 'Rechazada';
+    } else if (estado == 'cotizada') {
+      badgeColor = Colors.blue;
+      badgeText = 'Cotización Enviada';
     }
 
     return Container(
@@ -158,96 +275,94 @@ class ReservaChatCard extends StatelessWidget {
                 ),
                 if (estado == 'pendiente' && !isMe) ...[
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            final newMeta = Map<String, dynamic>.from(metadata);
-                            newMeta['estado'] = 'aceptada';
-                            context
-                                .read<ChatProvider>()
-                                .actualizarMetadatosMensaje(
-                                  conversacionId,
-                                  mensajeId,
-                                  newMeta,
-                                );
-                            final reservaId = metadata['id_reserva'];
-                            if (reservaId != null) {
-                              context
-                                  .read<ReservaProvider>()
-                                  .cambiarEstadoReserva(
-                                    reservaId,
-                                    'confirmada',
-                                    fechaConfirmada: DateTime.now(),
-                                  );
-                            }
-                          },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: colors.primary,
-                            side: BorderSide(color: colors.primary),
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            minimumSize: Size.zero,
-                          ),
-                          child: Text(context.l10n.chatAccept),
-                        ),
+                  if (isMecanico) ...[
+                    // El mecánico solo puede "aceptar" enviando una cotización
+                    // para la misma fecha propuesta por el cliente.
+                    Text(
+                      'Para aceptar, envía tu cotización con esta fecha.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isMe ? Colors.white70 : colors.textSecondary,
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            final newMeta = Map<String, dynamic>.from(metadata);
-                            newMeta['estado'] = 'rechazada';
-                            context
-                                .read<ChatProvider>()
-                                .actualizarMetadatosMensaje(
-                                  conversacionId,
-                                  mensajeId,
-                                  newMeta,
-                                );
-                            final reservaId = metadata['id_reserva'];
-                            if (reservaId != null) {
-                              context
-                                  .read<ReservaProvider>()
-                                  .cambiarEstadoReserva(reservaId, 'rechazada');
-                            }
-                          },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red,
-                            side: const BorderSide(color: Colors.red),
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            minimumSize: Size.zero,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => _actualizar(context, 'rechazada'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.red,
+                              side: const BorderSide(color: Colors.red),
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              minimumSize: Size.zero,
+                            ),
+                            child: Text(context.l10n.chatReject),
                           ),
-                          child: Text(context.l10n.chatReject),
                         ),
-                      ),
-                    ],
-                  ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: fecha == null
+                                ? null
+                                : () => _cotizarYAceptar(context, fecha!),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: colors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              minimumSize: Size.zero,
+                            ),
+                            child: const Text('Cotizar'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ] else ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => _actualizar(
+                              context,
+                              'aceptada',
+                              fechaConfirmada: DateTime.now(),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: colors.primary,
+                              side: BorderSide(color: colors.primary),
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              minimumSize: Size.zero,
+                            ),
+                            child: Text(context.l10n.chatAccept),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => _actualizar(context, 'rechazada'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.red,
+                              side: const BorderSide(color: Colors.red),
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              minimumSize: Size.zero,
+                            ),
+                            child: Text(context.l10n.chatReject),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton(
-                    onPressed: () {
-                      final reserva = ReservaModel(
-                        id: metadata['id_reserva'] ?? 'dummy_id',
-                        idConversacion: conversacionId,
-                        idPropietario: '',
-                        idMecanico: '',
-                        idVehiculo:
-                            metadata['id_vehiculo'] ?? 'No especificado',
-                        idTaller: '',
-                        fechaHoraPropuesta: fecha ?? DateTime.now(),
-                        tipoServicio:
-                            metadata['tipo_servicio'] ?? 'Servicio General',
-                        estado: estado,
-                        fechaCreacion: DateTime.now(),
-                      );
-                      context.push(
-                        '/reserva_detail/${reserva.id}',
-                        extra: reserva,
-                      );
-                    },
+                    onPressed: metadata['id_reserva'] == null
+                        ? null
+                        : () => context.push(
+                            '/reserva_detail',
+                            extra: metadata['id_reserva'] as String,
+                          ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: isMe ? Colors.white : colors.primary,
                       side: BorderSide(

@@ -8,29 +8,18 @@ class ReviewService {
   CollectionReference<Map<String, dynamic>> get _resenias =>
       _firestore.collection(FirestoreCollections.resenias);
 
-  Future<bool> hasUserReviewedTaller(String userId, String tallerId) async {
-    final snapshot = await _resenias
-        .where('id_usuario', isEqualTo: userId)
-        .where('id_taller', isEqualTo: tallerId)
-        .limit(1)
-        .get();
-    return snapshot.docs.isNotEmpty;
-  }
+  /// El id del documento de reseña es determinístico (1 reseña por servicio
+  /// por usuario), lo que evita reseñas duplicadas para el mismo servicio.
+  String _reviewDocId(String userId, String idServicio) =>
+      '${idServicio}_$userId';
 
-  Future<ReviewModel?> getUserReviewForTaller(
+  Future<ReviewModel?> getUserReviewForService(
     String userId,
-    String tallerId,
+    String idServicio,
   ) async {
-    final snapshot = await _resenias
-        .where('id_usuario', isEqualTo: userId)
-        .where('id_taller', isEqualTo: tallerId)
-        .limit(1)
-        .get();
-    if (snapshot.docs.isEmpty) return null;
-    return ReviewModel.fromMap(
-      snapshot.docs.first.data(),
-      snapshot.docs.first.id,
-    );
+    final doc = await _resenias.doc(_reviewDocId(userId, idServicio)).get();
+    if (!doc.exists) return null;
+    return ReviewModel.fromMap(doc.data()!, doc.id);
   }
 
   Future<List<ReviewModel>> getReviewsForTaller(String tallerId) async {
@@ -54,27 +43,110 @@ class ReviewService {
     });
   }
 
+  /// Busca un servicio ya finalizado del usuario con ese taller que todavía
+  /// no haya sido reseñado. Devuelve el id_servicio más reciente disponible,
+  /// o null si el usuario no tiene ningún servicio finalizado con ese taller
+  /// (o ya reseñó todos).
+  Future<String?> findReviewableServiceId(
+    String userId,
+    String tallerId,
+  ) async {
+    final vehicleSnap = await _firestore
+        .collection(FirestoreCollections.vehiculos)
+        .where('id_propietario', isEqualTo: userId)
+        .get();
+    final vehicleIds = vehicleSnap.docs.map((d) => d.id).toList();
+    if (vehicleIds.isEmpty) return null;
+
+    final reviewedSnap = await _resenias
+        .where('id_usuario', isEqualTo: userId)
+        .where('id_taller', isEqualTo: tallerId)
+        .get();
+    final reviewedServiceIds = reviewedSnap.docs
+        .map((d) => d.data()['id_servicio'] as String?)
+        .whereType<String>()
+        .toSet();
+
+    // Firestore 'whereIn' admite máximo 30 valores por consulta.
+    for (var i = 0; i < vehicleIds.length; i += 30) {
+      final chunk = vehicleIds.sublist(
+        i,
+        i + 30 > vehicleIds.length ? vehicleIds.length : i + 30,
+      );
+      final serviciosSnap = await _firestore
+          .collection(FirestoreCollections.servicios)
+          .where('id_vehiculo', whereIn: chunk)
+          .get();
+
+      final docs = serviciosSnap.docs.toList()
+        ..sort((a, b) {
+          final tsA = a.data()['fecha'] as Timestamp?;
+          final tsB = b.data()['fecha'] as Timestamp?;
+          if (tsA == null || tsB == null) return 0;
+          return tsB.compareTo(tsA);
+        });
+
+      for (final doc in docs) {
+        final docTaller = doc.data()['id_taller'] as String?;
+        if (docTaller == tallerId && !reviewedServiceIds.contains(doc.id)) {
+          return doc.id;
+        }
+      }
+    }
+    return null;
+  }
+
   Future<void> submitReview({
     required String userId,
     required String tallerId,
+    required String idServicio,
     required int estrellas,
     String? comentario,
-    String? idServicio,
   }) async {
     if (estrellas < 1 || estrellas > 5) {
       throw ArgumentError('La calificación debe estar entre 1 y 5 estrellas.');
     }
 
-    final existing = await hasUserReviewedTaller(userId, tallerId);
-    if (existing) {
-      throw StateError('Ya dejaste una reseña para este taller.');
+    final servicioDoc = await _firestore
+        .collection(FirestoreCollections.servicios)
+        .doc(idServicio)
+        .get();
+    if (!servicioDoc.exists) {
+      throw StateError(
+        'No se encontró el servicio. Solo puedes reseñar servicios finalizados.',
+      );
+    }
+    final servicioData = servicioDoc.data()!;
+    if (servicioData['id_taller'] != tallerId) {
+      throw StateError('Este servicio no corresponde a este taller.');
     }
 
-    final docRef = _resenias.doc();
+    final idVehiculo = servicioData['id_vehiculo'] as String?;
+    final vehiculoDoc = idVehiculo == null
+        ? null
+        : await _firestore
+              .collection(FirestoreCollections.vehiculos)
+              .doc(idVehiculo)
+              .get();
+    if (vehiculoDoc == null ||
+        !vehiculoDoc.exists ||
+        vehiculoDoc.data()?['id_propietario'] != userId) {
+      throw StateError(
+        'Solo puedes reseñar servicios realizados a tus propios vehículos.',
+      );
+    }
+
+    final docRef = _resenias.doc(_reviewDocId(userId, idServicio));
+    final existing = await docRef.get();
+    if (existing.exists) {
+      throw StateError('Ya dejaste una reseña para este servicio.');
+    }
+
     final review = ReviewModel(
       idResenia: docRef.id,
       idUsuario: userId,
       idTaller: tallerId,
+      idServicio: idServicio,
       estrellas: estrellas,
       comentario: comentario?.trim().isEmpty == true
           ? null
@@ -82,15 +154,23 @@ class ReviewService {
       fechaResenia: DateTime.now(),
     );
 
-    final data = review.toMap();
-    if (idServicio != null) {
-      data['id_servicio'] = idServicio;
+    try {
+      await docRef.set(review.toMap());
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw StateError(
+          'No se pudo guardar la reseña. Asegúrate de que el servicio '
+          'corresponde a un vehículo tuyo y que las reglas de seguridad '
+          'estén actualizadas.',
+        );
+      }
+      rethrow;
     }
-
-    await docRef.set(data);
-    // La recalculación de calificacion_promedio/total_resenias ahora la hace
+    // La recalculación de calificacion_promedio/total_resenias la hace
     // exclusivamente la Cloud Function aggregateRatings (trigger onWrite de
-    // resenias). El cliente ya no puede ni debe escribir esas métricas.
+    // resenias, escribe en 'usuarios' con Admin SDK). El cliente ya no debe
+    // ni puede escribirlas: firestore.rules excluye esos campos de lo que
+    // isOwner puede tocar en 'usuarios' (ver Task 13 / cierre del merge).
   }
 
   Future<void> updateReview({
@@ -105,13 +185,23 @@ class ReviewService {
 
     final docRef = _resenias.doc(reviewId);
 
-    await docRef.update({
-      'estrellas': estrellas,
-      'comentario': comentario?.trim().isEmpty == true
-          ? null
-          : comentario?.trim(),
-      'fecha_resenia': FieldValue.serverTimestamp(),
-    });
+    try {
+      await docRef.update({
+        'estrellas': estrellas,
+        'comentario': comentario?.trim().isEmpty == true
+            ? null
+            : comentario?.trim(),
+        'fecha_resenia': FieldValue.serverTimestamp(),
+      });
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw StateError(
+          'No se pudo actualizar la reseña: no tienes permiso para editarla '
+          '(puede que se haya creado con otra cuenta).',
+        );
+      }
+      rethrow;
+    }
     // aggregateRatings (Cloud Function) recalcula el promedio en el backend.
   }
 

@@ -15,6 +15,7 @@ void main() {
         'id_resenia': 'r1',
         'id_usuario': 'u1',
         'id_taller': 't1',
+        'id_servicio': 's1',
         'estrellas': 5,
         'comentario': 'Excelente servicio',
         'fecha_resenia': Timestamp.fromDate(DateTime(2026, 6, 1)),
@@ -24,6 +25,7 @@ void main() {
       expect(review.idResenia, 'r1');
       expect(review.idUsuario, 'u1');
       expect(review.idTaller, 't1');
+      expect(review.idServicio, 's1');
       expect(review.estrellas, 5);
       expect(review.comentario, 'Excelente servicio');
     });
@@ -33,6 +35,7 @@ void main() {
         idResenia: 'r2',
         idUsuario: 'u2',
         idTaller: 't2',
+        idServicio: 's2',
         estrellas: 4,
         comentario: 'Buen trabajo',
         fechaResenia: DateTime(2026, 7, 1),
@@ -41,6 +44,7 @@ void main() {
       final map = review.toMap();
       expect(map['id_usuario'], 'u2');
       expect(map['id_taller'], 't2');
+      expect(map['id_servicio'], 's2');
       expect(map['estrellas'], 4);
       expect(map['comentario'], 'Buen trabajo');
       expect(map.containsKey('fecha_resenia'), isTrue);
@@ -51,6 +55,7 @@ void main() {
         idResenia: 'r3',
         idUsuario: 'u3',
         idTaller: 't3',
+        idServicio: 's3',
         estrellas: 3,
         comentario: null,
         fechaResenia: DateTime.now(),
@@ -79,6 +84,7 @@ void main() {
           idResenia: 'r1',
           idUsuario: 'u1',
           idTaller: 't1',
+          idServicio: 's1',
           estrellas: 5,
           fechaResenia: DateTime.now(),
         ),
@@ -92,6 +98,7 @@ void main() {
           idResenia: 'r1',
           idUsuario: 'u1',
           idTaller: 't1',
+          idServicio: 's1',
           estrellas: 5,
           fechaResenia: DateTime.now(),
         ),
@@ -99,6 +106,7 @@ void main() {
           idResenia: 'r2',
           idUsuario: 'u2',
           idTaller: 't1',
+          idServicio: 's2',
           estrellas: 3,
           fechaResenia: DateTime.now(),
         ),
@@ -106,6 +114,7 @@ void main() {
           idResenia: 'r3',
           idUsuario: 'u3',
           idTaller: 't1',
+          idServicio: 's3',
           estrellas: 4,
           fechaResenia: DateTime.now(),
         ),
@@ -120,6 +129,7 @@ void main() {
           idResenia: 'r1',
           idUsuario: 'u1',
           idTaller: 't1',
+          idServicio: 's1',
           estrellas: 5,
           fechaResenia: DateTime.now(),
         ),
@@ -127,6 +137,7 @@ void main() {
           idResenia: 'r2',
           idUsuario: 'u2',
           idTaller: 't1',
+          idServicio: 's2',
           estrellas: 4,
           fechaResenia: DateTime.now(),
         ),
@@ -134,6 +145,7 @@ void main() {
           idResenia: 'r3',
           idUsuario: 'u3',
           idTaller: 't1',
+          idServicio: 's3',
           estrellas: 3,
           fechaResenia: DateTime.now(),
         ),
@@ -141,6 +153,7 @@ void main() {
           idResenia: 'r4',
           idUsuario: 'u4',
           idTaller: 't1',
+          idServicio: 's4',
           estrellas: 2,
           fechaResenia: DateTime.now(),
         ),
@@ -188,6 +201,7 @@ void main() {
       final data = {
         'id_usuario': 'u1',
         'id_taller': 't1',
+        'id_servicio': 's1',
         'estrellas': 4,
         'fecha_resenia': Timestamp.fromDate(DateTime.now()),
         // No 'id_resenia' key
@@ -202,6 +216,7 @@ void main() {
         idResenia: 'r1',
         idUsuario: 'u1',
         idTaller: 't1',
+        idServicio: 's1',
         estrellas: 5,
         fechaResenia: DateTime.now(),
       );
@@ -209,6 +224,7 @@ void main() {
         idResenia: 'r1',
         idUsuario: 'u1',
         idTaller: 't1',
+        idServicio: 's1',
         estrellas: 5,
         fechaResenia: DateTime.now(),
       );

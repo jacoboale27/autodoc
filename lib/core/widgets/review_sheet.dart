@@ -9,11 +9,14 @@ import 'package:autodoc/core/models/review_model.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
 
 /// Muestra un bottom sheet para calificar un taller/mecánico.
+///
+/// Solo se puede reseñar un [idServicio] específico ya finalizado: cada
+/// servicio admite una única reseña por usuario.
 Future<bool?> showReviewBottomSheet(
   BuildContext context, {
   required String tallerId,
   required String tallerNombre,
-  String? idServicio,
+  required String idServicio,
 }) {
   return showModalBottomSheet<bool>(
     context: context,
@@ -32,12 +35,12 @@ Future<bool?> showReviewBottomSheet(
 class _ReviewSheetContent extends StatefulWidget {
   final String tallerId;
   final String tallerNombre;
-  final String? idServicio;
+  final String idServicio;
 
   const _ReviewSheetContent({
     required this.tallerId,
     required this.tallerNombre,
-    this.idServicio,
+    required this.idServicio,
   });
 
   @override
@@ -66,22 +69,32 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
       setState(() => _checking = false);
       return;
     }
-    final existing = await _reviewService.getUserReviewForTaller(
-      userId,
-      widget.tallerId,
-    );
-    if (mounted) {
-      setState(() {
-        _existingReview = existing;
-        if (existing != null) {
-          _estrellas = existing.estrellas;
-          _comentarioController.text = existing.comentario ?? '';
-          if (DateTime.now().difference(existing.fechaResenia).inDays > 7) {
-            _canEdit = false;
+    try {
+      final existing = await _reviewService.getUserReviewForService(
+        userId,
+        widget.idServicio,
+      );
+      if (mounted) {
+        setState(() {
+          _existingReview = existing;
+          if (existing != null) {
+            _estrellas = existing.estrellas;
+            _comentarioController.text = existing.comentario ?? '';
+            if (DateTime.now().difference(existing.fechaResenia).inDays > 7) {
+              _canEdit = false;
+            }
           }
-        }
-        _checking = false;
-      });
+          _checking = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _checking = false);
+        UiUtils.showErrorSnackbar(
+          context,
+          'No se pudo verificar tu reseña: ${e.toString().replaceFirst('StateError: ', '')}',
+        );
+      }
     }
   }
 

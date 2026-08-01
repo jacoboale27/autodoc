@@ -8,7 +8,6 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
-import 'package:autodoc/features/chat/presentation/widgets/disponibilidad_picker.dart';
 import 'package:autodoc/features/chat/presentation/widgets/chat_background.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/vehiculo_chat_card.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/reserva_chat_card.dart';
@@ -26,6 +25,9 @@ import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
 import 'package:autodoc/features/chat/data/models/reserva_model.dart';
 import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/utils/mechanic_profile_utils.dart';
+import 'package:autodoc/core/models/user_model.dart';
+import 'package:go_router/go_router.dart';
 
 class ChatScreen extends StatefulWidget {
   final String conversacionId;
@@ -97,6 +99,133 @@ class _ChatScreenState extends State<ChatScreen> {
       tipo: 'texto',
     );
     _controller.clear();
+  }
+
+  void _iniciarNuevaReserva({
+    required String userId,
+    required bool isMecanico,
+    required String receptorId,
+  }) {
+    // El cliente debe indicar a qué vehículo de su cuenta es el servicio.
+    // Usamos el context del propio State (this.context), que se mantiene
+    // válido mientras la pantalla de chat siga montada — a diferencia del
+    // context del sheet, que deja de servir en cuanto este se cierra.
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => VehiculoPicker(
+        userId: userId,
+        onSelected: (vehiculoData) {
+          final idVehiculo = vehiculoData['vehiculo_id'] ?? '';
+          // VehiculoPicker se cierra a sí mismo justo después de llamar a
+          // onSelected; esperamos a que termine ese frame antes de abrir el
+          // siguiente selector, para no pelear con ese cierre.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _abrirSelectorFechaReserva(
+              userId: userId,
+              isMecanico: isMecanico,
+              receptorId: receptorId,
+              idVehiculo: idVehiculo,
+            );
+          });
+        },
+      ),
+    );
+  }
+
+  Future<void> _abrirSelectorFechaReserva({
+    required String userId,
+    required bool isMecanico,
+    required String receptorId,
+    required String idVehiculo,
+  }) async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 180)),
+    );
+    if (date == null || !mounted) return;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (time == null || !mounted) return;
+
+    final fecha = DateTime(date.year, date.month, date.day);
+    final hora = time.format(context);
+    final fechaHora = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+
+    final provider = context.read<ChatProvider>();
+    final reservaProvider = context.read<ReservaProvider>();
+
+    final reserva = ReservaModel(
+      id: '',
+      idConversacion: widget.conversacionId,
+      idPropietario: isMecanico ? receptorId : userId,
+      idMecanico: isMecanico ? userId : receptorId,
+      idVehiculo: idVehiculo,
+      idTaller: isMecanico ? userId : receptorId,
+      fechaHoraPropuesta: fechaHora,
+      tipoServicio: 'Cita General',
+      estado: 'pendiente',
+      fechaCreacion: DateTime.now(),
+    );
+
+    final reservaId = await reservaProvider.solicitarReserva(reserva);
+
+    await provider.enviarMensaje(
+      conversacionId: widget.conversacionId,
+      contenido:
+          '📅 Propuesta de cita: \nFecha: ${fecha.day}/${fecha.month}/${fecha.year}\nHora: $hora',
+      remitenteId: userId,
+      receptorId: receptorId,
+      isMecanicoRemitente: isMecanico,
+      tipo: 'reserva_card',
+      metadata: {
+        'id_reserva': reservaId,
+        'fecha': fecha.toIso8601String(),
+        'hora': hora,
+        'id_vehiculo': idVehiculo,
+        'estado': 'pendiente',
+      },
+    );
+  }
+
+  void _showProfileIncompleteDialog(BuildContext context, UserModel? user) {
+    final missing = missingMechanicProfileFields(user);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Completa tu perfil de taller'),
+        content: Text(
+          'Para poder enviar cotizaciones, primero debes completar en tu '
+          'perfil: ${missing.join(', ')}.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.push('/workshop_settings');
+            },
+            child: const Text('Completar perfil'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -478,198 +607,74 @@ class _ChatScreenState extends State<ChatScreen> {
                   );
                 },
               ),
-              if (!isMecanico) // Solo el propietario comparte su vehículo
+              if (!isMecanico) // Solo el cliente agenda: el mecánico responde con una cotización
                 ListTile(
-                  leading: Icon(Icons.directions_car, color: colors.primary),
-                  title: Text(context.l10n.chatShareVehicle),
+                  leading: Icon(Icons.calendar_month, color: colors.primary),
+                  title: Text(context.l10n.chatNewReservation),
                   onTap: () {
                     Navigator.pop(context);
-                    showModalBottomSheet(
-                      context: context,
-                      backgroundColor: Colors.transparent,
-                      isScrollControlled: true,
-                      builder: (context) => VehiculoPicker(
-                        userId: userId,
-                        onSelected: (vehiculoData) {
-                          FirebaseFirestore.instance
-                              .collection(FirestoreCollections.conversaciones)
-                              .doc(widget.conversacionId)
-                              .update({
-                                'id_vehiculo': vehiculoData['vehiculo_id'],
-                              });
-
-                          context.read<ChatProvider>().enviarMensaje(
-                            conversacionId: widget.conversacionId,
-                            contenido:
-                                '🚗 Vehículo seleccionado para servicio: ${vehiculoData['marca']} ${vehiculoData['modelo']}',
-                            remitenteId: userId,
-                            receptorId: receptorId,
-                            isMecanicoRemitente: isMecanico,
-                            tipo: 'vehiculo_card',
-                            metadata: vehiculoData,
-                          );
-                        },
-                      ),
+                    _iniciarNuevaReserva(
+                      userId: userId,
+                      isMecanico: isMecanico,
+                      receptorId: receptorId,
                     );
                   },
                 ),
-              ListTile(
-                leading: Icon(Icons.calendar_month, color: colors.primary),
-                title: Text(context.l10n.chatNewReservation),
-                onTap: () {
-                  Navigator.pop(context);
-                  showModalBottomSheet(
-                    context: context,
-                    backgroundColor: Colors.transparent,
-                    isScrollControlled: true,
-                    builder: (context) => DisponibilidadPicker(
-                      onConfirm: (fecha, hora) async {
-                        final provider = context.read<ChatProvider>();
-                        final reservaProvider = context.read<ReservaProvider>();
-
-                        final vehiculoId =
-                            provider.conversaciones
-                                .where((c) => c.id == widget.conversacionId)
-                                .firstOrNull
-                                ?.idVehiculo ??
-                            '';
-
-                        int h = 12;
-                        int m = 0;
-                        try {
-                          final timeParts = hora.split(' ');
-                          final time = timeParts[0].split(':');
-                          h = int.parse(time[0]);
-                          m = int.parse(time[1]);
-                          if (timeParts.length > 1 &&
-                              timeParts[1].toLowerCase() == 'pm' &&
-                              h < 12) {
-                            h += 12;
-                          }
-                          if (timeParts.length > 1 &&
-                              timeParts[1].toLowerCase() == 'am' &&
-                              h == 12) {
-                            h = 0;
-                          }
-                        } catch (e) {
-                          // Ignore parsing errors and use default time
-                        }
-
-                        final fechaHora = DateTime(
-                          fecha.year,
-                          fecha.month,
-                          fecha.day,
-                          h,
-                          m,
-                        );
-
-                        final reserva = ReservaModel(
-                          id: '',
-                          idConversacion: widget.conversacionId,
-                          idPropietario: isMecanico ? receptorId : userId,
-                          idMecanico: isMecanico ? userId : receptorId,
-                          idVehiculo: vehiculoId,
-                          idTaller: isMecanico ? userId : receptorId,
-                          fechaHoraPropuesta: fechaHora,
-                          tipoServicio: 'Cita General',
-                          estado: 'pendiente',
-                          fechaCreacion: DateTime.now(),
-                        );
-
-                        final reservaId = await reservaProvider
-                            .solicitarReserva(reserva);
-
-                        provider.enviarMensaje(
-                          conversacionId: widget.conversacionId,
-                          contenido:
-                              '📅 Propuesta de cita: \nFecha: ${fecha.day}/${fecha.month}/${fecha.year}\nHora: $hora',
-                          remitenteId: userId,
-                          receptorId: receptorId,
-                          isMecanicoRemitente: isMecanico,
-                          tipo: 'reserva_card',
-                          metadata: {
-                            'id_reserva': reservaId,
-                            'fecha': fecha.toIso8601String(),
-                            'hora': hora,
-                            'estado': 'pendiente',
-                          },
-                        );
-                      },
-                    ),
-                  );
-                },
-              ),
               if (isMecanico) ...[
                 ListTile(
                   leading: Icon(Icons.request_quote, color: colors.secondary),
                   title: Text(context.l10n.chatSendQuote),
                   onTap: () {
                     Navigator.pop(context);
+                    final mechanicUser = context
+                        .read<UserProfileProvider>()
+                        .userData;
+                    if (!isMechanicProfileComplete(mechanicUser)) {
+                      _showProfileIncompleteDialog(context, mechanicUser);
+                      return;
+                    }
                     showModalBottomSheet(
                       context: context,
                       backgroundColor: Colors.transparent,
                       isScrollControlled: true,
                       builder: (context) => CotizacionPicker(
-                        onConfirm:
-                            (descripcion, total, manoDeObra, materiales) async {
-                              final provider = context.read<ChatProvider>();
+                        onConfirm: (items, fechaPropuesta) async {
+                          final provider = context.read<ChatProvider>();
 
-                              // Guardar cotización en la base de datos
-                              final cotizacion = CotizacionModel(
-                                id: '',
-                                idPropietario: receptorId,
-                                idMecanico: userId,
-                                idVehiculo: provider.conversaciones
-                                    .where((c) => c.id == widget.conversacionId)
-                                    .firstOrNull
-                                    ?.idVehiculo,
-                                idTaller: userId,
-                                descripcion: descripcion,
-                                total: total,
-                                fecha: DateTime.now(),
-                                manoDeObra: manoDeObra,
-                                materiales: materiales,
-                              );
+                          // Guardar cotización en la base de datos
+                          final cotizacion = CotizacionModel(
+                            id: '',
+                            idPropietario: receptorId,
+                            idMecanico: userId,
+                            idVehiculo: provider.conversaciones
+                                .where((c) => c.id == widget.conversacionId)
+                                .firstOrNull
+                                ?.idVehiculo,
+                            idTaller: userId,
+                            items: items,
+                            fechaPropuesta: fechaPropuesta,
+                            fecha: DateTime.now(),
+                          );
 
-                              final cotizacionId = await provider
-                                  .crearCotizacion(cotizacion);
+                          final cotizacionId = await provider.crearCotizacion(
+                            cotizacion,
+                          );
 
-                              provider.enviarMensaje(
-                                conversacionId: widget.conversacionId,
-                                contenido:
-                                    'He creado una nueva cotización para tu vehículo.',
-                                remitenteId: userId,
-                                receptorId: receptorId,
-                                isMecanicoRemitente: isMecanico,
-                                tipo: 'cotizacion_card',
-                                metadata: {
-                                  'id_cotizacion': cotizacionId,
-                                  'descripcion': descripcion,
-                                  'total': total,
-                                  'estado': 'pendiente',
-                                  'manoDeObra': ?manoDeObra,
-                                  'materiales': ?materiales,
-                                },
-                              );
+                          await provider.enviarMensaje(
+                            conversacionId: widget.conversacionId,
+                            contenido:
+                                'He creado una nueva cotización para tu vehículo.',
+                            remitenteId: userId,
+                            receptorId: receptorId,
+                            isMecanicoRemitente: isMecanico,
+                            tipo: 'cotizacion_card',
+                            metadata: {
+                              'id_cotizacion': cotizacionId,
+                              'estado': 'pendiente',
                             },
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: Icon(Icons.star, color: colors.warning),
-                  title: Text(context.l10n.chatRequestRating),
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.read<ChatProvider>().enviarMensaje(
-                      conversacionId: widget.conversacionId,
-                      contenido:
-                          '¡Servicio Finalizado! Por favor déjanos tu reseña.',
-                      remitenteId: userId,
-                      receptorId: receptorId,
-                      isMecanicoRemitente: isMecanico,
-                      tipo: 'review_card',
-                      metadata: {'estado': 'pendiente'},
                     );
                   },
                 ),
