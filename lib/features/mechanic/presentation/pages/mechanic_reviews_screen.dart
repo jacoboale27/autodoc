@@ -385,6 +385,75 @@ class MechanicReviewsScreen extends StatelessWidget {
                                                     ),
                                                   ),
                                                 ],
+                                                if (r.respuestaTaller != null)
+                                                  Container(
+                                                    margin:
+                                                        const EdgeInsets.only(
+                                                          top: 8,
+                                                          left: 16,
+                                                        ),
+                                                    padding:
+                                                        const EdgeInsets.all(8),
+                                                    decoration: BoxDecoration(
+                                                      color: colors.primary
+                                                          .withValues(
+                                                            alpha: 0.08,
+                                                          ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8,
+                                                          ),
+                                                    ),
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Text(
+                                                          'Respuesta del taller',
+                                                          style:
+                                                              GoogleFonts.inter(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                color: colors
+                                                                    .primary,
+                                                              ),
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 4,
+                                                        ),
+                                                        Text(
+                                                          r.respuestaTaller!['texto']
+                                                              as String,
+                                                          style:
+                                                              GoogleFonts.inter(
+                                                                color: colors
+                                                                    .textPrimary,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  )
+                                                else
+                                                  Align(
+                                                    alignment:
+                                                        Alignment.centerLeft,
+                                                    child: TextButton.icon(
+                                                      icon: const Icon(
+                                                        Icons.reply,
+                                                      ),
+                                                      label: const Text(
+                                                        'Responder',
+                                                      ),
+                                                      onPressed: () =>
+                                                          _mostrarDialogoResponder(
+                                                            context,
+                                                            reviewService,
+                                                            r,
+                                                          ),
+                                                    ),
+                                                  ),
                                               ],
                                             ),
                                           );
@@ -407,6 +476,59 @@ class MechanicReviewsScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _mostrarDialogoResponder(
+    BuildContext context,
+    ReviewService reviewService,
+    ReviewModel review,
+  ) async {
+    final controller = TextEditingController();
+    final texto = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Responder a la reseña'),
+        content: TextField(
+          controller: controller,
+          maxLines: 3,
+          maxLength: 300,
+          decoration: const InputDecoration(
+            hintText: 'Ej. Gracias por tu confianza...',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Publicar'),
+          ),
+        ],
+      ),
+    );
+
+    if (texto == null || texto.trim().isEmpty) return;
+
+    try {
+      await reviewService.responderResenia(
+        reviewId: review.idResenia,
+        tallerId: review.idTaller,
+        texto: texto,
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Respuesta publicada')));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
   }
 
   Widget _buildDistribution(
