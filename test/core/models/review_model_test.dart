@@ -54,5 +54,44 @@ void main() {
         // Method not found, safely ignore
       }
     });
+
+    test('fromMap/toMap conservan fotos y respuestaTaller', () {
+      final ahora = DateTime(2026, 7, 31, 10, 0);
+      final model = ReviewModel(
+        idResenia: 'r1',
+        idUsuario: 'u1',
+        idTaller: 't1',
+        idServicio: 's1',
+        estrellas: 5,
+        comentario: 'Excelente servicio',
+        fechaResenia: ahora,
+        fotos: const ['https://example.com/foto1.jpg'],
+        respuestaTaller: {'texto': 'Gracias por tu confianza', 'fecha': ahora},
+      );
+
+      final map = model.toMap();
+      expect(map['fotos'], ['https://example.com/foto1.jpg']);
+      expect(map['respuesta_taller']['texto'], 'Gracias por tu confianza');
+
+      final restored = ReviewModel.fromMap(map, 'r1');
+      expect(restored.fotos, ['https://example.com/foto1.jpg']);
+      expect(restored.respuestaTaller?['texto'], 'Gracias por tu confianza');
+    });
+
+    test(
+      'fotos y respuestaTaller son opcionales (retrocompatibilidad con reseñas antiguas)',
+      () {
+        final restored = ReviewModel.fromMap({
+          'id_usuario': 'u1',
+          'id_taller': 't1',
+          'id_servicio': 's1',
+          'estrellas': 4,
+          'fecha_resenia': null,
+        }, 'r2');
+
+        expect(restored.fotos, isEmpty);
+        expect(restored.respuestaTaller, isNull);
+      },
+    );
   });
 }
