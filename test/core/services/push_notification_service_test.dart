@@ -15,7 +15,7 @@ void main() {
       final mockDoc = MockDocumentReference<Map<String, dynamic>>();
 
       when(mockMessaging.getToken()).thenAnswer((_) async => 'test_token');
-      when(mockFirestore.collection('Usuarios')).thenReturn(mockCollection);
+      when(mockFirestore.collection('usuarios')).thenReturn(mockCollection);
       when(mockCollection.doc('user123')).thenReturn(mockDoc);
       when(mockDoc.set(any, any)).thenAnswer((_) async {});
 
@@ -26,7 +26,7 @@ void main() {
 
       await service.updateUserToken('user123');
 
-      verify(mockFirestore.collection('Usuarios')).called(1);
+      verify(mockFirestore.collection('usuarios')).called(1);
       verify(mockCollection.doc('user123')).called(1);
       verify(mockDoc.set({'fcmToken': 'test_token'}, any)).called(1);
     });
