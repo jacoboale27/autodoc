@@ -7,12 +7,22 @@ import '../../../../core/models/review_model.dart';
 import '../../../../core/models/admin_log_model.dart';
 import '../repositories/admin_repository.dart';
 import '../../../../core/constants/firestore_collections.dart';
+import '../../../../core/utils/role_utils.dart';
 
 class AdminService {
   final AdminRepository _repository;
+  final FirebaseFirestore? _firestoreOverride;
 
-  AdminService({AdminRepository? repository})
-    : _repository = repository ?? AdminRepository();
+  /// Se resuelve de forma perezosa (no en el constructor) para no forzar
+  /// `FirebaseFirestore.instance` -y por tanto `Firebase.initializeApp()`-
+  /// en tests que no pasan un `firestore` explícito y nunca llegan a usar
+  /// `watchDashboardMetrics()`.
+  FirebaseFirestore get _firestore =>
+      _firestoreOverride ?? FirebaseFirestore.instance;
+
+  AdminService({AdminRepository? repository, FirebaseFirestore? firestore})
+    : _repository = repository ?? AdminRepository(),
+      _firestoreOverride = firestore;
   final _uuid = const Uuid();
 
   Future<void> _logAction(
@@ -60,7 +70,11 @@ class AdminService {
     String targetUid,
     String motivo,
   ) async {
-    await _repository.updateUsuarioEstado(targetUid, 'suspendido');
+    await _repository.suspenderCuenta(
+      coleccion: FirestoreCollections.usuarios,
+      docId: targetUid,
+      motivo: motivo,
+    );
     await _logAction(
       adminUid,
       'SUSPENDER_USUARIO',
@@ -71,7 +85,10 @@ class AdminService {
   }
 
   Future<void> reactivarUsuario(String adminUid, String targetUid) async {
-    await _repository.updateUsuarioEstado(targetUid, 'activo');
+    await _repository.reactivarCuenta(
+      coleccion: FirestoreCollections.usuarios,
+      docId: targetUid,
+    );
     await _logAction(
       adminUid,
       'REACTIVAR_USUARIO',
@@ -101,8 +118,20 @@ class AdminService {
     return await _repository.getTalleres();
   }
 
+  // NOTA IMPORTANTE: `talleres/{idTaller}` es una proyeccion de solo lectura
+  // de `usuarios/{idTaller}` (mismo uid), mantenida por la Cloud Function
+  // `publishTallerProfile` (`onWrite` sobre `usuarios/{uid}`, con
+  // `set(..., {merge:false})`). Escribir directamente en `talleres` aqui
+  // quedaria silenciosamente revertido la proxima vez que `usuarios/{uid}`
+  // se escriba por cualquier motivo (edicion de perfil, `aggregateRatings`,
+  // etc.), y ademas no afecta el acceso real a la app: `firestore.rules`
+  // valida `isMecanico()` leyendo `usuarios/{uid}.estado`, no
+  // `talleres/{uid}.estado`. Por eso los 4 metodos de abajo escriben en
+  // `usuarios` usando `idTaller` como uid (es el mismo doc), igual que
+  // `aprobarUsuario`/`suspenderUsuario`/`reactivarUsuario`, y dejan que
+  // `publishTallerProfile` propague el cambio a `talleres`.
   Future<void> aprobarTaller(String adminUid, String idTaller) async {
-    await _repository.updateTallerEstado(idTaller, 'aprobado');
+    await _repository.updateUsuarioEstado(idTaller, 'aprobado');
     await _logAction(
       adminUid,
       'APROBAR_TALLER',
@@ -113,7 +142,7 @@ class AdminService {
   }
 
   Future<void> rechazarTaller(String adminUid, String idTaller) async {
-    await _repository.updateTallerEstado(idTaller, 'rechazado');
+    await _repository.updateUsuarioEstado(idTaller, 'rechazado');
     await _logAction(
       adminUid,
       'RECHAZAR_TALLER',
@@ -128,7 +157,11 @@ class AdminService {
     String idTaller,
     String motivo,
   ) async {
-    await _repository.updateTallerEstado(idTaller, 'suspendido');
+    await _repository.suspenderCuenta(
+      coleccion: FirestoreCollections.usuarios,
+      docId: idTaller,
+      motivo: motivo,
+    );
     await _logAction(
       adminUid,
       'SUSPENDER_TALLER',
@@ -139,7 +172,11 @@ class AdminService {
   }
 
   Future<void> reactivarTaller(String adminUid, String idTaller) async {
-    await _repository.updateTallerEstado(idTaller, 'aprobado');
+    await _repository.reactivarCuenta(
+      coleccion: FirestoreCollections.usuarios,
+      docId: idTaller,
+      estadoActivo: 'aprobado',
+    );
     await _logAction(
       adminUid,
       'REACTIVAR_TALLER',
@@ -170,6 +207,17 @@ class AdminService {
     return idTaller;
   }
 
+  Future<void> descartarReporte(String adminUid, String idResenia) async {
+    await _repository.descartarReporte(idResenia);
+    await _logAction(
+      adminUid,
+      'DESCARTAR_REPORTE_RESENIA',
+      'Resenias',
+      idResenia,
+      'Reporte descartado tras revisión',
+    );
+  }
+
   // Logs
   Future<List<AdminLogModel>> fetchLogs({int limit = 50}) async {
     return await _repository.getLogs(limit: limit);
@@ -188,6 +236,8 @@ class AdminService {
       'alertas': 0,
       'resenias': 0,
       'serviciosPorMes': <String, int>{},
+      'usuariosPorMes': <String, int>{},
+      'talleresPorMes': <String, int>{},
     };
 
     void updateMetrics() {
@@ -197,7 +247,7 @@ class AdminService {
     }
 
     void startListening() {
-      final fs = FirebaseFirestore.instance;
+      final fs = _firestore;
 
       subscriptions.add(
         fs.collection(FirestoreCollections.usuarios).snapshots().listen((snap) {
@@ -255,14 +305,17 @@ class AdminService {
               final Map<String, int> serviciosPorMes = {};
               for (int i = 0; i < 6; i++) {
                 final mes = DateTime(now.year, now.month - i, 1);
-                serviciosPorMes['${mes.year}-${mes.month}'] = 0;
+                final key =
+                    '${mes.year}-${mes.month.toString().padLeft(2, '0')}';
+                serviciosPorMes[key] = 0;
               }
 
               for (var doc in snap.docs) {
                 final data = doc.data();
                 if (data['fecha'] != null) {
                   final date = (data['fecha'] as Timestamp).toDate();
-                  final key = '${date.year}-${date.month}';
+                  final key =
+                      '${date.year}-${date.month.toString().padLeft(2, '0')}';
                   if (serviciosPorMes.containsKey(key)) {
                     serviciosPorMes[key] = (serviciosPorMes[key] ?? 0) + 1;
                   }
@@ -270,6 +323,51 @@ class AdminService {
               }
 
               metrics['serviciosPorMes'] = serviciosPorMes;
+              updateMetrics();
+            }),
+      );
+
+      // usuariosPorMes / talleresPorMes: una sola lectura de `usuarios`
+      // (filtrada a los ultimos 6 meses) reutilizada para ambos mapas, en
+      // vez de duplicar la query.
+      subscriptions.add(
+        fs
+            .collection(FirestoreCollections.usuarios)
+            .where(
+              'fecha_registro',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(seisMesesAtras),
+            )
+            .snapshots()
+            .listen((snap) {
+              final Map<String, int> usuariosPorMes = {};
+              final Map<String, int> talleresPorMes = {};
+              for (int i = 0; i < 6; i++) {
+                final mes = DateTime(now.year, now.month - i, 1);
+                final key =
+                    '${mes.year}-${mes.month.toString().padLeft(2, '0')}';
+                usuariosPorMes[key] = 0;
+                talleresPorMes[key] = 0;
+              }
+
+              for (var doc in snap.docs) {
+                final data = doc.data();
+                final fechaRaw = data['fecha_registro'];
+                if (fechaRaw == null) continue;
+                final date = (fechaRaw as Timestamp).toDate();
+                final key =
+                    '${date.year}-${date.month.toString().padLeft(2, '0')}';
+                if (usuariosPorMes.containsKey(key)) {
+                  usuariosPorMes[key] = (usuariosPorMes[key] ?? 0) + 1;
+                }
+
+                if (isMechanicRole(data['rol'] as String?) &&
+                    talleresPorMes.containsKey(key)) {
+                  talleresPorMes[key] = (talleresPorMes[key] ?? 0) + 1;
+                }
+              }
+
+              metrics['usuariosPorMes'] = usuariosPorMes;
+              metrics['talleresPorMes'] = talleresPorMes;
               updateMetrics();
             }),
       );

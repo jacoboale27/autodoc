@@ -5,16 +5,19 @@ import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 
-class ServicesTrendChart extends StatelessWidget {
-  final Map<String, int> serviciosPorMes;
+/// Gráfico de línea que muestra el crecimiento de usuarios registrados
+/// por mes, a partir del mapa `usuariosPorMes` producido por
+/// `AdminService.watchDashboardMetrics()`.
+class UserGrowthChart extends StatelessWidget {
+  final Map<String, int> dataPorMes;
 
-  const ServicesTrendChart({super.key, required this.serviciosPorMes});
+  const UserGrowthChart({super.key, required this.dataPorMes});
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
 
-    if (serviciosPorMes.isEmpty) {
+    if (dataPorMes.isEmpty) {
       return AppCard(
         padding: const EdgeInsets.all(24),
         child: Center(child: Text(context.l10n.adminNoTrendData)),
@@ -25,17 +28,13 @@ class ServicesTrendChart extends StatelessWidget {
     List<String> monthsOrder = [];
     for (int i = 5; i >= 0; i--) {
       final date = DateTime(now.year, now.month - i, 1);
-      // Debe coincidir con el formato zero-padded (p.ej. "2026-07") que usa
-      // AdminService.watchDashboardMetrics() al construir serviciosPorMes;
-      // una discrepancia aqui hace que el grafico muestre 0 para los meses
-      // 1-9 (ver commit c8db6bb).
       monthsOrder.add('${date.year}-${date.month.toString().padLeft(2, '0')}');
     }
 
     final spots = monthsOrder.asMap().entries.map((entry) {
       final index = entry.key.toDouble();
       final key = entry.value;
-      final value = (serviciosPorMes[key] ?? 0).toDouble();
+      final value = (dataPorMes[key] ?? 0).toDouble();
       return FlSpot(index, value);
     }).toList();
 
@@ -45,7 +44,7 @@ class ServicesTrendChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Tendencia de Servicios (Últimos 6 meses)',
+            'Crecimiento de Usuarios (Últimos 6 meses)',
             style: GoogleFonts.inter(
               fontSize: 18,
               fontWeight: FontWeight.bold,

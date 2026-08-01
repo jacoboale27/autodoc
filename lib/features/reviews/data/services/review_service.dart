@@ -1,9 +1,38 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/models/review_model.dart';
 import '../../../../core/constants/firestore_collections.dart';
+import '../../../../core/constants/storage_paths.dart';
+
+enum ReviewSortOrder { recientes, masAltas, masBajas }
+
+/// Función pura y testeable: ordena una lista de reseñas según el criterio
+/// dado sin mutar la lista original.
+List<ReviewModel> ordenarResenias(
+  List<ReviewModel> resenias,
+  ReviewSortOrder orden,
+) {
+  final copia = List<ReviewModel>.from(resenias);
+  switch (orden) {
+    case ReviewSortOrder.recientes:
+      copia.sort((a, b) => b.fechaResenia.compareTo(a.fechaResenia));
+      break;
+    case ReviewSortOrder.masAltas:
+      copia.sort((a, b) => b.estrellas.compareTo(a.estrellas));
+      break;
+    case ReviewSortOrder.masBajas:
+      copia.sort((a, b) => a.estrellas.compareTo(b.estrellas));
+      break;
+  }
+  return copia;
+}
 
 class ReviewService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  ReviewService({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
+
+  final FirebaseFirestore _firestore;
 
   CollectionReference<Map<String, dynamic>> get _resenias =>
       _firestore.collection(FirestoreCollections.resenias);
@@ -38,8 +67,7 @@ class ReviewService {
       final list = snapshot.docs
           .map((doc) => ReviewModel.fromMap(doc.data(), doc.id))
           .toList();
-      list.sort((a, b) => b.fechaResenia.compareTo(a.fechaResenia));
-      return list;
+      return ordenarResenias(list, ReviewSortOrder.recientes);
     });
   }
 
@@ -102,6 +130,7 @@ class ReviewService {
     required String idServicio,
     required int estrellas,
     String? comentario,
+    List<String> fotos = const [],
   }) async {
     if (estrellas < 1 || estrellas > 5) {
       throw ArgumentError('La calificación debe estar entre 1 y 5 estrellas.');
@@ -152,6 +181,7 @@ class ReviewService {
           ? null
           : comentario?.trim(),
       fechaResenia: DateTime.now(),
+      fotos: fotos,
     );
 
     try {
@@ -205,8 +235,56 @@ class ReviewService {
     // aggregateRatings (Cloud Function) recalcula el promedio en el backend.
   }
 
+  Future<void> responderResenia({
+    required String reviewId,
+    required String tallerId,
+    required String texto,
+  }) async {
+    final textoLimpio = texto.trim();
+    if (textoLimpio.isEmpty) {
+      throw ArgumentError('La respuesta no puede estar vacía.');
+    }
+
+    final docRef = _resenias.doc(reviewId);
+    try {
+      await docRef.update({
+        'respuesta_taller': {
+          'texto': textoLimpio,
+          'fecha': FieldValue.serverTimestamp(),
+        },
+      });
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw StateError(
+          'No se pudo publicar la respuesta: verifica que esta reseña pertenezca a tu taller.',
+        );
+      }
+      rethrow;
+    }
+  }
+
   Future<void> reportReview(String reviewId) async {
     final docRef = _resenias.doc(reviewId);
     await docRef.update({'is_reported': true});
+  }
+
+  Future<List<String>> subirFotosResenia(
+    String idServicio,
+    List<XFile> fotos,
+  ) async {
+    final urls = <String>[];
+    for (final foto in fotos) {
+      final fileName =
+          '${DateTime.now().millisecondsSinceEpoch}_${urls.length}.jpg';
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child(StoragePaths.reseniaFotos)
+          .child(idServicio)
+          .child(fileName);
+      final bytes = await foto.readAsBytes();
+      await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+      urls.add(await ref.getDownloadURL());
+    }
+    return urls;
   }
 }

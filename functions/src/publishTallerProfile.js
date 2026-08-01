@@ -3,7 +3,7 @@ const admin = require('firebase-admin');
 
 const CAMPOS_PUBLICOS = [
   'nombre', 'especialidad', 'ubicacion', 'direccion', 'foto_url',
-  'calificacion_promedio', 'total_resenias', 'estado',
+  'calificacion_promedio', 'total_resenias', 'estado', 'departamento',
 ];
 
 function esMecanico(rol) {

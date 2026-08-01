@@ -9,6 +9,8 @@ class ReviewModel {
   final String? comentario;
   final DateTime fechaResenia;
   final bool isReported;
+  final List<String> fotos;
+  final Map<String, dynamic>? respuestaTaller;
 
   ReviewModel({
     required this.idResenia,
@@ -19,6 +21,8 @@ class ReviewModel {
     this.comentario,
     required this.fechaResenia,
     this.isReported = false,
+    this.fotos = const [],
+    this.respuestaTaller,
   });
 
   ReviewModel copyWith({
@@ -30,6 +34,8 @@ class ReviewModel {
     String? comentario,
     DateTime? fechaResenia,
     bool? isReported,
+    List<String>? fotos,
+    Map<String, dynamic>? respuestaTaller,
   }) {
     return ReviewModel(
       idResenia: idResenia ?? this.idResenia,
@@ -40,6 +46,8 @@ class ReviewModel {
       comentario: comentario ?? this.comentario,
       fechaResenia: fechaResenia ?? this.fechaResenia,
       isReported: isReported ?? this.isReported,
+      fotos: fotos ?? this.fotos,
+      respuestaTaller: respuestaTaller ?? this.respuestaTaller,
     );
   }
 
@@ -53,10 +61,27 @@ class ReviewModel {
       'comentario': comentario,
       'fecha_resenia': Timestamp.fromDate(fechaResenia),
       'is_reported': isReported,
+      'fotos': fotos,
+      if (respuestaTaller != null)
+        'respuesta_taller': {
+          'texto': respuestaTaller!['texto'],
+          'fecha': respuestaTaller!['fecha'] is DateTime
+              ? Timestamp.fromDate(respuestaTaller!['fecha'] as DateTime)
+              : respuestaTaller!['fecha'],
+        },
     };
   }
 
   factory ReviewModel.fromMap(Map<String, dynamic> map, String documentId) {
+    Map<String, dynamic>? parseRespuesta(dynamic v) {
+      if (v is! Map) return null;
+      final fecha = v['fecha'];
+      return {
+        'texto': (v['texto'] ?? '').toString(),
+        'fecha': fecha is Timestamp ? fecha.toDate() : fecha,
+      };
+    }
+
     return ReviewModel(
       idResenia: map['id_resenia'] ?? documentId,
       idUsuario: map['id_usuario'] ?? '',
@@ -67,6 +92,10 @@ class ReviewModel {
       fechaResenia:
           (map['fecha_resenia'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isReported: map['is_reported'] ?? false,
+      fotos: (map['fotos'] as List<dynamic>? ?? [])
+          .map((e) => e.toString())
+          .toList(),
+      respuestaTaller: parseRespuesta(map['respuesta_taller']),
     );
   }
 }

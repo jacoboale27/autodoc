@@ -6,10 +6,12 @@ import '../providers/admin_provider.dart';
 import '../widgets/taller_admin_card.dart';
 import '../widgets/admin_sidebar.dart';
 import '../widgets/mecanico_admin_card.dart';
+import 'package:autodoc/core/models/workshop_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
+import 'package:autodoc/core/utils/csv_export_util.dart';
 
 class AdminTalleresScreen extends StatefulWidget {
   const AdminTalleresScreen({super.key});
@@ -18,9 +20,52 @@ class AdminTalleresScreen extends StatefulWidget {
   State<AdminTalleresScreen> createState() => _AdminTalleresScreenState();
 }
 
+/// Filtra la lista de talleres combinando (AND) estado, texto de búsqueda,
+/// municipio, departamento y especialidad. Función pura y top-level para
+/// que sea testeable de forma aislada; es el único punto de filtrado que
+/// consumen tanto la lista visible como la exportación CSV.
+List<WorkshopModel> filtrarTalleres(
+  List<WorkshopModel> talleres, {
+  String? estado,
+  String? busqueda,
+  String? municipio,
+  String? departamento,
+  String? especialidad,
+}) {
+  return talleres.where((t) {
+    if (estado != null && estado != 'todos' && t.estado != estado) {
+      return false;
+    }
+    if (busqueda != null &&
+        busqueda.isNotEmpty &&
+        !t.nombre.toLowerCase().contains(busqueda.toLowerCase())) {
+      return false;
+    }
+    if (municipio != null &&
+        municipio.isNotEmpty &&
+        t.ubicacionMunicipio != municipio) {
+      return false;
+    }
+    if (departamento != null &&
+        departamento.isNotEmpty &&
+        t.departamento != departamento) {
+      return false;
+    }
+    if (especialidad != null &&
+        especialidad.isNotEmpty &&
+        t.especialidad != especialidad) {
+      return false;
+    }
+    return true;
+  }).toList();
+}
+
 class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
   String _filterStatus = 'todos';
   String _searchQuery = '';
+  String? _filterMunicipio;
+  String? _filterDepartamento;
+  String? _filterEspecialidad;
 
   @override
   void initState() {
@@ -58,6 +103,64 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
     );
   }
 
+  List<WorkshopModel> _aplicarFiltros(List<WorkshopModel> talleres) {
+    return filtrarTalleres(
+      talleres,
+      estado: _filterStatus,
+      busqueda: _searchQuery,
+      municipio: _filterMunicipio,
+      departamento: _filterDepartamento,
+      especialidad: _filterEspecialidad,
+    );
+  }
+
+  Future<void> _exportarTalleresCsv(List<WorkshopModel> talleres) async {
+    final filtrados = _aplicarFiltros(talleres);
+    if (filtrados.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No hay talleres para exportar con los filtros actuales',
+          ),
+        ),
+      );
+      return;
+    }
+    final csv = buildCsv(
+      [
+        'Nombre',
+        'Municipio',
+        'Departamento',
+        'Especialidad',
+        'Estado',
+        'Calificación promedio',
+      ],
+      [
+        for (final t in filtrados)
+          [
+            t.nombre,
+            t.ubicacionMunicipio ?? '',
+            t.departamento ?? '',
+            t.especialidad ?? '',
+            t.estado,
+            t.calificacionPromedio.toStringAsFixed(1),
+          ],
+      ],
+    );
+    await downloadCsv(
+      'talleres_${DateTime.now().millisecondsSinceEpoch}.csv',
+      csv,
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${filtrados.length} talleres exportados a CSV.'),
+          action: SnackBarAction(label: 'OK', onPressed: () {}),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AdminProvider>();
@@ -70,18 +173,19 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
           m.correo.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
 
-    final talleresFiltrados = provider.talleres.where((t) {
-      final matchStatus = _filterStatus == 'todos' || t.estado == _filterStatus;
-      final matchSearch = t.nombre.toLowerCase().contains(
-        _searchQuery.toLowerCase(),
-      );
-      return matchStatus && matchSearch;
-    }).toList();
+    final talleresFiltrados = _aplicarFiltros(provider.talleres);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(context.l10n.adminManageWorkshops),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download_rounded),
+            tooltip: 'Exportar CSV',
+            onPressed: () => _exportarTalleresCsv(provider.talleres),
+          ),
+        ],
       ),
       drawer: const AdminSidebar(),
       body: provider.isLoading
@@ -93,7 +197,7 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                 slivers: [
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                       child: TextField(
                         decoration: InputDecoration(
                           labelText: 'Buscar taller / mecánico...',
@@ -105,6 +209,12 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                         onChanged: (value) =>
                             setState(() => _searchQuery = value),
                       ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: _buildFiltrosAvanzados(provider.talleres),
                     ),
                   ),
                   SliverToBoxAdapter(
@@ -266,6 +376,106 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildFiltrosAvanzados(List<WorkshopModel> talleres) {
+    // Municipios: derivados dinámicamente y, si hay un departamento
+    // seleccionado, acotados a los talleres de ese departamento.
+    final talleresParaMunicipio = _filterDepartamento == null
+        ? talleres
+        : talleres.where((t) => t.departamento == _filterDepartamento);
+    final municipios =
+        talleresParaMunicipio
+            .map((t) => t.ubicacionMunicipio)
+            .whereType<String>()
+            .where((m) => m.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+    final departamentos =
+        talleres
+            .map((t) => t.departamento)
+            .whereType<String>()
+            .where((d) => d.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+    final especialidades =
+        talleres
+            .map((t) => t.especialidad)
+            .whereType<String>()
+            .where((e) => e.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+
+    // Si el municipio seleccionado ya no aplica al departamento activo,
+    // se limpia para evitar un filtro imposible de satisfacer.
+    if (_filterMunicipio != null && !municipios.contains(_filterMunicipio)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _filterMunicipio = null);
+      });
+    }
+
+    return Wrap(
+      spacing: 12,
+      runSpacing: 8,
+      children: [
+        SizedBox(
+          width: 220,
+          child: DropdownButtonFormField<String>(
+            initialValue: _filterDepartamento,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+            hint: const Text('Departamento'),
+            items: [null, ...departamentos]
+                .map(
+                  (d) => DropdownMenuItem(value: d, child: Text(d ?? 'Todos')),
+                )
+                .toList(),
+            onChanged: (value) => setState(() => _filterDepartamento = value),
+          ),
+        ),
+        SizedBox(
+          width: 220,
+          child: DropdownButtonFormField<String>(
+            initialValue: municipios.contains(_filterMunicipio)
+                ? _filterMunicipio
+                : null,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+            hint: const Text('Municipio'),
+            items: [null, ...municipios]
+                .map(
+                  (m) => DropdownMenuItem(value: m, child: Text(m ?? 'Todos')),
+                )
+                .toList(),
+            onChanged: (value) => setState(() => _filterMunicipio = value),
+          ),
+        ),
+        SizedBox(
+          width: 220,
+          child: DropdownButtonFormField<String>(
+            initialValue: _filterEspecialidad,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+            hint: const Text('Especialidad'),
+            items: [null, ...especialidades]
+                .map(
+                  (e) => DropdownMenuItem(value: e, child: Text(e ?? 'Todos')),
+                )
+                .toList(),
+            onChanged: (value) => setState(() => _filterEspecialidad = value),
+          ),
+        ),
+      ],
     );
   }
 

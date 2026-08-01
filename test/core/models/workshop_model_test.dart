@@ -46,4 +46,44 @@ void main() {
       }
     });
   });
+
+  group('WorkshopModel.departamento', () {
+    test('fromMap lee departamento cuando está presente', () {
+      final model = WorkshopModel.fromMap({
+        'nombre': 'Taller Central',
+        'ubicacion_municipio': 'San Salvador',
+        'departamento': 'San Salvador',
+        'especialidad': 'Frenos',
+        'estado': 'aprobado',
+      }, 'taller1');
+
+      expect(model.departamento, 'San Salvador');
+    });
+
+    test('fromMap devuelve null si departamento no existe (docs legados)', () {
+      final model = WorkshopModel.fromMap({
+        'nombre': 'Taller Viejo',
+        'ubicacion_municipio': 'Santa Ana',
+        'especialidad': 'Motor',
+        'estado': 'aprobado',
+      }, 'taller2');
+
+      expect(model.departamento, isNull);
+    });
+
+    test('toMap incluye departamento', () {
+      final model = WorkshopModel(
+        idTaller: 'taller1',
+        nombre: 'Taller Central',
+        ubicacionMunicipio: 'San Salvador',
+        departamento: 'San Salvador',
+        especialidad: 'Frenos',
+        telefono: '70000000',
+        calificacionPromedio: 4.5,
+        estado: 'aprobado',
+      );
+
+      expect(model.toMap()['departamento'], 'San Salvador');
+    });
+  });
 }

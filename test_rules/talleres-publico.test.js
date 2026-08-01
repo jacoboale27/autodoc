@@ -120,6 +120,164 @@ describe('datos legitimamente publicos', () => {
       db.collection('resenias').doc('r1').update({ id_usuario: UIDS.owner2 }),
     );
   });
+
+  test('el taller dueño de la resenia SI puede escribir respuesta_taller', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await seed(env, async (s) => {
+      await s.collection('resenias').doc('r1').set({
+        id_resenia: 'r1', id_usuario: UIDS.owner1, id_taller: UIDS.taller1, estrellas: 3,
+        comentario: 'inicial',
+      });
+    });
+    await assertSucceeds(
+      db.collection('resenias').doc('r1').update({ respuesta_taller: 'Gracias por su comentario' }),
+    );
+  });
+
+  test('el taller NO puede tocar el contenido original vía respuesta_taller', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await seed(env, async (s) => {
+      await s.collection('resenias').doc('r1').set({
+        id_resenia: 'r1', id_usuario: UIDS.owner1, id_taller: UIDS.taller1, estrellas: 3,
+        comentario: 'inicial',
+      });
+    });
+    await assertFails(
+      db.collection('resenias').doc('r1').update({
+        respuesta_taller: 'Gracias', estrellas: 5,
+      }),
+    );
+  });
+
+  test('un taller que NO es dueño de la resenia NO puede escribir respuesta_taller', async () => {
+    const db = await withRole(env, UIDS.taller2, 'Taller');
+    await seed(env, async (s) => {
+      await s.collection('resenias').doc('r1').set({
+        id_resenia: 'r1', id_usuario: UIDS.owner1, id_taller: UIDS.taller1, estrellas: 3,
+        comentario: 'inicial',
+      });
+    });
+    await assertFails(
+      db.collection('resenias').doc('r1').update({ respuesta_taller: 'Intento ajeno' }),
+    );
+  });
+
+  test('cualquier usuario autenticado SI puede marcar is_reported=true (bug de reportReview corregido)', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await seed(env, async (s) => {
+      await s.collection('resenias').doc('r1').set({
+        id_resenia: 'r1', id_usuario: UIDS.owner1, id_taller: UIDS.taller2, estrellas: 3,
+        comentario: 'inicial', is_reported: false,
+      });
+    });
+    await assertSucceeds(
+      db.collection('resenias').doc('r1').update({ is_reported: true }),
+    );
+  });
+
+  test('un usuario NO puede des-reportar (is_reported=false) via update', async () => {
+    const db = await withRole(env, UIDS.owner2, 'Propietario');
+    await seed(env, async (s) => {
+      await s.collection('resenias').doc('r1').set({
+        id_resenia: 'r1', id_usuario: UIDS.owner1, id_taller: UIDS.taller1, estrellas: 3,
+        comentario: 'inicial', is_reported: true,
+      });
+    });
+    await assertFails(
+      db.collection('resenias').doc('r1').update({ is_reported: false }),
+    );
+  });
+
+  test('un usuario NO puede combinar is_reported=true con otro campo en el mismo update', async () => {
+    const db = await withRole(env, UIDS.owner2, 'Propietario');
+    await seed(env, async (s) => {
+      await s.collection('resenias').doc('r1').set({
+        id_resenia: 'r1', id_usuario: UIDS.owner1, id_taller: UIDS.taller1, estrellas: 3,
+        comentario: 'inicial', is_reported: false,
+      });
+    });
+    await assertFails(
+      db.collection('resenias').doc('r1').update({ is_reported: true, estrellas: 1 }),
+    );
+  });
+
+  test('el autor SI puede actualizar fotos', async () => {
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await seed(env, async (s) => {
+      await s.collection('resenias').doc('r1').set({
+        id_resenia: 'r1', id_usuario: UIDS.owner1, id_taller: UIDS.taller1, estrellas: 3,
+        comentario: 'inicial',
+      });
+    });
+    await assertSucceeds(
+      db.collection('resenias').doc('r1').update({ fotos: ['https://example.com/foto.jpg'] }),
+    );
+  });
+
+  test('el admin SI puede actualizar una resenia aunque no sea autor ni taller', async () => {
+    const db = await withRole(env, UIDS.admin, 'Administrador');
+    await seed(env, async (s) => {
+      await s.collection('resenias').doc('r1').set({
+        id_resenia: 'r1', id_usuario: UIDS.owner1, id_taller: UIDS.taller1, estrellas: 3,
+        comentario: 'inicial',
+      });
+    });
+    await assertSucceeds(
+      db.collection('resenias').doc('r1').update({ comentario: 'moderado' }),
+    );
+  });
+
+  test('el admin NO puede reasignar id_taller vía update (el override de moderación no es un bypass total)', async () => {
+    const db = await withRole(env, UIDS.admin, 'Administrador');
+    await seed(env, async (s) => {
+      await s.collection('resenias').doc('r1').set({
+        id_resenia: 'r1', id_usuario: UIDS.owner1, id_taller: UIDS.taller1, estrellas: 3,
+        comentario: 'inicial',
+      });
+    });
+    await assertFails(
+      db.collection('resenias').doc('r1').update({ id_taller: UIDS.taller2 }),
+    );
+  });
+
+  test('el admin NO puede reasignar id_usuario vía update', async () => {
+    const db = await withRole(env, UIDS.admin, 'Administrador');
+    await seed(env, async (s) => {
+      await s.collection('resenias').doc('r1').set({
+        id_resenia: 'r1', id_usuario: UIDS.owner1, id_taller: UIDS.taller1, estrellas: 3,
+        comentario: 'inicial',
+      });
+    });
+    await assertFails(
+      db.collection('resenias').doc('r1').update({ id_usuario: UIDS.owner2 }),
+    );
+  });
+
+  test('el admin NO puede reasignar id_servicio vía update', async () => {
+    const db = await withRole(env, UIDS.admin, 'Administrador');
+    await seed(env, async (s) => {
+      await s.collection('resenias').doc('r1').set({
+        id_resenia: 'r1', id_usuario: UIDS.owner1, id_taller: UIDS.taller1, estrellas: 3,
+        comentario: 'inicial', id_servicio: 's1',
+      });
+    });
+    await assertFails(
+      db.collection('resenias').doc('r1').update({ id_servicio: 's2' }),
+    );
+  });
+
+  test('el admin NO puede reasignar id_taller aunque lo combine con un campo de moderación legítimo', async () => {
+    const db = await withRole(env, UIDS.admin, 'Administrador');
+    await seed(env, async (s) => {
+      await s.collection('resenias').doc('r1').set({
+        id_resenia: 'r1', id_usuario: UIDS.owner1, id_taller: UIDS.taller1, estrellas: 3,
+        comentario: 'inicial',
+      });
+    });
+    await assertFails(
+      db.collection('resenias').doc('r1').update({ comentario: 'moderado', id_taller: UIDS.taller2 }),
+    );
+  });
 });
 
 describe('proyeccion de perfil publico', () => {

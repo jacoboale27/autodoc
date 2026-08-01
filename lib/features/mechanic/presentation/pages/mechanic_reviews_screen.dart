@@ -13,8 +13,15 @@ import 'package:autodoc/features/reviews/data/services/review_service.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/widgets/translated_text.dart';
 
-class MechanicReviewsScreen extends StatelessWidget {
+class MechanicReviewsScreen extends StatefulWidget {
   const MechanicReviewsScreen({super.key});
+
+  @override
+  State<MechanicReviewsScreen> createState() => _MechanicReviewsScreenState();
+}
+
+class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
+  ReviewSortOrder _orden = ReviewSortOrder.recientes;
 
   @override
   Widget build(BuildContext context) {
@@ -165,7 +172,11 @@ class MechanicReviewsScreen extends StatelessWidget {
                                   );
                                 }
 
-                                final reviews = snapshot.data ?? [];
+                                final reviewsSinOrdenar = snapshot.data ?? [];
+                                final reviews = ordenarResenias(
+                                  reviewsSinOrdenar,
+                                  _orden,
+                                );
                                 if (reviews.isEmpty) {
                                   return Center(
                                     child: Padding(
@@ -212,6 +223,39 @@ class MechanicReviewsScreen extends StatelessWidget {
                                       reviews,
                                       colors,
                                       context,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: Responsive.padding(
+                                          context,
+                                          24,
+                                        ),
+                                      ),
+                                      child: Align(
+                                        alignment: Alignment.centerRight,
+                                        child: DropdownButton<ReviewSortOrder>(
+                                          value: _orden,
+                                          onChanged: (value) {
+                                            if (value == null) return;
+                                            setState(() => _orden = value);
+                                          },
+                                          items: const [
+                                            DropdownMenuItem(
+                                              value: ReviewSortOrder.recientes,
+                                              child: Text('Más Recientes'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: ReviewSortOrder.masAltas,
+                                              child: Text('Más Altas'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: ReviewSortOrder.masBajas,
+                                              child: Text('Más Bajas'),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                     const SizedBox(height: 16),
                                     Expanded(
@@ -385,6 +429,118 @@ class MechanicReviewsScreen extends StatelessWidget {
                                                     ),
                                                   ),
                                                 ],
+                                                if (r.fotos.isNotEmpty) ...[
+                                                  const SizedBox(height: 12),
+                                                  Wrap(
+                                                    spacing: 8,
+                                                    runSpacing: 8,
+                                                    children: [
+                                                      for (final url in r.fotos)
+                                                        ClipRRect(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                8,
+                                                              ),
+                                                          child: Image.network(
+                                                            url,
+                                                            width: 64,
+                                                            height: 64,
+                                                            fit: BoxFit.cover,
+                                                            errorBuilder:
+                                                                (
+                                                                  context,
+                                                                  error,
+                                                                  stack,
+                                                                ) => Container(
+                                                                  width: 64,
+                                                                  height: 64,
+                                                                  color: colors
+                                                                      .textSecondary
+                                                                      .withValues(
+                                                                        alpha:
+                                                                            0.1,
+                                                                      ),
+                                                                  child: Icon(
+                                                                    Icons
+                                                                        .broken_image_outlined,
+                                                                    color: colors
+                                                                        .textSecondary,
+                                                                  ),
+                                                                ),
+                                                          ),
+                                                        ),
+                                                    ],
+                                                  ),
+                                                ],
+                                                if (r.respuestaTaller != null)
+                                                  Container(
+                                                    margin:
+                                                        const EdgeInsets.only(
+                                                          top: 8,
+                                                          left: 16,
+                                                        ),
+                                                    padding:
+                                                        const EdgeInsets.all(8),
+                                                    decoration: BoxDecoration(
+                                                      color: colors.primary
+                                                          .withValues(
+                                                            alpha: 0.08,
+                                                          ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8,
+                                                          ),
+                                                    ),
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Text(
+                                                          'Respuesta del taller',
+                                                          style:
+                                                              GoogleFonts.inter(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                color: colors
+                                                                    .primary,
+                                                              ),
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 4,
+                                                        ),
+                                                        Text(
+                                                          r.respuestaTaller!['texto']
+                                                              as String,
+                                                          style:
+                                                              GoogleFonts.inter(
+                                                                color: colors
+                                                                    .textPrimary,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  )
+                                                else
+                                                  Align(
+                                                    alignment:
+                                                        Alignment.centerLeft,
+                                                    child: TextButton.icon(
+                                                      icon: const Icon(
+                                                        Icons.reply,
+                                                      ),
+                                                      label: const Text(
+                                                        'Responder',
+                                                      ),
+                                                      onPressed: () =>
+                                                          _mostrarDialogoResponder(
+                                                            context,
+                                                            reviewService,
+                                                            r,
+                                                          ),
+                                                    ),
+                                                  ),
                                               ],
                                             ),
                                           );
@@ -407,6 +563,60 @@ class MechanicReviewsScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _mostrarDialogoResponder(
+    BuildContext context,
+    ReviewService reviewService,
+    ReviewModel review,
+  ) async {
+    final controller = TextEditingController();
+    final texto = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Responder a la reseña'),
+        content: TextField(
+          controller: controller,
+          maxLines: 3,
+          maxLength: 300,
+          decoration: const InputDecoration(
+            hintText: 'Ej. Gracias por tu confianza...',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Publicar'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    if (texto == null || texto.trim().isEmpty) return;
+
+    try {
+      await reviewService.responderResenia(
+        reviewId: review.idResenia,
+        tallerId: review.idTaller,
+        texto: texto,
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Respuesta publicada')));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
   }
 
   Widget _buildDistribution(

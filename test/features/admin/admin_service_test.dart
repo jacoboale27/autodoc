@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:autodoc/features/admin/data/services/admin_service.dart';
 import 'package:autodoc/features/admin/data/repositories/admin_repository.dart';
 import 'package:autodoc/core/models/admin_log_model.dart';
+import 'package:autodoc/core/constants/firestore_collections.dart';
 
 class FakeAdminRepository implements AdminRepository {
   String? lastUpdatedUid;
@@ -20,6 +21,36 @@ class FakeAdminRepository implements AdminRepository {
   Future<void> updateTallerEstado(String idTaller, String nuevoEstado) async {
     lastUpdatedTallerId = idTaller;
     lastUpdatedTallerEstado = nuevoEstado;
+  }
+
+  @override
+  Future<void> suspenderCuenta({
+    required String coleccion,
+    required String docId,
+    required String motivo,
+  }) async {
+    if (coleccion == FirestoreCollections.usuarios) {
+      lastUpdatedUid = docId;
+      lastUpdatedEstado = 'suspendido';
+    } else {
+      lastUpdatedTallerId = docId;
+      lastUpdatedTallerEstado = 'suspendido';
+    }
+  }
+
+  @override
+  Future<void> reactivarCuenta({
+    required String coleccion,
+    required String docId,
+    String estadoActivo = 'activo',
+  }) async {
+    if (coleccion == FirestoreCollections.usuarios) {
+      lastUpdatedUid = docId;
+      lastUpdatedEstado = estadoActivo;
+    } else {
+      lastUpdatedTallerId = docId;
+      lastUpdatedTallerEstado = estadoActivo;
+    }
   }
 
   @override
@@ -70,24 +101,66 @@ void main() {
       expect(fakeRepository.lastLog?.detalle, 'Incumplimiento de normas');
     });
 
-    test('aprobarTaller updates state and logs action', () async {
+    test('aprobarTaller updates usuarios/{uid} (NOT talleres, which is a '
+        'read-only projection kept in sync by publishTallerProfile) and logs '
+        'action', () async {
       await adminService.aprobarTaller('admin1', 'taller1');
 
-      expect(fakeRepository.lastUpdatedTallerId, 'taller1');
-      expect(fakeRepository.lastUpdatedTallerEstado, 'aprobado');
+      expect(
+        fakeRepository.lastUpdatedUid,
+        'taller1',
+        reason:
+            'talleres/{uid} es una proyeccion de solo lectura de '
+            'usuarios/{uid}; escribir en talleres se revierte '
+            'silenciosamente en el proximo write a usuarios.',
+      );
+      expect(fakeRepository.lastUpdatedEstado, 'aprobado');
+      expect(fakeRepository.lastUpdatedTallerId, isNull);
       expect(fakeRepository.lastLog?.adminUid, 'admin1');
       expect(fakeRepository.lastLog?.accion, 'APROBAR_TALLER');
       expect(fakeRepository.lastLog?.detalle, 'Taller verificado y aprobado');
     });
 
-    test('suspenderTaller updates state and logs action', () async {
+    test(
+      'rechazarTaller updates usuarios/{uid} (not talleres) and logs action',
+      () async {
+        await adminService.rechazarTaller('admin1', 'taller1');
+
+        expect(fakeRepository.lastUpdatedUid, 'taller1');
+        expect(fakeRepository.lastUpdatedEstado, 'rechazado');
+        expect(fakeRepository.lastUpdatedTallerId, isNull);
+        expect(fakeRepository.lastLog?.accion, 'RECHAZAR_TALLER');
+      },
+    );
+
+    test('suspenderTaller writes estado=suspendido to usuarios/{uid}, not '
+        'talleres/{uid} (regression test: talleres is a read-only projection '
+        'synced by the publishTallerProfile Cloud Function from usuarios; '
+        'writing to talleres directly gets silently reverted and does not '
+        'restrict app access, since firestore.rules gates isMecanico() on '
+        'usuarios/{uid}.estado)', () async {
       await adminService.suspenderTaller('admin1', 'taller1', 'Falta de pagos');
 
-      expect(fakeRepository.lastUpdatedTallerId, 'taller1');
-      expect(fakeRepository.lastUpdatedTallerEstado, 'suspendido');
+      expect(fakeRepository.lastUpdatedUid, 'taller1');
+      expect(fakeRepository.lastUpdatedEstado, 'suspendido');
+      expect(
+        fakeRepository.lastUpdatedTallerId,
+        isNull,
+        reason: 'suspenderTaller no debe escribir en talleres/{uid}',
+      );
       expect(fakeRepository.lastLog?.adminUid, 'admin1');
       expect(fakeRepository.lastLog?.accion, 'SUSPENDER_TALLER');
       expect(fakeRepository.lastLog?.detalle, 'Falta de pagos');
+    });
+
+    test('reactivarTaller writes estado=aprobado to usuarios/{uid}, not '
+        'talleres/{uid}', () async {
+      await adminService.reactivarTaller('admin1', 'taller1');
+
+      expect(fakeRepository.lastUpdatedUid, 'taller1');
+      expect(fakeRepository.lastUpdatedEstado, 'aprobado');
+      expect(fakeRepository.lastUpdatedTallerId, isNull);
+      expect(fakeRepository.lastLog?.accion, 'REACTIVAR_TALLER');
     });
   });
 }

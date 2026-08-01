@@ -6,7 +6,16 @@ import '../../../../core/models/admin_log_model.dart';
 import '../../../../core/constants/firestore_collections.dart';
 
 class AdminRepository {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore? _firestoreOverride;
+
+  /// Se resuelve de forma perezosa (no en el constructor) para no forzar
+  /// `FirebaseFirestore.instance` -y por tanto `Firebase.initializeApp()`-
+  /// en tests que no pasan un `firestore` explícito.
+  FirebaseFirestore get _firestore =>
+      _firestoreOverride ?? FirebaseFirestore.instance;
+
+  AdminRepository({FirebaseFirestore? firestore})
+    : _firestoreOverride = firestore;
 
   // Usuarios
   Future<List<UserModel>> getUsuarios({int limit = 100}) async {
@@ -63,6 +72,36 @@ class AdminRepository {
         .delete();
   }
 
+  // Moderación genérica (usuarios y talleres comparten el campo `estado`)
+  /// Suspende cualquier cuenta (usuario o taller) marcando `estado =
+  /// 'suspendido'` en la colección indicada. `motivo` no se persiste en el
+  /// documento (solo se usa para el log de auditoría, responsabilidad de la
+  /// capa de servicio); se mantiene como parámetro requerido para que la
+  /// firma documente la intención de la llamada.
+  Future<void> suspenderCuenta({
+    required String coleccion,
+    required String docId,
+    required String motivo,
+  }) async {
+    await _firestore.collection(coleccion).doc(docId).update({
+      'estado': 'suspendido',
+    });
+  }
+
+  /// Reactiva cualquier cuenta (usuario o taller) marcando `estado` de
+  /// vuelta al valor "activo" de esa colección. Usuarios usa `'activo'`;
+  /// talleres usa `'aprobado'` (ver `AdminService.reactivarTaller`), de ahí
+  /// el parámetro `estadoActivo`.
+  Future<void> reactivarCuenta({
+    required String coleccion,
+    required String docId,
+    String estadoActivo = 'activo',
+  }) async {
+    await _firestore.collection(coleccion).doc(docId).update({
+      'estado': estadoActivo,
+    });
+  }
+
   // Reseñas
   Future<List<ReviewModel>> getResenias({int limit = 100}) async {
     final snapshot = await _firestore
@@ -85,6 +124,16 @@ class AdminRepository {
         .doc(idResenia)
         .delete();
     return idTaller;
+  }
+
+  /// Descarta un reporte (falso positivo): vuelve a poner `is_reported` en
+  /// `false` sin borrar la reseña. Permitido por firestore.rules para el
+  /// admin (rama isAdmin(), solo prohibida para id_servicio/id_taller/id_usuario).
+  Future<void> descartarReporte(String idResenia) async {
+    await _firestore
+        .collection(FirestoreCollections.resenias)
+        .doc(idResenia)
+        .update({'is_reported': false});
   }
 
   // Logs

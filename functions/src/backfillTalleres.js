@@ -25,7 +25,7 @@ admin.initializeApp();
 
 const CAMPOS_PUBLICOS = [
   'nombre', 'especialidad', 'ubicacion', 'direccion', 'foto_url',
-  'calificacion_promedio', 'total_resenias', 'estado',
+  'calificacion_promedio', 'total_resenias', 'estado', 'departamento',
 ];
 
 const MAX_POR_BATCH = 500;

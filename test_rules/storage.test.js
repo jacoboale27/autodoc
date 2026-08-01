@@ -128,3 +128,85 @@ describe('storage: aislamiento de facturas', () => {
     );
   });
 });
+
+describe('storage: fotos de resenias', () => {
+  const seedServicio = (id, vehiculoId, tallerId) => seed(env, async (db) => {
+    await db.collection('servicios').doc(id).set({
+      id_vehiculo: vehiculoId,
+      id_taller: tallerId,
+      estado: 'finalizado',
+    });
+  });
+
+  test('el propietario del vehiculo del servicio SI puede subir una foto valida', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedVehiculo('v1', UIDS.owner1);
+    await seedServicio('s1', 'v1', UIDS.taller1);
+    const st = env.authenticatedContext(UIDS.owner1).storage();
+    await assertSucceeds(
+      st.ref('resenia_fotos/s1/foto1.jpg').put(imagen(200), META_JPEG),
+    );
+  });
+
+  test('un usuario que NO es propietario del vehiculo del servicio NO puede subir fotos', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedUsuario(UIDS.owner2, 'Propietario');
+    await seedVehiculo('v1', UIDS.owner1);
+    await seedServicio('s1', 'v1', UIDS.taller1);
+    const st = env.authenticatedContext(UIDS.owner2).storage();
+    await assertFails(
+      st.ref('resenia_fotos/s1/foto1.jpg').put(imagen(200), META_JPEG),
+    );
+  });
+
+  test('rechaza subir fotos a un servicio inexistente', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    const st = env.authenticatedContext(UIDS.owner1).storage();
+    await assertFails(
+      st.ref('resenia_fotos/no-existe/foto1.jpg').put(imagen(200), META_JPEG),
+    );
+  });
+
+  test('rechaza tipos peligrosos en fotos de resenias (SVG/HTML)', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedVehiculo('v1', UIDS.owner1);
+    await seedServicio('s1', 'v1', UIDS.taller1);
+    const st = env.authenticatedContext(UIDS.owner1).storage();
+    await assertFails(
+      st.ref('resenia_fotos/s1/foto1.svg').put(imagen(10), { contentType: 'image/svg+xml' }),
+    );
+  });
+
+  test('cualquier usuario autenticado puede leer fotos de resenias', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedUsuario(UIDS.owner2, 'Propietario');
+    await seedVehiculo('v1', UIDS.owner1);
+    await seedServicio('s1', 'v1', UIDS.taller1);
+    await seed(env, async () => {
+      await env.authenticatedContext(UIDS.owner1).storage()
+        .ref('resenia_fotos/s1/foto1.jpg').put(imagen(200), META_JPEG);
+    });
+    const st = env.authenticatedContext(UIDS.owner2).storage();
+    await assertSucceeds(st.ref('resenia_fotos/s1/foto1.jpg').getDownloadURL());
+  });
+
+  test('un usuario NO admin no puede borrar fotos de resenias', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedVehiculo('v1', UIDS.owner1);
+    await seedServicio('s1', 'v1', UIDS.taller1);
+    const st = env.authenticatedContext(UIDS.owner1).storage();
+    await st.ref('resenia_fotos/s1/foto1.jpg').put(imagen(200), META_JPEG);
+    await assertFails(st.ref('resenia_fotos/s1/foto1.jpg').delete());
+  });
+
+  test('el admin SI puede borrar fotos de resenias', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedUsuario(UIDS.admin, 'Administrador');
+    await seedVehiculo('v1', UIDS.owner1);
+    await seedServicio('s1', 'v1', UIDS.taller1);
+    const owner = env.authenticatedContext(UIDS.owner1).storage();
+    await owner.ref('resenia_fotos/s1/foto1.jpg').put(imagen(200), META_JPEG);
+    const admin = env.authenticatedContext(UIDS.admin).storage();
+    await assertSucceeds(admin.ref('resenia_fotos/s1/foto1.jpg').delete());
+  });
+});
