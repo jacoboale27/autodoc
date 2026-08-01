@@ -70,7 +70,11 @@ class AdminService {
     String targetUid,
     String motivo,
   ) async {
-    await _repository.updateUsuarioEstado(targetUid, 'suspendido');
+    await _repository.suspenderCuenta(
+      coleccion: FirestoreCollections.usuarios,
+      docId: targetUid,
+      motivo: motivo,
+    );
     await _logAction(
       adminUid,
       'SUSPENDER_USUARIO',
@@ -81,7 +85,10 @@ class AdminService {
   }
 
   Future<void> reactivarUsuario(String adminUid, String targetUid) async {
-    await _repository.updateUsuarioEstado(targetUid, 'activo');
+    await _repository.reactivarCuenta(
+      coleccion: FirestoreCollections.usuarios,
+      docId: targetUid,
+    );
     await _logAction(
       adminUid,
       'REACTIVAR_USUARIO',
@@ -138,7 +145,11 @@ class AdminService {
     String idTaller,
     String motivo,
   ) async {
-    await _repository.updateTallerEstado(idTaller, 'suspendido');
+    await _repository.suspenderCuenta(
+      coleccion: FirestoreCollections.talleres,
+      docId: idTaller,
+      motivo: motivo,
+    );
     await _logAction(
       adminUid,
       'SUSPENDER_TALLER',
@@ -149,7 +160,11 @@ class AdminService {
   }
 
   Future<void> reactivarTaller(String adminUid, String idTaller) async {
-    await _repository.updateTallerEstado(idTaller, 'aprobado');
+    await _repository.reactivarCuenta(
+      coleccion: FirestoreCollections.talleres,
+      docId: idTaller,
+      estadoActivo: 'aprobado',
+    );
     await _logAction(
       adminUid,
       'REACTIVAR_TALLER',

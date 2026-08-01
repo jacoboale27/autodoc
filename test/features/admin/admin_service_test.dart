@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:autodoc/features/admin/data/services/admin_service.dart';
 import 'package:autodoc/features/admin/data/repositories/admin_repository.dart';
 import 'package:autodoc/core/models/admin_log_model.dart';
+import 'package:autodoc/core/constants/firestore_collections.dart';
 
 class FakeAdminRepository implements AdminRepository {
   String? lastUpdatedUid;
@@ -20,6 +21,36 @@ class FakeAdminRepository implements AdminRepository {
   Future<void> updateTallerEstado(String idTaller, String nuevoEstado) async {
     lastUpdatedTallerId = idTaller;
     lastUpdatedTallerEstado = nuevoEstado;
+  }
+
+  @override
+  Future<void> suspenderCuenta({
+    required String coleccion,
+    required String docId,
+    required String motivo,
+  }) async {
+    if (coleccion == FirestoreCollections.usuarios) {
+      lastUpdatedUid = docId;
+      lastUpdatedEstado = 'suspendido';
+    } else {
+      lastUpdatedTallerId = docId;
+      lastUpdatedTallerEstado = 'suspendido';
+    }
+  }
+
+  @override
+  Future<void> reactivarCuenta({
+    required String coleccion,
+    required String docId,
+    String estadoActivo = 'activo',
+  }) async {
+    if (coleccion == FirestoreCollections.usuarios) {
+      lastUpdatedUid = docId;
+      lastUpdatedEstado = estadoActivo;
+    } else {
+      lastUpdatedTallerId = docId;
+      lastUpdatedTallerEstado = estadoActivo;
+    }
   }
 
   @override
