@@ -425,7 +425,7 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
         SizedBox(
           width: 220,
           child: DropdownButtonFormField<String>(
-            value: _filterDepartamento,
+            initialValue: _filterDepartamento,
             decoration: const InputDecoration(
               border: OutlineInputBorder(),
               isDense: true,
@@ -442,7 +442,7 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
         SizedBox(
           width: 220,
           child: DropdownButtonFormField<String>(
-            value: municipios.contains(_filterMunicipio)
+            initialValue: municipios.contains(_filterMunicipio)
                 ? _filterMunicipio
                 : null,
             decoration: const InputDecoration(
@@ -461,7 +461,7 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
         SizedBox(
           width: 220,
           child: DropdownButtonFormField<String>(
-            value: _filterEspecialidad,
+            initialValue: _filterEspecialidad,
             decoration: const InputDecoration(
               border: OutlineInputBorder(),
               isDense: true,
