@@ -269,6 +269,10 @@ service cloud.firestore {
       // pero no puede usar ese mismo update para tocar ningun otro campo, ni
       // puede revertirlo a false (solo el admin puede des-reportar, vía delete
       // o mediante el propio panel de moderación que solo expone "eliminar").
+      //
+      // El admin puede moderar (p.ej. corregir comentario) pero, igual que
+      // el autor, no puede reasignar id_servicio/id_taller/id_usuario vía
+      // update: esa reasignación sigue prohibida sin excepción alguna.
       allow update: if isAuthenticated() && (
         (resource.data.id_usuario == request.auth.uid
           && request.resource.data.diff(resource.data)
@@ -279,7 +283,10 @@ service cloud.firestore {
         || (request.resource.data.diff(resource.data)
               .affectedKeys().hasOnly(['is_reported'])
             && request.resource.data.is_reported == true)
-      ) || isAdmin();
+        || (isAdmin()
+          && !request.resource.data.diff(resource.data)
+               .affectedKeys().hasAny(['id_servicio', 'id_taller', 'id_usuario']))
+      );
 
       // El autor original o el administrador (moderación de comentarios ofensivos) pueden eliminarla
       allow delete: if isAuthenticated() && (resource.data.id_usuario == request.auth.uid || isAdmin());

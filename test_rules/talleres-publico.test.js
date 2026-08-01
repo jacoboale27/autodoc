@@ -226,6 +226,58 @@ describe('datos legitimamente publicos', () => {
       db.collection('resenias').doc('r1').update({ comentario: 'moderado' }),
     );
   });
+
+  test('el admin NO puede reasignar id_taller vía update (el override de moderación no es un bypass total)', async () => {
+    const db = await withRole(env, UIDS.admin, 'Administrador');
+    await seed(env, async (s) => {
+      await s.collection('resenias').doc('r1').set({
+        id_resenia: 'r1', id_usuario: UIDS.owner1, id_taller: UIDS.taller1, estrellas: 3,
+        comentario: 'inicial',
+      });
+    });
+    await assertFails(
+      db.collection('resenias').doc('r1').update({ id_taller: UIDS.taller2 }),
+    );
+  });
+
+  test('el admin NO puede reasignar id_usuario vía update', async () => {
+    const db = await withRole(env, UIDS.admin, 'Administrador');
+    await seed(env, async (s) => {
+      await s.collection('resenias').doc('r1').set({
+        id_resenia: 'r1', id_usuario: UIDS.owner1, id_taller: UIDS.taller1, estrellas: 3,
+        comentario: 'inicial',
+      });
+    });
+    await assertFails(
+      db.collection('resenias').doc('r1').update({ id_usuario: UIDS.owner2 }),
+    );
+  });
+
+  test('el admin NO puede reasignar id_servicio vía update', async () => {
+    const db = await withRole(env, UIDS.admin, 'Administrador');
+    await seed(env, async (s) => {
+      await s.collection('resenias').doc('r1').set({
+        id_resenia: 'r1', id_usuario: UIDS.owner1, id_taller: UIDS.taller1, estrellas: 3,
+        comentario: 'inicial', id_servicio: 's1',
+      });
+    });
+    await assertFails(
+      db.collection('resenias').doc('r1').update({ id_servicio: 's2' }),
+    );
+  });
+
+  test('el admin NO puede reasignar id_taller aunque lo combine con un campo de moderación legítimo', async () => {
+    const db = await withRole(env, UIDS.admin, 'Administrador');
+    await seed(env, async (s) => {
+      await s.collection('resenias').doc('r1').set({
+        id_resenia: 'r1', id_usuario: UIDS.owner1, id_taller: UIDS.taller1, estrellas: 3,
+        comentario: 'inicial',
+      });
+    });
+    await assertFails(
+      db.collection('resenias').doc('r1').update({ comentario: 'moderado', id_taller: UIDS.taller2 }),
+    );
+  });
 });
 
 describe('proyeccion de perfil publico', () => {
