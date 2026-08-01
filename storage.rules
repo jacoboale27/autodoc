@@ -53,6 +53,22 @@ service firebase.storage {
           .data.get('talleres_vinculados', []).hasAny([request.auth.uid]);
     }
 
+    // Propietario del vehiculo al que pertenece un servicio dado. Espeja
+    // isOwnFinishedService() de firestore.rules (sin repetir el chequeo de
+    // id_taller, que no aplica aqui): las fotos de una resenia se suben
+    // ANTES de crear el documento de resenia (ver review_sheet.dart#_submit
+    // y ReviewService.subirFotosResenia), por lo que no podemos apoyarnos en
+    // el propio doc de resenia para autorizar. En su lugar autorizamos
+    // directamente contra servicios/{idServicio}.id_vehiculo, igual que
+    // hace el bloque de facturas/{vehicleId} mas abajo.
+    function esPropietarioDelServicio(idServicio) {
+      return isAuthenticated() &&
+        firestore.exists(/databases/(default)/documents/servicios/$(idServicio)) &&
+        isVehicleOwner(
+          firestore.get(/databases/(default)/documents/servicios/$(idServicio)).data.id_vehiculo
+        );
+    }
+
     // Reglas para fotos de perfil
     // Cualquier usuario de la app puede leer las fotos de perfil
     // Solo el propietario puede subir o modificar su propia foto de perfil
@@ -107,6 +123,21 @@ service firebase.storage {
         && esImagenValida()
         && (isVehicleOwner(vehicleId) || isAdmin());
       allow delete: if isAuthenticated() && (isVehicleOwner(vehicleId) || isAdmin());
+    }
+
+    // Reglas para fotos adjuntas a resenias
+    // Lectura: las resenias son publicas en Firestore (allow read: if true),
+    // pero Storage exige como minimo autenticacion, siguiendo la convencion
+    // ya usada en este archivo (perfiles/, vehiculos/, etc. tampoco son de
+    // lectura anonima).
+    // Escritura: solo el propietario del vehiculo del servicio reseniado
+    // (ver esPropietarioDelServicio) puede subir fotos a su propia carpeta
+    // de servicio.
+    // Eliminacion: solo admin (moderacion de contenido reportado).
+    match /resenia_fotos/{idServicio}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if esImagenValida() && esPropietarioDelServicio(idServicio);
+      allow delete: if isAdmin();
     }
   }
 }
