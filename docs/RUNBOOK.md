@@ -96,23 +96,25 @@ secreto está atado a un GitHub **Environment** o es un secreto de
 
 | Secreto | Dónde configurarlo |
 |---|---|
-| `FIREBASE_WEB_API_KEY`, `FIREBASE_APP_ID_WEB`, `FIREBASE_MEASUREMENT_ID`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_PROJECT_ID`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_STORAGE_BUCKET`, `GOOGLE_MAPS_API_KEY`, `VEHICLE_IMAGE_API_KEY`, `GOOGLE_CUSTOM_SEARCH_API_KEY`, `GOOGLE_CUSTOM_SEARCH_CX`, `RECAPTCHA_SITE_KEY`, `GOOGLE_SIGNIN_CLIENT_ID_WEB` | **Settings → Environments → `staging`** y **Settings → Environments → `production`** por separado, mismo nombre, **valor distinto** en cada uno. **NO** en Settings → Secrets and variables → Actions (nivel repositorio) — si se configuran ahí, `deploy_staging` y `deploy_production` compartirían el mismo valor y el bundle de staging quedaría apuntando al proyecto de producción `autodoc-6ef5a` (justo lo que las restricciones globales del plan prohíben). |
+| `FIREBASE_WEB_API_KEY`, `FIREBASE_APP_ID_WEB`, `FIREBASE_MEASUREMENT_ID`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_PROJECT_ID`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_STORAGE_BUCKET`, `GOOGLE_MAPS_API_KEY`, `VEHICLE_IMAGE_API_KEY`, `GOOGLE_CUSTOM_SEARCH_API_KEY`, `GOOGLE_CUSTOM_SEARCH_CX`, `RECAPTCHA_SITE_KEY`, `GOOGLE_SIGNIN_CLIENT_ID_WEB` | **Ambos niveles a la vez**, no uno u otro: (1) **Settings → Environments → `staging`** y **Settings → Environments → `production`** por separado, mismo nombre, **valor distinto** en cada uno — esto es lo que consumen `deploy_staging`/`deploy_production`. (2) **También** en Settings → Secrets and variables → Actions (nivel repositorio), con un valor razonable (p. ej. el de staging, o un valor de desarrollo) — este nivel es el único que puede ver `build_web_smoke` (ver la limitación de abajo: ese job no declara `environment:`), y sus guardias `[ -z ... ]; exit 1` (`ci.yml:118-147`) hacen fallar el job en cada PR si el secreto de repositorio no existe. GitHub resuelve el secreto de **Environment** con prioridad sobre el de **repositorio** para los jobs que sí declaran ese entorno, así que tener también un valor a nivel de repositorio **no** hace que `deploy_staging`/`deploy_production` usen el valor equivocado — el de Environment siempre gana ahí. |
 | `FIREBASE_PROJECT_STAGING`, `FIREBASE_PROJECT_PROD`, `FIREBASE_TOKEN` | Settings → Secrets and variables → Actions (nivel repositorio) — nombres ya sufijados por entorno o de uso compartido; no requieren Environments. |
 
 **Limitación conocida — el job `build_web_smoke` NO declara `environment:`.**
 A diferencia de `deploy_staging`/`deploy_production`, el job
 `build_web_smoke` (`.github/workflows/ci.yml`, jobs `build_web_smoke:`) no
-tiene una línea `environment:`, así que no puede resolver secretos de
-Environment de forma diferenciada — solo ve secretos de repositorio (o, si
-existieran, los de cualquier Environment sin restricción de branch
-asociada, dependiendo de la configuración de protección). En la práctica
-esto es aceptable porque ese job solo hace un build de humo con
-`FLAVOR=dev` y no despliega nada, pero si en el futuro se necesita que
-`dev` tenga su propia configuración de Firebase, habría que añadir
-`environment: dev` (u otro nombre) a ese job. No se modifica en este fix
-wave — es una decisión que afecta el comportamiento de aprobación/protección
-del job y debe tomarla una persona con acceso real a la configuración de
-GitHub del repositorio, no un agente.
+tiene una línea `environment:`, así que **nunca** puede resolver secretos de
+Environment bajo ninguna configuración — solo ve secretos de nivel
+repositorio. Por eso la tabla de arriba exige configurar los 13 secretos
+también a nivel de repositorio: sin ese fallback, `build_web_smoke` fallaría
+en cada PR por las guardias `[ -z ... ]` del paso "Inject web runtime
+config" (`ci.yml:118-147`). En la práctica esto es aceptable porque ese job
+solo hace un build de humo con `FLAVOR=dev` y no despliega nada, pero si en
+el futuro se necesita que `dev` tenga su propia configuración de Firebase
+distinta de la de repositorio, habría que añadir `environment: dev` (u otro
+nombre) a ese job. No se modifica en este fix wave — es una decisión que
+afecta el comportamiento de aprobación/protección del job y debe tomarla
+una persona con acceso real a la configuración de GitHub del repositorio,
+no un agente.
 
 ---
 
@@ -445,7 +447,7 @@ los usaba solo para el service worker). Sigue existiendo el modo tolerante a
 fallos si `RECAPTCHA_SITE_KEY` está vacío (App Check no bloquea el arranque),
 pero el cliente web no emitirá tokens válidos hasta que el secreto esté
 realmente configurado en GitHub (ver "Esquema de nombres de secretos" más
-abajo).
+arriba, en "Acciones manuales pendientes").
 
 ---
 
