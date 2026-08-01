@@ -8,12 +8,18 @@ Este documento cubre los procedimientos operacionales para mantener AutoDoc en p
 
 ## ⚠️ Acciones manuales pendientes (requieren consola/facturación)
 
-Estas dos acciones son parte de la Tarea 16 del plan de corrección de
-hallazgos críticos (`.superpowers/sdd/2026-07-29-correccion-hallazgos-criticos/task-16-brief.md`,
-Steps 1 y 6), pero **ningún agente puede ejecutarlas**: requieren autenticación
-real contra Google Cloud/Firebase y, en el caso del Step 1, permisos de
-facturación en la organización. Debe ejecutarlas una persona con esas
-credenciales.
+La acción de creación de proyecto es parte de la Tarea 16 del plan de
+corrección de hallazgos críticos
+(`.superpowers/sdd/2026-07-29-correccion-hallazgos-criticos/task-16-brief.md`,
+Step 1), pero **ningún agente puede ejecutarla**: requiere autenticación real
+contra Google Cloud/Firebase y permisos de facturación en la organización.
+Debe ejecutarla una persona con esas credenciales.
+
+> Nota: el Step 6 del mismo brief pedía rotar la clave de Google Maps
+> `***REMOVED-GOOGLE-MAPS-API-KEY***` por sospecha de exposición en el
+> historial de git. El propietario del proyecto verificó directamente en
+> Google Cloud Console que esa clave **no está expuesta**, así que esta
+> acción se descarta — no requiere rotación.
 
 ### Pendiente 1 — Crear el proyecto de staging (Step 1 del brief)
 
@@ -50,26 +56,7 @@ proyecto `autodoc-staging`). Sin este paso, `firebase deploy --only hosting
 configured` — no es una regresión de esta tarea; staging no tenía ningún
 target de hosting configurado antes de la Tarea 16.
 
-### Pendiente 2 — Rotar la clave de Google Maps expuesta (Step 6 del brief)
-
-La clave `***REMOVED-GOOGLE-MAPS-API-KEY***` quedó expuesta en el
-historial de git del proyecto `autodoc-6ef5a` (commit `89e9f6b` en adelante).
-Retirarla del árbol de trabajo no la revoca: sigue siendo válida y accesible
-por cualquiera con acceso al historial. Ejecutar en Google Cloud Console,
-sobre el proyecto `autodoc-6ef5a`:
-
-1. APIs y servicios → Credenciales → localizar la clave
-   `***REMOVED-GOOGLE-MAPS-API-KEY***`.
-2. Crear una **clave nueva** restringida por: referrers HTTP
-   (`https://autodoc-6ef5a.web.app/*`, `https://autodocsv.com/*`,
-   `http://localhost:*`) y por APIs (solo Maps JavaScript API y las que
-   realmente se usen).
-3. Guardar la clave nueva como secreto `GOOGLE_MAPS_API_KEY` en GitHub y en el
-   `.env` local.
-4. **Eliminar la clave antigua**, no solo restringirla: está en el historial
-   de git de forma permanente y no se puede considerar segura mientras exista.
-
-### Pendiente 3 — Esquema de nombres de secretos en GitHub (fix wave Fase E)
+### Pendiente 2 — Esquema de nombres de secretos en GitHub (fix wave Fase E)
 
 `.github/workflows/ci.yml` usa dos esquemas de nombres de secretos distintos
 que **no** son inconsistentes por accidente, sino que dependen de si el
