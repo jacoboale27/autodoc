@@ -3,7 +3,10 @@ import '../../../../core/models/review_model.dart';
 import '../../../../core/constants/firestore_collections.dart';
 
 class ReviewService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  ReviewService({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
+
+  final FirebaseFirestore _firestore;
 
   CollectionReference<Map<String, dynamic>> get _resenias =>
       _firestore.collection(FirestoreCollections.resenias);
@@ -203,6 +206,34 @@ class ReviewService {
       rethrow;
     }
     // aggregateRatings (Cloud Function) recalcula el promedio en el backend.
+  }
+
+  Future<void> responderResenia({
+    required String reviewId,
+    required String tallerId,
+    required String texto,
+  }) async {
+    final textoLimpio = texto.trim();
+    if (textoLimpio.isEmpty) {
+      throw ArgumentError('La respuesta no puede estar vacía.');
+    }
+
+    final docRef = _resenias.doc(reviewId);
+    try {
+      await docRef.update({
+        'respuesta_taller': {
+          'texto': textoLimpio,
+          'fecha': FieldValue.serverTimestamp(),
+        },
+      });
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw StateError(
+          'No se pudo publicar la respuesta: verifica que esta reseña pertenezca a tu taller.',
+        );
+      }
+      rethrow;
+    }
   }
 
   Future<void> reportReview(String reviewId) async {
