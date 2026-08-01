@@ -64,7 +64,7 @@ class PushNotificationService {
     try {
       final token = await _messaging.getToken();
       if (token != null) {
-        await _firestore.collection('Usuarios').doc(userId).set({
+        await _firestore.collection('usuarios').doc(userId).set({
           'fcmToken': token,
         }, SetOptions(merge: true));
         debugPrint(
