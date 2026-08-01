@@ -10,9 +10,18 @@ import '../../../../core/constants/firestore_collections.dart';
 
 class AdminService {
   final AdminRepository _repository;
+  final FirebaseFirestore? _firestoreOverride;
 
-  AdminService({AdminRepository? repository})
-    : _repository = repository ?? AdminRepository();
+  /// Se resuelve de forma perezosa (no en el constructor) para no forzar
+  /// `FirebaseFirestore.instance` -y por tanto `Firebase.initializeApp()`-
+  /// en tests que no pasan un `firestore` explícito y nunca llegan a usar
+  /// `watchDashboardMetrics()`.
+  FirebaseFirestore get _firestore =>
+      _firestoreOverride ?? FirebaseFirestore.instance;
+
+  AdminService({AdminRepository? repository, FirebaseFirestore? firestore})
+    : _repository = repository ?? AdminRepository(),
+      _firestoreOverride = firestore;
   final _uuid = const Uuid();
 
   Future<void> _logAction(
@@ -188,6 +197,8 @@ class AdminService {
       'alertas': 0,
       'resenias': 0,
       'serviciosPorMes': <String, int>{},
+      'usuariosPorMes': <String, int>{},
+      'talleresPorMes': <String, int>{},
     };
 
     void updateMetrics() {
@@ -197,7 +208,7 @@ class AdminService {
     }
 
     void startListening() {
-      final fs = FirebaseFirestore.instance;
+      final fs = _firestore;
 
       subscriptions.add(
         fs.collection(FirestoreCollections.usuarios).snapshots().listen((snap) {
@@ -270,6 +281,55 @@ class AdminService {
               }
 
               metrics['serviciosPorMes'] = serviciosPorMes;
+              updateMetrics();
+            }),
+      );
+
+      // usuariosPorMes / talleresPorMes: una sola lectura de `usuarios`
+      // (filtrada a los ultimos 6 meses) reutilizada para ambos mapas, en
+      // vez de duplicar la query.
+      subscriptions.add(
+        fs
+            .collection(FirestoreCollections.usuarios)
+            .where(
+              'fecha_registro',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(seisMesesAtras),
+            )
+            .snapshots()
+            .listen((snap) {
+              final Map<String, int> usuariosPorMes = {};
+              final Map<String, int> talleresPorMes = {};
+              for (int i = 0; i < 6; i++) {
+                final mes = DateTime(now.year, now.month - i, 1);
+                final key =
+                    '${mes.year}-${mes.month.toString().padLeft(2, '0')}';
+                usuariosPorMes[key] = 0;
+                talleresPorMes[key] = 0;
+              }
+
+              for (var doc in snap.docs) {
+                final data = doc.data();
+                final fechaRaw = data['fecha_registro'];
+                if (fechaRaw == null) continue;
+                final date = (fechaRaw as Timestamp).toDate();
+                final key =
+                    '${date.year}-${date.month.toString().padLeft(2, '0')}';
+                if (usuariosPorMes.containsKey(key)) {
+                  usuariosPorMes[key] = (usuariosPorMes[key] ?? 0) + 1;
+                }
+
+                final rol = (data['rol'] as String?)?.toLowerCase() ?? '';
+                final esTaller =
+                    rol.contains('taller') ||
+                    rol.contains('mecanico') ||
+                    rol.contains('mecánico');
+                if (esTaller && talleresPorMes.containsKey(key)) {
+                  talleresPorMes[key] = (talleresPorMes[key] ?? 0) + 1;
+                }
+              }
+
+              metrics['usuariosPorMes'] = usuariosPorMes;
+              metrics['talleresPorMes'] = talleresPorMes;
               updateMetrics();
             }),
       );
