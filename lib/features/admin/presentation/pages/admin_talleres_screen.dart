@@ -6,10 +6,12 @@ import '../providers/admin_provider.dart';
 import '../widgets/taller_admin_card.dart';
 import '../widgets/admin_sidebar.dart';
 import '../widgets/mecanico_admin_card.dart';
+import 'package:autodoc/core/models/workshop_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
+import 'package:autodoc/core/utils/csv_export_util.dart';
 
 class AdminTalleresScreen extends StatefulWidget {
   const AdminTalleresScreen({super.key});
@@ -58,6 +60,63 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
     );
   }
 
+  List<WorkshopModel> _aplicarFiltros(List<WorkshopModel> talleres) {
+    return talleres.where((t) {
+      final matchStatus = _filterStatus == 'todos' || t.estado == _filterStatus;
+      final matchSearch = t.nombre.toLowerCase().contains(
+        _searchQuery.toLowerCase(),
+      );
+      return matchStatus && matchSearch;
+    }).toList();
+  }
+
+  Future<void> _exportarTalleresCsv(List<WorkshopModel> talleres) async {
+    final filtrados = _aplicarFiltros(talleres);
+    if (filtrados.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No hay talleres para exportar con los filtros actuales',
+          ),
+        ),
+      );
+      return;
+    }
+    final csv = buildCsv(
+      [
+        'Nombre',
+        'Municipio',
+        'Departamento',
+        'Especialidad',
+        'Estado',
+        'Calificación promedio',
+      ],
+      [
+        for (final t in filtrados)
+          [
+            t.nombre,
+            t.ubicacionMunicipio ?? '',
+            t.departamento ?? '',
+            t.especialidad ?? '',
+            t.estado,
+            t.calificacionPromedio.toStringAsFixed(1),
+          ],
+      ],
+    );
+    await downloadCsv(
+      'talleres_${DateTime.now().millisecondsSinceEpoch}.csv',
+      csv,
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${filtrados.length} talleres exportados a CSV.'),
+          action: SnackBarAction(label: 'OK', onPressed: () {}),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AdminProvider>();
@@ -70,18 +129,19 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
           m.correo.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
 
-    final talleresFiltrados = provider.talleres.where((t) {
-      final matchStatus = _filterStatus == 'todos' || t.estado == _filterStatus;
-      final matchSearch = t.nombre.toLowerCase().contains(
-        _searchQuery.toLowerCase(),
-      );
-      return matchStatus && matchSearch;
-    }).toList();
+    final talleresFiltrados = _aplicarFiltros(provider.talleres);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(context.l10n.adminManageWorkshops),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download_rounded),
+            tooltip: 'Exportar CSV',
+            onPressed: () => _exportarTalleresCsv(provider.talleres),
+          ),
+        ],
       ),
       drawer: const AdminSidebar(),
       body: provider.isLoading

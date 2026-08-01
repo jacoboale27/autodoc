@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../providers/admin_provider.dart';
+import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import '../widgets/admin_sidebar.dart';
 import '../widgets/account_row.dart';
@@ -8,6 +10,7 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
+import 'package:autodoc/core/utils/csv_export_util.dart';
 
 class AdminUsuariosScreen extends StatefulWidget {
   const AdminUsuariosScreen({super.key});
@@ -160,6 +163,61 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
     }
   }
 
+  /// Applies the current search/role/status/date filters to [usuarios].
+  List<UserModel> _aplicarFiltros(List<UserModel> usuarios) {
+    return usuarios.where((u) {
+      final matchSearch =
+          u.nombreCompleto.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          u.correo.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchRol = _filterRol == 'Todos' || u.rol == _filterRol;
+      final matchEstado =
+          _filterEstado == 'Todos' ||
+          u.estado.toLowerCase() == _filterEstado.toLowerCase();
+      final matchDate =
+          _filterDateFrom == null || u.fechaRegistro.isAfter(_filterDateFrom!);
+      return matchSearch && matchRol && matchEstado && matchDate;
+    }).toList();
+  }
+
+  Future<void> _exportarUsuariosCsv(List<UserModel> usuarios) async {
+    final filtrados = _aplicarFiltros(usuarios);
+    if (filtrados.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No hay usuarios para exportar con los filtros actuales',
+          ),
+        ),
+      );
+      return;
+    }
+    final csv = buildCsv(
+      ['Nombre', 'Correo', 'Rol', 'Estado', 'Fecha de registro'],
+      [
+        for (final u in filtrados)
+          [
+            u.nombreCompleto,
+            u.correo,
+            u.rol,
+            u.estado,
+            DateFormat('yyyy-MM-dd').format(u.fechaRegistro),
+          ],
+      ],
+    );
+    await downloadCsv(
+      'usuarios_${DateTime.now().millisecondsSinceEpoch}.csv',
+      csv,
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${filtrados.length} usuarios exportados a CSV.'),
+          action: SnackBarAction(label: 'OK', onPressed: () {}),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AdminProvider>();
@@ -179,24 +237,18 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
       }
     });
 
-    final usuariosFiltrados = provider.usuarios.where((u) {
-      final matchSearch =
-          u.nombreCompleto.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          u.correo.toLowerCase().contains(_searchQuery.toLowerCase());
-      final matchRol = _filterRol == 'Todos' || u.rol == _filterRol;
-      final matchEstado =
-          _filterEstado == 'Todos' ||
-          u.estado.toLowerCase() == _filterEstado.toLowerCase();
-      final matchDate =
-          _filterDateFrom == null || u.fechaRegistro.isAfter(_filterDateFrom!);
-      return matchSearch && matchRol && matchEstado && matchDate;
-    }).toList();
+    final usuariosFiltrados = _aplicarFiltros(provider.usuarios);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(context.l10n.adminManageUsers),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.download_rounded),
+            tooltip: 'Exportar CSV',
+            onPressed: () => _exportarUsuariosCsv(provider.usuarios),
+          ),
           IconButton(
             icon: const Icon(Icons.filter_list_rounded),
             tooltip: 'Filtros avanzados',

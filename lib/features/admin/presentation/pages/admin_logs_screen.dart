@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/admin_provider.dart';
@@ -7,6 +6,7 @@ import '../widgets/admin_sidebar.dart';
 import 'package:autodoc/core/models/admin_log_model.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/utils/csv_export_util.dart';
 
 class AdminLogsScreen extends StatefulWidget {
   const AdminLogsScreen({super.key});
@@ -86,7 +86,7 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
     }).toList();
   }
 
-  /// Generates a CSV string from the logs and copies it to clipboard
+  /// Generates a CSV string from the logs and triggers a real file download
   Future<void> _exportToCsv(List<AdminLogModel> logs) async {
     final filtered = _filteredLogs(logs);
     if (filtered.isEmpty) {
@@ -96,29 +96,26 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
       return;
     }
 
-    final buffer = StringBuffer();
-    // Header
-    buffer.writeln('Fecha,Acción,Módulo,Referencia ID,Detalle');
+    final csv = buildCsv(
+      ['Fecha', 'Acción', 'Módulo', 'Referencia ID', 'Detalle'],
+      [
+        for (final log in filtered)
+          [
+            DateFormat('yyyy-MM-dd HH:mm:ss').format(log.fecha),
+            log.accion,
+            log.modulo,
+            log.referenciaId,
+            log.detalle,
+          ],
+      ],
+    );
 
-    // Rows
-    for (final log in filtered) {
-      final fecha = DateFormat('yyyy-MM-dd HH:mm:ss').format(log.fecha);
-      // Escape commas/quotes in fields
-      String escapeText(String s) => '"${s.replaceAll('"', '""')}"';
-      buffer.writeln(
-        '${escapeText(fecha)},${escapeText(log.accion)},${escapeText(log.modulo)},${escapeText(log.referenciaId)},${escapeText(log.detalle)}',
-      );
-    }
-
-    final csv = buffer.toString();
-    await Clipboard.setData(ClipboardData(text: csv));
+    await downloadCsv('logs_${DateTime.now().millisecondsSinceEpoch}.csv', csv);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            '✅ ${filtered.length} registros copiados como CSV al portapapeles.',
-          ),
+          content: Text('✅ ${filtered.length} registros exportados a CSV.'),
           action: SnackBarAction(label: 'OK', onPressed: () {}),
         ),
       );
