@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
@@ -7,6 +10,8 @@ import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/reviews/data/services/review_service.dart';
 import 'package:autodoc/core/models/review_model.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
+
+const int _maxFotosResenia = 3;
 
 /// Muestra un bottom sheet para calificar un taller/mecánico.
 ///
@@ -54,6 +59,7 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
   bool _isSubmitting = false;
   bool _checking = true;
   bool _canEdit = true;
+  final List<XFile> _fotosSeleccionadas = [];
 
   ReviewModel? _existingReview;
 
@@ -98,6 +104,19 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
     }
   }
 
+  Future<void> _pickFoto() async {
+    if (_fotosSeleccionadas.length >= _maxFotosResenia) return;
+    final picker = ImagePicker();
+    final XFile? foto = await picker.pickImage(source: ImageSource.gallery);
+    if (foto != null && mounted) {
+      setState(() => _fotosSeleccionadas.add(foto));
+    }
+  }
+
+  void _removeFoto(int index) {
+    setState(() => _fotosSeleccionadas.removeAt(index));
+  }
+
   @override
   void dispose() {
     _comentarioController.dispose();
@@ -119,12 +138,20 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
           comentario: _comentarioController.text,
         );
       } else {
+        List<String> fotosUrls = const [];
+        if (_fotosSeleccionadas.isNotEmpty) {
+          fotosUrls = await _reviewService.subirFotosResenia(
+            widget.idServicio,
+            _fotosSeleccionadas,
+          );
+        }
         await _reviewService.submitReview(
           userId: userId,
           tallerId: widget.tallerId,
           estrellas: _estrellas,
           comentario: _comentarioController.text,
           idServicio: widget.idServicio,
+          fotos: fotosUrls,
         );
       }
 
@@ -198,6 +225,95 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
                   );
                 }),
               ),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (int i = 0; i < _fotosSeleccionadas.length; i++)
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: FutureBuilder<Uint8List>(
+                          future: _fotosSeleccionadas[i].readAsBytes(),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) {
+                              return Container(
+                                width: 64,
+                                height: 64,
+                                color: colors.textSecondary.withValues(
+                                  alpha: 0.1,
+                                ),
+                              );
+                            }
+                            return Image.memory(
+                              snapshot.data!,
+                              width: 64,
+                              height: 64,
+                              fit: BoxFit.cover,
+                            );
+                          },
+                        ),
+                      ),
+                      Positioned(
+                        top: -8,
+                        right: -8,
+                        child: GestureDetector(
+                          onTap: () => _removeFoto(i),
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: colors.error,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.close,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                if (_fotosSeleccionadas.length < _maxFotosResenia)
+                  InkWell(
+                    onTap: _pickFoto,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: colors.textSecondary.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.add_a_photo_outlined,
+                            color: colors.textSecondary,
+                            size: 20,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Añadir foto',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: colors.textSecondary,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 8),
             TextField(

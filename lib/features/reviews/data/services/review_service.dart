@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/models/review_model.dart';
 import '../../../../core/constants/firestore_collections.dart';
+import '../../../../core/constants/storage_paths.dart';
 
 class ReviewService {
   ReviewService({FirebaseFirestore? firestore})
@@ -105,6 +108,7 @@ class ReviewService {
     required String idServicio,
     required int estrellas,
     String? comentario,
+    List<String> fotos = const [],
   }) async {
     if (estrellas < 1 || estrellas > 5) {
       throw ArgumentError('La calificación debe estar entre 1 y 5 estrellas.');
@@ -155,6 +159,7 @@ class ReviewService {
           ? null
           : comentario?.trim(),
       fechaResenia: DateTime.now(),
+      fotos: fotos,
     );
 
     try {
@@ -239,5 +244,25 @@ class ReviewService {
   Future<void> reportReview(String reviewId) async {
     final docRef = _resenias.doc(reviewId);
     await docRef.update({'is_reported': true});
+  }
+
+  Future<List<String>> subirFotosResenia(
+    String idServicio,
+    List<XFile> fotos,
+  ) async {
+    final urls = <String>[];
+    for (final foto in fotos) {
+      final fileName =
+          '${DateTime.now().millisecondsSinceEpoch}_${urls.length}.jpg';
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child(StoragePaths.reseniaFotos)
+          .child(idServicio)
+          .child(fileName);
+      final bytes = await foto.readAsBytes();
+      await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+      urls.add(await ref.getDownloadURL());
+    }
+    return urls;
   }
 }
