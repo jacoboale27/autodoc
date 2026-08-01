@@ -5,6 +5,29 @@ import '../../../../core/models/review_model.dart';
 import '../../../../core/constants/firestore_collections.dart';
 import '../../../../core/constants/storage_paths.dart';
 
+enum ReviewSortOrder { recientes, masAltas, masBajas }
+
+/// Función pura y testeable: ordena una lista de reseñas según el criterio
+/// dado sin mutar la lista original.
+List<ReviewModel> ordenarResenias(
+  List<ReviewModel> resenias,
+  ReviewSortOrder orden,
+) {
+  final copia = List<ReviewModel>.from(resenias);
+  switch (orden) {
+    case ReviewSortOrder.recientes:
+      copia.sort((a, b) => b.fechaResenia.compareTo(a.fechaResenia));
+      break;
+    case ReviewSortOrder.masAltas:
+      copia.sort((a, b) => b.estrellas.compareTo(a.estrellas));
+      break;
+    case ReviewSortOrder.masBajas:
+      copia.sort((a, b) => a.estrellas.compareTo(b.estrellas));
+      break;
+  }
+  return copia;
+}
+
 class ReviewService {
   ReviewService({FirebaseFirestore? firestore})
     : _firestore = firestore ?? FirebaseFirestore.instance;
@@ -44,8 +67,7 @@ class ReviewService {
       final list = snapshot.docs
           .map((doc) => ReviewModel.fromMap(doc.data(), doc.id))
           .toList();
-      list.sort((a, b) => b.fechaResenia.compareTo(a.fechaResenia));
-      return list;
+      return ordenarResenias(list, ReviewSortOrder.recientes);
     });
   }
 

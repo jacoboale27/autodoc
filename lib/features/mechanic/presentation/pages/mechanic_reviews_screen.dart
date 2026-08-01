@@ -13,8 +13,15 @@ import 'package:autodoc/features/reviews/data/services/review_service.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/widgets/translated_text.dart';
 
-class MechanicReviewsScreen extends StatelessWidget {
+class MechanicReviewsScreen extends StatefulWidget {
   const MechanicReviewsScreen({super.key});
+
+  @override
+  State<MechanicReviewsScreen> createState() => _MechanicReviewsScreenState();
+}
+
+class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
+  ReviewSortOrder _orden = ReviewSortOrder.recientes;
 
   @override
   Widget build(BuildContext context) {
@@ -165,7 +172,11 @@ class MechanicReviewsScreen extends StatelessWidget {
                                   );
                                 }
 
-                                final reviews = snapshot.data ?? [];
+                                final reviewsSinOrdenar = snapshot.data ?? [];
+                                final reviews = ordenarResenias(
+                                  reviewsSinOrdenar,
+                                  _orden,
+                                );
                                 if (reviews.isEmpty) {
                                   return Center(
                                     child: Padding(
@@ -212,6 +223,39 @@ class MechanicReviewsScreen extends StatelessWidget {
                                       reviews,
                                       colors,
                                       context,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: Responsive.padding(
+                                          context,
+                                          24,
+                                        ),
+                                      ),
+                                      child: Align(
+                                        alignment: Alignment.centerRight,
+                                        child: DropdownButton<ReviewSortOrder>(
+                                          value: _orden,
+                                          onChanged: (value) {
+                                            if (value == null) return;
+                                            setState(() => _orden = value);
+                                          },
+                                          items: const [
+                                            DropdownMenuItem(
+                                              value: ReviewSortOrder.recientes,
+                                              child: Text('Más Recientes'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: ReviewSortOrder.masAltas,
+                                              child: Text('Más Altas'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: ReviewSortOrder.masBajas,
+                                              child: Text('Más Bajas'),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                     const SizedBox(height: 16),
                                     Expanded(
