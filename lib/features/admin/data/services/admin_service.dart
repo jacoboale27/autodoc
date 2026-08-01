@@ -207,6 +207,17 @@ class AdminService {
     return idTaller;
   }
 
+  Future<void> descartarReporte(String adminUid, String idResenia) async {
+    await _repository.descartarReporte(idResenia);
+    await _logAction(
+      adminUid,
+      'DESCARTAR_REPORTE_RESENIA',
+      'Resenias',
+      idResenia,
+      'Reporte descartado tras revisión',
+    );
+  }
+
   // Logs
   Future<List<AdminLogModel>> fetchLogs({int limit = 50}) async {
     return await _repository.getLogs(limit: limit);

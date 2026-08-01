@@ -28,6 +28,15 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
     });
   }
 
+  void _descartarReporte(BuildContext context, String idResenia) {
+    final userSession = context.read<UserProfileProvider>();
+    final adminProvider = context.read<AdminProvider>();
+    adminProvider.descartarReporte(
+      userSession.userData?.idUsuario ?? '',
+      idResenia,
+    );
+  }
+
   void _mostrarConfirmarEliminar(BuildContext context, String idResenia) {
     final userSession = context.read<UserProfileProvider>();
     final adminProvider = context.read<AdminProvider>();
@@ -206,6 +215,46 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
                                         ),
                                       ),
                                     ),
+                                    if (resenia.fotos.isNotEmpty) ...[
+                                      const SizedBox(height: 12),
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        children: [
+                                          for (final url in resenia.fotos)
+                                            ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              child: Image.network(
+                                                url,
+                                                width: 64,
+                                                height: 64,
+                                                fit: BoxFit.cover,
+                                                errorBuilder:
+                                                    (
+                                                      context,
+                                                      error,
+                                                      stack,
+                                                    ) => Container(
+                                                      width: 64,
+                                                      height: 64,
+                                                      color: colors
+                                                          .textSecondary
+                                                          .withValues(
+                                                            alpha: 0.1,
+                                                          ),
+                                                      child: Icon(
+                                                        Icons
+                                                            .broken_image_outlined,
+                                                        color: colors
+                                                            .textSecondary,
+                                                      ),
+                                                    ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
                                     const SizedBox(height: 12),
                                     Row(
                                       mainAxisAlignment:
@@ -238,17 +287,34 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
                                             ),
                                           ],
                                         ),
-                                        IconButton(
-                                          onPressed: () =>
-                                              _mostrarConfirmarEliminar(
-                                                context,
-                                                resenia.idResenia,
+                                        Row(
+                                          children: [
+                                            if (resenia.isReported)
+                                              IconButton(
+                                                onPressed: () =>
+                                                    _descartarReporte(
+                                                      context,
+                                                      resenia.idResenia,
+                                                    ),
+                                                icon: Icon(
+                                                  Icons.flag_outlined,
+                                                  color: colors.textSecondary,
+                                                ),
+                                                tooltip: 'Descartar reporte',
                                               ),
-                                          icon: Icon(
-                                            Icons.delete_outline,
-                                            color: colors.error,
-                                          ),
-                                          tooltip: 'Eliminar reseña',
+                                            IconButton(
+                                              onPressed: () =>
+                                                  _mostrarConfirmarEliminar(
+                                                    context,
+                                                    resenia.idResenia,
+                                                  ),
+                                              icon: Icon(
+                                                Icons.delete_outline,
+                                                color: colors.error,
+                                              ),
+                                              tooltip: 'Eliminar reseña',
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),

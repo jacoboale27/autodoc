@@ -126,6 +126,16 @@ class AdminRepository {
     return idTaller;
   }
 
+  /// Descarta un reporte (falso positivo): vuelve a poner `is_reported` en
+  /// `false` sin borrar la reseña. Permitido por firestore.rules para el
+  /// admin (rama isAdmin(), solo prohibida para id_servicio/id_taller/id_usuario).
+  Future<void> descartarReporte(String idResenia) async {
+    await _firestore
+        .collection(FirestoreCollections.resenias)
+        .doc(idResenia)
+        .update({'is_reported': false});
+  }
+
   // Logs
   Future<void> registrarLog(AdminLogModel log) async {
     await _firestore

@@ -242,6 +242,19 @@ class AdminProvider with ChangeNotifier {
     }
   }
 
+  Future<void> descartarReporte(String adminUid, String idResenia) async {
+    _setLoading(true);
+    try {
+      await _adminService.descartarReporte(adminUid, idResenia);
+      _setSuccess('Reporte descartado');
+      _resenias = await _adminService.fetchResenias();
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   // --- LOGS ---
 
   Future<void> fetchLogs() async {

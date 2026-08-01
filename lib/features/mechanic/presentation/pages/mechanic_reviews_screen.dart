@@ -429,6 +429,49 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
                                                     ),
                                                   ),
                                                 ],
+                                                if (r.fotos.isNotEmpty) ...[
+                                                  const SizedBox(height: 12),
+                                                  Wrap(
+                                                    spacing: 8,
+                                                    runSpacing: 8,
+                                                    children: [
+                                                      for (final url in r.fotos)
+                                                        ClipRRect(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                8,
+                                                              ),
+                                                          child: Image.network(
+                                                            url,
+                                                            width: 64,
+                                                            height: 64,
+                                                            fit: BoxFit.cover,
+                                                            errorBuilder:
+                                                                (
+                                                                  context,
+                                                                  error,
+                                                                  stack,
+                                                                ) => Container(
+                                                                  width: 64,
+                                                                  height: 64,
+                                                                  color: colors
+                                                                      .textSecondary
+                                                                      .withValues(
+                                                                        alpha:
+                                                                            0.1,
+                                                                      ),
+                                                                  child: Icon(
+                                                                    Icons
+                                                                        .broken_image_outlined,
+                                                                    color: colors
+                                                                        .textSecondary,
+                                                                  ),
+                                                                ),
+                                                          ),
+                                                        ),
+                                                    ],
+                                                  ),
+                                                ],
                                                 if (r.respuestaTaller != null)
                                                   Container(
                                                     margin:
@@ -552,6 +595,7 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
         ],
       ),
     );
+    controller.dispose();
 
     if (texto == null || texto.trim().isEmpty) return;
 

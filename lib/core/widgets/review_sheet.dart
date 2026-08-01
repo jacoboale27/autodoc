@@ -227,94 +227,100 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
               ),
             ),
             const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (int i = 0; i < _fotosSeleccionadas.length; i++)
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: FutureBuilder<Uint8List>(
-                          future: _fotosSeleccionadas[i].readAsBytes(),
-                          builder: (context, snapshot) {
-                            if (!snapshot.hasData) {
-                              return Container(
+            // El picker de fotos solo aplica al crear una reseña nueva:
+            // _submit() en modo edición (_existingReview != null) llama a
+            // updateReview(), que nunca sube ni envía _fotosSeleccionadas.
+            // Mostrarlo también en edición dejaría al usuario seleccionar
+            // fotos que se descartan en silencio al guardar.
+            if (_existingReview == null)
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (int i = 0; i < _fotosSeleccionadas.length; i++)
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: FutureBuilder<Uint8List>(
+                            future: _fotosSeleccionadas[i].readAsBytes(),
+                            builder: (context, snapshot) {
+                              if (!snapshot.hasData) {
+                                return Container(
+                                  width: 64,
+                                  height: 64,
+                                  color: colors.textSecondary.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                );
+                              }
+                              return Image.memory(
+                                snapshot.data!,
                                 width: 64,
                                 height: 64,
-                                color: colors.textSecondary.withValues(
-                                  alpha: 0.1,
-                                ),
+                                fit: BoxFit.cover,
                               );
-                            }
-                            return Image.memory(
-                              snapshot.data!,
-                              width: 64,
-                              height: 64,
-                              fit: BoxFit.cover,
-                            );
-                          },
+                            },
+                          ),
                         ),
-                      ),
-                      Positioned(
-                        top: -8,
-                        right: -8,
-                        child: GestureDetector(
-                          onTap: () => _removeFoto(i),
-                          child: Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              color: colors.error,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.close,
-                              size: 14,
-                              color: Colors.white,
+                        Positioned(
+                          top: -8,
+                          right: -8,
+                          child: GestureDetector(
+                            onTap: () => _removeFoto(i),
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: colors.error,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.close,
+                                size: 14,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                if (_fotosSeleccionadas.length < _maxFotosResenia)
-                  InkWell(
-                    onTap: _pickFoto,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: colors.textSecondary.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.add_a_photo_outlined,
-                            color: colors.textSecondary,
-                            size: 20,
+                      ],
+                    ),
+                  if (_fotosSeleccionadas.length < _maxFotosResenia)
+                    InkWell(
+                      onTap: _pickFoto,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: colors.textSecondary.withValues(alpha: 0.3),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Añadir foto',
-                            style: TextStyle(
-                              fontSize: 10,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.add_a_photo_outlined,
                               color: colors.textSecondary,
+                              size: 20,
                             ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
+                            const SizedBox(height: 2),
+                            Text(
+                              'Añadir foto',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: colors.textSecondary,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-              ],
-            ),
+                ],
+              ),
             const SizedBox(height: 8),
             TextField(
               controller: _comentarioController,
