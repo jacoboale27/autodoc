@@ -118,8 +118,20 @@ class AdminService {
     return await _repository.getTalleres();
   }
 
+  // NOTA IMPORTANTE: `talleres/{idTaller}` es una proyeccion de solo lectura
+  // de `usuarios/{idTaller}` (mismo uid), mantenida por la Cloud Function
+  // `publishTallerProfile` (`onWrite` sobre `usuarios/{uid}`, con
+  // `set(..., {merge:false})`). Escribir directamente en `talleres` aqui
+  // quedaria silenciosamente revertido la proxima vez que `usuarios/{uid}`
+  // se escriba por cualquier motivo (edicion de perfil, `aggregateRatings`,
+  // etc.), y ademas no afecta el acceso real a la app: `firestore.rules`
+  // valida `isMecanico()` leyendo `usuarios/{uid}.estado`, no
+  // `talleres/{uid}.estado`. Por eso los 4 metodos de abajo escriben en
+  // `usuarios` usando `idTaller` como uid (es el mismo doc), igual que
+  // `aprobarUsuario`/`suspenderUsuario`/`reactivarUsuario`, y dejan que
+  // `publishTallerProfile` propague el cambio a `talleres`.
   Future<void> aprobarTaller(String adminUid, String idTaller) async {
-    await _repository.updateTallerEstado(idTaller, 'aprobado');
+    await _repository.updateUsuarioEstado(idTaller, 'aprobado');
     await _logAction(
       adminUid,
       'APROBAR_TALLER',
@@ -130,7 +142,7 @@ class AdminService {
   }
 
   Future<void> rechazarTaller(String adminUid, String idTaller) async {
-    await _repository.updateTallerEstado(idTaller, 'rechazado');
+    await _repository.updateUsuarioEstado(idTaller, 'rechazado');
     await _logAction(
       adminUid,
       'RECHAZAR_TALLER',
@@ -146,7 +158,7 @@ class AdminService {
     String motivo,
   ) async {
     await _repository.suspenderCuenta(
-      coleccion: FirestoreCollections.talleres,
+      coleccion: FirestoreCollections.usuarios,
       docId: idTaller,
       motivo: motivo,
     );
@@ -161,7 +173,7 @@ class AdminService {
 
   Future<void> reactivarTaller(String adminUid, String idTaller) async {
     await _repository.reactivarCuenta(
-      coleccion: FirestoreCollections.talleres,
+      coleccion: FirestoreCollections.usuarios,
       docId: idTaller,
       estadoActivo: 'aprobado',
     );
@@ -282,14 +294,17 @@ class AdminService {
               final Map<String, int> serviciosPorMes = {};
               for (int i = 0; i < 6; i++) {
                 final mes = DateTime(now.year, now.month - i, 1);
-                serviciosPorMes['${mes.year}-${mes.month}'] = 0;
+                final key =
+                    '${mes.year}-${mes.month.toString().padLeft(2, '0')}';
+                serviciosPorMes[key] = 0;
               }
 
               for (var doc in snap.docs) {
                 final data = doc.data();
                 if (data['fecha'] != null) {
                   final date = (data['fecha'] as Timestamp).toDate();
-                  final key = '${date.year}-${date.month}';
+                  final key =
+                      '${date.year}-${date.month.toString().padLeft(2, '0')}';
                   if (serviciosPorMes.containsKey(key)) {
                     serviciosPorMes[key] = (serviciosPorMes[key] ?? 0) + 1;
                   }

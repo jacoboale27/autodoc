@@ -25,7 +25,11 @@ class ServicesTrendChart extends StatelessWidget {
     List<String> monthsOrder = [];
     for (int i = 5; i >= 0; i--) {
       final date = DateTime(now.year, now.month - i, 1);
-      monthsOrder.add('${date.year}-${date.month}');
+      // Debe coincidir con el formato zero-padded (p.ej. "2026-07") que usa
+      // AdminService.watchDashboardMetrics() al construir serviciosPorMes;
+      // una discrepancia aqui hace que el grafico muestre 0 para los meses
+      // 1-9 (ver commit c8db6bb).
+      monthsOrder.add('${date.year}-${date.month.toString().padLeft(2, '0')}');
     }
 
     final spots = monthsOrder.asMap().entries.map((entry) {
