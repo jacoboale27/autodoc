@@ -463,6 +463,8 @@ exports.notifyOnNewChatMessage = functions.firestore
         body = `${remitenteName} te ha compartido un vehículo.`;
       } else if (msgData.tipo === 'imagen') {
         body = '📷 Foto adjunta';
+      } else if (msgData.tipo === 'audio') {
+        body = '🎤 Nota de voz';
       }
       
       await messaging.send({
