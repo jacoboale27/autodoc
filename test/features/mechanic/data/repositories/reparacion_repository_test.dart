@@ -126,6 +126,69 @@ void main() {
     },
   );
 
+  test(
+    'buscarReparacionActiva devuelve null si no hay ninguna para ese vehículo+taller',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = ReparacionRepository(firestore: firestore);
+
+      final id = await repo.buscarReparacionActiva(
+        idVehiculo: 'v1',
+        idTaller: 't1',
+      );
+
+      expect(id, isNull);
+    },
+  );
+
+  test(
+    'buscarReparacionActiva encuentra el ticket existente sin importar su estado',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = ReparacionRepository(firestore: firestore);
+      final idCreado = await repo.iniciarReparacion(
+        idVehiculo: 'v1',
+        idTaller: 't1',
+        idPropietario: 'p1',
+        placa: 'P123-456',
+      );
+      await repo.cambiarEstado(
+        idReparacion: idCreado,
+        nuevoEstado: 'listo_para_entrega',
+      );
+
+      final idEncontrado = await repo.buscarReparacionActiva(
+        idVehiculo: 'v1',
+        idTaller: 't1',
+      );
+
+      expect(idEncontrado, idCreado);
+    },
+  );
+
+  test(
+    'buscarReparacionActiva no mezcla tickets de otro vehículo o taller',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = ReparacionRepository(firestore: firestore);
+      await repo.iniciarReparacion(
+        idVehiculo: 'v1',
+        idTaller: 't1',
+        idPropietario: 'p1',
+        placa: 'P123-456',
+      );
+
+      expect(
+        await repo.buscarReparacionActiva(idVehiculo: 'v2', idTaller: 't1'),
+        isNull,
+      );
+      expect(
+        await repo.buscarReparacionActiva(idVehiculo: 'v1', idTaller: 't2'),
+        isNull,
+      );
+    },
+  );
+
   test('watchReparacionesActivas emite reparaciones del taller', () async {
     final firestore = FakeFirebaseFirestore();
     final repo = ReparacionRepository(firestore: firestore);

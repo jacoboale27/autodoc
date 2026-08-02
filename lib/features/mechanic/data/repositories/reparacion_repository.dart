@@ -8,6 +8,29 @@ class ReparacionRepository {
   ReparacionRepository({FirebaseFirestore? firestore})
     : _firestore = firestore ?? FirebaseFirestore.instance;
 
+  /// Busca un ticket de reparación ya existente para este vehículo en este
+  /// taller, sin importar su estado: el brief no define un estado
+  /// "entregado"/cerrado (ver `estadosReparacion`, cuyo último valor es
+  /// `listo_para_entrega`, todavía "activo" para
+  /// `watchReparacionesActivas`), así que cualquier reparación encontrada
+  /// para este par vehículo+taller es la misma visita en curso. Devuelve
+  /// `null` si no hay ninguna. Se usa antes de crear un ticket nuevo para
+  /// no duplicarlo cada vez que se reentra a la pantalla de servicio
+  /// (`InitiateServiceScreen` recreaba un ticket en cada `initState`).
+  Future<String?> buscarReparacionActiva({
+    required String idVehiculo,
+    required String idTaller,
+  }) async {
+    final snap = await _firestore
+        .collection(FirestoreCollections.reparaciones)
+        .where('id_vehiculo', isEqualTo: idVehiculo)
+        .where('id_taller', isEqualTo: idTaller)
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) return null;
+    return snap.docs.first.id;
+  }
+
   Future<String> iniciarReparacion({
     required String idVehiculo,
     required String idTaller,

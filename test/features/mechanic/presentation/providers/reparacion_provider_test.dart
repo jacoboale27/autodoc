@@ -23,6 +23,34 @@ void main() {
   });
 
   test(
+    'iniciarOReutilizar reutiliza el ticket existente en vez de crear uno nuevo',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = ReparacionRepository(firestore: firestore);
+      final provider = ReparacionProvider(repository: repo);
+
+      final id1 = await provider.iniciarOReutilizar(
+        idVehiculo: 'v1',
+        idTaller: 't1',
+        idPropietario: 'p1',
+        placa: 'P1',
+      );
+      final id2 = await provider.iniciarOReutilizar(
+        idVehiculo: 'v1',
+        idTaller: 't1',
+        idPropietario: 'p1',
+        placa: 'P1',
+      );
+
+      expect(id1, isNotNull);
+      expect(id2, id1);
+
+      final total = await firestore.collection('reparaciones').get();
+      expect(total.docs.length, 1);
+    },
+  );
+
+  test(
     'cambiarEstado delega en el repositorio y no lanza si es válido',
     () async {
       final firestore = FakeFirebaseFirestore();

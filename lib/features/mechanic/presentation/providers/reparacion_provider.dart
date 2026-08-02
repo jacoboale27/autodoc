@@ -65,6 +65,47 @@ class ReparacionProvider extends ChangeNotifier {
     }
   }
 
+  /// Igual que [iniciar], pero primero busca si ya existe un ticket para
+  /// este vehículo en este taller (cualquier estado) y lo reutiliza en vez
+  /// de crear uno nuevo. `InitiateServiceScreen._onVehiculoListo` llama a
+  /// esto cada vez que se (re)entra a la pantalla de servicio de un
+  /// vehículo — sin esta comprobación, cada reentrada (recarga, volver
+  /// atrás y reabrir) creaba un ticket Kanban duplicado para la misma
+  /// visita.
+  Future<String?> iniciarOReutilizar({
+    required String idVehiculo,
+    required String idTaller,
+    required String idPropietario,
+    required String placa,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final existente = await _repository.buscarReparacionActiva(
+        idVehiculo: idVehiculo,
+        idTaller: idTaller,
+      );
+      if (existente != null) {
+        _error = null;
+        return existente;
+      }
+      final id = await _repository.iniciarReparacion(
+        idVehiculo: idVehiculo,
+        idTaller: idTaller,
+        idPropietario: idPropietario,
+        placa: placa,
+      );
+      _error = null;
+      return id;
+    } catch (e) {
+      _error = e.toString();
+      return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> cambiarEstado(String idReparacion, String nuevoEstado) async {
     try {
       await _repository.cambiarEstado(
