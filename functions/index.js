@@ -593,6 +593,66 @@ exports.notifyOnReservationStatusChange = functions.firestore
   });
 
 /**
+ * 5b. Trigger fired when a 'reparaciones' document's estado field changes.
+ * Notifies the vehicle owner (push + in-app notification center).
+ */
+exports.notifyOnReparacionStatusChange = functions.firestore
+  .document('reparaciones/{reparacionId}')
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+
+    if (before.estado === after.estado) {
+      return null;
+    }
+
+    try {
+      const etiquetas = {
+        recibido: 'Recibido',
+        en_revision: 'En Revisión',
+        esperando_repuestos: 'Esperando Repuestos',
+        listo_para_entrega: 'Listo para Entregar',
+      };
+
+      const targetId = after.id_propietario;
+      if (!targetId) return null;
+
+      const title = 'Actualización de tu vehículo';
+      const body = `${after.placa}: ${etiquetas[after.estado] || after.estado}`;
+
+      const userDoc = await db.collection('usuarios').doc(targetId).get();
+      const fcmToken = userDoc.exists ? userDoc.data().fcmToken : null;
+
+      if (fcmToken) {
+        await messaging.send({
+          token: fcmToken,
+          notification: {
+            title: title,
+            body: body,
+          },
+          data: {
+            type: 'reparacion',
+            reparacionId: context.params.reparacionId,
+          },
+        });
+      }
+
+      // Persist in notification center
+      await writeNotification(targetId, {
+        tipo: 'reparacion',
+        titulo: title,
+        body: body,
+        deepLink: `/vehicle_profile/${after.id_vehiculo}`,
+        metadata: { reparacionId: context.params.reparacionId, estado: after.estado },
+      });
+    } catch (error) {
+      console.error('Error sending reparacion notification:', error);
+    }
+
+    return null;
+  });
+
+/**
  * 6. Scheduled function to send reservation reminders daily.
  * Notifies the owner and mechanic if they have an approved reservation for the next day.
  */

@@ -444,6 +444,37 @@ service cloud.firestore {
       allow delete: if isOwner(userId) || isAdmin();
     }
 
+    // 14. Tabla de Reparaciones (kanban de estado de reparación, panel mecánico)
+    // Lectura: propietario del vehículo, taller asignado o admin
+    // Escritura: solo el taller vinculado al vehículo (mismo patrón que
+    // 'servicios'/'historial_mantenimientos'): create exige isMecanico() +
+    // isVinculadoAlVehiculo(id_vehiculo) y que id_propietario coincida con
+    // el dueño real del vehículo (evita inyectar una reparación falsa en el
+    // vehículo de una víctima); update bloquea reasignar
+    // id_vehiculo/id_taller/id_propietario tras la creación (mismo hallazgo
+    // ya corregido en 'servicios').
+    match /reparaciones/{reparacionId} {
+      allow read: if isAuthenticated() &&
+        (resource.data.id_propietario == request.auth.uid ||
+         resource.data.id_taller == request.auth.uid || isAdmin());
+
+      allow create: if isAuthenticated() && (
+        isAdmin() ||
+        (isMecanico() && request.resource.data.id_taller == request.auth.uid
+          && isVinculadoAlVehiculo(request.resource.data.id_vehiculo)
+          && request.resource.data.id_propietario ==
+               getVehicleOwner(request.resource.data.id_vehiculo))
+      );
+
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        (resource.data.id_taller == request.auth.uid
+          && !request.resource.data.diff(resource.data)
+               .affectedKeys().hasAny(['id_vehiculo', 'id_taller', 'id_propietario']))
+      );
+
+      allow delete: if isAdmin();
+    }
 
   }
 }
