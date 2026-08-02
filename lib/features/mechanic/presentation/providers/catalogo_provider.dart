@@ -27,10 +27,22 @@ class CatalogoProvider extends ChangeNotifier {
     if (_idTaller == idTaller && _sub != null) return;
     _idTaller = idTaller;
     _sub?.cancel();
-    _sub = _repository.watchCatalogo(idTaller).listen((data) {
-      _items = data;
-      notifyListeners();
-    });
+    _sub = _repository
+        .watchCatalogo(idTaller)
+        .listen(
+          (data) {
+            _items = data;
+            notifyListeners();
+          },
+          // Sin este onError (a diferencia de ReparacionProvider.watchTaller,
+          // su hermano en el panel mecánico), una denegación de firestore.rules
+          // fallaba en silencio: el stream simplemente dejaba de emitir, sin
+          // registrar el error ni exponerlo via [error] para la UI.
+          onError: (e) {
+            _error = e.toString();
+            notifyListeners();
+          },
+        );
   }
 
   Future<void> agregar(String nombre, double precio) async {
