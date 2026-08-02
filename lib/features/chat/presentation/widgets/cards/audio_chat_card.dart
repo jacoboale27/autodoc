@@ -21,6 +21,7 @@ class AudioChatCard extends StatefulWidget {
 class _AudioChatCardState extends State<AudioChatCard> {
   final AudioPlayer _player = AudioPlayer();
   bool _reproduciendo = false;
+  bool _isToggling = false;
 
   @override
   void initState() {
@@ -31,12 +32,18 @@ class _AudioChatCardState extends State<AudioChatCard> {
   }
 
   Future<void> _toggle() async {
-    if (_reproduciendo) {
-      await _player.pause();
-    } else {
-      await _player.play(UrlSource(widget.urlArchivo));
+    if (_isToggling) return;
+    setState(() => _isToggling = true);
+    try {
+      if (_reproduciendo) {
+        await _player.pause();
+      } else {
+        await _player.play(UrlSource(widget.urlArchivo));
+      }
+      if (mounted) setState(() => _reproduciendo = !_reproduciendo);
+    } finally {
+      if (mounted) setState(() => _isToggling = false);
     }
-    if (mounted) setState(() => _reproduciendo = !_reproduciendo);
   }
 
   String get _duracionFormateada {
@@ -76,7 +83,7 @@ class _AudioChatCardState extends State<AudioChatCard> {
               _reproduciendo ? Icons.pause : Icons.play_arrow,
               color: contentColor,
             ),
-            onPressed: _toggle,
+            onPressed: _isToggling ? null : _toggle,
           ),
           Text(_duracionFormateada, style: TextStyle(color: contentColor)),
         ],
