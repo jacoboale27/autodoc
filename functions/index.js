@@ -1083,27 +1083,48 @@ exports.crearEmpleadoTaller = functions.https.onCall(async (data, context) => {
     .collection('empleados')
     .doc(userRecord.uid);
 
-  await empleadoRef.set({
-    id_taller_propietario: idTallerPropietario,
-    nombre_completo: nombreCompleto,
-    correo,
-    telefono: telefono || null,
-    activo: true,
-    fecha_creacion: admin.firestore.Timestamp.now(),
-  });
+  try {
+    await empleadoRef.set({
+      id_taller_propietario: idTallerPropietario,
+      nombre_completo: nombreCompleto,
+      correo,
+      telefono: telefono || null,
+      activo: true,
+      fecha_creacion: admin.firestore.Timestamp.now(),
+    });
 
-  // El empleado hereda rol Taller (mismos permisos operativos) pero queda
-  // vinculado al taller dueño via id_taller_propietario, campo que el
-  // cliente no puede tocar (firestore.rules).
-  await db.collection('usuarios').doc(userRecord.uid).set({
-    id_usuario: userRecord.uid,
-    nombre_completo: nombreCompleto,
-    correo,
-    rol: 'Empleado',
-    id_taller_propietario: idTallerPropietario,
-    estado: 'activo',
-    fecha_registro: admin.firestore.Timestamp.now(),
-  });
+    // El empleado hereda rol Taller (mismos permisos operativos que el
+    // dueño en firestore.rules/isMecanico()) pero queda vinculado al taller
+    // dueño via id_taller_propietario, campo que el cliente no puede tocar
+    // (firestore.rules) y que distingue esta cuenta de la del dueño real
+    // para fines de UI/administración.
+    await db.collection('usuarios').doc(userRecord.uid).set({
+      id_usuario: userRecord.uid,
+      nombre_completo: nombreCompleto,
+      correo,
+      rol: 'Taller',
+      id_taller_propietario: idTallerPropietario,
+      estado: 'activo',
+      fecha_registro: admin.firestore.Timestamp.now(),
+    });
+  } catch (err) {
+    // Si cualquiera de los dos writes de Firestore falla, la cuenta de Auth
+    // ya fue creada: sin este rollback quedaria huerfana (sin registro en
+    // Firestore, invisible para el dueño del taller) y el correo quedaria
+    // consumido para siempre (un reintento fallaria con 'already-exists').
+    try {
+      await admin.auth().deleteUser(userRecord.uid);
+    } catch (cleanupErr) {
+      console.error(
+        `crearEmpleadoTaller: fallo al hacer rollback del usuario Auth huerfano ${userRecord.uid}:`,
+        cleanupErr
+      );
+    }
+    throw new functions.https.HttpsError(
+      'internal',
+      'No se pudo completar el registro del empleado. Intenta de nuevo.'
+    );
+  }
 
   return { idEmpleado: userRecord.uid };
 });

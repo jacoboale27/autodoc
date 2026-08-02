@@ -65,6 +65,53 @@ describe('usuarios', () => {
     );
   });
 
+  test('un usuario NO puede plantar id_taller_propietario en el create inicial (self-registro)', async () => {
+    // Sin este guard en 'create', el usuario podia saltarse el bloqueo de
+    // 'update' plantando el campo desde el registro inicial. Se autentica
+    // como el propio UID que intenta crear (isOwner) para probar realmente
+    // la rama de self-registro, no un intento de escribir el doc ajeno.
+    const newUid = 'uid-self-register-1';
+    const db = env.authenticatedContext(newUid).firestore();
+    await assertFails(
+      db.collection('usuarios').doc(newUid).set({
+        id_usuario: newUid,
+        rol: 'Propietario',
+        id_taller_propietario: UIDS.taller1,
+      }),
+    );
+  });
+
+  test('un usuario NO puede plantar estado/calificacion_promedio/total_resenias en el create inicial', async () => {
+    const uidA = 'uid-self-register-2';
+    const uidB = 'uid-self-register-3';
+    const uidC = 'uid-self-register-4';
+    await assertFails(
+      env.authenticatedContext(uidA).firestore().collection('usuarios').doc(uidA).set({
+        id_usuario: uidA, rol: 'Propietario', estado: 'aprobado',
+      }),
+    );
+    await assertFails(
+      env.authenticatedContext(uidB).firestore().collection('usuarios').doc(uidB).set({
+        id_usuario: uidB, rol: 'Propietario', calificacion_promedio: 5,
+      }),
+    );
+    await assertFails(
+      env.authenticatedContext(uidC).firestore().collection('usuarios').doc(uidC).set({
+        id_usuario: uidC, rol: 'Propietario', total_resenias: 10,
+      }),
+    );
+  });
+
+  test('un usuario SI puede crear su propio perfil sin los campos protegidos', async () => {
+    const newUid = 'uid-self-register-5';
+    const db = env.authenticatedContext(newUid).firestore();
+    await assertSucceeds(
+      db.collection('usuarios').doc(newUid).set({
+        id_usuario: newUid, rol: 'Propietario', nombre_completo: 'Nuevo',
+      }),
+    );
+  });
+
   test('un usuario NO puede auto-asignarse un taller propietario (id_taller_propietario)', async () => {
     // Tarea 7: solo la Cloud Function crearEmpleadoTaller (Admin SDK) puede
     // fijar este campo. Sin esta exclusion, cualquier usuario podria

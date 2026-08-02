@@ -74,8 +74,17 @@ service cloud.firestore {
       // Function publishTallerProfile.
       allow read: if isOwner(userId) || isAdmin();
 
-      // Permitir la creación de su propio perfil de usuario durante registro/onboarding
-      allow create: if isOwner(userId) && request.resource.data.rol == 'Propietario';
+      // Permitir la creación de su propio perfil de usuario durante registro/onboarding.
+      // Ademas de exigir rol == 'Propietario' (ningun rol privilegiado por
+      // auto-registro), se bloquean aqui los mismos campos que el 'update'
+      // ya protege (id_taller_propietario, estado, calificacion_promedio,
+      // total_resenias): sin esto, un usuario podria plantar su valor en el
+      // create inicial y saltarse por completo el bloqueo del update.
+      allow create: if isOwner(userId) && request.resource.data.rol == 'Propietario'
+                    && !('id_taller_propietario' in request.resource.data)
+                    && !('estado' in request.resource.data)
+                    && !('calificacion_promedio' in request.resource.data)
+                    && !('total_resenias' in request.resource.data);
       
       // El usuario puede editar su propio perfil básico, pero no puede tocar
       // 'rol' (escalamiento de privilegios) ni las métricas agregadas de
