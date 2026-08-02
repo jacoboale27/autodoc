@@ -22,12 +22,22 @@ class _AudioChatCardState extends State<AudioChatCard> {
   final AudioPlayer _player = AudioPlayer();
   bool _reproduciendo = false;
   bool _isToggling = false;
+  // audioplayers v6: play(Source) siempre arranca desde el principio, incluso
+  // si el player estaba en pausa. Para reanudar de verdad hace falta llamar
+  // a resume(). Este flag distingue "primera reproducción / pista terminada"
+  // (usa play()) de "reanudar tras pausa" (usa resume()).
+  bool _hasStartedOnce = false;
 
   @override
   void initState() {
     super.initState();
     _player.onPlayerComplete.listen((_) {
-      if (mounted) setState(() => _reproduciendo = false);
+      if (mounted) {
+        setState(() {
+          _reproduciendo = false;
+          _hasStartedOnce = false;
+        });
+      }
     });
   }
 
@@ -37,10 +47,20 @@ class _AudioChatCardState extends State<AudioChatCard> {
     try {
       if (_reproduciendo) {
         await _player.pause();
+      } else if (_hasStartedOnce) {
+        await _player.resume();
       } else {
         await _player.play(UrlSource(widget.urlArchivo));
+        _hasStartedOnce = true;
       }
       if (mounted) setState(() => _reproduciendo = !_reproduciendo);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _reproduciendo = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo reproducir la nota de voz')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isToggling = false);
     }
@@ -66,15 +86,12 @@ class _AudioChatCardState extends State<AudioChatCard> {
         ? Colors.white
         : (colors?.textPrimary ?? Colors.black87);
 
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: widget.isMe
-            ? (colors?.primary ?? Theme.of(context).colorScheme.primary)
-            : Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(12),
-      ),
+    // Sin fondo/borde propios: el burbujeo de color ya lo aporta el
+    // Container en ChatScreen._buildMessageContent (igual que para los
+    // mensajes de texto). Tener aquí una segunda burbuja duplicada además
+    // dejaba el fondo fijo en gris claro, ilegible en modo oscuro.
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
