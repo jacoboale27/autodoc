@@ -21,6 +21,11 @@ class VoiceRecordButton extends StatefulWidget {
 }
 
 class _VoiceRecordButtonState extends State<VoiceRecordButton> {
+  // Tope de duración de una nota de voz: acota el peor caso de tamaño de
+  // archivo (todo se buffera en memoria vía File.readAsBytes antes de subir,
+  // ver ChatProvider.subirAudioChat) sin necesitar un rediseño a streaming.
+  static const Duration _duracionMaxima = Duration(seconds: 90);
+
   final AudioRecorder _recorder = AudioRecorder();
   bool _grabando = false;
   // Verdadero mientras el usuario sigue manteniendo el botón presionado.
@@ -29,7 +34,7 @@ class _VoiceRecordButtonState extends State<VoiceRecordButton> {
   // arrancando "a ciegas" sin forma de detenerla desde la UI.
   bool _deberiaGrabar = false;
   DateTime? _inicio;
-  String? _rutaActual;
+  Timer? _limiteDuracionTimer;
 
   Future<void> _iniciarGrabacion() async {
     _deberiaGrabar = true;
@@ -57,9 +62,9 @@ class _VoiceRecordButtonState extends State<VoiceRecordButton> {
     }
 
     final dir = await getTemporaryDirectory();
-    _rutaActual =
+    final ruta =
         '${dir.path}/nota_${DateTime.now().millisecondsSinceEpoch}.m4a';
-    await _recorder.start(const RecordConfig(), path: _rutaActual!);
+    await _recorder.start(const RecordConfig(), path: ruta);
 
     if (!_deberiaGrabar) {
       // Se soltó/canceló mientras `start` estaba en vuelo: no dejar la
@@ -69,11 +74,18 @@ class _VoiceRecordButtonState extends State<VoiceRecordButton> {
     }
 
     _inicio = DateTime.now();
+    _limiteDuracionTimer?.cancel();
+    _limiteDuracionTimer = Timer(_duracionMaxima, () {
+      // Mismo camino que soltar el botón normalmente: detiene y entrega
+      // la grabación acumulada hasta ahora.
+      _detenerGrabacion();
+    });
     if (mounted) setState(() => _grabando = true);
   }
 
   Future<void> _detenerGrabacion() async {
     _deberiaGrabar = false;
+    _limiteDuracionTimer?.cancel();
     if (!_grabando) return;
     final ruta = await _recorder.stop();
     final duracion = _inicio == null
@@ -89,6 +101,7 @@ class _VoiceRecordButtonState extends State<VoiceRecordButton> {
   @override
   void dispose() {
     _deberiaGrabar = false;
+    _limiteDuracionTimer?.cancel();
     if (_grabando) {
       // Evita dejar un archivo .m4a huérfano si el widget se destruye
       // mientras hay una grabación en curso.
