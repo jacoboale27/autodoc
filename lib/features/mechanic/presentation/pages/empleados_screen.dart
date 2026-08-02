@@ -5,6 +5,7 @@ import 'package:autodoc/core/models/empleado_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/empleado_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
 
@@ -12,11 +13,16 @@ import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.
 /// empleados vinculados (`talleres/{idTaller}/empleados`), permite
 /// desactivarlos y crear nuevos via la Cloud Function `crearEmpleadoTaller`.
 ///
-/// Solo el dueño del taller debe llegar aquí — `EmpleadosScreen` no vuelve a
-/// verificar el rol/`id_taller_propietario` de quien la abre porque esa
-/// verificación ya vive en el sidebar (ítem oculto para sub-cuentas) y, de
-/// forma autoritativa, en la propia Cloud Function (rechaza con
-/// `permission-denied` si quien llama no es un taller dueño).
+/// Solo el dueño del taller debe llegar aquí. `MechanicSidebar` oculta el
+/// link para sub-cuentas y `crearEmpleadoTaller` rechaza a un empleado que
+/// invoque el callable directamente (ambos verifican
+/// `id_taller_propietario`, no `rol`: un empleado también tiene
+/// `rol == 'Taller'`, igual que el dueño). Pero un empleado podría llegar
+/// aquí por URL directa (`context.go('/mechanic/empleados')` a mano, o un
+/// deep link), así que esta pantalla repite la misma verificación
+/// (defensa en profundidad, capa 3 de 3: sidebar oculto, esta pantalla,
+/// Cloud Function) en vez de asumir que si llegó aquí es porque es el
+/// dueño.
 class EmpleadosScreen extends StatefulWidget {
   final String idTaller;
 
@@ -32,7 +38,18 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<EmpleadoProvider>().watchTaller(widget.idTaller);
+      final idTallerPropietario = context
+          .read<UserProfileProvider>()
+          .userData
+          ?.idTallerPropietario;
+      final esSubCuentaEmpleado =
+          idTallerPropietario != null && idTallerPropietario.isNotEmpty;
+      // Un empleado nunca debe disparar watchTaller: firestore.rules ya lo
+      // rechazaría (solo el propio tallerId puede leer su subcolección de
+      // empleados), pero evitamos incluso el intento de lectura fallido.
+      if (!esSubCuentaEmpleado) {
+        context.read<EmpleadoProvider>().watchTaller(widget.idTaller);
+      }
     });
   }
 
@@ -214,6 +231,62 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
     final isMobile = MediaQuery.of(context).size.width < 700;
     final colors = context.appColors;
     final theme = Theme.of(context);
+    final idTallerPropietario = context
+        .watch<UserProfileProvider>()
+        .userData
+        ?.idTallerPropietario;
+    final esSubCuentaEmpleado =
+        idTallerPropietario != null && idTallerPropietario.isNotEmpty;
+
+    if (esSubCuentaEmpleado) {
+      return Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        appBar: isMobile
+            ? AppBar(
+                title: const Text('Empleados'),
+                iconTheme: IconThemeData(color: colors.primary),
+              )
+            : null,
+        drawer: isMobile ? const Drawer(child: MechanicSidebar()) : null,
+        body: Row(
+          children: [
+            if (!isMobile) const MechanicSidebar(),
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: EdgeInsets.all(Responsive.padding(context, 32)),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.lock_outline,
+                        size: Responsive.iconSize(context, 56),
+                        color: colors.textSecondary.withValues(alpha: 0.4),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Acceso restringido',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          color: colors.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Solo el dueño del taller puede gestionar cuentas '
+                        'de empleados.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: colors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,

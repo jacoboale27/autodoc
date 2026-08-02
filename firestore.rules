@@ -133,6 +133,27 @@ service cloud.firestore {
       allow create, update: if isAdmin();
 
       allow delete: if isAdmin();
+
+      // Sub-cuentas de empleados del taller (Tarea 8, EmpleadoRepository).
+      // Las reglas no se heredan de la coleccion padre, asi que esta
+      // subcoleccion necesita su propio match aunque 'talleres/{tallerId}'
+      // ya tenga reglas arriba.
+      match /empleados/{empleadoId} {
+        // Solo el dueño del taller (tallerId == su propio uid) o un admin
+        // pueden ver la lista de empleados; ni siquiera el empleado mismo
+        // necesita leer esta subcoleccion (EmpleadosScreen la usa solo
+        // desde la vista del dueño).
+        allow read: if isAuthenticated() && (request.auth.uid == tallerId || isAdmin());
+
+        // El unico write de cliente real es EmpleadoRepository.desactivarEmpleado(),
+        // que solo cambia 'activo'. crearRegistroEmpleado() (Tarea 6) nunca
+        // se invoca en la app: crearEmpleadoTaller (Cloud Function) crea el
+        // documento con el Admin SDK, que bypassea estas reglas por completo.
+        allow update: if isAuthenticated() && request.auth.uid == tallerId
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activo']);
+
+        allow create, delete: if isAdmin();
+      }
     }
 
     // 3. Tabla de Vehículos

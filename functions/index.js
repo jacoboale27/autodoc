@@ -1037,11 +1037,26 @@ exports.crearEmpleadoTaller = functions.https.onCall(async (data, context) => {
   const idTallerPropietario = context.auth.uid;
 
   const tallerDoc = await db.collection('usuarios').doc(idTallerPropietario).get();
-  const rol = tallerDoc.exists ? tallerDoc.data().rol : null;
+  const tallerData = tallerDoc.exists ? tallerDoc.data() : null;
+  const rol = tallerData ? tallerData.rol : null;
   if (!['Mecanico', 'Taller'].includes(rol)) {
     throw new functions.https.HttpsError(
       'permission-denied',
       'Solo un taller puede crear cuentas de empleados.'
+    );
+  }
+  // Un empleado tambien tiene rol 'Taller' (hereda los mismos permisos
+  // operativos que el dueño, ver el write mas abajo), asi que el check de
+  // arriba por si solo NO distingue a un empleado del dueño real: sin este
+  // guard, un empleado podia llamar este callable directamente (saltandose
+  // la UI, donde el item de sidebar esta oculto) y provisionar sus propias
+  // sub-cuentas, escalando privilegios y rompiendo el modelo de un solo
+  // dueño por taller. Solo una cuenta SIN id_taller_propietario (el dueño
+  // real) puede crear empleados.
+  if (tallerData && tallerData.id_taller_propietario) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'Solo el dueño del taller puede crear cuentas de empleados.'
     );
   }
 
