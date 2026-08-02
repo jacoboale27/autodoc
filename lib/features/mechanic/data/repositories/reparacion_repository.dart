@@ -49,6 +49,9 @@ class ReparacionRepository {
 
     await _firestore.runTransaction((tx) async {
       final snap = await tx.get(docRef);
+      if (!snap.exists || snap.data() == null) {
+        throw ArgumentError('Reparación no encontrada: $idReparacion');
+      }
       final data = snap.data() as Map<String, dynamic>;
 
       final estadoActual = (data['estado'] ?? 'recibido').toString();

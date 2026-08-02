@@ -110,6 +110,22 @@ void main() {
     },
   );
 
+  test(
+    'cambiarEstado rechaza un idReparacion inexistente con error de dominio',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = ReparacionRepository(firestore: firestore);
+
+      expect(
+        () => repo.cambiarEstado(
+          idReparacion: 'no-existe',
+          nuevoEstado: 'en_revision',
+        ),
+        throwsArgumentError,
+      );
+    },
+  );
+
   test('watchReparacionesActivas emite reparaciones del taller', () async {
     final firestore = FakeFirebaseFirestore();
     final repo = ReparacionRepository(firestore: firestore);
