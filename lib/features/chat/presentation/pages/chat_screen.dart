@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../widgets/historial_chat_card.dart';
 import '../widgets/vehiculo_picker.dart';
@@ -19,6 +20,8 @@ import 'package:autodoc/features/chat/presentation/widgets/cards/cotizacion_chat
 
 import 'package:autodoc/features/chat/presentation/widgets/cards/review_chat_card.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/imagen_chat_card.dart';
+import 'package:autodoc/features/chat/presentation/widgets/cards/audio_chat_card.dart';
+import 'package:autodoc/features/chat/presentation/widgets/voice_record_button.dart';
 import 'package:autodoc/features/chat/data/models/mensaje_model.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cotizacion_picker.dart';
 import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
@@ -493,6 +496,15 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   ),
                 ),
+                VoiceRecordButton(
+                  onGrabacionCompleta: (file, duracion) => _grabarYEnviarAudio(
+                    file,
+                    duracion,
+                    userId,
+                    isMecanico,
+                    receptorId,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Container(
                   decoration: BoxDecoration(
@@ -547,6 +559,14 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       case 'imagen':
         return ImagenChatCard(urlArchivo: msg.urlArchivo ?? '', isMe: isMe);
+      case 'audio':
+        return AudioChatCard(
+          urlArchivo: msg.urlArchivo ?? '',
+          duracionSegundos:
+              msg.duracionSegundos ??
+              (msg.metadata?['duracion_segundos'] as num?)?.toInt(),
+          isMe: isMe,
+        );
       case 'historial':
         return HistorialChatCard(mensaje: msg, isMe: isMe, colors: colors);
       case 'texto':
@@ -718,6 +738,36 @@ class _ChatScreenState extends State<ChatScreen> {
           SnackBar(content: Text(context.l10n.chatUploadImageError)),
         );
       }
+    }
+  }
+
+  Future<void> _grabarYEnviarAudio(
+    File audioFile,
+    int duracionSegundos,
+    String userId,
+    bool isMecanico,
+    String receptorId,
+  ) async {
+    final provider = context.read<ChatProvider>();
+    final url = await provider.subirAudioChat(widget.conversacionId, audioFile);
+
+    if (!mounted) return;
+
+    if (url != null) {
+      provider.enviarMensaje(
+        conversacionId: widget.conversacionId,
+        contenido: '🎤 Nota de voz',
+        remitenteId: userId,
+        receptorId: receptorId,
+        isMecanicoRemitente: isMecanico,
+        tipo: 'audio',
+        urlArchivo: url,
+        duracionSegundos: duracionSegundos,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo enviar la nota de voz')),
+      );
     }
   }
 }
