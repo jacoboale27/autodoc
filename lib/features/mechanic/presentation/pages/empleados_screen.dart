@@ -60,7 +60,8 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
         title: const Text('Desactivar empleado'),
         content: Text(
           '¿Seguro que deseas desactivar a "${empleado.nombreCompleto}"? '
-          'Dejará de poder iniciar sesión en el panel del taller.',
+          'Se deshabilitará su cuenta y dejará de poder iniciar sesión '
+          'en el panel del taller.',
         ),
         actions: [
           TextButton(

@@ -74,8 +74,30 @@ class EmpleadoProvider extends ChangeNotifier {
     }
   }
 
+  /// Desactiva a un empleado: revoca su acceso de verdad vía la Cloud
+  /// Function `desactivarEmpleadoTaller` (deshabilita su cuenta Auth y fija
+  /// `usuarios/{idEmpleado}.estado = 'suspendido'`, con Admin SDK — un
+  /// write directo del cliente a Firestore no puede deshabilitar Auth).
+  /// También se actualiza `talleres/{idTaller}/empleados/{idEmpleado}.activo`
+  /// desde el cliente (vía [EmpleadoRepository.desactivarEmpleado], ya
+  /// permitido por firestore.rules) para que el Switch de la UI refleje el
+  /// cambio de inmediato sin esperar a que la Cloud Function termine.
   Future<void> desactivar(String idTaller, String idEmpleado) async {
-    await _repository.desactivarEmpleado(idTaller, idEmpleado);
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final callable = _functions.httpsCallable('desactivarEmpleadoTaller');
+      await callable.call({'idEmpleado': idEmpleado});
+      await _repository.desactivarEmpleado(idTaller, idEmpleado);
+      _error = null;
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   @override
