@@ -81,7 +81,11 @@ describe('usuarios', () => {
     );
   });
 
-  test('un usuario NO puede plantar estado/calificacion_promedio/total_resenias en el create inicial', async () => {
+  test('un usuario NO puede plantar un estado/calificacion_promedio/total_resenias NO por defecto en el create inicial', async () => {
+    // Estos siguen bloqueados: solo se permite el valor por defecto inofensivo
+    // ('activo' / 0 / 0) que el cliente real envia (ver test de abajo que
+    // replica el payload real de UserModel.toMap()); cualquier otro valor
+    // (autoaprobarse, plantarse una reputacion) sigue siendo un create fallido.
     const uidA = 'uid-self-register-2';
     const uidB = 'uid-self-register-3';
     const uidC = 'uid-self-register-4';
@@ -108,6 +112,35 @@ describe('usuarios', () => {
     await assertSucceeds(
       db.collection('usuarios').doc(newUid).set({
         id_usuario: newUid, rol: 'Propietario', nombre_completo: 'Nuevo',
+      }),
+    );
+  });
+
+  test('el registro real de un Propietario nuevo (payload exacto de UserModel.toMap()) SI puede crearse', async () => {
+    // Regresion: UserModel.toMap() (lib/core/models/user_model.dart) siempre
+    // incluye 'estado' (default 'activo'), 'calificacion_promedio' (default
+    // 0.0) y 'total_resenias' (default 0) sin gate de nulidad, y
+    // UserService.createUserData() (lib/features/profile/data/services/
+    // user_service.dart) escribe ese toMap() SIN filtrar en la rama de
+    // usuario nuevo. Un guard de 'create' que rechace estos campos por su
+    // sola presencia (como en un primer intento de este fix) rompe el
+    // registro real de cualquier Propietario nuevo. Este test replica ese
+    // payload real (mismas keys que toMap() siempre emite) para que
+    // cualquier regresion futura del mismo tipo falle aqui.
+    const newUid = 'uid-self-register-6';
+    const db = env.authenticatedContext(newUid).firestore();
+    await assertSucceeds(
+      db.collection('usuarios').doc(newUid).set({
+        id_usuario: newUid,
+        nombre_completo: 'Usuario Real',
+        correo: `${newUid}@test.com`,
+        rol: 'Propietario',
+        fecha_registro: new Date(),
+        talleres_favoritos: [],
+        foto_perfil_url: null,
+        estado: 'activo',
+        calificacion_promedio: 0,
+        total_resenias: 0,
       }),
     );
   });
