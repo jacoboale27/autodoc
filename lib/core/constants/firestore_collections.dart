@@ -11,4 +11,5 @@ class FirestoreCollections {
   static const String historialMantenimientos = 'historial_mantenimientos';
   static const String adminLogs = 'admin_logs';
   static const String mensajes = 'mensajes';
+  static const String reparaciones = 'reparaciones';
 }
