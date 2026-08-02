@@ -24,6 +24,7 @@ import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart'
 import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
+import 'package:autodoc/features/mechanic/presentation/providers/reparacion_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/theme/app_theme.dart';
@@ -242,6 +243,7 @@ void main() async {
         ChangeNotifierProvider.value(value: userProfileProvider),
         ChangeNotifierProvider.value(value: vehicleProvider),
         ChangeNotifierProvider(create: (_) => AlertProvider()),
+        ChangeNotifierProvider(create: (_) => ReparacionProvider()),
         ChangeNotifierProvider(create: (_) => AdminProvider()),
         ChangeNotifierProvider(create: (_) => AdminDashboardProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),

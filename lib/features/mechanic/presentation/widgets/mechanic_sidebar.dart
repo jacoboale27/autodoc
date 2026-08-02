@@ -113,6 +113,14 @@ class MechanicSidebar extends StatelessWidget {
           ),
           _buildNavItem(
             context,
+            icon: Icons.dashboard_customize,
+            label: 'Reparaciones',
+            isActive: currentPath == '/mechanic_reparaciones',
+            colors: colors,
+            onTap: () => _navigate(context, '/mechanic_reparaciones'),
+          ),
+          _buildNavItem(
+            context,
             icon: Icons.star_outline,
             label: 'Mis Reseñas',
             isActive: currentPath == '/mechanic_reviews',

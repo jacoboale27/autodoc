@@ -10,6 +10,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
+import 'package:autodoc/features/mechanic/presentation/providers/reparacion_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:autodoc/core/models/alert_model.dart';
@@ -50,6 +51,11 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
 
   bool _hasApprovedQuote = false;
   CotizacionModel? _approvedQuote;
+
+  /// Id del ticket Kanban de reparación creado al recibir el vehículo
+  /// (Task 4). Puede quedar en null si `ReparacionProvider.iniciar` falla:
+  /// eso no debe bloquear el flujo de servicio existente.
+  String? _idReparacion;
 
   bool get _isInvoicePdf =>
       _invoiceImage?.name.toLowerCase().endsWith('.pdf') ?? false;
@@ -141,6 +147,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<AlertProvider>().fetchAlerts(vehiculo.idVehiculo, vehiculo);
+      _iniciarTicketReparacion(vehiculo);
     });
 
     FirebaseFirestore.instance
@@ -166,6 +173,36 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
             }
           }
         });
+  }
+
+  /// Crea el ticket Kanban de reparación en cuanto el mecánico recibe el
+  /// vehículo (Task 4, brief step 8). Si falla, se registra en debug y se
+  /// continúa: el flujo de servicio existente no debe depender de esto.
+  Future<void> _iniciarTicketReparacion(VehicleModel vehiculo) async {
+    final userSession = context.read<UserProfileProvider>();
+    final tallerId = userSession.userData?.idUsuario ?? '';
+    if (tallerId.isEmpty) return;
+
+    try {
+      final idReparacion = await context.read<ReparacionProvider>().iniciar(
+        idVehiculo: vehiculo.idVehiculo,
+        idTaller: tallerId,
+        idPropietario: vehiculo.idPropietario,
+        placa: vehiculo.placa,
+      );
+      if (!mounted) return;
+      if (idReparacion == null) {
+        debugPrint(
+          'No se pudo crear el ticket de reparación para ${vehiculo.placa}',
+        );
+        return;
+      }
+      setState(() {
+        _idReparacion = idReparacion;
+      });
+    } catch (e) {
+      debugPrint('Error al crear el ticket de reparación: $e');
+    }
   }
 
   void _updateTotalCost() {
@@ -252,6 +289,19 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       }
 
       await alertProvider.fetchAlerts(_vehiculo!.idVehiculo, _vehiculo!);
+
+      if (_idReparacion != null && mounted) {
+        try {
+          await context.read<ReparacionProvider>().cambiarEstado(
+            _idReparacion!,
+            'listo_para_entrega',
+          );
+        } catch (e) {
+          // No bloquear el cierre del servicio si el ticket Kanban no pudo
+          // actualizarse (p.ej. ya estaba en ese estado o fue eliminado).
+          debugPrint('Error al actualizar el ticket de reparación: $e');
+        }
+      }
 
       if (mounted) {
         HapticFeedback.lightImpact();
