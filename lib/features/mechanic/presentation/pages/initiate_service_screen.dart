@@ -11,6 +11,8 @@ import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/reparacion_provider.dart';
+import 'package:autodoc/features/mechanic/presentation/providers/catalogo_provider.dart';
+import 'package:autodoc/core/models/catalogo_item_model.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:autodoc/core/models/alert_model.dart';
@@ -107,6 +109,13 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     } else {
       _cargarVehiculo();
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final tallerId = context.read<UserProfileProvider>().userData?.idUsuario;
+      if (tallerId != null && tallerId.isNotEmpty) {
+        context.read<CatalogoProvider>().watchTaller(tallerId);
+      }
+    });
   }
 
   Future<void> _cargarVehiculo() async {
@@ -894,20 +903,142 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
             },
           ),
         const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: () => _showAddMaterialDialog(colors),
-          icon: const Icon(Icons.add),
-          label: const Text('Agregar Material/Repuesto'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: colors.primary,
-            side: BorderSide(color: colors.primary),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _showAddMaterialDialog(colors),
+                icon: const Icon(Icons.add),
+                label: const Text('Agregar Material/Repuesto'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: colors.primary,
+                  side: BorderSide(color: colors.primary),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _showCatalogoBottomSheet(colors),
+                icon: const Icon(Icons.inventory_2_outlined),
+                label: const Text('Desde catálogo'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: colors.secondary,
+                  side: BorderSide(color: colors.secondary),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
+  }
+
+  /// Muestra el catálogo rápido del taller (Task 9/10) en un
+  /// `showModalBottomSheet`; al tocar un ítem lo agrega a `_materiales` con
+  /// la misma estructura que el diálogo manual (`_showAddMaterialDialog`),
+  /// sin tocar la firma de `AlertProvider.tallerUpdateService`.
+  Future<void> _showCatalogoBottomSheet(AppColors colors) async {
+    final items = context.read<CatalogoProvider>().items;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    'Catálogo del taller',
+                    style: GoogleFonts.montserrat(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (items.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 24,
+                    ),
+                    child: Text(
+                      'El catálogo del taller está vacío. Agrega ítems '
+                      'desde la sección "Catálogo" del panel.',
+                      style: GoogleFonts.inter(color: colors.textSecondary),
+                    ),
+                  )
+                else
+                  Flexible(
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: items.length,
+                      itemBuilder: (context, index) {
+                        final item = items[index];
+                        return ListTile(
+                          leading: Icon(
+                            Icons.build_outlined,
+                            color: colors.secondary,
+                          ),
+                          title: Text(
+                            item.nombre,
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.bold,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          trailing: Text(
+                            '\$${item.precio.toStringAsFixed(2)}',
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.bold,
+                              color: colors.primary,
+                            ),
+                          ),
+                          onTap: () =>
+                              _agregarDesdeCatalogo(item, sheetContext),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _agregarDesdeCatalogo(
+    CatalogoItemModel item,
+    BuildContext sheetContext,
+  ) {
+    setState(() {
+      _materiales.add({
+        'nombre': item.nombre,
+        'cantidad': 1,
+        'precioUnitario': item.precio,
+      });
+      _updateTotalCost();
+    });
+    Navigator.pop(sheetContext);
   }
 
   Future<void> _showAddMaterialDialog(AppColors colors) async {

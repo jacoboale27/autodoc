@@ -28,6 +28,7 @@ import 'package:autodoc/features/dashboard/presentation/pages/task_complete_scre
 import 'package:autodoc/features/mechanic/presentation/pages/mechanic_service_history_screen.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/reparaciones_kanban_screen.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/empleados_screen.dart';
+import 'package:autodoc/features/mechanic/presentation/pages/catalogo_servicios_screen.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_dashboard_screen.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_usuarios_screen.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_talleres_screen.dart';
@@ -88,6 +89,7 @@ const _mechanicRoutes = <String>{
   '/mechanic_pending',
   '/mechanic_reparaciones',
   '/mechanic/empleados',
+  '/mechanic/catalogo',
 };
 
 /// Valores de `usuarios/{uid}.estado` que permiten a un mecanico/taller
@@ -482,6 +484,18 @@ GoRouter createAppRouter(
           state: state,
           child: Consumer<UserProfileProvider>(
             builder: (context, userSession, _) => EmpleadosScreen(
+              idTaller: userSession.userData?.idUsuario ?? '',
+            ),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/mechanic/catalogo',
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: Consumer<UserProfileProvider>(
+            builder: (context, userSession, _) => CatalogoServiciosScreen(
               idTaller: userSession.userData?.idUsuario ?? '',
             ),
           ),
