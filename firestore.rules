@@ -154,6 +154,15 @@ service cloud.firestore {
 
         allow create, delete: if isAdmin();
       }
+
+      // Catálogo de servicios/repuestos rápidos del taller (Tarea 9,
+      // CatalogoRepository). Igual que 'empleados', esta subcoleccion
+      // necesita su propio match aunque 'talleres/{tallerId}' ya tenga
+      // reglas arriba.
+      match /catalogo_servicios/{itemId} {
+        allow read: if true;
+        allow create, update, delete: if isAuthenticated() && request.auth.uid == tallerId;
+      }
     }
 
     // 3. Tabla de Vehículos
