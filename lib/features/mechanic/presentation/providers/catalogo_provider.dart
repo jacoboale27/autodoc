@@ -17,6 +17,12 @@ class CatalogoProvider extends ChangeNotifier {
   List<CatalogoItemModel> _items = [];
   List<CatalogoItemModel> get items => _items;
 
+  bool _isLoading = false;
+  bool get isLoading => _isLoading;
+
+  String? _error;
+  String? get error => _error;
+
   void watchTaller(String idTaller) {
     if (_idTaller == idTaller && _sub != null) return;
     _idTaller = idTaller;
@@ -29,16 +35,38 @@ class CatalogoProvider extends ChangeNotifier {
 
   Future<void> agregar(String nombre, double precio) async {
     if (_idTaller == null) return;
-    await _repository.agregarItem(
-      idTaller: _idTaller!,
-      nombre: nombre,
-      precio: precio,
-    );
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _repository.agregarItem(
+        idTaller: _idTaller!,
+        nombre: nombre,
+        precio: precio,
+      );
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> eliminar(String idItem) async {
     if (_idTaller == null) return;
-    await _repository.eliminarItem(_idTaller!, idItem);
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _repository.eliminarItem(_idTaller!, idItem);
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   @override

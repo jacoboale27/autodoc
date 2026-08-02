@@ -138,9 +138,18 @@ class _CatalogoServiciosScreenState extends State<CatalogoServiciosScreen> {
                         final nombre = nombreController.text.trim();
                         final precio =
                             double.tryParse(precioController.text.trim()) ?? 0;
-                        await provider.agregar(nombre, precio);
-                        if (dialogContext.mounted) {
-                          Navigator.pop(dialogContext);
+                        try {
+                          await provider.agregar(nombre, precio);
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext);
+                          }
+                        } catch (e) {
+                          if (dialogContext.mounted) {
+                            setDialogState(() => isLoading = false);
+                            ScaffoldMessenger.of(dialogContext).showSnackBar(
+                              SnackBar(content: Text('Error: $e')),
+                            );
+                          }
                         }
                       },
                 child: isLoading
