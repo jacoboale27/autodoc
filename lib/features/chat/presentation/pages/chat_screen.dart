@@ -48,11 +48,23 @@ class _ChatScreenState extends State<ChatScreen> {
   Timer? _typingTimer;
   bool _isTyping = false;
 
+  // Capturado una vez en initState (con el context aún activo) para poder
+  // usarlo en dispose(): en ese punto el propio Element ya está desactivado,
+  // así que un context.read<ChatProvider>() ahí lanza "Looking up a
+  // deactivated widget's ancestor is unsafe".
+  late final ChatProvider _chatProvider;
+
   @override
   void initState() {
     super.initState();
+    _chatProvider = context.read<ChatProvider>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ChatProvider>().inicializarMensajes(widget.conversacionId);
+      if (!mounted) return;
+      final userSession = context.read<UserProfileProvider>();
+      final userId = userSession.userData?.idUsuario ?? '';
+      final isMecanico = userSession.userData?.rol == 'Mecanico';
+      _chatProvider.inicializarMensajes(widget.conversacionId);
+      _chatProvider.marcarComoLeidos(widget.conversacionId, isMecanico, userId);
     });
 
     _controller.addListener(() {
@@ -84,7 +96,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void dispose() {
     _typingTimer?.cancel();
-    context.read<ChatProvider>().setTypingStatus(widget.conversacionId, null);
+    _chatProvider.setTypingStatus(widget.conversacionId, null);
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
