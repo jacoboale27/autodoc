@@ -448,11 +448,14 @@ service cloud.firestore {
     // Lectura: propietario del vehículo, taller asignado o admin
     // Escritura: solo el taller vinculado al vehículo (mismo patrón que
     // 'servicios'/'historial_mantenimientos'): create exige isMecanico() +
-    // isVinculadoAlVehiculo(id_vehiculo) y que id_propietario coincida con
-    // el dueño real del vehículo (evita inyectar una reparación falsa en el
-    // vehículo de una víctima); update bloquea reasignar
-    // id_vehiculo/id_taller/id_propietario tras la creación (mismo hallazgo
-    // ya corregido en 'servicios').
+    // isVinculadoAlVehiculo(id_vehiculo) — o, igual que en 'servicios'
+    // (walk-in: cliente sin cita previa, ver vehicle_search_screen.dart ->
+    // initiate_service_screen.dart -> _iniciarTicketReparacion), que el
+    // vehículo aún no tenga ningún taller vinculado — y que id_propietario
+    // coincida con el dueño real del vehículo (evita inyectar una
+    // reparación falsa en el vehículo de una víctima); update bloquea
+    // reasignar id_vehiculo/id_taller/id_propietario tras la creación
+    // (mismo hallazgo ya corregido en 'servicios').
     match /reparaciones/{reparacionId} {
       allow read: if isAuthenticated() &&
         (resource.data.id_propietario == request.auth.uid ||
@@ -461,7 +464,13 @@ service cloud.firestore {
       allow create: if isAuthenticated() && (
         isAdmin() ||
         (isMecanico() && request.resource.data.id_taller == request.auth.uid
-          && isVinculadoAlVehiculo(request.resource.data.id_vehiculo)
+          && exists(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
+          && (
+            get(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
+              .data.get('talleres_vinculados', []).size() == 0
+            || get(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
+                 .data.get('talleres_vinculados', []).hasAny([request.auth.uid])
+          )
           && request.resource.data.id_propietario ==
                getVehicleOwner(request.resource.data.id_vehiculo))
       );

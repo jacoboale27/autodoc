@@ -80,6 +80,27 @@ describe('reparaciones (Tarea 5 — kanban de estado, panel mecanico)', () => {
     );
   });
 
+  test('un mecanico puede crear la reparacion de un vehiculo walk-in (talleres_vinculados vacio, sin cita previa)', async () => {
+    await seed(env, async (s) => {
+      await s.collection('vehiculos').doc('v2').set({
+        id_vehiculo: 'v2',
+        id_propietario: UIDS.owner1,
+        placa: 'XYZ999',
+        talleres_vinculados: [],
+      });
+    });
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertSucceeds(
+      db.collection('reparaciones').doc('rep-walkin').set({
+        id_propietario: UIDS.owner1,
+        id_taller: UIDS.taller1,
+        id_vehiculo: 'v2',
+        placa: 'XYZ999',
+        estado: 'recibido',
+      }),
+    );
+  });
+
   test('un taller vinculado NO puede crear con id_propietario distinto del dueño real del vehiculo', async () => {
     await seedVehiculo();
     const db = await withRole(env, UIDS.taller1, 'Taller');
