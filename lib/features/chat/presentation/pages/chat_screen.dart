@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../widgets/historial_chat_card.dart';
 import '../widgets/vehiculo_picker.dart';
@@ -54,17 +55,20 @@ class _ChatScreenState extends State<ChatScreen> {
   // deactivated widget's ancestor is unsafe".
   late final ChatProvider _chatProvider;
 
+  // Si en el postFrameCallback inicial `userData` todavía es null (posible
+  // en cold start, p.ej. al abrir la app desde una notificación push antes
+  // de que UserProfileProvider termine de cargar el perfil), nos suscribimos
+  // aquí para reintentar en cuanto el perfil llegue, en vez de no inicializar
+  // nunca los mensajes ni marcarlos como leídos.
+  UserProfileProvider? _userSessionPendiente;
+
   @override
   void initState() {
     super.initState();
     _chatProvider = context.read<ChatProvider>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final userSession = context.read<UserProfileProvider>();
-      final userId = userSession.userData?.idUsuario ?? '';
-      final isMecanico = userSession.userData?.rol == 'Mecanico';
-      _chatProvider.inicializarMensajes(widget.conversacionId);
-      _chatProvider.marcarComoLeidos(widget.conversacionId, isMecanico, userId);
+      _intentarInicializarMensajes();
     });
 
     _controller.addListener(() {
@@ -93,8 +97,37 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
+  void _intentarInicializarMensajes() {
+    if (!mounted) return;
+    final userSession = context.read<UserProfileProvider>();
+    final user = userSession.userData;
+    if (user == null) {
+      // Perfil aún no disponible: nos suscribimos para reintentar en cuanto
+      // UserProfileProvider notifique el cambio (no llamamos a
+      // marcarComoLeidos/inicializarMensajes con un userId vacío, que
+      // corrompería el estado de lectura, ver ChatRepository.marcarComoLeidos).
+      if (_userSessionPendiente == null) {
+        _userSessionPendiente = userSession;
+        _userSessionPendiente!.addListener(_onUserProfilePendienteChanged);
+      }
+      return;
+    }
+    final userId = user.idUsuario;
+    final isMecanico = user.rol == 'Mecanico';
+    _chatProvider.inicializarMensajes(widget.conversacionId);
+    _chatProvider.marcarComoLeidos(widget.conversacionId, isMecanico, userId);
+  }
+
+  void _onUserProfilePendienteChanged() {
+    if (_userSessionPendiente?.userData == null) return;
+    _userSessionPendiente!.removeListener(_onUserProfilePendienteChanged);
+    _userSessionPendiente = null;
+    _intentarInicializarMensajes();
+  }
+
   @override
   void dispose() {
+    _userSessionPendiente?.removeListener(_onUserProfilePendienteChanged);
     _typingTimer?.cancel();
     _chatProvider.setTypingStatus(widget.conversacionId, null);
     _controller.dispose();
@@ -508,15 +541,22 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   ),
                 ),
-                VoiceRecordButton(
-                  onGrabacionCompleta: (file, duracion) => _grabarYEnviarAudio(
-                    file,
-                    duracion,
-                    userId,
-                    isMecanico,
-                    receptorId,
+                // `record` no soporta grabación a un File real en web (stop()
+                // devuelve un blob URL, no una ruta de filesystem), y
+                // ChatProvider.subirAudioChat depende de File.readAsBytes().
+                // Ocultamos el control en vez de mostrar uno que falla en
+                // silencio (implementar grabación web queda fuera de alcance).
+                if (!kIsWeb)
+                  VoiceRecordButton(
+                    onGrabacionCompleta: (file, duracion) =>
+                        _grabarYEnviarAudio(
+                          file,
+                          duracion,
+                          userId,
+                          isMecanico,
+                          receptorId,
+                        ),
                   ),
-                ),
                 const SizedBox(width: 8),
                 Container(
                   decoration: BoxDecoration(
