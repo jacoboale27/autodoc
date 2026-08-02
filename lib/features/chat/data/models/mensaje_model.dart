@@ -32,6 +32,9 @@ class MensajeModel {
   @HiveField(8)
   final bool isDeleted;
 
+  @HiveField(9)
+  final int? duracionSegundos;
+
   MensajeModel({
     required this.id,
     required this.idRemitente,
@@ -42,6 +45,7 @@ class MensajeModel {
     this.estado = 'enviado',
     this.urlArchivo,
     this.isDeleted = false,
+    this.duracionSegundos,
   });
 
   factory MensajeModel.fromMap(Map<String, dynamic> map, String id) {
@@ -57,6 +61,7 @@ class MensajeModel {
       estado: map['estado'] ?? 'enviado',
       urlArchivo: map['url_archivo'],
       isDeleted: map['is_deleted'] ?? false,
+      duracionSegundos: (map['duracion_segundos'] as num?)?.toInt(),
     );
   }
 
@@ -70,6 +75,7 @@ class MensajeModel {
       'estado': estado,
       if (urlArchivo != null) 'url_archivo': urlArchivo,
       'is_deleted': isDeleted,
+      if (duracionSegundos != null) 'duracion_segundos': duracionSegundos,
     };
   }
 }
