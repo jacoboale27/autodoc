@@ -65,6 +65,16 @@ describe('usuarios', () => {
     );
   });
 
+  test('un usuario NO puede auto-asignarse un taller propietario (id_taller_propietario)', async () => {
+    // Tarea 7: solo la Cloud Function crearEmpleadoTaller (Admin SDK) puede
+    // fijar este campo. Sin esta exclusion, cualquier usuario podria
+    // vincularse como empleado de un taller ajeno con un solo update.
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('usuarios').doc(UIDS.owner1).update({ id_taller_propietario: UIDS.taller1 }),
+    );
+  });
+
   test('un usuario SI puede editar su nombre', async () => {
     const db = await withRole(env, UIDS.owner1, 'Propietario');
     await assertSucceeds(

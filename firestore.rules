@@ -88,8 +88,13 @@ service cloud.firestore {
       // 'estado' tambien queda excluido: es el campo que el directorio publico
       // de talleres usa para filtrar por 'aprobado' (ver publishTallerProfile),
       // asi que un mecanico no puede autoaprobarse saltandose admin_service.
+      // 'id_taller_propietario' tambien queda excluido: es el campo que
+      // vincula a un empleado con su taller dueño (ver crearEmpleadoTaller,
+      // que lo fija con Admin SDK al crear la cuenta). Sin esta exclusion,
+      // cualquier usuario podria auto-asignarse como empleado de un taller
+      // ajeno con un solo update.
       allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data)
-                          .affectedKeys().hasAny(['rol', 'calificacion_promedio', 'total_resenias', 'estado']))
+                          .affectedKeys().hasAny(['rol', 'calificacion_promedio', 'total_resenias', 'estado', 'id_taller_propietario']))
                     || isAdmin();
       
       allow delete: if isAdmin();

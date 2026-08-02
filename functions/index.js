@@ -1020,4 +1020,92 @@ exports.buscarPropietarioPorCorreo = functions.https.onCall(async (data, context
   };
 });
 
+/**
+ * 13. Callable: crea una cuenta de empleado para un taller.
+ *
+ * Solo el Admin SDK (esta Cloud Function) puede crear un usuario de Auth en
+ * nombre de otra persona sin cerrar la sesion del que llama, y solo el
+ * Admin SDK puede fijar 'rol' e 'id_taller_propietario' en 'usuarios': el
+ * cliente tiene ambos campos bloqueados en firestore.rules (ver seccion
+ * `match /usuarios/{userId}`), asi que un empleado no puede auto-asignarse
+ * el rol Taller ni reasignar su vinculo a otro taller.
+ */
+exports.crearEmpleadoTaller = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  }
+  const idTallerPropietario = context.auth.uid;
+
+  const tallerDoc = await db.collection('usuarios').doc(idTallerPropietario).get();
+  const rol = tallerDoc.exists ? tallerDoc.data().rol : null;
+  if (!['Mecanico', 'Taller'].includes(rol)) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'Solo un taller puede crear cuentas de empleados.'
+    );
+  }
+
+  const correo = (data && data.correo ? String(data.correo) : '').trim().toLowerCase();
+  const password = data && data.password ? String(data.password) : '';
+  const nombreCompleto = (data && data.nombreCompleto ? String(data.nombreCompleto) : '').trim();
+  const telefono = data && data.telefono ? String(data.telefono).trim() : null;
+
+  if (!correo || !password || !nombreCompleto) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'Correo, contraseña y nombre son requeridos.'
+    );
+  }
+  if (password.length < 6) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'La contraseña debe tener al menos 6 caracteres.'
+    );
+  }
+
+  let userRecord;
+  try {
+    userRecord = await admin.auth().createUser({
+      email: correo,
+      password,
+      displayName: nombreCompleto,
+    });
+  } catch (err) {
+    if (err && err.code === 'auth/email-already-exists') {
+      throw new functions.https.HttpsError('already-exists', 'Ya existe una cuenta con ese correo.');
+    }
+    throw new functions.https.HttpsError('invalid-argument', err.message);
+  }
+
+  const empleadoRef = db
+    .collection('talleres')
+    .doc(idTallerPropietario)
+    .collection('empleados')
+    .doc(userRecord.uid);
+
+  await empleadoRef.set({
+    id_taller_propietario: idTallerPropietario,
+    nombre_completo: nombreCompleto,
+    correo,
+    telefono: telefono || null,
+    activo: true,
+    fecha_creacion: admin.firestore.Timestamp.now(),
+  });
+
+  // El empleado hereda rol Taller (mismos permisos operativos) pero queda
+  // vinculado al taller dueño via id_taller_propietario, campo que el
+  // cliente no puede tocar (firestore.rules).
+  await db.collection('usuarios').doc(userRecord.uid).set({
+    id_usuario: userRecord.uid,
+    nombre_completo: nombreCompleto,
+    correo,
+    rol: 'Empleado',
+    id_taller_propietario: idTallerPropietario,
+    estado: 'activo',
+    fecha_registro: admin.firestore.Timestamp.now(),
+  });
+
+  return { idEmpleado: userRecord.uid };
+});
+
 exports.publishTallerProfile = require('./src/publishTallerProfile').publishTallerProfile;
