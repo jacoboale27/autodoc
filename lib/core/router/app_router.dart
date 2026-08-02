@@ -472,7 +472,7 @@ GoRouter createAppRouter(
           state: state,
           child: Consumer<UserProfileProvider>(
             builder: (context, userSession, _) => ReparacionesKanbanScreen(
-              idTaller: userSession.userData?.idUsuario ?? '',
+              idTaller: userSession.userData?.idTallerEfectivo ?? '',
             ),
           ),
         ),
@@ -484,7 +484,13 @@ GoRouter createAppRouter(
           state: state,
           child: Consumer<UserProfileProvider>(
             builder: (context, userSession, _) => EmpleadosScreen(
-              idTaller: userSession.userData?.idUsuario ?? '',
+              // Un empleado nunca gestiona empleados (bloqueado en 3 capas,
+              // ver comentario en EmpleadosScreen), pero se resuelve el id
+              // efectivo igualmente por consistencia con el resto de rutas
+              // del panel mecánico: para el dueño real (el único que de
+              // hecho usa este id) es un no-op, `idTallerEfectivo ==
+              // idUsuario`.
+              idTaller: userSession.userData?.idTallerEfectivo ?? '',
             ),
           ),
         ),
@@ -496,7 +502,7 @@ GoRouter createAppRouter(
           state: state,
           child: Consumer<UserProfileProvider>(
             builder: (context, userSession, _) => CatalogoServiciosScreen(
-              idTaller: userSession.userData?.idUsuario ?? '',
+              idTaller: userSession.userData?.idTallerEfectivo ?? '',
             ),
           ),
         ),

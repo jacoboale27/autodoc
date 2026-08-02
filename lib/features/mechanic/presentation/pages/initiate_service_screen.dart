@@ -111,7 +111,10 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final tallerId = context.read<UserProfileProvider>().userData?.idUsuario;
+      final tallerId = context
+          .read<UserProfileProvider>()
+          .userData
+          ?.idTallerEfectivo;
       if (tallerId != null && tallerId.isNotEmpty) {
         context.read<CatalogoProvider>().watchTaller(tallerId);
       }
@@ -189,16 +192,18 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   /// continúa: el flujo de servicio existente no debe depender de esto.
   Future<void> _iniciarTicketReparacion(VehicleModel vehiculo) async {
     final userSession = context.read<UserProfileProvider>();
-    final tallerId = userSession.userData?.idUsuario ?? '';
+    final tallerId = userSession.userData?.idTallerEfectivo ?? '';
     if (tallerId.isEmpty) return;
 
     try {
-      final idReparacion = await context.read<ReparacionProvider>().iniciar(
-        idVehiculo: vehiculo.idVehiculo,
-        idTaller: tallerId,
-        idPropietario: vehiculo.idPropietario,
-        placa: vehiculo.placa,
-      );
+      final idReparacion = await context
+          .read<ReparacionProvider>()
+          .iniciarOReutilizar(
+            idVehiculo: vehiculo.idVehiculo,
+            idTaller: tallerId,
+            idPropietario: vehiculo.idPropietario,
+            placa: vehiculo.placa,
+          );
       if (!mounted) return;
       if (idReparacion == null) {
         debugPrint(
@@ -274,6 +279,18 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     try {
       final alertProvider = context.read<AlertProvider>();
       final userSession = context.read<UserProfileProvider>();
+      // NOTA: a diferencia del resto de este archivo, aquí se usa
+      // deliberadamente `idUsuario` (no `idTallerEfectivo`). Este id
+      // alimenta `AlertProvider.tallerUpdateService`, que escribe en la
+      // colección legacy 'servicios' (historial de mantenimiento, previa a
+      // Task 4/Kanban) — su regla en firestore.rules exige
+      // `id_taller == request.auth.uid` sin la ampliación para empleados
+      // que sí se añadió a 'reparaciones'/'catalogo_servicios' (fix #2 de
+      // este pase, deliberadamente acotado a esas dos colecciones). Cambiar
+      // este id sin ampliar también la regla de 'servicios' rompería este
+      // create para toda cuenta de empleado. Queda como gap conocido,
+      // documentado en el reporte de este fix — no se amplía 'servicios'
+      // por estar fuera del alcance explícito de esta tanda de fixes.
       final tallerId = userSession.userData?.idUsuario ?? 'taller_anonimo';
 
       final costoDouble = double.tryParse(_costoController.text);

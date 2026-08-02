@@ -27,6 +27,21 @@ class UserModel {
   /// dueño aunque ambas compartan `rol == 'Taller'`.
   final String? idTallerPropietario;
 
+  /// Uid del taller "efectivo" bajo el que debe operar esta cuenta en todo
+  /// el panel mecánico (Kanban de reparaciones, catálogo, etc.): el del
+  /// dueño real (`idTallerPropietario`) si esta cuenta es una sub-cuenta de
+  /// empleado, o el propio `idUsuario` si es el dueño (o cualquier otro
+  /// rol). Centraliza el `?? idUsuario` que, antes de este fix, cada
+  /// pantalla/provider del panel mecánico repetía usando `idUsuario`
+  /// directamente — lo que hacía que los datos de un empleado quedaran
+  /// aislados bajo su propio uid en vez de bajo el taller real.
+  String get idTallerEfectivo {
+    final propietario = idTallerPropietario;
+    return (propietario != null && propietario.isNotEmpty)
+        ? propietario
+        : idUsuario;
+  }
+
   UserModel({
     required this.idUsuario,
     required this.nombreCompleto,
