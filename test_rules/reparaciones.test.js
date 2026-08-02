@@ -175,4 +175,58 @@ describe('reparaciones (Tarea 5 — kanban de estado, panel mecanico)', () => {
     const dbAdmin = await withRole(env, UIDS.admin, 'Administrador');
     await assertSucceeds(dbAdmin.collection('reparaciones').doc('rep1').delete());
   });
+
+  // --- Sub-cuentas de empleado (fix de integracion de empleados) ---
+  // El cliente ya resuelve `idTaller` al uid del DUEÑO real
+  // (UserModel.idTallerEfectivo) para toda cuenta de empleado, asi que
+  // estas pruebas simulan exactamente eso: id_taller/request.auth.uid
+  // distintos, con el empleado autenticado bajo su propio uid pero
+  // escribiendo/leyendo con id_taller == taller1 (el dueño).
+  test('un empleado de taller1 (id_taller_propietario == taller1) puede crear una reparacion con id_taller == taller1', async () => {
+    await seedVehiculo();
+    const db = await withRole(env, UIDS.empleado1, 'Taller', {
+      id_taller_propietario: UIDS.taller1,
+    });
+    await assertSucceeds(
+      db.collection('reparaciones').doc('rep-emp1').set({
+        id_propietario: UIDS.owner1,
+        id_taller: UIDS.taller1,
+        id_vehiculo: 'v1',
+        placa: 'ABC123',
+        estado: 'recibido',
+      }),
+    );
+  });
+
+  test('un empleado de taller1 puede leer y actualizar una reparacion de taller1', async () => {
+    await seedReparacion();
+    const db = await withRole(env, UIDS.empleado1, 'Taller', {
+      id_taller_propietario: UIDS.taller1,
+    });
+    await assertSucceeds(db.collection('reparaciones').doc('rep1').get());
+    await assertSucceeds(
+      db.collection('reparaciones').doc('rep1').update({ estado: 'en_revision' }),
+    );
+  });
+
+  test('un empleado cuyo id_taller_propietario apunta a OTRO taller NO puede crear/leer/actualizar la reparacion de taller1', async () => {
+    await seedReparacion();
+    // empleado2 pertenece a taller2, no a taller1.
+    const db = await withRole(env, UIDS.empleado2, 'Taller', {
+      id_taller_propietario: UIDS.taller2,
+    });
+    await assertFails(db.collection('reparaciones').doc('rep1').get());
+    await assertFails(
+      db.collection('reparaciones').doc('rep1').update({ estado: 'en_revision' }),
+    );
+    await assertFails(
+      db.collection('reparaciones').doc('rep-emp2').set({
+        id_propietario: UIDS.owner1,
+        id_taller: UIDS.taller1,
+        id_vehiculo: 'v1',
+        placa: 'ABC123',
+        estado: 'recibido',
+      }),
+    );
+  });
 });

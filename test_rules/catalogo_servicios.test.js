@@ -101,4 +101,38 @@ describe('talleres/{tallerId}/catalogo_servicios', () => {
       }),
     );
   });
+
+  // --- Sub-cuentas de empleado (fix de integracion de empleados) ---
+  test('un empleado de taller1 (id_taller_propietario == taller1) puede crear/actualizar/eliminar en el catalogo de taller1', async () => {
+    const db = await withRole(env, UIDS.empleado1, 'Taller', {
+      id_taller_propietario: UIDS.taller1,
+    });
+    await assertSucceeds(
+      db.collection('talleres').doc(UIDS.taller1).collection('catalogo_servicios').doc('item1').set({
+        id_taller: UIDS.taller1,
+        nombre: 'Cambio de aceite',
+        precio: 25.0,
+      }),
+    );
+    await assertSucceeds(
+      db.collection('talleres').doc(UIDS.taller1).collection('catalogo_servicios').doc('item1')
+        .update({ precio: 30.0 }),
+    );
+    await assertSucceeds(
+      db.collection('talleres').doc(UIDS.taller1).collection('catalogo_servicios').doc('item1').delete(),
+    );
+  });
+
+  test('un empleado cuyo id_taller_propietario apunta a OTRO taller NO puede escribir en el catalogo de taller1', async () => {
+    const db = await withRole(env, UIDS.empleado2, 'Taller', {
+      id_taller_propietario: UIDS.taller2,
+    });
+    await assertFails(
+      db.collection('talleres').doc(UIDS.taller1).collection('catalogo_servicios').doc('item2').set({
+        id_taller: UIDS.taller1,
+        nombre: 'Intento de empleado ajeno',
+        precio: 10.0,
+      }),
+    );
+  });
 });

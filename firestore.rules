@@ -64,6 +64,28 @@ service cloud.firestore {
       return servicio.id_taller == tallerId && isVehicleOwner(servicio.id_vehiculo);
     }
 
+    // Verifica si el uid autenticado actua legitimamente en nombre del
+    // taller `tallerId` (fix de integracion de sub-cuentas de empleado,
+    // ronda final de la Tarea "panel mecanico 100%"): o bien es el propio
+    // dueño (mismo uid que `tallerId`) o bien es una sub-cuenta de empleado
+    // cuyo `usuarios/{auth.uid}.id_taller_propietario` apunta a ese taller
+    // (ver crearEmpleadoTaller / UserModel.idTallerPropietario /
+    // UserModel.idTallerEfectivo, que en el cliente hace que
+    // reparaciones/catalogo_servicios se escriban con el uid del DUEÑO como
+    // id_taller/tallerId, nunca con el propio uid del empleado). El `||`
+    // corta en corto: para el caso dueño (el camino mas comun) nunca se
+    // ejecuta el get() de la segunda condicion. Se usa `get()` directo (no
+    // getUserData(), que solo lee request.auth.uid) porque aqui se necesita
+    // leer el doc de usuarios del llamante para comparar su
+    // id_taller_propietario, exactamente igual al patron ya usado en el
+    // create de 'usuarios' de arriba para excluir ese mismo campo.
+    function actuaPorTaller(tallerId) {
+      return request.auth.uid == tallerId ||
+        (exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+           .data.get('id_taller_propietario', null) == tallerId);
+    }
+
 
     // --- REGLAS POR COLECCIÓN ---
 
@@ -161,7 +183,14 @@ service cloud.firestore {
       // reglas arriba.
       match /catalogo_servicios/{itemId} {
         allow read: if true;
-        allow create, update, delete: if isAuthenticated() && request.auth.uid == tallerId;
+        // Ampliado (fix de integracion de empleados) para aceptar tambien a
+        // una sub-cuenta de empleado actuando en nombre de `tallerId` via
+        // actuaPorTaller(): antes solo `request.auth.uid == tallerId`
+        // (el dueño real) podia escribir, dejando al empleado sin poder
+        // gestionar el catalogo aunque `initiate_service_screen.dart` /
+        // `catalogo_servicios_screen.dart` ya resuelven el id efectivo del
+        // taller (dueño) y no el propio uid del empleado.
+        allow create, update, delete: if isAuthenticated() && actuaPorTaller(tallerId);
       }
     }
 
@@ -509,20 +538,30 @@ service cloud.firestore {
     // reparación falsa en el vehículo de una víctima); update bloquea
     // reasignar id_vehiculo/id_taller/id_propietario tras la creación
     // (mismo hallazgo ya corregido en 'servicios').
+    // Nota (fix de integracion de empleados): las 3 comparaciones de uid de
+    // abajo (read/create/update) usan actuaPorTaller() en vez de
+    // `== request.auth.uid` directo, para aceptar tambien a una sub-cuenta
+    // de empleado actuando en nombre del taller dueño — ver
+    // InitiateServiceScreen._iniciarTicketReparacion, que ya resuelve
+    // `idTaller` al uid del dueño (UserModel.idTallerEfectivo), no al
+    // propio uid del empleado. El resto de las condiciones (isMecanico(),
+    // isVinculadoAlVehiculo, el carve-out de walk-in, el bloqueo de campos
+    // en update) queda intacto: solo se amplia QUIEN puede ser "el taller",
+    // no se relaja ninguna otra proteccion.
     match /reparaciones/{reparacionId} {
       allow read: if isAuthenticated() &&
         (resource.data.id_propietario == request.auth.uid ||
-         resource.data.id_taller == request.auth.uid || isAdmin());
+         actuaPorTaller(resource.data.id_taller) || isAdmin());
 
       allow create: if isAuthenticated() && (
         isAdmin() ||
-        (isMecanico() && request.resource.data.id_taller == request.auth.uid
+        (isMecanico() && actuaPorTaller(request.resource.data.id_taller)
           && exists(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
           && (
             get(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
               .data.get('talleres_vinculados', []).size() == 0
             || get(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
-                 .data.get('talleres_vinculados', []).hasAny([request.auth.uid])
+                 .data.get('talleres_vinculados', []).hasAny([request.resource.data.id_taller])
           )
           && request.resource.data.id_propietario ==
                getVehicleOwner(request.resource.data.id_vehiculo))
@@ -530,7 +569,7 @@ service cloud.firestore {
 
       allow update: if isAuthenticated() && (
         isAdmin() ||
-        (resource.data.id_taller == request.auth.uid
+        (actuaPorTaller(resource.data.id_taller)
           && !request.resource.data.diff(resource.data)
                .affectedKeys().hasAny(['id_vehiculo', 'id_taller', 'id_propietario']))
       );

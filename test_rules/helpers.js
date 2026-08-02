@@ -8,6 +8,11 @@ const UIDS = {
   taller1: 'uid-taller-1',
   taller2: 'uid-taller-2',
   admin: 'uid-admin-1',
+  // Sub-cuentas de empleado (fix de integracion de empleados): empleado1
+  // pertenece a taller1 (id_taller_propietario == taller1), empleado2
+  // pertenece a un taller DISTINTO (taller2), para los casos negativos.
+  empleado1: 'uid-empleado-1',
+  empleado2: 'uid-empleado-2',
 };
 
 async function makeEnv() {
