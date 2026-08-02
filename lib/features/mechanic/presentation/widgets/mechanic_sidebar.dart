@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
@@ -33,6 +34,17 @@ class MechanicSidebar extends StatelessWidget {
     final isDark = context.watch<ThemeProvider>().isDarkMode;
     final colors = context.appColors;
     final currentPath = GoRouterState.of(context).uri.path;
+    // Una sub-cuenta de empleado (creada por `crearEmpleadoTaller`) tiene
+    // `id_taller_propietario` seteado en su propio `usuarios/{uid}` aunque
+    // comparta `rol == 'Taller'` con el dueño real: solo el dueño (campo
+    // ausente/vacío) puede gestionar otras sub-cuentas, para que un
+    // empleado no pueda crear ni desactivar otras cuentas de empleados.
+    final idTallerPropietario = context
+        .watch<UserProfileProvider>()
+        .userData
+        ?.idTallerPropietario;
+    final esSubCuentaEmpleado =
+        idTallerPropietario != null && idTallerPropietario.isNotEmpty;
 
     final bgColor = isDark
         ? colors.surfaceContainer
@@ -135,6 +147,15 @@ class MechanicSidebar extends StatelessWidget {
             colors: colors,
             onTap: () => _navigate(context, '/chat_list'),
           ),
+          if (!esSubCuentaEmpleado)
+            _buildNavItem(
+              context,
+              icon: Icons.badge_outlined,
+              label: 'Empleados',
+              isActive: currentPath == '/mechanic/empleados',
+              colors: colors,
+              onTap: () => _navigate(context, '/mechanic/empleados'),
+            ),
           _buildNavItem(
             context,
             icon: Icons.settings_outlined,
