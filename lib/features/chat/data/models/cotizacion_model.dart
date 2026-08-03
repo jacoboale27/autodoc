@@ -18,13 +18,11 @@ class CotizacionItem {
 
   double get subtotal => cantidad * costo;
 
+  /// Payload publico (escrito en el documento cotizaciones/{id}, legible por
+  /// el propietario): nunca incluye [beneficio]. Ver
+  /// CotizacionModel.toPrivateMap para donde vive el beneficio.
   Map<String, dynamic> toMap() {
-    return {
-      'material': material,
-      'cantidad': cantidad,
-      'costo': costo,
-      'beneficio': beneficio,
-    };
+    return {'material': material, 'cantidad': cantidad, 'costo': costo};
   }
 
   factory CotizacionItem.fromMap(Map<String, dynamic> map) {
@@ -33,6 +31,15 @@ class CotizacionItem {
       cantidad: (map['cantidad'] ?? 0).toDouble(),
       costo: (map['costo'] ?? 0).toDouble(),
       beneficio: (map['beneficio'] ?? 0).toDouble(),
+    );
+  }
+
+  CotizacionItem copyWithBeneficio(double beneficio) {
+    return CotizacionItem(
+      material: material,
+      cantidad: cantidad,
+      costo: costo,
+      beneficio: beneficio,
     );
   }
 }
@@ -110,5 +117,37 @@ class CotizacionModel {
       if (manoDeObra != null) 'mano_de_obra': manoDeObra,
       if (materiales != null) 'materiales': materiales,
     };
+  }
+
+  /// Documento privado (cotizaciones/{id}/privado/margen): el beneficio por
+  /// renglon, visible solo para el mecanico dueño de la cotizacion (ver
+  /// firestore.rules). Nunca debe fusionarse con [toMap].
+  Map<String, dynamic> toPrivateMap() {
+    return {'beneficios': items.map((i) => i.beneficio).toList()};
+  }
+
+  /// Copia este modelo sustituyendo el beneficio de cada item por el valor
+  /// en la misma posicion de [beneficios] (leido de toPrivateMap). Si
+  /// [beneficios] es mas corto que [items], los renglones sobrantes quedan
+  /// en 0.
+  CotizacionModel copyWithBeneficios(List<double> beneficios) {
+    final nuevosItems = <CotizacionItem>[];
+    for (var i = 0; i < items.length; i++) {
+      final beneficio = i < beneficios.length ? beneficios[i] : 0.0;
+      nuevosItems.add(items[i].copyWithBeneficio(beneficio));
+    }
+    return CotizacionModel(
+      id: id,
+      idPropietario: idPropietario,
+      idMecanico: idMecanico,
+      idVehiculo: idVehiculo,
+      idTaller: idTaller,
+      items: nuevosItems,
+      fechaPropuesta: fechaPropuesta,
+      estado: estado,
+      fecha: fecha,
+      manoDeObra: manoDeObra,
+      materiales: materiales,
+    );
   }
 }
