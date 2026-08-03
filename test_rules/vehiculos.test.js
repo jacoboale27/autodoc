@@ -6,7 +6,7 @@ beforeAll(async () => { env = await makeEnv(); });
 afterAll(async () => { await env.cleanup(); });
 beforeEach(async () => { await env.clearFirestore(); });
 
-const seedVehiculo = (id, propietario, vinculados = []) => async (s) => {
+const seedVehiculo = (id, propietario, vinculados = [], sharedWith = []) => async (s) => {
   await s.collection('vehiculos').doc(id).set({
     id_vehiculo: id,
     id_propietario: propietario,
@@ -15,6 +15,7 @@ const seedVehiculo = (id, propietario, vinculados = []) => async (s) => {
     modelo: 'A3',
     anio: 2023,
     talleres_vinculados: vinculados,
+    shared_with: sharedWith,
   });
 };
 
@@ -165,6 +166,26 @@ describe('vehiculos', () => {
         taller_pendiente_servicio_id: null,
         talleres_rechazados: [UIDS.taller1],
       }),
+    );
+  });
+
+  test('un usuario en shared_with SI puede leer el vehiculo', async () => {
+    const db = await withRole(env, UIDS.owner2, 'Propietario');
+    await seed(env, seedVehiculo('v-compartido', UIDS.owner1, [], [UIDS.owner2]));
+    await assertSucceeds(db.collection('vehiculos').doc('v-compartido').get());
+  });
+
+  test('un usuario que NO esta en shared_with NO puede leer el vehiculo', async () => {
+    const db = await withRole(env, UIDS.owner2, 'Propietario');
+    await seed(env, seedVehiculo('v-no-compartido', UIDS.owner1, [], []));
+    await assertFails(db.collection('vehiculos').doc('v-no-compartido').get());
+  });
+
+  test('un usuario en shared_with NO puede actualizar el vehiculo', async () => {
+    const db = await withRole(env, UIDS.owner2, 'Propietario');
+    await seed(env, seedVehiculo('v-compartido', UIDS.owner1, [], [UIDS.owner2]));
+    await assertFails(
+      db.collection('vehiculos').doc('v-compartido').update({ placa: 'ROBADA' }),
     );
   });
 });

@@ -124,6 +124,11 @@ service cloud.firestore {
         resource.data.id_propietario == request.auth.uid
         || isAdmin()
         || (isMecanico() && resource.data.get('talleres_vinculados', []).hasAny([request.auth.uid]))
+        // Usuarios con quien el propietario comparte el vehiculo (ver
+        // share_vehicle_sheet.dart) obtienen SOLO lectura aqui; a proposito
+        // esto NO se agrega a isVehicleOwner(), que sigue significando "es
+        // el dueño real" para isOwnFinishedService/servicios/reseñas.
+        || resource.data.get('shared_with', []).hasAny([request.auth.uid])
       );
 
       // Solo el propietario registrado del vehículo puede crearlo o eliminarlo
