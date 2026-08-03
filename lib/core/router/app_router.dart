@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:animations/animations.dart';
+import 'package:provider/provider.dart';
 
 import 'package:autodoc/features/splash/presentation/pages/splash_screen.dart';
 import 'package:autodoc/features/onboarding/presentation/pages/onboarding_screen.dart';
@@ -25,6 +26,9 @@ import 'package:autodoc/features/mechanic/presentation/pages/mechanic_pending_sc
 import 'package:autodoc/features/dashboard/presentation/pages/task_config_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/task_complete_screen.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/mechanic_service_history_screen.dart';
+import 'package:autodoc/features/mechanic/presentation/pages/reparaciones_kanban_screen.dart';
+import 'package:autodoc/features/mechanic/presentation/pages/empleados_screen.dart';
+import 'package:autodoc/features/mechanic/presentation/pages/catalogo_servicios_screen.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_dashboard_screen.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_usuarios_screen.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_talleres_screen.dart';
@@ -83,6 +87,9 @@ const _mechanicRoutes = <String>{
   '/mechanic_reviews',
   '/initiate_service',
   '/mechanic_pending',
+  '/mechanic_reparaciones',
+  '/mechanic/empleados',
+  '/mechanic/catalogo',
 };
 
 /// Valores de `usuarios/{uid}.estado` que permiten a un mecanico/taller
@@ -456,6 +463,48 @@ GoRouter createAppRouter(
           context: context,
           state: state,
           child: const MechanicDashboardScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/mechanic_reparaciones',
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: Consumer<UserProfileProvider>(
+            builder: (context, userSession, _) => ReparacionesKanbanScreen(
+              idTaller: userSession.userData?.idTallerEfectivo ?? '',
+            ),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/mechanic/empleados',
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: Consumer<UserProfileProvider>(
+            builder: (context, userSession, _) => EmpleadosScreen(
+              // Un empleado nunca gestiona empleados (bloqueado en 3 capas,
+              // ver comentario en EmpleadosScreen), pero se resuelve el id
+              // efectivo igualmente por consistencia con el resto de rutas
+              // del panel mecánico: para el dueño real (el único que de
+              // hecho usa este id) es un no-op, `idTallerEfectivo ==
+              // idUsuario`.
+              idTaller: userSession.userData?.idTallerEfectivo ?? '',
+            ),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/mechanic/catalogo',
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: Consumer<UserProfileProvider>(
+            builder: (context, userSession, _) => CatalogoServiciosScreen(
+              idTaller: userSession.userData?.idTallerEfectivo ?? '',
+            ),
+          ),
         ),
       ),
       GoRoute(

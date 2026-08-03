@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../widgets/historial_chat_card.dart';
 import '../widgets/vehiculo_picker.dart';
@@ -19,6 +21,8 @@ import 'package:autodoc/features/chat/presentation/widgets/cards/cotizacion_chat
 
 import 'package:autodoc/features/chat/presentation/widgets/cards/review_chat_card.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/imagen_chat_card.dart';
+import 'package:autodoc/features/chat/presentation/widgets/cards/audio_chat_card.dart';
+import 'package:autodoc/features/chat/presentation/widgets/voice_record_button.dart';
 import 'package:autodoc/features/chat/data/models/mensaje_model.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cotizacion_picker.dart';
 import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
@@ -45,11 +49,26 @@ class _ChatScreenState extends State<ChatScreen> {
   Timer? _typingTimer;
   bool _isTyping = false;
 
+  // Capturado una vez en initState (con el context aún activo) para poder
+  // usarlo en dispose(): en ese punto el propio Element ya está desactivado,
+  // así que un context.read<ChatProvider>() ahí lanza "Looking up a
+  // deactivated widget's ancestor is unsafe".
+  late final ChatProvider _chatProvider;
+
+  // Si en el postFrameCallback inicial `userData` todavía es null (posible
+  // en cold start, p.ej. al abrir la app desde una notificación push antes
+  // de que UserProfileProvider termine de cargar el perfil), nos suscribimos
+  // aquí para reintentar en cuanto el perfil llegue, en vez de no inicializar
+  // nunca los mensajes ni marcarlos como leídos.
+  UserProfileProvider? _userSessionPendiente;
+
   @override
   void initState() {
     super.initState();
+    _chatProvider = context.read<ChatProvider>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ChatProvider>().inicializarMensajes(widget.conversacionId);
+      if (!mounted) return;
+      _intentarInicializarMensajes();
     });
 
     _controller.addListener(() {
@@ -78,10 +97,39 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
+  void _intentarInicializarMensajes() {
+    if (!mounted) return;
+    final userSession = context.read<UserProfileProvider>();
+    final user = userSession.userData;
+    if (user == null) {
+      // Perfil aún no disponible: nos suscribimos para reintentar en cuanto
+      // UserProfileProvider notifique el cambio (no llamamos a
+      // marcarComoLeidos/inicializarMensajes con un userId vacío, que
+      // corrompería el estado de lectura, ver ChatRepository.marcarComoLeidos).
+      if (_userSessionPendiente == null) {
+        _userSessionPendiente = userSession;
+        _userSessionPendiente!.addListener(_onUserProfilePendienteChanged);
+      }
+      return;
+    }
+    final userId = user.idUsuario;
+    final isMecanico = user.rol == 'Mecanico';
+    _chatProvider.inicializarMensajes(widget.conversacionId);
+    _chatProvider.marcarComoLeidos(widget.conversacionId, isMecanico, userId);
+  }
+
+  void _onUserProfilePendienteChanged() {
+    if (_userSessionPendiente?.userData == null) return;
+    _userSessionPendiente!.removeListener(_onUserProfilePendienteChanged);
+    _userSessionPendiente = null;
+    _intentarInicializarMensajes();
+  }
+
   @override
   void dispose() {
+    _userSessionPendiente?.removeListener(_onUserProfilePendienteChanged);
     _typingTimer?.cancel();
-    context.read<ChatProvider>().setTypingStatus(widget.conversacionId, null);
+    _chatProvider.setTypingStatus(widget.conversacionId, null);
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -493,6 +541,22 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   ),
                 ),
+                // `record` no soporta grabación a un File real en web (stop()
+                // devuelve un blob URL, no una ruta de filesystem), y
+                // ChatProvider.subirAudioChat depende de File.readAsBytes().
+                // Ocultamos el control en vez de mostrar uno que falla en
+                // silencio (implementar grabación web queda fuera de alcance).
+                if (!kIsWeb)
+                  VoiceRecordButton(
+                    onGrabacionCompleta: (file, duracion) =>
+                        _grabarYEnviarAudio(
+                          file,
+                          duracion,
+                          userId,
+                          isMecanico,
+                          receptorId,
+                        ),
+                  ),
                 const SizedBox(width: 8),
                 Container(
                   decoration: BoxDecoration(
@@ -547,6 +611,14 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       case 'imagen':
         return ImagenChatCard(urlArchivo: msg.urlArchivo ?? '', isMe: isMe);
+      case 'audio':
+        return AudioChatCard(
+          urlArchivo: msg.urlArchivo ?? '',
+          duracionSegundos:
+              msg.duracionSegundos ??
+              (msg.metadata?['duracion_segundos'] as num?)?.toInt(),
+          isMe: isMe,
+        );
       case 'historial':
         return HistorialChatCard(mensaje: msg, isMe: isMe, colors: colors);
       case 'texto':
@@ -718,6 +790,36 @@ class _ChatScreenState extends State<ChatScreen> {
           SnackBar(content: Text(context.l10n.chatUploadImageError)),
         );
       }
+    }
+  }
+
+  Future<void> _grabarYEnviarAudio(
+    File audioFile,
+    int duracionSegundos,
+    String userId,
+    bool isMecanico,
+    String receptorId,
+  ) async {
+    final provider = context.read<ChatProvider>();
+    final url = await provider.subirAudioChat(widget.conversacionId, audioFile);
+
+    if (!mounted) return;
+
+    if (url != null) {
+      provider.enviarMensaje(
+        conversacionId: widget.conversacionId,
+        contenido: '🎤 Nota de voz',
+        remitenteId: userId,
+        receptorId: receptorId,
+        isMecanicoRemitente: isMecanico,
+        tipo: 'audio',
+        urlArchivo: url,
+        duracionSegundos: duracionSegundos,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo enviar la nota de voz')),
+      );
     }
   }
 }

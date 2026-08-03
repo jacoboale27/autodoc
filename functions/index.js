@@ -463,6 +463,8 @@ exports.notifyOnNewChatMessage = functions.firestore
         body = `${remitenteName} te ha compartido un vehículo.`;
       } else if (msgData.tipo === 'imagen') {
         body = '📷 Foto adjunta';
+      } else if (msgData.tipo === 'audio') {
+        body = '🎤 Nota de voz';
       }
       
       await messaging.send({
@@ -590,6 +592,78 @@ exports.notifyOnReservationStatusChange = functions.firestore
     } catch (error) {
       console.error('Error sending reservation notification:', error);
     }
+  });
+
+/**
+ * 5b. Trigger fired when a 'reparaciones' document's estado field changes.
+ * Notifies the vehicle owner (push + in-app notification center).
+ */
+exports.notifyOnReparacionStatusChange = functions.firestore
+  .document('reparaciones/{reparacionId}')
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+
+    if (before.estado === after.estado) {
+      return null;
+    }
+
+    try {
+      const etiquetas = {
+        recibido: 'Recibido',
+        en_revision: 'En Revisión',
+        esperando_repuestos: 'Esperando Repuestos',
+        listo_para_entrega: 'Listo para Entregar',
+      };
+
+      const targetId = after.id_propietario;
+      if (!targetId) return null;
+
+      const title = 'Actualización de tu vehículo';
+      const body = `${after.placa}: ${etiquetas[after.estado] || after.estado}`;
+
+      const userDoc = await db.collection('usuarios').doc(targetId).get();
+      const fcmToken = userDoc.exists ? userDoc.data().fcmToken : null;
+
+      if (fcmToken) {
+        // El push FCM va en su propio try/catch (mismo patron que el fix
+        // I-3 de arriba, notifyOnServiceComplete): un fallo de
+        // messaging.send() (token invalido/expirado, algo rutinario) no
+        // debe impedir que se escriba el registro persistente del centro
+        // de notificaciones (writeNotification) de abajo. Antes ambas
+        // llamadas compartian el try/catch externo de esta funcion, asi
+        // que un token muerto dejaba al propietario sin ningun rastro de
+        // la actualizacion de su reparacion.
+        try {
+          await messaging.send({
+            token: fcmToken,
+            notification: {
+              title: title,
+              body: body,
+            },
+            data: {
+              type: 'reparacion',
+              reparacionId: context.params.reparacionId,
+            },
+          });
+        } catch (fcmError) {
+          console.error('Error sending FCM reparacion push:', fcmError);
+        }
+      }
+
+      // Persist in notification center
+      await writeNotification(targetId, {
+        tipo: 'reparacion',
+        titulo: title,
+        body: body,
+        deepLink: `/vehicle_profile/${after.id_vehiculo}`,
+        metadata: { reparacionId: context.params.reparacionId, estado: after.estado },
+      });
+    } catch (error) {
+      console.error('Error sending reparacion notification:', error);
+    }
+
+    return null;
   });
 
 /**
@@ -958,6 +1032,223 @@ exports.buscarPropietarioPorCorreo = functions.https.onCall(async (data, context
     correo: d.correo || correo,
     nombre: d.nombre_completo || 'Sin nombre',
   };
+});
+
+/**
+ * 13. Callable: crea una cuenta de empleado para un taller.
+ *
+ * Solo el Admin SDK (esta Cloud Function) puede crear un usuario de Auth en
+ * nombre de otra persona sin cerrar la sesion del que llama, y solo el
+ * Admin SDK puede fijar 'rol' e 'id_taller_propietario' en 'usuarios': el
+ * cliente tiene ambos campos bloqueados en firestore.rules (ver seccion
+ * `match /usuarios/{userId}`), asi que un empleado no puede auto-asignarse
+ * el rol Taller ni reasignar su vinculo a otro taller.
+ */
+exports.crearEmpleadoTaller = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  }
+  const idTallerPropietario = context.auth.uid;
+
+  const tallerDoc = await db.collection('usuarios').doc(idTallerPropietario).get();
+  const tallerData = tallerDoc.exists ? tallerDoc.data() : null;
+  const rol = tallerData ? tallerData.rol : null;
+  if (!['Mecanico', 'Taller'].includes(rol)) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'Solo un taller puede crear cuentas de empleados.'
+    );
+  }
+  // Un empleado tambien tiene rol 'Taller' (hereda los mismos permisos
+  // operativos que el dueño, ver el write mas abajo), asi que el check de
+  // arriba por si solo NO distingue a un empleado del dueño real: sin este
+  // guard, un empleado podia llamar este callable directamente (saltandose
+  // la UI, donde el item de sidebar esta oculto) y provisionar sus propias
+  // sub-cuentas, escalando privilegios y rompiendo el modelo de un solo
+  // dueño por taller. Solo una cuenta SIN id_taller_propietario (el dueño
+  // real) puede crear empleados.
+  if (tallerData && tallerData.id_taller_propietario) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'Solo el dueño del taller puede crear cuentas de empleados.'
+    );
+  }
+
+  // Espejo exacto del check de estado de isMecanico() en firestore.rules
+  // (getUserData().get('estado', 'pendiente') in ['aprobado', 'activo']):
+  // sin esto, un taller aun 'pendiente' de aprobacion admin podia llamar
+  // este callable (Admin SDK, no pasa por firestore.rules) y crearse a si
+  // mismo una sub-cuenta de empleado con 'estado: activo' fijo (ver el
+  // segundo write mas abajo), que SI pasa isMecanico() — saltandose la
+  // aprobacion del admin por completo via esa cuenta de empleado.
+  const estado = tallerData ? tallerData.estado : undefined;
+  if (!['aprobado', 'activo'].includes(estado)) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'Tu cuenta de taller aún no ha sido aprobada.'
+    );
+  }
+
+  const correo = (data && data.correo ? String(data.correo) : '').trim().toLowerCase();
+  const password = data && data.password ? String(data.password) : '';
+  const nombreCompleto = (data && data.nombreCompleto ? String(data.nombreCompleto) : '').trim();
+  const telefono = data && data.telefono ? String(data.telefono).trim() : null;
+
+  if (!correo || !password || !nombreCompleto) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'Correo, contraseña y nombre son requeridos.'
+    );
+  }
+  if (password.length < 6) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'La contraseña debe tener al menos 6 caracteres.'
+    );
+  }
+
+  let userRecord;
+  try {
+    userRecord = await admin.auth().createUser({
+      email: correo,
+      password,
+      displayName: nombreCompleto,
+    });
+  } catch (err) {
+    if (err && err.code === 'auth/email-already-exists') {
+      throw new functions.https.HttpsError('already-exists', 'Ya existe una cuenta con ese correo.');
+    }
+    throw new functions.https.HttpsError('invalid-argument', err.message);
+  }
+
+  const empleadoRef = db
+    .collection('talleres')
+    .doc(idTallerPropietario)
+    .collection('empleados')
+    .doc(userRecord.uid);
+
+  try {
+    await empleadoRef.set({
+      id_taller_propietario: idTallerPropietario,
+      nombre_completo: nombreCompleto,
+      correo,
+      telefono: telefono || null,
+      activo: true,
+      fecha_creacion: admin.firestore.Timestamp.now(),
+    });
+
+    // El empleado hereda rol Taller (mismos permisos operativos que el
+    // dueño en firestore.rules/isMecanico()) pero queda vinculado al taller
+    // dueño via id_taller_propietario, campo que el cliente no puede tocar
+    // (firestore.rules) y que distingue esta cuenta de la del dueño real
+    // para fines de UI/administración.
+    await db.collection('usuarios').doc(userRecord.uid).set({
+      id_usuario: userRecord.uid,
+      nombre_completo: nombreCompleto,
+      correo,
+      rol: 'Taller',
+      id_taller_propietario: idTallerPropietario,
+      estado: 'activo',
+      fecha_registro: admin.firestore.Timestamp.now(),
+    });
+  } catch (err) {
+    // Si cualquiera de los dos writes de Firestore falla, la cuenta de Auth
+    // ya fue creada: sin este rollback quedaria huerfana (sin registro en
+    // Firestore, invisible para el dueño del taller) y el correo quedaria
+    // consumido para siempre (un reintento fallaria con 'already-exists').
+    try {
+      await admin.auth().deleteUser(userRecord.uid);
+    } catch (cleanupErr) {
+      console.error(
+        `crearEmpleadoTaller: fallo al hacer rollback del usuario Auth huerfano ${userRecord.uid}:`,
+        cleanupErr
+      );
+    }
+    throw new functions.https.HttpsError(
+      'internal',
+      'No se pudo completar el registro del empleado. Intenta de nuevo.'
+    );
+  }
+
+  return { idEmpleado: userRecord.uid };
+});
+
+/**
+ * Desactiva la sub-cuenta de un empleado, revocando su acceso de verdad.
+ *
+ * Antes de este fix, EmpleadoRepository.desactivarEmpleado() solo escribia
+ * `talleres/{tallerId}/empleados/{empleadoId}.activo = false` desde el
+ * cliente — un campo que ningun lugar del sistema (ni firestore.rules, ni
+ * ninguna Cloud Function, ni el router) llegaba a leer. La cuenta Auth y el
+ * doc `usuarios/{uid}` del empleado quedaban intactos, asi que un empleado
+ * "desactivado" seguia pudiendo iniciar sesion y usar el panel completo
+ * (isMecanico() solo mira rol + estado en 'usuarios', nunca esta
+ * subcoleccion). Este callable, con Admin SDK, hace la revocacion real:
+ * 1) deshabilita la cuenta de Firebase Auth (admin.auth().updateUser
+ *    disabled:true) — el intento de login/uso de token existente falla.
+ * 2) fija usuarios/{empleadoId}.estado = 'suspendido', que isMecanico() ya
+ *    rechaza (getUserData().get('estado', 'pendiente') in ['aprobado',
+ *    'activo']) — defensa en profundidad si el disable de Auth no se
+ *    propaga de inmediato (tokens ya emitidos siguen siendo validos hasta
+ *    que expiran o se revocan explicitamente).
+ * 3) mantiene el write de talleres/.../empleados.activo = false solo para
+ *    que la UI (EmpleadosScreen) siga reflejando el estado sin re-leer
+ *    'usuarios'.
+ */
+exports.desactivarEmpleadoTaller = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  }
+  const callerUid = context.auth.uid;
+  const idEmpleado = data && data.idEmpleado ? String(data.idEmpleado) : '';
+  if (!idEmpleado) {
+    throw new functions.https.HttpsError('invalid-argument', 'idEmpleado es requerido.');
+  }
+
+  // Verifica que quien llama sea el dueño REAL del empleado objetivo:
+  // el doc talleres/{callerUid}/empleados/{idEmpleado} solo existe si
+  // crearEmpleadoTaller lo creo bajo ese dueño exacto (mismo patron de
+  // ownership que el resto del callable hermano). Se comprueba tambien
+  // usuarios/{idEmpleado}.id_taller_propietario == callerUid como segunda
+  // fuente de verdad, por si algun dia ambos documentos llegaran a
+  // desincronizarse.
+  const empleadoRef = db.collection('talleres').doc(callerUid).collection('empleados').doc(idEmpleado);
+  const [empleadoDoc, empleadoUserDoc] = await Promise.all([
+    empleadoRef.get(),
+    db.collection('usuarios').doc(idEmpleado).get(),
+  ]);
+
+  const perteneceAlCaller =
+    empleadoDoc.exists ||
+    (empleadoUserDoc.exists && empleadoUserDoc.data().id_taller_propietario === callerUid);
+
+  if (!perteneceAlCaller) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'Solo el dueño del taller puede desactivar a este empleado.'
+    );
+  }
+
+  try {
+    await admin.auth().updateUser(idEmpleado, { disabled: true });
+  } catch (err) {
+    console.error(`desactivarEmpleadoTaller: fallo al deshabilitar la cuenta Auth ${idEmpleado}:`, err);
+    throw new functions.https.HttpsError(
+      'internal',
+      'No se pudo desactivar la cuenta del empleado. Intenta de nuevo.'
+    );
+  }
+
+  const writes = [];
+  if (empleadoDoc.exists) {
+    writes.push(empleadoRef.update({ activo: false }));
+  }
+  if (empleadoUserDoc.exists) {
+    writes.push(db.collection('usuarios').doc(idEmpleado).update({ estado: 'suspendido' }));
+  }
+  await Promise.all(writes);
+
+  return { ok: true };
 });
 
 exports.publishTallerProfile = require('./src/publishTallerProfile').publishTallerProfile;

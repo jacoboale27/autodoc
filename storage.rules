@@ -45,6 +45,15 @@ service firebase.storage {
          request.resource.contentType == 'application/pdf');
     }
 
+    // Notas de voz de chat: no son imagen, por lo que esImagenValida() no
+    // aplica. Limite de 10 MB (cubre sobradamente los ~90s que permite la UI
+    // de grabacion) y solo los content-types de audio que produce el
+    // grabador/reproductor de la app.
+    function esAudioValido() {
+      return request.resource.size < 10 * 1024 * 1024 &&
+        request.resource.contentType.matches('audio/(mp4|aac|m4a|mpeg)');
+    }
+
     // Mecanico cuyo taller esta vinculado al vehiculo.
     function isVinculadoAlVehiculo(vehicleId) {
       return isMecanico() &&
@@ -106,6 +115,24 @@ service firebase.storage {
         )
       );
       allow write: if isAuthenticated() && esImagenValida() && (
+        firestore.exists(/databases/(default)/documents/conversaciones/$(conversacionId)) &&
+        (firestore.get(/databases/(default)/documents/conversaciones/$(conversacionId)).data.id_propietario == request.auth.uid ||
+         firestore.get(/databases/(default)/documents/conversaciones/$(conversacionId)).data.id_mecanico == request.auth.uid)
+      );
+    }
+
+    // Reglas para notas de voz de chat
+    // Mismo criterio de autorizacion que chat_images/: solo participantes
+    // de la conversacion (autenticados), o admin para lectura.
+    match /chat_audios/{conversacionId}/{fileName} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || (
+          firestore.exists(/databases/(default)/documents/conversaciones/$(conversacionId)) &&
+          (firestore.get(/databases/(default)/documents/conversaciones/$(conversacionId)).data.id_propietario == request.auth.uid ||
+           firestore.get(/databases/(default)/documents/conversaciones/$(conversacionId)).data.id_mecanico == request.auth.uid)
+        )
+      );
+      allow write: if isAuthenticated() && esAudioValido() && (
         firestore.exists(/databases/(default)/documents/conversaciones/$(conversacionId)) &&
         (firestore.get(/databases/(default)/documents/conversaciones/$(conversacionId)).data.id_propietario == request.auth.uid ||
          firestore.get(/databases/(default)/documents/conversaciones/$(conversacionId)).data.id_mecanico == request.auth.uid)

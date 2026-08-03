@@ -26,13 +26,14 @@ class MensajeModelAdapter extends TypeAdapter<MensajeModel> {
       estado: fields[6] as String,
       urlArchivo: fields[7] as String?,
       isDeleted: fields[8] as bool,
+      duracionSegundos: fields[9] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, MensajeModel obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -50,7 +51,9 @@ class MensajeModelAdapter extends TypeAdapter<MensajeModel> {
       ..writeByte(7)
       ..write(obj.urlArchivo)
       ..writeByte(8)
-      ..write(obj.isDeleted);
+      ..write(obj.isDeleted)
+      ..writeByte(9)
+      ..write(obj.duracionSegundos);
   }
 
   @override

@@ -64,6 +64,28 @@ service cloud.firestore {
       return servicio.id_taller == tallerId && isVehicleOwner(servicio.id_vehiculo);
     }
 
+    // Verifica si el uid autenticado actua legitimamente en nombre del
+    // taller `tallerId` (fix de integracion de sub-cuentas de empleado,
+    // ronda final de la Tarea "panel mecanico 100%"): o bien es el propio
+    // dueño (mismo uid que `tallerId`) o bien es una sub-cuenta de empleado
+    // cuyo `usuarios/{auth.uid}.id_taller_propietario` apunta a ese taller
+    // (ver crearEmpleadoTaller / UserModel.idTallerPropietario /
+    // UserModel.idTallerEfectivo, que en el cliente hace que
+    // reparaciones/catalogo_servicios se escriban con el uid del DUEÑO como
+    // id_taller/tallerId, nunca con el propio uid del empleado). El `||`
+    // corta en corto: para el caso dueño (el camino mas comun) nunca se
+    // ejecuta el get() de la segunda condicion. Se usa `get()` directo (no
+    // getUserData(), que solo lee request.auth.uid) porque aqui se necesita
+    // leer el doc de usuarios del llamante para comparar su
+    // id_taller_propietario, exactamente igual al patron ya usado en el
+    // create de 'usuarios' de arriba para excluir ese mismo campo.
+    function actuaPorTaller(tallerId) {
+      return request.auth.uid == tallerId ||
+        (exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+           .data.get('id_taller_propietario', null) == tallerId);
+    }
+
 
     // --- REGLAS POR COLECCIÓN ---
 
@@ -74,8 +96,26 @@ service cloud.firestore {
       // Function publishTallerProfile.
       allow read: if isOwner(userId) || isAdmin();
 
-      // Permitir la creación de su propio perfil de usuario durante registro/onboarding
-      allow create: if isOwner(userId) && request.resource.data.rol == 'Propietario';
+      // Permitir la creación de su propio perfil de usuario durante registro/onboarding.
+      // Ademas de exigir rol == 'Propietario' (ningun rol privilegiado por
+      // auto-registro):
+      // - 'id_taller_propietario' queda bloqueado por completo: no tiene un
+      //   valor por defecto seguro y el cliente (UserModel) nunca lo escribe,
+      //   asi que un create que lo incluya solo puede ser un intento de
+      //   auto-vincularse a un taller ajeno.
+      // - 'estado' / 'calificacion_promedio' / 'total_resenias' SI viajan en
+      //   el payload real del cliente (UserModel.toMap() siempre los incluye
+      //   con sus valores por defecto: 'activo', 0.0, 0 — ver
+      //   user_service.dart createUserData(), rama de usuario nuevo), asi que
+      //   bloquearlos por completo rompe el registro real. En su lugar se
+      //   permiten solo con su valor por defecto inofensivo: eso deja pasar
+      //   el registro legitimo pero sigue bloqueando que alguien se plante
+      //   un estado 'aprobado' o una reputacion no nula desde el create.
+      allow create: if isOwner(userId) && request.resource.data.rol == 'Propietario'
+                    && !('id_taller_propietario' in request.resource.data)
+                    && (!('estado' in request.resource.data) || request.resource.data.estado == 'activo')
+                    && (!('calificacion_promedio' in request.resource.data) || request.resource.data.calificacion_promedio == 0)
+                    && (!('total_resenias' in request.resource.data) || request.resource.data.total_resenias == 0);
       
       // El usuario puede editar su propio perfil básico, pero no puede tocar
       // 'rol' (escalamiento de privilegios) ni las métricas agregadas de
@@ -88,8 +128,13 @@ service cloud.firestore {
       // 'estado' tambien queda excluido: es el campo que el directorio publico
       // de talleres usa para filtrar por 'aprobado' (ver publishTallerProfile),
       // asi que un mecanico no puede autoaprobarse saltandose admin_service.
+      // 'id_taller_propietario' tambien queda excluido: es el campo que
+      // vincula a un empleado con su taller dueño (ver crearEmpleadoTaller,
+      // que lo fija con Admin SDK al crear la cuenta). Sin esta exclusion,
+      // cualquier usuario podria auto-asignarse como empleado de un taller
+      // ajeno con un solo update.
       allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data)
-                          .affectedKeys().hasAny(['rol', 'calificacion_promedio', 'total_resenias', 'estado']))
+                          .affectedKeys().hasAny(['rol', 'calificacion_promedio', 'total_resenias', 'estado', 'id_taller_propietario']))
                     || isAdmin();
       
       allow delete: if isAdmin();
@@ -110,6 +155,43 @@ service cloud.firestore {
       allow create, update: if isAdmin();
 
       allow delete: if isAdmin();
+
+      // Sub-cuentas de empleados del taller (Tarea 8, EmpleadoRepository).
+      // Las reglas no se heredan de la coleccion padre, asi que esta
+      // subcoleccion necesita su propio match aunque 'talleres/{tallerId}'
+      // ya tenga reglas arriba.
+      match /empleados/{empleadoId} {
+        // Solo el dueño del taller (tallerId == su propio uid) o un admin
+        // pueden ver la lista de empleados; ni siquiera el empleado mismo
+        // necesita leer esta subcoleccion (EmpleadosScreen la usa solo
+        // desde la vista del dueño).
+        allow read: if isAuthenticated() && (request.auth.uid == tallerId || isAdmin());
+
+        // El unico write de cliente real es EmpleadoRepository.desactivarEmpleado(),
+        // que solo cambia 'activo'. crearRegistroEmpleado() (Tarea 6) nunca
+        // se invoca en la app: crearEmpleadoTaller (Cloud Function) crea el
+        // documento con el Admin SDK, que bypassea estas reglas por completo.
+        allow update: if isAuthenticated() && request.auth.uid == tallerId
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activo']);
+
+        allow create, delete: if isAdmin();
+      }
+
+      // Catálogo de servicios/repuestos rápidos del taller (Tarea 9,
+      // CatalogoRepository). Igual que 'empleados', esta subcoleccion
+      // necesita su propio match aunque 'talleres/{tallerId}' ya tenga
+      // reglas arriba.
+      match /catalogo_servicios/{itemId} {
+        allow read: if true;
+        // Ampliado (fix de integracion de empleados) para aceptar tambien a
+        // una sub-cuenta de empleado actuando en nombre de `tallerId` via
+        // actuaPorTaller(): antes solo `request.auth.uid == tallerId`
+        // (el dueño real) podia escribir, dejando al empleado sin poder
+        // gestionar el catalogo aunque `initiate_service_screen.dart` /
+        // `catalogo_servicios_screen.dart` ya resuelven el id efectivo del
+        // taller (dueño) y no el propio uid del empleado.
+        allow create, update, delete: if isAuthenticated() && actuaPorTaller(tallerId);
+      }
     }
 
     // 3. Tabla de Vehículos
@@ -444,6 +526,56 @@ service cloud.firestore {
       allow delete: if isOwner(userId) || isAdmin();
     }
 
+    // 14. Tabla de Reparaciones (kanban de estado de reparación, panel mecánico)
+    // Lectura: propietario del vehículo, taller asignado o admin
+    // Escritura: solo el taller vinculado al vehículo (mismo patrón que
+    // 'servicios'/'historial_mantenimientos'): create exige isMecanico() +
+    // isVinculadoAlVehiculo(id_vehiculo) — o, igual que en 'servicios'
+    // (walk-in: cliente sin cita previa, ver vehicle_search_screen.dart ->
+    // initiate_service_screen.dart -> _iniciarTicketReparacion), que el
+    // vehículo aún no tenga ningún taller vinculado — y que id_propietario
+    // coincida con el dueño real del vehículo (evita inyectar una
+    // reparación falsa en el vehículo de una víctima); update bloquea
+    // reasignar id_vehiculo/id_taller/id_propietario tras la creación
+    // (mismo hallazgo ya corregido en 'servicios').
+    // Nota (fix de integracion de empleados): las 3 comparaciones de uid de
+    // abajo (read/create/update) usan actuaPorTaller() en vez de
+    // `== request.auth.uid` directo, para aceptar tambien a una sub-cuenta
+    // de empleado actuando en nombre del taller dueño — ver
+    // InitiateServiceScreen._iniciarTicketReparacion, que ya resuelve
+    // `idTaller` al uid del dueño (UserModel.idTallerEfectivo), no al
+    // propio uid del empleado. El resto de las condiciones (isMecanico(),
+    // isVinculadoAlVehiculo, el carve-out de walk-in, el bloqueo de campos
+    // en update) queda intacto: solo se amplia QUIEN puede ser "el taller",
+    // no se relaja ninguna otra proteccion.
+    match /reparaciones/{reparacionId} {
+      allow read: if isAuthenticated() &&
+        (resource.data.id_propietario == request.auth.uid ||
+         actuaPorTaller(resource.data.id_taller) || isAdmin());
+
+      allow create: if isAuthenticated() && (
+        isAdmin() ||
+        (isMecanico() && actuaPorTaller(request.resource.data.id_taller)
+          && exists(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
+          && (
+            get(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
+              .data.get('talleres_vinculados', []).size() == 0
+            || get(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
+                 .data.get('talleres_vinculados', []).hasAny([request.resource.data.id_taller])
+          )
+          && request.resource.data.id_propietario ==
+               getVehicleOwner(request.resource.data.id_vehiculo))
+      );
+
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        (actuaPorTaller(resource.data.id_taller)
+          && !request.resource.data.diff(resource.data)
+               .affectedKeys().hasAny(['id_vehiculo', 'id_taller', 'id_propietario']))
+      );
+
+      allow delete: if isAdmin();
+    }
 
   }
 }

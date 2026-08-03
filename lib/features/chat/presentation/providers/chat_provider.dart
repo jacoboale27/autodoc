@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:hive/hive.dart';
+import '../../../../core/constants/storage_paths.dart';
 import '../../data/models/conversacion_model.dart';
 import '../../data/models/mensaje_model.dart';
 import '../../data/models/cotizacion_model.dart';
@@ -174,6 +176,7 @@ class ChatProvider extends ChangeNotifier {
     String tipo = 'texto',
     Map<String, dynamic>? metadata,
     String? urlArchivo,
+    int? duracionSegundos,
   }) async {
     try {
       final mensaje = MensajeModel(
@@ -184,6 +187,7 @@ class ChatProvider extends ChangeNotifier {
         metadata: metadata,
         timestamp: DateTime.now(),
         urlArchivo: urlArchivo,
+        duracionSegundos: duracionSegundos,
       );
 
       await _chatRepository.enviarMensaje(
@@ -278,6 +282,33 @@ class ChatProvider extends ChangeNotifier {
           .child(fileName);
       final bytes = await imageFile.readAsBytes();
       final metadata = SettableMetadata(contentType: 'image/jpeg');
+      await ref.putData(bytes, metadata);
+      final url = await ref.getDownloadURL();
+
+      _isLoading = false;
+      notifyListeners();
+      return url;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<String?> subirAudioChat(String conversacionId, File audioFile) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.m4a';
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child(StoragePaths.chatAudios)
+          .child(conversacionId)
+          .child(fileName);
+      final bytes = await audioFile.readAsBytes();
+      final metadata = SettableMetadata(contentType: 'audio/mp4');
       await ref.putData(bytes, metadata);
       final url = await ref.getDownloadURL();
 

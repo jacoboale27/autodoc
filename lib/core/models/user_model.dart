@@ -20,6 +20,28 @@ class UserModel {
   final double calificacionPromedio;
   final int totalResenias;
 
+  /// Uid del taller dueño cuando esta cuenta es una sub-cuenta de empleado
+  /// (`crearEmpleadoTaller` la fija en `usuarios/{uid}.id_taller_propietario`,
+  /// solo via Admin SDK). `null`/vacío significa cuenta dueña real (o
+  /// cualquier otro rol): distingue una sub-cuenta de empleado de su taller
+  /// dueño aunque ambas compartan `rol == 'Taller'`.
+  final String? idTallerPropietario;
+
+  /// Uid del taller "efectivo" bajo el que debe operar esta cuenta en todo
+  /// el panel mecánico (Kanban de reparaciones, catálogo, etc.): el del
+  /// dueño real (`idTallerPropietario`) si esta cuenta es una sub-cuenta de
+  /// empleado, o el propio `idUsuario` si es el dueño (o cualquier otro
+  /// rol). Centraliza el `?? idUsuario` que, antes de este fix, cada
+  /// pantalla/provider del panel mecánico repetía usando `idUsuario`
+  /// directamente — lo que hacía que los datos de un empleado quedaran
+  /// aislados bajo su propio uid en vez de bajo el taller real.
+  String get idTallerEfectivo {
+    final propietario = idTallerPropietario;
+    return (propietario != null && propietario.isNotEmpty)
+        ? propietario
+        : idUsuario;
+  }
+
   UserModel({
     required this.idUsuario,
     required this.nombreCompleto,
@@ -39,6 +61,7 @@ class UserModel {
     this.longitud,
     this.calificacionPromedio = 0.0,
     this.totalResenias = 0,
+    this.idTallerPropietario,
   });
 
   UserModel copyWith({
@@ -60,6 +83,7 @@ class UserModel {
     double? longitud,
     double? calificacionPromedio,
     int? totalResenias,
+    String? idTallerPropietario,
   }) {
     return UserModel(
       idUsuario: idUsuario ?? this.idUsuario,
@@ -80,6 +104,7 @@ class UserModel {
       longitud: longitud ?? this.longitud,
       calificacionPromedio: calificacionPromedio ?? this.calificacionPromedio,
       totalResenias: totalResenias ?? this.totalResenias,
+      idTallerPropietario: idTallerPropietario ?? this.idTallerPropietario,
     );
   }
 
@@ -103,6 +128,8 @@ class UserModel {
       if (longitud != null) 'longitud': longitud,
       'calificacion_promedio': calificacionPromedio,
       'total_resenias': totalResenias,
+      if (idTallerPropietario != null)
+        'id_taller_propietario': idTallerPropietario,
     };
   }
 
@@ -172,6 +199,7 @@ class UserModel {
               : null),
       calificacionPromedio: parseDouble(map['calificacion_promedio']) ?? 0.0,
       totalResenias: (map['total_resenias'] as num?)?.toInt() ?? 0,
+      idTallerPropietario: (map['id_taller_propietario'])?.toString(),
     );
   }
 }

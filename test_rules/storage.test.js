@@ -210,3 +210,112 @@ describe('storage: fotos de resenias', () => {
     await assertSucceeds(admin.ref('resenia_fotos/s1/foto1.jpg').delete());
   });
 });
+
+describe('storage: notas de voz de chat (chat_audios)', () => {
+  const META_AUDIO = { contentType: 'audio/aac' };
+
+  const seedConversacion = (id, propietario, mecanico) => seed(env, async (db) => {
+    await db.collection('conversaciones').doc(id).set({
+      id,
+      id_propietario: propietario,
+      id_mecanico: mecanico,
+    });
+  });
+
+  test('un participante (propietario) SI puede subir una nota de voz valida', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedUsuario(UIDS.taller1, 'Taller');
+    await seedConversacion('c1', UIDS.owner1, UIDS.taller1);
+    const st = env.authenticatedContext(UIDS.owner1).storage();
+    await assertSucceeds(
+      st.ref('chat_audios/c1/audio1.m4a').put(imagen(100), META_AUDIO),
+    );
+  });
+
+  test('un participante (mecanico) SI puede subir una nota de voz valida', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedUsuario(UIDS.taller1, 'Taller');
+    await seedConversacion('c1', UIDS.owner1, UIDS.taller1);
+    const st = env.authenticatedContext(UIDS.taller1).storage();
+    await assertSucceeds(
+      st.ref('chat_audios/c1/audio1.m4a').put(imagen(100), META_AUDIO),
+    );
+  });
+
+  test('un usuario que NO es participante de la conversacion NO puede subir', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedUsuario(UIDS.taller1, 'Taller');
+    await seedUsuario(UIDS.owner2, 'Propietario');
+    await seedConversacion('c1', UIDS.owner1, UIDS.taller1);
+    const st = env.authenticatedContext(UIDS.owner2).storage();
+    await assertFails(
+      st.ref('chat_audios/c1/audio1.m4a').put(imagen(100), META_AUDIO),
+    );
+  });
+
+  test('rechaza subir audio a una conversacion inexistente', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    const st = env.authenticatedContext(UIDS.owner1).storage();
+    await assertFails(
+      st.ref('chat_audios/no-existe/audio1.m4a').put(imagen(100), META_AUDIO),
+    );
+  });
+
+  test('rechaza un contentType que no sea de audio', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedUsuario(UIDS.taller1, 'Taller');
+    await seedConversacion('c1', UIDS.owner1, UIDS.taller1);
+    const st = env.authenticatedContext(UIDS.owner1).storage();
+    await assertFails(
+      st.ref('chat_audios/c1/audio1.m4a').put(imagen(100), { contentType: 'text/html' }),
+    );
+  });
+
+  test('rechaza una nota de voz por encima de 10 MB', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedUsuario(UIDS.taller1, 'Taller');
+    await seedConversacion('c1', UIDS.owner1, UIDS.taller1);
+    const st = env.authenticatedContext(UIDS.owner1).storage();
+    await assertFails(
+      st.ref('chat_audios/c1/audio1.m4a').put(imagen(11 * 1024), META_AUDIO),
+    );
+  });
+
+  test('un participante SI puede leer la nota de voz', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedUsuario(UIDS.taller1, 'Taller');
+    await seedConversacion('c1', UIDS.owner1, UIDS.taller1);
+    await seed(env, async () => {
+      await env.authenticatedContext(UIDS.owner1).storage()
+        .ref('chat_audios/c1/audio1.m4a').put(imagen(100), META_AUDIO);
+    });
+    const st = env.authenticatedContext(UIDS.taller1).storage();
+    await assertSucceeds(st.ref('chat_audios/c1/audio1.m4a').getDownloadURL());
+  });
+
+  test('un usuario que NO es participante NO puede leer la nota de voz', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedUsuario(UIDS.taller1, 'Taller');
+    await seedUsuario(UIDS.owner2, 'Propietario');
+    await seedConversacion('c1', UIDS.owner1, UIDS.taller1);
+    await seed(env, async () => {
+      await env.authenticatedContext(UIDS.owner1).storage()
+        .ref('chat_audios/c1/audio1.m4a').put(imagen(100), META_AUDIO);
+    });
+    const st = env.authenticatedContext(UIDS.owner2).storage();
+    await assertFails(st.ref('chat_audios/c1/audio1.m4a').getDownloadURL());
+  });
+
+  test('el admin SI puede leer la nota de voz aunque no sea participante', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedUsuario(UIDS.taller1, 'Taller');
+    await seedUsuario(UIDS.admin, 'Administrador');
+    await seedConversacion('c1', UIDS.owner1, UIDS.taller1);
+    await seed(env, async () => {
+      await env.authenticatedContext(UIDS.owner1).storage()
+        .ref('chat_audios/c1/audio1.m4a').put(imagen(100), META_AUDIO);
+    });
+    const st = env.authenticatedContext(UIDS.admin).storage();
+    await assertSucceeds(st.ref('chat_audios/c1/audio1.m4a').getDownloadURL());
+  });
+});
