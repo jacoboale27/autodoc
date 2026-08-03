@@ -42,6 +42,12 @@ class UserModel {
         : idUsuario;
   }
 
+  /// El nivel de rol más alto en AutoDoc, por encima de 'Administrador':
+  /// puede crear cuentas de Administrador/Superusuario y eliminar cuentas
+  /// de forma permanente (ver superUserCreateAccount/superUserDeleteAccount
+  /// en functions/index.js y las reglas isSuperUser() en firestore.rules).
+  bool get isSuperUser => rol == 'Superusuario';
+
   UserModel({
     required this.idUsuario,
     required this.nombreCompleto,

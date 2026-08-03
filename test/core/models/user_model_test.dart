@@ -70,5 +70,24 @@ void main() {
       }, 'u1');
       expect(u.estado, 'aprobado');
     });
+
+    test('isSuperUser is true only when rol is Superusuario', () {
+      final superUser = UserModel(
+        idUsuario: '1',
+        nombreCompleto: 'n',
+        correo: 'c',
+        rol: 'Superusuario',
+        fechaRegistro: DateTime(2023, 1, 1),
+      );
+      final admin = UserModel(
+        idUsuario: '2',
+        nombreCompleto: 'n',
+        correo: 'c',
+        rol: 'Administrador',
+        fechaRegistro: DateTime(2023, 1, 1),
+      );
+      expect(superUser.isSuperUser, isTrue);
+      expect(admin.isSuperUser, isFalse);
+    });
   });
 }
