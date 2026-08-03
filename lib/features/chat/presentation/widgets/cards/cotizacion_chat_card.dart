@@ -33,8 +33,28 @@ class CotizacionChatCard extends StatefulWidget {
 class _CotizacionChatCardState extends State<CotizacionChatCard> {
   bool _isFinalizing = false;
   bool _isCheckingReview = false;
+  List<double>? _beneficios;
 
   String? get _cotizacionId => widget.metadata['id_cotizacion'] as String?;
+
+  @override
+  void initState() {
+    super.initState();
+    // Solo el mecanico (emisor de la cotizacion) necesita ver su beneficio;
+    // el propietario nunca debe leer cotizaciones/{id}/privado/margen
+    // (hallazgo H2), asi que ni siquiera se intenta el fetch para el.
+    if (widget.isMe) _cargarBeneficios();
+  }
+
+  Future<void> _cargarBeneficios() async {
+    final cotizacionId = _cotizacionId;
+    if (cotizacionId == null) return;
+    final beneficios = await context
+        .read<ChatProvider>()
+        .obtenerBeneficiosCotizacion(cotizacionId);
+    if (!mounted) return;
+    setState(() => _beneficios = beneficios);
+  }
 
   Future<void> _actualizarEstado(String estado) async {
     final cotizacionId = _cotizacionId;
@@ -152,10 +172,13 @@ class _CotizacionChatCardState extends State<CotizacionChatCard> {
             ),
           );
         }
-        final cotizacion = CotizacionModel.fromMap(
+        var cotizacion = CotizacionModel.fromMap(
           snapshot.data!.data()!,
           snapshot.data!.id,
         );
+        if (widget.isMe && _beneficios != null) {
+          cotizacion = cotizacion.copyWithBeneficios(_beneficios!);
+        }
         return _CotizacionCardBody(
           cotizacion: cotizacion,
           isMe: widget.isMe,

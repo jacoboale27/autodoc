@@ -246,6 +246,14 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
+  Future<List<double>> obtenerBeneficiosCotizacion(String cotizacionId) async {
+    try {
+      return await _chatRepository.obtenerBeneficiosCotizacion(cotizacionId);
+    } catch (e) {
+      return const [];
+    }
+  }
+
   Future<void> actualizarEstadoCotizacion(String id, String estado) async {
     try {
       await _chatRepository.actualizarEstadoCotizacion(id, estado);

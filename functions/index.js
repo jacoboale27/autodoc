@@ -551,44 +551,56 @@ exports.notifyOnReservationStatusChange = functions.firestore
     }
 
     try {
-      const isAccepted = newValue.estado === 'aprobada';
+      const isAccepted = newValue.estado === 'confirmada';
       const isRejected = newValue.estado === 'rechazada';
-      
+
       if (!isAccepted && !isRejected) return null;
 
-      const targetId = newValue.id_propietario;
-      if (!targetId) return null;
-
-      const userDoc = await db.collection('usuarios').doc(targetId).get();
-      const fcmToken = userDoc.exists ? userDoc.data().fcmToken : null;
-
-      if (!fcmToken) return null;
+      const fechaPropuesta = newValue.fecha_hora_propuesta && newValue.fecha_hora_propuesta.toDate
+        ? newValue.fecha_hora_propuesta.toDate().toLocaleDateString('es')
+        : 'la fecha propuesta';
 
       const title = isAccepted ? 'Reserva Confirmada' : 'Reserva Rechazada';
-      const body = isAccepted 
-        ? `Tu cita para el ${newValue.fecha} ha sido confirmada por el taller.`
-        : `El taller no pudo confirmar tu cita para el ${newValue.fecha}.`;
+      const body = isAccepted
+        ? `La cita para el ${fechaPropuesta} fue confirmada.`
+        : `La cita para el ${fechaPropuesta} fue rechazada.`;
 
-      await messaging.send({
-        token: fcmToken,
-        notification: {
-          title: title,
-          body: body,
-        },
-        data: {
-          type: 'reserva',
-          reservaId: context.params.reservaId
+      // Tanto reserva_detail_screen.dart como reserva_chat_card.dart permiten
+      // que el propietario O el mecanico sean quien confirma/rechaza segun
+      // el contexto, y este trigger no puede saber cual de los dos hizo el
+      // cambio -- se notifica a ambos con texto neutral en vez de asumir
+      // siempre el mismo actor (bug encontrado en la revision final: el
+      // codigo anterior asumia que 'el taller' confirmaba y notificaba solo
+      // al propietario, quedando mal incluso cuando era el mecanico quien
+      // debia enterarse).
+      const recipientIds = [newValue.id_propietario, newValue.id_mecanico].filter(Boolean);
+
+      for (const targetId of recipientIds) {
+        const userDoc = await db.collection('usuarios').doc(targetId).get();
+        const fcmToken = userDoc.exists ? userDoc.data().fcmToken : null;
+        if (fcmToken) {
+          await messaging.send({
+            token: fcmToken,
+            notification: {
+              title: title,
+              body: body,
+            },
+            data: {
+              type: 'reserva',
+              reservaId: context.params.reservaId
+            }
+          });
         }
-      });
 
-      // Persist in notification center
-      await writeNotification(targetId, {
-        tipo: 'reserva',
-        titulo: title,
-        body: body,
-        deepLink: `/reserva_detail/${context.params.reservaId}`,
-        metadata: { reservaId: context.params.reservaId },
-      });
+        // Persist in notification center
+        await writeNotification(targetId, {
+          tipo: 'reserva',
+          titulo: title,
+          body: body,
+          deepLink: `/reserva_detail/${context.params.reservaId}`,
+          metadata: { reservaId: context.params.reservaId },
+        });
+      }
     } catch (error) {
       console.error('Error sending reservation notification:', error);
     }
@@ -673,15 +685,17 @@ exports.notifyOnReparacionStatusChange = functions.firestore
 exports.sendReservationReminders = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const dateString = tomorrow.toISOString().split('T')[0]; // Assuming format 'YYYY-MM-DD'
+  const dateString = tomorrow.toISOString().split('T')[0]; // 'YYYY-MM-DD'
 
   const limit = 500;
   let lastDoc = null;
 
+  const usuariosCache = {};
+
   try {
     while (true) {
       let q = db.collection('reservas')
-        .where('estado', '==', 'aprobada')
+        .where('estado', '==', 'confirmada')
         .orderBy(admin.firestore.FieldPath.documentId())
         .limit(limit);
       if (lastDoc) {
@@ -692,36 +706,47 @@ exports.sendReservationReminders = functions.pubsub.schedule('every 24 hours').o
 
       for (const doc of reservasSnapshot.docs) {
         const reserva = doc.data();
-        
-        // Simple check to see if the date starts with tomorrow's date
-        if (reserva.fecha && reserva.fecha.startsWith(dateString)) {
-          
-          // Notify Owner
-          if (reserva.id_propietario) {
-            const ownerDoc = await db.collection('usuarios').doc(reserva.id_propietario).get();
-            if (ownerDoc.exists && ownerDoc.data().fcmToken) {
-              await messaging.send({
-                token: ownerDoc.data().fcmToken,
-                notification: {
-                  title: 'Recordatorio de Cita',
-                  body: `Tienes una cita programada para mañana a las ${reserva.hora || 'la hora acordada'}.`
-                }
-              });
-            }
-          }
 
-          // Notify Mechanic
-          if (reserva.id_mecanico) {
+        const fechaPropuesta = reserva.fecha_hora_propuesta && reserva.fecha_hora_propuesta.toDate
+          ? reserva.fecha_hora_propuesta.toDate()
+          : null;
+        if (!fechaPropuesta) continue;
+        const fechaPropuestaString = fechaPropuesta.toISOString().split('T')[0];
+        if (fechaPropuestaString !== dateString) continue;
+
+        // Notify Owner
+        if (reserva.id_propietario) {
+          if (!(reserva.id_propietario in usuariosCache)) {
+            const ownerDoc = await db.collection('usuarios').doc(reserva.id_propietario).get();
+            usuariosCache[reserva.id_propietario] = ownerDoc.exists ? ownerDoc.data() : null;
+          }
+          const ownerData = usuariosCache[reserva.id_propietario];
+          if (ownerData && ownerData.fcmToken) {
+            await messaging.send({
+              token: ownerData.fcmToken,
+              notification: {
+                title: 'Recordatorio de Cita',
+                body: 'Tienes una cita programada para mañana a la hora acordada.'
+              }
+            });
+          }
+        }
+
+        // Notify Mechanic
+        if (reserva.id_mecanico) {
+          if (!(reserva.id_mecanico in usuariosCache)) {
             const mechanicDoc = await db.collection('usuarios').doc(reserva.id_mecanico).get();
-            if (mechanicDoc.exists && mechanicDoc.data().fcmToken) {
-              await messaging.send({
-                token: mechanicDoc.data().fcmToken,
-                notification: {
-                  title: 'Recordatorio de Cita',
-                  body: `Tienes una cita programada para mañana con el vehículo del cliente.`
-                }
-              });
-            }
+            usuariosCache[reserva.id_mecanico] = mechanicDoc.exists ? mechanicDoc.data() : null;
+          }
+          const mechanicData = usuariosCache[reserva.id_mecanico];
+          if (mechanicData && mechanicData.fcmToken) {
+            await messaging.send({
+              token: mechanicData.fcmToken,
+              notification: {
+                title: 'Recordatorio de Cita',
+                body: 'Tienes una cita programada para mañana con el vehículo del cliente.'
+              }
+            });
           }
         }
       }
@@ -849,22 +874,54 @@ exports.scheduledFirestoreExport = functions.pubsub.schedule('every 24 hours').o
 exports.aggregateRatings = functions.firestore
   .document('resenias/{reseniaId}')
   .onWrite(async (change, context) => {
-    const resenia = change.after.exists ? change.after.data() : change.before.data();
-    const tallerId = resenia.id_taller;
+    const before = change.before.exists ? change.before.data() : null;
+    const after = change.after.exists ? change.after.data() : null;
+    const tallerId = (after || before || {}).id_taller;
     if (!tallerId) return null;
 
-    const reseniasSnap = await db.collection('resenias').where('id_taller', '==', tallerId).get();
-    let total = 0;
-    let sum = 0;
-    reseniasSnap.forEach(doc => {
-      total++;
-      sum += doc.data().estrellas || 0;
-    });
+    const beforeEstrellas = before ? (before.estrellas || 0) : 0;
+    const afterEstrellas = after ? (after.estrellas || 0) : 0;
+    const deltaCount = (after ? 1 : 0) - (before ? 1 : 0);
+    const deltaSum = afterEstrellas - beforeEstrellas;
+    // Un update que no toca 'estrellas' (respuesta_taller, is_reported, etc.)
+    // no cambia el agregado: nos ahorramos la escritura.
+    if (deltaCount === 0 && deltaSum === 0) return null;
 
-    const avg = total > 0 ? sum / total : 0;
-    await db.collection('usuarios').doc(tallerId).update({
-      calificacion_promedio: avg,
-      total_resenias: total
+    const userRef = db.collection('usuarios').doc(tallerId);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) return null;
+
+    if (userSnap.data().suma_estrellas === undefined) {
+      // Migracion perezosa: este taller aun no paso por la version
+      // incremental. Se siembra suma_estrellas con un recuento completo,
+      // una sola vez; las escrituras futuras ya son incrementales (O(1) en
+      // vez de O(n) reseñas del taller).
+      const reseniasSnap = await db.collection('resenias').where('id_taller', '==', tallerId).get();
+      let total = 0;
+      let sum = 0;
+      reseniasSnap.forEach((doc) => {
+        total++;
+        sum += doc.data().estrellas || 0;
+      });
+      await userRef.update({
+        calificacion_promedio: total > 0 ? sum / total : 0,
+        total_resenias: total,
+        suma_estrellas: sum,
+      });
+      return null;
+    }
+
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(userRef);
+      if (!snap.exists) return;
+      const data = snap.data();
+      const count = Math.max(0, (data.total_resenias || 0) + deltaCount);
+      const sum = Math.max(0, (data.suma_estrellas || 0) + deltaSum);
+      tx.update(userRef, {
+        calificacion_promedio: count > 0 ? sum / count : 0,
+        total_resenias: count,
+        suma_estrellas: sum,
+      });
     });
   });
 

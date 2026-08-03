@@ -384,6 +384,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       final isMe = msg.idRemitente == userId;
 
                       return Align(
+                        key: ValueKey(msg.id),
                         alignment: isMe
                             ? Alignment.centerRight
                             : Alignment.centerLeft,

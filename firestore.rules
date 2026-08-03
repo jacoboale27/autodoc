@@ -134,7 +134,7 @@ service cloud.firestore {
       // cualquier usuario podria auto-asignarse como empleado de un taller
       // ajeno con un solo update.
       allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data)
-                          .affectedKeys().hasAny(['rol', 'calificacion_promedio', 'total_resenias', 'estado', 'id_taller_propietario']))
+                          .affectedKeys().hasAny(['rol', 'calificacion_promedio', 'total_resenias', 'estado', 'id_taller_propietario', 'suma_estrellas']))
                     || isAdmin();
       
       allow delete: if isAdmin();
@@ -206,6 +206,11 @@ service cloud.firestore {
         resource.data.id_propietario == request.auth.uid
         || isAdmin()
         || (isMecanico() && resource.data.get('talleres_vinculados', []).hasAny([request.auth.uid]))
+        // Usuarios con quien el propietario comparte el vehiculo (ver
+        // share_vehicle_sheet.dart) obtienen SOLO lectura aqui; a proposito
+        // esto NO se agrega a isVehicleOwner(), que sigue significando "es
+        // el dueño real" para isOwnFinishedService/servicios/reseñas.
+        || resource.data.get('shared_with', []).hasAny([request.auth.uid])
       );
 
       // Solo el propietario registrado del vehículo puede crearlo o eliminarlo
@@ -429,13 +434,19 @@ service cloud.firestore {
       allow create: if isAuthenticated() &&
         (request.resource.data.id_propietario == request.auth.uid ||
          request.resource.data.id_mecanico == request.auth.uid);
-      // El mecanico solo puede actualizar la reserva que le corresponde a el
-      // (mismo patron que 'cotizaciones'); antes cualquier mecanico
-      // autenticado podia modificar la reserva de cualquier otro.
+      // Tras crearse, solo estado/fecha_hora_confirmada/fecha_hora_propuesta
+      // son escribibles (ver ReservaRepository.actualizarEstadoReserva y
+      // .reprogramarReserva, los unicos dos flujos reales de escritura):
+      // sin este acotado, cualquiera de los dos participantes podia
+      // reescribir id_propietario/id_mecanico/id_vehiculo/id_taller despues
+      // de creada la reserva (hallazgo M1).
       allow update: if isAuthenticated() && (
-        resource.data.id_propietario == request.auth.uid ||
-        resource.data.id_mecanico == request.auth.uid ||
-        isAdmin()
+        isAdmin() || (
+          (resource.data.id_propietario == request.auth.uid ||
+           resource.data.id_mecanico == request.auth.uid) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['estado', 'fecha_hora_confirmada', 'fecha_hora_propuesta'])
+        )
       );
     }
 
@@ -447,9 +458,29 @@ service cloud.firestore {
          isAdmin());
       allow create: if isAuthenticated() &&
         request.resource.data.id_mecanico == request.auth.uid;
+      // Solo el campo 'estado' es escribible tras la creacion: el
+      // propietario acepta/rechaza (actualizarEstadoCotizacion) y el
+      // mecanico la marca 'finalizada' (finalizarServicioDesdeCotizacion);
+      // ninguno de los dos flujos reales toca otro campo. Sin este acotado,
+      // cualquiera de los dos podia reescribir 'items' (precio) o
+      // reasignar id_propietario/id_mecanico despues de creada (hallazgo H1).
       allow update: if isAuthenticated() &&
         (resource.data.id_propietario == request.auth.uid ||
-         resource.data.id_mecanico == request.auth.uid);
+         resource.data.id_mecanico == request.auth.uid) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado']);
+
+      // Beneficio por renglon (ver CotizacionItem.beneficio en el cliente):
+      // documento privado fuera del doc principal porque 'cotizaciones' es
+      // de lectura compartida con el propietario, y el beneficio del
+      // mecanico nunca debe ser visible para el cliente (hallazgo H2).
+      match /privado/{docId} {
+        allow read: if isAuthenticated() && (
+          get(/databases/$(database)/documents/cotizaciones/$(cotizacionId)).data.id_mecanico == request.auth.uid
+          || isAdmin()
+        );
+        allow write: if isAuthenticated() &&
+          get(/databases/$(database)/documents/cotizaciones/$(cotizacionId)).data.id_mecanico == request.auth.uid;
+      }
     }
 
     // 10. Tabla de Mantenimientos (tareas de mantenimiento programadas)

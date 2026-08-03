@@ -5,7 +5,10 @@ import '../models/cotizacion_model.dart';
 import '../../../../core/constants/firestore_collections.dart';
 
 class ChatRepository {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  ChatRepository({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
+
+  final FirebaseFirestore _firestore;
 
   // Obtener stream de conversaciones de un usuario
   Stream<List<ConversacionModel>> streamConversaciones(
@@ -169,8 +172,39 @@ class ChatRepository {
     final docRef = _firestore.collection('cotizaciones').doc();
     final data = cotizacion.toMap();
     data['id_cotizacion'] = docRef.id; // o id, dependiendo de la convención
+
+    // Dos escrituras secuenciales, no un batch atomico: la regla de
+    // cotizaciones/{id}/privado/{docId} usa get() sobre el documento padre
+    // para verificar id_mecanico, y get() dentro de un batch/transaccion NO
+    // ve otras escrituras del mismo batch — el padre debe existir ANTES de
+    // que la regla del hijo pueda leerlo. Riesgo residual aceptado: si la
+    // segunda escritura falla, queda una cotizacion publica sin su margen
+    // privado; obtenerBeneficiosCotizacion ya devuelve [] con seguridad en
+    // ese caso (sin excepcion, sin fuga de datos).
     await docRef.set(data);
+    // Beneficio por renglon: subcoleccion privada, ver firestore.rules
+    // cotizaciones/{id}/privado/{docId} (hallazgo H2).
+    await docRef
+        .collection('privado')
+        .doc('margen')
+        .set(cotizacion.toPrivateMap());
+
     return docRef.id;
+  }
+
+  // Beneficio por renglon de una cotizacion (solo el mecanico dueño puede
+  // leerlo, ver firestore.rules).
+  Future<List<double>> obtenerBeneficiosCotizacion(String cotizacionId) async {
+    final doc = await _firestore
+        .collection('cotizaciones')
+        .doc(cotizacionId)
+        .collection('privado')
+        .doc('margen')
+        .get();
+    if (!doc.exists) return const [];
+    final raw = doc.data()?['beneficios'] as List?;
+    if (raw == null) return const [];
+    return raw.map((e) => (e as num).toDouble()).toList();
   }
 
   // Actualizar estado de la cotización
