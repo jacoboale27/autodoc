@@ -788,22 +788,54 @@ exports.scheduledFirestoreExport = functions.pubsub.schedule('every 24 hours').o
 exports.aggregateRatings = functions.firestore
   .document('resenias/{reseniaId}')
   .onWrite(async (change, context) => {
-    const resenia = change.after.exists ? change.after.data() : change.before.data();
-    const tallerId = resenia.id_taller;
+    const before = change.before.exists ? change.before.data() : null;
+    const after = change.after.exists ? change.after.data() : null;
+    const tallerId = (after || before || {}).id_taller;
     if (!tallerId) return null;
 
-    const reseniasSnap = await db.collection('resenias').where('id_taller', '==', tallerId).get();
-    let total = 0;
-    let sum = 0;
-    reseniasSnap.forEach(doc => {
-      total++;
-      sum += doc.data().estrellas || 0;
-    });
+    const beforeEstrellas = before ? (before.estrellas || 0) : 0;
+    const afterEstrellas = after ? (after.estrellas || 0) : 0;
+    const deltaCount = (after ? 1 : 0) - (before ? 1 : 0);
+    const deltaSum = afterEstrellas - beforeEstrellas;
+    // Un update que no toca 'estrellas' (respuesta_taller, is_reported, etc.)
+    // no cambia el agregado: nos ahorramos la escritura.
+    if (deltaCount === 0 && deltaSum === 0) return null;
 
-    const avg = total > 0 ? sum / total : 0;
-    await db.collection('usuarios').doc(tallerId).update({
-      calificacion_promedio: avg,
-      total_resenias: total
+    const userRef = db.collection('usuarios').doc(tallerId);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) return null;
+
+    if (userSnap.data().suma_estrellas === undefined) {
+      // Migracion perezosa: este taller aun no paso por la version
+      // incremental. Se siembra suma_estrellas con un recuento completo,
+      // una sola vez; las escrituras futuras ya son incrementales (O(1) en
+      // vez de O(n) reseñas del taller).
+      const reseniasSnap = await db.collection('resenias').where('id_taller', '==', tallerId).get();
+      let total = 0;
+      let sum = 0;
+      reseniasSnap.forEach((doc) => {
+        total++;
+        sum += doc.data().estrellas || 0;
+      });
+      await userRef.update({
+        calificacion_promedio: total > 0 ? sum / total : 0,
+        total_resenias: total,
+        suma_estrellas: sum,
+      });
+      return null;
+    }
+
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(userRef);
+      if (!snap.exists) return;
+      const data = snap.data();
+      const count = Math.max(0, (data.total_resenias || 0) + deltaCount);
+      const sum = Math.max(0, (data.suma_estrellas || 0) + deltaSum);
+      tx.update(userRef, {
+        calificacion_promedio: count > 0 ? sum / count : 0,
+        total_resenias: count,
+        suma_estrellas: sum,
+      });
     });
   });
 

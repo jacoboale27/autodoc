@@ -89,7 +89,7 @@ service cloud.firestore {
       // de talleres usa para filtrar por 'aprobado' (ver publishTallerProfile),
       // asi que un mecanico no puede autoaprobarse saltandose admin_service.
       allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data)
-                          .affectedKeys().hasAny(['rol', 'calificacion_promedio', 'total_resenias', 'estado']))
+                          .affectedKeys().hasAny(['rol', 'calificacion_promedio', 'total_resenias', 'estado', 'suma_estrellas']))
                     || isAdmin();
       
       allow delete: if isAdmin();

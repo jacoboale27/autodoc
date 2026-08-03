@@ -54,6 +54,16 @@ describe('usuarios', () => {
     );
   });
 
+  test('un usuario NO puede escribir suma_estrellas (contador interno de aggregateRatings)', async () => {
+    // Sin excluir este campo, el propietario de la cuenta podria inflar su
+    // propio promedio escribiendo directamente el acumulador que la Cloud
+    // Function usa para el calculo incremental (hallazgo M2).
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db.collection('usuarios').doc(UIDS.taller1).update({ suma_estrellas: 999 }),
+    );
+  });
+
   test('un usuario NO puede autoaprobarse cambiando su propio estado', async () => {
     // I2: 'estado' se proyecta a 'talleres' y el directorio publico filtra
     // por estado == 'aprobado' (workshop_service.dart). Sin esta exclusion,
