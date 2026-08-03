@@ -365,9 +365,16 @@ service cloud.firestore {
          isAdmin());
       allow create: if isAuthenticated() &&
         request.resource.data.id_mecanico == request.auth.uid;
+      // Solo el campo 'estado' es escribible tras la creacion: el
+      // propietario acepta/rechaza (actualizarEstadoCotizacion) y el
+      // mecanico la marca 'finalizada' (finalizarServicioDesdeCotizacion);
+      // ninguno de los dos flujos reales toca otro campo. Sin este acotado,
+      // cualquiera de los dos podia reescribir 'items' (precio) o
+      // reasignar id_propietario/id_mecanico despues de creada (hallazgo H1).
       allow update: if isAuthenticated() &&
         (resource.data.id_propietario == request.auth.uid ||
-         resource.data.id_mecanico == request.auth.uid);
+         resource.data.id_mecanico == request.auth.uid) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado']);
     }
 
     // 10. Tabla de Mantenimientos (tareas de mantenimiento programadas)
