@@ -8,7 +8,9 @@ class AccountRow extends StatelessWidget {
   final VoidCallback onSuspender;
   final VoidCallback onReactivar;
   final VoidCallback onCambiarRol;
+  final VoidCallback onEliminar;
   final bool isCurrentAdmin;
+  final bool canHardDelete;
 
   const AccountRow({
     super.key,
@@ -17,7 +19,9 @@ class AccountRow extends StatelessWidget {
     required this.onSuspender,
     required this.onReactivar,
     required this.onCambiarRol,
+    required this.onEliminar,
     required this.isCurrentAdmin,
+    required this.canHardDelete,
   });
 
   @override
@@ -84,7 +88,8 @@ class AccountRow extends StatelessWidget {
           if (value == 'aprobar') onAprobar();
           if (value == 'suspender') onSuspender();
           if (value == 'reactivar') onReactivar();
-          if (value == 'rol') onCambiarRol();
+          if (value == 'cambiar_rol') onCambiarRol();
+          if (value == 'eliminar') onEliminar();
         },
         itemBuilder: (context) => [
           if (usuario.estado != 'activo' && usuario.estado != 'suspendido')
@@ -115,6 +120,14 @@ class AccountRow extends StatelessWidget {
             PopupMenuItem(
               value: 'cambiar_rol',
               child: Text(context.l10n.adminChangeUserRole),
+            ),
+          if (canHardDelete && !isCurrentAdmin && usuario.rol != 'Superusuario')
+            const PopupMenuItem(
+              value: 'eliminar',
+              child: Text(
+                'Eliminar cuenta (permanente)',
+                style: TextStyle(color: Colors.red),
+              ),
             ),
         ],
       ),
