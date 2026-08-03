@@ -43,3 +43,32 @@ describe('reservas (hallazgo I6: mismo patron de bug que Tarea 9 corrigio en otr
     );
   });
 });
+
+describe('reservas update field scoping (hallazgo M1: cualquier campo era escribible)', () => {
+  test('el propietario NO puede reasignar id_mecanico', async () => {
+    await seedReserva();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('reservas').doc('r1').update({ id_mecanico: UIDS.taller2 }),
+    );
+  });
+
+  test('el mecanico NO puede reasignar id_vehiculo', async () => {
+    await seedReserva();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db.collection('reservas').doc('r1').update({ id_vehiculo: 'v2' }),
+    );
+  });
+
+  test('el mecanico SI puede reprogramar (fecha_hora_propuesta + estado)', async () => {
+    await seedReserva();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertSucceeds(
+      db.collection('reservas').doc('r1').update({
+        fecha_hora_propuesta: new Date(),
+        estado: 'pendiente',
+      }),
+    );
+  });
+});

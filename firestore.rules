@@ -347,13 +347,19 @@ service cloud.firestore {
       allow create: if isAuthenticated() &&
         (request.resource.data.id_propietario == request.auth.uid ||
          request.resource.data.id_mecanico == request.auth.uid);
-      // El mecanico solo puede actualizar la reserva que le corresponde a el
-      // (mismo patron que 'cotizaciones'); antes cualquier mecanico
-      // autenticado podia modificar la reserva de cualquier otro.
+      // Tras crearse, solo estado/fecha_hora_confirmada/fecha_hora_propuesta
+      // son escribibles (ver ReservaRepository.actualizarEstadoReserva y
+      // .reprogramarReserva, los unicos dos flujos reales de escritura):
+      // sin este acotado, cualquiera de los dos participantes podia
+      // reescribir id_propietario/id_mecanico/id_vehiculo/id_taller despues
+      // de creada la reserva (hallazgo M1).
       allow update: if isAuthenticated() && (
-        resource.data.id_propietario == request.auth.uid ||
-        resource.data.id_mecanico == request.auth.uid ||
-        isAdmin()
+        isAdmin() || (
+          (resource.data.id_propietario == request.auth.uid ||
+           resource.data.id_mecanico == request.auth.uid) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['estado', 'fecha_hora_confirmada', 'fecha_hora_propuesta'])
+        )
       );
     }
 
