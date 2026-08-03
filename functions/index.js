@@ -549,7 +549,7 @@ exports.notifyOnReservationStatusChange = functions.firestore
     }
 
     try {
-      const isAccepted = newValue.estado === 'aprobada';
+      const isAccepted = newValue.estado === 'confirmada';
       const isRejected = newValue.estado === 'rechazada';
       
       if (!isAccepted && !isRejected) return null;
@@ -599,15 +599,17 @@ exports.notifyOnReservationStatusChange = functions.firestore
 exports.sendReservationReminders = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const dateString = tomorrow.toISOString().split('T')[0]; // Assuming format 'YYYY-MM-DD'
+  const dateString = tomorrow.toISOString().split('T')[0]; // 'YYYY-MM-DD'
 
   const limit = 500;
   let lastDoc = null;
 
+  const usuariosCache = {};
+
   try {
     while (true) {
       let q = db.collection('reservas')
-        .where('estado', '==', 'aprobada')
+        .where('estado', '==', 'confirmada')
         .orderBy(admin.firestore.FieldPath.documentId())
         .limit(limit);
       if (lastDoc) {
@@ -618,36 +620,47 @@ exports.sendReservationReminders = functions.pubsub.schedule('every 24 hours').o
 
       for (const doc of reservasSnapshot.docs) {
         const reserva = doc.data();
-        
-        // Simple check to see if the date starts with tomorrow's date
-        if (reserva.fecha && reserva.fecha.startsWith(dateString)) {
-          
-          // Notify Owner
-          if (reserva.id_propietario) {
-            const ownerDoc = await db.collection('usuarios').doc(reserva.id_propietario).get();
-            if (ownerDoc.exists && ownerDoc.data().fcmToken) {
-              await messaging.send({
-                token: ownerDoc.data().fcmToken,
-                notification: {
-                  title: 'Recordatorio de Cita',
-                  body: `Tienes una cita programada para mañana a las ${reserva.hora || 'la hora acordada'}.`
-                }
-              });
-            }
-          }
 
-          // Notify Mechanic
-          if (reserva.id_mecanico) {
+        const fechaPropuesta = reserva.fecha_hora_propuesta && reserva.fecha_hora_propuesta.toDate
+          ? reserva.fecha_hora_propuesta.toDate()
+          : null;
+        if (!fechaPropuesta) continue;
+        const fechaPropuestaString = fechaPropuesta.toISOString().split('T')[0];
+        if (fechaPropuestaString !== dateString) continue;
+
+        // Notify Owner
+        if (reserva.id_propietario) {
+          if (!(reserva.id_propietario in usuariosCache)) {
+            const ownerDoc = await db.collection('usuarios').doc(reserva.id_propietario).get();
+            usuariosCache[reserva.id_propietario] = ownerDoc.exists ? ownerDoc.data() : null;
+          }
+          const ownerData = usuariosCache[reserva.id_propietario];
+          if (ownerData && ownerData.fcmToken) {
+            await messaging.send({
+              token: ownerData.fcmToken,
+              notification: {
+                title: 'Recordatorio de Cita',
+                body: 'Tienes una cita programada para mañana a la hora acordada.'
+              }
+            });
+          }
+        }
+
+        // Notify Mechanic
+        if (reserva.id_mecanico) {
+          if (!(reserva.id_mecanico in usuariosCache)) {
             const mechanicDoc = await db.collection('usuarios').doc(reserva.id_mecanico).get();
-            if (mechanicDoc.exists && mechanicDoc.data().fcmToken) {
-              await messaging.send({
-                token: mechanicDoc.data().fcmToken,
-                notification: {
-                  title: 'Recordatorio de Cita',
-                  body: `Tienes una cita programada para mañana con el vehículo del cliente.`
-                }
-              });
-            }
+            usuariosCache[reserva.id_mecanico] = mechanicDoc.exists ? mechanicDoc.data() : null;
+          }
+          const mechanicData = usuariosCache[reserva.id_mecanico];
+          if (mechanicData && mechanicData.fcmToken) {
+            await messaging.send({
+              token: mechanicData.fcmToken,
+              notification: {
+                title: 'Recordatorio de Cita',
+                body: 'Tienes una cita programada para mañana con el vehículo del cliente.'
+              }
+            });
           }
         }
       }
