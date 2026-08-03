@@ -4,7 +4,7 @@
 
 **Goal:** Llevar el backend de Cloud Functions de AutoDoc del 95.0% al 100%: un cron job diario a las 8:00 AM que avise de SOAT/mantenimiento por vencer, generación automática de thumbnails para imágenes subidas a Storage, y correo transaccional al taller cuando el admin aprueba su solicitud.
 
-**Architecture:** `functions/index.js` (Node.js, Admin SDK) ya tiene un patrón sólido y reutilizable: `writeNotification()` para el centro de notificaciones in-app, y funciones `pubsub.schedule` / `firestore.document().onUpdate` / `https.onCall` ya existentes como plantilla. El proyecto **no tiene ninguna infraestructura de test para `functions/`** hoy (sin `firebase-functions-test`, sin test runner configurado) — este plan la introduce como primer paso, porque TDD es un requisito de este plan y no hay nada que reutilizar. La feature de vencimientos se implementa como una función nueva (no se reutiliza `checkAlertsDaily`, que opera sobre la colección genérica `alertas` con revisión cada 24h sin hora fija) que consulta directamente `vehiculos.vencimiento_soat` y la fecha de próximo mantenimiento calculada desde `mantenimientos`, con cron fijo a las 8:00 AM hora de El Salvador. El resize de imágenes usa `sharp` en un trigger `storage.object().onFinalize`, con guarda anti-recursión (ignora archivos que ya sean thumbnails). El correo usa SendGrid, leyendo el email desde `usuarios/{tallerId}` porque `talleres/{tallerId}` (la proyección pública) no incluye el correo.
+**Architecture:** `functions/index.js` (Node.js, Admin SDK) ya tiene un patrón sólido y reutilizable: `writeNotification()` para el centro de notificaciones in-app, y funciones `pubsub.schedule` / `firestore.document().onUpdate` / `https.onCall` ya existentes como plantilla. El proyecto **no tiene ninguna infraestructura de test para `functions/`** hoy (sin `firebase-functions-test`, sin test runner configurado) — este plan la introduce como primer paso, porque TDD es un requisito de este plan y no hay nada que reutilizar. La feature de vencimientos se implementa como una función nueva (no se reutiliza `checkAlertsDaily`, que opera sobre la colección genérica `alertas` con revisión cada 24h sin hora fija) que consulta directamente `vehiculos.vencimiento_soat` y la fecha de próximo mantenimiento calculada desde `mantenimientos`, con cron fijo a las 8:00 AM hora de El Salvador. El resize de imágenes usa `sharp` en un trigger `storage.object().onFinalize`, con guarda anti-recursión (ignora archivos que ya sean thumbnails). El correo usa SendGrid, disparado sobre `usuarios/{uid}` — **no** sobre `talleres/{tallerId}`: desde que se escribió este plan, `admin_service.dart` documentó explícitamente que `talleres/{uid}` es una proyección de solo lectura mantenida por `publishTallerProfile` (`onWrite` en `usuarios/{uid}`), que se revertiría silenciosamente si algo la escribiera directo, y que la fuente de verdad de la aprobación (`aprobarTaller`) es siempre `usuarios/{uid}.estado`. Disparar sobre `talleres` funcionaría igual (por la propagación), pero añade un salto asíncrono innecesario y obliga a releer el documento; disparar sobre `usuarios/{uid}` da `correo`/`nombre_completo` directo en el payload del trigger.
 
 **Tech Stack:** Node.js 20, `firebase-functions` `^5.0.0`, `firebase-admin` `^12.1.0`, paquetes nuevos `sharp`, `@sendgrid/mail`, dev deps nuevas `firebase-functions-test`, `jest`.
 
@@ -386,9 +386,31 @@ exports.debeGenerarThumbnail = debeGenerarThumbnail;
 Run: `cd functions && npm test -- generateImageThumbnail`
 Expected: PASS
 
-- [ ] **Step 6: Actualizar `storage.rules` si es necesario**
+- [ ] **Step 6: Actualizar `storage.rules` — las reglas actuales NO cubren `thumbs/`**
 
-Lee `storage.rules` para confirmar que las reglas de lectura de `facturas/**`/`chat_images/**` ya cubren `thumbs/` (al ser subcarpetas, un patrón `facturas/{vehicleId}/{allPaths=**}` ya las incluye; si las reglas están escritas con un patrón más rígido de un solo nivel, ajústalas para permitir el nivel adicional `thumbs/`).
+Confirmado por lectura de `storage.rules`: los bloques `match /facturas/{vehicleId}/{fileName}` y `match /chat_images/{conversacionId}/{fileName}` capturan un único segmento de ruta, así que no matchean `facturas/{vehicleId}/thumbs/{fileName}`. La subida del thumbnail en sí no necesita regla de `write` (la hace `generateImageThumbnail` vía Admin SDK, que ignora Storage Rules) — solo hace falta una regla de `read` para que los clientes puedan descargar el thumbnail. Añade un `match` nuevo, hermano del existente, en cada bloque, reusando exactamente las mismas condiciones de lectura:
+
+```
+// Dentro de match /b/{bucket}/o { ... }, junto al bloque de facturas/{vehicleId}/{fileName}:
+match /facturas/{vehicleId}/thumbs/{fileName} {
+  allow read: if isAuthenticated() && (
+    isVehicleOwner(vehicleId)
+    || isVinculadoAlVehiculo(vehicleId)
+    || isAdmin()
+  );
+}
+
+// Junto al bloque de chat_images/{conversacionId}/{fileName}:
+match /chat_images/{conversacionId}/thumbs/{fileName} {
+  allow read: if isAuthenticated() && (
+    isAdmin() || (
+      firestore.exists(/databases/(default)/documents/conversaciones/$(conversacionId)) &&
+      (firestore.get(/databases/(default)/documents/conversaciones/$(conversacionId)).data.id_propietario == request.auth.uid ||
+       firestore.get(/databases/(default)/documents/conversaciones/$(conversacionId)).data.id_mecanico == request.auth.uid)
+    )
+  );
+}
+```
 
 - [ ] **Step 7: Verificar contra el emulador**
 
@@ -411,8 +433,8 @@ git commit -m "feat(functions): generate image thumbnails on Storage upload"
 - Create: `functions/test/notifyTallerOnApproval.test.js`
 
 **Interfaces:**
-- Produces: `exports.notifyTallerOnApproval` — `functions.firestore.document('talleres/{tallerId}').onUpdate(...)`, dispara cuando `estado` pasa de `'pendiente'` a `'aprobado'`.
-- Consumes: `usuarios/{tallerId}.correo` y `.nombre_completo` (el correo NO vive en `talleres/{tallerId}`, confirmado por exploración de `publishTallerProfile.js`).
+- Produces: `exports.notifyTallerOnApproval` — `functions.firestore.document('usuarios/{uid}').onUpdate(...)`, dispara cuando `estado` pasa a `'aprobado'` para una cuenta con `rol` de taller/mecánico.
+- Consumes: `change.after.data().correo`, `.nombre_completo`, `.rol` y `.estado` directo del payload del trigger (sin lectura adicional a Firestore) — confirmado por `admin_service.dart:132-153`: `aprobarTaller` escribe `usuarios/{idTaller}.estado = 'aprobado'`; `talleres/{idTaller}` es una proyección de solo lectura de ese mismo doc mantenida por `publishTallerProfile` (`functions/src/publishTallerProfile.js`), que **no** incluye `correo` entre `CAMPOS_PUBLICOS`. Nota: `aprobarUsuario` (cuentas de mecánico genéricas, no talleres) usa el valor `'activo'`, no `'aprobado'` — por eso filtrar por `estado === 'aprobado'` ya distingue la aprobación de taller sin necesitar chequear `rol`, pero el test/implementación igual valida `rol` por defensividad y para que el nombre de la función sea preciso.
 
 - [ ] **Step 1: Instalar `@sendgrid/mail`**
 
@@ -429,20 +451,46 @@ cd ..
 const { esTransicionAAprobado } = require('../index');
 
 describe('esTransicionAAprobado', () => {
-  it('detecta la transición de pendiente a aprobado', () => {
-    expect(esTransicionAAprobado({ estado: 'pendiente' }, { estado: 'aprobado' })).toBe(true);
+  it('detecta la transición de pendiente a aprobado para un taller', () => {
+    expect(esTransicionAAprobado(
+      { estado: 'pendiente', rol: 'Taller' },
+      { estado: 'aprobado', rol: 'Taller' },
+    )).toBe(true);
+  });
+
+  it('detecta la transición para rol mecanico (minusculas)', () => {
+    expect(esTransicionAAprobado(
+      { estado: 'pendiente', rol: 'mecanico' },
+      { estado: 'aprobado', rol: 'mecanico' },
+    )).toBe(true);
   });
 
   it('ignora si ya estaba aprobado', () => {
-    expect(esTransicionAAprobado({ estado: 'aprobado' }, { estado: 'aprobado' })).toBe(false);
+    expect(esTransicionAAprobado(
+      { estado: 'aprobado', rol: 'Taller' },
+      { estado: 'aprobado', rol: 'Taller' },
+    )).toBe(false);
   });
 
   it('ignora otras transiciones (ej. aprobado a suspendido)', () => {
-    expect(esTransicionAAprobado({ estado: 'aprobado' }, { estado: 'suspendido' })).toBe(false);
+    expect(esTransicionAAprobado(
+      { estado: 'aprobado', rol: 'Taller' },
+      { estado: 'suspendido', rol: 'Taller' },
+    )).toBe(false);
   });
 
-  it('ignora transición a un estado distinto de aprobado', () => {
-    expect(esTransicionAAprobado({ estado: 'pendiente' }, { estado: 'rechazado' })).toBe(false);
+  it('ignora transición a un estado distinto de aprobado (aprobarUsuario usa "activo")', () => {
+    expect(esTransicionAAprobado(
+      { estado: 'pendiente', rol: 'Taller' },
+      { estado: 'activo', rol: 'Taller' },
+    )).toBe(false);
+  });
+
+  it('ignora cuentas que no son taller/mecanico aunque el estado cambie a aprobado', () => {
+    expect(esTransicionAAprobado(
+      { estado: 'pendiente', rol: 'Propietario' },
+      { estado: 'aprobado', rol: 'Propietario' },
+    )).toBe(false);
   });
 });
 ```
@@ -458,24 +506,35 @@ Expected: FAIL — `esTransicionAAprobado` no está exportado.
 // functions/index.js
 const sgMail = require('@sendgrid/mail');
 
-function esTransicionAAprobado(before, after) {
-  return before.estado !== 'aprobado' && after.estado === 'aprobado';
+// Mismo criterio que esMecanico() en functions/src/publishTallerProfile.js
+// (no exportado desde ahí, se duplica el chequeo — es una línea).
+function esRolTaller(rol) {
+  const r = String(rol || '').trim().toLowerCase();
+  return r === 'mecanico' || r === 'taller';
 }
 
+function esTransicionAAprobado(before, after) {
+  return (
+    before.estado !== 'aprobado' &&
+    after.estado === 'aprobado' &&
+    esRolTaller(after.rol)
+  );
+}
+
+// Dispara sobre usuarios/{uid} (fuente de verdad de `estado`), no sobre
+// talleres/{tallerId}: talleres/{uid} es una proyección de solo lectura
+// mantenida por publishTallerProfile (ver admin_service.dart:132-143),
+// no incluye `correo`, y su actualización es asíncrona respecto a este
+// documento — usar usuarios/{uid} evita ese salto y una lectura extra.
 exports.notifyTallerOnApproval = functions.firestore
-  .document('talleres/{tallerId}')
+  .document('usuarios/{uid}')
   .onUpdate(async (change, context) => {
     const before = change.before.data();
     const after = change.after.data();
 
     if (!esTransicionAAprobado(before, after)) return null;
 
-    const tallerId = context.params.tallerId;
-    const usuarioDoc = await db.collection('usuarios').doc(tallerId).get();
-    if (!usuarioDoc.exists) return null;
-
-    const usuario = usuarioDoc.data();
-    const correo = usuario.correo;
+    const correo = after.correo;
     if (!correo) return null;
 
     const apiKey = functions.config().sendgrid && functions.config().sendgrid.key;
@@ -489,8 +548,8 @@ exports.notifyTallerOnApproval = functions.firestore
       to: correo,
       from: 'no-reply@autodoc.app',
       subject: '¡Tu taller fue aprobado en AutoDoc!',
-      text: `Hola ${usuario.nombre_completo || ''}, tu solicitud como taller en AutoDoc fue aprobada. Ya puedes empezar a recibir clientes.`,
-      html: `<p>Hola ${usuario.nombre_completo || ''},</p><p>Tu solicitud como taller en <strong>AutoDoc</strong> fue aprobada. Ya puedes empezar a recibir clientes.</p>`,
+      text: `Hola ${after.nombre_completo || ''}, tu solicitud como taller en AutoDoc fue aprobada. Ya puedes empezar a recibir clientes.`,
+      html: `<p>Hola ${after.nombre_completo || ''},</p><p>Tu solicitud como taller en <strong>AutoDoc</strong> fue aprobada. Ya puedes empezar a recibir clientes.</p>`,
     };
 
     try {
@@ -516,7 +575,7 @@ Documenta en el PR (no lo ejecutes automáticamente si no tienes la key real): `
 
 - [ ] **Step 7: Verificar el flujo completo con el emulador (sin enviar correo real)**
 
-Run: `firebase emulators:start --only functions,firestore`. Actualiza manualmente un documento de prueba en `talleres/{id}` de `estado: 'pendiente'` a `estado: 'aprobado'`, confirma en los logs que el trigger corre y — si no hay `sendgrid.key` configurada en el entorno del emulador — que loguea el mensaje de advertencia sin lanzar una excepción no controlada.
+Run: `firebase emulators:start --only functions,firestore`. Actualiza manualmente un documento de prueba en `usuarios/{id}` (con `rol: 'Taller'` y `correo` de prueba) de `estado: 'pendiente'` a `estado: 'aprobado'`, confirma en los logs que el trigger corre y — si no hay `sendgrid.key` configurada en el entorno del emulador — que loguea el mensaje de advertencia sin lanzar una excepción no controlada. Verifica también que `publishTallerProfile` (ya existente) propaga el cambio a `talleres/{id}` en paralelo, sin que ambos triggers interfieran entre sí.
 
 - [ ] **Step 8: Commit**
 
@@ -532,3 +591,4 @@ git commit -m "feat(functions): send transactional approval email to workshops v
 - **Cobertura del spec**: Cron 8am SOAT/mantenimiento (Task 2), Thumbnails de imágenes (Task 3), Correo transaccional de aprobación (Task 4). Las 3 features del spec están cubiertas. Task 1 es infraestructura previa necesaria porque no existía testing en `functions/`.
 - **Decisión documentada**: la nueva función de vencimientos NO reutiliza `checkAlertsDaily` (colección `alertas` genérica, sin hora fija) — se creó `checkVehicleExpirationsAt8am` como función independiente que lee directamente `vehiculos`/`mantenimientos`, porque el spec pide explícitamente una hora fija (8:00 AM) y una fuente de datos distinta (vencimientos del vehículo, no alertas ya creadas).
 - **Riesgo a vigilar en ejecución**: los tests de Tasks 2 y 3 (funciones con I/O real: Firestore/Storage) están deliberadamente acotados a lógica pura + verificación manual en emulador, siguiendo el precedente del propio proyecto (`checkAlertsDaily` tampoco tiene test unitario hoy) — si al ejecutar se decide invertir más esfuerzo en tests de integración contra emuladores, usar `firebase-functions-test` en modo "online" (`require('firebase-functions-test')(config, path)`) contra un proyecto de Firebase real de pruebas.
+- **Revisión 2026-08-03** (post-escritura, tras commits `1d47a98`…`d3f3213`): se corrigió Task 4 — el trigger pasó de `talleres/{tallerId}.onUpdate` a `usuarios/{uid}.onUpdate`, y se añadió el filtro `esRolTaller(rol)`. Motivo: `admin_service.dart` documentó explícitamente que `talleres/{uid}` es una proyección de solo lectura de `usuarios/{uid}` mantenida por `publishTallerProfile`, y que la escritura real de aprobación (`aprobarTaller`) ocurre en `usuarios/{uid}.estado`; `aprobarUsuario` (mecánico genérico, no taller) usa `'activo'` en vez de `'aprobado'`, lo que hace necesario el filtro por rol para no confundir ambos flujos si ese valor cambiara. Se hizo concreto también Task 3 Step 6: se confirmó por lectura de `storage.rules` que los bloques `facturas/{vehicleId}/{fileName}` y `chat_images/{conversacionId}/{fileName}` son de un solo segmento y no cubren `thumbs/`, así que el paso ahora trae el diff exacto en vez de una instrucción condicional. Tasks 1 y 2 se verificaron sin cambios: no existe infraestructura de test en `functions/` todavía, `firebase.json` sigue sin `"functions"` en `emulators`, y los campos de `vehiculos`/`mantenimientos` que usa Task 2 no cambiaron.
