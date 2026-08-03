@@ -104,4 +104,22 @@ describe('cotizaciones/privado/margen (hallazgo H2: el beneficio no debe ser leg
       db.collection('cotizaciones').doc('c1').collection('privado').doc('margen').get(),
     );
   });
+
+  test('el mecanico SI puede crear la cotizacion y su margen privado en dos pasos (flujo real de ChatRepository.crearCotizacion)', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertSucceeds(
+      db.collection('cotizaciones').doc('c2').set({
+        id_propietario: UIDS.owner1,
+        id_mecanico: UIDS.taller1,
+        id_taller: UIDS.taller1,
+        items: [{ material: 'Aceite', cantidad: 1, costo: 20 }],
+        estado: 'pendiente',
+      }),
+    );
+    await assertSucceeds(
+      db.collection('cotizaciones').doc('c2').collection('privado').doc('margen').set({
+        beneficios: [8],
+      }),
+    );
+  });
 });

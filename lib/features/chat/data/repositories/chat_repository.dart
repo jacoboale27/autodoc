@@ -173,15 +173,21 @@ class ChatRepository {
     final data = cotizacion.toMap();
     data['id_cotizacion'] = docRef.id; // o id, dependiendo de la convención
 
-    final batch = _firestore.batch();
-    batch.set(docRef, data);
+    // Dos escrituras secuenciales, no un batch atomico: la regla de
+    // cotizaciones/{id}/privado/{docId} usa get() sobre el documento padre
+    // para verificar id_mecanico, y get() dentro de un batch/transaccion NO
+    // ve otras escrituras del mismo batch — el padre debe existir ANTES de
+    // que la regla del hijo pueda leerlo. Riesgo residual aceptado: si la
+    // segunda escritura falla, queda una cotizacion publica sin su margen
+    // privado; obtenerBeneficiosCotizacion ya devuelve [] con seguridad en
+    // ese caso (sin excepcion, sin fuga de datos).
+    await docRef.set(data);
     // Beneficio por renglon: subcoleccion privada, ver firestore.rules
     // cotizaciones/{id}/privado/{docId} (hallazgo H2).
-    batch.set(
-      docRef.collection('privado').doc('margen'),
-      cotizacion.toPrivateMap(),
-    );
-    await batch.commit();
+    await docRef
+        .collection('privado')
+        .doc('margen')
+        .set(cotizacion.toPrivateMap());
 
     return docRef.id;
   }
