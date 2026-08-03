@@ -4,6 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:autodoc/features/admin/data/services/admin_service.dart';
 import 'package:autodoc/features/admin/data/repositories/admin_repository.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
+import 'package:mockito/mockito.dart';
+
+import '../../../../helpers/test_helpers.mocks.dart';
 
 /// Repositorio dummy: watchDashboardMetrics() no lo usa, pero el
 /// constructor de [AdminService] instancia un [AdminRepository] real por
@@ -201,6 +204,46 @@ void main() {
           .doc('taller3')
           .get();
       expect(usuarioDoc.data()!['estado'], 'rechazado');
+    });
+  });
+
+  group('Superusuario', () {
+    test('crearUsuarioComoSuperUser lanza cuando el callable falla', () async {
+      final mockFunctions = MockFirebaseFunctions();
+      when(
+        mockFunctions.httpsCallable('superUserCreateAccount'),
+      ).thenThrow(Exception('network error'));
+
+      final service = AdminService(
+        functions: mockFunctions,
+        repository: _DummyAdminRepository(),
+      );
+
+      expect(
+        () => service.crearUsuarioComoSuperUser(
+          nombreCompleto: 'A',
+          correo: 'a@x.com',
+          rol: 'Propietario',
+        ),
+        throwsA(isA<Exception>()),
+      );
+    });
+
+    test('eliminarUsuarioPermanente lanza cuando el callable falla', () async {
+      final mockFunctions = MockFirebaseFunctions();
+      when(
+        mockFunctions.httpsCallable('superUserDeleteAccount'),
+      ).thenThrow(Exception('network error'));
+
+      final service = AdminService(
+        functions: mockFunctions,
+        repository: _DummyAdminRepository(),
+      );
+
+      expect(
+        () => service.eliminarUsuarioPermanente('uid1'),
+        throwsA(isA<Exception>()),
+      );
     });
   });
 }

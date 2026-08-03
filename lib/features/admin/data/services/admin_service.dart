@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/models/user_model.dart';
 import '../../../../core/models/workshop_model.dart';
@@ -12,6 +13,7 @@ import '../../../../core/utils/role_utils.dart';
 class AdminService {
   final AdminRepository _repository;
   final FirebaseFirestore? _firestoreOverride;
+  final FirebaseFunctions? _functionsOverride;
 
   /// Se resuelve de forma perezosa (no en el constructor) para no forzar
   /// `FirebaseFirestore.instance` -y por tanto `Firebase.initializeApp()`-
@@ -20,9 +22,18 @@ class AdminService {
   FirebaseFirestore get _firestore =>
       _firestoreOverride ?? FirebaseFirestore.instance;
 
-  AdminService({AdminRepository? repository, FirebaseFirestore? firestore})
-    : _repository = repository ?? AdminRepository(),
-      _firestoreOverride = firestore;
+  /// Mismo patrón perezoso que `_firestore`, para los callables de
+  /// Superusuario (ver EmpleadoProvider._functions, mismo enfoque).
+  FirebaseFunctions get _functions =>
+      _functionsOverride ?? FirebaseFunctions.instance;
+
+  AdminService({
+    AdminRepository? repository,
+    FirebaseFirestore? firestore,
+    FirebaseFunctions? functions,
+  }) : _repository = repository ?? AdminRepository(),
+       _firestoreOverride = firestore,
+       _functionsOverride = functions;
   final _uuid = const Uuid();
 
   Future<void> _logAction(
@@ -386,5 +397,31 @@ class AdminService {
     );
 
     return controller.stream;
+  }
+
+  // --- SUPERUSUARIO ---
+
+  /// Crea una cuenta vía la Cloud Function `superUserCreateAccount` (Admin
+  /// SDK, no cierra la sesión del Superusuario que llama). Devuelve la
+  /// contraseña temporal genérica asignada, para mostrarla en la UI.
+  Future<String> crearUsuarioComoSuperUser({
+    required String nombreCompleto,
+    required String correo,
+    required String rol,
+  }) async {
+    final callable = _functions.httpsCallable('superUserCreateAccount');
+    final result = await callable.call({
+      'nombreCompleto': nombreCompleto,
+      'correo': correo,
+      'rol': rol,
+    });
+    return result.data['passwordTemporal'] as String;
+  }
+
+  /// Elimina una cuenta de forma permanente vía la Cloud Function
+  /// `superUserDeleteAccount` (Auth + cascada de Firestore/Storage).
+  Future<void> eliminarUsuarioPermanente(String uid) async {
+    final callable = _functions.httpsCallable('superUserDeleteAccount');
+    await callable.call({'uid': uid});
   }
 }
