@@ -6,6 +6,7 @@ import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import '../widgets/admin_sidebar.dart';
 import '../widgets/account_row.dart';
+import '../widgets/dialog_crear_usuario.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
@@ -66,13 +67,50 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
     );
   }
 
+  void _mostrarDialogoEliminarPermanente(
+    BuildContext context,
+    String nombreUsuario,
+    VoidCallback onConfirm,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar cuenta permanentemente'),
+        content: Text(
+          'Esta acción borrará la cuenta de "$nombreUsuario" de forma '
+          'irreversible (login y todos sus datos). ¿Deseas continuar?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.l10n.adminCancel),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              Navigator.pop(context);
+              onConfirm();
+            },
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _mostrarDialogoCambiarRol(
     BuildContext context,
     String targetUid,
     String rolActual,
     String adminUid,
+    bool esSuperUser,
   ) {
-    final roles = ['Propietario', 'Mecanico', 'Administrador'];
+    // Solo un Superusuario puede promover a Administrador/Superusuario
+    // (ver isSuperUser() en firestore.rules, que bloquea el update si no
+    // lo es); un Administrador solo puede mover entre Propietario/Mecanico.
+    final roles = esSuperUser
+        ? ['Propietario', 'Mecanico', 'Administrador', 'Superusuario']
+        : ['Propietario', 'Mecanico'];
     String? selectedRol;
 
     showDialog(
@@ -158,6 +196,8 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
         return 'Puede iniciar servicios y buscar vehículos';
       case 'Administrador':
         return 'Acceso total al panel de administración';
+      case 'Superusuario':
+        return 'Acceso total, incluye crear administradores y eliminar cuentas';
       default:
         return '';
     }
@@ -223,6 +263,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
     final provider = context.watch<AdminProvider>();
     final userSession = context.watch<UserProfileProvider>();
     final currentUid = (userSession.userData?.idUsuario ?? "");
+    final esSuperUser = userSession.userData?.isSuperUser ?? false;
     final colors = context.appColors;
 
     // Show success/error snackbar
@@ -299,6 +340,8 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                 _buildFilterChip('Mecanico'),
                 const SizedBox(width: 8),
                 _buildFilterChip('Administrador'),
+                const SizedBox(width: 8),
+                _buildFilterChip('Superusuario'),
               ],
             ),
           ),
@@ -345,6 +388,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                               return AccountRow(
                                 usuario: usuario,
                                 isCurrentAdmin: usuario.idUsuario == currentUid,
+                                canHardDelete: esSuperUser,
                                 onAprobar: () {
                                   provider.aprobarUsuario(
                                     currentUid,
@@ -376,6 +420,16 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                                     usuario.idUsuario,
                                     usuario.rol,
                                     currentUid,
+                                    esSuperUser,
+                                  );
+                                },
+                                onEliminar: () {
+                                  _mostrarDialogoEliminarPermanente(
+                                    context,
+                                    usuario.nombreCompleto,
+                                    () => provider.eliminarUsuarioPermanente(
+                                      usuario.idUsuario,
+                                    ),
                                   );
                                 },
                               );
@@ -385,6 +439,16 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
           ),
         ],
       ),
+      floatingActionButton: esSuperUser
+          ? FloatingActionButton.extended(
+              onPressed: () => showDialog(
+                context: context,
+                builder: (_) => const DialogCrearUsuario(),
+              ),
+              icon: const Icon(Icons.person_add),
+              label: const Text('Crear Usuario'),
+            )
+          : null,
     );
   }
 
