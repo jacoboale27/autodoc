@@ -7,7 +7,10 @@ import '../../../../core/utils/role_utils.dart';
 import '../../data/services/admin_service.dart';
 
 class AdminProvider with ChangeNotifier {
-  final AdminService _adminService = AdminService();
+  final AdminService _adminService;
+
+  AdminProvider({AdminService? adminService})
+    : _adminService = adminService ?? AdminService();
 
   List<UserModel> _usuarios = [];
   List<WorkshopModel> _talleres = [];
@@ -261,6 +264,44 @@ class AdminProvider with ChangeNotifier {
     _setLoading(true);
     try {
       _logs = await _adminService.fetchLogs();
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // --- SUPERUSUARIO ---
+
+  Future<bool> crearUsuario({
+    required String nombreCompleto,
+    required String correo,
+    required String rol,
+  }) async {
+    _setLoading(true);
+    try {
+      final passwordTemporal = await _adminService.crearUsuarioComoSuperUser(
+        nombreCompleto: nombreCompleto,
+        correo: correo,
+        rol: rol,
+      );
+      _setSuccess('Usuario creado. Contraseña temporal: $passwordTemporal');
+      await fetchUsuarios();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> eliminarUsuarioPermanente(String uid) async {
+    _setLoading(true);
+    try {
+      await _adminService.eliminarUsuarioPermanente(uid);
+      _setSuccess('Cuenta eliminada permanentemente');
+      await fetchUsuarios();
     } catch (e) {
       _setError(e.toString());
     } finally {
