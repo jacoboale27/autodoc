@@ -5,7 +5,10 @@ import '../models/cotizacion_model.dart';
 import '../../../../core/constants/firestore_collections.dart';
 
 class ChatRepository {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  ChatRepository({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
+
+  final FirebaseFirestore _firestore;
 
   // Obtener stream de conversaciones de un usuario
   Stream<List<ConversacionModel>> streamConversaciones(
@@ -169,8 +172,33 @@ class ChatRepository {
     final docRef = _firestore.collection('cotizaciones').doc();
     final data = cotizacion.toMap();
     data['id_cotizacion'] = docRef.id; // o id, dependiendo de la convención
-    await docRef.set(data);
+
+    final batch = _firestore.batch();
+    batch.set(docRef, data);
+    // Beneficio por renglon: subcoleccion privada, ver firestore.rules
+    // cotizaciones/{id}/privado/{docId} (hallazgo H2).
+    batch.set(
+      docRef.collection('privado').doc('margen'),
+      cotizacion.toPrivateMap(),
+    );
+    await batch.commit();
+
     return docRef.id;
+  }
+
+  // Beneficio por renglon de una cotizacion (solo el mecanico dueño puede
+  // leerlo, ver firestore.rules).
+  Future<List<double>> obtenerBeneficiosCotizacion(String cotizacionId) async {
+    final doc = await _firestore
+        .collection('cotizaciones')
+        .doc(cotizacionId)
+        .collection('privado')
+        .doc('margen')
+        .get();
+    if (!doc.exists) return const [];
+    final raw = doc.data()?['beneficios'] as List?;
+    if (raw == null) return const [];
+    return raw.map((e) => (e as num).toDouble()).toList();
   }
 
   // Actualizar estado de la cotización

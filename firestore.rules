@@ -375,6 +375,19 @@ service cloud.firestore {
         (resource.data.id_propietario == request.auth.uid ||
          resource.data.id_mecanico == request.auth.uid) &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado']);
+
+      // Beneficio por renglon (ver CotizacionItem.beneficio en el cliente):
+      // documento privado fuera del doc principal porque 'cotizaciones' es
+      // de lectura compartida con el propietario, y el beneficio del
+      // mecanico nunca debe ser visible para el cliente (hallazgo H2).
+      match /privado/{docId} {
+        allow read: if isAuthenticated() && (
+          get(/databases/$(database)/documents/cotizaciones/$(cotizacionId)).data.id_mecanico == request.auth.uid
+          || isAdmin()
+        );
+        allow write: if isAuthenticated() &&
+          get(/databases/$(database)/documents/cotizaciones/$(cotizacionId)).data.id_mecanico == request.auth.uid;
+      }
     }
 
     // 10. Tabla de Mantenimientos (tareas de mantenimiento programadas)
