@@ -145,7 +145,7 @@ class ReservaChatCard extends StatelessWidget {
     final String hora = metadata['hora'] ?? '';
     final String estado =
         metadata['estado'] ??
-        'pendiente'; // pendiente, aceptada, rechazada, cotizada
+        'pendiente'; // pendiente, confirmada, rechazada, cotizada
 
     DateTime? fecha;
     if (fechaRaw.isNotEmpty) {
@@ -154,9 +154,9 @@ class ReservaChatCard extends StatelessWidget {
 
     Color badgeColor = Colors.orange;
     String badgeText = 'Pendiente';
-    if (estado == 'aceptada') {
+    if (estado == 'confirmada') {
       badgeColor = Colors.green;
-      badgeText = 'Aceptada';
+      badgeText = 'Confirmada';
     } else if (estado == 'rechazada') {
       badgeColor = Colors.red;
       badgeText = 'Rechazada';
@@ -324,7 +324,7 @@ class ReservaChatCard extends StatelessWidget {
                           child: OutlinedButton(
                             onPressed: () => _actualizar(
                               context,
-                              'aceptada',
+                              'confirmada',
                               fechaConfirmada: DateTime.now(),
                             ),
                             style: OutlinedButton.styleFrom(

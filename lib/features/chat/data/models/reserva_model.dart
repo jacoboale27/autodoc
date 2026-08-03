@@ -12,7 +12,7 @@ class ReservaModel {
   final String tipoServicio;
   final String? descripcion;
   final String
-  estado; // 'pendiente' | 'confirmada' | 'rechazada' | 'completada' | 'cancelada'
+  estado; // 'pendiente' | 'cotizada' | 'confirmada' | 'rechazada' | 'completada' | 'cancelada'
   final double? cotizacionEstimada;
   final bool recordatorioEnviado24h;
   final bool recordatorioEnviado1h;

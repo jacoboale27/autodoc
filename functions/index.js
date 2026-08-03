@@ -551,42 +551,54 @@ exports.notifyOnReservationStatusChange = functions.firestore
     try {
       const isAccepted = newValue.estado === 'confirmada';
       const isRejected = newValue.estado === 'rechazada';
-      
+
       if (!isAccepted && !isRejected) return null;
 
-      const targetId = newValue.id_propietario;
-      if (!targetId) return null;
-
-      const userDoc = await db.collection('usuarios').doc(targetId).get();
-      const fcmToken = userDoc.exists ? userDoc.data().fcmToken : null;
-
-      if (!fcmToken) return null;
+      const fechaPropuesta = newValue.fecha_hora_propuesta && newValue.fecha_hora_propuesta.toDate
+        ? newValue.fecha_hora_propuesta.toDate().toLocaleDateString('es')
+        : 'la fecha propuesta';
 
       const title = isAccepted ? 'Reserva Confirmada' : 'Reserva Rechazada';
-      const body = isAccepted 
-        ? `Tu cita para el ${newValue.fecha} ha sido confirmada por el taller.`
-        : `El taller no pudo confirmar tu cita para el ${newValue.fecha}.`;
+      const body = isAccepted
+        ? `La cita para el ${fechaPropuesta} fue confirmada.`
+        : `La cita para el ${fechaPropuesta} fue rechazada.`;
 
-      await messaging.send({
-        token: fcmToken,
-        notification: {
-          title: title,
-          body: body,
-        },
-        data: {
-          type: 'reserva',
-          reservaId: context.params.reservaId
+      // Tanto reserva_detail_screen.dart como reserva_chat_card.dart permiten
+      // que el propietario O el mecanico sean quien confirma/rechaza segun
+      // el contexto, y este trigger no puede saber cual de los dos hizo el
+      // cambio -- se notifica a ambos con texto neutral en vez de asumir
+      // siempre el mismo actor (bug encontrado en la revision final: el
+      // codigo anterior asumia que 'el taller' confirmaba y notificaba solo
+      // al propietario, quedando mal incluso cuando era el mecanico quien
+      // debia enterarse).
+      const recipientIds = [newValue.id_propietario, newValue.id_mecanico].filter(Boolean);
+
+      for (const targetId of recipientIds) {
+        const userDoc = await db.collection('usuarios').doc(targetId).get();
+        const fcmToken = userDoc.exists ? userDoc.data().fcmToken : null;
+        if (fcmToken) {
+          await messaging.send({
+            token: fcmToken,
+            notification: {
+              title: title,
+              body: body,
+            },
+            data: {
+              type: 'reserva',
+              reservaId: context.params.reservaId
+            }
+          });
         }
-      });
 
-      // Persist in notification center
-      await writeNotification(targetId, {
-        tipo: 'reserva',
-        titulo: title,
-        body: body,
-        deepLink: `/reserva_detail/${context.params.reservaId}`,
-        metadata: { reservaId: context.params.reservaId },
-      });
+        // Persist in notification center
+        await writeNotification(targetId, {
+          tipo: 'reserva',
+          titulo: title,
+          body: body,
+          deepLink: `/reserva_detail/${context.params.reservaId}`,
+          metadata: { reservaId: context.params.reservaId },
+        });
+      }
     } catch (error) {
       console.error('Error sending reservation notification:', error);
     }
