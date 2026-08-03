@@ -7,7 +7,7 @@ CREATE TABLE Usuarios (
     id_usuario VARCHAR(50) PRIMARY KEY,
     nombre_completo VARCHAR(150) NOT NULL,
     correo VARCHAR(100) UNIQUE NOT NULL,
-    rol VARCHAR(20) CHECK (rol IN ('Propietario', 'Administrador', 'Mecanico')),
+    rol VARCHAR(20) CHECK (rol IN ('Propietario', 'Administrador', 'Mecanico', 'Superusuario')),
     fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

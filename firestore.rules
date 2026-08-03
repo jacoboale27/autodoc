@@ -19,11 +19,24 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
     }
 
-    // Verifica si el usuario actual tiene rol de Administrador
+    // Verifica si el usuario actual tiene rol de Administrador o Superusuario
+    // (Superusuario hereda todos los permisos de Administrador en cualquier
+    // regla que use isAdmin(); sus permisos EXCLUSIVOS, como crear
+    // Administradores o hacer hard-delete de cuentas, se controlan aparte
+    // con isSuperUser()).
     function isAdmin() {
       return isAuthenticated() &&
         exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
-        getUserData().rol in ['Administrador', 'admin'];
+        getUserData().rol in ['Administrador', 'admin', 'Superusuario'];
+    }
+
+    // Verifica si el usuario actual tiene rol de Superusuario, el nivel por
+    // encima de Administrador (crear Administradores/Superusuarios, hard
+    // delete de cuentas).
+    function isSuperUser() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+        getUserData().rol == 'Superusuario';
     }
 
     // Verifica si el usuario actual tiene rol de Mecánico APROBADO. Un taller
@@ -133,11 +146,25 @@ service cloud.firestore {
       // que lo fija con Admin SDK al crear la cuenta). Sin esta exclusion,
       // cualquier usuario podria auto-asignarse como empleado de un taller
       // ajeno con un solo update.
+      // Un Administrador conserva acceso total salvo para asignar el propio
+      // rol 'Administrador' o 'Superusuario': eso queda exclusivo de
+      // isSuperUser(). Solo se bloquea cuando el update efectivamente toca
+      // 'rol' Y el valor resultante es uno de esos dos — así un Administrador
+      // sigue pudiendo aprobar/suspender/reasignar a Propietario/Mecanico
+      // sin restricciones nuevas.
       allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data)
                           .affectedKeys().hasAny(['rol', 'calificacion_promedio', 'total_resenias', 'estado', 'id_taller_propietario', 'suma_estrellas']))
-                    || isAdmin();
-      
-      allow delete: if isAdmin();
+                    || isSuperUser()
+                    || (isAdmin() && !(
+                         request.resource.data.diff(resource.data).affectedKeys().hasAny(['rol']) &&
+                         request.resource.data.rol in ['Administrador', 'Superusuario']
+                       ));
+
+      // Hard delete de cuentas es exclusivo de Superusuario (ver
+      // superUserDeleteAccount en functions/index.js, que además borra la
+      // cuenta de Firebase Auth vía Admin SDK — este delete de Firestore
+      // por sí solo nunca lo hace).
+      allow delete: if isSuperUser();
     }
 
     // 2. Tabla de Talleres

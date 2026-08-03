@@ -84,6 +84,72 @@ describe('Firestore Security Rules', () => {
       const db = getAuthedDb('user1');
       await assertFails(db.collection('usuarios').doc('user1').update({ rol: 'Administrador' }));
     });
+
+    it('should deny Administrador from promoting a user to Administrador', async () => {
+      await seedUser('admin1', 'Administrador');
+      await seedUser('user1', 'Propietario');
+      const db = getAuthedDb('admin1');
+      await assertFails(
+        db.collection('usuarios').doc('user1').update({ rol: 'Administrador' })
+      );
+    });
+
+    it('should deny Administrador from promoting a user to Superusuario', async () => {
+      await seedUser('admin1', 'Administrador');
+      await seedUser('user1', 'Propietario');
+      const db = getAuthedDb('admin1');
+      await assertFails(
+        db.collection('usuarios').doc('user1').update({ rol: 'Superusuario' })
+      );
+    });
+
+    it('should allow Administrador to promote a user to Mecanico', async () => {
+      await seedUser('admin1', 'Administrador');
+      await seedUser('user1', 'Propietario');
+      const db = getAuthedDb('admin1');
+      await assertSucceeds(
+        db.collection('usuarios').doc('user1').update({ rol: 'Mecanico' })
+      );
+    });
+
+    it('should allow Superusuario to promote a user to Administrador', async () => {
+      await seedUser('super1', 'Superusuario');
+      await seedUser('user1', 'Propietario');
+      const db = getAuthedDb('super1');
+      await assertSucceeds(
+        db.collection('usuarios').doc('user1').update({ rol: 'Administrador' })
+      );
+    });
+
+    it('should allow Superusuario to promote a user to Superusuario', async () => {
+      await seedUser('super1', 'Superusuario');
+      await seedUser('user1', 'Propietario');
+      const db = getAuthedDb('super1');
+      await assertSucceeds(
+        db.collection('usuarios').doc('user1').update({ rol: 'Superusuario' })
+      );
+    });
+
+    it('should give Superusuario the same read/admin access as Administrador', async () => {
+      await seedUser('super1', 'Superusuario');
+      await seedUser('user1', 'Propietario');
+      const db = getAuthedDb('super1');
+      await assertSucceeds(db.collection('usuarios').doc('user1').get());
+    });
+
+    it('should deny Administrador from deleting a usuarios doc', async () => {
+      await seedUser('admin1', 'Administrador');
+      await seedUser('user1', 'Propietario');
+      const db = getAuthedDb('admin1');
+      await assertFails(db.collection('usuarios').doc('user1').delete());
+    });
+
+    it('should allow Superusuario to delete a usuarios doc', async () => {
+      await seedUser('super1', 'Superusuario');
+      await seedUser('user1', 'Propietario');
+      const db = getAuthedDb('super1');
+      await assertSucceeds(db.collection('usuarios').doc('user1').delete());
+    });
   });
 
   describe('2. Mantenimientos & Historial (Propietario, Mecanico, Admin)', () => {
