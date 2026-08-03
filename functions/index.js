@@ -1308,4 +1308,139 @@ exports.desactivarEmpleadoTaller = functions.https.onCall(async (data, context) 
   return { ok: true };
 });
 
+/**
+ * Verifica que `uid` tenga rol Superusuario en Firestore. Compartido por
+ * superUserCreateAccount y superUserDeleteAccount: ambos requieren el mismo
+ * nivel de privilegio (por encima de Administrador) y, como corren con
+ * Admin SDK (bypassa firestore.rules), no pueden fiarse de ningún claim que
+ * venga del cliente — solo del doc real en Firestore.
+ */
+async function assertSuperUser(uid) {
+  const doc = await db.collection('usuarios').doc(uid).get();
+  const rol = doc.exists ? doc.data().rol : null;
+  if (rol !== 'Superusuario') {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'Solo un Superusuario puede realizar esta acción.'
+    );
+  }
+}
+
+// Contraseña temporal fija para cuentas creadas manualmente por un
+// Superusuario (decisión de producto: nunca pedirle al Superusuario que
+// escriba/transmita una contraseña específica por usuario). El nuevo
+// usuario debe cambiarla desde "Olvidé mi contraseña" en su primer login.
+const SUPERUSER_TEMP_PASSWORD = 'AutoDoc2026*';
+
+/**
+ * Crea una cuenta (Auth + Firestore) en nombre de un Superusuario sin que
+ * este pierda su propia sesión: FirebaseAuth.createUserWithEmailAndPassword
+ * desde el cliente cerraría la sesión del Superusuario e iniciaría sesión
+ * como el usuario recién creado (limitación conocida del SDK cliente). Al
+ * crear la cuenta aquí con el Admin SDK, el cliente nunca cambia de sesión.
+ * Mismo patrón de rollback que crearEmpleadoTaller: si el write de
+ * Firestore falla, se borra el usuario de Auth para no dejarlo huérfano.
+ */
+exports.superUserCreateAccount = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  }
+  await assertSuperUser(context.auth.uid);
+
+  const correo = (data && data.correo ? String(data.correo) : '').trim().toLowerCase();
+  const nombreCompleto = (data && data.nombreCompleto ? String(data.nombreCompleto) : '').trim();
+  const rol = data && data.rol ? String(data.rol) : '';
+
+  if (!correo || !nombreCompleto) {
+    throw new functions.https.HttpsError('invalid-argument', 'Correo y nombre son requeridos.');
+  }
+  // 'Superusuario' se excluye a propósito: crear otro Superusuario es
+  // demasiado privilegiado para exponerlo en un formulario del panel.
+  if (!['Propietario', 'Mecanico', 'Administrador'].includes(rol)) {
+    throw new functions.https.HttpsError('invalid-argument', 'Rol inválido.');
+  }
+
+  let userRecord;
+  try {
+    userRecord = await admin.auth().createUser({
+      email: correo,
+      password: SUPERUSER_TEMP_PASSWORD,
+      displayName: nombreCompleto,
+    });
+  } catch (err) {
+    if (err && err.code === 'auth/email-already-exists') {
+      throw new functions.https.HttpsError('already-exists', 'Ya existe una cuenta con ese correo.');
+    }
+    throw new functions.https.HttpsError('invalid-argument', err.message);
+  }
+
+  try {
+    await db.collection('usuarios').doc(userRecord.uid).set({
+      id_usuario: userRecord.uid,
+      nombre_completo: nombreCompleto,
+      correo,
+      rol,
+      estado: 'activo',
+      fecha_registro: admin.firestore.Timestamp.now(),
+    });
+  } catch (err) {
+    try {
+      await admin.auth().deleteUser(userRecord.uid);
+    } catch (cleanupErr) {
+      console.error(
+        `superUserCreateAccount: fallo al hacer rollback del usuario Auth huerfano ${userRecord.uid}:`,
+        cleanupErr
+      );
+    }
+    throw new functions.https.HttpsError(
+      'internal',
+      'No se pudo completar el registro. Intenta de nuevo.'
+    );
+  }
+
+  return { idUsuario: userRecord.uid, passwordTemporal: SUPERUSER_TEMP_PASSWORD };
+});
+
+/**
+ * Elimina una cuenta de forma permanente (Auth + cascada de Firestore/
+ * Storage vía el trigger onUserDelete existente). Exclusivo de Superusuario:
+ * ni firestore.rules (isSuperUser() en el delete de 'usuarios') ni este
+ * callable lo permiten a un Administrador. No se puede auto-eliminar ni
+ * eliminar a otro Superusuario (evita que una cuenta comprometida borre a
+ * las demás cuentas de máximo privilegio).
+ */
+exports.superUserDeleteAccount = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  }
+  await assertSuperUser(context.auth.uid);
+
+  const targetUid = data && data.uid ? String(data.uid) : '';
+  if (!targetUid) {
+    throw new functions.https.HttpsError('invalid-argument', 'uid es requerido.');
+  }
+  if (targetUid === context.auth.uid) {
+    throw new functions.https.HttpsError('failed-precondition', 'No puedes eliminar tu propia cuenta.');
+  }
+
+  const targetDoc = await db.collection('usuarios').doc(targetUid).get();
+  if (targetDoc.exists && targetDoc.data().rol === 'Superusuario') {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'No puedes eliminar la cuenta de otro Superusuario.'
+    );
+  }
+
+  try {
+    await admin.auth().deleteUser(targetUid);
+  } catch (err) {
+    if (err && err.code === 'auth/user-not-found') {
+      throw new functions.https.HttpsError('not-found', 'La cuenta ya no existe.');
+    }
+    throw new functions.https.HttpsError('internal', err.message);
+  }
+
+  return { ok: true };
+});
+
 exports.publishTallerProfile = require('./src/publishTallerProfile').publishTallerProfile;
