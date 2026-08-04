@@ -173,17 +173,26 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
             fecha: DateTime.now(),
           );
 
-          final cotizacionId = await chatProvider.crearCotizacion(cotizacion);
-
-          await chatProvider.enviarMensaje(
+          final ok = await chatProvider.enviarCotizacion(
+            cotizacion: cotizacion,
             conversacionId: reserva.idConversacion,
             contenido: 'He enviado una cotización para tu cita solicitada.',
             remitenteId: userId,
             receptorId: reserva.idPropietario,
             isMecanicoRemitente: true,
-            tipo: 'cotizacion_card',
-            metadata: {'id_cotizacion': cotizacionId, 'estado': 'pendiente'},
           );
+          if (!ok) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    chatProvider.error ?? 'No se pudo enviar la cotización.',
+                  ),
+                ),
+              );
+            }
+            return;
+          }
 
           await reservaProvider.cambiarEstadoReserva(
             reserva.id,

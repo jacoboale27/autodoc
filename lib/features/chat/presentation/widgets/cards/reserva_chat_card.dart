@@ -110,17 +110,26 @@ class ReservaChatCard extends StatelessWidget {
             fecha: DateTime.now(),
           );
 
-          final cotizacionId = await chatProvider.crearCotizacion(cotizacion);
-
-          await chatProvider.enviarMensaje(
+          final ok = await chatProvider.enviarCotizacion(
+            cotizacion: cotizacion,
             conversacionId: conversacionId,
             contenido: 'He enviado una cotización para tu cita solicitada.',
             remitenteId: userId,
             receptorId: receptorId,
             isMecanicoRemitente: true,
-            tipo: 'cotizacion_card',
-            metadata: {'id_cotizacion': cotizacionId, 'estado': 'pendiente'},
           );
+          if (!ok) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    chatProvider.error ?? 'No se pudo enviar la cotización.',
+                  ),
+                ),
+              );
+            }
+            return;
+          }
 
           if (!context.mounted) return;
           await _actualizar(

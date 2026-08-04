@@ -246,6 +246,37 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
+  /// Crea la cotización y, solo si se creó correctamente, envía el mensaje
+  /// `cotizacion_card` que la referencia. Si la creación falla, no se envía
+  /// ningún mensaje (antes se enviaba igual con `id_cotizacion: null`, lo
+  /// que producía una burbuja en blanco — ver CotizacionChatCard).
+  Future<bool> enviarCotizacion({
+    required CotizacionModel cotizacion,
+    required String conversacionId,
+    required String contenido,
+    required String remitenteId,
+    required String receptorId,
+    required bool isMecanicoRemitente,
+  }) async {
+    final cotizacionId = await crearCotizacion(cotizacion);
+    if (cotizacionId == null) {
+      _error = 'No se pudo crear la cotización. Intenta de nuevo.';
+      notifyListeners();
+      return false;
+    }
+
+    await enviarMensaje(
+      conversacionId: conversacionId,
+      contenido: contenido,
+      remitenteId: remitenteId,
+      receptorId: receptorId,
+      isMecanicoRemitente: isMecanicoRemitente,
+      tipo: 'cotizacion_card',
+      metadata: {'id_cotizacion': cotizacionId, 'estado': 'pendiente'},
+    );
+    return true;
+  }
+
   Future<List<double>> obtenerBeneficiosCotizacion(String cotizacionId) async {
     try {
       return await _chatRepository.obtenerBeneficiosCotizacion(cotizacionId);

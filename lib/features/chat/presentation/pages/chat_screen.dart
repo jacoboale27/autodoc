@@ -729,23 +729,25 @@ class _ChatScreenState extends State<ChatScreen> {
                             fecha: DateTime.now(),
                           );
 
-                          final cotizacionId = await provider.crearCotizacion(
-                            cotizacion,
-                          );
-
-                          await provider.enviarMensaje(
+                          final ok = await provider.enviarCotizacion(
+                            cotizacion: cotizacion,
                             conversacionId: widget.conversacionId,
                             contenido:
                                 'He creado una nueva cotización para tu vehículo.',
                             remitenteId: userId,
                             receptorId: receptorId,
                             isMecanicoRemitente: isMecanico,
-                            tipo: 'cotizacion_card',
-                            metadata: {
-                              'id_cotizacion': cotizacionId,
-                              'estado': 'pendiente',
-                            },
                           );
+                          if (!ok && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  provider.error ??
+                                      'No se pudo enviar la cotización.',
+                                ),
+                              ),
+                            );
+                          }
                         },
                       ),
                     );
