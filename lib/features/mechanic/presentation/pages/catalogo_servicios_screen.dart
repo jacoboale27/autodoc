@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -104,7 +105,14 @@ class _CatalogoServiciosScreenState extends State<CatalogoServiciosScreen> {
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: precioController,
-                      keyboardType: TextInputType.number,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d*\.?\d{0,2}$'),
+                        ),
+                      ],
                       decoration: const InputDecoration(
                         labelText: 'Precio unitario',
                       ),
