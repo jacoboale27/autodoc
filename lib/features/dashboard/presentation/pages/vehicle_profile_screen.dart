@@ -808,7 +808,14 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                 colors.secondary,
                 colors,
                 onTap: () {
-                  context.push('/workshop_directory');
+                  // '/workshop_directory' vive dentro del ShellRoute
+                  // principal; empujarlo con push() desde una pantalla
+                  // fuera del shell (como esta) crea una segunda instancia
+                  // del shell con el mismo GlobalKey de Navigator interno,
+                  // lo que dispara el assert de key duplicada en
+                  // HeroControllerScope. go() reemplaza la ubicación en
+                  // vez de apilar una segunda instancia del shell.
+                  context.go('/workshop_directory');
                 },
               ),
               const SizedBox(width: 12),

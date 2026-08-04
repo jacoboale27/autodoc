@@ -87,7 +87,7 @@ dependencies:
   csv: ^6.0.0
   cloud_functions: ^6.3.5
   firebase_app_check: ^0.4.5+2
-  record: ^5.2.0
+  record: ^6.1.1
   audioplayers: ^6.1.0
 
 flutter_native_splash:

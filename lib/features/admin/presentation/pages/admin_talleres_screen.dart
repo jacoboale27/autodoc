@@ -431,9 +431,13 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
               isDense: true,
             ),
             hint: const Text('Departamento'),
+            isExpanded: true,
             items: [null, ...departamentos]
                 .map(
-                  (d) => DropdownMenuItem(value: d, child: Text(d ?? 'Todos')),
+                  (d) => DropdownMenuItem(
+                    value: d,
+                    child: Text(d ?? 'Todos', overflow: TextOverflow.ellipsis),
+                  ),
                 )
                 .toList(),
             onChanged: (value) => setState(() => _filterDepartamento = value),
@@ -450,9 +454,13 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
               isDense: true,
             ),
             hint: const Text('Municipio'),
+            isExpanded: true,
             items: [null, ...municipios]
                 .map(
-                  (m) => DropdownMenuItem(value: m, child: Text(m ?? 'Todos')),
+                  (m) => DropdownMenuItem(
+                    value: m,
+                    child: Text(m ?? 'Todos', overflow: TextOverflow.ellipsis),
+                  ),
                 )
                 .toList(),
             onChanged: (value) => setState(() => _filterMunicipio = value),
@@ -467,9 +475,13 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
               isDense: true,
             ),
             hint: const Text('Especialidad'),
+            isExpanded: true,
             items: [null, ...especialidades]
                 .map(
-                  (e) => DropdownMenuItem(value: e, child: Text(e ?? 'Todos')),
+                  (e) => DropdownMenuItem(
+                    value: e,
+                    child: Text(e ?? 'Todos', overflow: TextOverflow.ellipsis),
+                  ),
                 )
                 .toList(),
             onChanged: (value) => setState(() => _filterEspecialidad = value),

@@ -108,17 +108,27 @@ void main() async {
   }
   debugPrint("=== [AutoDoc Init] Firebase inicializado con éxito ===");
 
-  try {
-    await FirebaseAppCheck.instance.activate(
-      providerWeb: ReCaptchaEnterpriseProvider(AppSecrets.recaptchaSiteKey),
-      providerAndroid: const AndroidPlayIntegrityProvider(),
-      providerApple: const AppleDeviceCheckProvider(),
+  if (kIsWeb && AppSecrets.recaptchaSiteKey.isEmpty) {
+    // Sin site key, el provider de reCAPTCHA Enterprise nunca resuelve su
+    // token y cualquier llamada a Firebase Auth se queda colgada hasta
+    // expirar como network-request-failed. Mejor omitir la activación y
+    // dejar que Auth funcione sin App Check hasta tener la clave real.
+    debugPrint(
+      "=== [AutoDoc Init] App Check omitido: falta RECAPTCHA_SITE_KEY en .env ===",
     );
-    debugPrint("=== [AutoDoc Init] App Check activado ===");
-  } catch (e) {
-    // No bloquear el arranque si App Check falla: se despliega primero en modo
-    // monitorizacion y solo despues se activa el enforcement en la consola.
-    debugPrint("=== [AutoDoc Init] App Check no disponible: $e ===");
+  } else {
+    try {
+      await FirebaseAppCheck.instance.activate(
+        providerWeb: ReCaptchaEnterpriseProvider(AppSecrets.recaptchaSiteKey),
+        providerAndroid: const AndroidPlayIntegrityProvider(),
+        providerApple: const AppleDeviceCheckProvider(),
+      );
+      debugPrint("=== [AutoDoc Init] App Check activado ===");
+    } catch (e) {
+      // No bloquear el arranque si App Check falla: se despliega primero en modo
+      // monitorizacion y solo despues se activa el enforcement en la consola.
+      debugPrint("=== [AutoDoc Init] App Check no disponible: $e ===");
+    }
   }
 
   // 2. Configurar Firebase Crashlytics
@@ -324,6 +334,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     final languageProvider = context.watch<LanguageProvider>();
+    final themeProvider = context.watch<ThemeProvider>();
 
     return MaterialApp.router(
       title: 'AutoDoc',
@@ -337,7 +348,7 @@ class _MyAppState extends State<MyApp> {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      themeMode: ThemeMode.system,
+      themeMode: themeProvider.themeMode,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       builder: (context, child) => ResponsiveBreakpoints.builder(

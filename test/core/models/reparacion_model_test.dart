@@ -1,5 +1,4 @@
 // test/core/models/reparacion_model_test.dart
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:autodoc/core/models/reparacion_model.dart';
 

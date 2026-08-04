@@ -85,6 +85,15 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
+      - name: Enable webframeworks experiment
+        # El target de hosting "landing" usa "source": "landing-web" (hosting
+        # consciente de frameworks), lo que hace que `firebase emulators:exec`
+        # intente detectar frameworks web aunque el job solo necesita firestore
+        # y storage. Sin este experimento habilitado, el comando falla con
+        # "Cannot emulate a web framework because the experiment webframeworks
+        # is not enabled" antes de llegar a correr ningun test.
+        run: firebase experiments:enable webframeworks
+
       - name: Install rules test dependencies
         working-directory: test_rules
         run: npm ci
