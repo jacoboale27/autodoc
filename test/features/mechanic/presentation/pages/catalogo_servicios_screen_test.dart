@@ -110,26 +110,26 @@ void main() {
     // Valid input: '99.99' should pass through
     await tester.enterText(priceFieldFinder, '99.99');
     await tester.pump();
-    expect(priceController!.text, '99.99');
+    expect(priceController.text, '99.99');
 
     // Valid input: '100.50' should pass through
     await tester.enterText(priceFieldFinder, '100.50');
     await tester.pump();
-    expect(priceController!.text, '100.50');
+    expect(priceController.text, '100.50');
 
     // Invalid input: '99.999' (3 decimals) does not match the whole-string
     // pattern, so the edit is rejected and the field keeps its prior value
     // instead of being wiped to ''.
     await tester.enterText(priceFieldFinder, '99.999');
     await tester.pump();
-    expect(priceController!.text, '100.50');
+    expect(priceController.text, '100.50');
 
     // Invalid input: '12a.5b' (with letters) is also rejected as a whole,
     // so the field keeps the last valid value it had ('100.50') rather than
     // being destructively cleared to ''.
     await tester.enterText(priceFieldFinder, '12a.5b');
     await tester.pump();
-    expect(priceController!.text, '100.50');
+    expect(priceController.text, '100.50');
   });
 
   testWidgets('Price field does not wipe existing valid text when an invalid '
@@ -199,6 +199,6 @@ void main() {
     // it must keep '12.50' unchanged.
     await tester.enterText(priceFieldFinder, '12.50a');
     await tester.pump();
-    expect(priceController!.text, '12.50');
+    expect(priceController.text, '12.50');
   });
 }

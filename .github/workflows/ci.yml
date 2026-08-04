@@ -430,6 +430,24 @@ jobs:
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
+      - name: Install landing-web dependencies
+        # El target de hosting "landing" (firebase.json) usa "source": "landing-web"
+        # (hosting consciente de frameworks / Next.js). Sin este paso, "firebase
+        # deploy --only hosting" de abajo intenta construir landing-web sin sus
+        # node_modules y ese target queda sin desplegar (o falla el deploy
+        # completo), aunque el resto de "hosting" (target "app") parezca exitoso.
+        run: |
+          npm install -g pnpm
+          cd landing-web
+          pnpm install --frozen-lockfile
+
+      - name: Enable webframeworks experiment
+        # Necesario para que "firebase deploy --only hosting" sepa construir el
+        # target "landing" (Next.js). Cada job de GitHub Actions corre en una VM
+        # nueva, asi que este experimento debe habilitarse aqui de nuevo aunque
+        # ya se habilite por separado en el job "rules_tests" para el emulador.
+        run: firebase experiments:enable webframeworks
+
       - name: Deploy Flutter Web to Firebase Hosting (Production)
         run: firebase deploy --only hosting --project ${{ secrets.FIREBASE_PROJECT_PROD }}
         env:
