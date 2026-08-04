@@ -381,21 +381,38 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
                                                               );
                                                               if (confirm ==
                                                                   true) {
-                                                                await reviewService
-                                                                    .reportReview(
-                                                                      r.idResenia,
-                                                                    );
-                                                                if (context
-                                                                    .mounted) {
-                                                                  ScaffoldMessenger.of(
-                                                                    context,
-                                                                  ).showSnackBar(
-                                                                    const SnackBar(
-                                                                      content: Text(
-                                                                        'Reseña reportada para moderación.',
+                                                                try {
+                                                                  await reviewService
+                                                                      .reportReview(
+                                                                        r.idResenia,
+                                                                      );
+                                                                  if (context
+                                                                      .mounted) {
+                                                                    ScaffoldMessenger.of(
+                                                                      context,
+                                                                    ).showSnackBar(
+                                                                      const SnackBar(
+                                                                        content:
+                                                                            Text(
+                                                                              'Reseña reportada para moderación.',
+                                                                            ),
                                                                       ),
-                                                                    ),
-                                                                  );
+                                                                    );
+                                                                  }
+                                                                } catch (e) {
+                                                                  if (context
+                                                                      .mounted) {
+                                                                    ScaffoldMessenger.of(
+                                                                      context,
+                                                                    ).showSnackBar(
+                                                                      SnackBar(
+                                                                        content:
+                                                                            Text(
+                                                                              'No se pudo reportar la reseña: $e',
+                                                                            ),
+                                                                      ),
+                                                                    );
+                                                                  }
                                                                 }
                                                               }
                                                             },
