@@ -110,17 +110,26 @@ class ReservaChatCard extends StatelessWidget {
             fecha: DateTime.now(),
           );
 
-          final cotizacionId = await chatProvider.crearCotizacion(cotizacion);
-
-          await chatProvider.enviarMensaje(
+          final ok = await chatProvider.enviarCotizacion(
+            cotizacion: cotizacion,
             conversacionId: conversacionId,
             contenido: 'He enviado una cotización para tu cita solicitada.',
             remitenteId: userId,
             receptorId: receptorId,
             isMecanicoRemitente: true,
-            tipo: 'cotizacion_card',
-            metadata: {'id_cotizacion': cotizacionId, 'estado': 'pendiente'},
           );
+          if (!ok) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    chatProvider.error ?? 'No se pudo enviar la cotización.',
+                  ),
+                ),
+              );
+            }
+            return;
+          }
 
           if (!context.mounted) return;
           await _actualizar(
@@ -191,6 +200,7 @@ class ReservaChatCard extends StatelessWidget {
               ),
             ),
             child: Row(
+              // TODO: this header Row overflows horizontally at the card's fixed 260px width under some font metrics (pre-existing, tracked in reserva_chat_card_test.dart).
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
@@ -360,8 +370,7 @@ class ReservaChatCard extends StatelessWidget {
                     onPressed: metadata['id_reserva'] == null
                         ? null
                         : () => context.push(
-                            '/reserva_detail',
-                            extra: metadata['id_reserva'] as String,
+                            '/reserva_detail/${metadata['id_reserva']}',
                           ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: isMe ? Colors.white : colors.primary,

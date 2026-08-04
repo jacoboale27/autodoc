@@ -515,7 +515,7 @@ exports.notifyOnNewReservation = functions.firestore
         token: fcmToken,
         notification: {
           title: 'Nueva Solicitud de Cita',
-          body: `Has recibido una nueva solicitud de cita para el ${reserva.fecha_hora_propuesta ? new Date(reserva.fecha_hora_propuesta).toLocaleDateString() : 'día propuesto'}.`
+          body: `Has recibido una nueva solicitud de cita para el ${reserva.fecha_hora_propuesta ? reserva.fecha_hora_propuesta.toDate().toLocaleDateString('es') : 'día propuesto'}.`
         },
         data: {
           type: 'reserva',
@@ -527,7 +527,7 @@ exports.notifyOnNewReservation = functions.firestore
       await writeNotification(targetId, {
         tipo: 'reserva',
         titulo: 'Nueva Solicitud de Cita',
-        body: `Has recibido una nueva solicitud de cita para el ${reserva.fecha_hora_propuesta ? new Date(reserva.fecha_hora_propuesta).toLocaleDateString() : 'día propuesto'}.`,
+        body: `Has recibido una nueva solicitud de cita para el ${reserva.fecha_hora_propuesta ? reserva.fecha_hora_propuesta.toDate().toLocaleDateString('es') : 'día propuesto'}.`,
         deepLink: '/mechanic_dashboard',
         metadata: { reservaId: context.params.reservaId },
       });

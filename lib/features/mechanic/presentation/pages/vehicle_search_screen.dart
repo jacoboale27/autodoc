@@ -10,6 +10,7 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
+import 'package:autodoc/core/utils/plate_formatter.dart';
 
 class VehicleSearchScreen extends StatefulWidget {
   const VehicleSearchScreen({super.key});
@@ -21,14 +22,6 @@ class VehicleSearchScreen extends StatefulWidget {
 class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
-
-  String _formatPlate(String input) {
-    String clean = input.replaceAll('-', '').toUpperCase();
-    if (clean.length > 3) {
-      return '${clean.substring(0, 3)}-${clean.substring(3)}';
-    }
-    return clean;
-  }
 
   Future<void> _scanQR() async {
     await Navigator.of(context).push(
@@ -62,7 +55,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
 
     try {
       final vehicleProvider = context.read<VehicleProvider>();
-      final formattedPlate = _formatPlate(_searchController.text);
+      final formattedPlate = normalizarPlaca(_searchController.text);
       final vehicle = await vehicleProvider.findVehicleByPlate(formattedPlate);
 
       if (vehicle != null) {

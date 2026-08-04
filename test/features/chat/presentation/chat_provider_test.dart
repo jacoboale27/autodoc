@@ -19,6 +19,38 @@ class MockChatRepository extends Mock implements ChatRepository {
   Stream<List<MensajeModel>> streamMensajes(String conversacionId) {
     return Stream.value([]);
   }
+
+  // crearCotizacion/enviarMensaje take non-nullable params in the real
+  // ChatRepository. Mockito's `any`/`anyNamed` matchers are statically typed
+  // as `Null`, which cannot be passed to a non-nullable parameter — so we
+  // widen these two overrides to nullable params (a legal, sound override)
+  // and delegate to Mock's noSuchMethod so when()/verify() still intercept
+  // the call, exactly like a build_runner-generated mock would.
+  @override
+  Future<String> crearCotizacion(CotizacionModel? cotizacion) =>
+      (super.noSuchMethod(
+            Invocation.method(#crearCotizacion, [cotizacion]),
+            returnValue: Future<String>.value(''),
+          )
+          as Future<String>);
+
+  @override
+  Future<void> enviarMensaje({
+    String? conversacionId,
+    MensajeModel? mensaje,
+    String? receptorId,
+    bool? isMecanicoRemitente,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#enviarMensaje, [], {
+              #conversacionId: conversacionId,
+              #mensaje: mensaje,
+              #receptorId: receptorId,
+              #isMecanicoRemitente: isMecanicoRemitente,
+            }),
+            returnValue: Future<void>.value(),
+          )
+          as Future<void>);
 }
 
 void main() {
@@ -216,6 +248,91 @@ void main() {
       expect(map.containsKey('id_mecanico'), isTrue);
       expect(map.containsKey('ultimo_mensaje'), isTrue);
     });
+  });
+
+  group('ChatProvider — enviarCotizacion', () {
+    test(
+      'returns false and does not send a message when crearCotizacion fails',
+      () async {
+        when(
+          mockChatRepository.crearCotizacion(any),
+        ).thenThrow(Exception('boom'));
+
+        final cotizacion = CotizacionModel(
+          id: '',
+          idPropietario: 'owner1',
+          idMecanico: 'mech1',
+          items: const [],
+          fecha: DateTime(2026, 1, 1),
+        );
+
+        final ok = await chatProvider.enviarCotizacion(
+          cotizacion: cotizacion,
+          conversacionId: 'conv1',
+          contenido: 'He enviado una cotización.',
+          remitenteId: 'mech1',
+          receptorId: 'owner1',
+          isMecanicoRemitente: true,
+        );
+
+        expect(ok, isFalse);
+        expect(chatProvider.error, isNotNull);
+        verifyNever(
+          mockChatRepository.enviarMensaje(
+            conversacionId: anyNamed('conversacionId'),
+            mensaje: anyNamed('mensaje'),
+            receptorId: anyNamed('receptorId'),
+            isMecanicoRemitente: anyNamed('isMecanicoRemitente'),
+          ),
+        );
+      },
+    );
+
+    test(
+      'returns true and sends the message when crearCotizacion succeeds',
+      () async {
+        when(
+          mockChatRepository.crearCotizacion(any),
+        ).thenAnswer((_) async => 'cot1');
+        when(
+          mockChatRepository.enviarMensaje(
+            conversacionId: anyNamed('conversacionId'),
+            mensaje: anyNamed('mensaje'),
+            receptorId: anyNamed('receptorId'),
+            isMecanicoRemitente: anyNamed('isMecanicoRemitente'),
+          ),
+        ).thenAnswer((_) async {});
+
+        final cotizacion = CotizacionModel(
+          id: '',
+          idPropietario: 'owner1',
+          idMecanico: 'mech1',
+          items: const [],
+          fecha: DateTime(2026, 1, 1),
+        );
+
+        final ok = await chatProvider.enviarCotizacion(
+          cotizacion: cotizacion,
+          conversacionId: 'conv1',
+          contenido: 'He enviado una cotización.',
+          remitenteId: 'mech1',
+          receptorId: 'owner1',
+          isMecanicoRemitente: true,
+        );
+
+        expect(ok, isTrue);
+        final captured = verify(
+          mockChatRepository.enviarMensaje(
+            conversacionId: anyNamed('conversacionId'),
+            mensaje: captureAnyNamed('mensaje'),
+            receptorId: anyNamed('receptorId'),
+            isMecanicoRemitente: anyNamed('isMecanicoRemitente'),
+          ),
+        ).captured;
+        final sentMensaje = captured.single as MensajeModel;
+        expect(sentMensaje.metadata?['id_cotizacion'], 'cot1');
+      },
+    );
   });
 
   group('ChatProvider — Cache', () {

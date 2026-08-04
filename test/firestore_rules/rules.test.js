@@ -241,4 +241,61 @@ describe('Firestore Security Rules', () => {
     });
   });
 
+  describe('6b. Resenias — reply permissions', () => {
+    async function seedResenia(id, ownerUid, tallerUid) {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await db.collection('resenias').doc(id).set({
+          id_resenia: id,
+          id_usuario: ownerUid,
+          id_taller: tallerUid,
+          id_servicio: 'servicio1',
+          estrellas: 5,
+          comentario: 'Buen trabajo',
+        });
+      });
+    }
+
+    it('allows the taller owner to reply', async () => {
+      await seedResenia('r1', 'owner1', 'taller1');
+      await seedUser('taller1', 'Taller');
+      const db = getAuthedDb('taller1');
+      await assertSucceeds(
+        db.collection('resenias').doc('r1').update({
+          respuesta_taller: { texto: 'Gracias!', fecha: new Date() },
+        })
+      );
+    });
+
+    it('denies a random authenticated user from replying', async () => {
+      await seedResenia('r2', 'owner1', 'taller1');
+      await seedUser('random1', 'Propietario');
+      const db = getAuthedDb('random1');
+      await assertFails(
+        db.collection('resenias').doc('r2').update({
+          respuesta_taller: { texto: 'Gracias!', fecha: new Date() },
+        })
+      );
+    });
+
+    it('allows a taller employee sub-account to reply on behalf of the owner', async () => {
+      await seedResenia('r3', 'owner1', 'taller1');
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await context.firestore().collection('usuarios').doc('empleado1').set({
+          id_usuario: 'empleado1',
+          nombre_completo: 'Empleado Uno',
+          correo: 'empleado1@test.com',
+          rol: 'Mecanico',
+          id_taller_propietario: 'taller1',
+        });
+      });
+      const db = getAuthedDb('empleado1');
+      await assertSucceeds(
+        db.collection('resenias').doc('r3').update({
+          respuesta_taller: { texto: 'Gracias!', fecha: new Date() },
+        })
+      );
+    });
+  });
+
 });

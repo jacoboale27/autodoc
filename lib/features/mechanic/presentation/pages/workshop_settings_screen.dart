@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:autodoc/core/constants/especialidades_taller.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
@@ -109,6 +110,13 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
     _specialtyController = TextEditingController(
       text: user?.especialidad ?? '',
     );
+    // Limpieza de valores antiguos de especialidad en texto libre que ya no
+    // están en la lista fija: sin esto, un taller con un valor legacy pasa
+    // el chequeo de "requerido" sin nunca elegir una opción válida del
+    // dropdown y el valor obsoleto se vuelve a guardar sin normalizar.
+    if (!especialidadesTaller.contains(_specialtyController.text)) {
+      _specialtyController.text = '';
+    }
 
     // Limpieza de datos antiguos e inconsistentes de geografía (como Colombia)
     _selectedDept = user?.departamento;
@@ -138,6 +146,16 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
 
   Future<void> _saveSettings() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_specialtyController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Selecciona tu especialidad.'),
+          backgroundColor: context.appColors.error,
+        ),
+      );
+      return;
+    }
 
     if (_selectedDept == null || _selectedMuni == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -353,18 +371,23 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                                           : null,
                                     ),
                                     const SizedBox(height: 20),
-                                    _buildInputField(
+                                    _buildDropdownField(
                                       label: 'Especialidad',
-                                      controller: _specialtyController,
+                                      value:
+                                          especialidadesTaller.contains(
+                                            _specialtyController.text,
+                                          )
+                                          ? _specialtyController.text
+                                          : null,
+                                      items: especialidadesTaller,
                                       icon: Icons.build_circle,
-                                      hint:
-                                          'Ej: Mecánica General, Frenos, Transmisión...',
                                       colors: colors,
                                       isDark: isDark,
-                                      validator: (value) =>
-                                          value == null || value.trim().isEmpty
-                                          ? 'Requerido'
-                                          : null,
+                                      onChanged: (val) {
+                                        setState(() {
+                                          _specialtyController.text = val ?? '';
+                                        });
+                                      },
                                     ),
                                     const SizedBox(height: 20),
                                     _buildDropdownField(
