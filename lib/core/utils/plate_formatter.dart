@@ -43,6 +43,23 @@ class PlateFormatter extends TextInputFormatter {
   }
 }
 
+/// Normaliza cualquier variante de una placa (con o sin guion, minúsculas,
+/// espacios, etc.) a la misma forma canónica que produce [PlateFormatter]
+/// mientras el usuario escribe (`P###-###`). Se usa para comparar/consultar
+/// placas (búsqueda del mecánico, escaneo QR) contra lo que ya quedó
+/// guardado al registrar el vehículo, evitando que ambos flujos diverjan.
+String normalizarPlaca(String input) {
+  return PlateFormatter()
+      .formatEditUpdate(
+        TextEditingValue.empty,
+        TextEditingValue(
+          text: input,
+          selection: TextSelection.collapsed(offset: input.length),
+        ),
+      )
+      .text;
+}
+
 /// Patrón completo de una placa válida de vehículo particular: `P` + 3
 /// caracteres hexadecimales + guion + 3 caracteres hexadecimales.
 final RegExp placaElSalvadorPattern = RegExp(r'^P[0-9A-F]{3}-[0-9A-F]{3}$');

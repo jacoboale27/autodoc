@@ -117,17 +117,88 @@ void main() {
     await tester.pump();
     expect(priceController!.text, '100.50');
 
-    // Invalid input: '99.999' (3 decimals) should reject or truncate to '99.99'
+    // Invalid input: '99.999' (3 decimals) does not match the whole-string
+    // pattern, so the edit is rejected and the field keeps its prior value
+    // instead of being wiped to ''.
     await tester.enterText(priceFieldFinder, '99.999');
     await tester.pump();
-    expect(
-      priceController!.text,
-      anyOf(['', '99.99', '99']), // Allow either empty, truncated, or valid
-    );
+    expect(priceController!.text, '100.50');
 
-    // Invalid input: '12a.5b' (with letters) should be rejected/empty
+    // Invalid input: '12a.5b' (with letters) is also rejected as a whole,
+    // so the field keeps the last valid value it had ('100.50') rather than
+    // being destructively cleared to ''.
     await tester.enterText(priceFieldFinder, '12a.5b');
     await tester.pump();
-    expect(priceController!.text, ''); // Should be empty since it's invalid
+    expect(priceController!.text, '100.50');
+  });
+
+  testWidgets('Price field does not wipe existing valid text when an invalid '
+      'character is typed (regression for destructive-wipe bug)', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final repo = CatalogoRepository(firestore: FakeFirebaseFirestore());
+    final router = GoRouter(
+      initialLocation: '/catalogo',
+      routes: [
+        GoRoute(
+          path: '/catalogo',
+          builder: (context, state) =>
+              const CatalogoServiciosScreen(idTaller: 't1'),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(
+            create: (_) => CatalogoProvider(repository: repo),
+          ),
+          ChangeNotifierProvider(create: (_) => ThemeProvider()),
+          ChangeNotifierProvider(create: (_) => AuthProvider()),
+          ChangeNotifierProvider<UserProfileProvider>(
+            create: (_) => _FakeUserProfileProvider(),
+          ),
+        ],
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+
+    final priceFieldFinder = find.widgetWithText(
+      TextFormField,
+      'Precio unitario',
+    );
+
+    TextEditingController? priceController;
+    for (final element in priceFieldFinder.evaluate()) {
+      final widget = element.widget as TextFormField;
+      priceController = widget.controller;
+      break;
+    }
+    expect(priceController, isNotNull);
+
+    // Simulate incremental typing of a valid value already accepted by
+    // the field: '12.50'.
+    await tester.enterText(priceFieldFinder, '12.50');
+    await tester.pump();
+    expect(priceController!.text, '12.50');
+
+    // Now simulate an invalid whole-string candidate coming from a single
+    // additional keystroke while '12.50' is already present (e.g. typing
+    // 'a' at the end produces the candidate '12.50a'). This must NOT wipe
+    // the field to '' like the old FilteringTextInputFormatter.allow did;
+    // it must keep '12.50' unchanged.
+    await tester.enterText(priceFieldFinder, '12.50a');
+    await tester.pump();
+    expect(priceController!.text, '12.50');
   });
 }

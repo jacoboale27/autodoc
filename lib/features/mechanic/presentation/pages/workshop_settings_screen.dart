@@ -110,6 +110,13 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
     _specialtyController = TextEditingController(
       text: user?.especialidad ?? '',
     );
+    // Limpieza de valores antiguos de especialidad en texto libre que ya no
+    // están en la lista fija: sin esto, un taller con un valor legacy pasa
+    // el chequeo de "requerido" sin nunca elegir una opción válida del
+    // dropdown y el valor obsoleto se vuelve a guardar sin normalizar.
+    if (!especialidadesTaller.contains(_specialtyController.text)) {
+      _specialtyController.text = '';
+    }
 
     // Limpieza de datos antiguos e inconsistentes de geografía (como Colombia)
     _selectedDept = user?.departamento;

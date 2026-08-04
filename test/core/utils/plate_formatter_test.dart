@@ -43,6 +43,25 @@ void main() {
     });
   });
 
+  group('normalizarPlaca', () {
+    test('matches what PlateFormatter produces for the same raw input', () {
+      final formatter = PlateFormatter();
+      const raw = 'p1a23b4';
+      final typed = _apply(formatter, raw).text;
+      expect(normalizarPlaca(raw), typed);
+      expect(normalizarPlaca(raw), 'P1A2-3B4');
+    });
+
+    test('normalizes a lowercase plate without hyphen, as used by the '
+        'mechanic search screen / QR scan path', () {
+      expect(normalizarPlaca('p1a23b4'), 'P1A2-3B4');
+    });
+
+    test('normalizes a plate that already has the hyphen and mixed case', () {
+      expect(normalizarPlaca('p1A2-3b4'), 'P1A2-3B4');
+    });
+  });
+
   group('validarPlacaElSalvador', () {
     test('accepts a complete valid plate', () {
       expect(validarPlacaElSalvador('P1A2-3B4'), isNull);
