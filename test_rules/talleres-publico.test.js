@@ -17,14 +17,18 @@ describe('datos legitimamente publicos', () => {
     await assertSucceeds(anon(env).collection('talleres').get());
   });
 
-  test('las resenias NO son legibles sin autenticar', async () => {
+  test('las resenias SI son legibles sin autenticar (lectura publica para el directorio de talleres)', async () => {
+    // firestore.rules linea ~363: "allow read: if true" en /resenias es
+    // intencional (alimenta el directorio publico de talleres, igual que la
+    // prueba de arriba con /talleres). Este test antes esperaba assertFails y
+    // quedo desactualizado respecto a esa decision ya documentada en las reglas.
     await seed(env, async (s) => {
       await s.collection('resenias').doc('r1').set({
         id_resenia: 'r1', id_usuario: UIDS.owner1, id_taller: UIDS.taller1,
         estrellas: 5, comentario: 'Excelente',
       });
     });
-    await assertFails(anon(env).collection('resenias').get());
+    await assertSucceeds(anon(env).collection('resenias').get());
   });
 
   test('un usuario autenticado SI puede leer resenias', async () => {
