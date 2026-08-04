@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -97,14 +98,36 @@ void main() {
     }
     expect(priceController, isNotNull);
 
-    // Test that valid numeric input works
-    priceController!.text = '100';
-    await tester.pumpAndSettle();
-    expect(priceController.text, '100');
+    // Test: Formatter should accept valid numeric input with up to 2 decimals
+    await tester.tap(priceFieldFinder);
+    await tester.pump();
 
-    // Test that valid decimal input works
-    priceController.text = '99.99';
-    await tester.pumpAndSettle();
-    expect(priceController.text, '99.99');
+    // Valid input: '12.5' should pass through
+    await tester.enterText(priceFieldFinder, '12.5');
+    await tester.pump();
+    expect(priceController!.text, '12.5');
+
+    // Valid input: '99.99' should pass through
+    await tester.enterText(priceFieldFinder, '99.99');
+    await tester.pump();
+    expect(priceController!.text, '99.99');
+
+    // Valid input: '100.50' should pass through
+    await tester.enterText(priceFieldFinder, '100.50');
+    await tester.pump();
+    expect(priceController!.text, '100.50');
+
+    // Invalid input: '99.999' (3 decimals) should reject or truncate to '99.99'
+    await tester.enterText(priceFieldFinder, '99.999');
+    await tester.pump();
+    expect(
+      priceController!.text,
+      anyOf(['', '99.99', '99']), // Allow either empty, truncated, or valid
+    );
+
+    // Invalid input: '12a.5b' (with letters) should be rejected/empty
+    await tester.enterText(priceFieldFinder, '12a.5b');
+    await tester.pump();
+    expect(priceController!.text, ''); // Should be empty since it's invalid
   });
 }
