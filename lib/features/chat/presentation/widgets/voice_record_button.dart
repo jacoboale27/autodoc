@@ -5,12 +5,22 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 
+/// Formatea una duración como `m:ss` (p.ej. `Duration(seconds: 65)` -> `'1:05'`).
+String formatearDuracionGrabacion(Duration d) {
+  final minutos = d.inMinutes;
+  final segundos = d.inSeconds % 60;
+  return '$minutos:${segundos.toString().padLeft(2, '0')}';
+}
+
 /// Botón de "mantener presionado para grabar" nota de voz.
 ///
 /// Al soltar, si la grabación duró al menos 1 segundo, entrega el archivo
 /// de audio grabado y su duración (en segundos) mediante [onGrabacionCompleta].
 /// No sube el archivo ni crea ningún modelo: eso es responsabilidad del
 /// llamador (ver `ChatProvider.subirAudioChat`).
+///
+/// Mientras se graba, muestra un overlay estilo WhatsApp (temporizador +
+/// indicador pulsante + "Desliza para cancelar") anclado sobre el botón.
 class VoiceRecordButton extends StatefulWidget {
   final void Function(File audioFile, int duracionSegundos) onGrabacionCompleta;
 
@@ -26,15 +36,21 @@ class _VoiceRecordButtonState extends State<VoiceRecordButton> {
   // ver ChatProvider.subirAudioChat) sin necesitar un rediseño a streaming.
   static const Duration _duracionMaxima = Duration(seconds: 90);
 
+  // Distancia horizontal (hacia la izquierda) que hay que arrastrar el dedo
+  // mientras se mantiene presionado para cancelar la grabación, como en
+  // WhatsApp ("Desliza para cancelar").
+  static const double _distanciaCancelacion = -80;
+
   final AudioRecorder _recorder = AudioRecorder();
   bool _grabando = false;
-  // Verdadero mientras el usuario sigue manteniendo el botón presionado.
-  // Se usa para detectar que soltó (o se canceló el gesto) mientras aún
-  // esperábamos el permiso de micrófono, y así no dejar una grabación
-  // arrancando "a ciegas" sin forma de detenerla desde la UI.
   bool _deberiaGrabar = false;
   DateTime? _inicio;
   Timer? _limiteDuracionTimer;
+  Timer? _tickTimer;
+  Duration _transcurrido = Duration.zero;
+  double _arrastreX = 0;
+  bool _cancelacionArmada = false;
+  OverlayEntry? _overlayEntry;
 
   Future<void> _iniciarGrabacion() async {
     _deberiaGrabar = true;
@@ -42,8 +58,6 @@ class _VoiceRecordButtonState extends State<VoiceRecordButton> {
     final permiso = await Permission.microphone.request();
 
     if (!_deberiaGrabar) {
-      // El usuario ya soltó (o se canceló el gesto) mientras esperábamos
-      // el permiso: no arrancar la grabación.
       return;
     }
 
@@ -67,26 +81,41 @@ class _VoiceRecordButtonState extends State<VoiceRecordButton> {
     await _recorder.start(const RecordConfig(), path: ruta);
 
     if (!_deberiaGrabar) {
-      // Se soltó/canceló mientras `start` estaba en vuelo: no dejar la
-      // grabación corriendo sin control.
       await _recorder.cancel();
       return;
     }
 
     _inicio = DateTime.now();
+    _transcurrido = Duration.zero;
+    _arrastreX = 0;
+    _cancelacionArmada = false;
     _limiteDuracionTimer?.cancel();
     _limiteDuracionTimer = Timer(_duracionMaxima, () {
-      // Mismo camino que soltar el botón normalmente: detiene y entrega
-      // la grabación acumulada hasta ahora.
       _detenerGrabacion();
     });
+    _tickTimer?.cancel();
+    _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_inicio == null) return;
+      _transcurrido = DateTime.now().difference(_inicio!);
+      _overlayEntry?.markNeedsBuild();
+    });
     if (mounted) setState(() => _grabando = true);
+    _mostrarOverlay();
   }
 
-  Future<void> _detenerGrabacion() async {
+  Future<void> _detenerGrabacion({bool cancelar = false}) async {
     _deberiaGrabar = false;
     _limiteDuracionTimer?.cancel();
+    _tickTimer?.cancel();
+    _quitarOverlay();
     if (!_grabando) return;
+
+    if (cancelar) {
+      if (mounted) setState(() => _grabando = false);
+      await _recorder.cancel();
+      return;
+    }
+
     final ruta = await _recorder.stop();
     final duracion = _inicio == null
         ? 0
@@ -98,13 +127,69 @@ class _VoiceRecordButtonState extends State<VoiceRecordButton> {
     }
   }
 
+  void _mostrarOverlay() {
+    _quitarOverlay();
+    final overlayState = Overlay.of(context);
+    _overlayEntry = OverlayEntry(
+      builder: (ctx) {
+        final colorTexto = _cancelacionArmada ? Colors.red : Colors.white;
+        return Positioned(
+          right: 16,
+          bottom: 90,
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.black87,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.fiber_manual_record,
+                    color: Colors.red,
+                    size: 14,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    formatearDuracionGrabacion(_transcurrido),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Icon(Icons.chevron_left, color: colorTexto, size: 18),
+                  Text(
+                    _cancelacionArmada
+                        ? 'Suelta para cancelar'
+                        : 'Desliza para cancelar',
+                    style: TextStyle(color: colorTexto, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    overlayState.insert(_overlayEntry!);
+  }
+
+  void _quitarOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
   @override
   void dispose() {
     _deberiaGrabar = false;
     _limiteDuracionTimer?.cancel();
+    _tickTimer?.cancel();
+    _quitarOverlay();
     if (_grabando) {
-      // Evita dejar un archivo .m4a huérfano si el widget se destruye
-      // mientras hay una grabación en curso.
       _recorder.cancel();
     }
     _recorder.dispose();
@@ -116,8 +201,25 @@ class _VoiceRecordButtonState extends State<VoiceRecordButton> {
     final colorPrimario = Theme.of(context).colorScheme.primary;
     return GestureDetector(
       onLongPressStart: (_) => _iniciarGrabacion(),
-      onLongPressEnd: (_) => _detenerGrabacion(),
-      onLongPressCancel: () => _detenerGrabacion(),
+      onLongPressMoveUpdate: (details) {
+        if (!_grabando) return;
+        _arrastreX = details.offsetFromOrigin.dx;
+        final armado = _arrastreX <= _distanciaCancelacion;
+        if (armado != _cancelacionArmada) {
+          _cancelacionArmada = armado;
+          _overlayEntry?.markNeedsBuild();
+        }
+      },
+      onLongPressEnd: (_) => _detenerGrabacion(cancelar: _cancelacionArmada),
+      onLongPressCancel: () => _detenerGrabacion(cancelar: true),
+      onTap: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Mantén presionado para grabar una nota de voz'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      },
       child: CircleAvatar(
         backgroundColor: _grabando ? Colors.red : colorPrimario,
         child: Icon(_grabando ? Icons.stop : Icons.mic, color: Colors.white),
