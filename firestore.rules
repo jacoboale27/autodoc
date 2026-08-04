@@ -391,7 +391,7 @@ service cloud.firestore {
         (resource.data.id_usuario == request.auth.uid
           && request.resource.data.diff(resource.data)
                .affectedKeys().hasOnly(['comentario', 'estrellas', 'fecha_resenia', 'fotos']))
-        || (resource.data.id_taller == request.auth.uid
+        || (actuaPorTaller(resource.data.id_taller)
           && request.resource.data.diff(resource.data)
                .affectedKeys().hasOnly(['respuesta_taller']))
         || (request.resource.data.diff(resource.data)
