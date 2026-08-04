@@ -369,8 +369,7 @@ class ReservaChatCard extends StatelessWidget {
                     onPressed: metadata['id_reserva'] == null
                         ? null
                         : () => context.push(
-                            '/reserva_detail',
-                            extra: metadata['id_reserva'] as String,
+                            '/reserva_detail/${metadata['id_reserva']}',
                           ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: isMe ? Colors.white : colors.primary,
