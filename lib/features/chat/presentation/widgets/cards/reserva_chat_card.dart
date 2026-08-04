@@ -200,6 +200,7 @@ class ReservaChatCard extends StatelessWidget {
               ),
             ),
             child: Row(
+              // TODO: this header Row overflows horizontally at the card's fixed 260px width under some font metrics (pre-existing, tracked in reserva_chat_card_test.dart).
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(

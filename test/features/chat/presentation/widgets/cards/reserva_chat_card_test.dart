@@ -110,8 +110,16 @@ void main() {
       // any other FlutterError still fails the test normally.
       final originalOnError = FlutterError.onError;
       FlutterError.onError = (details) {
+        // Only swallow the specific known-bad overflow: the header Row at
+        // reserva_chat_card.dart:202 (icon + "Reserva de Cita" + estado
+        // badge). Matching on the source location (not just the generic
+        // "RenderFlex overflowed" substring) means a genuinely new overflow
+        // introduced elsewhere in the tree — e.g. near the "Ver detalle"
+        // button itself — would NOT be silently swallowed here.
+        final message = details.toString();
         if (details.exception is FlutterError &&
-            details.exception.toString().contains('RenderFlex overflowed')) {
+            message.contains('RenderFlex overflowed') &&
+            message.contains('reserva_chat_card.dart:202')) {
           return;
         }
         originalOnError?.call(details);
