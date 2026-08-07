@@ -55,6 +55,7 @@ void main() {
         correo: 'a@x.com',
         password: '123456',
         nombreCompleto: 'A',
+        rol: 'Mecanico',
       );
 
       expect(result, false);

@@ -103,6 +103,7 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
     final passwordController = TextEditingController();
     final telefonoController = TextEditingController();
     final provider = context.read<EmpleadoProvider>();
+    String rolSeleccionado = 'Mecanico';
 
     await showDialog(
       context: context,
@@ -157,6 +158,26 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
                       ),
                       keyboardType: TextInputType.phone,
                     ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: rolSeleccionado,
+                      decoration: const InputDecoration(labelText: 'Rol'),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'Mecanico',
+                          child: Text('Mecánico'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Recepcionista',
+                          child: Text('Recepcionista'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setDialogState(() => rolSeleccionado = value);
+                        }
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -180,6 +201,7 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
                           correo: correoController.text.trim(),
                           password: passwordController.text,
                           nombreCompleto: nombreController.text.trim(),
+                          rol: rolSeleccionado,
                           telefono: telefonoController.text.trim().isEmpty
                               ? null
                               : telefonoController.text.trim(),

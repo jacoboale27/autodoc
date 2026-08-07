@@ -50,6 +50,7 @@ class EmpleadoProvider extends ChangeNotifier {
     required String correo,
     required String password,
     required String nombreCompleto,
+    required String rol,
     String? telefono,
   }) async {
     _isLoading = true;
@@ -61,6 +62,7 @@ class EmpleadoProvider extends ChangeNotifier {
         'correo': correo,
         'password': password,
         'nombreCompleto': nombreCompleto,
+        'rol': rol,
         'telefono': telefono,
       });
       _error = null;

@@ -6,6 +6,7 @@ class EmpleadoModel {
   final String nombreCompleto;
   final String correo;
   final String? telefono;
+  final String rol;
   final bool activo;
   final DateTime fechaCreacion;
 
@@ -15,6 +16,7 @@ class EmpleadoModel {
     required this.nombreCompleto,
     required this.correo,
     this.telefono,
+    required this.rol,
     this.activo = true,
     required this.fechaCreacion,
   });
@@ -24,6 +26,7 @@ class EmpleadoModel {
     'nombre_completo': nombreCompleto,
     'correo': correo,
     if (telefono != null) 'telefono': telefono,
+    'rol': rol,
     'activo': activo,
     'fecha_creacion': Timestamp.fromDate(fechaCreacion),
   };
@@ -35,6 +38,7 @@ class EmpleadoModel {
       nombreCompleto: (map['nombre_completo'] ?? '').toString(),
       correo: (map['correo'] ?? '').toString(),
       telefono: map['telefono']?.toString(),
+      rol: (map['rol'] as String?) ?? 'Mecanico',
       activo: map['activo'] as bool? ?? true,
       fechaCreacion:
           (map['fecha_creacion'] as Timestamp?)?.toDate() ?? DateTime.now(),

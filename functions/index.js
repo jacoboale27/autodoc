@@ -1150,6 +1150,7 @@ exports.crearEmpleadoTaller = functions.https.onCall(async (data, context) => {
   const password = data && data.password ? String(data.password) : '';
   const nombreCompleto = (data && data.nombreCompleto ? String(data.nombreCompleto) : '').trim();
   const telefono = data && data.telefono ? String(data.telefono).trim() : null;
+  const rolEmpleado = data && data.rol ? String(data.rol) : '';
 
   if (!correo || !password || !nombreCompleto) {
     throw new functions.https.HttpsError(
@@ -1161,6 +1162,12 @@ exports.crearEmpleadoTaller = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError(
       'invalid-argument',
       'La contraseña debe tener al menos 6 caracteres.'
+    );
+  }
+  if (!['Mecanico', 'Recepcionista'].includes(rolEmpleado)) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      "El rol debe ser 'Mecanico' o 'Recepcionista'."
     );
   }
 
@@ -1190,6 +1197,7 @@ exports.crearEmpleadoTaller = functions.https.onCall(async (data, context) => {
       nombre_completo: nombreCompleto,
       correo,
       telefono: telefono || null,
+      rol: rolEmpleado,
       activo: true,
       fecha_creacion: admin.firestore.Timestamp.now(),
     });
