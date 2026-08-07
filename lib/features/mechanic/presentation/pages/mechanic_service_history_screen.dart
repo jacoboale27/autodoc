@@ -229,6 +229,94 @@ class _MechanicServiceHistoryScreenState
     );
   }
 
+  void _mostrarDetalleServicio(ServiceRecordModel record, AppColors colors) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(record.tipoServicio ?? 'Servicio Genérico'),
+        content: SizedBox(
+          width: 380,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _detalleRow(
+                  'Fecha',
+                  DateFormat('dd MMM yyyy').format(record.fecha),
+                ),
+                _detalleRow(
+                  'Kilometraje',
+                  '${record.kilometrajeServicio ?? '--'} km',
+                ),
+                if (record.costo != null && record.costo! > 0)
+                  _detalleRow('Costo', '\$${record.costo!.toStringAsFixed(2)}'),
+                if (record.manoDeObra != null && record.manoDeObra! > 0)
+                  _detalleRow(
+                    'Mano de obra',
+                    '\$${record.manoDeObra!.toStringAsFixed(2)}',
+                  ),
+                if (record.descripcion != null &&
+                    record.descripcion!.isNotEmpty)
+                  _detalleRow('Descripción', record.descripcion!),
+                if (record.materiales != null &&
+                    record.materiales!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Materiales',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  ...record.materiales!.map(
+                    (m) => Text(
+                      '• ${m['nombre'] ?? m['descripcion'] ?? m.toString()}',
+                    ),
+                  ),
+                ],
+                if (record.fotoFacturaUrl != null &&
+                    record.fotoFacturaUrl!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(record.fotoFacturaUrl!),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detalleRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ),
+          Expanded(child: Text(value)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMechanicServiceCard(
     ServiceRecordModel record,
     AppColors colors,
@@ -236,6 +324,7 @@ class _MechanicServiceHistoryScreenState
     return AppCard(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
+      onTap: () => _mostrarDetalleServicio(record, colors),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

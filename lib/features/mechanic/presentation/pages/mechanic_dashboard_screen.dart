@@ -14,6 +14,7 @@ import 'package:intl/intl.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/providers/language_provider.dart';
+import 'package:autodoc/core/providers/notification_center_provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 class MechanicDashboardScreen extends StatefulWidget {
@@ -87,6 +88,51 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
+                        Consumer<NotificationCenterProvider>(
+                          builder: (context, notifProvider, _) {
+                            return Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                IconButton(
+                                  icon: Icon(
+                                    notifProvider.hasUnread
+                                        ? Icons.notifications_active_rounded
+                                        : Icons.notifications_none_rounded,
+                                    color: colors.primary,
+                                  ),
+                                  onPressed: () =>
+                                      context.push('/notifications'),
+                                  tooltip: 'Notificaciones',
+                                ),
+                                if (notifProvider.hasUnread)
+                                  Positioned(
+                                    right: 6,
+                                    top: 6,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: colors.error,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      constraints: const BoxConstraints(
+                                        minWidth: 16,
+                                        minHeight: 16,
+                                      ),
+                                      child: Text(
+                                        '${notifProvider.unreadCount > 9 ? "9+" : notifProvider.unreadCount}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
                       ],
                     );
                   },
@@ -208,7 +254,52 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                 },
               ),
               const SizedBox(width: 16),
-              Icon(Icons.notifications_none, color: colors.textSecondary),
+              Consumer<NotificationCenterProvider>(
+                builder: (context, notifProvider, _) {
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          notifProvider.hasUnread
+                              ? Icons.notifications_active_rounded
+                              : Icons.notifications_none,
+                          color: notifProvider.hasUnread
+                              ? colors.primary
+                              : colors.textSecondary,
+                        ),
+                        onPressed: () => context.push('/notifications'),
+                        tooltip: 'Notificaciones',
+                      ),
+                      if (notifProvider.hasUnread)
+                        Positioned(
+                          right: 6,
+                          top: 6,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: colors.error,
+                              shape: BoxShape.circle,
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
+                            ),
+                            child: Text(
+                              '${notifProvider.unreadCount > 9 ? "9+" : notifProvider.unreadCount}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
               const SizedBox(width: 16),
               CircleAvatar(
                 radius: 18,

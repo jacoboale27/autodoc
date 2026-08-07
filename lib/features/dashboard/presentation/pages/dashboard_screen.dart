@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
+import 'package:autodoc/core/providers/notification_center_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
@@ -219,40 +220,91 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
-          GestureDetector(
-            onTap: () => context.push('/user_profile'),
-            child: Stack(
-              children: [
-                Container(
-                  width: Responsive.size(context, 48),
-                  height: Responsive.size(context, 48),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                    image: DecorationImage(
-                      image: CachedNetworkImageProvider(
-                        userSession.userData?.fotoPerfilUrl ??
-                            'https://www.w3schools.com/howto/img_avatar.png',
+          Row(
+            children: [
+              Consumer<NotificationCenterProvider>(
+                builder: (context, notifProvider, _) {
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          notifProvider.hasUnread
+                              ? Icons.notifications_active_rounded
+                              : Icons.notifications_none_rounded,
+                          color: notifProvider.hasUnread
+                              ? context.appColors.primary
+                              : subTextColor,
+                        ),
+                        onPressed: () => context.push('/notifications'),
+                        tooltip: 'Notificaciones',
                       ),
-                      fit: BoxFit.cover,
+                      if (notifProvider.hasUnread)
+                        Positioned(
+                          right: 6,
+                          top: 6,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: context.appColors.error,
+                              shape: BoxShape.circle,
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
+                            ),
+                            child: Text(
+                              '${notifProvider.unreadCount > 9 ? "9+" : notifProvider.unreadCount}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: () => context.push('/user_profile'),
+                child: Stack(
+                  children: [
+                    Container(
+                      width: Responsive.size(context, 48),
+                      height: Responsive.size(context, 48),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                        image: DecorationImage(
+                          image: CachedNetworkImageProvider(
+                            userSession.userData?.fotoPerfilUrl ??
+                                'https://www.w3schools.com/howto/img_avatar.png',
+                          ),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    width: Responsive.size(context, 12),
-                    height: Responsive.size(context, 12),
-                    decoration: BoxDecoration(
-                      color: context.appColors.secondary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        width: Responsive.size(context, 12),
+                        height: Responsive.size(context, 12),
+                        decoration: BoxDecoration(
+                          color: context.appColors.secondary,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
