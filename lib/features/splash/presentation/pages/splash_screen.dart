@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/auth/data/services/auth_preferences_service.dart';
-import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -91,11 +90,7 @@ class _SplashScreenState extends State<SplashScreen>
               if (rememberMe || onboardingCompleted) {
                 context.go('/login');
               } else {
-                if (Responsive.isDesktop(context)) {
-                  context.go('/login');
-                } else {
-                  context.go('/onboarding');
-                }
+                context.go('/onboarding');
               }
             }
           }
