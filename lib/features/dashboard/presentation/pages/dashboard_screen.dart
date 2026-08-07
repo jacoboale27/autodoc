@@ -36,26 +36,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_isInitialized) {
-      final userSession = context.read<UserProfileProvider>();
-      if (userSession.userData != null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          final vehicleProvider = context.read<VehicleProvider>();
-          vehicleProvider.fetchVehicles(userSession.userData!.idUsuario).then((
-            _,
-          ) {
-            if (mounted && vehicleProvider.selectedVehicle != null) {
-              context.read<AlertProvider>().fetchAlerts(
-                vehicleProvider.selectedVehicle!.idVehiculo,
-                vehicleProvider.selectedVehicle!,
-              );
-            }
-          });
-        });
-      }
-      _isInitialized = true;
+    if (_isInitialized) return;
+    final userSession = context.watch<UserProfileProvider>();
+    final userData = userSession.userData;
+    if (userData == null) {
+      return; // retry on the next didChangeDependencies call
     }
+    _isInitialized = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final vehicleProvider = context.read<VehicleProvider>();
+      vehicleProvider.fetchVehicles(userData.idUsuario).then((_) {
+        if (mounted && vehicleProvider.selectedVehicle != null) {
+          context.read<AlertProvider>().fetchAlerts(
+            vehicleProvider.selectedVehicle!.idVehiculo,
+            vehicleProvider.selectedVehicle!,
+          );
+        }
+      });
+    });
   }
 
   @override
