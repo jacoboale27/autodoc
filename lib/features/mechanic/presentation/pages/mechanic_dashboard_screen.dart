@@ -88,7 +88,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const NotificationBellButton(),
+                        NotificationBellButton(readColor: colors.primary),
                       ],
                     );
                   },
