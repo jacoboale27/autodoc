@@ -79,4 +79,42 @@ void main() {
       expect(loadingStates.last, false);
     },
   );
+
+  test(
+    'agregar lanza un error claro y no llama al repositorio cuando idTaller está vacío',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = CatalogoRepository(firestore: firestore);
+      final provider = CatalogoProvider(repository: repo);
+      provider.watchTaller(
+        '',
+      ); // simula idTallerEfectivo == null -> '' en el router
+
+      await expectLater(
+        () => provider.agregar('Cambio de aceite', 25.0),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(provider.error, isNotNull);
+      // No debe haberse escrito nada en Firestore.
+      final snapshot = await firestore
+          .collectionGroup('catalogo_servicios')
+          .get();
+      expect(snapshot.docs, isEmpty);
+    },
+  );
+
+  test(
+    'watchTaller con idTaller vacío no crea una suscripción activa',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = CatalogoRepository(firestore: firestore);
+      final provider = CatalogoProvider(repository: repo);
+
+      provider.watchTaller('');
+      await Future.delayed(Duration.zero);
+
+      expect(provider.items, isEmpty);
+    },
+  );
 }

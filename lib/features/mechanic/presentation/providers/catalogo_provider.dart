@@ -24,6 +24,14 @@ class CatalogoProvider extends ChangeNotifier {
   String? get error => _error;
 
   void watchTaller(String idTaller) {
+    if (idTaller.isEmpty) {
+      _sub?.cancel();
+      _sub = null;
+      _idTaller = null;
+      _items = [];
+      notifyListeners();
+      return;
+    }
     if (_idTaller == idTaller && _sub != null) return;
     _idTaller = idTaller;
     _sub?.cancel();
@@ -46,7 +54,11 @@ class CatalogoProvider extends ChangeNotifier {
   }
 
   Future<void> agregar(String nombre, double precio) async {
-    if (_idTaller == null) return;
+    if (_idTaller == null || _idTaller!.isEmpty) {
+      _error = 'idTaller vacío: no hay taller asociado a esta cuenta';
+      notifyListeners();
+      throw StateError(_error!);
+    }
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -66,7 +78,11 @@ class CatalogoProvider extends ChangeNotifier {
   }
 
   Future<void> eliminar(String idItem) async {
-    if (_idTaller == null) return;
+    if (_idTaller == null || _idTaller!.isEmpty) {
+      _error = 'idTaller vacío: no hay taller asociado a esta cuenta';
+      notifyListeners();
+      throw StateError(_error!);
+    }
     _isLoading = true;
     _error = null;
     notifyListeners();
