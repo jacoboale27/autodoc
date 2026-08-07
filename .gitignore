@@ -67,7 +67,15 @@ staged_diff.txt
 node_modules/
 test_rules/node_modules/
 
-testsprite_tests\tmp\config.json
 graphify-out/
 
 .worktrees/
+
+# TestSprite (local testing only, not shipped to the repo)
+.testsprite/
+testsprite_tests/
+.claude/skills/testsprite-onboard/
+.claude/skills/testsprite-verify/
+functions/enable_email_password_auth.js
+functions/seed_testsprite.js
+functions/seed_testsprite_staging.js
