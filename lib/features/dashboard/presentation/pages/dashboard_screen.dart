@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
-import 'package:autodoc/core/providers/notification_center_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
@@ -15,6 +14,7 @@ import 'package:autodoc/core/widgets/vehicle_image_widget.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
+import 'package:autodoc/core/widgets/notification_bell_button.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:uuid/uuid.dart';
 
@@ -222,52 +222,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           Row(
             children: [
-              Consumer<NotificationCenterProvider>(
-                builder: (context, notifProvider, _) {
-                  return Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          notifProvider.hasUnread
-                              ? Icons.notifications_active_rounded
-                              : Icons.notifications_none_rounded,
-                          color: notifProvider.hasUnread
-                              ? context.appColors.primary
-                              : subTextColor,
-                        ),
-                        onPressed: () => context.push('/notifications'),
-                        tooltip: 'Notificaciones',
-                      ),
-                      if (notifProvider.hasUnread)
-                        Positioned(
-                          right: 6,
-                          top: 6,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: context.appColors.error,
-                              shape: BoxShape.circle,
-                            ),
-                            constraints: const BoxConstraints(
-                              minWidth: 16,
-                              minHeight: 16,
-                            ),
-                            child: Text(
-                              '${notifProvider.unreadCount > 9 ? "9+" : notifProvider.unreadCount}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                    ],
-                  );
-                },
-              ),
+              NotificationBellButton(readColor: subTextColor),
               const SizedBox(width: 4),
               GestureDetector(
                 onTap: () => context.push('/user_profile'),
