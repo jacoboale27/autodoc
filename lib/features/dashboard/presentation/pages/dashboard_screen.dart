@@ -37,7 +37,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_isInitialized) return;
-    final userSession = context.watch<UserProfileProvider>();
+    final userSession = context.read<UserProfileProvider>();
     final userData = userSession.userData;
     if (userData == null) {
       return; // retry on the next didChangeDependencies call
