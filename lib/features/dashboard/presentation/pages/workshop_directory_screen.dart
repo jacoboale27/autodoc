@@ -17,6 +17,7 @@ import 'package:autodoc/core/widgets/app_skeleton.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 
 import 'package:autodoc/core/widgets/review_sheet.dart';
+import 'package:autodoc/core/widgets/workshop_reviews_list_sheet.dart';
 import 'package:autodoc/features/reviews/data/services/review_service.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
@@ -1113,9 +1114,20 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                             ),
                           ],
                         ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
+                        Wrap(
+                          alignment: WrapAlignment.end,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 4,
+                          runSpacing: 4,
                           children: [
+                            TextButton(
+                              onPressed: () => showWorkshopReviewsSheet(
+                                context,
+                                tallerId: tallerId,
+                                tallerNombre: name,
+                              ),
+                              child: const Text('Ver reseñas'),
+                            ),
                             TextButton.icon(
                               onPressed: () =>
                                   _reviewWorkshop(context, tallerId, name),
