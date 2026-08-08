@@ -450,6 +450,18 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
                                           ),
                                         ),
                                       ),
+                                      Text(
+                                        empleado.rol == 'Recepcionista'
+                                            ? 'Recepcionista'
+                                            : 'Mecánico',
+                                        style: TextStyle(
+                                          color: colors.textSecondary,
+                                          fontSize: Responsive.fontSize(
+                                            context,
+                                            12,
+                                          ),
+                                        ),
+                                      ),
                                       if (empleado.telefono != null &&
                                           empleado.telefono!.isNotEmpty)
                                         Text(
