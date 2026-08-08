@@ -80,6 +80,41 @@ class AlertProvider extends ChangeNotifier {
     }
   }
 
+  /// Fetches and merges alerts/maintenance tasks across all [vehicles],
+  /// instead of replacing them per-call like [fetchAlerts] does. Used by
+  /// the dashboard so owners with multiple vehicles see alerts for every
+  /// vehicle they own, not just the currently selected one.
+  Future<void> fetchAlertsForVehicles(List<VehicleModel> vehicles) async {
+    if (vehicles.isEmpty) {
+      _alerts = [];
+      _maintenanceTasks = [];
+      notifyListeners();
+      return;
+    }
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    final mergedAlerts = <AlertModel>[];
+    final mergedTasks = <MaintenanceTask>[];
+
+    for (final vehicle in vehicles) {
+      try {
+        await fetchAlerts(vehicle.idVehiculo, vehicle);
+        mergedAlerts.addAll(_alerts);
+        mergedTasks.addAll(_maintenanceTasks);
+      } catch (e) {
+        _error = e.toString();
+      }
+    }
+
+    _alerts = mergedAlerts;
+    _maintenanceTasks = mergedTasks;
+    _isLoading = false;
+    notifyListeners();
+  }
+
   Future<void> _generateSmartAlerts(VehicleModel vehicle) async {
     final now = DateTime.now();
 

@@ -44,10 +44,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           vehicleProvider.fetchVehicles(userSession.userData!.idUsuario).then((
             _,
           ) {
-            if (mounted && vehicleProvider.selectedVehicle != null) {
-              context.read<AlertProvider>().fetchAlerts(
-                vehicleProvider.selectedVehicle!.idVehiculo,
-                vehicleProvider.selectedVehicle!,
+            if (mounted && vehicleProvider.vehicles.isNotEmpty) {
+              context.read<AlertProvider>().fetchAlertsForVehicles(
+                vehicleProvider.vehicles,
               );
             }
           });
