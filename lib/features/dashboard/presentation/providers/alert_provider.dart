@@ -98,19 +98,28 @@ class AlertProvider extends ChangeNotifier {
 
     final mergedAlerts = <AlertModel>[];
     final mergedTasks = <MaintenanceTask>[];
+    String? lastError;
 
     for (final vehicle in vehicles) {
-      try {
-        await fetchAlerts(vehicle.idVehiculo, vehicle);
+      // fetchAlerts catches its own exceptions internally (it never
+      // rethrows — see its own try/catch below) and signals failure only
+      // via `_error`. When a vehicle's fetch throws, it does so before
+      // reassigning `_alerts`/`_maintenanceTasks`, so those fields still
+      // hold the *previous* iteration's data. Only merge when `_error` is
+      // still null after the call, otherwise we'd silently re-add the
+      // previous vehicle's alerts a second time.
+      await fetchAlerts(vehicle.idVehiculo, vehicle);
+      if (_error == null) {
         mergedAlerts.addAll(_alerts);
         mergedTasks.addAll(_maintenanceTasks);
-      } catch (e) {
-        _error = e.toString();
+      } else {
+        lastError = _error;
       }
     }
 
     _alerts = mergedAlerts;
     _maintenanceTasks = mergedTasks;
+    _error = lastError;
     _isLoading = false;
     notifyListeners();
   }

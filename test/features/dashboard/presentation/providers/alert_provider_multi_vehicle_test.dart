@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:mockito/mockito.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import '../../../../helpers/test_helpers.mocks.dart';
@@ -70,4 +72,95 @@ void main() {
       expect(v2Alert.idVehiculo, 'v2');
     },
   );
+
+  test('fetchAlertsForVehicles does not duplicate a previous vehicle\'s alerts '
+      'when a later vehicle\'s fetch fails', () async {
+    final mockFirestore = MockFirebaseFirestore();
+    final mockAlertsCollection =
+        MockCollectionReference<Map<String, dynamic>>();
+    final mockMantCollection = MockCollectionReference<Map<String, dynamic>>();
+
+    final mockAlertsQueryV1 = MockQuery<Map<String, dynamic>>();
+    final mockAlertsQueryV2 = MockQuery<Map<String, dynamic>>();
+    final mockMantQueryV1 = MockQuery<Map<String, dynamic>>();
+
+    final mockAlertsSnapshotV1 = MockQuerySnapshot<Map<String, dynamic>>();
+    final mockAlertsDocV1 = MockQueryDocumentSnapshot<Map<String, dynamic>>();
+    final mockMantSnapshotV1 = MockQuerySnapshot<Map<String, dynamic>>();
+    final mockMantDocV1 = MockQueryDocumentSnapshot<Map<String, dynamic>>();
+
+    when(mockFirestore.collection('alertas')).thenReturn(mockAlertsCollection);
+    when(
+      mockFirestore.collection('mantenimientos'),
+    ).thenReturn(mockMantCollection);
+
+    // v1: succeeds — one manual alert, one existing maintenance task (so
+    // fetchAlerts doesn't need to hit createDefaultTasks/batch()).
+    when(
+      mockAlertsCollection.where('id_vehiculo', isEqualTo: 'v1'),
+    ).thenReturn(mockAlertsQueryV1);
+    when(mockAlertsQueryV1.get()).thenAnswer((_) async => mockAlertsSnapshotV1);
+    when(mockAlertsSnapshotV1.docs).thenReturn([mockAlertsDocV1]);
+    when(mockAlertsDocV1.id).thenReturn('alert-v1');
+    when(mockAlertsDocV1.data()).thenReturn({
+      'id_vehiculo': 'v1',
+      'estado': 'Pendiente',
+      'titulo': 'SOAT vence pronto',
+    });
+
+    when(
+      mockMantCollection.where('id_vehiculo', isEqualTo: 'v1'),
+    ).thenReturn(mockMantQueryV1);
+    when(mockMantQueryV1.get()).thenAnswer((_) async => mockMantSnapshotV1);
+    when(mockMantSnapshotV1.docs).thenReturn([mockMantDocV1]);
+    when(mockMantDocV1.id).thenReturn('task-v1');
+    when(mockMantDocV1.data()).thenReturn({
+      'id_vehiculo': 'v1',
+      'nombre': 'Cambio de Aceite',
+      'ultimo_km': 1000,
+      'fecha_ultimo_servicio': Timestamp.fromDate(DateTime(2020, 1, 1)),
+      'frecuencia_km': 5000,
+      'frecuencia_meses': 6,
+    });
+
+    // v2: fails at the very first Firestore call inside fetchAlerts —
+    // before `_alerts`/`_maintenanceTasks` get reassigned for v2.
+    when(
+      mockAlertsCollection.where('id_vehiculo', isEqualTo: 'v2'),
+    ).thenReturn(mockAlertsQueryV2);
+    when(mockAlertsQueryV2.get()).thenThrow(Exception('Firestore boom'));
+
+    final provider = AlertProvider(
+      firestore: mockFirestore,
+      storage: MockFirebaseStorage(),
+    );
+    final v1 = VehicleModel(
+      idVehiculo: 'v1',
+      idPropietario: 'owner-1',
+      placa: 'P111-111',
+      marca: 'Toyota',
+      modelo: 'Corolla',
+      kilometrajeActual: 10000,
+    );
+    final v2 = VehicleModel(
+      idVehiculo: 'v2',
+      idPropietario: 'owner-1',
+      placa: 'P222-222',
+      marca: 'Honda',
+      modelo: 'Civic',
+      kilometrajeActual: 20000,
+    );
+
+    await provider.fetchAlertsForVehicles([v1, v2]);
+
+    // v1's manual alert must appear exactly once — not duplicated by the
+    // failed v2 iteration re-adding v1's leftover `_alerts`.
+    final soatAlerts = provider.alerts.where(
+      (a) => a.titulo == 'SOAT vence pronto',
+    );
+    expect(soatAlerts.length, 1);
+
+    // The failure must still be surfaced.
+    expect(provider.error, isNotNull);
+  });
 }
