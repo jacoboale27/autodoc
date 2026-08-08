@@ -164,6 +164,28 @@ describe('crearEmpleadoTaller', () => {
     assert.strictEqual(usuarioDoc.rol, 'Taller');
   });
 
+  it('crea el empleado con rol Mecanico por defecto cuando el cliente no envia `rol`', async () => {
+    // Cobertura del hazard de deploy-ordering: la Cloud Function y la app
+    // Flutter se despliegan por separado, asi que un cliente viejo aun en
+    // produccion puede llamar este callable sin campo `rol` en absoluto.
+    seedTallerAprobado();
+
+    const result = await myFunctions.crearEmpleadoTaller.run(
+      {
+        correo: 'legacy@taller.com',
+        password: 'password123',
+        nombreCompleto: 'Cliente Viejo',
+        // sin `rol`
+      },
+      context
+    );
+
+    assert.ok(result.idEmpleado);
+    const empleadoDoc = empleadosData[result.idEmpleado];
+    assert.ok(empleadoDoc, 'se esperaba que el documento del empleado se creara');
+    assert.strictEqual(empleadoDoc.rol, 'Mecanico');
+  });
+
   it('rechaza un rol fuera del vocabulario permitido con invalid-argument', async () => {
     seedTallerAprobado();
 

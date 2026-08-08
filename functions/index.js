@@ -1150,7 +1150,20 @@ exports.crearEmpleadoTaller = functions.https.onCall(async (data, context) => {
   const password = data && data.password ? String(data.password) : '';
   const nombreCompleto = (data && data.nombreCompleto ? String(data.nombreCompleto) : '').trim();
   const telefono = data && data.telefono ? String(data.telefono).trim() : null;
-  const rolEmpleado = data && data.rol ? String(data.rol) : '';
+  // `rol` ausente (no enviado por el cliente) se trata distinto de un `rol`
+  // presente pero invalido: esta funcion y la app Flutter se despliegan por
+  // separado (`firebase deploy --only functions:crearEmpleadoTaller` es un
+  // paso independiente de publicar la app). Si esta validacion se
+  // desplegara ANTES que la actualizacion de la app, todo cliente viejo
+  // aun en produccion llamaria este callable sin campo `rol` y quedaria
+  // hard-rechazado con invalid-argument, rompiendo la creacion de
+  // empleados hasta que ese cliente actualice. Por eso `rol` ausente cae al
+  // default implícito pre-Task 3 ('Mecanico') en silencio, mientras que un
+  // valor explícito fuera del vocabulario sigue siendo rechazado.
+  const rolEmpleado =
+    data && data.rol !== undefined && data.rol !== null
+      ? String(data.rol)
+      : 'Mecanico';
 
   if (!correo || !password || !nombreCompleto) {
     throw new functions.https.HttpsError(
