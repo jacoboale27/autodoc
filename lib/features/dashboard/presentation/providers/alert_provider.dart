@@ -80,10 +80,19 @@ class AlertProvider extends ChangeNotifier {
     }
   }
 
-  /// Fetches and merges alerts/maintenance tasks across all [vehicles],
-  /// instead of replacing them per-call like [fetchAlerts] does. Used by
-  /// the dashboard so owners with multiple vehicles see alerts for every
-  /// vehicle they own, not just the currently selected one.
+  /// Fetches and merges alerts across all [vehicles], instead of replacing
+  /// them per-call like [fetchAlerts] does. Used by the dashboard so owners
+  /// with multiple vehicles see alerts for every vehicle they own, not just
+  /// the currently selected one.
+  ///
+  /// [_maintenanceTasks] is intentionally NOT merged here: it is left
+  /// holding whatever the last processed vehicle's [fetchAlerts] call
+  /// populated it with. Consumers such as `dashboard_screen.dart` and
+  /// `alerts_screen.dart` grade `maintenanceTasks` against the *selected*
+  /// vehicle's odometer (`task.getStatus(vehicle.kilometrajeActual)`), so
+  /// merging tasks from other vehicles into that list would let, e.g., a
+  /// second vehicle's task (due at 1,000km) be evaluated against the
+  /// selected vehicle's odometer (e.g. 85,000km) and misreport status.
   Future<void> fetchAlertsForVehicles(List<VehicleModel> vehicles) async {
     if (vehicles.isEmpty) {
       _alerts = [];
@@ -97,28 +106,25 @@ class AlertProvider extends ChangeNotifier {
     notifyListeners();
 
     final mergedAlerts = <AlertModel>[];
-    final mergedTasks = <MaintenanceTask>[];
     String? lastError;
 
     for (final vehicle in vehicles) {
       // fetchAlerts catches its own exceptions internally (it never
       // rethrows — see its own try/catch below) and signals failure only
       // via `_error`. When a vehicle's fetch throws, it does so before
-      // reassigning `_alerts`/`_maintenanceTasks`, so those fields still
-      // hold the *previous* iteration's data. Only merge when `_error` is
-      // still null after the call, otherwise we'd silently re-add the
-      // previous vehicle's alerts a second time.
+      // reassigning `_alerts`, so that field still holds the *previous*
+      // iteration's data. Only merge when `_error` is still null after the
+      // call, otherwise we'd silently re-add the previous vehicle's alerts
+      // a second time.
       await fetchAlerts(vehicle.idVehiculo, vehicle);
       if (_error == null) {
         mergedAlerts.addAll(_alerts);
-        mergedTasks.addAll(_maintenanceTasks);
       } else {
         lastError = _error;
       }
     }
 
     _alerts = mergedAlerts;
-    _maintenanceTasks = mergedTasks;
     _error = lastError;
     _isLoading = false;
     notifyListeners();
