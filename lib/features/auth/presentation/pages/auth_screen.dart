@@ -557,6 +557,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _showForgotPasswordDialog() async {
     final colors = context.appColors;
+    final screenContext = context; // capture BEFORE opening the dialog
     final resetEmailController = TextEditingController(
       text: _isValidEmail(_emailController.text)
           ? _emailController.text.trim()
@@ -608,24 +609,38 @@ class _AuthScreenState extends State<AuthScreen> {
               onPressed: () async {
                 final email = resetEmailController.text.trim();
                 if (!_isValidEmail(email)) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
+                  ScaffoldMessenger.of(screenContext).showSnackBar(
                     SnackBar(content: Text(context.l10n.authInvalidEmail)),
                   );
                   return;
                 }
-                final authProvider = ctx.read<AuthProvider>();
-                final success = await authProvider.sendPasswordReset(email);
-                if (!ctx.mounted) return;
-                if (success) {
-                  Navigator.pop(ctx, true);
-                } else {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        authProvider.error ?? ctx.l10n.authSendEmailError,
+                try {
+                  final authProvider = screenContext.read<AuthProvider>();
+                  final success = await authProvider.sendPasswordReset(email);
+                  if (!ctx.mounted) return;
+                  if (success) {
+                    Navigator.pop(ctx, true);
+                  } else {
+                    Navigator.pop(ctx, false);
+                    if (!screenContext.mounted) return;
+                    ScaffoldMessenger.of(screenContext).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          authProvider.error ??
+                              screenContext.l10n.authSendEmailError,
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  }
+                } catch (e) {
+                  if (ctx.mounted) Navigator.pop(ctx, false);
+                  if (screenContext.mounted) {
+                    ScaffoldMessenger.of(screenContext).showSnackBar(
+                      SnackBar(
+                        content: Text(screenContext.l10n.authSendEmailError),
+                      ),
+                    );
+                  }
                 }
               },
               child: Text(context.l10n.authSendLink),
@@ -636,7 +651,6 @@ class _AuthScreenState extends State<AuthScreen> {
     );
 
     final emailSentTo = resetEmailController.text.trim();
-    resetEmailController.dispose();
 
     if (sent == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -648,6 +662,11 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
       );
     }
+
+    // Dispose the controller after the frame has been processed
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      resetEmailController.dispose();
+    });
   }
 
   /// Retorna true si puede continuar (correo verificado o usuario eligió continuar).

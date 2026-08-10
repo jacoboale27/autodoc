@@ -813,9 +813,11 @@ class _AlertsScreenState extends State<AlertsScreen> {
                   newKm,
                 );
                 if (ctx.mounted) {
-                  context.read<AlertProvider>().fetchAlerts(
-                    vehicle.idVehiculo,
-                    vehicleProvider.selectedVehicle!,
+                  // Use fetchAlertsForVehicles (not the single-vehicle
+                  // fetchAlerts) so we don't collapse the app-wide merged
+                  // alert list back down to just this vehicle.
+                  context.read<AlertProvider>().fetchAlertsForVehicles(
+                    vehicleProvider.vehicles,
                   );
                   Navigator.pop(ctx);
                 }
