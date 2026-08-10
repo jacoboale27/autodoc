@@ -168,6 +168,7 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
                 ? reserva.idVehiculo
                 : null,
             idTaller: userId,
+            idReserva: reserva.id,
             items: items,
             fechaPropuesta: fechaPropuesta,
             fecha: DateTime.now(),
@@ -408,7 +409,7 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
                         const SizedBox(height: 32),
                         if (isMecanico) ...[
                           Text(
-                            'Para aceptar, envía tu cotización con esta fecha.',
+                            'Aceptas la cita enviando tu cotización con esta fecha.',
                             style: TextStyle(
                               fontSize: 12,
                               color: colors.textSecondary,
@@ -422,7 +423,7 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
                               onPressed: () => _cotizar(reserva),
                               icon: const Icon(Icons.request_quote),
                               label: const Text(
-                                'Cotizar',
+                                'Cotizar y Aceptar',
                                 style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                               style: ElevatedButton.styleFrom(

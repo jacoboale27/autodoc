@@ -51,10 +51,25 @@ class ReservaChatCard extends StatelessWidget {
     }
   }
 
-  Future<void> _cotizarYAceptar(BuildContext context, DateTime fecha) async {
+  Future<void> _cotizarYAceptar(
+    BuildContext context,
+    String reservaId,
+    DateTime fechaMetadata,
+  ) async {
     final mechanicUser = context.read<UserProfileProvider>().userData;
     final userId = mechanicUser?.idUsuario;
     if (userId == null) return;
+
+    // La 'fecha' del metadata del mensaje viene sin hora (solo se usa para
+    // el texto del bubble; la hora se muestra por separado desde
+    // metadata['hora']). La hora real vive en reservas/{id}.fechaHoraPropuesta,
+    // así que se busca ahí para no abrir el picker de cotización siempre en
+    // 12:00 AM. Si la reserva ya no existe, se usa el metadata como último
+    // recurso para no bloquear el flujo.
+    final reservaProvider = context.read<ReservaProvider>();
+    final reserva = await reservaProvider.obtenerReserva(reservaId);
+    final fecha = reserva?.fechaHoraPropuesta ?? fechaMetadata;
+    if (!context.mounted) return;
 
     if (!isMechanicProfileComplete(mechanicUser)) {
       final missing = missingMechanicProfileFields(mechanicUser);
@@ -105,6 +120,7 @@ class ReservaChatCard extends StatelessWidget {
             idMecanico: userId,
             idVehiculo: conversacion?.idVehiculo,
             idTaller: userId,
+            idReserva: reservaId,
             items: items,
             fechaPropuesta: fechaPropuesta,
             fecha: DateTime.now(),
@@ -150,6 +166,7 @@ class ReservaChatCard extends StatelessWidget {
       context.watch<UserProfileProvider>().userData?.rol,
     );
 
+    final String? reservaId = metadata['id_reserva'] as String?;
     final String fechaRaw = metadata['fecha'] ?? '';
     final String hora = metadata['hora'] ?? '';
     final String estado =
@@ -287,9 +304,11 @@ class ReservaChatCard extends StatelessWidget {
                   const SizedBox(height: 12),
                   if (isMecanico) ...[
                     // El mecánico solo puede "aceptar" enviando una cotización
-                    // para la misma fecha propuesta por el cliente.
+                    // para la misma fecha propuesta por el cliente: se
+                    // deniega a propósito un "aceptar sin precio" para que el
+                    // cliente nunca vea una cita confirmada sin costo claro.
                     Text(
-                      'Para aceptar, envía tu cotización con esta fecha.',
+                      'Aceptas la cita enviando tu cotización con esta fecha.',
                       style: TextStyle(
                         fontSize: 11,
                         color: isMe ? Colors.white70 : colors.textSecondary,
@@ -313,16 +332,20 @@ class ReservaChatCard extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: fecha == null
+                            onPressed: fecha == null || reservaId == null
                                 ? null
-                                : () => _cotizarYAceptar(context, fecha!),
+                                : () => _cotizarYAceptar(
+                                    context,
+                                    reservaId,
+                                    fecha!,
+                                  ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: colors.primary,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 8),
                               minimumSize: Size.zero,
                             ),
-                            child: const Text('Cotizar'),
+                            child: const Text('Cotizar y Aceptar'),
                           ),
                         ),
                       ],

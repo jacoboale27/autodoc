@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -55,9 +56,14 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   CotizacionModel? _approvedQuote;
 
   /// Id del ticket Kanban de reparación creado al recibir el vehículo
-  /// (Task 4). Puede quedar en null si `ReparacionProvider.iniciar` falla:
-  /// eso no debe bloquear el flujo de servicio existente.
+  /// (Task 4).
   String? _idReparacion;
+
+  /// Si el ticket de reparación no se pudo guardar (red, permisos), se
+  /// muestra un banner con reintento en vez de fallar en silencio: sin esto
+  /// el mecánico podía salir de la pantalla creyendo que el vehículo quedó
+  /// registrado en "Reparaciones" cuando en realidad nunca se guardó nada.
+  String? _reparacionError;
 
   bool get _isInvoicePdf =>
       _invoiceImage?.name.toLowerCase().endsWith('.pdf') ?? false;
@@ -104,13 +110,22 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     super.initState();
     _manoDeObraController.addListener(_updateTotalCost);
     _vehiculo = widget.vehiculoPrecargado;
-    if (_vehiculo != null) {
-      _onVehiculoListo();
-    } else {
-      _cargarVehiculo();
-    }
+    // La carga real (setState/notifyListeners de AlertProvider,
+    // ReparacionProvider, etc.) se dispara post-frame, no aquí: si esta
+    // pantalla se inserta mientras el widget padre todavía está en su
+    // build (p.ej. al navegar con context.push), llamar setState o
+    // notifyListeners de forma síncrona dentro de initState cae dentro del
+    // "build lock" de Flutter y lanza "setState() or markNeedsBuild()
+    // called during build" — justo lo que reportó el usuario al entrar
+    // aquí desde "Buscar Vehículo".
+    _cargando = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      if (_vehiculo != null) {
+        _onVehiculoListo();
+      } else {
+        _cargarVehiculo();
+      }
       final tallerId = context
           .read<UserProfileProvider>()
           .userData
@@ -141,9 +156,8 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       }
       setState(() {
         _vehiculo = VehicleModel.fromMap(doc.data()!, doc.id);
-        _cargando = false;
       });
-      _onVehiculoListo();
+      await _onVehiculoListo();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -153,14 +167,19 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     }
   }
 
-  void _onVehiculoListo() {
+  /// El spinner de carga ('_cargando') se mantiene activo hasta que el
+  /// ticket de reparación termine de guardarse (o falle explícitamente):
+  /// antes se soltaba el spinner apenas llegaba el vehículo y el guardado
+  /// del ticket seguía en segundo plano sin feedback, así que si el
+  /// mecánico salía con la flecha de atrás antes de que esa llamada a
+  /// Firestore terminara, el vehículo nunca quedaba registrado en
+  /// "Reparaciones" y no había ninguna señal de que eso había pasado.
+  Future<void> _onVehiculoListo() async {
     final vehiculo = _vehiculo!;
     _kmController.text = vehiculo.kilometrajeActual.toString();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+    if (mounted) {
       context.read<AlertProvider>().fetchAlerts(vehiculo.idVehiculo, vehiculo);
-      _iniciarTicketReparacion(vehiculo);
-    });
+    }
 
     FirebaseFirestore.instance
         .collection('cotizaciones')
@@ -185,37 +204,62 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
             }
           }
         });
+
+    await _iniciarTicketReparacion(vehiculo);
   }
 
-  /// Crea el ticket Kanban de reparación en cuanto el mecánico recibe el
-  /// vehículo (Task 4, brief step 8). Si falla, se registra en debug y se
-  /// continúa: el flujo de servicio existente no debe depender de esto.
+  /// Crea (o reutiliza) el ticket Kanban de reparación en cuanto el
+  /// mecánico recibe el vehículo. Se espera (`await`) desde
+  /// `_onVehiculoListo` antes de soltar el spinner de carga, así que la
+  /// pantalla no queda interactuable hasta que el ticket ya esté guardado
+  /// o el error quede visible en `_reparacionError` con opción de
+  /// reintentar.
   Future<void> _iniciarTicketReparacion(VehicleModel vehiculo) async {
     final userSession = context.read<UserProfileProvider>();
     final tallerId = userSession.userData?.idTallerEfectivo ?? '';
-    if (tallerId.isEmpty) return;
+    if (tallerId.isEmpty) {
+      if (mounted) setState(() => _cargando = false);
+      return;
+    }
 
     try {
-      final idReparacion = await context
-          .read<ReparacionProvider>()
-          .iniciarOReutilizar(
-            idVehiculo: vehiculo.idVehiculo,
-            idTaller: tallerId,
-            idPropietario: vehiculo.idPropietario,
-            placa: vehiculo.placa,
-          );
+      final reparacionProvider = context.read<ReparacionProvider>();
+      // `buscarVehiculoPorPlaca` (usado por "Buscar Vehículo") no devuelve
+      // id_propietario a propósito, así que ese caso pasa por el callable
+      // que resuelve el dueño del lado servidor; el resto de las vías (auto
+      // creación al aceptar cotización, vehículo ya vinculado) sí traen ese
+      // dato y pueden escribir directo.
+      final idReparacion = vehiculo.idPropietario.isEmpty
+          ? await reparacionProvider.iniciarOReutilizarPorVehiculo(
+              idVehiculo: vehiculo.idVehiculo,
+              idTaller: tallerId,
+            )
+          : await reparacionProvider.iniciarOReutilizar(
+              idVehiculo: vehiculo.idVehiculo,
+              idTaller: tallerId,
+              idPropietario: vehiculo.idPropietario,
+              placa: vehiculo.placa,
+            );
       if (!mounted) return;
       if (idReparacion == null) {
-        debugPrint(
-          'No se pudo crear el ticket de reparación para ${vehiculo.placa}',
-        );
+        setState(() {
+          _reparacionError =
+              'No se pudo guardar el ticket de reparación de este vehículo.';
+          _cargando = false;
+        });
         return;
       }
       setState(() {
         _idReparacion = idReparacion;
+        _reparacionError = null;
+        _cargando = false;
       });
     } catch (e) {
-      debugPrint('Error al crear el ticket de reparación: $e');
+      if (!mounted) return;
+      setState(() {
+        _reparacionError = 'No se pudo guardar el ticket de reparación: $e';
+        _cargando = false;
+      });
     }
   }
 
@@ -316,6 +360,14 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
 
       await alertProvider.fetchAlerts(_vehiculo!.idVehiculo, _vehiculo!);
 
+      if (_hasApprovedQuote && _approvedQuote != null) {
+        await FirebaseFirestore.instance
+            .collection('cotizaciones')
+            .doc(_approvedQuote!.id)
+            .update({'estado': 'finalizada'});
+      }
+
+      bool kanbanUpdateFailed = false;
       if (_idReparacion != null && mounted) {
         try {
           await context.read<ReparacionProvider>().cambiarEstado(
@@ -324,17 +376,29 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           );
         } catch (e) {
           // No bloquear el cierre del servicio si el ticket Kanban no pudo
-          // actualizarse (p.ej. ya estaba en ese estado o fue eliminado).
+          // actualizarse (p.ej. ya estaba en ese estado o fue eliminado),
+          // pero sí avisarle al mecánico: sin esto el servicio quedaba
+          // facturado y el vehículo se veía "atascado" en el tablero sin
+          // ninguna pista de por qué.
+          kanbanUpdateFailed = true;
           debugPrint('Error al actualizar el ticket de reparación: $e');
         }
       }
 
       if (mounted) {
         HapticFeedback.lightImpact();
-        UiUtils.showSuccessSnackbar(
-          context,
-          'Servicio registrado exitosamente',
-        );
+        if (kanbanUpdateFailed) {
+          UiUtils.showErrorSnackbar(
+            context,
+            'Servicio registrado, pero no se pudo actualizar el ticket en '
+            'Reparaciones. Avánzalo manualmente desde el tablero.',
+          );
+        } else {
+          UiUtils.showSuccessSnackbar(
+            context,
+            'Servicio registrado exitosamente',
+          );
+        }
         Navigator.pop(context);
       }
     } catch (e) {
@@ -379,6 +443,8 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildVehicleHeader(colors),
+            const SizedBox(height: 16),
+            _buildTicketReparacionBanner(colors),
             const SizedBox(height: 24),
 
             _buildSectionTitle('KILOMETRAJE DE INGRESO', colors),
@@ -626,6 +692,75 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
         ],
       ),
     );
+  }
+
+  /// Confirma visualmente si el ticket Kanban de "Reparaciones" quedó
+  /// guardado (con acceso directo al tablero) o, si falló, ofrece
+  /// reintentar sin necesidad de recargar toda la pantalla.
+  Widget _buildTicketReparacionBanner(AppColors colors) {
+    if (_reparacionError != null) {
+      return Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(Responsive.padding(context, 12)),
+        decoration: BoxDecoration(
+          color: colors.error.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colors.error.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.error_outline, color: colors.error, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                _reparacionError!,
+                style: GoogleFonts.inter(
+                  color: colors.error,
+                  fontSize: Responsive.fontSize(context, 13),
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () => _iniciarTicketReparacion(_vehiculo!),
+              child: const Text('Reintentar'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_idReparacion != null) {
+      return Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(Responsive.padding(context, 12)),
+        decoration: BoxDecoration(
+          color: colors.secondary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colors.secondary.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: colors.secondary, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Vehículo recibido: ya aparece en Reparaciones.',
+                style: GoogleFonts.inter(
+                  color: colors.textPrimary,
+                  fontSize: Responsive.fontSize(context, 13),
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () => context.go('/mechanic_reparaciones'),
+              child: const Text('Ver tablero'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
   }
 
   Widget _buildSectionTitle(String title, AppColors colors) {

@@ -1,12 +1,36 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/core/models/reparacion_model.dart';
 
 class ReparacionRepository {
   final FirebaseFirestore _firestore;
+  final FirebaseFunctions _functions;
 
-  ReparacionRepository({FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
+  ReparacionRepository({
+    FirebaseFirestore? firestore,
+    FirebaseFunctions? functions,
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _functions = functions ?? FirebaseFunctions.instance;
+
+  /// Igual que [iniciarReparacion]/[buscarReparacionActiva] combinados, pero
+  /// vía el callable `iniciarReparacionPorVehiculo` en vez de escribir
+  /// directo a Firestore. Se usa cuando el vehículo viene de "Buscar
+  /// Vehículo" (búsqueda por placa): `buscarVehiculoPorPlaca` no devuelve
+  /// `id_propietario` a propósito (para no exponer al dueño a cualquier
+  /// mecánico que busque una placa, ver ese callable), así que el cliente no
+  /// tiene ese dato para satisfacer la regla de creación de `reparaciones` —
+  /// el callable lo resuelve del lado servidor.
+  Future<String> iniciarOReutilizarPorVehiculo({
+    required String idVehiculo,
+    required String idTaller,
+  }) async {
+    final result = await _functions
+        .httpsCallable('iniciarReparacionPorVehiculo')
+        .call({'id_vehiculo': idVehiculo, 'id_taller': idTaller});
+    final data = result.data as Map;
+    return data['id_reparacion'] as String;
+  }
 
   /// Busca un ticket de reparación ya existente para este vehículo en este
   /// taller, sin importar su estado: el brief no define un estado

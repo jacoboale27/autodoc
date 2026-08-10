@@ -31,7 +31,6 @@ class CotizacionChatCard extends StatefulWidget {
 }
 
 class _CotizacionChatCardState extends State<CotizacionChatCard> {
-  bool _isFinalizing = false;
   bool _isCheckingReview = false;
   List<double>? _beneficios;
 
@@ -59,37 +58,15 @@ class _CotizacionChatCardState extends State<CotizacionChatCard> {
   Future<void> _actualizarEstado(String estado) async {
     final cotizacionId = _cotizacionId;
     if (cotizacionId == null) return;
-    await context.read<ChatProvider>().actualizarEstadoCotizacion(
-      cotizacionId,
-      estado,
-    );
-  }
+    final chatProvider = context.read<ChatProvider>();
+    await chatProvider.actualizarEstadoCotizacion(cotizacionId, estado);
 
-  Future<void> _finalizarServicio() async {
-    final cotizacionId = _cotizacionId;
-    if (cotizacionId == null) return;
-
-    setState(() => _isFinalizing = true);
-    final provider = context.read<ChatProvider>();
-    final success = await provider.finalizarServicioDesdeCotizacion(
-      cotizacionId,
-    );
-
-    if (!mounted) return;
-
-    if (success) {
-      UiUtils.showSuccessSnackbar(
-        context,
-        'Servicio finalizado. El cliente ya puede dejar su reseña.',
-      );
-    } else {
-      UiUtils.showErrorSnackbar(
-        context,
-        provider.error?.replaceFirst('StateError: ', '') ??
-            'No se pudo finalizar el servicio.',
-      );
-    }
-    if (mounted) setState(() => _isFinalizing = false);
+    // Si esta cotización nació de una cita agendada (id_reserva), la Cloud
+    // Function sincronizarReservaYReparacionAlCotizar (functions/index.js)
+    // sincroniza el estado de la reserva y abre el ticket en Reparaciones —
+    // no se duplica ese trabajo aquí porque requiere leer `vehiculos` (la
+    // placa) con permisos que el cliente no tiene hasta que el taller ya
+    // está vinculado (ver firestore.rules match /vehiculos).
   }
 
   Future<void> _calificarServicio(BuildContext context) async {
@@ -182,11 +159,9 @@ class _CotizacionChatCardState extends State<CotizacionChatCard> {
         return _CotizacionCardBody(
           cotizacion: cotizacion,
           isMe: widget.isMe,
-          isFinalizing: _isFinalizing,
           isCheckingReview: _isCheckingReview,
           onAceptar: () => _actualizarEstado('aceptada'),
           onRechazar: () => _actualizarEstado('rechazada'),
-          onFinalizar: _finalizarServicio,
           onCalificar: () => _calificarServicio(context),
         );
       },
@@ -197,21 +172,17 @@ class _CotizacionChatCardState extends State<CotizacionChatCard> {
 class _CotizacionCardBody extends StatelessWidget {
   final CotizacionModel cotizacion;
   final bool isMe;
-  final bool isFinalizing;
   final bool isCheckingReview;
   final VoidCallback onAceptar;
   final VoidCallback onRechazar;
-  final VoidCallback onFinalizar;
   final VoidCallback onCalificar;
 
   const _CotizacionCardBody({
     required this.cotizacion,
     required this.isMe,
-    required this.isFinalizing,
     required this.isCheckingReview,
     required this.onAceptar,
     required this.onRechazar,
-    required this.onFinalizar,
     required this.onCalificar,
   });
 
@@ -453,28 +424,31 @@ class _CotizacionCardBody extends StatelessWidget {
                 ],
                 if (estado == 'aceptada' && isMe) ...[
                   const SizedBox(height: 16),
-                  SizedBox(
+                  Container(
                     width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: isFinalizing ? null : onFinalizar,
-                      icon: isFinalizing
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.check_circle_outline, size: 18),
-                      label: Text(
-                        isFinalizing ? 'Finalizando...' : 'Finalizar Servicio',
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                      ),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: colors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.directions_car_outlined,
+                          size: 16,
+                          color: isMe ? Colors.white : colors.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Recibe el vehículo desde "Buscar Vehículo" para finalizar este servicio.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isMe ? Colors.white70 : colors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

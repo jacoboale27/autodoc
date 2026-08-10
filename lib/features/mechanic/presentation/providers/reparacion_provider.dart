@@ -106,6 +106,32 @@ class ReparacionProvider extends ChangeNotifier {
     }
   }
 
+  /// Igual que [iniciarOReutilizar], pero para vehículos que llegaron por
+  /// "Buscar Vehículo" (búsqueda por placa), donde el cliente no conoce el
+  /// `id_propietario` del vehículo (ver
+  /// [ReparacionRepository.iniciarOReutilizarPorVehiculo]).
+  Future<String?> iniciarOReutilizarPorVehiculo({
+    required String idVehiculo,
+    required String idTaller,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final id = await _repository.iniciarOReutilizarPorVehiculo(
+        idVehiculo: idVehiculo,
+        idTaller: idTaller,
+      );
+      _error = null;
+      return id;
+    } catch (e) {
+      _error = e.toString();
+      return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> cambiarEstado(String idReparacion, String nuevoEstado) async {
     try {
       await _repository.cambiarEstado(

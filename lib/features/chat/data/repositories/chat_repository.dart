@@ -214,52 +214,6 @@ class ChatRepository {
     });
   }
 
-  // Finaliza el servicio de una cotización ya aceptada: registra el servicio
-  // en el historial (para que el cliente pueda reseñarlo) y marca la
-  // cotización como finalizada.
-  Future<void> finalizarServicioDesdeCotizacion(String cotizacionId) async {
-    final docRef = _firestore.collection('cotizaciones').doc(cotizacionId);
-    final doc = await docRef.get();
-    if (!doc.exists) {
-      throw StateError('No se encontró la cotización.');
-    }
-    final cotizacion = CotizacionModel.fromMap(doc.data()!, doc.id);
-    if (cotizacion.estado != 'aceptada') {
-      throw StateError('La cotización debe estar aceptada para finalizarla.');
-    }
-
-    String? idVehiculo = cotizacion.idVehiculo;
-    if (idVehiculo == null || idVehiculo.isEmpty) {
-      // Fallback: Buscar vehículo del cliente en la BD
-      final vehiculosSnap = await _firestore
-          .collection(FirestoreCollections.vehiculos)
-          .where('id_propietario', isEqualTo: cotizacion.idPropietario)
-          .limit(1)
-          .get();
-      if (vehiculosSnap.docs.isNotEmpty) {
-        idVehiculo = vehiculosSnap.docs.first.id;
-      } else {
-        throw StateError(
-          'El cliente no tiene un vehículo registrado para guardar este servicio en su historial.',
-        );
-      }
-    }
-
-    final servicioRef = _firestore
-        .collection(FirestoreCollections.servicios)
-        .doc();
-    await servicioRef.set({
-      'id_vehiculo': idVehiculo,
-      'id_taller': cotizacion.idTaller ?? cotizacion.idMecanico,
-      'tipo_servicio': cotizacion.resumen,
-      'fecha': Timestamp.fromDate(DateTime.now()),
-      'costo': cotizacion.total,
-      'descripcion': cotizacion.resumen,
-    });
-
-    await docRef.update({'estado': 'finalizada'});
-  }
-
   // Delete message
   Future<void> deleteMensaje(String conversacionId, String mensajeId) async {
     await _firestore

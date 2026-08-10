@@ -50,6 +50,7 @@ class CotizacionModel {
   final String idMecanico;
   final String? idVehiculo;
   final String? idTaller;
+  final String? idReserva;
   final List<CotizacionItem> items;
   final DateTime? fechaPropuesta;
   final String estado; // 'pendiente', 'aceptada', 'rechazada', 'finalizada'
@@ -63,6 +64,7 @@ class CotizacionModel {
     required this.idMecanico,
     this.idVehiculo,
     this.idTaller,
+    this.idReserva,
     required this.items,
     this.fechaPropuesta,
     this.estado = 'pendiente',
@@ -88,6 +90,7 @@ class CotizacionModel {
       idMecanico: map['id_mecanico'] ?? '',
       idVehiculo: map['id_vehiculo'],
       idTaller: map['id_taller'],
+      idReserva: map['id_reserva'],
       items: rawItems
           .map((e) => CotizacionItem.fromMap(Map<String, dynamic>.from(e)))
           .toList(),
@@ -107,6 +110,7 @@ class CotizacionModel {
       'id_mecanico': idMecanico,
       if (idVehiculo != null) 'id_vehiculo': idVehiculo,
       if (idTaller != null) 'id_taller': idTaller,
+      if (idReserva != null) 'id_reserva': idReserva,
       'items': items.map((i) => i.toMap()).toList(),
       if (fechaPropuesta != null)
         'fecha_propuesta': Timestamp.fromDate(fechaPropuesta!),
@@ -142,6 +146,7 @@ class CotizacionModel {
       idMecanico: idMecanico,
       idVehiculo: idVehiculo,
       idTaller: idTaller,
+      idReserva: idReserva,
       items: nuevosItems,
       fechaPropuesta: fechaPropuesta,
       estado: estado,

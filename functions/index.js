@@ -607,6 +607,171 @@ exports.notifyOnReservationStatusChange = functions.firestore
   });
 
 /**
+ * Helper: crea (o reutiliza, si ya existe uno para el mismo vehiculo+taller)
+ * el ticket Kanban de reparación y notifica al propietario. Corre siempre
+ * con Admin SDK porque necesita leer `vehiculos/{id}` (placa, id_propietario)
+ * sin las restricciones de `talleres_vinculados` que aplican al cliente (ver
+ * firestore.rules match /vehiculos) — ni el trigger de cotización ni el
+ * callable de "Buscar Vehículo" pueden resolver esos datos del lado cliente
+ * sin reabrir el bug de permission-denied que originó este helper.
+ *
+ * Devuelve `{ idReparacion, creado }` o `null` si el vehículo no existe.
+ */
+async function crearOReutilizarTicketReparacion({ idVehiculo, idTaller }) {
+  const existente = await db.collection('reparaciones')
+    .where('id_vehiculo', '==', idVehiculo)
+    .where('id_taller', '==', idTaller)
+    .limit(1)
+    .get();
+  if (!existente.empty) {
+    return { idReparacion: existente.docs[0].id, creado: false };
+  }
+
+  const vehiculoDoc = await db.collection('vehiculos').doc(idVehiculo).get();
+  if (!vehiculoDoc.exists) return null;
+  const placa = vehiculoDoc.data().placa || '';
+  const propietarioId = vehiculoDoc.data().id_propietario;
+  if (!propietarioId) return null;
+
+  const ahora = admin.firestore.FieldValue.serverTimestamp();
+  const reparacionRef = db.collection('reparaciones').doc();
+  await reparacionRef.set({
+    id_vehiculo: idVehiculo,
+    id_taller: idTaller,
+    id_propietario: propietarioId,
+    placa: placa,
+    estado: 'recibido',
+    historial_estados: [{ estado: 'recibido', timestamp: new Date() }],
+    fecha_creacion: ahora,
+    fecha_actualizacion: ahora,
+  });
+
+  const userDoc = await db.collection('usuarios').doc(propietarioId).get();
+  const fcmToken = userDoc.exists ? userDoc.data().fcmToken : null;
+  const title = 'Tu vehículo ya está en seguimiento';
+  const body = `${placa}: se abrió el ticket de servicio en el taller.`;
+  if (fcmToken) {
+    try {
+      await messaging.send({
+        token: fcmToken,
+        notification: { title, body },
+        data: { type: 'reparacion', reparacionId: reparacionRef.id },
+      });
+    } catch (fcmError) {
+      console.error('Error sending FCM reparacion-created push:', fcmError);
+    }
+  }
+  await writeNotification(propietarioId, {
+    tipo: 'reparacion',
+    titulo: title,
+    body,
+    deepLink: `/vehicle_profile/${idVehiculo}`,
+    metadata: { reparacionId: reparacionRef.id, estado: 'recibido' },
+  });
+
+  return { idReparacion: reparacionRef.id, creado: true, placa, propietarioId };
+}
+
+/**
+ * Verifica que quien llama pueda actuar en nombre de `tallerId`: o es el
+ * propio taller, o es un empleado suyo (usuarios/{uid}.id_taller_propietario
+ * == tallerId). Espejo en Admin SDK de `actuaPorTaller()` en firestore.rules.
+ */
+async function actuaPorTaller(callerUid, tallerId) {
+  if (callerUid === tallerId) return true;
+  const callerDoc = await db.collection('usuarios').doc(callerUid).get();
+  return callerDoc.exists && callerDoc.data().id_taller_propietario === tallerId;
+}
+
+/**
+ * 5a2. Trigger fired when a 'cotizaciones' document's estado changes and it
+ * is linked to a reserva (id_reserva). Es el punto único donde una cita con
+ * cotización aceptada se traduce en (a) la reserva pasando a
+ * 'confirmada'/'rechazada' y (b) — solo en el caso de aceptación — la
+ * apertura automática del ticket en el tablero de Reparaciones, para que el
+ * taller lo vea ahí desde que se confirma la cita y no solo cuando alguien
+ * lo busca manualmente por placa.
+ */
+exports.sincronizarReservaYReparacionAlCotizar = functions.firestore
+  .document('cotizaciones/{cotizacionId}')
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+
+    if (before.estado === after.estado) return null;
+    if (after.estado !== 'aceptada' && after.estado !== 'rechazada') return null;
+
+    const reservaId = after.id_reserva;
+    if (!reservaId) return null;
+
+    try {
+      const reservaRef = db.collection('reservas').doc(reservaId);
+      const reservaUpdate = { estado: after.estado === 'aceptada' ? 'confirmada' : 'rechazada' };
+      if (after.estado === 'aceptada' && after.fecha_propuesta) {
+        reservaUpdate.fecha_hora_confirmada = after.fecha_propuesta;
+      }
+      await reservaRef.update(reservaUpdate);
+
+      if (after.estado !== 'aceptada') return null;
+
+      const vehiculoId = after.id_vehiculo;
+      const tallerId = after.id_taller;
+      if (!vehiculoId || !tallerId) return null;
+
+      await crearOReutilizarTicketReparacion({ idVehiculo: vehiculoId, idTaller: tallerId });
+    } catch (error) {
+      console.error('Error syncing reserva/reparacion on cotizacion accept:', error);
+    }
+
+    return null;
+  });
+
+/**
+ * 5a3. Callable: abre (o reutiliza) el ticket Kanban de reparación para un
+ * vehículo encontrado por placa desde "Buscar Vehículo"
+ * (VehicleSearchScreen -> InitiateServiceScreen). Existe porque
+ * `buscarVehiculoPorPlaca` deliberadamente NO devuelve `id_propietario` al
+ * cliente (ver ese callable) para no exponer al dueño a cualquier mecánico
+ * que busque una placa — pero `reparaciones` sí necesita ese campo para
+ * crearse. En vez de relajar esa protección, la creación del ticket se hace
+ * aquí, del lado servidor, donde sí se puede leer el vehículo completo.
+ */
+exports.iniciarReparacionPorVehiculo = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  }
+
+  const callerDoc = await db.collection('usuarios').doc(context.auth.uid).get();
+  const rol = callerDoc.exists ? callerDoc.data().rol : null;
+  if (!['Mecanico', 'Taller'].includes(rol)) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'Solo mecánicos pueden abrir tickets de reparación.'
+    );
+  }
+
+  const idVehiculo = data && data.id_vehiculo ? String(data.id_vehiculo) : '';
+  const idTaller = data && data.id_taller ? String(data.id_taller) : '';
+  if (!idVehiculo || !idTaller) {
+    throw new functions.https.HttpsError('invalid-argument', 'Faltan id_vehiculo o id_taller.');
+  }
+
+  const puedeActuar = await actuaPorTaller(context.auth.uid, idTaller);
+  if (!puedeActuar) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'No puedes abrir tickets en nombre de ese taller.'
+    );
+  }
+
+  const resultado = await crearOReutilizarTicketReparacion({ idVehiculo, idTaller });
+  if (!resultado) {
+    throw new functions.https.HttpsError('not-found', 'Vehículo no encontrado.');
+  }
+  return { id_reparacion: resultado.idReparacion };
+});
+
+/**
  * 5b. Trigger fired when a 'reparaciones' document's estado field changes.
  * Notifies the vehicle owner (push + in-app notification center).
  */

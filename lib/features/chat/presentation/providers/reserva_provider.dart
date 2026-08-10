@@ -44,6 +44,10 @@ class ReservaProvider extends ChangeNotifier {
         );
   }
 
+  Future<ReservaModel?> obtenerReserva(String reservaId) {
+    return _reservaRepository.getReserva(reservaId);
+  }
+
   Future<String> solicitarReserva(ReservaModel reserva) async {
     _isLoading = true;
     _error = null;
