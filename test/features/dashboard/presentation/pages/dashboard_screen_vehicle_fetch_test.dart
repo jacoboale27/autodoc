@@ -97,7 +97,7 @@ void main() {
         routes: [
           GoRoute(
             path: '/dashboard',
-            builder: (_, __) => const DashboardScreen(),
+            builder: (_, _) => const DashboardScreen(),
           ),
         ],
       );

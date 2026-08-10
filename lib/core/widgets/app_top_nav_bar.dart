@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
@@ -50,11 +51,8 @@ class AppTopNavBar extends StatelessWidget {
                     color: colors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(
-                    Icons.directions_car,
-                    color: colors.primary,
-                    size: Responsive.iconSize(context, 20),
-                  ),
+                  padding: EdgeInsets.all(Responsive.padding(context, 4)),
+                  child: SvgPicture.asset('assets/logo/autodoc_isotype.svg'),
                 ),
                 SizedBox(width: Responsive.padding(context, 12)),
                 Text(

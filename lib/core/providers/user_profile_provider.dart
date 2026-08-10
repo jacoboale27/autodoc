@@ -33,9 +33,13 @@ class UserProfileProvider with ChangeNotifier {
     _setLoading(true);
     try {
       _userData = await _userService.getUserData(userId);
+      debugPrint(
+        'UserProfileProvider: fetch OK para $userId, rol=${_userData?.rol}',
+      );
       _hasAttemptedFetch = true;
       _setLoading(false);
     } catch (e) {
+      debugPrint('UserProfileProvider: fetch FALLÓ para $userId: $e');
       _setError(e.toString());
       _hasAttemptedFetch = true;
       _setLoading(false);

@@ -111,6 +111,7 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
         builder: (dialogContext, setDialogState) {
           final isLoading = provider.isLoading;
           return AlertDialog(
+            scrollable: true,
             title: const Text('Nuevo empleado'),
             content: SizedBox(
               width: 420,
@@ -207,6 +208,12 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
                               : telefonoController.text.trim(),
                         );
                         setDialogState(() {});
+                        // Cierra el teclado antes de mostrar el SnackBar
+                        // (flotante en todo el tema, ver app_theme.dart): con
+                        // el teclado abierto el Scaffold detras del dialogo
+                        // queda tan bajo que el SnackBar flotante no cabe y
+                        // dispara "Floating SnackBar presented off screen".
+                        FocusManager.instance.primaryFocus?.unfocus();
                         if (ok) {
                           if (dialogContext.mounted) {
                             Navigator.pop(dialogContext);

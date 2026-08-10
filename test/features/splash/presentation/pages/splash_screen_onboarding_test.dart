@@ -55,14 +55,14 @@ void main() {
       final router = GoRouter(
         initialLocation: '/',
         routes: [
-          GoRoute(path: '/', builder: (_, __) => const SplashScreen()),
+          GoRoute(path: '/', builder: (_, _) => const SplashScreen()),
           GoRoute(
             path: '/onboarding',
-            builder: (_, __) => const Scaffold(body: Text('ONBOARDING_SCREEN')),
+            builder: (_, _) => const Scaffold(body: Text('ONBOARDING_SCREEN')),
           ),
           GoRoute(
             path: '/login',
-            builder: (_, __) => const Scaffold(body: Text('LOGIN_SCREEN')),
+            builder: (_, _) => const Scaffold(body: Text('LOGIN_SCREEN')),
           ),
         ],
       );

@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { useTheme } from "next-themes";
 import { usePathname, useRouter } from "@/i18n/routing";
@@ -37,18 +38,13 @@ export default function Header() {
       <div className="flex w-full max-w-5xl items-center justify-between rounded-full border border-slate-200 dark:border-slate-700/50 bg-white/90 dark:bg-[#111827]/80 px-6 py-3 shadow-lg backdrop-blur-md">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#522C81] dark:bg-sky-500 shadow-[0_0_10px_rgba(82,44,129,0.5)] dark:shadow-[0_0_10px_rgba(56,189,248,0.5)]">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
-              className="h-5 w-5 text-white"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-            </svg>
-          </div>
+          <Image
+            src="/logo-icon.svg"
+            alt="AutoDoc"
+            width={32}
+            height={32}
+            className="h-8 w-8 rounded-lg shadow-[0_0_10px_rgba(82,44,129,0.5)] dark:shadow-[0_0_10px_rgba(56,189,248,0.5)]"
+          />
           <span className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
             {t("appName")}
           </span>

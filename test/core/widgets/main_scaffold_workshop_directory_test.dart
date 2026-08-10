@@ -60,7 +60,7 @@ void main() {
       routes: [
         GoRoute(
           path: '/test',
-          builder: (_, __) => ChangeNotifierProvider<UserProfileProvider>.value(
+          builder: (_, _) => ChangeNotifierProvider<UserProfileProvider>.value(
             value: userProvider,
             child: const MainScaffold(child: Text('BODY')),
           ),

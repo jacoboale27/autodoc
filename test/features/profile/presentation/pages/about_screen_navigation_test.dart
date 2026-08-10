@@ -7,7 +7,7 @@ void main() {
   testWidgets(
     'Profile settings "Acerca de AutoDoc" action pushes AboutScreen',
     (tester) async {
-      final lightColors = AppColors(
+      final lightColors = const AppColors(
         primary: AppPalette.lightPrimary,
         secondary: AppPalette.lightSecondary,
         surface: AppPalette.lightSurface,

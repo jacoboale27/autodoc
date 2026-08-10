@@ -8,6 +8,7 @@ import 'package:autodoc/features/auth/data/services/auth_preferences_service.dar
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:math' as math;
 
 class SplashScreen extends StatefulWidget {
@@ -52,7 +53,19 @@ class _SplashScreenState extends State<SplashScreen>
               await Future.delayed(const Duration(milliseconds: 500));
               attempts++;
             }
-            if (!mounted) return;
+            debugPrint(
+              'SplashScreen: fin de espera tras $attempts intentos - '
+              'hasAttemptedFetch=${profileProvider.hasAttemptedFetch}, '
+              'isLoading=${profileProvider.isLoading}, '
+              'userData=${profileProvider.userData != null}, '
+              'error=${profileProvider.error}',
+            );
+            if (!mounted) {
+              debugPrint(
+                'SplashScreen: widget ya no está mounted, aborto navegación',
+              );
+              return;
+            }
 
             final userData = profileProvider.userData;
             if (userData != null) {
@@ -226,10 +239,9 @@ class _SplashScreenState extends State<SplashScreen>
                                   ),
                                 ],
                               ),
-                              child: Icon(
-                                Icons.verified,
-                                color: primaryColor,
-                                size: 50,
+                              padding: const EdgeInsets.all(14),
+                              child: SvgPicture.asset(
+                                'assets/logo/autodoc_isotype.svg',
                               ),
                             ),
                           ],

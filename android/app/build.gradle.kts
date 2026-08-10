@@ -9,6 +9,20 @@ plugins {
 }
 
 
+// Carga GOOGLE_MAPS_API_KEY desde el .env de la raíz del repo (no versionado)
+// para inyectarla en el manifest sin comitear la clave real, igual que el
+// resto de secretos del proyecto (ver AppSecrets en el lado Dart).
+val dotEnvFile = rootProject.file("../.env")
+val googleMapsApiKey: String = if (dotEnvFile.exists()) {
+    dotEnvFile.readLines()
+        .firstOrNull { it.trim().startsWith("GOOGLE_MAPS_API_KEY=") }
+        ?.substringAfter("=")
+        ?.trim()
+        ?: ""
+} else {
+    ""
+}
+
 android {
     namespace = "com.example.autodoc"
     compileSdk = flutter.compileSdkVersion
@@ -33,6 +47,8 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
     }
 
     buildTypes {

@@ -105,6 +105,7 @@ class _CatalogoServiciosScreenState extends State<CatalogoServiciosScreen> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
           return AlertDialog(
+            scrollable: true,
             title: const Text('Nuevo ítem del catálogo'),
             content: SizedBox(
               width: 380,
@@ -170,6 +171,11 @@ class _CatalogoServiciosScreenState extends State<CatalogoServiciosScreen> {
                         } catch (e) {
                           if (dialogContext.mounted) {
                             setDialogState(() => isLoading = false);
+                            // Cierra el teclado antes del SnackBar (flotante
+                            // en todo el tema): con el teclado abierto el
+                            // Scaffold detras del dialogo queda tan bajo que
+                            // dispara "Floating SnackBar presented off screen".
+                            FocusManager.instance.primaryFocus?.unfocus();
                             ScaffoldMessenger.of(dialogContext).showSnackBar(
                               SnackBar(content: Text('Error: $e')),
                             );
