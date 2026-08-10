@@ -23,8 +23,26 @@
 //   FIRESTORE_EMULATOR_HOST=localhost:8080 node migrate_vehiculos.js --apply
 
 const admin = require('firebase-admin');
+const path = require('path');
+const fs = require('fs');
 
-admin.initializeApp({ projectId: 'autodoc-6ef5a' });
+// Contra producción hace falta una service account key (ADC no está
+// configurado en esta máquina): Firebase Console > Configuración del
+// proyecto > Cuentas de servicio > Generar nueva clave privada, guardarla
+// como functions/serviceAccountKey.json (ya está en .gitignore) o apuntar
+// GOOGLE_APPLICATION_CREDENTIALS a su ruta. Contra el emulador
+// (FIRESTORE_EMULATOR_HOST definido) no hace falta ninguna credencial real.
+const keyPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
+  || path.join(__dirname, 'serviceAccountKey.json');
+
+if (!process.env.FIRESTORE_EMULATOR_HOST && fs.existsSync(keyPath)) {
+  admin.initializeApp({
+    credential: admin.credential.cert(require(keyPath)),
+    projectId: 'autodoc-6ef5a',
+  });
+} else {
+  admin.initializeApp({ projectId: 'autodoc-6ef5a' });
+}
 const db = admin.firestore();
 
 const APPLY = process.argv.includes('--apply');

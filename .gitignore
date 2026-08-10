@@ -46,6 +46,8 @@ app.env
 DEV_SETUP.md
 ios/Runner/GoogleService-Info.plist
 android/app/google-services.json
+functions/serviceAccountKey*.json
+functions/*-firebase-adminsdk-*.json
 
 # Logs and system files
 *.log
