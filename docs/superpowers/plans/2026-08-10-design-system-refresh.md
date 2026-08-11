@@ -1,12 +1,14 @@
 # Design System Refresh (Fase 0) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+>
+> **REQUIRED DESIGN SKILLS:** Before writing or reviewing any interaction/motion code in this plan (Tasks 1, 2, 4, 5, 6), invoke `ui-ux-pro-max` (nextlevelbuilder/ui-ux-pro-max-skill — interaction-state patterns: hover/pressed/focus/disabled, elevation, motion presets) and the `emil-kowalski` design-eng skill (emilkowalski/skills — polish philosophy: motion must respond physically to touch, curves/durations must feel intentional, not decorative). Use them to sanity-check the concrete values proposed below (`AppMotion.pressedScale = 0.96`, `hoverScale = 1.02`, durations, `AppShadows` hover intensity) against their guidance, and adjust if either skill suggests a better-justified value — do not skip straight to the code.
 
 **Goal:** Pulir el lenguaje de interacción (press/hover) y motion de los widgets compartidos de AutoDoc (`lib/core/theme/`, `lib/core/widgets/`) sin cambiar marca, layout ni flujos, dejando una base lista para que las fases posteriores (una por módulo de pantallas) la consuman.
 
 **Architecture:** Se añade un token nuevo (`AppMotion`) que centraliza curvas/escala de press-hover, se extiende `AppShadows` con variantes de hover, y se agregan getters derivados a `AppColors`. `AppButton` y `AppCard` pasan de `StatelessWidget` a `StatefulWidget` para trackear estado de press/hover local y animarlo con `AnimatedScale` + `MouseRegion` (hover) + `Listener` (press, eventos de puntero crudo — no compite en el gesture arena con el `InkWell` interno), manteniendo `InkWell`/`Material` para ripple, tap real, foco y accesibilidad. `AnimatedCounter` deja de usar una curva hardcodeada.
 
-**Tech Stack:** Flutter (Material 3), sin dependencias nuevas — todo con `AnimatedScale`, `MouseRegion`, `GestureDetector` del SDK. Tests con `flutter_test` (`WidgetTester`).
+**Tech Stack:** Flutter (Material 3), sin dependencias nuevas — todo con `AnimatedScale`, `MouseRegion`, `Listener` del SDK. Tests con `flutter_test` (`WidgetTester`).
 
 ## Global Constraints
 
@@ -16,6 +18,7 @@
 - No agregar golden tests de píxel — usar widget tests de comportamiento.
 - Ejecutar `dart format .` antes de cada commit (regla del proyecto, `CONVENTIONS.md` §4).
 - Todo widget nuevo/modificado debe seguir usando `Theme.of(context)`/`context.appColors` — nunca colores hardcodeados (`CONVENTIONS.md` §2.1).
+- Usar las skills `ui-ux-pro-max` (nextlevelbuilder/ui-ux-pro-max-skill) y `emil-kowalski` (emilkowalski/skills) como fuente de criterio para cualquier decisión de motion/interacción de este plan — ver nota arriba.
 
 ---
 
