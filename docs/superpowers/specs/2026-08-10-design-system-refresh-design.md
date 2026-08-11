@@ -22,9 +22,8 @@ Revisando `lib/core/theme/*.dart` y `lib/core/widgets/*.dart`:
 1. `AppTransitions` (`lib/core/theme/app_transitions.dart`) solo define 3 duraciones y 3 curvas básicas (`easeInOut`, `decelerate`, `easeIn`). No hay curva "spring"/emphasized ni constantes de escala para press-feedback — necesarias para que botones/cards se sientan físicos (principio central de emil-kowalski: el motion debe responder al toque, no solo decorar).
 2. `AppButton` (`lib/core/widgets/app_button.dart:173-193`) fija `elevation: 0` en el `ElevatedButton.styleFrom`, lo cual anula el `shadowColor` que se configura en la misma llamada — la sombra nunca se renderiza. Tampoco hay press-scale ni estado hover (la app corre también en web/desktop vía Flutter web).
 3. `AppCard` (`lib/core/widgets/app_card.dart`) usa `InkWell` para el ripple pero no tiene hover lift ni press-scale cuando `onTap` está presente.
-4. `AppTextField` (`lib/core/widgets/app_text_field.dart:55-58`) cambia el borde a `colors.primary` al enfocar, pero sin transición animada — el cambio es instantáneo/abrupto.
-5. `AppShadows` (`lib/core/theme/app_shadows.dart`) solo define elevación "resting" (sm/md/lg light+dark). No hay variante para estado hover.
-6. Componentes restantes (`AppSkeleton`, `AppSnackbar`, `AppStatusBadge`, `AppBottomNavBar`, `AppTopNavBar`, `NotificationBellButton`, `AnimatedCounter`, `AppEmptyState`) usan curvas/duraciones ad hoc en vez de una fuente única (p.ej. `AppSkeleton` usa el shimmer por defecto del paquete `shimmer`, `AnimatedCounter` usa `Curves.easeOut` hardcodeado).
+4. `AppShadows` (`lib/core/theme/app_shadows.dart`) solo define elevación "resting" (sm/md/lg light+dark). No hay variante para estado hover.
+5. Componentes restantes (`AppSkeleton`, `AppSnackbar`, `AppStatusBadge`, `AppBottomNavBar`, `AppTopNavBar`, `NotificationBellButton`, `AnimatedCounter`, `AppEmptyState`) usan curvas/duraciones ad hoc en vez de una fuente única (p.ej. `AppSkeleton` usa el shimmer por defecto del paquete `shimmer`, `AnimatedCounter` usa `Curves.easeOut` hardcodeado).
 
 ## Diseño
 
@@ -38,11 +37,11 @@ Revisando `lib/core/theme/*.dart` y `lib/core/widgets/*.dart`:
 
 **`AppShadows`**: se agregan `lightHover` y `darkHover` (entre `md` y `lg` en intensidad), para el lift en hover de `AppCard`/`AppButton`.
 
-**`AppColors`**: se agregan **métodos de extensión** (no campos nuevos en la `ThemeExtension`, para no tocar `copyWith`/`lerp`) en `AppColorsExtension`:
+**`AppColors`**: se agregan **getters derivados** en la propia clase (no campos nuevos en la `ThemeExtension`, para no tocar `copyWith`/`lerp` ni las instancias light/dark):
 - `Color get hoverOverlay => primary.withValues(alpha: 0.06)`
 - `Color get pressedOverlay => primary.withValues(alpha: 0.12)`
 
-Esto evita expandir el esquema de la ThemeExtension (que requeriría actualizar `copyWith`, `lerp` y las dos instancias light/dark) para algo que es puramente derivado.
+Esto evita expandir el esquema de la ThemeExtension (que requeriría actualizar `copyWith`, `lerp` y las dos instancias light/dark) para algo que es puramente derivado del color `primary` ya existente.
 
 ### Componentes
 
@@ -54,10 +53,11 @@ Esto evita expandir el esquema de la ThemeExtension (que requeriría actualizar 
 **`AppCard`:**
 - Si `onTap != null`: mismo patrón de press-scale (`AppMotion`) y hover lift (`AppShadows` hover variant) que `AppButton`. Si `onTap == null`, sin cambios de comportamiento interactivo (sigue siendo una superficie estática).
 
-**`AppTextField`:**
-- Reemplazar el borde estático por una transición animada de color/grosor al enfocar (`AnimatedContainer` alrededor del `TextFormField`, o `FocusNode` + `AnimatedBuilder` para interpolar el color del borde con `AppMotion`).
+**`AppTextField`:** revisado — Flutter's `InputDecorator` ya anima internamente la transición de color/grosor del borde al enfocar (comportamiento nativo de Material, ~200ms). No hay gap real aquí; se descarta del alcance (evita duplicar una animación que el framework ya resuelve).
 
-**Resto de componentes** (`AppSkeleton`, `AppSnackbar`, `AppStatusBadge`, `AppBottomNavBar`, `AppTopNavBar`, `NotificationBellButton`, `AnimatedCounter`, `AppEmptyState`): pasar sus duraciones/curvas hardcodeadas a `AppMotion` donde aplique (p.ej. `AnimatedCounter` usa `AppMotion` en vez de `Curves.easeOut` inline; `AppSnackbar` usa `AppMotion.spring` para su entrada si el override es sencillo vía `AnimationStyle`). Ningún cambio de layout/color en estos — solo consolidar la fuente de curvas/duraciones. `AppStatusBadge` no es tappable, así que no gana press/hover.
+**`AnimatedCounter`:** es el único componente restante con una curva propia hardcodeada (`Curves.easeOut` en `lib/core/widgets/animated_counter.dart:36,48`, fuera de cualquier token). Se reemplaza por `AppTransitions.defaultCurve` para que no haya una segunda fuente de verdad de curvas.
+
+**Resto de componentes** (`AppSkeleton`, `AppSnackbar`, `AppStatusBadge`, `AppBottomNavBar`, `AppTopNavBar`, `NotificationBellButton`, `AppEmptyState`): revisados — no tienen curvas/duraciones propias que consolidar (son estáticos o delegan su animación a un paquete externo como `shimmer`, o al mecanismo nativo de `SnackBar`/`NavigationBar`). Quedan **fuera de alcance** de la Fase 0; no se les agrega motion nuevo porque no hay un gap concreto que lo justifique (YAGNI) — cualquier necesidad real de motion ahí se evaluará en las fases por módulo, en el contexto de la pantalla que los usa.
 
 ### Fuera de alcance (explícito)
 
@@ -70,22 +70,21 @@ Esto evita expandir el esquema de la ThemeExtension (que requeriría actualizar 
 
 No existen golden tests en el repo (`test/` solo tiene `widget_test.dart` genérico). Para cada componente modificado con nueva interacción (press-scale, hover, foco animado), TDD con widget tests de **comportamiento**, no de píxeles:
 
-- `AppButton`: test que hace `tester.press`/`sendEventToBinding` con `tapDown` y verifica que el `Transform.scale`/`AnimatedScale` alcanza `AppMotion.pressedScale`; en `tapUp` vuelve a `1.0`.
-- `AppCard` (con `onTap`): mismo patrón.
-- `AppTextField`: test que da foco (`FocusNode.requestFocus()`) y verifica que el color de borde interpola hacia `colors.primary`.
+- `AppButton`: test que hace `tester.startGesture` (tapDown) y verifica que el `AnimatedScale` alcanza `AppMotion.pressedScale`; al soltar (tapUp) vuelve a `1.0`.
+- `AppCard` (con `onTap`): mismo patrón; y un test que confirma que sin `onTap` no existe `AnimatedScale` (sigue siendo estático).
+- `AnimatedCounter`: test que verifica que la `CurvedAnimation` usa `AppTransitions.defaultCurve`.
 
 Verificación final de la fase:
 1. `flutter analyze` sin warnings nuevos.
 2. `dart format .` (regla del proyecto, `CONVENTIONS.md` §4).
 3. Todos los tests existentes + los nuevos pasan.
-4. Corrida manual con `flutter run -d chrome` sobre `dashboard_screen` y `user_profile_screen` (alto uso de `AppButton`/`AppCard`/`AppTextField`) para confirmar que no hay regresión visual — captura de pantalla antes/después.
+4. Corrida manual con `flutter run -d chrome` sobre `dashboard_screen` y `user_profile_screen` (alto uso de `AppButton`/`AppCard`) para confirmar que no hay regresión visual — captura de pantalla antes/después.
 
 ## Criterio de éxito
 
 - `AppMotion` existe y es la única fuente de curvas/duraciones de interacción para los widgets de `lib/core/widgets/`.
 - `AppButton` y `AppCard` responden visualmente a press (scale) y, en web/desktop, a hover (lift).
 - El shadow de `AppButton` se renderiza correctamente (bug fix).
-- `AppTextField` anima su borde al enfocar.
 - Cero regresiones: todos los tests pasan, `flutter analyze` limpio, las 36 pantallas (que consumen estos widgets) siguen compilando y renderizando sin cambios de layout no intencionados.
 - La marca (colores, tipografía) es visualmente idéntica a antes — un usuario no debería notar "rediseño", sino "se siente más pulido".
 
