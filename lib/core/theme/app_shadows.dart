@@ -17,6 +17,16 @@ class AppShadows {
     ),
   ];
 
+  /// Elevación en hover para superficies tappables (puntero real).
+  /// Entre [lightMd] y [lightLg].
+  static List<BoxShadow> lightHover = [
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.10),
+      blurRadius: 14,
+      offset: const Offset(0, 6),
+    ),
+  ];
+
   static List<BoxShadow> lightLg = [
     BoxShadow(
       color: Colors.black.withValues(alpha: 0.12),
@@ -38,6 +48,16 @@ class AppShadows {
       color: Colors.black.withValues(alpha: 0.3),
       blurRadius: 10,
       offset: const Offset(0, 4),
+    ),
+  ];
+
+  /// Elevación en hover para superficies tappables (puntero real).
+  /// Entre [darkMd] y [darkLg].
+  static List<BoxShadow> darkHover = [
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.35),
+      blurRadius: 14,
+      offset: const Offset(0, 6),
     ),
   ];
 
