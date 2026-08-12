@@ -121,7 +121,11 @@ class AppPalette {
   static const Color lightSecondary = Color(0xFF81E6D9);
   static const Color lightSurface = Color(0xFFF7F6F8);
   static const Color lightSurfaceContainer = Color(0xFFEEEDF0);
-  static const Color lightError = Color(0xFFFC8181);
+  // Antes: static const Color lightError = Color(0xFFFC8181);
+  // 2.27:1 sobre lightSurface — falla el 3:1 de WCAG AA para glifo grande.
+  // Un escalón más oscuro en la misma familia de tono (rojo coral cálido,
+  // hue 0°): 3.17:1.
+  static const Color lightError = Color(0xFFE85D5D);
   static const Color lightWarning = Color(0xFFF6AD55);
   static const Color lightSuccess = Color(0xFF48BB78);
   static const Color lightTextPrimary = Color(0xFF0F172A);
