@@ -103,6 +103,12 @@ class AppColors extends ThemeExtension<AppColors> {
       )!,
     );
   }
+
+  /// Overlay derivado de [primary] para estado hover (puntero real).
+  Color get hoverOverlay => primary.withValues(alpha: 0.06);
+
+  /// Overlay derivado de [primary] para estado de press.
+  Color get pressedOverlay => primary.withValues(alpha: 0.12);
 }
 
 extension AppColorsExtension on BuildContext {
@@ -119,7 +125,11 @@ class AppPalette {
   static const Color lightWarning = Color(0xFFF6AD55);
   static const Color lightSuccess = Color(0xFF48BB78);
   static const Color lightTextPrimary = Color(0xFF0F172A);
-  static const Color lightTextSecondary = Color(0xFF64748B);
+  // Antes: static const Color lightTextSecondary = Color(0xFF64748B);
+  // 4.42:1 sobre lightSurface y 4.08:1 sobre lightSurfaceContainer — falla
+  // WCAG AA. Un escalón más oscuro en la misma familia de tono: 5.05:1 y
+  // 4.67:1 respectivamente.
+  static const Color lightTextSecondary = Color(0xFF5B6B80);
   static const Color lightOnPrimary = Colors.white;
   static const Color lightOnSecondary = Color(0xFF0F172A);
   static const Color lightSurfaceVariant = Color(0xFFE2E8F0);
