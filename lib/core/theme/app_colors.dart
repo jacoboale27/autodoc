@@ -126,8 +126,15 @@ class AppPalette {
   // Un escalón más oscuro en la misma familia de tono (rojo coral cálido,
   // hue 0°): 3.17:1.
   static const Color lightError = Color(0xFFE85D5D);
-  static const Color lightWarning = Color(0xFFF6AD55);
-  static const Color lightSuccess = Color(0xFF48BB78);
+  // Antes: static const Color lightWarning = Color(0xFFF6AD55);
+  // 1.77:1 sobre lightSurface — falla el 3:1 de WCAG AA para glifo grande.
+  // Un escalón más oscuro en la misma familia de tono (ámbar/naranja,
+  // hue ~33°): 3.27:1.
+  static const Color lightWarning = Color(0xFFC17817);
+  // Antes: static const Color lightSuccess = Color(0xFF48BB78);
+  // 2.25:1 sobre lightSurface — falla el 3:1 de WCAG AA para glifo grande.
+  // Un escalón más oscuro en la misma familia de tono (verde): 4.22:1.
+  static const Color lightSuccess = Color(0xFF2F855A);
   static const Color lightTextPrimary = Color(0xFF0F172A);
   // Antes: static const Color lightTextSecondary = Color(0xFF64748B);
   // 4.42:1 sobre lightSurface y 4.08:1 sobre lightSurfaceContainer — falla
