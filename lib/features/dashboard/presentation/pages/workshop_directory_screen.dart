@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/features/dashboard/data/services/workshop_service.dart';
 import 'package:autodoc/core/models/user_model.dart';
@@ -13,6 +12,12 @@ import 'package:autodoc/core/widgets/app_scaffold.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_shadows.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/app_empty_state.dart';
+import 'package:autodoc/core/widgets/app_grid.dart';
+import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_skeleton.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 
@@ -254,47 +259,65 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                     }).toList();
                   }
 
-                  if (_showMap) {
-                    return _buildMapView(items, colors, isDark);
-                  }
-
-                  if (items.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.search_off,
-                            size: Responsive.iconSize(context, 48),
-                            color: colors.textSecondary.withValues(alpha: 0.4),
+                  final listPanel = items.isEmpty
+                      ? Center(
+                          child: AppEmptyState(
+                            icon: Icons.search_off,
+                            title: context.l10n.wdNoWorkshopsFound,
+                            description:
+                                'Prueba ajustando la búsqueda o los filtros.',
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            context.l10n.wdNoWorkshopsFound,
-                            style: TextStyle(
-                              color: colors.textSecondary,
-                              fontSize: Responsive.fontSize(context, 16),
+                        )
+                      : SingleChildScrollView(
+                          padding: EdgeInsets.symmetric(
+                            vertical: Responsive.padding(context, 16),
+                          ).copyWith(bottom: 100),
+                          child: AppPageBody(
+                            child: AppGrid(
+                              compactColumns: 1,
+                              mediumColumns: 1,
+                              expandedColumns: 1,
+                              largeColumns: 2,
+                              childAspectRatio: 1.1,
+                              children: items
+                                  .map(
+                                    (item) => _buildWorkshopCard(
+                                      tallerId: item['id'],
+                                      data: item['data'],
+                                      colors: colors,
+                                      isDark: isDark,
+                                      distance: item['distance'],
+                                    ),
+                                  )
+                                  .toList(),
                             ),
                           ),
-                        ],
-                      ),
-                    );
-                  }
+                        );
 
-                  return ListView.builder(
-                    padding: EdgeInsets.all(
-                      Responsive.padding(context, 16),
-                    ).copyWith(bottom: 100),
-                    itemCount: items.length,
-                    itemBuilder: (context, index) {
-                      final item = items[index];
-                      return _buildWorkshopCard(
-                        tallerId: item['id'],
-                        data: item['data'],
-                        colors: colors,
-                        isDark: isDark,
-                        distance: item['distance'],
+                  final mapPanel = _buildMapView(items, colors, isDark);
+
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final windowClass = AppBreakpoints.fromWidth(
+                        constraints.maxWidth,
                       );
+                      // Contrato del master §5.1: a partir de `expanded`
+                      // (>=840px) el split lista/mapa es persistente. Por
+                      // debajo, el botón de la cabecera sigue alternando la
+                      // vista completa entre lista y mapa (en vez de abrir
+                      // una hoja modal aparte): reutiliza el mismo mapPanel
+                      // sin duplicar su construcción en un segundo camino de
+                      // código que esta tarea no puede verificar visualmente.
+                      if (windowClass.isAtLeastExpanded) {
+                        return Row(
+                          children: [
+                            Expanded(flex: 4, child: listPanel),
+                            const VerticalDivider(width: 1),
+                            Expanded(flex: 6, child: mapPanel),
+                          ],
+                        );
+                      }
+                      return _showMap ? mapPanel : listPanel;
                     },
                   );
                 },
@@ -313,9 +336,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
       decoration: isDesktop
           ? null
           : BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF1E293B).withValues(alpha: 0.8)
-                  : Colors.white.withValues(alpha: 0.8),
+              color: colors.surfaceContainer.withValues(alpha: 0.8),
               border: Border(
                 bottom: BorderSide(
                   color: colors.primary.withValues(alpha: 0.1),
@@ -334,8 +355,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
             ),
             Text(
               context.l10n.wdTitle,
-              style: GoogleFonts.inter(
-                fontSize: Responsive.fontSize(context, 20),
+              style: AppTextStyles.titleLarge.copyWith(
                 fontWeight: FontWeight.bold,
                 color: colors.textPrimary,
               ),
@@ -351,13 +371,8 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _viewToggle(Icons.list, !_showMap, colors.primary, isDark),
-                _viewToggle(
-                  Icons.map_outlined,
-                  _showMap,
-                  colors.primary,
-                  isDark,
-                ),
+                _viewToggle(Icons.list, !_showMap, colors),
+                _viewToggle(Icons.map_outlined, _showMap, colors),
               ],
             ),
           ),
@@ -366,22 +381,20 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
     );
   }
 
-  Widget _viewToggle(IconData icon, bool isActive, Color primary, bool isDark) {
+  Widget _viewToggle(IconData icon, bool isActive, AppColors colors) {
     return GestureDetector(
       onTap: () => setState(() => _showMap = icon == Icons.map_outlined),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.all(Responsive.padding(context, 8)),
         decoration: BoxDecoration(
-          color: isActive ? primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          color: isActive ? colors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
         ),
         child: Icon(
           icon,
           size: Responsive.iconSize(context, 20),
-          color: isActive
-              ? Colors.white
-              : (isDark ? Colors.white54 : Colors.grey),
+          color: isActive ? colors.onPrimary : colors.textSecondary,
         ),
       ),
     );
@@ -390,23 +403,8 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
   Widget _buildSearchBar(AppColors colors, bool isDark) {
     return Padding(
       padding: EdgeInsets.all(Responsive.padding(context, 16)),
-      child: Container(
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF0F172A) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.1)
-                : Colors.grey[200]!,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 640),
         child: AppTextField(
           controller: _searchController,
           onChanged: (value) => setState(() => _searchQuery = value),
@@ -442,7 +440,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
               _workshopService.saveFilters();
             },
             isDark,
-            colors.textPrimary,
+            colors,
           ),
           const SizedBox(width: 8),
           _buildFilterChip(
@@ -451,7 +449,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
             _showFavorites,
             () => setState(() => _showFavorites = true),
             isDark,
-            colors.textPrimary,
+            colors,
           ),
           const SizedBox(width: 8),
           _buildFilterChip(
@@ -460,7 +458,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
             _minRating != null || _maxDistance != null || _specialty != null,
             _showFiltersSheet,
             isDark,
-            colors.textPrimary,
+            colors,
           ),
         ],
       ),
@@ -481,7 +479,6 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) {
         final colors = context.appColors;
-        final isDark = Theme.of(context).brightness == Brightness.dark;
 
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -490,7 +487,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                 bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                color: colors.surfaceContainer,
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(20),
                 ),
@@ -503,8 +500,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                   children: [
                     Text(
                       'Filtros Avanzados',
-                      style: GoogleFonts.inter(
-                        fontSize: Responsive.fontSize(context, 18),
+                      style: AppTextStyles.titleMedium.copyWith(
                         fontWeight: FontWeight.bold,
                         color: colors.textPrimary,
                       ),
@@ -519,7 +515,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                       min: 0,
                       max: 5,
                       divisions: 10,
-                      activeColor: Colors.amber,
+                      activeColor: colors.warning,
                       onChanged: (val) => setModalState(() => tempRating = val),
                     ),
                     const SizedBox(height: 16),
@@ -591,7 +587,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
     bool isSelected,
     VoidCallback onTap,
     bool isDark,
-    Color textColor,
+    AppColors colors,
   ) {
     return GestureDetector(
       onTap: onTap,
@@ -602,25 +598,15 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
         ),
         decoration: BoxDecoration(
           color: isSelected
-              ? (isDark
-                    ? Colors.blue.withValues(alpha: 0.2)
-                    : Colors.blue.withValues(alpha: 0.1))
-              : (isDark ? const Color(0xFF0F172A) : Colors.white),
+              ? colors.primary.withValues(alpha: isDark ? 0.2 : 0.1)
+              : colors.surfaceContainer,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: isSelected
-                ? Colors.blue
-                : (isDark
-                      ? Colors.white.withValues(alpha: 0.1)
-                      : Colors.grey[200]!),
+                ? colors.primary
+                : colors.outline.withValues(alpha: isDark ? 0.2 : 0.4),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: isDark ? AppShadows.darkSm : AppShadows.lightSm,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -628,14 +614,13 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
             Icon(
               icon,
               size: Responsive.iconSize(context, 16),
-              color: isSelected ? Colors.blue : textColor,
+              color: isSelected ? colors.primary : colors.textPrimary,
             ),
             const SizedBox(width: 8),
             Text(
               label,
-              style: TextStyle(
-                color: isSelected ? Colors.blue : textColor,
-                fontSize: Responsive.fontSize(context, 14),
+              style: AppTextStyles.labelLarge.copyWith(
+                color: isSelected ? colors.primary : colors.textPrimary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -644,7 +629,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
               Icon(
                 Icons.keyboard_arrow_down,
                 size: Responsive.iconSize(context, 16),
-                color: textColor,
+                color: colors.textPrimary,
               ),
             ],
           ],
@@ -734,16 +719,9 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
               vertical: Responsive.padding(context, 10),
             ),
             decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF1E1B2E).withValues(alpha: 0.9)
-                  : Colors.white.withValues(alpha: 0.9),
+              color: colors.surfaceContainer.withValues(alpha: 0.9),
               borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 10,
-                ),
-              ],
+              boxShadow: isDark ? AppShadows.darkMd : AppShadows.lightMd,
             ),
             child: Row(
               children: [
@@ -758,9 +736,8 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                     (markers.length - (_userPosition != null ? 1 : 0))
                         .toString(),
                   ),
-                  style: GoogleFonts.inter(
+                  style: AppTextStyles.labelLarge.copyWith(
                     fontWeight: FontWeight.w600,
-                    fontSize: Responsive.fontSize(context, 13),
                     color: colors.textPrimary,
                   ),
                 ),
@@ -770,8 +747,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                     context.l10n.wdNoLocationCount(
                       workshopsWithoutCoords.toString(),
                     ),
-                    style: GoogleFonts.inter(
-                      fontSize: Responsive.fontSize(context, 11),
+                    style: AppTextStyles.labelSmall.copyWith(
                       color: colors.textSecondary,
                     ),
                   ),
@@ -826,8 +802,8 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
           );
         }
       },
-      child: SizedBox(
-        width: 240,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 200, maxWidth: 280),
         child: AppCard(
           margin: const EdgeInsets.only(right: 12),
           padding: EdgeInsets.all(Responsive.padding(context, 14)),
@@ -840,44 +816,47 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                   Expanded(
                     child: Text(
                       name,
-                      style: GoogleFonts.inter(
+                      style: AppTextStyles.labelLarge.copyWith(
                         fontWeight: FontWeight.bold,
-                        fontSize: Responsive.fontSize(context, 14),
                         color: colors.textPrimary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: Responsive.padding(context, 5),
-                      vertical: Responsive.padding(context, 1),
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.amber[100],
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.star,
-                          size: Responsive.iconSize(context, 12),
-                          color: Colors.amber[700],
-                        ),
-                        const SizedBox(width: 2),
-                        Text(
-                          reviewsCount > 0
-                              ? rating.toStringAsFixed(1)
-                              : 'Nuevo',
-                          style: TextStyle(
-                            fontSize: Responsive.fontSize(context, 11),
-                            fontWeight: FontWeight.bold,
-                            color: Colors.amber[700],
+                  Semantics(
+                    label: reviewsCount > 0
+                        ? '${rating.toStringAsFixed(1)} de 5 estrellas'
+                        : 'Taller nuevo, sin calificación',
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: Responsive.padding(context, 5),
+                        vertical: Responsive.padding(context, 1),
+                      ),
+                      decoration: BoxDecoration(
+                        color: colors.warning.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.star,
+                            size: Responsive.iconSize(context, 12),
+                            color: colors.warning,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 2),
+                          Text(
+                            reviewsCount > 0
+                                ? rating.toStringAsFixed(1)
+                                : 'Nuevo',
+                            style: AppTextStyles.labelSmall.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: colors.warning,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -947,7 +926,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
             Container(
               height: 160,
               width: double.infinity,
-              color: isDark ? Colors.grey[800] : Colors.grey[200],
+              color: colors.surfaceContainer,
               child: imageUrl != null && imageUrl.toString().isNotEmpty
                   ? CachedNetworkImage(
                       imageUrl: imageUrl,
@@ -976,42 +955,45 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                       Expanded(
                         child: Text(
                           name,
-                          style: GoogleFonts.inter(
-                            fontSize: Responsive.fontSize(context, 18),
+                          style: AppTextStyles.titleMedium.copyWith(
                             fontWeight: FontWeight.bold,
                             color: colors.textPrimary,
                           ),
                         ),
                       ),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: Responsive.padding(context, 6),
-                          vertical: Responsive.padding(context, 2),
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.yellow[100],
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.star,
-                              size: Responsive.iconSize(context, 14),
-                              color: Colors.yellow[700],
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              reviewsCount > 0
-                                  ? rating.toStringAsFixed(1)
-                                  : 'Nuevo',
-                              style: TextStyle(
-                                fontSize: Responsive.fontSize(context, 12),
-                                fontWeight: FontWeight.bold,
-                                color: Colors.yellow[700],
+                      Semantics(
+                        label: reviewsCount > 0
+                            ? '${rating.toStringAsFixed(1)} de 5 estrellas'
+                            : 'Taller nuevo, sin calificación',
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: Responsive.padding(context, 6),
+                            vertical: Responsive.padding(context, 2),
+                          ),
+                          decoration: BoxDecoration(
+                            color: colors.warning.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.star,
+                                size: Responsive.iconSize(context, 14),
+                                color: colors.warning,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 4),
+                              Text(
+                                reviewsCount > 0
+                                    ? rating.toStringAsFixed(1)
+                                    : 'Nuevo',
+                                style: AppTextStyles.labelMedium.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: colors.warning,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -1087,9 +1069,9 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                     decoration: BoxDecoration(
                       border: Border(
                         top: BorderSide(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.1)
-                              : Colors.grey[200]!,
+                          color: colors.outline.withValues(
+                            alpha: isDark ? 0.2 : 0.4,
+                          ),
                         ),
                       ),
                     ),
