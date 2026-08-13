@@ -30,9 +30,20 @@ Future<void> pumpAtWidth(
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
 
+  // Un pumpWidget sobre el mismo tester con un MaterialApp/Theme distinto no
+  // siempre repropaga el nuevo brillo a los descendientes que ya leyeron
+  // Theme.of(context) en el árbol anterior (el Navigator interno de
+  // MaterialApp reutiliza su elemento). Desmontar del todo entre llamadas
+  // evita que un segundo pumpAtWidth con distinto brightness en el mismo
+  // test se quede con el tema del primero.
+  await tester.pumpWidget(const SizedBox.shrink());
+
+  final resolvedTheme = brightness == Brightness.dark
+      ? AppTheme.dark
+      : AppTheme.light;
   await tester.pumpWidget(
     MaterialApp(
-      theme: brightness == Brightness.dark ? AppTheme.dark : AppTheme.light,
+      theme: resolvedTheme,
       debugShowCheckedModeBanner: false,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
