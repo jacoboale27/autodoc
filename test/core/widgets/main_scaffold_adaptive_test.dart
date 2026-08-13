@@ -1,118 +1,10 @@
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';
-import 'package:autodoc/core/models/user_model.dart';
-import 'package:autodoc/core/providers/language_provider.dart';
-import 'package:autodoc/core/providers/notification_center_provider.dart';
-import 'package:autodoc/core/providers/theme_provider.dart';
-import 'package:autodoc/core/providers/user_profile_provider.dart';
-import 'package:autodoc/core/widgets/main_scaffold.dart';
 import 'package:autodoc/core/widgets/navigation/app_bottom_nav.dart';
 import 'package:autodoc/core/widgets/navigation/app_nav_rail.dart';
 import 'package:autodoc/core/widgets/app_top_nav_bar.dart';
-import 'package:autodoc/core/theme/app_theme.dart';
 
-/// Doble del provider de perfil que solo fija el rol.
-///
-/// **Implementa** `UserProfileProvider` en vez de extenderlo, y no es una
-/// preferencia de estilo: la clase real inicializa
-/// `final UserService _userService = UserService()` en la declaración del
-/// campo, y `UserService` hace `FirebaseFirestore.instance` en la suya.
-/// Extenderla ejecuta ambos inicializadores y **lanza** en un widget test sin
-/// `Firebase.initializeApp()`.
-class _FakeProfileProvider extends ChangeNotifier
-    implements UserProfileProvider {
-  _FakeProfileProvider(this.rol);
-  final String rol;
-
-  @override
-  UserModel? get userData => UserModel(
-    idUsuario: 'test-uid',
-    nombreCompleto: 'Ana Pérez',
-    correo: 'ana@example.com',
-    rol: rol,
-    fechaRegistro: DateTime(2026, 1, 1),
-  );
-
-  @override
-  bool get isLoading => false;
-  @override
-  bool get hasAttemptedFetch => true;
-  @override
-  String? get fetchedUserId => 'test-uid';
-  @override
-  String? get error => null;
-  @override
-  bool hasAttemptedFetchFor(String userId) => true;
-  @override
-  Future<void> fetchUserData(String userId) async {}
-  @override
-  Future<bool> updateProfile(
-    UserModel updatedUser, {
-    XFile? imageFile,
-    bool isNewUser = false,
-  }) async => true;
-  @override
-  void clearUserData() {}
-}
-
-Future<void> pumpShell(
-  WidgetTester tester, {
-  required double width,
-  required String rol,
-  String location = '/dashboard',
-}) async {
-  tester.view.devicePixelRatio = 1.0;
-  tester.view.physicalSize = Size(width, 900);
-  addTearDown(tester.view.resetPhysicalSize);
-  addTearDown(tester.view.resetDevicePixelRatio);
-
-  final router = GoRouter(
-    initialLocation: location,
-    routes: [
-      ShellRoute(
-        builder: (context, state, child) => MainScaffold(child: child),
-        routes: [
-          for (final path in [
-            '/dashboard',
-            '/garage',
-            '/chat_list',
-            '/workshop_directory',
-            '/user_profile',
-          ])
-            GoRoute(
-              path: path,
-              builder: (context, state) => Center(child: Text('body $path')),
-            ),
-        ],
-      ),
-    ],
-  );
-  addTearDown(router.dispose);
-
-  await tester.pumpWidget(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider<UserProfileProvider>.value(
-          value: _FakeProfileProvider(rol),
-        ),
-        ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider<LanguageProvider>(
-          create: (_) => LanguageProvider(),
-        ),
-        ChangeNotifierProvider<NotificationCenterProvider>(
-          create: (_) =>
-              NotificationCenterProvider(firestore: FakeFirebaseFirestore()),
-        ),
-      ],
-      child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
-    ),
-  );
-  await tester.pumpAndSettle();
-}
+import '../../support/shell_harness.dart';
 
 void main() {
   group('rol Propietario', () {
@@ -164,8 +56,7 @@ void main() {
         768.0,
         840.0,
         1024.0,
-        // 1200 se añade en la Task 6: AppTopNavBar desborda ahí hasta que esa
-        // tarea la envuelva en un SingleChildScrollView (ver plan Fase 2).
+        1200.0,
         1440.0,
       ]) {
         await pumpShell(tester, width: width, rol: 'Propietario');
