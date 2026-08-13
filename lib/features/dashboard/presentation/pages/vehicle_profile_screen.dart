@@ -5,7 +5,6 @@ import '../widgets/expense_summary_card.dart';
 import '../../data/services/vehicle_service.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:autodoc/core/widgets/vehicle_image_widget.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -16,9 +15,17 @@ import '../widgets/license_plate_widget.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_severity.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/app_grid.dart';
+import 'package:autodoc/core/widgets/app_page_body.dart';
+import 'package:autodoc/core/widgets/app_section_header.dart';
 import 'package:autodoc/core/widgets/app_scaffold.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/widgets/missing_argument_screen.dart';
 import '../widgets/share_vehicle_sheet.dart';
 import 'package:autodoc/core/utils/responsive.dart';
@@ -110,22 +117,31 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
           _buildHeader(context, colors, vehicle),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 100),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeroImage(vehicle, colors),
-                  _buildVehicleIdentity(vehicle, colors),
-                  _buildExpenseSummary(vehicle, colors),
-                  _buildTechnicalDetails(vehicle, colors),
-                  _buildNotesSection(vehicle, colors),
-                  VehicleGalleryWidget(
-                    vehicleId: vehicle.idVehiculo,
-                    colors: colors,
-                  ),
-                  _buildDocumentationStatus(vehicle, colors),
-                  _buildQuickActions(vehicle, colors),
-                ],
+              padding: const EdgeInsets.only(bottom: AppSpacing.xxxl * 2),
+              child: AppPageBody(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeroImage(vehicle, colors),
+                    const SizedBox(height: AppSpacing.base),
+                    _buildVehicleIdentity(vehicle, colors),
+                    const SizedBox(height: AppSpacing.base),
+                    _buildExpenseSummary(vehicle, colors),
+                    const SizedBox(height: AppSpacing.base),
+                    _buildTechnicalDetails(vehicle, colors),
+                    const SizedBox(height: AppSpacing.xxl),
+                    _buildNotesSection(vehicle, colors),
+                    const SizedBox(height: AppSpacing.xxl),
+                    VehicleGalleryWidget(
+                      vehicleId: vehicle.idVehiculo,
+                      colors: colors,
+                    ),
+                    const SizedBox(height: AppSpacing.xxl),
+                    _buildDocumentationStatus(vehicle, colors),
+                    const SizedBox(height: AppSpacing.xxl),
+                    _buildQuickActions(vehicle, colors),
+                  ],
+                ),
               ),
             ),
           ),
@@ -150,7 +166,6 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
           ),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             IconButton(
               onPressed: () => context.pop(),
@@ -160,12 +175,16 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                 size: 20,
               ),
             ),
-            Text(
-              context.l10n.vpProfileTitle,
-              style: GoogleFonts.inter(
-                fontSize: Responsive.fontSize(context, 18),
-                fontWeight: FontWeight.bold,
-                color: colors.textPrimary,
+            Expanded(
+              child: Text(
+                context.l10n.vpProfileTitle,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.titleLarge.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colors.textPrimary,
+                ),
               ),
             ),
             PopupMenuButton<String>(
@@ -206,11 +225,11 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                   value: 'delete',
                   child: Row(
                     children: [
-                      const Icon(Icons.delete, color: Colors.red, size: 20),
+                      Icon(Icons.delete, color: colors.error, size: 20),
                       const SizedBox(width: 8),
                       Text(
                         context.l10n.vpDeleteVehicle,
-                        style: const TextStyle(color: Colors.red),
+                        style: TextStyle(color: colors.error),
                       ),
                     ],
                   ),
@@ -224,67 +243,67 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
   }
 
   Widget _buildHeroImage(VehicleModel vehicle, AppColors colors) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: AppCard(
-        padding: EdgeInsets.zero,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: SizedBox(
-            height: 220,
-            width: double.infinity,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Hero(
-                  tag: 'vehicle_image_${vehicle.idVehiculo}',
-                  child: VehicleImageWidget(
-                    imageUrl: vehicle.fotoUrl,
-                    fit: BoxFit.cover,
-                  ),
+    return AppCard(
+      margin: EdgeInsets.zero,
+      padding: EdgeInsets.zero,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Hero(
+                tag: 'vehicle_image_${vehicle.idVehiculo}',
+                child: VehicleImageWidget(
+                  imageUrl: vehicle.fotoUrl,
+                  fit: BoxFit.cover,
                 ),
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.7),
-                        ],
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: colors.secondary,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            context.l10n.vpActiveStatus,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+              ),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        // Degradado de legibilidad sobre foto: no es un
+                        // color de marca. textPrimary en light ya es casi
+                        // negro; en dark, la superficie oscura de la propia
+                        // app cumple el mismo papel.
+                        colors.textPrimary.withValues(alpha: 0.7),
                       ],
                     ),
                   ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm + 2,
+                          vertical: AppSpacing.xs,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colors.secondary,
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                        ),
+                        child: Text(
+                          context.l10n.vpActiveStatus,
+                          style: AppTextStyles.labelSmall.copyWith(
+                            color: colors.onSecondary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -292,99 +311,97 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
   }
 
   Widget _buildVehicleIdentity(VehicleModel vehicle, AppColors colors) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${vehicle.marca} ${vehicle.modelo}',
-                  style: GoogleFonts.inter(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: colors.textPrimary,
-                  ),
-                ),
-                Text(
-                  context.l10n.vpOwnerPersonal,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: colors.textSecondary,
-                  ),
-                ),
-              ],
+    return Wrap(
+      spacing: AppSpacing.base,
+      runSpacing: AppSpacing.md,
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.end,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${vehicle.marca} ${vehicle.modelo}',
+              style: AppTextStyles.headlineSmall.copyWith(
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+              ),
+            ),
+            Text(
+              context.l10n.vpOwnerPersonal,
+              style: AppTextStyles.bodyMedium.copyWith(
+                fontWeight: FontWeight.w500,
+                color: colors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 140, maxHeight: 80),
+          child: AspectRatio(
+            aspectRatio: 140 / 80,
+            child: ElSalvadorLicensePlate(
+              placa: vehicle.placa,
+              width: 140,
+              height: 80,
             ),
           ),
-          ElSalvadorLicensePlate(placa: vehicle.placa, width: 140, height: 80),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildExpenseSummary(VehicleModel vehicle, AppColors colors) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-      child: FutureBuilder<Map<String, dynamic>>(
-        future: VehicleService().getExpenseSummary(vehicle.idVehiculo),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError ||
-              !snapshot.hasData ||
-              snapshot.data!.isEmpty) {
-            return const SizedBox.shrink();
-          }
-          return ExpenseSummaryCard(summary: snapshot.data!);
-        },
-      ),
+    return FutureBuilder<Map<String, dynamic>>(
+      future: VehicleService().getExpenseSummary(vehicle.idVehiculo),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return ExpenseSummaryCard(summary: snapshot.data!);
+      },
     );
   }
 
   Widget _buildTechnicalDetails(VehicleModel vehicle, AppColors colors) {
-    return Padding(
-      padding: EdgeInsets.all(Responsive.padding(context, 20)),
-      child: GridView.count(
-        crossAxisCount: Responsive.isDesktop(context) ? 4 : 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        mainAxisSpacing: Responsive.padding(context, 16),
-        crossAxisSpacing: Responsive.padding(context, 16),
-        childAspectRatio: Responsive.isDesktop(context) ? 2.0 : 1.25,
-        children: [
-          _buildDetailItem(
-            Icons.calendar_today,
-            context.l10n.vpYear,
-            vehicle.anio?.toString() ?? 'N/A',
-            colors,
-          ),
-          _buildDetailItem(
-            Icons.palette,
-            context.l10n.vpColor,
-            vehicle.color ?? 'N/A',
-            colors,
-          ),
-          _buildDetailItem(
-            Icons.speed,
-            context.l10n.vpMileage,
-            '${vehicle.kilometrajeActual} ${context.l10n.vpKm}',
-            colors,
-            onTap: () => _showEditMileageDialog(context, vehicle, colors),
-          ),
-          _buildDetailItem(
-            Icons.directions_car,
-            context.l10n.vpBrand,
-            vehicle.marca ?? 'N/A',
-            colors,
-          ),
-        ],
-      ),
+    return AppGrid(
+      compactColumns: 2,
+      mediumColumns: 2,
+      expandedColumns: 3,
+      largeColumns: 4,
+      spacing: AppSpacing.base,
+      childAspectRatio: 1.35,
+      children: [
+        _buildDetailItem(
+          Icons.calendar_today,
+          context.l10n.vpYear,
+          vehicle.anio?.toString() ?? 'N/A',
+          colors,
+        ),
+        _buildDetailItem(
+          Icons.palette,
+          context.l10n.vpColor,
+          vehicle.color ?? 'N/A',
+          colors,
+        ),
+        _buildDetailItem(
+          Icons.speed,
+          context.l10n.vpMileage,
+          '${vehicle.kilometrajeActual} ${context.l10n.vpKm}',
+          colors,
+          onTap: () => _showEditMileageDialog(context, vehicle, colors),
+        ),
+        _buildDetailItem(
+          Icons.directions_car,
+          context.l10n.vpBrand,
+          vehicle.marca ?? 'N/A',
+          colors,
+        ),
+      ],
     );
   }
 
@@ -421,25 +438,23 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                   ),
               ],
             ),
-            SizedBox(height: Responsive.padding(context, 6)),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: Responsive.fontSize(context, 11),
+              style: AppTextStyles.labelSmall.copyWith(
                 color: colors.textSecondary,
                 fontWeight: FontWeight.w500,
                 height: 1.2,
               ),
             ),
-            SizedBox(height: Responsive.padding(context, 2)),
+            const SizedBox(height: AppSpacing.xs / 2),
             Text(
               value,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: Responsive.fontSize(context, 14),
+              style: AppTextStyles.bodyMedium.copyWith(
                 fontWeight: FontWeight.bold,
                 color: colors.textPrimary,
                 height: 1.2,
@@ -452,164 +467,138 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
   }
 
   Widget _buildNotesSection(VehicleModel vehicle, AppColors colors) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                context.l10n.vpQuickNotes,
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: colors.textPrimary,
-                ),
-              ),
-              IconButton(
-                icon: Icon(Icons.add, color: colors.primary),
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (ctx) {
-                      final controller = TextEditingController();
-                      return AlertDialog(
-                        title: const Text('Nueva Nota'),
-                        content: TextField(
-                          controller: controller,
-                          decoration: const InputDecoration(
-                            hintText: 'Escribe tu nota aquí...',
-                          ),
-                          maxLines: 3,
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('Cancelar'),
-                          ),
-                          TextButton(
-                            onPressed: () async {
-                              final text = controller.text.trim();
-                              if (text.isNotEmpty) {
-                                final uid = context
-                                    .read<AuthSessionProvider>()
-                                    .user
-                                    ?.uid;
-                                final provider = context
-                                    .read<VehicleProvider>();
-                                await VehicleService().addNote(
-                                  vehicle.idVehiculo,
-                                  text,
-                                );
-                                if (uid != null) {
-                                  provider.fetchVehicles(uid);
-                                }
-                              }
-                              if (ctx.mounted) {
-                                Navigator.pop(ctx);
-                              }
-                            },
-                            child: const Text('Guardar'),
-                          ),
-                        ],
-                      );
-                    },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppSectionHeader(
+          title: context.l10n.vpQuickNotes,
+          trailing: IconButton(
+            icon: Icon(Icons.add, color: colors.primary),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (ctx) {
+                  final controller = TextEditingController();
+                  return AlertDialog(
+                    title: const Text('Nueva Nota'),
+                    content: AppTextField(
+                      controller: controller,
+                      label: 'Nota',
+                      hintText: 'Escribe tu nota aquí...',
+                      maxLines: 3,
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Cancelar'),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          final text = controller.text.trim();
+                          if (text.isNotEmpty) {
+                            final uid = context
+                                .read<AuthSessionProvider>()
+                                .user
+                                ?.uid;
+                            final provider = context.read<VehicleProvider>();
+                            await VehicleService().addNote(
+                              vehicle.idVehiculo,
+                              text,
+                            );
+                            if (uid != null) {
+                              provider.fetchVehicles(uid);
+                            }
+                          }
+                          if (ctx.mounted) {
+                            Navigator.pop(ctx);
+                          }
+                        },
+                        child: const Text('Guardar'),
+                      ),
+                    ],
                   );
                 },
-              ),
-            ],
+              );
+            },
           ),
-          if (vehicle.notas.isEmpty)
-            Text(
-              'No hay notas registradas.',
-              style: TextStyle(color: colors.textSecondary),
-            )
-          else
-            ...vehicle.notas.map(
-              (nota) => Dismissible(
-                key: Key(nota),
-                direction: DismissDirection.endToStart,
-                onDismissed: (direction) async {
-                  final uid = context.read<AuthSessionProvider>().user?.uid;
-                  final provider = context.read<VehicleProvider>();
-                  await VehicleService().removeNote(vehicle.idVehiculo, nota);
-                  if (uid != null) {
-                    provider.fetchVehicles(uid);
-                  }
-                },
-                background: Container(
-                  color: colors.error,
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.only(right: 16.0),
-                  child: const Icon(Icons.delete, color: Colors.white),
-                ),
-                child: Card(
-                  margin: const EdgeInsets.only(bottom: 8.0),
-                  color: isDark(context)
-                      ? colors.surfaceContainer
-                      : Colors.grey.shade50,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.sticky_note_2,
-                          color: colors.primary,
-                          size: 20,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        if (vehicle.notas.isEmpty)
+          Text(
+            'No hay notas registradas.',
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: colors.textSecondary,
+            ),
+          )
+        else
+          ...vehicle.notas.map(
+            (nota) => Dismissible(
+              key: Key(nota),
+              direction: DismissDirection.endToStart,
+              onDismissed: (direction) async {
+                final uid = context.read<AuthSessionProvider>().user?.uid;
+                final provider = context.read<VehicleProvider>();
+                await VehicleService().removeNote(vehicle.idVehiculo, nota);
+                if (uid != null) {
+                  provider.fetchVehicles(uid);
+                }
+              },
+              background: Container(
+                color: colors.error,
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.only(right: AppSpacing.base),
+                child: Icon(Icons.delete, color: colors.onPrimary),
+              ),
+              child: AppCard(
+                margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Row(
+                  children: [
+                    Icon(Icons.sticky_note_2, color: colors.primary, size: 20),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Text(
+                        nota,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: colors.textPrimary,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            nota,
-                            style: TextStyle(color: colors.textPrimary),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 
-  bool isDark(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark;
-
   Widget _buildDocumentationStatus(VehicleModel vehicle, AppColors colors) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            context.l10n.vpDocAndAlerts,
-            style: GoogleFonts.inter(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: colors.textPrimary,
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.l10n.vpDocAndAlerts,
+          style: AppTextStyles.titleMedium.copyWith(
+            fontWeight: FontWeight.bold,
+            color: colors.textPrimary,
           ),
-          const SizedBox(height: 12),
-          _buildDocumentationStatusItem(
-            context.l10n.vpCirculationCard,
-            vehicle.vencimientoTarjeta,
-            colors,
-            () => _showUpdateDateDialog(context, vehicle, true),
-          ),
-          const SizedBox(height: 12),
-          _buildDocumentationStatusItem(
-            context.l10n.vpSoatInsurance,
-            vehicle.vencimientoSoat,
-            colors,
-            () => _showUpdateDateDialog(context, vehicle, false),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _buildDocumentationStatusItem(
+          context.l10n.vpCirculationCard,
+          vehicle.vencimientoTarjeta,
+          colors,
+          () => _showUpdateDateDialog(context, vehicle, true),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _buildDocumentationStatusItem(
+          context.l10n.vpSoatInsurance,
+          vehicle.vencimientoSoat,
+          colors,
+          () => _showUpdateDateDialog(context, vehicle, false),
+        ),
+      ],
     );
   }
 
@@ -624,7 +613,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
         icon: Icons.help_outline,
         title: title,
         subtitle: context.l10n.vpDateNotRegistered,
-        color: Colors.grey,
+        color: colors.textSecondary,
         colors: colors,
         actionLabel: context.l10n.vpUpdate,
         onActionPressed: onUpdate,
@@ -635,35 +624,25 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     final difference = expiryDate.difference(now).inDays;
     final formattedDate = DateFormat('dd MMM yyyy').format(expiryDate);
 
-    Color statusColor;
-    IconData icon;
-    String statusText;
-
-    if (difference < 0) {
-      statusColor = colors.error;
-      icon = Icons.error_outline;
-      statusText = context.l10n.vpExpiredOn(formattedDate);
-    } else if (difference < 30) {
-      statusColor = colors.warning;
-      icon = Icons.warning_amber_rounded;
-      statusText = context.l10n.vpExpiresInDays(
+    final severity = AppSeverity.forExpiry(
+      difference,
+      colors,
+      expiredLabel: context.l10n.vpExpiredOn(formattedDate),
+      soonLabel: context.l10n.vpExpiresInDays(
         difference.toString(),
         formattedDate,
-      );
-    } else {
-      statusColor = colors.secondary;
-      icon = Icons.verified_user_outlined;
-      statusText = context.l10n.vpExpiresInDays(
+      ),
+      okLabel: context.l10n.vpExpiresInDays(
         difference.toString(),
         formattedDate,
-      );
-    }
+      ),
+    );
 
     return _buildStatusAlert(
-      icon: icon,
+      icon: severity.icon,
       title: title,
-      subtitle: statusText,
-      color: statusColor,
+      subtitle: severity.label,
+      color: severity.color,
       colors: colors,
       isVerified: difference >= 30,
       actionLabel: difference < 30 ? context.l10n.vpRenew : null,
@@ -682,35 +661,33 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     VoidCallback? onActionPressed,
   }) {
     return AppCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.base),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(AppSpacing.sm + 2),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 20),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSpacing.base),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: TextStyle(
+                  style: AppTextStyles.bodyMedium.copyWith(
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
                     color: colors.textPrimary,
                   ),
                 ),
                 Text(
                   subtitle,
-                  style: TextStyle(
+                  style: AppTextStyles.labelMedium.copyWith(
                     color: color,
-                    fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -718,11 +695,13 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
             ),
           ),
           if (actionLabel != null)
-            AppButton(
-              text: actionLabel,
-              onPressed: onActionPressed,
-              type: AppButtonType.primary,
-              // Overriding theme primary color if necessary, but AppButton uses colors.primary
+            Flexible(
+              child: AppButton(
+                text: actionLabel,
+                size: AppButtonSize.small,
+                onPressed: onActionPressed,
+                type: AppButtonType.primary,
+              ),
             )
           else if (isVerified)
             Icon(Icons.check_circle, color: color, size: 20),
@@ -739,21 +718,14 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     final vehicleProvider = context.read<VehicleProvider>();
     final l10n = context.l10n;
 
+    // Sin builder: el ThemeData de la app ya define el colorScheme correcto
+    // para cada modo. El builder anterior lo pisaba con una versión clara
+    // fija, así que el selector salía en claro incluso en dark mode.
     final DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 3650)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Theme.of(context).colorScheme.primary,
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
 
     if (pickedDate != null && context.mounted) {
@@ -776,62 +748,58 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
   }
 
   Widget _buildQuickActions(VehicleModel vehicle, AppColors colors) {
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            context.l10n.vpQuickActions,
-            style: GoogleFonts.inter(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: colors.textPrimary,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.l10n.vpQuickActions,
+          style: AppTextStyles.titleMedium.copyWith(
+            fontWeight: FontWeight.bold,
+            color: colors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.base),
+        Row(
+          children: [
+            _buildActionButton(
+              Icons.history,
+              context.l10n.vpHistory,
+              colors.primary,
+              colors,
+              onTap: () {
+                context.push('/service_history/${vehicle.idVehiculo}');
+              },
             ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _buildActionButton(
-                Icons.history,
-                context.l10n.vpHistory,
-                colors.primary,
-                colors,
-                onTap: () {
-                  context.push('/service_history/${vehicle.idVehiculo}');
-                },
-              ),
-              const SizedBox(width: 12),
-              _buildActionButton(
-                Icons.build,
-                context.l10n.vpServices,
-                colors.secondary,
-                colors,
-                onTap: () {
-                  // '/workshop_directory' vive dentro del ShellRoute
-                  // principal; empujarlo con push() desde una pantalla
-                  // fuera del shell (como esta) crea una segunda instancia
-                  // del shell con el mismo GlobalKey de Navigator interno,
-                  // lo que dispara el assert de key duplicada en
-                  // HeroControllerScope. go() reemplaza la ubicación en
-                  // vez de apilar una segunda instancia del shell.
-                  context.go('/workshop_directory');
-                },
-              ),
-              const SizedBox(width: 12),
-              _buildActionButton(
-                Icons.description,
-                context.l10n.vpPapers,
-                colors.warning,
-                colors,
-                onTap: () {
-                  context.push('/alerts');
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
+            const SizedBox(width: AppSpacing.md),
+            _buildActionButton(
+              Icons.build,
+              context.l10n.vpServices,
+              colors.secondary,
+              colors,
+              onTap: () {
+                // '/workshop_directory' vive dentro del ShellRoute
+                // principal; empujarlo con push() desde una pantalla
+                // fuera del shell (como esta) crea una segunda instancia
+                // del shell con el mismo GlobalKey de Navigator interno,
+                // lo que dispara el assert de key duplicada en
+                // HeroControllerScope. go() reemplaza la ubicación en
+                // vez de apilar una segunda instancia del shell.
+                context.go('/workshop_directory');
+              },
+            ),
+            const SizedBox(width: AppSpacing.md),
+            _buildActionButton(
+              Icons.description,
+              context.l10n.vpPapers,
+              colors.warning,
+              colors,
+              onTap: () {
+                context.push('/alerts');
+              },
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -845,17 +813,17 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     return Expanded(
       child: AppCard(
         padding: EdgeInsets.zero,
+        margin: EdgeInsets.zero,
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.base),
           child: Column(
             children: [
               Icon(icon, color: color, size: 24),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               Text(
                 label,
-                style: TextStyle(
-                  fontSize: 12,
+                style: AppTextStyles.labelMedium.copyWith(
                   fontWeight: FontWeight.w600,
                   color: colors.textPrimary,
                 ),
@@ -883,7 +851,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
         backgroundColor: colors.surface,
         title: Text(
           context.l10n.vpUpdateMileage,
-          style: GoogleFonts.inter(
+          style: AppTextStyles.titleMedium.copyWith(
             fontWeight: FontWeight.bold,
             color: colors.textPrimary,
           ),
@@ -992,7 +960,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
           backgroundColor: colors.surface,
           title: Text(
             context.l10n.vpDeleteVehicle,
-            style: GoogleFonts.inter(
+            style: AppTextStyles.titleMedium.copyWith(
               fontWeight: FontWeight.bold,
               color: colors.error,
             ),

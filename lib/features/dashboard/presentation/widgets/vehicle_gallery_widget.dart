@@ -19,19 +19,24 @@ class VehicleGalleryWidget extends StatelessWidget {
     final photoService = VehiclePhotoService();
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+      // El gutter horizontal lo pone AppPageBody en VehicleProfileScreen
+      // (fuente única): duplicarlo aquí desbordaba a 375px.
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Galería de Fotos',
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: colors.textPrimary,
+              Expanded(
+                child: Text(
+                  'Galería de Fotos',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: colors.textPrimary,
+                  ),
                 ),
               ),
               IconButton(
