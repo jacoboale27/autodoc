@@ -39,6 +39,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (!_isInitialized) {
       final userSession = context.read<UserProfileProvider>();
       if (userSession.userData != null) {
+        _isInitialized = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           final vehicleProvider = context.read<VehicleProvider>();
@@ -53,7 +54,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           });
         });
       }
-      _isInitialized = true;
     }
   }
 
