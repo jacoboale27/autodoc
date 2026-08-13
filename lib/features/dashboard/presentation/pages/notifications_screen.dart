@@ -4,8 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/providers/notification_center_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/models/app_notification_model.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/app_empty_state.dart';
+import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/l10n/app_localizations.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
@@ -81,53 +86,46 @@ class NotificationsScreen extends StatelessWidget {
     }
 
     if (provider.notifications.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.notifications_none_rounded,
-              size: 64,
-              color: colors.textSecondary.withValues(alpha: 0.4),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              AppLocalizations.of(context)!.noNotifications,
-              style: AppTextStyles.bodyLarge.copyWith(
-                color: colors.textSecondary,
-              ),
-            ),
-          ],
-        ),
+      // No existe una clave de descripción específica en lib/l10n/ (solo
+      // `noNotifications`); se reutiliza para título y descripción en vez de
+      // inventar una clave nueva, fuera del alcance de esta fase.
+      return AppEmptyState(
+        icon: Icons.notifications_none_rounded,
+        title: AppLocalizations.of(context)!.noNotifications,
+        description: AppLocalizations.of(context)!.noNotifications,
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: provider.notifications.length,
-      separatorBuilder: (_, index) => Divider(
-        height: 1,
-        color: colors.outline.withValues(alpha: 0.3),
-        indent: 72,
+    return AppPageBody(
+      maxWidth: AppBreakpoints.maxReadingWidth,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        itemCount: provider.notifications.length,
+        separatorBuilder: (_, index) => Divider(
+          height: 1,
+          color: colors.outline.withValues(alpha: 0.3),
+          // 16 (gutter) + 44 (icono) + 12 (gap) = alineado con el texto.
+          indent: AppSpacing.base + 44 + AppSpacing.md,
+        ),
+        itemBuilder: (context, index) {
+          final notif = provider.notifications[index];
+          return _NotificationTile(
+            notification: notif,
+            colors: colors,
+            onTap: () {
+              // Mark as read
+              if (!notif.leida) {
+                provider.markAsRead(userId, notif.id);
+              }
+              // Navigate to deep link
+              if (notif.deepLink != null && notif.deepLink!.isNotEmpty) {
+                context.push(normalizeDeepLink(notif));
+              }
+            },
+            onDismiss: () => provider.deleteNotification(userId, notif.id),
+          );
+        },
       ),
-      itemBuilder: (context, index) {
-        final notif = provider.notifications[index];
-        return _NotificationTile(
-          notification: notif,
-          colors: colors,
-          onTap: () {
-            // Mark as read
-            if (!notif.leida) {
-              provider.markAsRead(userId, notif.id);
-            }
-            // Navigate to deep link
-            if (notif.deepLink != null && notif.deepLink!.isNotEmpty) {
-              context.push(normalizeDeepLink(notif));
-            }
-          },
-          onDismiss: () => provider.deleteNotification(userId, notif.id),
-        );
-      },
     );
   }
 }
@@ -169,7 +167,10 @@ class _NotificationTile extends StatelessWidget {
       case 'reserva':
         return colors.success;
       case 'review':
-        return const Color(0xFFFFB800);
+        // Antes: const Color(0xFFFFB800) — un dorado literal fuera de la
+        // paleta. `warning` es el token ámbar de la marca y ya se usa para
+        // "atención"; una reseña pendiente es exactamente eso.
+        return colors.warning;
       default:
         return colors.textSecondary;
     }
@@ -179,93 +180,108 @@ class _NotificationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final iconColor = _colorForType(notification.tipo);
     final icon = _iconForType(notification.tipo);
+    final unreadSuffix = notification.leida ? '' : ', sin leer';
 
-    return Dismissible(
-      key: Key(notification.id),
-      direction: DismissDirection.endToStart,
-      onDismissed: (_) => onDismiss(),
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 24),
-        color: colors.error.withValues(alpha: 0.1),
-        child: Icon(Icons.delete_outline, color: colors.error),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          color: notification.leida
-              ? Colors.transparent
-              : colors.primary.withValues(alpha: 0.04),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Icon
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: iconColor, size: 22),
+    return Semantics(
+      container: true,
+      button: true,
+      label: '${notification.titulo}. ${notification.body}$unreadSuffix',
+      onTapHint: 'abrir',
+      child: Dismissible(
+        key: Key(notification.id),
+        direction: DismissDirection.endToStart,
+        onDismissed: (_) => onDismiss(),
+        background: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: AppSpacing.xl),
+          color: colors.error.withValues(alpha: 0.1),
+          child: Icon(Icons.delete_outline, color: colors.error),
+        ),
+        child: ExcludeSemantics(
+          child: InkWell(
+            onTap: onTap,
+            child: Container(
+              color: notification.leida
+                  ? Colors.transparent
+                  : colors.primary.withValues(alpha: 0.04),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.base,
+                vertical: AppSpacing.md,
               ),
-              const SizedBox(width: 12),
-              // Content
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Icon
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: iconColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: Icon(icon, color: iconColor, size: 22),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  // Content
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            notification.titulo,
-                            style: AppTextStyles.labelLarge.copyWith(
-                              color: colors.textPrimary,
-                              fontWeight: notification.leida
-                                  ? FontWeight.normal
-                                  : FontWeight.w600,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                notification.titulo,
+                                style: AppTextStyles.labelLarge.copyWith(
+                                  color: colors.textPrimary,
+                                  fontWeight: notification.leida
+                                      ? FontWeight.normal
+                                      : FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Text(
+                              timeago.format(
+                                notification.timestamp,
+                                locale: 'es',
+                              ),
+                              style: AppTextStyles.labelSmall.copyWith(
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(height: AppSpacing.xs),
                         Text(
-                          timeago.format(notification.timestamp, locale: 'es'),
-                          style: AppTextStyles.labelSmall.copyWith(
+                          notification.body,
+                          style: AppTextStyles.bodyMedium.copyWith(
                             color: colors.textSecondary,
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      notification.body,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: colors.textSecondary,
+                  ),
+                  // Unread dot
+                  if (!notification.leida) ...[
+                    const SizedBox(width: AppSpacing.sm),
+                    Container(
+                      width: 8,
+                      height: 8,
+                      margin: const EdgeInsets.only(top: AppSpacing.xs + 2),
+                      decoration: BoxDecoration(
+                        color: colors.primary,
+                        shape: BoxShape.circle,
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
-                ),
+                ],
               ),
-              // Unread dot
-              if (!notification.leida) ...[
-                const SizedBox(width: 8),
-                Container(
-                  width: 8,
-                  height: 8,
-                  margin: const EdgeInsets.only(top: 6),
-                  decoration: BoxDecoration(
-                    color: colors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ],
-            ],
+            ),
           ),
         ),
       ),

@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:autodoc/core/theme/app_theme.dart';
+import 'package:autodoc/l10n/app_localizations.dart';
 
 /// Anchos obligatorios de verificación del plan de refactorización UI/UX.
 ///
@@ -33,6 +34,8 @@ Future<void> pumpAtWidth(
     MaterialApp(
       theme: brightness == Brightness.dark ? AppTheme.dark : AppTheme.light,
       debugShowCheckedModeBanner: false,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, inner) => MediaQuery(
         data: MediaQuery.of(
           context,
