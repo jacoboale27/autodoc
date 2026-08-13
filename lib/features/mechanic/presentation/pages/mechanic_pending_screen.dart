@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/router/app_router.dart'
     show estadosMecanicoAprobado;
+import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_motion.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -85,163 +91,176 @@ class _MechanicPendingScreenState extends State<MechanicPendingScreen> {
           ),
         ),
         child: SafeArea(
-          child: Padding(
-            padding: EdgeInsets.all(Responsive.padding(context, 32)),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Pending icon with animation
-                Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        color: colors.primary.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: colors.primary.withValues(alpha: 0.3),
-                          width: 2,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
+            child: AppPageBody(
+              maxWidth: AppBreakpoints.maxFormWidth,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Pending icon
+                  _entrance(context, 0, _pendingIcon(context, colors)),
+
+                  const SizedBox(height: AppSpacing.xxxl),
+
+                  // Title
+                  _entrance(
+                    context,
+                    1,
+                    Text(
+                      'Cuenta Pendiente de Aprobación',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.headlineSmall.copyWith(
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: AppSpacing.base),
+
+                  // Subtitle
+                  _entrance(
+                    context,
+                    2,
+                    Text(
+                      'Tu taller ${userData?.nombreCompleto ?? ''} ha sido registrado exitosamente. '
+                      'Un administrador revisará tu solicitud pronto.',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: colors.textSecondary,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: AppSpacing.md),
+
+                  // Info card
+                  _entrance(
+                    context,
+                    3,
+                    Semantics(
+                      container: true,
+                      label: '¿Qué sigue?',
+                      child: Container(
+                        padding: const EdgeInsets.all(AppSpacing.xl),
+                        decoration: BoxDecoration(
+                          color: colors.surfaceContainer,
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                          border: Border.all(
+                            color: colors.outline.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _infoRow(
+                              icon: Icons.email_outlined,
+                              text:
+                                  '¿Qué sigue? El administrador revisará tu solicitud y te notificará por email.',
+                              colors: colors,
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            _infoRow(
+                              icon: Icons.notifications_outlined,
+                              text:
+                                  'Recibirás una notificación push cuando tu cuenta sea aprobada.',
+                              colors: colors,
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            _infoRow(
+                              icon: Icons.access_time_outlined,
+                              text:
+                                  'Tiempo estimado de aprobación: 1-2 días hábiles.',
+                              colors: colors,
+                            ),
+                          ],
                         ),
                       ),
-                      child: Icon(
-                        Icons.schedule_rounded,
-                        size: 60,
-                        color: colors.primary,
-                      ),
-                    )
-                    .animate(onPlay: (c) => c.repeat())
-                    .scale(
-                      duration: const Duration(seconds: 2),
-                      begin: const Offset(1, 1),
-                      end: const Offset(1.05, 1.05),
-                    )
-                    .then()
-                    .scale(
-                      begin: const Offset(1.05, 1.05),
-                      end: const Offset(1, 1),
-                    ),
-
-                const SizedBox(height: 40),
-
-                // Title
-                Text(
-                  'Cuenta Pendiente de Aprobación',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
-                    fontSize: Responsive.fontSize(context, 24),
-                    fontWeight: FontWeight.bold,
-                    color: colors.textPrimary,
-                  ),
-                ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.2),
-
-                const SizedBox(height: 16),
-
-                // Subtitle
-                Text(
-                  'Tu taller ${userData?.nombreCompleto ?? ''} ha sido registrado exitosamente. '
-                  'Un administrador revisará tu solicitud pronto.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
-                    fontSize: Responsive.fontSize(context, 16),
-                    color: colors.textSecondary,
-                    height: 1.5,
-                  ),
-                ).animate().fadeIn(duration: 800.ms).slideY(begin: 0.2),
-
-                const SizedBox(height: 12),
-
-                // Info card
-                Container(
-                  padding: EdgeInsets.all(Responsive.padding(context, 20)),
-                  decoration: BoxDecoration(
-                    color: colors.surfaceContainer,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: colors.outline.withValues(alpha: 0.3),
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _infoRow(
-                        icon: Icons.email_outlined,
-                        text:
-                            '¿Qué sigue? El administrador revisará tu solicitud y te notificará por email.',
-                        colors: colors,
-                      ),
-                      const SizedBox(height: 12),
-                      _infoRow(
-                        icon: Icons.notifications_outlined,
-                        text:
-                            'Recibirás una notificación push cuando tu cuenta sea aprobada.',
-                        colors: colors,
-                      ),
-                      const SizedBox(height: 12),
-                      _infoRow(
-                        icon: Icons.access_time_outlined,
-                        text:
-                            'Tiempo estimado de aprobación: 1-2 días hábiles.',
-                        colors: colors,
-                      ),
-                    ],
+
+                  const SizedBox(height: AppSpacing.xxxl),
+
+                  // Check approval button
+                  SizedBox(
+                    width: double.infinity,
+                    child: AppButton(
+                      text: _checking ? 'Verificando...' : 'Verificar Estado',
+                      isLoading: _checking,
+                      onPressed: _checking ? null : _checkApprovalStatus,
+                      icon: const Icon(Icons.refresh_rounded),
+                    ),
                   ),
-                ).animate().fadeIn(duration: 1000.ms),
 
-                const SizedBox(height: 40),
+                  const SizedBox(height: AppSpacing.base),
 
-                // Check approval button
-                SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: ElevatedButton.icon(
-                    onPressed: _checking ? null : _checkApprovalStatus,
-                    icon: _checking
-                        ? SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: colors.onPrimary,
-                            ),
-                          )
-                        : const Icon(Icons.refresh_rounded),
+                  // Sign out option
+                  TextButton.icon(
+                    onPressed: _signOut,
+                    icon: Icon(
+                      Icons.logout_rounded,
+                      color: colors.textSecondary,
+                      size: 18,
+                    ),
                     label: Text(
-                      _checking ? 'Verificando...' : 'Verificar Estado',
-                      style: GoogleFonts.inter(
-                        fontSize: Responsive.fontSize(context, 16),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colors.primary,
-                      foregroundColor: colors.onPrimary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                      'Cerrar sesión',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: colors.textSecondary,
                       ),
                     ),
                   ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Sign out option
-                TextButton.icon(
-                  onPressed: _signOut,
-                  icon: Icon(
-                    Icons.logout_rounded,
-                    color: colors.textSecondary,
-                    size: 18,
-                  ),
-                  label: Text(
-                    'Cerrar sesión',
-                    style: GoogleFonts.inter(color: colors.textSecondary),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  Widget _pendingIcon(BuildContext context, AppColors colors) {
+    final size = Responsive.size(context, 96);
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: colors.primary.withValues(alpha: 0.1),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: colors.primary.withValues(alpha: 0.3),
+          width: 2,
+        ),
+      ),
+      child: Icon(
+        Icons.schedule_rounded,
+        size: size / 2,
+        color: colors.primary,
+        semanticLabel: 'Pendiente de aprobación',
+      ),
+    );
+  }
+
+  /// Entrada escalonada. Con reduced motion se devuelve el hijo tal cual: se
+  /// conserva el contenido y se elimina el desplazamiento, que es lo que la
+  /// preferencia pide.
+  Widget _entrance(BuildContext context, int index, Widget child) {
+    if (AppMotion.reduced(context)) return child;
+    final delay = AppMotion.staggerStep * index;
+    return child
+        .animate()
+        .fadeIn(
+          duration: AppMotion.sheetEnter,
+          delay: delay,
+          curve: AppMotion.easeOut,
+        )
+        .slideY(
+          begin: 0.15,
+          end: 0,
+          duration: AppMotion.sheetEnter,
+          delay: delay,
+          curve: AppMotion.easeOut,
+        );
   }
 
   Widget _infoRow({
@@ -253,12 +272,11 @@ class _MechanicPendingScreenState extends State<MechanicPendingScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, size: 20, color: colors.primary),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpacing.md),
         Expanded(
           child: Text(
             text,
-            style: GoogleFonts.inter(
-              fontSize: Responsive.fontSize(context, 13),
+            style: AppTextStyles.bodyMedium.copyWith(
               color: colors.textSecondary,
               height: 1.4,
             ),
