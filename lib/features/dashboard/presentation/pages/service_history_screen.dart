@@ -11,6 +11,7 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/theme/app_theme.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_empty_state.dart';
 import 'package:autodoc/core/widgets/app_grid.dart';
@@ -787,25 +788,42 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
     if (result == true && mounted) setState(() {});
   }
 
+  // El visor de foto a pantalla completa se muestra siempre en chrome
+  // oscuro (como la mayoría de lightboxes), independiente del tema de la
+  // app: sobre una foto en pantalla completa, un icono que se invirtiera a
+  // oscuro en dark mode se volvería invisible. Theme(data: AppTheme.dark)
+  // fija ese chrome sin recurrir a un literal Colors.white.
   void _showImageDialog(BuildContext context, String imageUrl) {
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Stack(
-          alignment: Alignment.topRight,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: InteractiveViewer(
-                child: Image.network(imageUrl, fit: BoxFit.contain),
+      builder: (context) => Theme(
+        data: AppTheme.dark,
+        child: Builder(
+          builder: (context) {
+            final colors = context.appColors;
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              child: Stack(
+                alignment: Alignment.topRight,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: InteractiveViewer(
+                      child: Image.network(imageUrl, fit: BoxFit.contain),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.close,
+                      color: colors.textPrimary,
+                      size: 30,
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
               ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.close, color: Colors.white, size: 30),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

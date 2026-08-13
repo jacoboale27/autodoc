@@ -25,6 +25,10 @@ const List<String> kTokenizedPaths = [
   'lib/core/widgets/app_text_field.dart',
   'lib/core/widgets/animated_counter.dart',
   'lib/core/widgets/app_empty_state.dart',
+  // ── Fase 4 (módulo dashboard) ──
+  'lib/core/theme/app_severity.dart',
+  'lib/core/widgets/app_section_header.dart',
+  'lib/features/dashboard/presentation/pages',
 ];
 
 /// Ficheros exentos, con su motivo. `app_shadows.dart` define las sombras
