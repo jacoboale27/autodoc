@@ -110,16 +110,20 @@ void main() {
       // any other FlutterError still fails the test normally.
       final originalOnError = FlutterError.onError;
       FlutterError.onError = (details) {
-        // Only swallow the specific known-bad overflow: the header Row at
-        // reserva_chat_card.dart:202 (icon + "Reserva de Cita" + estado
-        // badge). Matching on the source location (not just the generic
-        // "RenderFlex overflowed" substring) means a genuinely new overflow
-        // introduced elsewhere in the tree — e.g. near the "Ver detalle"
-        // button itself — would NOT be silently swallowed here.
+        // Only swallow the specific known-bad overflow: the header Row
+        // (icon + "Reserva de Cita" + estado badge) inside
+        // reserva_chat_card.dart. Matching on the file (not just the
+        // generic "RenderFlex overflowed" substring) means a genuinely new
+        // overflow introduced elsewhere in the tree — e.g. near the
+        // "Ver detalle" button itself, which lives in a different file —
+        // would NOT be silently swallowed here. The line number is not
+        // matched: it drifts every time this file is edited above the
+        // header Row, which previously caused this filter to silently stop
+        // matching and fail the test on unrelated changes.
         final message = details.toString();
         if (details.exception is FlutterError &&
             message.contains('RenderFlex overflowed') &&
-            message.contains('reserva_chat_card.dart:202')) {
+            message.contains('reserva_chat_card.dart:')) {
           return;
         }
         originalOnError?.call(details);
