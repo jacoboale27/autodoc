@@ -84,7 +84,9 @@ class _SplashScreenState extends State<SplashScreen>
                 final role = userData.rol.trim().toLowerCase();
                 if (role == 'taller' || role == 'mecanico') {
                   context.go('/mechanic_dashboard');
-                } else if (role == 'admin' || role == 'administrador') {
+                } else if (role == 'admin' ||
+                    role == 'administrador' ||
+                    role == 'superusuario') {
                   context.go('/admin/dashboard');
                 } else {
                   context.go('/dashboard');

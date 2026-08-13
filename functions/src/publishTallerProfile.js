@@ -28,7 +28,13 @@ exports.publishTallerProfile = functions.firestore
       return null;
     }
     const data = change.after.data() || {};
-    if (!esMecanico(data.rol)) {
+    // Una sub-cuenta de empleado (crearEmpleadoTaller) hereda rol == 'Taller'
+    // igual que el dueño real (mismos permisos operativos), distinguida solo
+    // por `id_taller_propietario`. Sin este check, cada empleado creado
+    // disparaba este trigger (onWrite en usuarios/{uid}) y publicaba una
+    // ficha de taller propia y fantasma en el directorio publico bajo su
+    // propio uid -- el taller real ya tiene la suya bajo el uid del dueño.
+    if (!esMecanico(data.rol) || data.id_taller_propietario) {
       await tallerRef.delete().catch(() => {});
       return null;
     }

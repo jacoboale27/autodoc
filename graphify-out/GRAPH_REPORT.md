@@ -1,879 +1,1129 @@
-# Graph Report - autodoc  (2026-07-28)
+# Graph Report - .  (2026-08-09)
 
 ## Corpus Check
-- 253 files · ~995,391 words
-- Verdict: corpus is large enough that graph structure adds value.
+- cluster-only mode — file stats not available
 
 ## Summary
-- 3927 nodes · 5320 edges · 180 communities (165 shown, 15 thin omitted)
-- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 19 edges (avg confidence: 0.8)
+- 4906 nodes · 7040 edges · 259 communities (213 shown, 46 thin omitted)
+- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 22 edges (avg confidence: 0.75)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `ac8dd13e`
+- Built from commit: `ec25fb82`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - Localization & i18n
-- App Localizations EN
-- App Localizations ES
+- app_localizations_es.dart
+- app_localizations_en.dart
 - Windows Desktop Native
-- Admin Dashboard UI
-- Alerts & Vehicles Screen
-- Theme Color System
-- Auth & Navigation Core
-- Vehicle Registration Form
-- Landing Web (Next.js)
-- App Router & Theme
-- Chat Messaging Screen
+- seed
+- package:flutter_test/flutter_test.dart
+- app_colors.dart
+- app_router.dart
+- add_vehicle_form.dart
+- dependencies
+- initiate_service_screen.dart
+- admin_usuarios_screen.dart
 - UI Radius & Spacing
-- Snackbar & UI Feedback
-- Landing Page Widgets
-- Admin Users Screen
-- Auth Provider & Admin Auth
-- Service Initiation Screen
-- TypeScript Config
-- Admin Provider Logic
-- Linux GTK Native
-- Auth Screen UI
-- Vehicle Image Widget
-- Workshop Map View
-- Workshop Form & Picker
-- Next.js App Shell
-- Landing Command Center
-- Firebase Cloud Functions
-- Animated Counter Widget
-- Chat Provider & Models
-- Chat Repository
-- Vehicle Profile Screen
-- Main Screen Routes
-- Service Task UI
-- User Model
-- Review Sheet Widget
-- Reservation Model
-- Vehicle Provider Logic
-- Chat Background Pattern
-- Auth Service
-- Top Nav & User Row
-- Admin User Management
-- Text Styles
-- Empty State Widget
-- Text Field Widget
-- Admin Service Methods
-- Alert Provider Logic
-- Admin Repository
-- Vehicle Model
-- Notification Service
-- App Entry Point (main)
-- Status Badge Widget
-- Reservation Provider
-- Alert Model
-- Conversation Model
-- Vehicle Search Screen
-- Service Record Model
-- Maintenance Config UI
-- Maintenance Task Model
-- Bottom Nav & Chat Cards
-- Translation Service
-- Firebase Plugins
-- App Button Widget
-- iOS Plugin Registry
-- Admin Log Model
-- Windows Console Setup
-- Workshop Model
-- Main Scaffold & Nav
-- Auth Preferences Service
-- Auth Routes & Redirect
-- Message Model
-- Review Service
-- User Service
-- Vehicle Service (Data)
-- Admin Auth Service
-- Review Model
-- App Transitions
-- Translated Text Widget
-- Availability Picker
-- Web App Manifest
-- Workshop Admin Card
-- App Card Widget
-- Mechanic Admin Card
-- Admin Dashboard Provider
-- Vehicle Image Service
-- Skeleton Loader Widget
-- iOS Scene Setup
-- Theme Provider
-- App Shadows
-- Firebase Options Config
-- iOS App Delegate
-- NHTSA Car Models
-- Language Provider
-- Vehicle API Service
-- Dashboard Quick Actions
-- Landing Screen
-- macOS Test Config
-- macOS App Delegate
-- macOS Window Setup
-- LLDB Debug Scripts
-- Language Root Widget
-- Role Utilities
-- Skeleton Layouts
-- Localizations Delegates
-- Community 104
-- Community 105
-- Community 106
-- Community 107
-- Community 108
-- Community 109
-- Community 110
-- Community 111
-- Community 112
-- Community 113
-- Community 114
-- Community 115
-- Community 116
-- Community 117
-- Community 118
-- Community 119
-- Community 120
-- Community 121
-- Community 122
-- Community 123
-- Community 124
-- Community 125
-- Community 126
-- Community 127
-- Community 128
-- Community 129
-- Community 130
-- Community 131
-- Community 132
-- Community 133
-- Community 134
-- Community 135
-- Community 136
-- Community 137
-- Community 138
-- Community 139
-- Community 140
-- Community 141
-- Community 145
-- Community 146
-- Community 150
-- Community 151
-- Community 152
-- Community 153
-- Community 154
-- Community 155
-- Community 156
-- Community 157
+- package:autodoc/core/providers/user_profile_provider.dart
+- auth_service.dart
+- admin/admin_service_test.dart
+- chat_screen.dart
+- reserva_detail_screen_test.dart
+- workshop_directory_screen.dart
+- [locale]/page.tsx
+- AutoDoc — Runbook de Producción
+- vehicle_profile_screen.dart
+- vehicle_provider.dart
+- main.dart
+- compilerOptions
+- admin_provider.dart
+- reserva_detail_screen.dart
+- voice_record_button.dart
+- add_vehicle_form_test.dart
+- chat_provider.dart
+- notification_service.dart
+- app_router_unknown_route_test.dart
+- vehicle_service_test.dart
+- admin_service.dart
+- workshop_settings_screen.dart
+- review_sheet.dart
+- my_application.cc
+- auth_screen.dart
+- cotizacion_model.dart
+- cotizacion_picker.dart
+- vehicle_model.dart
+- catalogo_servicios_screen.dart
+- bool get
+- auth_screen_forgot_password_test.dart
+- user_model.dart
+- alert_provider.dart
+- chat_screen_read_receipts_test.dart
+- GeneratedPluginRegistrant.swift
+- package:cloud_firestore/cloud_firestore.dart
+- package:autodoc/core/theme/app_colors.dart
+- StatelessWidget
+- admin_dashboard_screen.dart
+- VehicleProvider
+- dashboard_screen.dart
+- empleado_provider.dart
+- package:flutter/material.dart
+- secrets.dart
+- package:flutter/foundation.dart
+- _i1.Mock
+- String get
+- reparacion_provider.dart
+- empleados_screen.dart
+- app_router_test.dart
+- UserProfileProvider
+- admin_repository.dart
+- onboarding_screen.dart
+- catalogo_provider.dart
+- package:autodoc/core/utils/l10n_extension.dart
+- cotizacion_chat_card.dart
+- service_history_screen.dart
+- user_profile_screen.dart
+- String?
+- app_card.dart
+- package:autodoc/core/utils/responsive.dart
+- admin_logs_screen.dart
+- auth_provider.dart
+- reserva_model.dart
+- task_complete_screen.dart
+- mensaje_model.dart
+- review_service.dart
+- vehicle_service.dart
+- conversaciones_list_screen.dart
+- mecanico_admin_card.dart
+- alert_provider_test.dart
+- app_text_styles.dart
+- responsive.dart
+- app_text_field.dart
+- admin_talleres_screen.dart
+- chat_repository.dart
+- notifications_screen.dart
+- audio_chat_card.dart
+- taller_admin_card.dart
+- vehicle_photo_service.dart
+- alert_model.dart
+- List
+- app_button.dart
+- conversacion_model.dart
+- alerts_screen.dart
+- share_vehicle_sheet.dart
+- workshop_reviews_list_sheet_test.dart
+- reparaciones_kanban_screen_test.dart
+- animated_counter.dart
+- service_record_model.dart
+- garage_screen.dart
+- AuthProvider
+- auth_preferences_service.dart
+- empleados_screen_test.dart
+- FlutterWindow
+- splash_screen.dart
+- widgets/historial_chat_card.dart
+- dialog_crear_usuario.dart
+- app_status_badge.dart
+- firestore_collections.dart
+- theme_provider.dart
+- review_model.dart
+- State
+- package:google_fonts/google_fonts.dart
+- task_config_screen.dart
+- mechanic_dashboard_screen.dart
+- Create
+- manifest.json
+- win32_window.cpp
+- notification_bell_button_test.dart
+- notification_center_provider.dart
+- app_notification_model.dart
+- maintenance_task_model.dart
+- reserva_chat_card_test.dart
+- user_service.dart
+- chat_provider_test.dart
+- mechanic_service_history_screen.dart
+- reserva_provider.dart
+- mechanic_reviews_screen.dart
+- workshop_model.dart
+- translated_text.dart
+- package:autodoc/l10n/app_localizations.dart
+- translation_service.dart
+- DateTime
+- wWinMain
+- empleado_model.dart
+- package:autodoc/core/models/vehicle_model.dart
+- about_screen.dart
+- Win32Window
+- license_plate_widget.dart
+- admin_dashboard_provider.dart
+- app_transitions.dart
+- pdf_generator.dart
+- plate_formatter.dart
+- account_row.dart
+- review_chat_card.dart
+- FlutterMacOS
+- AutoDoc - Convenciones y Arquitectura
+- Funciones
+- e2e/package.json
+- index.js
+- app_radius.dart
+- app_spacing.dart
+- mechanic_profile_utils.dart
+- build
+- services_trend_chart_test.dart
+- test_helpers.dart
+- ios/Runner/AppDelegate.swift
+- app_shadows.dart
+- workshop_reviews_list_sheet.dart
+- workshop_service.dart
+- notification_center_provider_test.dart
 - AutoDoc 🚗📋
+- rules.test.js
+- AppDelegate
 - FIREBASE_FUNCTIONS.md
 - AutoDoc — Índices de Firestore Requeridos
 - Global Constraints
-- Global Constraints
 - AutoDoc — Términos de Servicio
+- scripts
+- catalogo_item_model.dart
+- nhtsa_models.dart
+- mechanic_sidebar.dart
+- app_theme.dart
 - AutoDoc — Política de Privacidad
-- vehicle_provider_test.dart
+- dependencies
+- functions/package.json
+- _
+- ChatRepository
+- about_screen_navigation_test.dart
 - 🚀 Setup rápido
+- firestore_rules/package.json
+- csv_export_util.dart
+- AppDelegate
+- RegisterGeneratedPlugins
+- devDependencies
+- test/empleados.test.js
+- csv_export_util_io.dart
 - app_skeleton_layouts.dart
-- auth_bottom_nav.dart
+- package:provider/provider.dart
 - imagen_chat_card.dart
+- AppLocalizations
+- package:flutter/services.dart
 - 🚢 Despliegue
-- README.md
-- map_injector_web.dart
+- test_rules/package.json
+- dependencies
+- devDependencies
+- publishTallerProfile.js
+- backfillTalleres.js
+- landing-web/README.md
 - ▶️ Ejecutar la app
 - 🧪 Tests
+- MainActivity
+- generate_report.js
+- aprobarTodosTalleres.js
+- next.config.ts
+- app/layout.tsx
 - invoice_upload_service.dart
-- invoice_upload_service_test.dart
-- README.md
+- especialidades_taller_test.dart
+- package:autodoc/core/models/service_record_model.dart
+- RegisterPlugins
+- format-dart.js
+- playwright.config.js
+- mecanico.spec.js
+- propietario.spec.js
+- registro.spec.js
+- backfillEstadoMecanicos.js
+- LaunchImage.imageset/README.md
+- eslint.config.mjs
+- postcss.config.mjs
+- csv_export_stub.dart
 - map_injector.dart
 - map_injector_stub.dart
+- AddVehicleForm
+- firebase-messaging-sw.js
+- FlutterEngine
+- _i11.VehicleService
+- _i13.VehicleImageService
+- _i15.UserService
+- _i18.FirebaseMessaging
+- _i8.AuthService
+- _i9.AdminAuthService
+- Keep
+- bool?
+- String?
+- NSObject
+- package:autodoc/features/chat/presentation/widgets/disponibilidad_picker.dart
+- package:flutter_dotenv/flutter_dotenv.dart
+- package:table_calendar/table_calendar.dart
+- ../../../reviews/data/services/review_service.dart
+- Route /initiate_service
+- Route /reserva_detail
+- Route /service_history
+- Route /vehicle_profile
+- SBDebugger
+- SBFrame
 
 ## God Nodes (most connected - your core abstractions)
-1. `UserProfileProvider` - 83 edges
-2. `AlertProvider` - 28 edges
-3. `VehicleProvider` - 28 edges
-4. `ChatProvider` - 26 edges
-5. `AdminProvider` - 25 edges
-6. `AuthProvider` - 25 edges
-7. `AuthSessionProvider` - 22 edges
+1. `UserProfileProvider` - 119 edges
+2. `ChatProvider` - 32 edges
+3. `VehicleProvider` - 29 edges
+4. `AdminProvider` - 28 edges
+5. `AuthProvider` - 28 edges
+6. `AlertProvider` - 28 edges
+7. `AuthSessionProvider` - 23 edges
 8. `Win32Window` - 22 edges
-9. `compilerOptions` - 16 edges
-10. `ChangeNotifier` - 15 edges
+9. `seed()` - 21 edges
+10. `compilerOptions` - 16 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `AuthSessionProvider` --mixes_in--> `ChangeNotifier`  [EXTRACTED]
-  lib/core/providers/auth_session_provider.dart → test/core/router/app_router_test.dart
-- `FakeAuthSessionProvider` --implements--> `AuthSessionProvider`  [EXTRACTED]
-  test/core/router/app_router_test.dart → lib/core/providers/auth_session_provider.dart
-- `LanguageProvider` --inherits--> `ChangeNotifier`  [EXTRACTED]
-  lib/core/providers/language_provider.dart → test/core/router/app_router_test.dart
-- `NotificationCenterProvider` --inherits--> `ChangeNotifier`  [EXTRACTED]
-  lib/core/providers/notification_center_provider.dart → test/core/router/app_router_test.dart
-- `ThemeProvider` --inherits--> `ChangeNotifier`  [EXTRACTED]
-  lib/core/providers/theme_provider.dart → test/core/router/app_router_test.dart
+- `FakeAdminRepository` --implements--> `AdminRepository`  [EXTRACTED]
+  test/features/admin/admin_service_test.dart → lib/features/admin/data/repositories/admin_repository.dart
+- `_DummyAdminRepository` --implements--> `AdminRepository`  [EXTRACTED]
+  test/features/admin/data/services/admin_service_test.dart → lib/features/admin/data/repositories/admin_repository.dart
+- `_DummyAdminRepository` --implements--> `AdminRepository`  [EXTRACTED]
+  test/features/admin/presentation/providers/admin_provider_test.dart → lib/features/admin/data/repositories/admin_repository.dart
+- `_SpyVehicleProvider` --inherits--> `VehicleProvider`  [EXTRACTED]
+  test/features/dashboard/presentation/pages/dashboard_screen_vehicle_fetch_test.dart → lib/features/dashboard/presentation/providers/vehicle_provider.dart
+- `OnCreate` --calls--> `RegisterPlugins()`  [INFERRED]
+  windows/runner/flutter_window.h → windows/flutter/generated_plugin_registrant.cc
 
 ## Import Cycles
 - None detected.
 
-## Communities (180 total, 15 thin omitted)
+## Communities (259 total, 46 thin omitted)
 
 ### Community 0 - "Localization & i18n"
 Cohesion: 0.01
-Nodes (365): app_localizations_en.dart, app_localizations_es.dart, addVehicleBrand, addVehicleBrandSubtitle, addVehicleCardExp, addVehicleColor, addVehicleColorHint, addVehicleDetails (+357 more)
+Nodes (372): app_localizations_en.dart, app_localizations_es.dart, addVehicleBrand, addVehicleBrandSubtitle, addVehicleCardExp, addVehicleColor, addVehicleColorHint, addVehicleDetails (+364 more)
 
-### Community 1 - "App Localizations EN"
+### Community 1 - "app_localizations_es.dart"
 Cohesion: 0.01
-Nodes (353): addVehicleBrand, addVehicleBrandSubtitle, addVehicleCardExp, addVehicleColor, addVehicleColorHint, addVehicleDetails, addVehicleDetailsSubtitle, addVehicleDocs (+345 more)
+Nodes (361): app_localizations.dart, addVehicleBrand, addVehicleBrandSubtitle, addVehicleCardExp, addVehicleColor, addVehicleColorHint, addVehicleDetails, addVehicleDetailsSubtitle (+353 more)
 
-### Community 2 - "App Localizations ES"
+### Community 2 - "app_localizations_en.dart"
 Cohesion: 0.01
-Nodes (354): app_localizations.dart, addVehicleBrand, addVehicleBrandSubtitle, addVehicleCardExp, addVehicleColor, addVehicleColorHint, addVehicleDetails, addVehicleDetailsSubtitle (+346 more)
+Nodes (360): addVehicleBrand, addVehicleBrandSubtitle, addVehicleCardExp, addVehicleColor, addVehicleColorHint, addVehicleDetails, addVehicleDetailsSubtitle, addVehicleDocs (+352 more)
 
 ### Community 3 - "Windows Desktop Native"
 Cohesion: 0.01
-Nodes (169): Duration get, FirebaseApp get, FirebaseFirestore get, MultiFactor get, package:firebase_messaging_platform_interface/firebase_messaging_platform_interface.dart, package:mockito/src/dummies.dart, R, Settings get (+161 more)
+Nodes (182): DocumentReference, Duration get, FirebaseApp get, FirebaseFunctionsPlatform get, MultiFactor get, package:cloud_functions_platform_interface/cloud_functions_platform_interface.dart, package:firebase_messaging_platform_interface/firebase_messaging_platform_interface.dart, package:mockito/src/dummies.dart (+174 more)
 
-### Community 4 - "Admin Dashboard UI"
-Cohesion: 0.04
-Nodes (61): AuthSessionProvider, build, build, build, _buildActiveAlerts, _buildAlertCard, _buildEmptyVehicleState, _buildMaintenanceSemaphore (+53 more)
+### Community 4 - "seed"
+Cohesion: 0.08
+Nodes (39): { assertFails, assertSucceeds }, { makeEnv, seed, withRole, anon, UIDS }, { assertFails, assertSucceeds }, { makeEnv, seed, withRole, UIDS }, seedCotizacion(), { assertFails, assertSucceeds }, { makeEnv, seed, withRole, UIDS }, anon() (+31 more)
 
-### Community 5 - "Alerts & Vehicles Screen"
-Cohesion: 0.05
-Nodes (50): DocumentSnapshot, UserProfileProvider, build, _canEdit, _checkExisting, _checking, _comentarioController, createState (+42 more)
+### Community 5 - "package:flutter_test/flutter_test.dart"
+Cohesion: 0.06
+Nodes (39): class FakePushNotificationService extends, dart:async, ../../helpers/test_helpers.mocks.dart, PushNotificationService, package:autodoc/core/bootstrap/firebase_bootstrap.dart, package:autodoc/core/models/workshop_model.dart, package:autodoc/core/services/push_notification_service.dart, package:autodoc/features/admin/data/services/admin_auth_service.dart (+31 more)
 
-### Community 6 - "Theme Color System"
-Cohesion: 0.04
-Nodes (52): _adminRoutes, appRouterRedirect, createAppRouter, currentPath, currentUid, false, hasAttemptedFetch, _homeForRole (+44 more)
-
-### Community 7 - "Auth & Navigation Core"
+### Community 6 - "app_colors.dart"
 Cohesion: 0.04
 Nodes (50): AppColors get, AppPalette, copyWith, darkError, darkOnPrimary, darkOnSecondary, darkOutline, darkPrimary (+42 more)
 
-### Community 8 - "Vehicle Registration Form"
+### Community 7 - "app_router.dart"
 Cohesion: 0.04
-Nodes (44): ../../../../core/models/nhtsa_models.dart, ../../../../core/services/vehicle_api_service.dart, ../../../../core/theme/app_colors.dart, ../../../../core/utils/plate_formatter.dart, _allMakes, _anioController, _apiService, _brandSearchQuery (+36 more)
+Nodes (47): _adminRoutes, appRouterRedirect, buildScreen, createAppRouter, currentUid, estadosMecanicoAprobado, false, _homeForRole (+39 more)
 
-### Community 9 - "Landing Web (Next.js)"
-Cohesion: 0.05
-Nodes (43): ../../../../core/models/vehicle_model.dart, ../../../../core/services/vehicle_image_service.dart, ../../data/services/vehicle_service.dart, addNote, addVehicle, _collection, deleteVehicle, _firestore (+35 more)
+### Community 8 - "add_vehicle_form.dart"
+Cohesion: 0.04
+Nodes (45): ../../../../core/models/nhtsa_models.dart, ../../../../core/services/vehicle_api_service.dart, ../../../../core/theme/app_colors.dart, ../../../../core/utils/plate_formatter.dart, _allMakes, _anioController, _apiService, _brandSearchQuery (+37 more)
 
-### Community 10 - "App Router & Theme"
+### Community 9 - "dependencies"
 Cohesion: 0.05
 Nodes (42): eslint, eslint-config-next, framer-motion, dependencies, framer-motion, lucide-react, next, next-intl (+34 more)
 
-### Community 11 - "Chat Messaging Screen"
-Cohesion: 0.13
-Nodes (15): dart:ui, _buildFeatureItem, _contents, createState, _currentPage, description, features, imageUrl (+7 more)
+### Community 10 - "initiate_service_screen.dart"
+Cohesion: 0.05
+Nodes (42): _agregarDesdeCatalogo, _approvedQuote, _buildAlertsList, _buildCostoInput, _buildInvoicePicker, _buildKmInput, _buildMaintenanceTasks, _buildManoDeObraInput (+34 more)
+
+### Community 11 - "admin_usuarios_screen.dart"
+Cohesion: 0.06
+Nodes (39): build, initState, AdminReseniasScreen, _AdminReseniasScreenState, build, createState, _descartarReporte, initState (+31 more)
 
 ### Community 12 - "UI Radius & Spacing"
-Cohesion: 0.11
-Nodes (17): AppTextStyles, bodyLarge, bodyMedium, bodySmall, displayLarge, displayMedium, displaySmall, headlineLarge (+9 more)
-
-### Community 13 - "Snackbar & UI Feedback"
-Cohesion: 0.04
-Nodes (59): AlertsScreen, _AlertsScreenState, _buildAlertCard, _buildCompactActionButton, _buildContent, _buildHeader, _buildMileageChip, _buildSectionHeader (+51 more)
-
-### Community 14 - "Landing Page Widgets"
 Cohesion: 0.05
-Nodes (35): AppRadius, full, lg, md, sm, xl, xs, xxl (+27 more)
+Nodes (41): Duration, _i1.SmartFake, _i2.FirebaseApp, _i3.AggregateQuery, _i3.DocumentSnapshot, _i3.LoadBundleTask, _i3.PipelineSource, _i3.Settings (+33 more)
 
-### Community 15 - "Admin Users Screen"
-Cohesion: 0.05
-Nodes (46): class, DateTimeRange?, build, HistorialChatCard, isMe, metadata, build, _buildEmptyState (+38 more)
-
-### Community 16 - "Auth Provider & Admin Auth"
-Cohesion: 0.07
-Nodes (7): geistMono, geistSans, ThemeProvider(), Header(), Workshop, {Link, redirect, usePathname, useRouter, getPathname}, routing
-
-### Community 17 - "Service Initiation Screen"
-Cohesion: 0.14
-Nodes (13): AppNotification, body, copyWith, deepLink, fromFirestore, fromMap, id, leida (+5 more)
-
-### Community 18 - "TypeScript Config"
+### Community 13 - "package:autodoc/core/providers/user_profile_provider.dart"
 Cohesion: 0.06
-Nodes (33): GoogleMapController?, build, _buildFilterChip, _buildFilters, _buildHeader, _buildMapCard, _buildMapView, _buildSearchBar (+25 more)
+Nodes (33): class _LateUserProfileProvider extends, build, _checking, createState, _infoRow, package:autodoc/core/providers/auth_session_provider.dart, package:autodoc/core/providers/user_profile_provider.dart, package:autodoc/core/theme/app_theme.dart (+25 more)
 
-### Community 19 - "Admin Provider Logic"
+### Community 14 - "auth_service.dart"
 Cohesion: 0.06
-Nodes (30): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+22 more)
+Nodes (34): FirebaseAuth, GoogleSignIn, clearError, currentUid, _error, _firebaseAuth, isLoggedIn, refreshUser (+26 more)
 
-### Community 20 - "Linux GTK Native"
-Cohesion: 0.08
-Nodes (24): GoRouter, authProvider, authSessionProvider, checkAndFetchProfile, createState, dispose, id, initState (+16 more)
-
-### Community 21 - "Auth Screen UI"
+### Community 15 - "admin/admin_service_test.dart"
 Cohesion: 0.07
-Nodes (28): ../../../../core/utils/role_utils.dart, _adminService, aprobarTaller, cambiarRolUsuario, clearMessages, eliminarResenia, _error, fetchAllData (+20 more)
+Nodes (31): AdminLogModel?, Exception, AdminRepository, package:autodoc/core/constants/firestore_collections.dart, package:autodoc/core/models/admin_log_model.dart, package:autodoc/features/admin/data/repositories/admin_repository.dart, package:autodoc/features/admin/data/services/admin_service.dart, package:autodoc/features/admin/presentation/providers/admin_provider.dart (+23 more)
 
-### Community 22 - "Vehicle Image Widget"
-Cohesion: 0.20
-Nodes (10): FormState, build, CotizacionPicker, _CotizacionPickerState, createState, _descController, dispose, _formKey (+2 more)
+### Community 16 - "chat_screen.dart"
+Cohesion: 0.07
+Nodes (35): _abrirSelectorFechaReserva, build, _buildMessageContent, _chatProvider, ChatScreen, _ChatScreenState, _controller, conversacionId (+27 more)
 
-### Community 23 - "Workshop Map View"
-Cohesion: 0.13
-Nodes (14): build, ServicesTrendChart, serviciosPorMes, build, isMe, metadata, VehiculoChatCard, build (+6 more)
+### Community 17 - "reserva_detail_screen_test.dart"
+Cohesion: 0.06
+Nodes (32): ../../data/services/vehicle_photo_service.dart, clearUserData, _error, _fetchedUserId, fetchUserData, _hasAttemptedFetch, hasAttemptedFetchFor, _isLoading (+24 more)
 
-### Community 24 - "Workshop Form & Picker"
+### Community 18 - "workshop_directory_screen.dart"
+Cohesion: 0.06
+Nodes (34): GoogleMapController?, build, _buildFilterChip, _buildFilters, _buildHeader, _buildMapCard, _buildMapView, _buildSearchBar (+26 more)
+
+### Community 19 - "[locale]/page.tsx"
 Cohesion: 0.09
-Nodes (27): build, _buildMessageContent, ChatScreen, _ChatScreenState, _controller, conversacionId, createState, dispose (+19 more)
+Nodes (12): geistMono, geistSans, ThemeProvider(), FeaturesGrid(), Footer(), Header(), HeroSection(), TestimonialsSection() (+4 more)
 
-### Community 25 - "Next.js App Shell"
-Cohesion: 0.09
-Nodes (22): FlPluginRegistry, FlView, GApplication, gboolean, gchar, GObject, GtkApplication, fl_register_plugins() (+14 more)
-
-### Community 26 - "Landing Command Center"
-Cohesion: 0.08
-Nodes (26): _abrirSelectorMapa, _buildCoordinatesPicker, _buildDropdownField, _buildInputField, _buildTopBar, createState, dispose, _elSalvadorDivipola (+18 more)
-
-### Community 27 - "Firebase Cloud Functions"
-Cohesion: 0.08
-Nodes (26): _authPreferences, AuthScreen, _AuthScreenState, build, _buildGlassCard, _buildSubmitButton, _buildTextField, createState (+18 more)
-
-### Community 28 - "Animated Counter Widget"
-Cohesion: 0.08
-Nodes (24): ../../data/models/conversacion_model.dart, ../../data/models/cotizacion_model.dart, ../../data/repositories/chat_repository.dart, actualizarEstadoCotizacion, actualizarMetadatosMensaje, _chatRepository, _conversaciones, _conversacionesSub (+16 more)
-
-### Community 29 - "Chat Provider & Models"
-Cohesion: 0.12
-Nodes (15): FirebaseStorage, addPhoto, deletePhoto, _firestore, fromMap, id, _storage, streamPhotos (+7 more)
-
-### Community 30 - "Chat Repository"
-Cohesion: 0.15
-Nodes (12): ../../data/models/reserva_model.dart, ../../data/repositories/reserva_repository.dart, cambiarEstadoReserva, dispose, _error, inicializarReservasUsuario, _isLoading, _reservaRepository (+4 more)
-
-### Community 31 - "Vehicle Profile Screen"
-Cohesion: 0.12
-Nodes (17): dart:typed_data, build, _buildInputCard, _costController, createState, currentKm, dispose, _infoItem (+9 more)
-
-### Community 32 - "Main Screen Routes"
-Cohesion: 0.13
-Nodes (16): activeIcon, child, colors, icon, InstagramBottomNavBar, isActive, isDark, MainScaffold (+8 more)
-
-### Community 33 - "Service Task UI"
-Cohesion: 0.09
-Nodes (20): ../constants/firestore_collections.dart, dart:convert, facturas, perfiles, StoragePaths, baseUrl, fetchAllMakes, fetchModelsByMake (+12 more)
-
-### Community 34 - "User Model"
-Cohesion: 0.09
-Nodes (22): firebase-functions, dependencies, firebase-admin, firebase-functions, @google-cloud/firestore, @google-cloud/functions-framework, description, engines (+14 more)
-
-### Community 35 - "Review Sheet Widget"
-Cohesion: 0.14
-Nodes (12): _firestore, getWorkshopById, getWorkshops, getWorkshopsStream, loadFilters, saveFilters, updateWorkshopProfile, WorkshopService (+4 more)
-
-### Community 36 - "Reservation Model"
-Cohesion: 0.22
-Nodes (8): appBar, AppScaffold, body, bottomNavigationBar, build, floatingActionButton, useGradient, PreferredSizeWidget?
-
-### Community 37 - "Vehicle Provider Logic"
+### Community 20 - "AutoDoc — Runbook de Producción"
 Cohesion: 0.06
 Nodes (31): 10. Escalación y contactos, 11. Checklist pre-lanzamiento (Soft Launch), 1. Acceso a herramientas de operación, 2.1 Cambiar contraseña de admin, 2.2 Rotar service account (CI/CD), 2.3 Rotar FCM API Key, 2. Rotación de credenciales admin, 3. Suspender usuario (+23 more)
 
-### Community 38 - "Chat Background Pattern"
+### Community 21 - "vehicle_profile_screen.dart"
 Cohesion: 0.06
-Nodes (32): _i11.VehicleService, _i13.VehicleImageService, _i15.UserService, _i18.FirebaseMessaging, _i1.Mock, _i3.DocumentReference, _i3.FirebaseFirestore, _i3.Query (+24 more)
+Nodes (31): _buildActiveAlerts, build, _buildActionButton, _buildDetailItem, _buildDocumentationStatus, _buildDocumentationStatusItem, _buildExpenseSummary, _buildHeader (+23 more)
 
-### Community 39 - "Auth Service"
-Cohesion: 0.05
-Nodes (39): Duration, _i1.SmartFake, _i2.FirebaseApp, _i3.AggregateQuery, _i3.DocumentSnapshot, _i3.LoadBundleTask, _i3.PipelineSource, _i3.Settings (+31 more)
+### Community 22 - "vehicle_provider.dart"
+Cohesion: 0.06
+Nodes (30): ../../../../core/services/vehicle_image_service.dart, ../../data/services/vehicle_service.dart, addRecentSearch, addVehicle, _cacheVehicles, _clearHiveCache, clearVehicles, confirmarVinculoTaller (+22 more)
 
-### Community 40 - "Top Nav & User Row"
-Cohesion: 0.17
-Nodes (11): main, main, main, showErrorSnackbar, showInfoSnackbar, showSuccessSnackbar, UiUtils, package:autodoc/core/widgets/app_snackbar.dart (+3 more)
+### Community 23 - "main.dart"
+Cohesion: 0.07
+Nodes (29): GoRouter, authProvider, authSessionProvider, checkAndFetchProfile, createState, dispose, firebaseResult, id (+21 more)
 
-### Community 41 - "Admin User Management"
+### Community 24 - "compilerOptions"
+Cohesion: 0.06
+Nodes (30): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+22 more)
+
+### Community 25 - "admin_provider.dart"
+Cohesion: 0.06
+Nodes (30): _adminService, aprobarTaller, aprobarUsuario, cambiarRolUsuario, clearMessages, crearUsuario, descartarReporte, eliminarResenia (+22 more)
+
+### Community 26 - "reserva_detail_screen.dart"
+Cohesion: 0.09
+Nodes (28): _showProfileIncompleteDialog, build, _cambiarEstado, _cotizar, createState, firestore, _isLoading, _reprogramar (+20 more)
+
+### Community 27 - "voice_record_button.dart"
+Cohesion: 0.07
+Nodes (29): AudioRecorder, _arrastreX, build, _cancelacionArmada, createState, _deberiaGrabar, _detenerGrabacion, dispose (+21 more)
+
+### Community 28 - "add_vehicle_form_test.dart"
+Cohesion: 0.07
+Nodes (26): dart:convert, dart:js_interop, baseUrl, fetchAllMakes, fetchModelsByMake, VehicleApiService, anchor, blob (+18 more)
+
+### Community 29 - "chat_provider.dart"
+Cohesion: 0.07
+Nodes (28): ../../data/models/conversacion_model.dart, ../../data/models/cotizacion_model.dart, ../../data/repositories/chat_repository.dart, actualizarEstadoCotizacion, actualizarMetadatosMensaje, _chatRepository, _conversaciones, _conversacionesSub (+20 more)
+
+### Community 30 - "notification_service.dart"
+Cohesion: 0.07
+Nodes (26): @pragma, @visibleForTesting, FirebaseMessaging, FlutterLocalNotificationsPlugin, _firebaseMessaging, initialize, _instance, _isInitialized (+18 more)
+
+### Community 31 - "app_router_unknown_route_test.dart"
+Cohesion: 0.08
+Nodes (24): package:autodoc/core/models/user_model.dart, package:autodoc/core/router/app_router.dart, main, main, _redirect, _user, buildAuthProvider, buildProfileProvider (+16 more)
+
+### Community 32 - "vehicle_service_test.dart"
+Cohesion: 0.07
+Nodes (27): FieldValue, _i3.DocumentReference, _i3.QuerySnapshot, T, commit, delete, deleted, fakeBatch (+19 more)
+
+### Community 33 - "admin_service.dart"
+Cohesion: 0.07
+Nodes (26): ../../../../core/utils/role_utils.dart, aprobarTaller, aprobarUsuario, cambiarRolUsuario, crearUsuarioComoSuperUser, descartarReporte, eliminarResenia, eliminarUsuarioPermanente (+18 more)
+
+### Community 34 - "workshop_settings_screen.dart"
+Cohesion: 0.08
+Nodes (26): _abrirSelectorMapa, _buildCoordinatesPicker, _buildDropdownField, _buildInputField, _buildTopBar, createState, dispose, _elSalvadorDivipola (+18 more)
+
+### Community 35 - "review_sheet.dart"
+Cohesion: 0.08
+Nodes (25): dart:typed_data, build, _canEdit, _checkExisting, _checking, _comentarioController, createState, dispose (+17 more)
+
+### Community 36 - "my_application.cc"
 Cohesion: 0.10
-Nodes (20): AppSecrets, firebaseAndroidApiKey, firebaseAppIdAndroid, firebaseAppIdIos, firebaseAppIdWeb, firebaseAuthDomain, firebaseDatabaseUrl, firebaseIosApiKey (+12 more)
+Nodes (22): FlPluginRegistry, FlView, GApplication, gboolean, gchar, GObject, GtkApplication, fl_register_plugins() (+14 more)
 
-### Community 42 - "Text Styles"
-Cohesion: 0.12
-Nodes (16): bool get, clearError, currentUid, _error, _firebaseAuth, isLoggedIn, refreshUser, _user (+8 more)
+### Community 37 - "auth_screen.dart"
+Cohesion: 0.08
+Nodes (25): _authPreferences, AuthScreen, _AuthScreenState, build, _buildGlassCard, _buildTextField, createState, dispose (+17 more)
 
-### Community 43 - "Empty State Widget"
+### Community 38 - "cotizacion_model.dart"
+Cohesion: 0.08
+Nodes (25): beneficio, cantidad, copyWithBeneficio, copyWithBeneficios, costo, CotizacionItem, CotizacionModel, estado (+17 more)
+
+### Community 39 - "cotizacion_picker.dart"
+Cohesion: 0.08
+Nodes (24): double get, _addRow, beneficioController, build, _buildItemRow, cantidadController, costoController, createState (+16 more)
+
+### Community 40 - "vehicle_model.dart"
+Cohesion: 0.08
+Nodes (24): anio, color, copyWith, fotoUrl, fromJson, fromMap, idPropietario, idVehiculo (+16 more)
+
+### Community 41 - "catalogo_servicios_screen.dart"
 Cohesion: 0.10
-Nodes (19): activeAlerts, _addOrUpdateLocalAlert, _alerts, completeAlert, createDefaultTasks, _defaultTasks, _error, fetchAlerts (+11 more)
+Nodes (24): _agregar, build, CatalogoServiciosScreen, _CatalogoServiciosScreenState, createState, _currencyFormat, dispose, _eliminar (+16 more)
 
-### Community 44 - "Text Field Widget"
-Cohesion: 0.04
-Nodes (57): _loadTheme, setThemeMode, _themeKey, _themeMode, ThemeProvider, toggleTheme, AppSnackbar, show (+49 more)
+### Community 42 - "bool get"
+Cohesion: 0.08
+Nodes (22): bool get, ../../../../core/models/service_record_model.dart, fetchServices, _firestore, _hasMore, _isLoading, _lastDocument, ServiceHistoryProvider (+14 more)
 
-### Community 45 - "Admin Service Methods"
+### Community 43 - "auth_screen_forgot_password_test.dart"
 Cohesion: 0.10
-Nodes (19): copyWith, correo, departamento, especialidad, estado, fcmToken, fechaRegistro, fotoPerfilUrl (+11 more)
+Nodes (21): _i10.AuthService, _i11.AdminAuthService, package:autodoc/features/auth/presentation/pages/auth_screen.dart, package:autodoc/features/auth/presentation/providers/auth_provider.dart, package:autodoc/features/auth/presentation/screens/login_screen.dart, authProvider, main, mockAdminAuthService (+13 more)
 
-### Community 46 - "Alert Provider Logic"
+### Community 44 - "user_model.dart"
+Cohesion: 0.08
+Nodes (23): calificacionPromedio, copyWith, correo, departamento, especialidad, estado, fcmToken, fechaRegistro (+15 more)
+
+### Community 45 - "alert_provider.dart"
+Cohesion: 0.08
+Nodes (22): activeAlerts, _addOrUpdateLocalAlert, _alerts, completeAlert, createDefaultTasks, _defaultTasks, _error, fetchAlerts (+14 more)
+
+### Community 46 - "chat_screen_read_receipts_test.dart"
+Cohesion: 0.08
+Nodes (22): package:autodoc/features/chat/data/models/mensaje_model.dart, package:autodoc/features/chat/presentation/pages/chat_screen.dart, main, capturedConversacionId, capturedIsMecanico, capturedUserId, ChangeNotifier, clearUserData (+14 more)
+
+### Community 47 - "GeneratedPluginRegistrant.swift"
+Cohesion: 0.09
+Nodes (22): audioplayers_darwin, cloud_firestore, cloud_functions, file_picker, file_selector_macos, firebase_app_check, firebase_auth, firebase_core (+14 more)
+
+### Community 48 - "package:cloud_firestore/cloud_firestore.dart"
+Cohesion: 0.09
+Nodes (20): ../../../../core/constants/firestore_collections.dart, ../../../../core/models/user_model.dart, AdminAuthService, _auth, _firestore, getAdminByUid, isAdmin, loginAsAdmin (+12 more)
+
+### Community 49 - "package:autodoc/core/theme/app_colors.dart"
 Cohesion: 0.10
-Nodes (19): anio, color, copyWith, fotoUrl, fromJson, fromMap, idPropietario, idVehiculo (+11 more)
+Nodes (19): AppBottomNavBar, build, currentIndex, AppTopNavBar, icon, isActive, onTap, title (+11 more)
 
-### Community 47 - "Admin Repository"
-Cohesion: 0.20
-Nodes (9): BoxFit, build, _buildPlaceholder, fit, height, imageUrl, VehicleImageWidget, width (+1 more)
-
-### Community 48 - "Vehicle Model"
+### Community 50 - "StatelessWidget"
 Cohesion: 0.10
-Nodes (21): class FakeAuthSessionProvider extends, class FakeUserProfileProvider extends, package:autodoc/core/router/app_router.dart, ChangeNotifier, clearError, clearUserData, _currentUid, error (+13 more)
+Nodes (20): build, FirebaseInitializationErrorApp, FirebaseInitializationErrorScreen, activeIcon, child, colors, icon, InstagramBottomNavBar (+12 more)
 
-### Community 49 - "Notification Service"
+### Community 51 - "admin_dashboard_screen.dart"
 Cohesion: 0.11
-Nodes (18): GoogleSignIn, _auth, AuthService, deleteAccount, _googleSignIn, _handleAuthException, isCurrentUserEmailVerified, registerWithEmail (+10 more)
+Nodes (22): AdminDashboardScreen, _AdminDashboardScreenState, build, _buildActionChip, _buildGrowthCharts, _buildMetricsGrid, _buildQuickActions, _buildRecentActivity (+14 more)
 
-### Community 50 - "App Entry Point (main)"
+### Community 52 - "VehicleProvider"
+Cohesion: 0.11
+Nodes (21): build, userId, VehiculoPicker, _showDeleteConfirmationDialog, _showEditMileageDialog, VehicleProvider, build, _buildAssistantCard (+13 more)
+
+### Community 53 - "dashboard_screen.dart"
+Cohesion: 0.11
+Nodes (22): build, _buildAlertCard, build, _buildAlertCard, _buildEmptyVehicleState, _buildMaintenanceSemaphore, _buildServiceTile, _buildStatItem (+14 more)
+
+### Community 54 - "empleado_provider.dart"
+Cohesion: 0.08
+Nodes (22): FirebaseFirestore, FirebaseFunctions, FirebaseFunctions get, crearRegistroEmpleado, desactivarEmpleado, EmpleadoRepository, _empleadosRef, _firestore (+14 more)
+
+### Community 55 - "package:flutter/material.dart"
+Cohesion: 0.11
+Nodes (16): main, main, main, showErrorSnackbar, showInfoSnackbar, showSuccessSnackbar, UiUtils, build (+8 more)
+
+### Community 56 - "secrets.dart"
+Cohesion: 0.09
+Nodes (21): AppSecrets, firebaseAndroidApiKey, firebaseAppIdAndroid, firebaseAppIdIos, firebaseAppIdWeb, firebaseAuthDomain, firebaseDatabaseUrl, firebaseIosApiKey (+13 more)
+
+### Community 57 - "package:flutter/foundation.dart"
+Cohesion: 0.10
+Nodes (18): ../constants/firestore_collections.dart, _defaultImage, _fetchFromSearchApi, _firestore, getVehicleImage, _searchApiKey, _searchApiUrl, VehicleImageService (+10 more)
+
+### Community 58 - "_i1.Mock"
+Cohesion: 0.10
+Nodes (21): _i13.VehicleService, _i15.VehicleImageService, _i17.UserService, _i1.Mock, _i20.FirebaseMessaging, _i3.QueryDocumentSnapshot, _i3.WriteBatch, _i7.FirebaseAuth (+13 more)
+
+### Community 59 - "String get"
+Cohesion: 0.10
+Nodes (19): changeLanguage, currentLanguageCode, _currentLocale, _loadLocale, Locale, Locale get, package:autodoc/features/mechanic/presentation/pages/catalogo_servicios_screen.dart, String get (+11 more)
+
+### Community 60 - "reparacion_provider.dart"
+Cohesion: 0.10
+Nodes (18): buscarReparacionActiva, cambiarEstado, _firestore, iniciarReparacion, ReparacionRepository, watchReparacionesActivas, cambiarEstado, dispose (+10 more)
+
+### Community 61 - "empleados_screen.dart"
+Cohesion: 0.12
+Nodes (20): build, _confirmarDesactivar, _correoController, _crear, createState, dispose, EmpleadosScreen, _EmpleadosScreenState (+12 more)
+
+### Community 62 - "app_router_test.dart"
+Cohesion: 0.09
+Nodes (20): class FakeAuthSessionProvider extends, package:autodoc/core/widgets/missing_argument_screen.dart, ChangeNotifier, clearError, clearUserData, _currentUid, error, fetchedUserId (+12 more)
+
+### Community 63 - "UserProfileProvider"
+Cohesion: 0.17
+Nodes (20): ChangeNotifier, UserProfileProvider, _checkApprovalStatus, build, initState, Route /admin/dashboard, Route /dashboard, Route /mechanic_dashboard (+12 more)
+
+### Community 64 - "admin_repository.dart"
+Cohesion: 0.10
+Nodes (19): ../../../../core/models/admin_log_model.dart, FirebaseFirestore get, countCollection, deleteResenia, deleteTaller, deleteUsuario, descartarReporte, _firestore (+11 more)
+
+### Community 65 - "onboarding_screen.dart"
+Cohesion: 0.10
+Nodes (18): dart:ui, AuthBackgroundBlobs, build, colors, isDark, _buildFeatureItem, _contents, createState (+10 more)
+
+### Community 66 - "catalogo_provider.dart"
+Cohesion: 0.11
+Nodes (17): agregarItem, _catalogoRef, CatalogoRepository, eliminarItem, _firestore, watchCatalogo, agregar, dispose (+9 more)
+
+### Community 67 - "package:autodoc/core/utils/l10n_extension.dart"
+Cohesion: 0.13
+Nodes (16): build, ServicesTrendChart, serviciosPorMes, build, dataPorMes, UserGrowthChart, build, dataPorMes (+8 more)
+
+### Community 68 - "cotizacion_chat_card.dart"
+Cohesion: 0.11
+Nodes (19): _beneficios, build, _calificarServicio, conversacionId, cotizacion, CotizacionChatCard, _CotizacionChatCardState, _cotizacionId (+11 more)
+
+### Community 69 - "service_history_screen.dart"
+Cohesion: 0.11
+Nodes (19): build, _buildEmptyState, _buildFilterTab, _buildReviewAction, _buildServiceCard, _buildStatistics, createState, _dateRange (+11 more)
+
+### Community 70 - "user_profile_screen.dart"
+Cohesion: 0.11
+Nodes (19): _buildActionOption, _buildAppBar, _buildInfoField, _buildInfoSection, _buildProfileHeader, _buildStaticField, _buildThemeOption, createState (+11 more)
+
+### Community 71 - "String?"
+Cohesion: 0.11
+Nodes (17): BoxFit, action, AppEmptyState, build, description, icon, lottieAsset, title (+9 more)
+
+### Community 72 - "app_card.dart"
+Cohesion: 0.11
+Nodes (17): EdgeInsetsGeometry, AppCard, build, child, margin, onTap, padding, appBar (+9 more)
+
+### Community 73 - "package:autodoc/core/utils/responsive.dart"
+Cohesion: 0.11
+Nodes (17): build, child, ResponsiveContainer, _buildRoleCard, createState, dispose, _imageFile, _isLoading (+9 more)
+
+### Community 74 - "admin_logs_screen.dart"
+Cohesion: 0.11
+Nodes (17): AdminLogsScreen, _AdminLogsScreenState, _buildTag, _colorForAction, createState, _exportToCsv, _filterDateFrom, _filterDateTo (+9 more)
+
+### Community 75 - "auth_provider.dart"
 Cohesion: 0.11
 Nodes (18): _adminAuthService, _authService, clearError, deleteAccount, _error, isEmailPasswordUser, _isLoading, refreshEmailVerificationStatus (+10 more)
 
-### Community 51 - "Status Badge Widget"
-Cohesion: 0.06
-Nodes (35): Animation, AnimatedCounter, _AnimatedCounterState, _animation, build, _controller, createState, didUpdateWidget (+27 more)
-
-### Community 52 - "Reservation Provider"
+### Community 76 - "reserva_model.dart"
 Cohesion: 0.11
-Nodes (17): cloud_firestore, file_selector_macos, firebase_auth, firebase_core, firebase_crashlytics, firebase_messaging, firebase_storage, flutter_local_notifications (+9 more)
+Nodes (18): cotizacionEstimada, descripcion, estado, fechaCreacion, fechaHoraConfirmada, fechaHoraPropuesta, fromMap, id (+10 more)
 
-### Community 53 - "Alert Model"
-Cohesion: 0.18
-Nodes (10): CustomPainter, _ChatPatternPainter, build, ElSalvadorLicensePlate, height, paint, placa, shouldRepaint (+2 more)
-
-### Community 54 - "Conversation Model"
+### Community 77 - "task_complete_screen.dart"
 Cohesion: 0.11
-Nodes (16): UserModel, AccountRow, build, isCurrentAdmin, onCambiarRol, onReactivar, onSuspender, usuario (+8 more)
+Nodes (18): build, _buildInputCard, _costController, createState, currentKm, dispose, _infoItem, _isLoading (+10 more)
 
-### Community 55 - "Vehicle Search Screen"
+### Community 78 - "mensaje_model.dart"
 Cohesion: 0.11
-Nodes (17): aprobarTaller, cambiarRolUsuario, eliminarResenia, fetchLogs, fetchResenias, fetchTalleres, fetchUsuarios, _logAction (+9 more)
+Nodes (17): hashCode, operator, read, typeId, write, contenido, duracionSegundos, estado (+9 more)
 
-### Community 56 - "Service Record Model"
+### Community 79 - "review_service.dart"
 Cohesion: 0.11
-Nodes (17): cotizacionEstimada, descripcion, estado, fechaCreacion, fechaHoraConfirmada, fechaHoraPropuesta, fromMap, id (+9 more)
+Nodes (17): CollectionReference, ../../../../core/constants/storage_paths.dart, ../../../../core/models/review_model.dart, copia, findReviewableServiceId, _firestore, getReviewsForTaller, getUserReviewForService (+9 more)
 
-### Community 57 - "Maintenance Config UI"
-Cohesion: 0.18
-Nodes (14): Point, Size, wchar_t, Scale(), Create, Destroy, UpdateTheme, Win32Window::Win32Window() (+6 more)
+### Community 80 - "vehicle_service.dart"
+Cohesion: 0.11
+Nodes (17): ../../../../core/models/vehicle_model.dart, addNote, addVehicle, _collection, confirmarVinculoTaller, deleteVehicle, _firestore, _functions (+9 more)
 
-### Community 58 - "Maintenance Task Model"
+### Community 81 - "conversaciones_list_screen.dart"
 Cohesion: 0.12
-Nodes (16): ../../../../core/models/admin_log_model.dart, AdminRepository, countCollection, deleteResenia, deleteTaller, deleteUsuario, _firestore, getLogs (+8 more)
+Nodes (15): dart:io, build, _buildEmptyState, ConversacionesListScreen, _ConversacionesListScreenState, createState, _ensureConversacionesInitialized, _initializedAsMecanico (+7 more)
 
-### Community 59 - "Bottom Nav & Chat Cards"
+### Community 82 - "mecanico_admin_card.dart"
+Cohesion: 0.11
+Nodes (16): double?, UserModel, AppSkeleton, borderRadius, build, card, height, width (+8 more)
+
+### Community 83 - "alert_provider_test.dart"
+Cohesion: 0.11
+Nodes (17): _i3.CollectionReference, _i3.FirebaseFirestore, _i3.Query, _i5.FirebaseStorage, alertProvider, main, mockAlertsCollection, mockFirestore (+9 more)
+
+### Community 84 - "app_text_styles.dart"
+Cohesion: 0.11
+Nodes (17): AppTextStyles, bodyLarge, bodyMedium, bodySmall, displayLarge, displayMedium, displaySmall, headlineLarge (+9 more)
+
+### Community 85 - "responsive.dart"
+Cohesion: 0.11
+Nodes (17): desktop, fontSize, gridColumns, heroHeight, horizontalEdgeInsets, horizontalPadding, iconSize, isDesktop (+9 more)
+
+### Community 86 - "app_text_field.dart"
 Cohesion: 0.11
 Nodes (17): AppTextField, build, controller, hintText, inputFormatters, keyboardType, label, maxLines (+9 more)
 
-### Community 60 - "Translation Service"
+### Community 87 - "admin_talleres_screen.dart"
 Cohesion: 0.12
-Nodes (16): AdminLogModel, package:autodoc/core/models/admin_log_model.dart, package:autodoc/features/admin/data/repositories/admin_repository.dart, package:autodoc/features/admin/data/services/admin_service.dart, adminService, fakeRepository, lastLog, lastUpdatedEstado (+8 more)
+Nodes (17): AdminTalleresScreen, _AdminTalleresScreenState, _aplicarFiltros, _buildFilterChip, _buildFiltrosAvanzados, createState, _exportarTalleresCsv, _filterDepartamento (+9 more)
 
-### Community 61 - "Firebase Plugins"
-Cohesion: 0.09
-Nodes (23): class FakePushNotificationService extends, ../../helpers/test_helpers.mocks.dart, PushNotificationService, package:autodoc/core/models/app_notification_model.dart, package:autodoc/core/providers/auth_session_provider.dart, package:autodoc/core/providers/notification_center_provider.dart, package:autodoc/core/services/push_notification_service.dart, package:firebase_auth/firebase_auth.dart (+15 more)
+### Community 88 - "chat_repository.dart"
+Cohesion: 0.11
+Nodes (17): actualizarEstadoCotizacion, actualizarMetadatosMensaje, buscarConversacion, crearConversacion, crearCotizacion, deleteMensaje, enviarMensaje, finalizarServicioDesdeCotizacion (+9 more)
 
-### Community 62 - "App Button Widget"
+### Community 89 - "notifications_screen.dart"
+Cohesion: 0.13
+Nodes (16): AppNotification, NotificationCenterProvider, build, _buildBody, _colorForType, colors, deepLink, _iconForType (+8 more)
+
+### Community 90 - "audio_chat_card.dart"
+Cohesion: 0.12
+Nodes (16): AudioPlayer, AudioChatCard, _AudioChatCardState, build, createState, dispose, duracionSegundos, _hasStartedOnce (+8 more)
+
+### Community 91 - "taller_admin_card.dart"
+Cohesion: 0.12
+Nodes (15): ../../../../core/models/workshop_model.dart, build, _buildInfoChip, _buildStatusChip, onAprobar, onRechazar, onSuspender, taller (+7 more)
+
+### Community 92 - "vehicle_photo_service.dart"
+Cohesion: 0.12
+Nodes (16): FirebaseStorage, addPhoto, deletePhoto, _firestore, fromMap, id, _storage, streamPhotos (+8 more)
+
+### Community 93 - "alert_model.dart"
+Cohesion: 0.12
+Nodes (16): int?, AlertModel, AlertPriority, copyWith, descripcion, estado, fechaLimite, fromMap (+8 more)
+
+### Community 94 - "List"
+Cohesion: 0.12
+Nodes (15): especialidadesTaller, estado, estadosReparacion, fechaActualizacion, fechaCreacion, fromMap, historialEstados, idPropietario (+7 more)
+
+### Community 95 - "app_button.dart"
+Cohesion: 0.12
+Nodes (15): AppButton, AppButtonSize, AppButtonType, build, _handlePress, hapticFeedback, icon, isLoading (+7 more)
+
+### Community 96 - "conversacion_model.dart"
 Cohesion: 0.12
 Nodes (16): ConversacionModel, estado, fromMap, id, idMecanico, idPropietario, idTaller, idVehiculo (+8 more)
 
-### Community 63 - "iOS Plugin Registry"
-Cohesion: 0.10
-Nodes (18): IconData, AppBottomNavBar, build, currentIndex, action, AppEmptyState, build, description (+10 more)
-
-### Community 64 - "Admin Log Model"
-Cohesion: 0.11
-Nodes (19): build, build, _buildAssistantCard, _buildRecentItem, _buildRecentSearches, _buildSearchCard, _buildTopBar, createState (+11 more)
-
-### Community 65 - "Windows Console Setup"
-Cohesion: 0.10
-Nodes (19): AnimationController, Color, dart:math, build, color, icon, MetricCard, title (+11 more)
-
-### Community 66 - "Workshop Model"
-Cohesion: 0.14
-Nodes (13): FirebaseMessaging, _firebaseMessaging, initialize, _instance, _isInitialized, _localNotifications, NotificationService, _onForegroundMessage (+5 more)
-
-### Community 67 - "Main Scaffold & Nav"
+### Community 97 - "alerts_screen.dart"
 Cohesion: 0.12
-Nodes (16): ../../data/models/mensaje_model.dart, AppTopNavBar, icon, isActive, onTap, title, _TopNavLink, build (+8 more)
+Nodes (16): AlertsScreen, _AlertsScreenState, _buildCompactActionButton, _buildContent, _buildHeader, _buildMileageChip, _buildSectionHeader, _buildTabs (+8 more)
 
-### Community 68 - "Auth Preferences Service"
+### Community 98 - "share_vehicle_sheet.dart"
 Cohesion: 0.12
-Nodes (15): AlertModel, AlertPriority, copyWith, descripcion, estado, fechaLimite, fromMap, idAlerta (+7 more)
+Nodes (16): _addUser, build, createState, dispose, _emailController, _firestore, _functions, initState (+8 more)
 
-### Community 69 - "Auth Routes & Redirect"
-Cohesion: 0.12
-Nodes (15): actualizarEstadoCotizacion, actualizarMetadatosMensaje, buscarConversacion, crearConversacion, crearCotizacion, deleteMensaje, enviarMensaje, _firestore (+7 more)
-
-### Community 70 - "Message Model"
+### Community 99 - "workshop_reviews_list_sheet_test.dart"
 Cohesion: 0.13
-Nodes (15): _addUser, build, createState, dispose, _emailController, _firestore, initState, _isLoading (+7 more)
+Nodes (12): ReviewService, package:autodoc/core/models/review_model.dart, package:autodoc/core/widgets/workshop_reviews_list_sheet.dart, main, _FakeReviewService, main, noSuchMethod, _reviews (+4 more)
 
-### Community 71 - "Review Service"
+### Community 100 - "reparaciones_kanban_screen_test.dart"
+Cohesion: 0.12
+Nodes (15): package:autodoc/features/mechanic/data/repositories/reparacion_repository.dart, package:autodoc/features/mechanic/presentation/pages/reparaciones_kanban_screen.dart, package:autodoc/features/mechanic/presentation/providers/reparacion_provider.dart, ChangeNotifier, clearUserData, error, fetchedUserId, fetchUserData (+7 more)
+
+### Community 101 - "animated_counter.dart"
+Cohesion: 0.12
+Nodes (15): Animation, _animation, build, _controller, createState, didUpdateWidget, dispose, duration (+7 more)
+
+### Community 102 - "service_record_model.dart"
+Cohesion: 0.12
+Nodes (15): copyWith, costo, descripcion, fecha, fotoFacturaUrl, fromMap, idServicio, idTaller (+7 more)
+
+### Community 103 - "garage_screen.dart"
+Cohesion: 0.14
+Nodes (15): AuthSessionProvider, build, build, _buildEmptyState, _buildHeader, GarageScreen, _setVehicleAsPrimary, _showAddVehicleDialog (+7 more)
+
+### Community 104 - "AuthProvider"
+Cohesion: 0.17
+Nodes (15): AdminSidebar, build, _buildDrawerItem, _buildGoogleButton, _buildSubmitButton, _handleEmailRegister, _showForgotPasswordDialog, AuthProvider (+7 more)
+
+### Community 105 - "auth_preferences_service.dart"
+Cohesion: 0.12
+Nodes (14): AuthPreferencesService, clearSavedCredentials, getRememberMe, getSavedEmail, isOnboardingCompleted, _keyOnboardingCompleted, _keyRememberMe, _keySavedEmail (+6 more)
+
+### Community 106 - "empleados_screen_test.dart"
+Cohesion: 0.12
+Nodes (14): package:autodoc/core/providers/theme_provider.dart, package:autodoc/features/mechanic/presentation/pages/empleados_screen.dart, main, ChangeNotifier, clearUserData, error, fetchedUserId, fetchUserData (+6 more)
+
+### Community 107 - "FlutterWindow"
 Cohesion: 0.13
 Nodes (13): unique_ptr, DartProject, HWND, LPARAM, LRESULT, UINT, WPARAM, FlutterWindow (+5 more)
 
-### Community 72 - "User Service"
-Cohesion: 0.15
-Nodes (14): int?, LanguageProvider, build, maxLines, overflow, style, text, textAlign (+6 more)
-
-### Community 73 - "Vehicle Service (Data)"
-Cohesion: 0.20
-Nodes (8): package:autodoc/core/models/workshop_model.dart, package:autodoc/core/providers/language_provider.dart, package:autodoc/core/providers/theme_provider.dart, package:flutter_test/flutter_test.dart, package:shared_preferences/shared_preferences.dart, main, main, main
-
-### Community 74 - "Admin Auth Service"
+### Community 108 - "splash_screen.dart"
 Cohesion: 0.14
-Nodes (18): build, build, _handleEmailRegister, _buildHeader, _buildNearbyServices, _checkApprovalStatus, build, initState (+10 more)
+Nodes (13): AnimationController, Color, dart:math, build, ChatBackgroundPattern, color, paint, shouldRepaint (+5 more)
 
-### Community 75 - "Review Model"
-Cohesion: 0.12
-Nodes (17): AdminLogsScreen, _AdminLogsScreenState, build, _buildTag, _colorForAction, createState, _exportToCsv, _filterDateFrom (+9 more)
-
-### Community 76 - "App Transitions"
-Cohesion: 0.43
-Nodes (7): AdminReseniasScreen, _AdminReseniasScreenState, build, createState, initState, _mostrarConfirmarEliminar, AdminProvider
-
-### Community 77 - "Translated Text Widget"
+### Community 109 - "widgets/historial_chat_card.dart"
 Cohesion: 0.13
-Nodes (15): AdminUsuariosScreen, _AdminUsuariosScreenState, build, _buildFilterChip, createState, _descRol, _filterDateFrom, _filterEstado (+7 more)
+Nodes (13): ../../data/models/mensaje_model.dart, AppColors, AuthBottomNav, build, _buildNavAction, colors, isDark, build (+5 more)
 
-### Community 78 - "Availability Picker"
-Cohesion: 0.15
-Nodes (14): AppColors, AdminSeedScreen, build, AuthBackgroundBlobs, build, colors, isDark, AuthLogoSection (+6 more)
+### Community 110 - "dialog_crear_usuario.dart"
+Cohesion: 0.14
+Nodes (14): FormState, build, _correoController, createState, DialogCrearUsuario, _DialogCrearUsuarioState, dispose, _formKey (+6 more)
 
-### Community 79 - "Web App Manifest"
+### Community 111 - "app_status_badge.dart"
+Cohesion: 0.13
+Nodes (13): IconData, AppStatusBadge, AppStatusType, build, icon, text, type, build (+5 more)
+
+### Community 112 - "firestore_collections.dart"
+Cohesion: 0.13
+Nodes (14): adminLogs, alertas, conversaciones, FirestoreCollections, historialMantenimientos, mantenimientos, mensajes, reparaciones (+6 more)
+
+### Community 113 - "theme_provider.dart"
+Cohesion: 0.13
+Nodes (13): chatAudios, facturas, perfiles, reseniaFotos, StoragePaths, _loadTheme, setThemeMode, _themeKey (+5 more)
+
+### Community 114 - "review_model.dart"
+Cohesion: 0.13
+Nodes (14): comentario, copyWith, estrellas, fechaResenia, fotos, fromMap, idResenia, idServicio (+6 more)
+
+### Community 115 - "State"
+Cohesion: 0.19
+Nodes (15): AnimatedCounter, _AnimatedCounterState, CotizacionPicker, _CotizacionPickerState, MechanicDashboardScreen, _MechanicDashboardScreenState, MechanicPendingScreen, _MechanicPendingScreenState (+7 more)
+
+### Community 116 - "package:google_fonts/google_fonts.dart"
+Cohesion: 0.14
+Nodes (13): AppSnackbar, show, SnackbarType, build, _buildColumna, createState, _etiquetasEstado, idTaller (+5 more)
+
+### Community 117 - "task_config_screen.dart"
+Cohesion: 0.14
+Nodes (14): build, createState, dispose, initState, _isLoading, _kmController, _monthsController, _presetChip (+6 more)
+
+### Community 118 - "mechanic_dashboard_screen.dart"
+Cohesion: 0.13
+Nodes (14): build, _buildDashboardMetrics, _buildIncomeChartSection, _buildMetricCard, _buildQuickActions, _buildRecentServices, _buildServiceTile, _buildTopBar (+6 more)
+
+### Community 119 - "Create"
+Cohesion: 0.16
+Nodes (13): Point, Size, wchar_t, Scale(), Create, Destroy, Win32Window::Win32Window(), WindowClassRegistrar (+5 more)
+
+### Community 120 - "manifest.json"
 Cohesion: 0.13
 Nodes (14): automotive, utilities, background_color, categories, description, display, icons, name (+6 more)
 
-### Community 80 - "Workshop Admin Card"
-Cohesion: 0.14
-Nodes (13): CollectionReference, ../../../../core/models/review_model.dart, _firestore, getReviewsForTaller, getUserReviewForTaller, hasUserReviewedTaller, recalculateTallerRating, reportReview (+5 more)
+### Community 121 - "win32_window.cpp"
+Cohesion: 0.26
+Nodes (13): HWND, LPARAM, LRESULT, UINT, WPARAM, EnableFullDpiSupportIfAvailable(), GetHandle, GetThisFromHandle (+5 more)
 
-### Community 81 - "App Card Widget"
+### Community 122 - "notification_bell_button_test.dart"
 Cohesion: 0.14
-Nodes (13): @firebase/rules-unit-testing, mocha, dependencies, firebase-admin, @firebase/rules-unit-testing, mocha, description, firebase-admin (+5 more)
+Nodes (13): class _FakeNotificationCenterProvider extends, package:autodoc/core/widgets/notification_bell_button.dart, ChangeNotifier, deleteNotification, error, hasUnread, initialize, isLoading (+5 more)
 
-### Community 82 - "Mechanic Admin Card"
+### Community 123 - "notification_center_provider.dart"
 Cohesion: 0.14
 Nodes (13): int get, deleteNotification, dispose, _error, _firestore, hasUnread, initialize, _isLoading (+5 more)
 
-### Community 83 - "Admin Dashboard Provider"
+### Community 124 - "app_notification_model.dart"
 Cohesion: 0.14
-Nodes (13): adminLogs, alertas, conversaciones, FirestoreCollections, historialMantenimientos, mantenimientos, mensajes, resenias (+5 more)
+Nodes (13): AppNotification, body, copyWith, deepLink, fromFirestore, fromMap, id, leida (+5 more)
 
-### Community 84 - "Vehicle Image Service"
+### Community 125 - "maintenance_task_model.dart"
 Cohesion: 0.14
 Nodes (13): fechaUltimoServicio, frecuenciaKm, frecuenciaMeses, fromMap, getStatus, getStatusLabel, id, MaintenanceStatus (+5 more)
 
-### Community 85 - "Skeleton Loader Widget"
+### Community 126 - "reserva_chat_card_test.dart"
 Cohesion: 0.14
-Nodes (13): copyWith, costo, descripcion, fecha, fotoFacturaUrl, fromMap, idServicio, idTaller (+5 more)
+Nodes (13): class FakeUserProfileProvider extends, package:autodoc/features/chat/presentation/widgets/cards/reserva_chat_card.dart, ChangeNotifier, clearUserData, error, fetchedUserId, fetchUserData, hasAttemptedFetch (+5 more)
 
-### Community 86 - "iOS Scene Setup"
+### Community 127 - "user_service.dart"
 Cohesion: 0.14
-Nodes (13): clearUserData, _error, _fetchedUserId, fetchUserData, _hasAttemptedFetch, hasAttemptedFetchFor, _isLoading, _setError (+5 more)
+Nodes (12): addFavoriteWorkshop, _collection, createUserData, _firestore, getUserData, removeFavoriteWorkshop, updateUserData, uploadProfilePhoto (+4 more)
 
-### Community 87 - "Theme Provider"
+### Community 128 - "chat_provider_test.dart"
+Cohesion: 0.15
+Nodes (12): @HiveType, MensajeModelAdapter, MensajeModel, MockChatRepository, package:autodoc/features/chat/data/models/conversacion_model.dart, package:hive/hive.dart, chatProvider, crearCotizacion (+4 more)
+
+### Community 129 - "mechanic_service_history_screen.dart"
 Cohesion: 0.17
-Nodes (14): AdminDashboardScreen, _AdminDashboardScreenState, build, _buildActionChip, _buildMetricsGrid, _buildSectionTitle, _buildWelcomeHeader, createState (+6 more)
+Nodes (12): class, DateTimeRange?, build, _buildMechanicServiceCard, createState, _dateRange, _detalleRow, MechanicServiceHistoryScreen (+4 more)
 
-### Community 88 - "App Shadows"
-Cohesion: 0.20
-Nodes (14): RECT, OnCreate, OnDestroy, HWND, Win32Window, child_content_, GetClientArea, OnCreate (+6 more)
+### Community 130 - "reserva_provider.dart"
+Cohesion: 0.15
+Nodes (12): ../../data/models/reserva_model.dart, ../../data/repositories/reserva_repository.dart, cambiarEstadoReserva, dispose, _error, inicializarReservasUsuario, _isLoading, reprogramarReserva (+4 more)
 
-### Community 89 - "Firebase Options Config"
+### Community 131 - "mechanic_reviews_screen.dart"
+Cohesion: 0.17
+Nodes (11): DocumentSnapshot, build, _buildDistribution, createState, MechanicReviewsScreen, _MechanicReviewsScreenState, _mostrarDialogoResponder, _orden (+3 more)
+
+### Community 132 - "workshop_model.dart"
+Cohesion: 0.15
+Nodes (12): calificacionPromedio, copyWith, departamento, especialidad, estado, fromMap, idTaller, nombre (+4 more)
+
+### Community 133 - "translated_text.dart"
+Cohesion: 0.18
+Nodes (12): LanguageProvider, build, maxLines, overflow, style, text, textAlign, TranslatedText (+4 more)
+
+### Community 134 - "package:autodoc/l10n/app_localizations.dart"
+Cohesion: 0.17
+Nodes (10): AppLocalizations get, BarChart, BuildContext, AppColorsExtension, l10n, L10nExtension, package:autodoc/features/admin/presentation/widgets/workshops_growth_chart.dart, package:autodoc/l10n/app_localizations.dart (+2 more)
+
+### Community 135 - "translation_service.dart"
 Cohesion: 0.17
 Nodes (11): Box, _apiKey, _baseUrl, initialize, _instance, isInitialized, translate, translateSync (+3 more)
 
-### Community 90 - "iOS App Delegate"
-Cohesion: 0.15
-Nodes (11): EdgeInsetsGeometry, AppCard, build, child, margin, onTap, padding, package:autodoc/core/theme/app_radius.dart (+3 more)
+### Community 136 - "DateTime"
+Cohesion: 0.17
+Nodes (11): DateTime, accion, AdminLogModel, adminUid, detalle, fecha, fromMap, idLog (+3 more)
 
-### Community 91 - "NHTSA Car Models"
-Cohesion: 0.15
-Nodes (12): CotizacionModel, descripcion, estado, fecha, fromMap, id, idMecanico, idPropietario (+4 more)
-
-### Community 92 - "Language Provider"
-Cohesion: 0.18
-Nodes (12): _mostrarMenuAdjuntos, _cambiarEstado, ReservaProvider, build, conversacionId, isMe, mensajeId, metadata (+4 more)
-
-### Community 93 - "Vehicle API Service"
-Cohesion: 0.21
-Nodes (7): GeneratedPluginRegistrant, FlutterEngine, FlutterLocalNotificationsPlugin, GeneratedPluginRegistrant, +registerWithRegistry, Keep, NSObject
-
-### Community 94 - "Dashboard Quick Actions"
-Cohesion: 0.18
-Nodes (10): DateTime?, accion, adminUid, detalle, fecha, fromMap, idLog, modulo (+2 more)
-
-### Community 95 - "Landing Screen"
+### Community 137 - "wWinMain"
 Cohesion: 0.24
 Nodes (9): _In_, _In_opt_, vector, wWinMain(), string, wchar_t, CreateAndAttachConsole(), GetCommandLineArguments() (+1 more)
 
-### Community 96 - "macOS Test Config"
-Cohesion: 0.13
-Nodes (13): comentario, copyWith, estrellas, fechaResenia, fromMap, idResenia, idTaller, idUsuario (+5 more)
-
-### Community 97 - "macOS App Delegate"
+### Community 138 - "empleado_model.dart"
 Cohesion: 0.17
-Nodes (11): calificacionPromedio, copyWith, especialidad, estado, fromMap, idTaller, nombre, telefono (+3 more)
+Nodes (11): activo, correo, EmpleadoModel, fechaCreacion, fromMap, idEmpleado, idTallerPropietario, nombreCompleto (+3 more)
 
-### Community 98 - "macOS Window Setup"
-Cohesion: 0.25
-Nodes (7): build, conversacionId, CotizacionChatCard, isMe, mensajeId, metadata, package:autodoc/features/chat/presentation/providers/chat_provider.dart
-
-### Community 99 - "LLDB Debug Scripts"
-Cohesion: 0.15
-Nodes (12): AppButton, AppButtonSize, AppButtonType, build, _handlePress, hapticFeedback, icon, isLoading (+4 more)
-
-### Community 100 - "Language Root Widget"
-Cohesion: 0.22
-Nodes (8): android, DefaultFirebaseOptions, ios, web, package:autodoc/config/secrets.dart, package:firebase_core/firebase_core.dart, package:flutter/foundation.dart, static FirebaseOptions get
-
-### Community 101 - "Role Utilities"
-Cohesion: 0.18
-Nodes (11): AdminTalleresScreen, _AdminTalleresScreenState, _buildFilterChip, createState, _filterStatus, initState, _mostrarConfirmacion, _searchQuery (+3 more)
-
-### Community 102 - "Skeleton Layouts"
+### Community 139 - "package:autodoc/core/models/vehicle_model.dart"
 Cohesion: 0.17
-Nodes (11): AuthPreferencesService, clearSavedCredentials, getRememberMe, getSavedEmail, isOnboardingCompleted, _keyOnboardingCompleted, _keyRememberMe, _keySavedEmail (+3 more)
+Nodes (9): VehicleModel, package:autodoc/core/models/vehicle_model.dart, package:autodoc/features/dashboard/presentation/providers/alert_provider.dart, main, main, main, mockVehicleImageService, mockVehicleService (+1 more)
 
-### Community 103 - "Localizations Delegates"
-Cohesion: 0.12
-Nodes (16): hashCode, operator, read, typeId, write, contenido, estado, fromMap (+8 more)
-
-### Community 104 - "Community 104"
+### Community 140 - "about_screen.dart"
 Cohesion: 0.18
 Nodes (11): AboutScreen, _AboutScreenState, build, _buildNumber, createState, _initPackageInfo, initState, _launchUrl (+3 more)
 
-### Community 105 - "Community 105"
+### Community 141 - "Win32Window"
+Cohesion: 0.24
+Nodes (12): RECT, OnCreate, OnDestroy, HWND, Win32Window, child_content_, GetClientArea, OnCreate (+4 more)
+
+### Community 142 - "license_plate_widget.dart"
 Cohesion: 0.18
-Nodes (10): ../../../../core/models/user_model.dart, FirebaseAuth, AdminAuthService, _auth, _firestore, getAdminByUid, isAdmin, loginAsAdmin (+2 more)
+Nodes (10): CustomPainter, _ChatPatternPainter, build, ElSalvadorLicensePlate, height, paint, placa, shouldRepaint (+2 more)
 
-### Community 106 - "Community 106"
-Cohesion: 0.14
-Nodes (13): @pragma, @visibleForTesting, FirebaseFirestore, _firebaseMessagingBackgroundHandler, _firestore, initialize, initializeApp, _instance (+5 more)
+### Community 143 - "admin_dashboard_provider.dart"
+Cohesion: 0.18
+Nodes (10): ../../data/services/admin_service.dart, AdminService, _adminService, dispose, _error, fetchMetrics, _isLoading, _metrics (+2 more)
 
-### Community 107 - "Community 107"
+### Community 144 - "app_transitions.dart"
 Cohesion: 0.18
 Nodes (10): accelerate, AppTransitions, decelerate, defaultCurve, fast, medium, slow, package:flutter/animation.dart (+2 more)
 
-### Community 108 - "Community 108"
+### Community 145 - "pdf_generator.dart"
 Cohesion: 0.18
 Nodes (10): _buildHeader, _buildServiceTable, _buildSummary, generateServiceHistoryPdf, PdfGenerator, ../models/service_record_model.dart, ../models/vehicle_model.dart, package:pdf/pdf.dart (+2 more)
 
-### Community 109 - "Community 109"
-Cohesion: 0.15
-Nodes (13): _buildRoleCard, createState, dispose, _imageFile, _isLoading, _nameController, _notificationsEnabled, _picker (+5 more)
+### Community 146 - "plate_formatter.dart"
+Cohesion: 0.18
+Nodes (10): formatEditUpdate, normalizarPlaca, null, placa, placaElSalvadorPattern, PlateFormatter, validarPlacaElSalvador, _PrecioInputFormatter (+2 more)
 
-### Community 110 - "Community 110"
-Cohesion: 0.20
-Nodes (9): @GenerateMocks, package:autodoc/core/services/vehicle_image_service.dart, package:autodoc/features/admin/data/services/admin_auth_service.dart, package:autodoc/features/auth/data/services/auth_service.dart, package:autodoc/features/dashboard/data/services/vehicle_service.dart, package:autodoc/features/profile/data/services/user_service.dart, package:firebase_messaging/firebase_messaging.dart, package:mockito/annotations.dart (+1 more)
+### Community 147 - "account_row.dart"
+Cohesion: 0.18
+Nodes (10): AccountRow, build, canHardDelete, isCurrentAdmin, onAprobar, onCambiarRol, onEliminar, onReactivar (+2 more)
 
-### Community 111 - "Community 111"
+### Community 148 - "review_chat_card.dart"
+Cohesion: 0.18
+Nodes (10): build, conversacionId, isMe, mensajeId, metadata, _onRatePressed, ReviewChatCard, tallerId (+2 more)
+
+### Community 149 - "FlutterMacOS"
 Cohesion: 0.24
 Nodes (5): Cocoa, FlutterMacOS, RunnerTests, RunnerTests, XCTestCase
 
-### Community 112 - "Community 112"
-Cohesion: 0.20
-Nodes (9): ../../../../core/models/workshop_model.dart, build, _buildInfoChip, _buildStatusChip, onAprobar, onRechazar, onSuspender, taller (+1 more)
-
-### Community 113 - "Community 113"
-Cohesion: 0.36
-Nodes (10): HWND, LPARAM, LRESULT, UINT, WPARAM, EnableFullDpiSupportIfAvailable(), GetHandle, GetThisFromHandle (+2 more)
-
-### Community 114 - "Community 114"
-Cohesion: 0.22
-Nodes (8): ../../../../core/constants/firestore_collections.dart, actualizarEstadoReserva, crearReserva, _firestore, getReserva, ReservaRepository, streamReservasUsuario, ../models/reserva_model.dart
-
-### Community 115 - "Community 115"
-Cohesion: 0.28
-Nodes (6): Flutter, FlutterSceneDelegate, GoogleMaps, SceneDelegate, UIKit, XCTest
-
-### Community 116 - "Community 116"
-Cohesion: 0.22
-Nodes (6): admin, db, firestore, functions, messaging, storage
-
-### Community 117 - "Community 117"
-Cohesion: 0.14
-Nodes (13): @HiveType, MensajeModelAdapter, dart:io, MensajeModel, package:autodoc/features/chat/data/models/conversacion_model.dart, package:autodoc/features/chat/data/models/cotizacion_model.dart, package:autodoc/features/chat/data/models/mensaje_model.dart, package:autodoc/features/chat/data/repositories/chat_repository.dart (+5 more)
-
-### Community 118 - "Community 118"
-Cohesion: 0.22
-Nodes (8): build, conversacionId, isMe, mensajeId, metadata, ReviewChatCard, tallerId, package:autodoc/core/widgets/review_sheet.dart
-
-### Community 119 - "Community 119"
-Cohesion: 0.25
-Nodes (6): Any, FlutterImplicitEngineBridge, FlutterImplicitEngineDelegate, AppDelegate, Bool, UIApplication
-
-### Community 120 - "Community 120"
-Cohesion: 0.25
-Nodes (7): CarMake, CarModel, fromJson, makeId, makeName, modelId, modelName
-
-### Community 121 - "Community 121"
-Cohesion: 0.25
-Nodes (7): changeLanguage, currentLanguageCode, _currentLocale, _loadLocale, Locale, Locale get, String get
-
-### Community 123 - "Community 123"
-Cohesion: 0.29
-Nodes (6): app_colors.dart, app_radius.dart, app_text_styles.dart, AppTheme, _buildTextTheme, package:animations/animations.dart
-
-### Community 124 - "Community 124"
-Cohesion: 0.29
-Nodes (6): AppLocalizations get, BuildContext, AppColorsExtension, l10n, L10nExtension, package:autodoc/l10n/app_localizations.dart
-
-### Community 125 - "Community 125"
-Cohesion: 0.47
-Nodes (4): FlutterAppDelegate, AppDelegate, Bool, NSApplication
-
-### Community 126 - "Community 126"
-Cohesion: 0.33
-Nodes (5): FlutterPluginRegistry, FlutterViewController, RegisterGeneratedPlugins(), MainFlutterWindow, NSWindow
-
-### Community 127 - "Community 127"
-Cohesion: 0.33
-Nodes (5): handle_new_rx_page(), __lldb_init_module(), Intercept NOTIFY_DEBUGGER_ABOUT_RX_PAGES and touch the pages., SBDebugger, SBFrame
-
-### Community 128 - "Community 128"
-Cohesion: 0.33
-Nodes (5): isMechanicRole, mechanicFirestoreRoles, normalized, List, return
-
-### Community 129 - "Community 129"
-Cohesion: 0.33
-Nodes (6): _buildQuickActions, _buildRecentActivity, Route /admin/logs, Route /admin/resenias, Route /admin/talleres, Route /admin/usuarios
-
-### Community 130 - "Community 130"
-Cohesion: 0.40
-Nodes (6): AppLocalizations, _AppLocalizationsDelegate, AppLocalizationsEn, AppLocalizationsEs, of, LocalizationsDelegate
-
-### Community 131 - "Community 131"
-Cohesion: 0.60
-Nodes (3): gradlew script, die(), warn()
-
-### Community 132 - "Community 132"
-Cohesion: 0.40
-Nodes (4): formatEditUpdate, PlateFormatter, package:flutter/services.dart, TextInputFormatter
-
-### Community 135 - "Community 135"
-Cohesion: 0.67
-Nodes (3): _i3.CollectionReference, _FakeCollectionReference_2, MockCollectionReference
-
-### Community 137 - "Community 137"
-Cohesion: 0.18
-Nodes (12): NotificationCenterProvider, build, _buildBody, _colorForType, colors, _iconForType, notification, NotificationsScreen (+4 more)
-
-### Community 145 - "Community 145"
-Cohesion: 0.17
-Nodes (11): addFavoriteWorkshop, _collection, createUserData, _firestore, getUserData, removeFavoriteWorkshop, updateUserData, uploadProfilePhoto (+3 more)
-
-### Community 151 - "Community 151"
-Cohesion: 0.18
-Nodes (10): dart:async, ../../data/services/admin_service.dart, AdminService, _adminService, dispose, _error, fetchMetrics, _isLoading (+2 more)
-
-### Community 152 - "Community 152"
-Cohesion: 0.18
-Nodes (9): package:autodoc/core/models/vehicle_model.dart, package:autodoc/features/dashboard/presentation/providers/alert_provider.dart, main, alertProvider, main, mockAlertsCollection, mockFirestore, mockQuery (+1 more)
-
-### Community 153 - "Community 153"
+### Community 150 - "AutoDoc - Convenciones y Arquitectura"
 Cohesion: 0.20
 Nodes (10): 1. Arquitectura (Clean Architecture + Provider), 2.1 Tema y Colores, 2.2 Responsive Design, 2. Reglas de UI (Tema global, Responsive), 3.1 Base de Datos (Firestore), 3.2 Roles de Usuario, 3. Reglas de Firebase (Roles, Estructura de Colecciones), 4. Lint Rules y Estilo de Código (+2 more)
 
-### Community 154 - "Community 154"
+### Community 151 - "Funciones"
 Cohesion: 0.20
 Nodes (10): 1. `checkAlertsDaily`, 2. `checkMileageOnVehicleUpdate`, 3. `requestReviewOnServiceComplete`, 4. `notifyOnNewChatMessage`, 5. `notifyOnNewReservation`, 6. `notifyOnReservationStatusChange`, 7. `sendReservationReminders`, 8. `onUserDelete` (+2 more)
 
-### Community 155 - "Community 155"
-Cohesion: 0.22
-Nodes (8): ../../data/services/vehicle_photo_service.dart, VehiclePhotoModel, colors, foto, FullScreenImageViewer, VehicleGalleryWidget, vehicleId, package:image_picker/image_picker.dart
+### Community 152 - "e2e/package.json"
+Cohesion: 0.20
+Nodes (9): devDependencies, @playwright/test, name, private, scripts, report, test, version (+1 more)
 
-### Community 156 - "Community 156"
-Cohesion: 0.22
-Nodes (8): double?, AppSkeleton, borderRadius, build, card, height, width, package:shimmer/shimmer.dart
+### Community 153 - "index.js"
+Cohesion: 0.20
+Nodes (6): admin, db, firestore, functions, messaging, storage
 
-### Community 157 - "Community 157"
+### Community 154 - "app_radius.dart"
+Cohesion: 0.20
+Nodes (9): AppRadius, full, lg, md, sm, xl, xs, xxl (+1 more)
+
+### Community 155 - "app_spacing.dart"
+Cohesion: 0.20
+Nodes (9): AppSpacing, base, lg, md, sm, xl, xs, xxl (+1 more)
+
+### Community 156 - "mechanic_profile_utils.dart"
+Cohesion: 0.20
+Nodes (8): isMechanicProfileComplete, missing, missingMechanicProfileFields, tieneMunicipio, isMechanicRole, mechanicFirestoreRoles, normalized, return
+
+### Community 157 - "build"
+Cohesion: 0.27
+Nodes (10): build, build, build, _buildHeader, _buildNearbyServices, Route /chat_list, Route /garage, Route /notifications (+2 more)
+
+### Community 158 - "services_trend_chart_test.dart"
+Cohesion: 0.22
+Nodes (8): LineChart, package:autodoc/features/admin/presentation/widgets/services_trend_chart.dart, package:autodoc/features/admin/presentation/widgets/user_growth_chart.dart, package:fl_chart/fl_chart.dart, main, _wrap, main, _wrap
+
+### Community 159 - "test_helpers.dart"
+Cohesion: 0.22
+Nodes (8): @GenerateMocks, package:autodoc/core/services/vehicle_image_service.dart, package:autodoc/features/auth/data/services/auth_service.dart, package:autodoc/features/dashboard/data/services/vehicle_service.dart, package:autodoc/features/profile/data/services/user_service.dart, package:cloud_functions/cloud_functions.dart, package:mockito/annotations.dart, main
+
+### Community 160 - "ios/Runner/AppDelegate.swift"
+Cohesion: 0.28
+Nodes (6): Flutter, FlutterSceneDelegate, GoogleMaps, SceneDelegate, UIKit, XCTest
+
+### Community 161 - "app_shadows.dart"
 Cohesion: 0.22
 Nodes (8): AppShadows, darkLg, darkMd, darkSm, lightLg, lightMd, lightSm, static List
 
-### Community 158 - "AutoDoc 🚗📋"
+### Community 162 - "workshop_reviews_list_sheet.dart"
+Cohesion: 0.22
+Nodes (8): build, reviewService, service, showModalBottomSheet, showWorkshopReviewsSheet, tallerId, tallerNombre, _WorkshopReviewsSheetContent
+
+### Community 163 - "workshop_service.dart"
+Cohesion: 0.22
+Nodes (8): _firestore, getWorkshopById, getWorkshops, getWorkshopsStream, loadFilters, saveFilters, updateWorkshopProfile, WorkshopService
+
+### Community 164 - "notification_center_provider_test.dart"
+Cohesion: 0.22
+Nodes (7): package:autodoc/core/models/app_notification_model.dart, package:autodoc/core/providers/notification_center_provider.dart, package:autodoc/features/dashboard/presentation/pages/notifications_screen.dart, main, mockFirestore, provider, main
+
+### Community 165 - "AutoDoc 🚗📋"
 Cohesion: 0.22
 Nodes (9): AutoDoc 🚗📋, 🤝 Contribuir, 📚 Documentación adicional, 📁 Estructura del proyecto, Para obtener los archivos de configuración:, ⚙️ Requisitos, 👥 Roles, 📋 Tabla de contenido (+1 more)
 
-### Community 159 - "FIREBASE_FUNCTIONS.md"
+### Community 167 - "AppDelegate"
+Cohesion: 0.25
+Nodes (6): Any, FlutterImplicitEngineBridge, FlutterImplicitEngineDelegate, AppDelegate, Bool, UIApplication
+
+### Community 168 - "FIREBASE_FUNCTIONS.md"
 Cohesion: 0.25
 Nodes (5): Cómo desplegar, Cómo probar con emulador, Diagrama general de flujo, Resumen, Variables de Entorno
 
-### Community 160 - "AutoDoc — Índices de Firestore Requeridos"
+### Community 169 - "AutoDoc — Índices de Firestore Requeridos"
 Cohesion: 0.25
 Nodes (7): AutoDoc — Índices de Firestore Requeridos, Colección `alertas`, Colección `conversaciones`, Colección `mensajes` (Subcolección de conversaciones), Colección `resenias`, Colección `servicios`, Colección `usuarios`
 
-### Community 161 - "Global Constraints"
+### Community 170 - "Global Constraints"
 Cohesion: 0.25
 Nodes (7): Global Constraints, Plan de Mejora UI/UX de AutoDoc en Flutter usando Kombai, Plan Handoff, Task 1: Configuración de Sistema de Diseño Kombai y Tokens en Flutter, Task 2: Refactorización Visual de Componentes Core en Kombai, Task 3: Rediseño Kombai de Pantallas Dashboard y Garaje Virtual, Task 4: Rediseño Kombai de Pantallas de Talleres y Reseñas
 
-### Community 162 - "Global Constraints"
-Cohesion: 0.25
-Nodes (7): AutoDoc v1.1 Implementation Plan, Global Constraints, Task 1: Google Sign-In Integration, Task 2: Push Notifications (FCM), Task 3: ChatProvider Offline Cache, Task 4: Multilingual Support (i18n), Task 5: Invoice Uploads (PDF & Quality)
-
-### Community 163 - "AutoDoc — Términos de Servicio"
+### Community 171 - "AutoDoc — Términos de Servicio"
 Cohesion: 0.25
 Nodes (7): 1. Aceptación de los términos, 2. Uso del servicio, 3. Contenido de los usuarios, 4. Disponibilidad del servicio, 5. Cambios a los términos, 6. Jurisdicción, AutoDoc — Términos de Servicio
 
-### Community 164 - "AutoDoc — Política de Privacidad"
+### Community 172 - "scripts"
+Cohesion: 0.25
+Nodes (8): scripts, deploy, lint, logs, serve, shell, start, test
+
+### Community 173 - "catalogo_item_model.dart"
+Cohesion: 0.25
+Nodes (7): CatalogoItemModel, fromMap, idItem, idTaller, nombre, precio, toMap
+
+### Community 174 - "nhtsa_models.dart"
+Cohesion: 0.25
+Nodes (7): CarMake, CarModel, fromJson, makeId, makeName, modelId, modelName
+
+### Community 175 - "mechanic_sidebar.dart"
+Cohesion: 0.32
+Nodes (7): ThemeProvider, build, build, _buildNavItem, MechanicSidebar, _navigate, _signOut
+
+### Community 176 - "app_theme.dart"
+Cohesion: 0.29
+Nodes (6): app_colors.dart, app_radius.dart, app_text_styles.dart, AppTheme, _buildTextTheme, package:animations/animations.dart
+
+### Community 177 - "AutoDoc — Política de Privacidad"
 Cohesion: 0.29
 Nodes (6): 1. Información que recopilamos, 2. Cómo usamos la información, 3. Compartir información, 4. Retención y eliminación, 5. Contacto, AutoDoc — Política de Privacidad
 
-### Community 165 - "vehicle_provider_test.dart"
+### Community 178 - "dependencies"
 Cohesion: 0.29
-Nodes (6): VehicleModel, package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart, main, mockVehicleImageService, mockVehicleService, vehicleProvider
+Nodes (7): firebase-functions, dependencies, firebase-functions, @google-cloud/firestore, @google-cloud/functions-framework, @google-cloud/firestore, @google-cloud/functions-framework
 
-### Community 166 - "🚀 Setup rápido"
+### Community 179 - "functions/package.json"
+Cohesion: 0.29
+Nodes (6): description, engines, node, main, name, private
+
+### Community 180 - "_"
+Cohesion: 0.29
+Nodes (7): _, error, FirebaseBootstrap, FirebaseBootstrapResult, initialize, isReady, Object?
+
+### Community 181 - "ChatRepository"
+Cohesion: 0.38
+Nodes (7): ChatRepository, Mock, _MockUserCredential, MockChatRepository, FakeChatRepository, MockChatRepository, UserCredential
+
+### Community 182 - "about_screen_navigation_test.dart"
+Cohesion: 0.29
+Nodes (6): build, _scanQR, _buildSettingsSection, MaterialPageRoute, package:autodoc/features/profile/presentation/pages/about_screen.dart, main
+
+### Community 183 - "🚀 Setup rápido"
 Cohesion: 0.29
 Nodes (7): 1. Clonar y configurar Flutter, 2. Firebase, 3. Emuladores Firebase (desarrollo local), 4. Cloud Functions, 5. Landing Web (Next.js), 6. Generar localizaciones, 🚀 Setup rápido
 
-### Community 167 - "app_skeleton_layouts.dart"
+### Community 184 - "firestore_rules/package.json"
+Cohesion: 0.29
+Nodes (6): description, main, name, scripts, test, version
+
+### Community 185 - "csv_export_util.dart"
+Cohesion: 0.33
+Nodes (5): csv_export_stub.dart, buildCsv, data, downloadCsv, package:csv/csv.dart
+
+### Community 186 - "AppDelegate"
+Cohesion: 0.47
+Nodes (4): FlutterAppDelegate, AppDelegate, Bool, NSApplication
+
+### Community 187 - "RegisterGeneratedPlugins"
+Cohesion: 0.33
+Nodes (5): FlutterPluginRegistry, FlutterViewController, RegisterGeneratedPlugins(), MainFlutterWindow, NSWindow
+
+### Community 188 - "devDependencies"
+Cohesion: 0.33
+Nodes (6): devDependencies, mocha, sinon, mocha, sinon, mocha
+
+### Community 190 - "csv_export_util_io.dart"
+Cohesion: 0.33
+Nodes (5): dir, downloadCsv, file, writeAsString, package:path_provider/path_provider.dart
+
+### Community 191 - "app_skeleton_layouts.dart"
 Cohesion: 0.33
 Nodes (5): AppSkeletonLayouts, dashboard, listCards, workshopList, package:autodoc/core/widgets/app_skeleton.dart
 
-### Community 168 - "auth_bottom_nav.dart"
+### Community 192 - "package:provider/provider.dart"
 Cohesion: 0.33
-Nodes (5): AuthBottomNav, build, _buildNavAction, colors, isDark
+Nodes (5): readColor, readIcon, unreadColor, unreadIcon, package:provider/provider.dart
 
-### Community 169 - "imagen_chat_card.dart"
+### Community 193 - "imagen_chat_card.dart"
 Cohesion: 0.33
 Nodes (5): build, ImagenChatCard, isMe, _showImageDialog, urlArchivo
 
-### Community 170 - "🚢 Despliegue"
+### Community 194 - "AppLocalizations"
+Cohesion: 0.33
+Nodes (6): AppLocalizations, _AppLocalizationsDelegate, AppLocalizationsEn, AppLocalizationsEs, of, LocalizationsDelegate
+
+### Community 195 - "package:flutter/services.dart"
+Cohesion: 0.33
+Nodes (5): package:autodoc/core/utils/plate_formatter.dart, package:flutter/services.dart, _apply, formatEditUpdate, main
+
+### Community 196 - "🚢 Despliegue"
 Cohesion: 0.33
 Nodes (6): APK / App Bundle (Android), Cloud Functions, 🚢 Despliegue, Firestore Rules + Storage Rules, Flutter Web, Landing Web (Vercel)
 
-### Community 171 - "README.md"
+### Community 197 - "test_rules/package.json"
+Cohesion: 0.33
+Nodes (5): name, private, scripts, test, type
+
+### Community 198 - "dependencies"
+Cohesion: 0.40
+Nodes (5): firebase-admin, firebase-admin, dependencies, firebase-admin, @firebase/rules-unit-testing
+
+### Community 199 - "devDependencies"
+Cohesion: 0.40
+Nodes (5): @firebase/rules-unit-testing, jest, devDependencies, @firebase/rules-unit-testing, jest
+
+### Community 200 - "publishTallerProfile.js"
+Cohesion: 0.40
+Nodes (3): admin, CAMPOS_PUBLICOS, functions
+
+### Community 201 - "backfillTalleres.js"
+Cohesion: 0.50
+Nodes (3): admin, CAMPOS_PUBLICOS, WRITE
+
+### Community 202 - "landing-web/README.md"
 Cohesion: 0.50
 Nodes (3): Deploy on Vercel, Getting Started, Learn More
 
-### Community 172 - "map_injector_web.dart"
-Cohesion: 0.50
-Nodes (3): head, injectGoogleMapsScript, package:web/web.dart
-
-### Community 173 - "▶️ Ejecutar la app"
+### Community 203 - "▶️ Ejecutar la app"
 Cohesion: 0.50
 Nodes (4): Android / iOS, Con emuladores Firebase, ▶️ Ejecutar la app, Web
 
-### Community 174 - "🧪 Tests"
+### Community 204 - "🧪 Tests"
 Cohesion: 0.50
 Nodes (4): 🧪 Tests, Tests de integración, Tests de reglas Firestore, Tests unitarios
 
 ## Knowledge Gaps
-- **2772 isolated node(s):** `functions`, `admin`, `firestore`, `db`, `messaging` (+2767 more)
+- **3452 isolated node(s):** `main`, `main`, `eslintConfig`, `name`, `version` (+3447 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **15 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **46 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `UserProfileProvider` connect `Alerts & Vehicles Screen` to `Admin Dashboard UI`, `Community 137`, `Snackbar & UI Feedback`, `Admin Users Screen`, `TypeScript Config`, `Linux GTK Native`, `Workshop Form & Picker`, `Landing Command Center`, `Main Screen Routes`, `Text Field Widget`, `Vehicle Model`, `Status Badge Widget`, `Admin Log Model`, `Windows Console Setup`, `Main Scaffold & Nav`, `Admin Auth Service`, `App Transitions`, `Translated Text Widget`, `iOS Scene Setup`, `Theme Provider`, `Community 109`?**
-  _High betweenness centrality (0.013) - this node is a cross-community bridge._
-- **Why does `WorkshopModel` connect `macOS App Delegate` to `Community 112`?**
-  _High betweenness centrality (0.011) - this node is a cross-community bridge._
-- **Why does `build` connect `Admin Auth Service` to `Main Scaffold & Nav`?**
+- **Why does `UserProfileProvider` connect `UserProfileProvider` to `mechanic_service_history_screen.dart`, `mechanic_reviews_screen.dart`, `app_router.dart`, `initiate_service_screen.dart`, `admin_usuarios_screen.dart`, `package:autodoc/core/providers/user_profile_provider.dart`, `chat_screen.dart`, `reserva_detail_screen_test.dart`, `workshop_directory_screen.dart`, `review_chat_card.dart`, `main.dart`, `reserva_detail_screen.dart`, `build`, `workshop_settings_screen.dart`, `review_sheet.dart`, `catalogo_servicios_screen.dart`, `mechanic_sidebar.dart`, `package:autodoc/core/theme/app_colors.dart`, `StatelessWidget`, `admin_dashboard_screen.dart`, `VehicleProvider`, `dashboard_screen.dart`, `String get`, `empleados_screen.dart`, `cotizacion_chat_card.dart`, `user_profile_screen.dart`, `package:autodoc/core/utils/responsive.dart`, `conversaciones_list_screen.dart`, `notifications_screen.dart`, `reparaciones_kanban_screen_test.dart`, `garage_screen.dart`, `AuthProvider`, `empleados_screen_test.dart`, `splash_screen.dart`, `State`, `mechanic_dashboard_screen.dart`?**
+  _High betweenness centrality (0.022) - this node is a cross-community bridge._
+- **Why does `MensajeModel` connect `chat_provider_test.dart` to `widgets/historial_chat_card.dart`, `chat_provider.dart`, `mensaje_model.dart`, `main.dart`?**
   _High betweenness centrality (0.009) - this node is a cross-community bridge._
-- **What connects `functions`, `admin`, `firestore` to the rest of the system?**
-  _2772 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Why does `MockFirebaseFunctions` connect `_i1.Mock` to `vehicle_service_test.dart`, `Windows Desktop Native`?**
+  _High betweenness centrality (0.009) - this node is a cross-community bridge._
+- **What connects `main`, `main`, `eslintConfig` to the rest of the system?**
+  _3452 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Localization & i18n` be split into smaller, more focused modules?**
-  _Cohesion score 0.00546448087431694 - nodes in this community are weakly interconnected._
-- **Should `App Localizations EN` be split into smaller, more focused modules?**
-  _Cohesion score 0.005649717514124294 - nodes in this community are weakly interconnected._
-- **Should `App Localizations ES` be split into smaller, more focused modules?**
-  _Cohesion score 0.005633802816901409 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.005361930294906166 - nodes in this community are weakly interconnected._
+- **Should `app_localizations_es.dart` be split into smaller, more focused modules?**
+  _Cohesion score 0.0055248618784530384 - nodes in this community are weakly interconnected._
+- **Should `app_localizations_en.dart` be split into smaller, more focused modules?**
+  _Cohesion score 0.00554016620498615 - nodes in this community are weakly interconnected._

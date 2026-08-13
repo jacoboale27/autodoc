@@ -53,7 +53,7 @@ class AdminAuthService {
       final data = userDoc.data()!;
       final rol = (data['rol'] as String? ?? '').trim().toLowerCase();
 
-      if (rol != 'administrador' && rol != 'admin') {
+      if (rol != 'administrador' && rol != 'admin' && rol != 'superusuario') {
         // No es administrador: cerrar la sesion que acabamos de abrir.
         await _auth.signOut();
         return null;
@@ -87,7 +87,7 @@ class AdminAuthService {
           .get();
       if (!doc.exists) return false;
       final rol = (doc.data()?['rol'] as String? ?? '').trim().toLowerCase();
-      return rol == 'administrador' || rol == 'admin';
+      return rol == 'administrador' || rol == 'admin' || rol == 'superusuario';
     } catch (_) {
       return false;
     }
@@ -104,7 +104,9 @@ class AdminAuthService {
 
       final data = doc.data()!;
       final rol = (data['rol'] as String? ?? '').trim().toLowerCase();
-      if (rol != 'administrador' && rol != 'admin') return null;
+      if (rol != 'administrador' && rol != 'admin' && rol != 'superusuario') {
+        return null;
+      }
 
       return UserModel.fromMap(data, uid);
     } catch (_) {

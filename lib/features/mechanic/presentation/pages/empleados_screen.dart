@@ -23,6 +23,168 @@ import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.
 /// (defensa en profundidad, capa 3 de 3: sidebar oculto, esta pantalla,
 /// Cloud Function) en vez de asumir que si llegó aquí es porque es el
 /// dueño.
+/// Diálogo "Nuevo empleado" como StatefulWidget propio (no un
+/// StatefulBuilder inline): sus TextEditingController deben liberarse en
+/// `State.dispose()`, que el framework llama recién cuando el Element del
+/// diálogo se desmonta de verdad (tras terminar la animación de salida).
+/// Antes se llamaba `.dispose()` justo después del `await showDialog(...)`,
+/// pero ese Future se completa apenas se invoca `Navigator.pop()`, ANTES de
+/// que termine esa animación — el diálogo seguía reconstruyéndose con un
+/// controller ya liberado, causando "A TextEditingController was used after
+/// being disposed" y una cascada de errores de framework (pantalla roja).
+/// El SnackBar de éxito se muestra desde `_mostrarDialogoCrearEmpleado` (con
+/// el `context` de la pantalla, ya que el diálogo se cierra devolviendo
+/// `true`), no desde acá.
+class _NuevoEmpleadoDialog extends StatefulWidget {
+  final EmpleadoProvider provider;
+
+  const _NuevoEmpleadoDialog({required this.provider});
+
+  @override
+  State<_NuevoEmpleadoDialog> createState() => _NuevoEmpleadoDialogState();
+}
+
+class _NuevoEmpleadoDialogState extends State<_NuevoEmpleadoDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nombreController = TextEditingController();
+  final _correoController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _telefonoController = TextEditingController();
+  String _rolSeleccionado = 'Mecanico';
+
+  @override
+  void dispose() {
+    _nombreController.dispose();
+    _correoController.dispose();
+    _passwordController.dispose();
+    _telefonoController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _crear() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+    setState(() {});
+    final ok = await widget.provider.crearEmpleado(
+      correo: _correoController.text.trim(),
+      password: _passwordController.text,
+      nombreCompleto: _nombreController.text.trim(),
+      rol: _rolSeleccionado,
+      telefono: _telefonoController.text.trim().isEmpty
+          ? null
+          : _telefonoController.text.trim(),
+    );
+    if (!mounted) return;
+    setState(() {});
+    // Cierra el teclado antes de mostrar el SnackBar (flotante en todo el
+    // tema, ver app_theme.dart): con el teclado abierto el Scaffold detras
+    // del dialogo queda tan bajo que el SnackBar flotante no cabe y dispara
+    // "Floating SnackBar presented off screen".
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (ok) {
+      Navigator.pop(context, true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.provider.error ?? 'No se pudo crear el empleado.',
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isLoading = widget.provider.isLoading;
+    return AlertDialog(
+      scrollable: true,
+      title: const Text('Nuevo empleado'),
+      content: SizedBox(
+        width: 420,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextFormField(
+                controller: _nombreController,
+                decoration: const InputDecoration(labelText: 'Nombre completo'),
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _correoController,
+                decoration: const InputDecoration(labelText: 'Correo'),
+                keyboardType: TextInputType.emailAddress,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Requerido';
+                  if (!v.contains('@')) return 'Correo inválido';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _passwordController,
+                decoration: const InputDecoration(
+                  labelText: 'Contraseña temporal',
+                ),
+                obscureText: true,
+                validator: (v) =>
+                    (v == null || v.length < 6) ? 'Mínimo 6 caracteres' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _telefonoController,
+                decoration: const InputDecoration(
+                  labelText: 'Teléfono (opcional)',
+                ),
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: _rolSeleccionado,
+                decoration: const InputDecoration(labelText: 'Rol'),
+                items: const [
+                  DropdownMenuItem(value: 'Mecanico', child: Text('Mecánico')),
+                  DropdownMenuItem(
+                    value: 'Recepcionista',
+                    child: Text('Recepcionista'),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _rolSeleccionado = value);
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: isLoading ? null : () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: isLoading ? null : _crear,
+          child: isLoading
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Crear'),
+        ),
+      ],
+    );
+  }
+}
+
 class EmpleadosScreen extends StatefulWidget {
   final String idTaller;
 
@@ -97,163 +259,16 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
   }
 
   Future<void> _mostrarDialogoCrearEmpleado(BuildContext context) async {
-    final formKey = GlobalKey<FormState>();
-    final nombreController = TextEditingController();
-    final correoController = TextEditingController();
-    final passwordController = TextEditingController();
-    final telefonoController = TextEditingController();
     final provider = context.read<EmpleadoProvider>();
-    String rolSeleccionado = 'Mecanico';
-
-    await showDialog(
+    final ok = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) {
-          final isLoading = provider.isLoading;
-          return AlertDialog(
-            scrollable: true,
-            title: const Text('Nuevo empleado'),
-            content: SizedBox(
-              width: 420,
-              child: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextFormField(
-                      controller: nombreController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nombre completo',
-                      ),
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'Requerido' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: correoController,
-                      decoration: const InputDecoration(labelText: 'Correo'),
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) return 'Requerido';
-                        if (!v.contains('@')) return 'Correo inválido';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: passwordController,
-                      decoration: const InputDecoration(
-                        labelText: 'Contraseña temporal',
-                      ),
-                      obscureText: true,
-                      validator: (v) => (v == null || v.length < 6)
-                          ? 'Mínimo 6 caracteres'
-                          : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: telefonoController,
-                      decoration: const InputDecoration(
-                        labelText: 'Teléfono (opcional)',
-                      ),
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: rolSeleccionado,
-                      decoration: const InputDecoration(labelText: 'Rol'),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'Mecanico',
-                          child: Text('Mecánico'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'Recepcionista',
-                          child: Text('Recepcionista'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setDialogState(() => rolSeleccionado = value);
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: isLoading
-                    ? null
-                    : () => Navigator.pop(dialogContext),
-                child: const Text('Cancelar'),
-              ),
-              FilledButton(
-                onPressed: isLoading
-                    ? null
-                    : () async {
-                        if (!(formKey.currentState?.validate() ?? false)) {
-                          return;
-                        }
-                        setDialogState(() {});
-                        final ok = await provider.crearEmpleado(
-                          correo: correoController.text.trim(),
-                          password: passwordController.text,
-                          nombreCompleto: nombreController.text.trim(),
-                          rol: rolSeleccionado,
-                          telefono: telefonoController.text.trim().isEmpty
-                              ? null
-                              : telefonoController.text.trim(),
-                        );
-                        setDialogState(() {});
-                        // Cierra el teclado antes de mostrar el SnackBar
-                        // (flotante en todo el tema, ver app_theme.dart): con
-                        // el teclado abierto el Scaffold detras del dialogo
-                        // queda tan bajo que el SnackBar flotante no cabe y
-                        // dispara "Floating SnackBar presented off screen".
-                        FocusManager.instance.primaryFocus?.unfocus();
-                        if (ok) {
-                          if (dialogContext.mounted) {
-                            Navigator.pop(dialogContext);
-                          }
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Empleado creado correctamente'),
-                              ),
-                            );
-                          }
-                        } else if (dialogContext.mounted) {
-                          ScaffoldMessenger.of(dialogContext).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                provider.error ??
-                                    'No se pudo crear el empleado.',
-                              ),
-                            ),
-                          );
-                        }
-                      },
-                child: isLoading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Crear'),
-              ),
-            ],
-          );
-        },
-      ),
+      builder: (dialogContext) => _NuevoEmpleadoDialog(provider: provider),
     );
-
-    nombreController.dispose();
-    correoController.dispose();
-    passwordController.dispose();
-    telefonoController.dispose();
+    if (ok == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Empleado creado correctamente')),
+      );
+    }
   }
 
   @override

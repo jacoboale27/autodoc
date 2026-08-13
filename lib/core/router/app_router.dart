@@ -114,7 +114,9 @@ const _adminRoutes = <String>{
 String _normalizeRole(String? rol) {
   if (rol == null) return '';
   final r = rol.trim().toLowerCase();
-  if (r == 'admin' || r == 'administrador') return 'admin';
+  if (r == 'admin' || r == 'administrador' || r == 'superusuario') {
+    return 'admin';
+  }
   if (r == 'mecanico' || r == 'taller') return 'mechanic';
   return 'owner'; // Propietario or default
 }

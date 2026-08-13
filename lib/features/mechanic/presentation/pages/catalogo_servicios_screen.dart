@@ -35,6 +35,124 @@ class _PrecioInputFormatter extends TextInputFormatter {
   }
 }
 
+/// Diálogo "Nuevo ítem del catálogo" como StatefulWidget propio (no un
+/// StatefulBuilder inline): sus TextEditingController deben liberarse en
+/// `State.dispose()`, que el framework llama recién cuando el Element del
+/// diálogo se desmonta de verdad (tras terminar la animación de salida).
+/// Antes se llamaba `.dispose()` justo después del `await showDialog(...)`,
+/// pero ese Future se completa apenas se invoca `Navigator.pop()`, ANTES de
+/// que termine esa animación — el diálogo seguía reconstruyéndose con un
+/// controller ya liberado, causando "A TextEditingController was used after
+/// being disposed" y una cascada de errores de framework (pantalla roja).
+class _NuevoItemDialog extends StatefulWidget {
+  final CatalogoProvider provider;
+
+  const _NuevoItemDialog({required this.provider});
+
+  @override
+  State<_NuevoItemDialog> createState() => _NuevoItemDialogState();
+}
+
+class _NuevoItemDialogState extends State<_NuevoItemDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nombreController = TextEditingController();
+  final _precioController = TextEditingController();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _nombreController.dispose();
+    _precioController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _agregar() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+    setState(() => _isLoading = true);
+    final nombre = _nombreController.text.trim();
+    final precio = double.tryParse(_precioController.text.trim()) ?? 0;
+    try {
+      await widget.provider.agregar(nombre, precio);
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        // Cierra el teclado antes del SnackBar (flotante en todo el tema):
+        // con el teclado abierto el Scaffold detras del dialogo queda tan
+        // bajo que dispara "Floating SnackBar presented off screen".
+        FocusManager.instance.primaryFocus?.unfocus();
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      scrollable: true,
+      title: const Text('Nuevo ítem del catálogo'),
+      content: SizedBox(
+        width: 380,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextFormField(
+                controller: _nombreController,
+                decoration: const InputDecoration(
+                  labelText: 'Nombre del servicio o repuesto',
+                ),
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _precioController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: [_PrecioInputFormatter()],
+                decoration: const InputDecoration(labelText: 'Precio unitario'),
+                validator: (v) {
+                  final precio = double.tryParse(v?.trim() ?? '');
+                  if (precio == null || precio <= 0) {
+                    return 'Precio inválido';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isLoading ? null : () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: _isLoading ? null : _agregar,
+          child: _isLoading
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Agregar'),
+        ),
+      ],
+    );
+  }
+}
+
 class CatalogoServiciosScreen extends StatefulWidget {
   final String idTaller;
 
@@ -94,110 +212,11 @@ class _CatalogoServiciosScreenState extends State<CatalogoServiciosScreen> {
   }
 
   Future<void> _mostrarDialogoAgregar(BuildContext context) async {
-    final formKey = GlobalKey<FormState>();
-    final nombreController = TextEditingController();
-    final precioController = TextEditingController();
     final provider = context.read<CatalogoProvider>();
-    bool isLoading = false;
-
     await showDialog(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) {
-          return AlertDialog(
-            scrollable: true,
-            title: const Text('Nuevo ítem del catálogo'),
-            content: SizedBox(
-              width: 380,
-              child: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextFormField(
-                      controller: nombreController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nombre del servicio o repuesto',
-                      ),
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'Requerido' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: precioController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: [_PrecioInputFormatter()],
-                      decoration: const InputDecoration(
-                        labelText: 'Precio unitario',
-                      ),
-                      validator: (v) {
-                        final precio = double.tryParse(v?.trim() ?? '');
-                        if (precio == null || precio <= 0) {
-                          return 'Precio inválido';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: isLoading
-                    ? null
-                    : () => Navigator.pop(dialogContext),
-                child: const Text('Cancelar'),
-              ),
-              FilledButton(
-                onPressed: isLoading
-                    ? null
-                    : () async {
-                        if (!(formKey.currentState?.validate() ?? false)) {
-                          return;
-                        }
-                        setDialogState(() => isLoading = true);
-                        final nombre = nombreController.text.trim();
-                        final precio =
-                            double.tryParse(precioController.text.trim()) ?? 0;
-                        try {
-                          await provider.agregar(nombre, precio);
-                          if (dialogContext.mounted) {
-                            Navigator.pop(dialogContext);
-                          }
-                        } catch (e) {
-                          if (dialogContext.mounted) {
-                            setDialogState(() => isLoading = false);
-                            // Cierra el teclado antes del SnackBar (flotante
-                            // en todo el tema): con el teclado abierto el
-                            // Scaffold detras del dialogo queda tan bajo que
-                            // dispara "Floating SnackBar presented off screen".
-                            FocusManager.instance.primaryFocus?.unfocus();
-                            ScaffoldMessenger.of(dialogContext).showSnackBar(
-                              SnackBar(content: Text('Error: $e')),
-                            );
-                          }
-                        }
-                      },
-                child: isLoading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Agregar'),
-              ),
-            ],
-          );
-        },
-      ),
+      builder: (dialogContext) => _NuevoItemDialog(provider: provider),
     );
-
-    nombreController.dispose();
-    precioController.dispose();
   }
 
   @override
