@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
@@ -15,7 +13,14 @@ import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 import 'package:autodoc/core/widgets/notification_bell_button.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_severity.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/app_page_body.dart';
+import 'package:autodoc/core/widgets/app_section_header.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:autodoc/core/utils/responsive.dart';
@@ -75,9 +80,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final isLoading = vehicleProvider.isLoading;
 
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showAddVehicleDialog(context, primaryPurple),
+        backgroundColor: colors.primary,
+        foregroundColor: isDark ? colors.secondary : colors.onPrimary,
+        elevation: 8,
+        shape: const CircleBorder(),
+        tooltip: context.l10n.dashRegisterVehicle,
+        child: Icon(Icons.add, size: Responsive.iconSize(context, 32)),
+      ),
+      body: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -85,97 +97,119 @@ class _DashboardScreenState extends State<DashboardScreen> {
             colors: [bgColorStart, bgColorEnd],
           ),
         ),
-        child: Stack(
-          children: [
-            SafeArea(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.only(
-                  bottom: Responsive.isDesktop(context)
-                      ? Responsive.padding(context, 24)
-                      : Responsive.padding(context, 120),
-                  top: Responsive.isDesktop(context)
-                      ? Responsive.size(context, 100)
-                      : 0,
-                ), // Adjust padding based on navbars
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(context, isDark, textColor, subTextColor),
-                    const SizedBox(height: 8),
-                    if (vehicle?.tallerPendienteConfirmacion != null) ...[
-                      _buildTallerPendienteBanner(
-                        context,
-                        vehicleProvider,
-                        vehicle!,
-                        primaryPurple,
-                        isDark,
-                        textColor,
-                        subTextColor,
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    if (isLoading)
-                      AppSkeletonLayouts.dashboard()
-                    else if (vehicle == null)
-                      _buildEmptyVehicleState(
-                        context,
-                        primaryPurple,
-                        isDark,
-                        textColor,
-                        subTextColor,
-                      )
-                    else
-                      _buildVehicleCard(
-                        primaryPurple,
-                        vehicle,
-                        isDark,
-                        textColor,
-                        subTextColor,
-                      ),
-                    const SizedBox(height: 16),
-                    if (vehicle != null) ...[
-                      _buildMaintenanceSemaphore(
-                        context.watch<AlertProvider>(),
-                        vehicle,
-                        colors,
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    const SizedBox(height: 16),
-                    _buildActiveAlerts(
-                      primaryPurple,
-                      alertProvider,
-                      isDark,
-                      subTextColor,
-                      colors,
-                    ),
-                    const SizedBox(height: 32),
-                    _buildNearbyServices(primaryPurple, isDark, subTextColor),
-                  ],
+        child: SafeArea(
+          child: LayoutBuilder(
+            // No renombrar el parámetro de contexto del builder a "context":
+            // eclipsaría el context de _DashboardScreenState y los
+            // context.watch<UserProfileProvider>() de _buildHeader
+            // registrarían su dependencia en el Element interno del
+            // LayoutBuilder en vez del State, y didChangeDependencies() ya
+            // no volvería a dispararse cuando llegan los datos del usuario
+            // (ver dashboard_screen_vehicle_fetch_test.dart).
+            builder: (_, constraints) {
+              final windowClass = AppBreakpoints.fromWidth(
+                constraints.maxWidth,
+              );
+              final twoColumn = windowClass.isAtLeastExpanded;
+
+              final primaryBlocks = <Widget>[
+                if (isLoading)
+                  AppSkeletonLayouts.dashboard()
+                else if (vehicle == null)
+                  _buildEmptyVehicleState(
+                    context,
+                    primaryPurple,
+                    isDark,
+                    textColor,
+                    subTextColor,
+                  )
+                else
+                  _buildVehicleCard(
+                    primaryPurple,
+                    vehicle,
+                    isDark,
+                    textColor,
+                    subTextColor,
+                  ),
+                if (vehicle != null) ...[
+                  const SizedBox(height: AppSpacing.base),
+                  _buildMaintenanceSemaphore(
+                    context.watch<AlertProvider>(),
+                    vehicle,
+                    colors,
+                  ),
+                ],
+              ];
+
+              final secondaryBlocks = <Widget>[
+                _buildActiveAlerts(
+                  primaryPurple,
+                  alertProvider,
+                  isDark,
+                  subTextColor,
+                  colors,
                 ),
-              ),
-            ),
+                const SizedBox(height: AppSpacing.xxl),
+                _buildNearbyServices(primaryPurple, isDark, subTextColor),
+              ];
 
-            // FAB
-            Positioned(
-              bottom: 100,
-              right: 24,
-              child: FloatingActionButton(
-                onPressed: () => _showAddVehicleDialog(context, primaryPurple),
-                backgroundColor: colors.primary,
-                foregroundColor: isDark ? colors.secondary : Colors.white,
-                elevation: 8,
-                shape: const CircleBorder(),
-                child: Icon(Icons.add, size: Responsive.iconSize(context, 32)),
-              ),
-            ),
-
-            // Bottom Navbar (Only on mobile)
-            // Removed local navbar as it's now handled by ShellRoute globally
-
-            // Top Navbar (Only on desktop)
-            // Removed local navbar as it's now handled by ShellRoute globally
-          ],
+              return SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: AppSpacing.xxxl * 2),
+                child: AppPageBody(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(context, isDark, textColor, subTextColor),
+                      const SizedBox(height: AppSpacing.sm),
+                      if (vehicle?.tallerPendienteConfirmacion != null) ...[
+                        _buildTallerPendienteBanner(
+                          context,
+                          vehicleProvider,
+                          vehicle!,
+                          primaryPurple,
+                          isDark,
+                          textColor,
+                          subTextColor,
+                        ),
+                        const SizedBox(height: AppSpacing.base),
+                      ],
+                      if (twoColumn)
+                        Row(
+                          key: const Key('dashboard-two-column'),
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 5,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: primaryBlocks,
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.xxl),
+                            Expanded(
+                              flex: 4,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: secondaryBlocks,
+                              ),
+                            ),
+                          ],
+                        )
+                      else
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ...primaryBlocks,
+                            const SizedBox(height: AppSpacing.xxl),
+                            ...secondaryBlocks,
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
@@ -191,56 +225,66 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final userName =
         userSession.userData?.nombreCompleto.split(' ').first ?? 'Usuario';
 
+    final colors = context.appColors;
+    final userPhoto = userSession.userData?.fotoPerfilUrl;
+
     return Padding(
-      padding: EdgeInsets.all(Responsive.padding(context, 24.0)),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.base),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                context.l10n.dashHello(userName),
-                style: GoogleFonts.inter(
-                  fontSize: Responsive.fontSize(context, 28),
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
-                  letterSpacing: -0.5,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.l10n.dashHello(userName),
+                  style: AppTextStyles.headlineSmall.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                    letterSpacing: -0.5,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                context.l10n.dashReadyForRoad,
-                style: GoogleFonts.inter(
-                  fontSize: Responsive.fontSize(context, 14),
-                  fontWeight: FontWeight.w500,
-                  color: subTextColor,
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  context.l10n.dashReadyForRoad,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: subTextColor,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+          const SizedBox(width: AppSpacing.sm),
           Row(
             children: [
               NotificationBellButton(readColor: subTextColor),
-              const SizedBox(width: 4),
+              const SizedBox(width: AppSpacing.xs),
               GestureDetector(
                 onTap: () => context.push('/user_profile'),
                 child: Stack(
                   children: [
-                    Container(
-                      width: Responsive.size(context, 48),
-                      height: Responsive.size(context, 48),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                        image: DecorationImage(
-                          image: CachedNetworkImageProvider(
-                            userSession.userData?.fotoPerfilUrl ??
-                                'https://www.w3schools.com/howto/img_avatar.png',
-                          ),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
+                    CircleAvatar(
+                      radius: Responsive.size(context, 24),
+                      backgroundColor: colors.primary,
+                      backgroundImage: userPhoto != null
+                          ? NetworkImage(userPhoto)
+                          : null,
+                      child: userPhoto == null
+                          ? Text(
+                              userName.isNotEmpty
+                                  ? userName[0].toUpperCase()
+                                  : 'U',
+                              style: AppTextStyles.titleMedium.copyWith(
+                                color: colors.onPrimary,
+                              ),
+                            )
+                          : null,
                     ),
                     Positioned(
                       bottom: 0,
@@ -249,9 +293,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         width: Responsive.size(context, 12),
                         height: Responsive.size(context, 12),
                         decoration: BoxDecoration(
-                          color: context.appColors.secondary,
+                          color: colors.secondary,
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
+                          border: Border.all(color: colors.surface, width: 2),
                         ),
                       ),
                     ),
@@ -295,111 +339,110 @@ class _DashboardScreenState extends State<DashboardScreen> {
         vehicle.tallerPendienteNombre ??
         context.l10n.dashTallerPendienteNombreDesconocido;
 
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: Responsive.padding(context, 24),
-      ),
-      child: AppCard(
-        padding: const EdgeInsets.all(16),
-        margin: EdgeInsets.zero,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.build_circle_outlined, color: colors.warning),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    context.l10n.dashTallerPendienteTitulo,
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
-                    ),
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.base),
+      margin: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.build_circle_outlined, color: colors.warning),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  context.l10n.dashTallerPendienteTitulo,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Icon(Icons.storefront_outlined, size: 16, color: primary),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    context.l10n.dashTallerPendienteSolicitante(tallerNombre),
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: textColor,
-                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm + 2),
+          Row(
+            children: [
+              Icon(Icons.storefront_outlined, size: 16, color: primary),
+              const SizedBox(width: AppSpacing.xs + 2),
+              Expanded(
+                child: Text(
+                  context.l10n.dashTallerPendienteSolicitante(tallerNombre),
+                  style: AppTextStyles.bodySmall.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: textColor,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 2),
-            Text(
-              context.l10n.dashLicensePlate(vehicle.placa),
-              style: TextStyle(color: subTextColor, fontSize: 12),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              context.l10n.dashTallerPendienteDesc,
-              style: TextStyle(color: subTextColor, fontSize: 13),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () async {
-                      final success = await vehicleProvider
-                          .confirmarVinculoTaller(vehicle.idVehiculo, tallerId);
-                      if (!success && context.mounted) {
-                        UiUtils.showErrorSnackbar(
-                          context,
-                          vehicleProvider.error ??
-                              context.l10n.dashTallerPendienteConfirmError,
-                        );
-                      }
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: primary,
-                      side: BorderSide(color: primary),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      minimumSize: Size.zero,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs / 2),
+          Text(
+            context.l10n.dashLicensePlate(vehicle.placa),
+            style: AppTextStyles.labelSmall.copyWith(color: subTextColor),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            context.l10n.dashTallerPendienteDesc,
+            style: AppTextStyles.bodySmall.copyWith(color: subTextColor),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () async {
+                    final success = await vehicleProvider
+                        .confirmarVinculoTaller(vehicle.idVehiculo, tallerId);
+                    if (!success && context.mounted) {
+                      UiUtils.showErrorSnackbar(
+                        context,
+                        vehicleProvider.error ??
+                            context.l10n.dashTallerPendienteConfirmError,
+                      );
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: primary,
+                    side: BorderSide(color: primary),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.sm,
                     ),
-                    child: Text(context.l10n.chatAccept),
+                    minimumSize: Size.zero,
                   ),
+                  child: Text(context.l10n.chatAccept),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () async {
-                      final success = await vehicleProvider
-                          .rechazarVinculoTaller(vehicle.idVehiculo, tallerId);
-                      if (!success && context.mounted) {
-                        UiUtils.showErrorSnackbar(
-                          context,
-                          vehicleProvider.error ??
-                              context.l10n.dashTallerPendienteRechazarError,
-                        );
-                      }
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: const BorderSide(color: Colors.red),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      minimumSize: Size.zero,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () async {
+                    final success = await vehicleProvider.rechazarVinculoTaller(
+                      vehicle.idVehiculo,
+                      tallerId,
+                    );
+                    if (!success && context.mounted) {
+                      UiUtils.showErrorSnackbar(
+                        context,
+                        vehicleProvider.error ??
+                            context.l10n.dashTallerPendienteRechazarError,
+                      );
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: colors.error,
+                    side: BorderSide(color: colors.error),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.sm,
                     ),
-                    child: Text(context.l10n.chatReject),
+                    minimumSize: Size.zero,
                   ),
+                  child: Text(context.l10n.chatReject),
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -424,86 +467,69 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
 
-    final Color semColor;
-    final IconData semIcon;
-    final String semLabel;
-    switch (worstStatus) {
-      case MaintenanceStatus.critical:
-        semColor = colors.error;
-        semIcon = Icons.error_rounded;
-        semLabel = context.l10n.dashMaintCritical;
-        break;
-      case MaintenanceStatus.preventive:
-        semColor = colors.warning;
-        semIcon = Icons.warning_rounded;
-        semLabel = context.l10n.dashMaintWarning;
-        break;
-      case MaintenanceStatus.optimal:
-        semColor = colors.secondary;
-        semIcon = Icons.check_circle_rounded;
-        semLabel = context.l10n.dashMaintOptimal;
-        break;
-    }
+    final severity = AppSeverity.forStatus(
+      worstStatus,
+      colors,
+      optimalLabel: context.l10n.dashMaintOptimal,
+      preventiveLabel: context.l10n.dashMaintWarning,
+      criticalLabel: context.l10n.dashMaintCritical,
+    );
 
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: Responsive.padding(context, 24),
+    return AppCard(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.md + 2,
       ),
-      child: AppCard(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        margin: EdgeInsets.zero,
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: semColor.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                semIcon,
-                color: semColor,
-                size: Responsive.iconSize(context, 22),
-              ),
+      margin: EdgeInsets.zero,
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm + 2),
+            decoration: BoxDecoration(
+              color: severity.color.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.l10n.dashMaintStatusLabel,
-                    style: GoogleFonts.inter(
-                      fontSize: Responsive.fontSize(context, 11),
-                      fontWeight: FontWeight.bold,
-                      color: colors.textSecondary,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    semLabel,
-                    style: GoogleFonts.inter(
-                      fontSize: Responsive.fontSize(context, 13),
-                      fontWeight: FontWeight.w600,
-                      color: semColor,
-                    ),
-                  ),
-                ],
-              ),
+            child: Icon(
+              severity.icon,
+              color: severity.color,
+              size: Responsive.iconSize(context, 22),
             ),
-            // Three-dot semaphore dots
-            Row(
+          ),
+          const SizedBox(width: AppSpacing.md + 2),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _semDot(MaintenanceStatus.optimal, worstStatus, colors),
-                const SizedBox(width: 4),
-                _semDot(MaintenanceStatus.preventive, worstStatus, colors),
-                const SizedBox(width: 4),
-                _semDot(MaintenanceStatus.critical, worstStatus, colors),
+                Text(
+                  context.l10n.dashMaintStatusLabel,
+                  style: AppTextStyles.labelSmall.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colors.textSecondary,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs / 2),
+                Text(
+                  severity.label,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: severity.color,
+                  ),
+                ),
               ],
             ),
-          ],
-        ),
+          ),
+          // Three-dot semaphore dots
+          Row(
+            children: [
+              _semDot(MaintenanceStatus.optimal, worstStatus, colors),
+              const SizedBox(width: AppSpacing.xs),
+              _semDot(MaintenanceStatus.preventive, worstStatus, colors),
+              const SizedBox(width: AppSpacing.xs),
+              _semDot(MaintenanceStatus.critical, worstStatus, colors),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -536,50 +562,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Color textColor,
     Color subTextColor,
   ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: AppCard(
-        padding: const EdgeInsets.all(32),
-        margin: EdgeInsets.zero,
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.directions_car_filled_outlined,
-                size: Responsive.iconSize(context, 48),
-                color: primary,
-              ),
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.xxl),
+      margin: EdgeInsets.zero,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            decoration: BoxDecoration(
+              color: primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
             ),
-            const SizedBox(height: 24),
-            Text(
-              context.l10n.dashNoVehicles,
-              style: GoogleFonts.inter(
-                fontSize: Responsive.fontSize(context, 20),
-                fontWeight: FontWeight.bold,
-                color: textColor,
-              ),
+            child: Icon(
+              Icons.directions_car_filled_outlined,
+              size: Responsive.iconSize(context, 48),
+              color: primary,
             ),
-            const SizedBox(height: 8),
-            Text(
-              context.l10n.dashNoVehiclesDesc,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: subTextColor, fontSize: 14),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          Text(
+            context.l10n.dashNoVehicles,
+            style: AppTextStyles.titleLarge.copyWith(
+              fontWeight: FontWeight.bold,
+              color: textColor,
             ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              child: AppButton(
-                text: context.l10n.dashRegisterVehicle,
-                onPressed: () => _showAddVehicleDialog(context, primary),
-              ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            context.l10n.dashNoVehiclesDesc,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyMedium.copyWith(color: subTextColor),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          SizedBox(
+            width: double.infinity,
+            child: AppButton(
+              text: context.l10n.dashRegisterVehicle,
+              onPressed: () => _showAddVehicleDialog(context, primary),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -591,111 +613,108 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Color textColor,
     Color subTextColor,
   ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: AppCard(
-        padding: const EdgeInsets.all(24),
-        margin: EdgeInsets.zero,
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          context.l10n.dashMainVehicle,
-                          style: GoogleFonts.inter(
-                            fontSize: Responsive.fontSize(context, 10),
-                            fontWeight: FontWeight.bold,
-                            color: primary,
-                            letterSpacing: 1,
-                          ),
-                        ),
+    final colors = context.appColors;
+
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      margin: EdgeInsets.zero,
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.xs,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '${vehicle.marca ?? ''} ${vehicle.modelo ?? ''} ${vehicle.anio ?? ''}',
-                        style: GoogleFonts.inter(
-                          fontSize: Responsive.fontSize(context, 20),
+                      decoration: BoxDecoration(
+                        color: primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                      ),
+                      child: Text(
+                        context.l10n.dashMainVehicle,
+                        style: AppTextStyles.labelSmall.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: textColor,
+                          color: primary,
+                          letterSpacing: 1,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                      Text(
-                        context.l10n.dashLicensePlate(vehicle.placa),
-                        style: TextStyle(color: subTextColor, fontSize: 13),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      '${vehicle.marca ?? ''} ${vehicle.modelo ?? ''} ${vehicle.anio ?? ''}',
+                      style: AppTextStyles.titleLarge.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
                       ),
-                    ],
-                  ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      context.l10n.dashLicensePlate(vehicle.placa),
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: subTextColor,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(Icons.directions_car, color: primary),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: VehicleImageWidget(
-                imageUrl: vehicle.fotoUrl,
-                height: Responsive.heroHeight(context, 140),
-                width: double.infinity,
-                fit: BoxFit.cover,
               ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                _buildStatItem(
-                  context.l10n.dashMileage,
-                  vehicle.kilometrajeActual.toString(),
-                  context.l10n.dashKm,
-                  primary,
-                  isDark,
-                  subTextColor,
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: colors.surface.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
+                child: Icon(Icons.directions_car, color: primary),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            child: VehicleImageWidget(
+              imageUrl: vehicle.fotoUrl,
+              height: Responsive.heroHeight(context, 140),
               width: double.infinity,
-              child: AppButton(
-                text: context.l10n.dashViewVehicleState,
-                onPressed: () => context.push(
-                  '/vehicle_profile/${vehicle.idVehiculo}',
-                  extra: vehicle,
-                ),
-                icon: const Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 16,
-                  color: Colors.white,
-                ),
-              ),
+              fit: BoxFit.cover,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          Row(
+            children: [
+              _buildStatItem(
+                context.l10n.dashMileage,
+                vehicle.kilometrajeActual.toString(),
+                context.l10n.dashKm,
+                primary,
+                isDark,
+                subTextColor,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.base),
+          SizedBox(
+            width: double.infinity,
+            child: AppButton(
+              text: context.l10n.dashViewVehicleState,
+              onPressed: () => context.push(
+                '/vehicle_profile/${vehicle.idVehiculo}',
+                extra: vehicle,
+              ),
+              // Sin color: AppButton ya aplica su foreground al icono vía
+              // IconTheme.
+              icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -756,20 +775,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             Text(
               label,
-              style: TextStyle(
-                fontSize: 10,
+              style: AppTextStyles.labelSmall.copyWith(
                 color: subTextColor,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.xs),
             RichText(
               text: TextSpan(
                 children: [
                   TextSpan(
                     text: value,
-                    style: GoogleFonts.inter(
-                      fontSize: 18,
+                    style: AppTextStyles.titleMedium.copyWith(
                       fontWeight: FontWeight.bold,
                       color: color,
                     ),
@@ -777,7 +794,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const TextSpan(text: ' '),
                   TextSpan(
                     text: unit,
-                    style: TextStyle(fontSize: 12, color: subTextColor),
+                    style: AppTextStyles.labelMedium.copyWith(
+                      color: subTextColor,
+                    ),
                   ),
                 ],
               ),
@@ -800,50 +819,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: Responsive.padding(context, 24),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                context.l10n.dashActiveAlerts,
-                style: GoogleFonts.inter(
-                  fontSize: Responsive.fontSize(context, 18),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              GestureDetector(
-                onTap: () => context.push('/alerts'),
-                child: Text(
-                  context.l10n.dashViewAll,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: primary,
-                  ),
-                ),
-              ),
-            ],
+        AppSectionHeader(
+          title: context.l10n.dashActiveAlerts,
+          trailing: TextButton(
+            onPressed: () => context.push('/alerts'),
+            child: Text(context.l10n.dashViewAll),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.base),
         if (activeAlerts.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(
-              context.l10n.dashNoAlertsPending,
-              style: TextStyle(
-                color: colors.secondary,
-                fontWeight: FontWeight.w500,
-              ),
+          Text(
+            context.l10n.dashNoAlertsPending,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: colors.secondary,
+              fontWeight: FontWeight.w500,
             ),
           )
         else
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Row(
               children: activeAlerts.map((alert) {
                 Color color;
@@ -866,7 +860,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     color = primary;
                 }
                 return Padding(
-                  padding: const EdgeInsets.only(right: 16),
+                  padding: const EdgeInsets.only(right: AppSpacing.base),
                   child: _buildAlertCard(
                     icon,
                     alert.titulo,
@@ -892,10 +886,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Color subTextColor,
   ) {
     return AppCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.base),
       margin: EdgeInsets.zero,
-      child: SizedBox(
-        width: 150,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 150, maxWidth: 220),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -914,17 +908,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 12),
             Text(
               title,
-              style: TextStyle(
-                fontSize: 12,
+              style: AppTextStyles.labelMedium.copyWith(
                 color: subTextColor,
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: AppSpacing.xs / 2),
             Text(
               status,
-              style: TextStyle(
-                fontSize: 13,
+              style: AppTextStyles.bodySmall.copyWith(
                 fontWeight: FontWeight.bold,
                 color: statusColor,
               ),
@@ -936,85 +928,70 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildNearbyServices(Color primary, bool isDark, Color subTextColor) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                context.l10n.dashNearbyWorkshops,
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              TextButton(
-                onPressed: () => context.push('/workshop_directory'),
-                child: Text(
-                  context.l10n.dashViewAllWorkshops,
-                  style: TextStyle(color: primary, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppSectionHeader(
+          title: context.l10n.dashNearbyWorkshops,
+          trailing: TextButton(
+            onPressed: () => context.push('/workshop_directory'),
+            child: Text(context.l10n.dashViewAllWorkshops),
           ),
-          const SizedBox(height: 16),
-          StreamBuilder<List<UserModel>>(
-            stream: WorkshopService().getWorkshopsStream(limit: 5),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError ||
-                  !snapshot.hasData ||
-                  snapshot.data!.isEmpty) {
-                return Center(
-                  child: Text(
-                    'No hay talleres disponibles',
-                    style: TextStyle(color: subTextColor),
+        ),
+        const SizedBox(height: AppSpacing.base),
+        StreamBuilder<List<UserModel>>(
+          stream: WorkshopService().getWorkshopsStream(limit: 5),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError ||
+                !snapshot.hasData ||
+                snapshot.data!.isEmpty) {
+              // No existe clave l10n para este texto (ya era literal antes
+              // de esta fase); fuera de alcance añadir l10n nuevo aquí.
+              return Center(
+                child: Text(
+                  'No hay talleres disponibles',
+                  style: AppTextStyles.bodyMedium.copyWith(color: subTextColor),
+                ),
+              );
+            }
+
+            var workshops = snapshot.data!;
+            // Sort by rating descending
+            workshops.sort((a, b) {
+              final ratingA = a.toMap()['calificacion_promedio'] as num? ?? 0.0;
+              final ratingB = b.toMap()['calificacion_promedio'] as num? ?? 0.0;
+              return ratingB.compareTo(ratingA);
+            });
+
+            // Take top 5
+            final topWorkshops = workshops.take(5).toList();
+
+            return Column(
+              children: topWorkshops.map((workshop) {
+                final data = workshop.toMap();
+                final calificacion =
+                    data['calificacion_promedio'] as num? ?? 0.0;
+                final especialidad =
+                    data['especialidad'] as String? ?? 'General';
+                return InkWell(
+                  onTap: () => context.push('/workshop_directory'),
+                  child: _buildServiceTile(
+                    Icons.build,
+                    data['nombre_completo'] as String? ?? 'Taller',
+                    'Especialidad: $especialidad • ${calificacion.toStringAsFixed(1)}★',
+                    primary,
+                    isDark,
+                    subTextColor,
                   ),
                 );
-              }
-
-              var workshops = snapshot.data!;
-              // Sort by rating descending
-              workshops.sort((a, b) {
-                final ratingA =
-                    a.toMap()['calificacion_promedio'] as num? ?? 0.0;
-                final ratingB =
-                    b.toMap()['calificacion_promedio'] as num? ?? 0.0;
-                return ratingB.compareTo(ratingA);
-              });
-
-              // Take top 5
-              final topWorkshops = workshops.take(5).toList();
-
-              return Column(
-                children: topWorkshops.map((workshop) {
-                  final data = workshop.toMap();
-                  final calificacion =
-                      data['calificacion_promedio'] as num? ?? 0.0;
-                  final especialidad =
-                      data['especialidad'] as String? ?? 'General';
-                  return InkWell(
-                    onTap: () => context.push('/workshop_directory'),
-                    child: _buildServiceTile(
-                      Icons.build,
-                      data['nombre_completo'] as String? ?? 'Taller',
-                      'Especialidad: $especialidad • ${calificacion.toStringAsFixed(1)}★',
-                      primary,
-                      isDark,
-                      subTextColor,
-                    ),
-                  );
-                }).toList(),
-              );
-            },
-          ),
-        ],
-      ),
+              }).toList(),
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -1027,7 +1004,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Color subTextColor,
   ) {
     return AppCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.base),
       margin: EdgeInsets.zero,
       child: Row(
         children: [
@@ -1036,7 +1013,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             height: Responsive.size(context, 48),
             decoration: BoxDecoration(
               color: primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(Responsive.size(context, 12)),
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: Icon(
               icon,
@@ -1044,22 +1021,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
               size: Responsive.iconSize(context, 24),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSpacing.base),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: AppTextStyles.bodyMedium.copyWith(
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpacing.xs / 2),
                 Text(
                   subtitle,
-                  style: TextStyle(color: subTextColor, fontSize: 12),
+                  style: AppTextStyles.labelMedium.copyWith(
+                    color: subTextColor,
+                  ),
                 ),
               ],
             ),

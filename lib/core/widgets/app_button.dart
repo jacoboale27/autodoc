@@ -137,6 +137,7 @@ class _AppButtonState extends State<AppButton> {
     final textWidget = Text(
       widget.text,
       style: metrics.textStyle.copyWith(color: palette.foreground),
+      overflow: TextOverflow.ellipsis,
     );
 
     Widget childContent;
@@ -162,7 +163,7 @@ class _AppButtonState extends State<AppButton> {
             child: widget.icon!,
           ),
           const SizedBox(width: AppSpacing.sm),
-          textWidget,
+          Flexible(child: textWidget),
         ],
       );
     } else {
