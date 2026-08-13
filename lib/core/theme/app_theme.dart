@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:animations/animations.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 import 'app_text_styles.dart';
 import 'app_radius.dart';
@@ -76,12 +75,13 @@ class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
         backgroundColor: const Color(0xFF1E293B),
-        contentTextStyle: GoogleFonts.inter(
-          color: Colors.white,
+        contentTextStyle: AppTextStyles.bodyMedium.copyWith(
+          color: AppPalette.darkTextPrimary,
           fontWeight: FontWeight.w600,
-          fontSize: 14,
         ),
         elevation: 8,
         actionTextColor: AppPalette.lightPrimary,
@@ -145,12 +145,13 @@ class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
         backgroundColor: const Color(0xFF334155),
-        contentTextStyle: GoogleFonts.inter(
-          color: Colors.white,
+        contentTextStyle: AppTextStyles.bodyMedium.copyWith(
+          color: AppPalette.darkTextPrimary,
           fontWeight: FontWeight.w600,
-          fontSize: 14,
         ),
         elevation: 8,
         actionTextColor: AppPalette.darkPrimary,
