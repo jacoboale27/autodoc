@@ -3,12 +3,11 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
-import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_top_nav_bar.dart';
 import 'package:autodoc/core/widgets/navigation/app_bottom_nav.dart';
 import 'package:autodoc/core/widgets/navigation/app_nav_destination.dart';
 import 'package:autodoc/core/widgets/navigation/app_nav_rail.dart';
-import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
+import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 
 /// Shell de la aplicación: elige la presentación de la navegación principal
 /// según la [WindowClass] y el rol del usuario.
@@ -27,11 +26,17 @@ class MainScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final windowClass = AppBreakpoints.of(context);
+    // Comparación exacta heredada de la Fase 2. El repo tiene tres criterios
+    // de rol distintos (`_normalizeRole` en app_router.dart, `isMechanicRole`
+    // en role_utils.dart, y `mechanicFirestoreRoles`), y `rol == 'Taller'`
+    // también identifica sub-cuentas de empleado (mechanic_sidebar.dart).
+    // Cuál es el correcto es una pregunta de modelo de datos, no de UI: no se
+    // toca aquí, ver nota de la Task 1 de la Fase 5 (mechanic) en el PR.
     final isMecanico =
         context.watch<UserProfileProvider>().userData?.rol == 'Mecanico';
 
     return isMecanico
-        ? _MechanicShell(windowClass: windowClass, child: child)
+        ? _MechanicShell(child: child)
         : _OwnerShell(windowClass: windowClass, child: child);
   }
 }
@@ -91,31 +96,23 @@ class _OwnerShell extends StatelessWidget {
 }
 
 class _MechanicShell extends StatelessWidget {
-  final WindowClass windowClass;
   final Widget child;
 
-  const _MechanicShell({required this.windowClass, required this.child});
+  const _MechanicShell({required this.child});
+
+  /// Títulos de las rutas del `ShellRoute` alcanzables por un mecánico.
+  /// Hoy solo `/chat_list`: es la única ruta del shell exenta del redirect
+  /// por rol ([app_router.dart:246-250]). Las otras nueve rutas del panel de
+  /// taller son `GoRoute` de primer nivel y montan `MechanicScaffold`
+  /// directamente.
+  static const Map<String, String> _titles = {'/chat_list': 'Mensajes'};
 
   @override
   Widget build(BuildContext context) {
-    // El sidebar mide 280 dp fijos: por debajo de `expanded` dejaría menos
-    // contenido que un teléfono, así que sigue siendo drawer.
-    final showFixedSidebar = windowClass.isAtLeastExpanded;
-
-    return Scaffold(
-      appBar: showFixedSidebar
-          ? null
-          : AppBar(
-              title: const Text('AutoDoc Taller'),
-              backgroundColor: context.appColors.surfaceContainer,
-            ),
-      drawer: showFixedSidebar ? null : const Drawer(child: MechanicSidebar()),
-      body: Row(
-        children: [
-          if (showFixedSidebar) const MechanicSidebar(),
-          Expanded(child: child),
-        ],
-      ),
+    final path = GoRouterState.of(context).uri.path;
+    return MechanicScaffold(
+      title: _titles[path] ?? 'AutoDoc Taller',
+      body: child,
     );
   }
 }
