@@ -1,14 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_motion.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_shadows.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 
-class AppCard extends StatelessWidget {
+/// Superficie de contenido de AutoDoc.
+///
+/// Si [onTap] es `null` es una superficie **estática**: no anima nada. Mover o
+/// elevar algo que no se puede pulsar es una promesa falsa. El feedback de
+/// press y el lift de hover solo existen cuando la tarjeta es interactiva.
+///
+/// A diferencia de [AppButton], el hover aquí **solo** eleva la sombra, sin
+/// escalar: una tarjeta es una superficie grande y un 2 % de escala la
+/// desalinea visiblemente de sus vecinas en una rejilla. El botón es pequeño y
+/// ahí el mismo 2 % se lee como respuesta, no como desalineación.
+class AppCard extends StatefulWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
   final EdgeInsetsGeometry margin;
   final VoidCallback? onTap;
+
+  /// Descripción de la tarjeta para lector de pantalla. Solo se aplica cuando
+  /// [onTap] no es `null`.
+  final String? semanticLabel;
 
   const AppCard({
     super.key,
@@ -16,21 +31,36 @@ class AppCard extends StatelessWidget {
     this.padding = const EdgeInsets.all(16.0),
     this.margin = const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
     this.onTap,
+    this.semanticLabel,
   });
+
+  @override
+  State<AppCard> createState() => _AppCardState();
+}
+
+class _AppCardState extends State<AppCard> {
+  bool _isPressed = false;
+  bool _isHovered = false;
+
+  bool get _interactive => widget.onTap != null;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final radius = Responsive.size(context, AppRadius.lg);
 
-    final rSize = Responsive.size(context, AppRadius.lg);
+    final resting = isDark ? AppShadows.darkSm : AppShadows.lightSm;
+    final hovered = isDark ? AppShadows.darkHover : AppShadows.lightHover;
 
-    final card = Container(
-      margin: margin,
+    final surface = AnimatedContainer(
+      duration: AppMotion.hover,
+      curve: AppMotion.easeOut,
+      margin: widget.margin,
       decoration: BoxDecoration(
         color: colors.surfaceContainer,
-        borderRadius: BorderRadius.circular(rSize),
-        boxShadow: isDark ? AppShadows.darkSm : AppShadows.lightSm,
+        borderRadius: BorderRadius.circular(radius),
+        boxShadow: _interactive && _isHovered ? hovered : resting,
         border: Border.all(
           color: colors.outline.withValues(alpha: isDark ? 0.2 : 0.4),
           width: 1,
@@ -39,13 +69,41 @@ class AppCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(rSize),
-          child: Padding(padding: padding, child: child),
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(radius),
+          hoverColor: colors.hoverOverlay,
+          highlightColor: colors.pressedOverlay,
+          child: Padding(padding: widget.padding, child: widget.child),
         ),
       ),
     );
 
-    return card;
+    if (!_interactive) return surface;
+
+    return Semantics(
+      button: true,
+      focusable: true,
+      label: widget.semanticLabel,
+      // Evita que el Text hijo ("Contenido") se concatene al label propio de
+      // la tarjeta; se reexponen tap y foco, que quedarían excluidos también.
+      excludeSemantics: true,
+      onTap: widget.onTap,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: Listener(
+          onPointerDown: (_) => setState(() => _isPressed = true),
+          onPointerUp: (_) => setState(() => _isPressed = false),
+          onPointerCancel: (_) => setState(() => _isPressed = false),
+          child: AnimatedScale(
+            scale: _isPressed ? AppMotion.pressScaleFor(context) : 1.0,
+            duration: AppMotion.transformDuration(context, AppMotion.press),
+            curve: AppMotion.easeOut,
+            child: surface,
+          ),
+        ),
+      ),
+    );
   }
 }
