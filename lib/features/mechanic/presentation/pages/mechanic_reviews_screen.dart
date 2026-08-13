@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/firestore_collections.dart';
 import 'package:autodoc/core/models/review_model.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
@@ -25,7 +26,7 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 700;
+    final isMobile = !AppBreakpoints.of(context).isAtLeastExpanded;
     final colors = context.appColors;
     final theme = Theme.of(context);
     final userSession = context.watch<UserProfileProvider>();

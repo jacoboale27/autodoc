@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -28,7 +29,7 @@ class MechanicDashboardScreen extends StatefulWidget {
 class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
   @override
   Widget build(BuildContext context) {
-    final bool isMobile = MediaQuery.of(context).size.width < 700;
+    final bool isMobile = !AppBreakpoints.of(context).isAtLeastExpanded;
     final colors = context.appColors;
     final theme = Theme.of(context);
     final userSession = context.watch<UserProfileProvider>();

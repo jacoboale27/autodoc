@@ -4,8 +4,8 @@ import 'package:flutter/widgets.dart';
 /// classes de Material 3.
 ///
 /// Es la **única** fuente de verdad de tamaño en AutoDoc. Antes convivían dos
-/// escalas contradictorias (`Responsive` con corte en 1200 y
-/// `responsive_framework` con corte en 800), lo que hacía que a 900px una
+/// escalas contradictorias (`Responsive` con corte en 1200 y el paquete de
+/// breakpoints responsivos con corte en 800), lo que hacía que a 900px una
 /// pantalla se dibujara como desktop mientras el shell seguía en modo móvil.
 enum WindowClass {
   /// < 600 — teléfono en vertical. Navegación inferior, 1 columna.

@@ -14,6 +14,7 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:intl/intl.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/providers/language_provider.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
@@ -218,8 +219,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     AdminDashboardProvider provider,
     AppColors colors,
   ) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final crossAxisCount = screenWidth > 900 ? 3 : (screenWidth > 600 ? 2 : 1);
+    final crossAxisCount = switch (AppBreakpoints.of(context)) {
+      WindowClass.compact => 1,
+      WindowClass.medium => 2,
+      WindowClass.expanded || WindowClass.large => 3,
+    };
 
     return GridView.count(
       crossAxisCount: crossAxisCount,

@@ -12,7 +12,7 @@ import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_scaffold.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
-import 'package:responsive_framework/responsive_framework.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/widgets/app_skeleton.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 
@@ -307,7 +307,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
   }
 
   Widget _buildHeader(AppColors colors, bool isDark) {
-    final isDesktop = ResponsiveBreakpoints.of(context).largerThan(TABLET);
+    final isDesktop = AppBreakpoints.of(context).isAtLeastExpanded;
     return Container(
       padding: EdgeInsets.all(Responsive.padding(context, 16)),
       decoration: isDesktop

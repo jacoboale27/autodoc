@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/models/empleado_model.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
@@ -258,7 +259,7 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 700;
+    final isMobile = !AppBreakpoints.of(context).isAtLeastExpanded;
     final colors = context.appColors;
     final theme = Theme.of(context);
     final idTallerPropietario = context

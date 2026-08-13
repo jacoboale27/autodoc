@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
@@ -88,7 +89,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isMobile = MediaQuery.of(context).size.width < 700;
+    final bool isMobile = !AppBreakpoints.of(context).isAtLeastExpanded;
     final colors = context.appColors;
     final theme = Theme.of(context);
 

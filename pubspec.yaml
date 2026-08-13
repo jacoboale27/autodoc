@@ -69,7 +69,6 @@ dependencies:
   animations: ^2.2.0
   flutter_svg: ^2.3.0
   lottie: ^3.3.3
-  responsive_framework: ^1.5.1
   flutter_staggered_animations: ^1.1.1
   timeago: ^3.7.1
   table_calendar: ^3.2.0

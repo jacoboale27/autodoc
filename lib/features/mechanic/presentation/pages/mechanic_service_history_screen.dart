@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
 import 'package:autodoc/core/constants/firestore_collections.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/models/service_record_model.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
@@ -29,7 +30,7 @@ class _MechanicServiceHistoryScreenState
 
   @override
   Widget build(BuildContext context) {
-    final bool isMobile = MediaQuery.of(context).size.width < 700;
+    final bool isMobile = !AppBreakpoints.of(context).isAtLeastExpanded;
     final colors = context.appColors;
     final userSession = context.watch<UserProfileProvider>();
     final userData = userSession.userData;

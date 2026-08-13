@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:responsive_framework/responsive_framework.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -116,7 +116,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
     if (user == null) {
       return Scaffold(
-        appBar: ResponsiveBreakpoints.of(context).largerThan(TABLET)
+        appBar: AppBreakpoints.of(context).isAtLeastExpanded
             ? null
             : AppBar(title: Text(context.l10n.upProfileTitle)),
         body: Center(
@@ -177,7 +177,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              if (!ResponsiveBreakpoints.of(context).largerThan(TABLET))
+              if (!AppBreakpoints.of(context).isAtLeastExpanded)
                 _buildAppBar(context, primaryPurple, textColor),
               Expanded(
                 child: SingleChildScrollView(

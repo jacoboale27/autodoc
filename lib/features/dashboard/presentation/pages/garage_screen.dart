@@ -14,7 +14,7 @@ import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_scaffold.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
-import 'package:responsive_framework/responsive_framework.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
 import '../widgets/add_vehicle_form.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
@@ -79,7 +79,7 @@ class GarageScreen extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context, AppColors colors) {
-    final isDesktop = ResponsiveBreakpoints.of(context).largerThan(TABLET);
+    final isDesktop = AppBreakpoints.of(context).isAtLeastExpanded;
     return Container(
       padding: EdgeInsets.all(Responsive.padding(context, 16)),
       decoration: isDesktop

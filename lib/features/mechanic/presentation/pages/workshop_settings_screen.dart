@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:autodoc/core/constants/especialidades_taller.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
@@ -232,7 +233,7 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
     final theme = Theme.of(context);
     final colors = context.appColors;
     final isDark = context.watch<ThemeProvider>().isDarkMode;
-    final isMobile = MediaQuery.of(context).size.width < 700;
+    final isMobile = !AppBreakpoints.of(context).isAtLeastExpanded;
 
     final primary = theme.colorScheme.primary;
 
