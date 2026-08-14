@@ -8,6 +8,7 @@ import 'package:provider/single_child_widget.dart';
 
 import 'package:autodoc/core/models/app_notification_model.dart';
 import 'package:autodoc/core/models/user_model.dart';
+import 'package:autodoc/core/providers/language_provider.dart';
 import 'package:autodoc/core/providers/notification_center_provider.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
@@ -147,6 +148,12 @@ Future<void> pumpMechanicScreen(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        // `TranslatedText` (usada por `MechanicReviewsScreen`) llama
+        // `context.watch<LanguageProvider>()` incondicionalmente en su
+        // primer build. Sin este provider, cualquier pantalla del panel que
+        // la monte lanza `ProviderNotFoundException` en vez de fallar por su
+        // propia lógica.
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider<UserProfileProvider>(
           create: (_) => FakeUserProfileProvider(user: user ?? fakeTaller()),
