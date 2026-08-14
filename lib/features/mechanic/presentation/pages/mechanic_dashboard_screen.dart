@@ -608,11 +608,14 @@ class _MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Padding y tamaño de icono fijos (no escalados por `Responsive`,
-    // que solo conoce el ancho *global* de la ventana): a 840 px la
-    // celda de `AppGrid` con `childAspectRatio: 2.6` mide apenas 93 px
-    // de alto, el peor caso de los ocho anchos de auditoría. El
-    // contenido de esta tarjeta tiene que caber ahí siempre, no solo en
-    // el ancho en que se probó a mano.
+    // que solo conoce el ancho *global* de la ventana): a 1200 px la
+    // celda de `AppGrid` con `childAspectRatio: 2.6` mide apenas ~104 px
+    // de alto, el peor caso de los ocho anchos de auditoría (3 columnas,
+    // celda ~269 px de ancho). No es el corte de `expanded` (840): ahí el
+    // sidebar fijo de 280 px de `MechanicScaffold` deja tan poco ancho de
+    // contenido que `AppGrid` cae a la clase `compact` y pinta 1 columna
+    // ancha, no 3 estrechas. El contenido de esta tarjeta tiene que caber
+    // en ~104 px siempre, no solo en el ancho en que se probó a mano.
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.sm),
       margin: EdgeInsets.zero,
