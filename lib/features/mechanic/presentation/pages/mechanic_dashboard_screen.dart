@@ -1,25 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
-import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
 import 'package:autodoc/core/models/service_record_model.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/app_grid.dart';
+import 'package:autodoc/core/widgets/app_page_body.dart';
+import 'package:autodoc/core/widgets/app_section_header.dart';
 import 'package:autodoc/core/widgets/notification_bell_button.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:intl/intl.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/providers/language_provider.dart';
+import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 class MechanicDashboardScreen extends StatefulWidget {
-  const MechanicDashboardScreen({super.key});
+  /// Cliente de Firestore inyectable. Aditivo — la pantalla monta tres
+  /// `StreamBuilder` que por defecto tocan `FirebaseFirestore.instance` en
+  /// `build`, así que un test que necesite un doble debe poder sustituirlo
+  /// sin depender de un Firebase real. Mismo patrón que las Tasks 5 y 8.
+  final FirebaseFirestore? firestore;
+
+  const MechanicDashboardScreen({super.key, this.firestore});
 
   @override
   State<MechanicDashboardScreen> createState() =>
@@ -27,11 +38,11 @@ class MechanicDashboardScreen extends StatefulWidget {
 }
 
 class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
+  FirebaseFirestore get _db => widget.firestore ?? FirebaseFirestore.instance;
+
   @override
   Widget build(BuildContext context) {
-    final bool isMobile = !AppBreakpoints.of(context).isAtLeastExpanded;
     final colors = context.appColors;
-    final theme = Theme.of(context);
     final userSession = context.watch<UserProfileProvider>();
     final userData = userSession.userData;
 
@@ -41,196 +52,33 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
 
     final mechanicName = userData.nombreCompleto;
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: isMobile
-          ? AppBar(
-              backgroundColor: theme.colorScheme.surface,
-              elevation: 0,
-              title: Text(
-                'Panel de Taller',
-                style: GoogleFonts.inter(
-                  color: colors.primary,
-                  fontSize: Responsive.fontSize(context, 16),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              iconTheme: IconThemeData(color: colors.primary),
-              actions: [
-                Consumer2<ThemeProvider, LanguageProvider>(
-                  builder: (context, themeProvider, languageProvider, _) {
-                    final isDark = themeProvider.themeMode == ThemeMode.dark;
-                    final isEnglish =
-                        languageProvider.currentLocale.languageCode == 'en';
-                    return Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            isDark
-                                ? Icons.light_mode_outlined
-                                : Icons.dark_mode_outlined,
-                            color: colors.primary,
-                          ),
-                          onPressed: () => themeProvider.setThemeMode(
-                            isDark ? ThemeMode.light : ThemeMode.dark,
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () => languageProvider.changeLanguage(
-                            isEnglish ? 'es' : 'en',
-                          ),
-                          child: Text(
-                            isEnglish ? 'EN' : 'ES',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: colors.primary,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        NotificationBellButton(readColor: colors.primary),
-                      ],
-                    );
-                  },
-                ),
-              ],
-            )
-          : null,
-      drawer: isMobile ? const Drawer(child: MechanicSidebar()) : null,
-      body: Row(
-        children: [
-          if (!isMobile) const MechanicSidebar(),
-          Expanded(
+    return MechanicScaffold(
+      title: 'Dashboard',
+      actions: const [
+        _TemaIdiomaActions(),
+        SizedBox(width: AppSpacing.base),
+        NotificationBellButton(),
+      ],
+      body: SingleChildScrollView(
+        child: AppPageBody(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (!isMobile) _buildTopBar(colors, theme, mechanicName),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.all(isMobile ? 16 : 32),
-                    child: Center(
-                      child: Container(
-                        constraints: BoxConstraints(
-                          maxWidth: isMobile ? double.infinity : 1000,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildWelcomeHeader(mechanicName, colors),
-                            const SizedBox(height: 24),
-                            _buildQuickActions(colors, isMobile),
-                            const SizedBox(height: 32),
-                            _buildDashboardMetrics(
-                              colors,
-                              isMobile,
-                              userData.idUsuario,
-                            ),
-                            const SizedBox(height: 32),
-                            _buildIncomeChartSection(
-                              colors,
-                              isMobile,
-                              userData.idUsuario,
-                            ),
-                            const SizedBox(height: 32),
-                            _buildRecentServices(colors, userData.idUsuario),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                _buildWelcomeHeader(mechanicName, colors),
+                const SizedBox(height: AppSpacing.xl),
+                _buildQuickActions(colors),
+                const SizedBox(height: AppSpacing.xxl),
+                _buildDashboardMetrics(colors, userData.idUsuario),
+                const SizedBox(height: AppSpacing.xxl),
+                _buildIncomeChartSection(colors, userData.idUsuario),
+                const SizedBox(height: AppSpacing.xxl),
+                _buildRecentServices(colors, userData.idUsuario),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTopBar(AppColors colors, ThemeData theme, String mechanicName) {
-    return Container(
-      height: 64,
-      padding: EdgeInsets.symmetric(
-        horizontal: Responsive.padding(context, 32),
-      ),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: colors.textSecondary.withValues(alpha: 0.1),
           ),
         ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'DASHBOARD',
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.w900,
-              fontSize: Responsive.fontSize(context, 20),
-              color: colors.primary,
-              letterSpacing: -0.5,
-            ),
-          ),
-          Row(
-            children: [
-              Consumer2<ThemeProvider, LanguageProvider>(
-                builder: (context, themeProvider, languageProvider, _) {
-                  final isDark = themeProvider.themeMode == ThemeMode.dark;
-                  final isEnglish =
-                      languageProvider.currentLocale.languageCode == 'en';
-                  return Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          isDark
-                              ? Icons.light_mode_outlined
-                              : Icons.dark_mode_outlined,
-                          color: colors.textSecondary,
-                        ),
-                        onPressed: () => themeProvider.setThemeMode(
-                          isDark ? ThemeMode.light : ThemeMode.dark,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => languageProvider.changeLanguage(
-                          isEnglish ? 'es' : 'en',
-                        ),
-                        child: Text(
-                          isEnglish ? 'EN' : 'ES',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(width: 16),
-              NotificationBellButton(
-                readIcon: Icons.notifications_none,
-                readColor: colors.textSecondary,
-              ),
-              const SizedBox(width: 16),
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: colors.primary,
-                child: Text(
-                  mechanicName.isNotEmpty ? mechanicName[0].toUpperCase() : 'M',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: Responsive.fontSize(context, 12),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
@@ -241,34 +89,27 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
       children: [
         Text(
           'Hola, $mechanicName 👋',
-          style: GoogleFonts.inter(
-            fontSize: Responsive.fontSize(context, 28),
-            fontWeight: FontWeight.bold,
-            color: colors.primary,
-          ),
+          style: AppTextStyles.headlineMedium.copyWith(color: colors.primary),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpacing.xs),
         Text(
           'Aquí tienes un resumen de la actividad de tu taller.',
-          style: GoogleFonts.inter(
-            fontSize: Responsive.fontSize(context, 14),
-            color: colors.textSecondary,
-          ),
+          style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
         ),
       ],
     );
   }
 
-  Widget _buildQuickActions(AppColors colors, bool isMobile) {
+  Widget _buildQuickActions(AppColors colors) {
     return Container(
-      padding: EdgeInsets.all(Responsive.padding(context, 24)),
+      padding: EdgeInsets.all(Responsive.padding(context, AppSpacing.xl)),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [colors.primary, colors.primary.withValues(alpha: 0.8)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AppRadius.xxl),
         boxShadow: [
           BoxShadow(
             color: colors.primary.withValues(alpha: 0.3),
@@ -277,54 +118,48 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: AppSpacing.base,
+        runSpacing: AppSpacing.base,
         children: [
-          Expanded(
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 200),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Atención Rápida',
-                  style: GoogleFonts.inter(
+                  style: AppTextStyles.labelLarge.copyWith(
                     color: colors.secondary,
                     fontWeight: FontWeight.bold,
-                    fontSize: Responsive.fontSize(context, 14),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 Text(
                   'Inicia un nuevo servicio buscando la placa del vehículo.',
-                  style: GoogleFonts.inter(
-                    color: Colors.white,
-                    fontSize: isMobile ? 14 : 16,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: colors.onPrimary,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 16),
           AppButton(
             text: 'Buscar',
             onPressed: () => context.push('/mechanic_search'),
-            icon: Icon(
-              Icons.search,
-              size: Responsive.iconSize(context, 18),
-              color: Colors.white,
-            ),
+            icon: Icon(Icons.search, size: Responsive.iconSize(context, 18)),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDashboardMetrics(
-    AppColors colors,
-    bool isMobile,
-    String tallerId,
-  ) {
+  Widget _buildDashboardMetrics(AppColors colors, String tallerId) {
     return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance
+      stream: _db
           .collection(FirestoreCollections.usuarios)
           .doc(tallerId)
           .snapshots(),
@@ -334,7 +169,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
         final totalResenias = userData?['total_resenias'] ?? 0;
 
         return StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
+          stream: _db
               .collection(FirestoreCollections.servicios)
               .where('id_taller', isEqualTo: tallerId)
               .snapshots(),
@@ -382,72 +217,65 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
               variacionIngresos = '0%';
             }
 
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                final double cardWidth = isMobile
-                    ? constraints.maxWidth
-                    : (constraints.maxWidth - 48) / 3;
-
-                return Wrap(
-                  spacing: 24,
-                  runSpacing: 24,
-                  children: [
-                    _buildMetricCard(
-                      title: 'Ingresos (Mes)',
-                      value: '\$${ingresosMesActual.toStringAsFixed(2)}',
-                      icon: Icons.attach_money,
-                      accentColor: colors.success,
-                      colors: colors,
-                      width: cardWidth,
-                      subtitle: variacionIngresos.isNotEmpty
-                          ? '$variacionIngresos vs mes ant.'
-                          : null,
-                    ),
-                    _buildMetricCard(
-                      title: 'Servicios (Mes)',
-                      value: serviciosMesActual.toString(),
-                      icon: Icons.calendar_today,
-                      accentColor: colors.secondary,
-                      colors: colors,
-                      width: cardWidth,
-                    ),
-                    _buildMetricCard(
-                      title: 'Total Servicios',
-                      value: totalServicios.toString(),
-                      icon: Icons.build_circle,
-                      accentColor: colors.primary,
-                      colors: colors,
-                      width: cardWidth,
-                      onTap: () => context.push('/mechanic_service_history'),
-                    ),
-                    _buildMetricCard(
-                      title: 'Vehículos Atendidos',
-                      value: vehiculosUnicos.length.toString(),
-                      icon: Icons.directions_car,
-                      accentColor: colors.success,
-                      colors: colors,
-                      width: cardWidth,
-                    ),
-                    _buildMetricCard(
-                      title: 'Calificación',
-                      value: promedio > 0 ? promedio.toStringAsFixed(1) : '—',
-                      icon: Icons.star_rounded,
-                      accentColor: colors.warning,
-                      colors: colors,
-                      width: cardWidth,
-                    ),
-                    _buildMetricCard(
-                      title: 'Reseñas',
-                      value: totalResenias.toString(),
-                      icon: Icons.rate_review_outlined,
-                      accentColor: colors.primary,
-                      colors: colors,
-                      width: cardWidth,
-                      onTap: () => context.push('/mechanic_reviews'),
-                    ),
-                  ],
-                );
-              },
+            return AppGrid(
+              compactColumns: 1,
+              mediumColumns: 2,
+              expandedColumns: 3,
+              largeColumns: 3,
+              spacing: AppSpacing.xl,
+              // Columnas de ~276 px (medium) a ~373 px (large con
+              // maxContentWidth 1200). La tarjeta necesita ~110 px de alto:
+              // caja de icono de 64 más padding. 2.6 deja entre 106 y 143.
+              childAspectRatio: 2.6,
+              children: [
+                _MetricCard(
+                  title: 'Ingresos (Mes)',
+                  value: '\$${ingresosMesActual.toStringAsFixed(2)}',
+                  icon: Icons.attach_money,
+                  accentColor: colors.success,
+                  colors: colors,
+                  subtitle: variacionIngresos.isNotEmpty
+                      ? '$variacionIngresos vs mes ant.'
+                      : null,
+                ),
+                _MetricCard(
+                  title: 'Servicios (Mes)',
+                  value: serviciosMesActual.toString(),
+                  icon: Icons.calendar_today,
+                  accentColor: colors.secondary,
+                  colors: colors,
+                ),
+                _MetricCard(
+                  title: 'Total Servicios',
+                  value: totalServicios.toString(),
+                  icon: Icons.build_circle,
+                  accentColor: colors.primary,
+                  colors: colors,
+                  onTap: () => context.push('/mechanic_service_history'),
+                ),
+                _MetricCard(
+                  title: 'Vehículos Atendidos',
+                  value: vehiculosUnicos.length.toString(),
+                  icon: Icons.directions_car,
+                  accentColor: colors.success,
+                  colors: colors,
+                ),
+                _MetricCard(
+                  title: 'Calificación',
+                  value: promedio > 0 ? promedio.toStringAsFixed(1) : '—',
+                  icon: Icons.star_rounded,
+                  accentColor: colors.warning,
+                  colors: colors,
+                ),
+                _MetricCard(
+                  title: 'Reseñas',
+                  value: totalResenias.toString(),
+                  icon: Icons.rate_review_outlined,
+                  accentColor: colors.primary,
+                  colors: colors,
+                  onTap: () => context.push('/mechanic_reviews'),
+                ),
+              ],
             );
           },
         );
@@ -455,259 +283,188 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
     );
   }
 
-  Widget _buildMetricCard({
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color accentColor,
-    required AppColors colors,
-    required double width,
-    VoidCallback? onTap,
-    String? subtitle,
-  }) {
-    return AppCard(
-      padding: EdgeInsets.all(Responsive.padding(context, 24)),
-      margin: EdgeInsets.zero,
-      onTap: onTap,
-      child: SizedBox(
-        width: width,
-        child: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(Responsive.padding(context, 16)),
-              decoration: BoxDecoration(
-                color: accentColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(
-                icon,
-                color: accentColor,
-                size: Responsive.iconSize(context, 32),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.inter(
-                      color: colors.textSecondary,
-                      fontSize: Responsive.fontSize(context, 14),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    value,
-                    style: GoogleFonts.inter(
-                      color: colors.primary,
-                      fontSize: Responsive.fontSize(context, 24),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: GoogleFonts.inter(
-                        color: subtitle.startsWith('+')
-                            ? colors.success
-                            : (subtitle.startsWith('-')
-                                  ? colors.error
-                                  : colors.textSecondary),
-                        fontSize: Responsive.fontSize(context, 12),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget _buildIncomeChartSection(AppColors colors, String tallerId) {
+    final isCompact = AppBreakpoints.of(context).isCompact;
 
-  Widget _buildIncomeChartSection(
-    AppColors colors,
-    bool isMobile,
-    String tallerId,
-  ) {
     return AppCard(
-      padding: EdgeInsets.all(Responsive.padding(context, 24)),
+      padding: EdgeInsets.all(Responsive.padding(context, AppSpacing.xl)),
       margin: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Tendencia de Ingresos',
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.bold,
-                  fontSize: Responsive.fontSize(context, 18),
-                  color: colors.primary,
-                ),
-              ),
-              Icon(Icons.show_chart, color: colors.success),
-            ],
+          AppSectionHeader(
+            title: 'Tendencia de Ingresos',
+            trailing: Icon(Icons.show_chart, color: colors.success),
           ),
-          const SizedBox(height: 24),
-          SizedBox(
-            height: 250,
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection(FirestoreCollections.servicios)
-                  .where('id_taller', isEqualTo: tallerId)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+          const SizedBox(height: AppSpacing.xl),
+          StreamBuilder<QuerySnapshot>(
+            stream: _db
+                .collection(FirestoreCollections.servicios)
+                .where('id_taller', isEqualTo: tallerId)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return SizedBox(
+                  height: isCompact ? 200 : 280,
+                  child: const Center(child: CircularProgressIndicator()),
+                );
+              }
 
-                final docs = snapshot.data!.docs;
-                final now = DateTime.now();
+              final docs = snapshot.data!.docs;
+              final now = DateTime.now();
 
-                // Generar últimos 6 meses
-                final Map<String, double> ingresosPorMes = {};
-                for (int i = 5; i >= 0; i--) {
-                  final m = DateTime(now.year, now.month - i);
-                  ingresosPorMes['${m.year}-${m.month}'] = 0.0;
-                }
+              // Generar últimos 6 meses
+              final Map<String, double> ingresosPorMes = {};
+              for (int i = 5; i >= 0; i--) {
+                final m = DateTime(now.year, now.month - i);
+                ingresosPorMes['${m.year}-${m.month}'] = 0.0;
+              }
 
-                // Sumar ingresos
-                for (var doc in docs) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  if (data['fecha'] != null) {
-                    final fecha = (data['fecha'] as Timestamp).toDate();
-                    final key = '${fecha.year}-${fecha.month}';
-                    if (ingresosPorMes.containsKey(key)) {
-                      final double costo = data['costo'] != null
-                          ? (data['costo'] is int
-                                ? (data['costo'] as int).toDouble()
-                                : data['costo'] as double)
-                          : 0.0;
-                      ingresosPorMes[key] = (ingresosPorMes[key] ?? 0) + costo;
-                    }
+              // Sumar ingresos
+              for (var doc in docs) {
+                final data = doc.data() as Map<String, dynamic>;
+                if (data['fecha'] != null) {
+                  final fecha = (data['fecha'] as Timestamp).toDate();
+                  final key = '${fecha.year}-${fecha.month}';
+                  if (ingresosPorMes.containsKey(key)) {
+                    final double costo = data['costo'] != null
+                        ? (data['costo'] is int
+                              ? (data['costo'] as int).toDouble()
+                              : data['costo'] as double)
+                        : 0.0;
+                    ingresosPorMes[key] = (ingresosPorMes[key] ?? 0) + costo;
                   }
                 }
+              }
 
-                final values = ingresosPorMes.values.toList();
-                final keys = ingresosPorMes.keys.toList();
+              final values = ingresosPorMes.values.toList();
+              final keys = ingresosPorMes.keys.toList();
 
-                double maxY = 100;
-                for (var v in values) {
-                  if (v > maxY) maxY = v;
-                }
-                maxY = (maxY * 1.2).ceilToDouble(); // 20% margen superior
+              const meses = [
+                'Ene',
+                'Feb',
+                'Mar',
+                'Abr',
+                'May',
+                'Jun',
+                'Jul',
+                'Ago',
+                'Sep',
+                'Oct',
+                'Nov',
+                'Dic',
+              ];
 
-                final spots = <FlSpot>[];
-                for (int i = 0; i < values.length; i++) {
-                  spots.add(FlSpot(i.toDouble(), values[i]));
-                }
+              final resumenTextual = List.generate(keys.length, (i) {
+                final m = int.parse(keys[i].split('-')[1]);
+                return '${meses[m - 1]} \$${values[i].toStringAsFixed(0)}';
+              }).join(', ');
 
-                return LineChart(
-                  LineChartData(
-                    gridData: FlGridData(
-                      show: true,
-                      drawVerticalLine: false,
-                      horizontalInterval: maxY > 0 ? maxY / 4 : 25,
-                      getDrawingHorizontalLine: (value) => FlLine(
-                        color: colors.textSecondary.withValues(alpha: 0.1),
-                        strokeWidth: 1,
-                      ),
-                    ),
-                    titlesData: FlTitlesData(
-                      show: true,
-                      rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 30,
-                          interval: 1,
-                          getTitlesWidget: (value, meta) {
-                            final idx = value.toInt();
-                            if (idx >= 0 && idx < keys.length) {
-                              final parts = keys[idx].split('-');
-                              final m = int.parse(parts[1]);
-                              const meses = [
-                                'Ene',
-                                'Feb',
-                                'Mar',
-                                'Abr',
-                                'May',
-                                'Jun',
-                                'Jul',
-                                'Ago',
-                                'Sep',
-                                'Oct',
-                                'Nov',
-                                'Dic',
-                              ];
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 8.0),
-                                child: Text(
-                                  meses[m - 1],
-                                  style: TextStyle(
-                                    color: colors.textSecondary,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              );
-                            }
-                            return const Text('');
-                          },
-                        ),
-                      ),
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          interval: maxY > 0 ? maxY / 4 : 25,
-                          reservedSize: 42,
-                          getTitlesWidget: (value, meta) {
-                            if (value == maxY) return const SizedBox.shrink();
-                            return Text(
-                              '\$${value.toInt()}',
-                              style: TextStyle(
-                                color: colors.textSecondary,
-                                fontSize: 10,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    borderData: FlBorderData(show: false),
-                    minX: 0,
-                    maxX: 5,
-                    minY: 0,
-                    maxY: maxY > 0 ? maxY : 100,
-                    lineBarsData: [
-                      LineChartBarData(
-                        spots: spots,
-                        isCurved: true,
-                        color: colors.success,
-                        barWidth: 3,
-                        isStrokeCapRound: true,
-                        dotData: const FlDotData(show: true),
-                        belowBarData: BarAreaData(
+              double maxY = 100;
+              for (var v in values) {
+                if (v > maxY) maxY = v;
+              }
+              maxY = (maxY * 1.2).ceilToDouble(); // 20% margen superior
+
+              final spots = <FlSpot>[];
+              for (int i = 0; i < values.length; i++) {
+                spots.add(FlSpot(i.toDouble(), values[i]));
+              }
+
+              return Semantics(
+                label:
+                    'Tendencia de ingresos de los últimos 6 meses. '
+                    '$resumenTextual.',
+                child: ExcludeSemantics(
+                  child: SizedBox(
+                    height: isCompact ? 200 : 280,
+                    child: LineChart(
+                      LineChartData(
+                        gridData: FlGridData(
                           show: true,
-                          color: colors.success.withValues(alpha: 0.1),
+                          drawVerticalLine: false,
+                          horizontalInterval: maxY > 0 ? maxY / 4 : 25,
+                          getDrawingHorizontalLine: (value) => FlLine(
+                            color: colors.textSecondary.withValues(alpha: 0.1),
+                            strokeWidth: 1,
+                          ),
                         ),
+                        titlesData: FlTitlesData(
+                          show: true,
+                          rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: 30,
+                              interval: 1,
+                              getTitlesWidget: (value, meta) {
+                                final idx = value.toInt();
+                                if (idx >= 0 && idx < keys.length) {
+                                  final parts = keys[idx].split('-');
+                                  final m = int.parse(parts[1]);
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 8.0),
+                                    child: Text(
+                                      meses[m - 1],
+                                      style: AppTextStyles.labelSmall.copyWith(
+                                        color: colors.textSecondary,
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return const Text('');
+                              },
+                            ),
+                          ),
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              interval: maxY > 0 ? maxY / 4 : 25,
+                              reservedSize: 42,
+                              getTitlesWidget: (value, meta) {
+                                if (value == maxY) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Text(
+                                  '\$${value.toInt()}',
+                                  style: AppTextStyles.labelSmall.copyWith(
+                                    color: colors.textSecondary,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                        borderData: FlBorderData(show: false),
+                        minX: 0,
+                        maxX: 5,
+                        minY: 0,
+                        maxY: maxY > 0 ? maxY : 100,
+                        lineBarsData: [
+                          LineChartBarData(
+                            spots: spots,
+                            isCurved: true,
+                            color: colors.success,
+                            barWidth: 3,
+                            isStrokeCapRound: true,
+                            dotData: const FlDotData(show: true),
+                            belowBarData: BarAreaData(
+                              show: true,
+                              color: colors.success.withValues(alpha: 0.1),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -716,28 +473,18 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
 
   Widget _buildRecentServices(AppColors colors, String tallerId) {
     return AppCard(
-      padding: EdgeInsets.all(Responsive.padding(context, 24)),
+      padding: EdgeInsets.all(Responsive.padding(context, AppSpacing.xl)),
       margin: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Servicios Recientes',
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.bold,
-                  fontSize: Responsive.fontSize(context, 18),
-                  color: colors.primary,
-                ),
-              ),
-              Icon(Icons.history, color: colors.textSecondary),
-            ],
+          AppSectionHeader(
+            title: 'Servicios Recientes',
+            trailing: Icon(Icons.history, color: colors.textSecondary),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.base),
           StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
+            stream: _db
                 .collection(FirestoreCollections.servicios)
                 .where('id_taller', isEqualTo: tallerId)
                 .orderBy('fecha', descending: true)
@@ -751,11 +498,13 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
               }
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                 return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
                   child: Center(
                     child: Text(
                       'No hay servicios registrados aún.',
-                      style: GoogleFonts.inter(color: colors.textSecondary),
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: colors.textSecondary,
+                      ),
                     ),
                   ),
                 );
@@ -772,7 +521,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
 
               return Column(
                 children: records
-                    .map((r) => _buildServiceTile(r, colors))
+                    .map((r) => _ServiceTile(record: r, colors: colors))
                     .toList(),
               );
             },
@@ -781,23 +530,170 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
       ),
     );
   }
+}
 
-  Widget _buildServiceTile(ServiceRecordModel record, AppColors colors) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: EdgeInsets.all(Responsive.padding(context, 16)),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainer,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.primary.withValues(alpha: 0.06)),
-      ),
+/// Conmutadores de tema e idioma. Estaban escritos dos veces —una en el
+/// `AppBar` de teléfono y otra en la barra de escritorio— con distinto color
+/// cada uno. `MechanicScaffold` los pinta en la barra que corresponda.
+class _TemaIdiomaActions extends StatelessWidget {
+  const _TemaIdiomaActions();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+
+    return Consumer2<ThemeProvider, LanguageProvider>(
+      builder: (context, themeProvider, languageProvider, _) {
+        final isDark = themeProvider.themeMode == ThemeMode.dark;
+        final isEnglish = languageProvider.currentLocale.languageCode == 'en';
+
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              tooltip: isDark
+                  ? 'Cambiar a modo claro'
+                  : 'Cambiar a modo oscuro',
+              icon: Icon(
+                isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                color: colors.primary,
+              ),
+              onPressed: () => themeProvider.setThemeMode(
+                isDark ? ThemeMode.light : ThemeMode.dark,
+              ),
+            ),
+            IconButton(
+              tooltip: isEnglish ? 'Cambiar a español' : 'Switch to English',
+              onPressed: () =>
+                  languageProvider.changeLanguage(isEnglish ? 'es' : 'en'),
+              icon: Text(
+                isEnglish ? 'EN' : 'ES',
+                style: AppTextStyles.labelLarge.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colors.primary,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Tarjeta de un KPI del dashboard. `AppGrid` decide su celda; la tarjeta
+/// solo rellena el espacio que recibe — antes un `SizedBox(width: ...)`
+/// interno duplicaba el ancho que ya fijaba el `Wrap` externo (más el
+/// padding de `AppCard`), y el cálculo de columnas nunca coincidía con el
+/// ancho real dibujado.
+class _MetricCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color accentColor;
+  final AppColors colors;
+  final VoidCallback? onTap;
+  final String? subtitle;
+
+  const _MetricCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.accentColor,
+    required this.colors,
+    this.onTap,
+    this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Padding y tamaño de icono fijos (no escalados por `Responsive`,
+    // que solo conoce el ancho *global* de la ventana): a 840 px la
+    // celda de `AppGrid` con `childAspectRatio: 2.6` mide apenas 93 px
+    // de alto, el peor caso de los ocho anchos de auditoría. El
+    // contenido de esta tarjeta tiene que caber ahí siempre, no solo en
+    // el ancho en que se probó a mano.
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      margin: EdgeInsets.zero,
+      onTap: onTap,
       child: Row(
         children: [
           Container(
-            padding: EdgeInsets.all(Responsive.padding(context, 12)),
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Icon(icon, color: accentColor, size: 24),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  value,
+                  style: AppTextStyles.headlineSmall.copyWith(
+                    color: colors.primary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle!,
+                    style: AppTextStyles.labelMedium.copyWith(
+                      color: subtitle!.startsWith('+')
+                          ? colors.success
+                          : (subtitle!.startsWith('-')
+                                ? colors.error
+                                : colors.textSecondary),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Fila de un servicio reciente. Antes era un `Container` crudo sin `onTap`
+/// ni feedback, mientras que la tarjeta "Total Servicios" sí navega al
+/// historial: el usuario aprendía que las filas de servicio son pulsables y
+/// aquí no lo eran.
+class _ServiceTile extends StatelessWidget {
+  final ServiceRecordModel record;
+  final AppColors colors;
+
+  const _ServiceTile({required this.record, required this.colors});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: EdgeInsets.all(Responsive.padding(context, AppSpacing.base)),
+      onTap: () => context.push('/mechanic_service_history'),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(Responsive.padding(context, AppSpacing.md)),
             decoration: BoxDecoration(
               color: colors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: Icon(
               Icons.build_circle,
@@ -805,24 +701,22 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
               size: Responsive.iconSize(context, 24),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSpacing.base),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   record.tipoServicio ?? 'Servicio',
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.bold,
+                  style: AppTextStyles.titleSmall.copyWith(
                     color: colors.primary,
-                    fontSize: Responsive.fontSize(context, 16),
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   DateFormat('dd MMM yyyy').format(record.fecha),
-                  style: GoogleFonts.inter(
+                  style: AppTextStyles.labelMedium.copyWith(
                     color: colors.textSecondary,
-                    fontSize: Responsive.fontSize(context, 12),
                   ),
                 ),
               ],
@@ -831,11 +725,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
           if (record.costo != null && record.costo! > 0)
             Text(
               '\$${record.costo!.toStringAsFixed(2)}',
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.bold,
-                color: colors.secondary,
-                fontSize: Responsive.fontSize(context, 16),
-              ),
+              style: AppTextStyles.titleSmall.copyWith(color: colors.secondary),
             ),
         ],
       ),
