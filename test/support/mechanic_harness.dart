@@ -6,11 +6,41 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
+import 'package:autodoc/core/models/app_notification_model.dart';
 import 'package:autodoc/core/models/user_model.dart';
+import 'package:autodoc/core/providers/notification_center_provider.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/theme/app_theme.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
+
+import 'vehicle_fixtures.dart';
+
+/// Doble de `NotificationCenterProvider` para pantallas que montan
+/// `NotificationBellButton`. Mismo motivo que `FakeUserProfileProvider`:
+/// el real toca `FirebaseFirestore.instance` en su inicializador.
+class FakeNotificationCenterProvider extends ChangeNotifier
+    implements NotificationCenterProvider {
+  @override
+  bool get hasUnread => false;
+  @override
+  int get unreadCount => 0;
+  @override
+  bool get isLoading => false;
+  @override
+  List<AppNotification> get notifications => [];
+  @override
+  String? get error => null;
+  @override
+  void initialize(String userId) {}
+  @override
+  Future<void> markAsRead(String userId, String notificationId) async {}
+  @override
+  Future<void> markAllAsRead(String userId) async {}
+  @override
+  Future<void> deleteNotification(String userId, String notificationId) async {}
+}
 
 /// Doble de `UserProfileProvider` para los tests del panel de taller.
 ///
@@ -120,6 +150,22 @@ Future<void> pumpMechanicScreen(
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider<UserProfileProvider>(
           create: (_) => FakeUserProfileProvider(user: user ?? fakeTaller()),
+        ),
+        // `VehicleSearchScreen` (búsquedas recientes) es la primera pantalla
+        // del panel de taller que lee `VehicleProvider`. `VehicleProvider()`
+        // real toca `FirebaseFirestore.instance` en el inicializador de
+        // `VehicleService`, así que sin este doble cualquier pantalla que lo
+        // consuma lanza `ProviderNotFoundException` (si falta del todo) o un
+        // error de Firebase no inicializado (si se instancia el real). Mismo
+        // patrón que `FakeUserProfileProvider` arriba.
+        ChangeNotifierProvider<VehicleProvider>(
+          create: (_) => FakeVehicleProvider(const []),
+        ),
+        // Mismo motivo que arriba, para pantallas que montan
+        // `NotificationBellButton` (lee `NotificationCenterProvider` con
+        // `Consumer`, no lo declara como dependencia opcional).
+        ChangeNotifierProvider<NotificationCenterProvider>(
+          create: (_) => FakeNotificationCenterProvider(),
         ),
         ...extraProviders,
       ],

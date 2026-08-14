@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/app_empty_state.dart';
+import 'package:autodoc/core/widgets/app_page_body.dart';
+import 'package:autodoc/core/widgets/notification_bell_button.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
-import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
-import 'package:autodoc/core/utils/responsive.dart';
-import 'package:autodoc/core/providers/user_profile_provider.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 import 'package:autodoc/core/utils/plate_formatter.dart';
 
 class VehicleSearchScreen extends StatefulWidget {
@@ -87,309 +91,252 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final bool isMobile = !AppBreakpoints.of(context).isAtLeastExpanded;
-    final colors = context.appColors;
-    final theme = Theme.of(context);
-
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: isMobile
-          ? AppBar(
-              backgroundColor: theme.colorScheme.surface,
-              elevation: 0,
-              title: Text(
-                'Panel de Taller',
-                style: GoogleFonts.inter(
-                  color: colors.primary,
-                  fontSize: Responsive.fontSize(context, 16),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              iconTheme: IconThemeData(color: colors.primary),
-            )
-          : null,
-      drawer: isMobile ? const Drawer(child: MechanicSidebar()) : null,
-      body: Row(
-        children: [
-          // Navigation Drawer (Solo en Desktop/Tablet)
-          if (!isMobile) const MechanicSidebar(),
-
-          // Contenido Principal
-          Expanded(
-            child: Column(
-              children: [
-                if (!isMobile) _buildTopBar(colors, theme),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.all(isMobile ? 16 : 32),
-                    child: Center(
-                      child: Container(
-                        constraints: BoxConstraints(
-                          maxWidth: isMobile ? double.infinity : 800,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildSearchCard(isMobile, colors),
-                            const SizedBox(height: 24),
-                            _buildRecentSearches(colors),
-                            const SizedBox(height: 32),
-                            _buildAssistantCard(isMobile, colors),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+  void _abrirVehiculo(VehicleModel vehicle) {
+    context.push('/initiate_service/${vehicle.idVehiculo}', extra: vehicle);
   }
 
-  Widget _buildTopBar(AppColors colors, ThemeData theme) {
-    return Container(
-      height: 64,
-      padding: EdgeInsets.symmetric(
-        horizontal: Responsive.padding(context, 32),
-      ),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: colors.textSecondary.withValues(alpha: 0.1),
+  @override
+  Widget build(BuildContext context) {
+    return MechanicScaffold(
+      title: 'Buscar Vehículo',
+      actions: const [NotificationBellButton()],
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+        child: AppPageBody(
+          maxWidth: AppBreakpoints.maxReadingWidth,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _SearchCard(
+                controller: _searchController,
+                isSearching: _isSearching,
+                onSearch: _handleSearch,
+                onScan: _scanQR,
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              _RecentSearches(onSelect: _abrirVehiculo),
+              const SizedBox(height: AppSpacing.xxl),
+              const _AssistantCard(),
+            ],
           ),
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'BUSCAR VEHÍCULO',
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.w900,
-              fontSize: Responsive.fontSize(context, 20),
-              color: colors.primary,
-              letterSpacing: -0.5,
-            ),
-          ),
-          Row(
-            children: [
-              Icon(Icons.notifications_none, color: colors.textSecondary),
-              const SizedBox(width: 16),
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: colors.primary,
-                child: Builder(
-                  builder: (ctx) {
-                    final session = ctx.watch<UserProfileProvider>();
-                    final name = session.userData?.nombreCompleto ?? 'Taller';
-                    final initials = name.length >= 2
-                        ? name.substring(0, 2).toUpperCase()
-                        : 'TA';
-                    return Text(
-                      initials,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: Responsive.fontSize(context, 12),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
+}
 
-  Widget _buildSearchCard(bool isMobile, AppColors colors) {
+class _SearchCard extends StatelessWidget {
+  final TextEditingController controller;
+  final bool isSearching;
+  final VoidCallback onSearch;
+  final VoidCallback onScan;
+
+  const _SearchCard({
+    required this.controller,
+    required this.isSearching,
+    required this.onSearch,
+    required this.onScan,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+
     return AppCard(
-      padding: EdgeInsets.all(isMobile ? 24 : 40),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       margin: EdgeInsets.zero,
       child: Column(
         children: [
           Text(
             'Identificar Vehículo',
-            style: GoogleFonts.inter(
-              fontSize: isMobile ? 24 : 32,
-              fontWeight: FontWeight.bold,
-              color: colors.primary,
-            ),
+            textAlign: TextAlign.center,
+            style: AppTextStyles.headlineSmall.copyWith(color: colors.primary),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             'Ingrese la placa del vehículo para acceder al historial y registrar servicios.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
+            style: AppTextStyles.bodyMedium.copyWith(
               color: colors.textSecondary,
-              fontSize: isMobile ? 12 : 14,
             ),
           ),
-          SizedBox(height: isMobile ? 24 : 40),
+          const SizedBox(height: AppSpacing.xxl),
           Container(
-            padding: EdgeInsets.all(Responsive.padding(context, 4)),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.base,
+              vertical: AppSpacing.xs,
+            ),
             decoration: BoxDecoration(
               color: colors.surfaceContainer,
-              borderRadius: BorderRadius.circular(100),
+              borderRadius: BorderRadius.circular(AppRadius.full),
               border: Border.all(color: colors.primary.withValues(alpha: 0.15)),
             ),
             child: Row(
               children: [
-                SizedBox(width: isMobile ? 12 : 24),
                 Icon(
                   Icons.directions_car,
                   color: colors.primary.withValues(alpha: 0.5),
-                  size: isMobile ? 20 : 24,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: TextField(
-                    controller: _searchController,
-                    style: GoogleFonts.inter(
-                      fontSize: isMobile ? 18 : 22,
-                      fontWeight: FontWeight.bold,
+                    controller: controller,
+                    style: AppTextStyles.titleMedium.copyWith(
                       color: colors.primary,
-                      letterSpacing: isMobile ? 1 : 2,
+                      letterSpacing: 1.5,
                     ),
                     decoration: InputDecoration(
                       hintText: 'Ej: ABC123',
-                      hintStyle: TextStyle(
-                        color: colors.primary.withValues(alpha: 0.2),
-                        fontSize: isMobile ? 14 : 18,
+                      hintStyle: AppTextStyles.bodyLarge.copyWith(
+                        color: colors.textSecondary,
                       ),
                       border: InputBorder.none,
+                      isDense: true,
                     ),
                     textCapitalization: TextCapitalization.characters,
-                    onSubmitted: (_) => _handleSearch(),
+                    onSubmitted: (_) => onSearch(),
                   ),
                 ),
-                GestureDetector(
-                  onTap: _scanQR,
-                  child: Container(
-                    padding: EdgeInsets.all(isMobile ? 12 : 16),
-                    decoration: BoxDecoration(
-                      color: colors.secondary,
-                      shape: BoxShape.circle,
+                Semantics(
+                  button: true,
+                  label: 'Escanear código QR de la placa',
+                  child: IconButton(
+                    onPressed: onScan,
+                    padding: EdgeInsets.zero,
+                    // El tamaño mínimo tappable de IconButton en Material 3
+                    // es 48 dp; se fija explícitamente para no depender del
+                    // tamaño del icono decorativo. El GestureDetector
+                    // anterior medía 44 en teléfono.
+                    constraints: const BoxConstraints(
+                      minWidth: 48,
+                      minHeight: 48,
                     ),
-                    child: Icon(
-                      Icons.qr_code_scanner,
-                      color: colors.primary,
-                      size: isMobile ? 20 : 28,
+                    icon: Container(
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      decoration: BoxDecoration(
+                        color: colors.secondary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.qr_code_scanner,
+                        color: colors.primary,
+                        size: 20,
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xl),
           SizedBox(
             width: double.infinity,
             child: AppButton(
               text: 'BUSCAR AUTO',
-              isLoading: _isSearching,
-              onPressed: _isSearching ? null : _handleSearch,
+              isLoading: isSearching,
+              onPressed: isSearching ? null : onSearch,
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildRecentSearches(AppColors colors) {
+class _RecentSearches extends StatelessWidget {
+  final ValueChanged<VehicleModel> onSelect;
+
+  const _RecentSearches({required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
     final vehicleProvider = context.watch<VehicleProvider>();
     final recentSearches = vehicleProvider.recentSearches;
 
     return AppCard(
-      padding: EdgeInsets.all(Responsive.padding(context, 24)),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       margin: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Búsquedas Recientes',
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.bold,
-                  color: colors.primary,
-                  fontSize: Responsive.fontSize(context, 16),
-                ),
-              ),
-              Icon(
-                Icons.history,
-                size: Responsive.iconSize(context, 20),
-                color: colors.primary,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (recentSearches.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Center(
+              Expanded(
                 child: Text(
-                  'No hay búsquedas recientes',
-                  style: GoogleFonts.inter(
-                    color: colors.textSecondary.withValues(alpha: 0.5),
-                    fontSize: Responsive.fontSize(context, 13),
+                  'Búsquedas Recientes',
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.titleMedium.copyWith(
+                    color: colors.primary,
                   ),
                 ),
               ),
+              const SizedBox(width: AppSpacing.sm),
+              Icon(Icons.history, size: 20, color: colors.primary),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.base),
+          if (recentSearches.isEmpty)
+            const AppEmptyState(
+              title: 'No hay búsquedas recientes',
+              description:
+                  'Los vehículos que busques aparecerán aquí para volver a abrirlos con un toque.',
+              icon: Icons.history,
             )
           else
-            ...recentSearches.map((v) => _buildRecentItem(v, colors)),
+            ...recentSearches.map(
+              (v) => _RecentItem(vehicle: v, onTap: () => onSelect(v)),
+            ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildRecentItem(dynamic vehicle, AppColors colors) {
+class _RecentItem extends StatelessWidget {
+  final VehicleModel vehicle;
+  final VoidCallback onTap;
+
+  const _RecentItem({required this.vehicle, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+
     return InkWell(
-      onTap: () {
-        context.push('/initiate_service/${vehicle.idVehiculo}', extra: vehicle);
-      },
-      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.md),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12.0),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
         child: Row(
           children: [
             Container(
-              padding: EdgeInsets.all(Responsive.padding(context, 10)),
+              padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
                 color: colors.surfaceContainer,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: Icon(
                 Icons.directions_car,
-                size: Responsive.iconSize(context, 20),
+                size: 20,
                 color: colors.primary,
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: AppSpacing.base),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     vehicle.placa,
-                    style: GoogleFonts.inter(
+                    style: AppTextStyles.labelLarge.copyWith(
                       fontWeight: FontWeight.bold,
-                      fontSize: Responsive.fontSize(context, 15),
                       color: colors.primary,
                     ),
                   ),
                   Text(
                     '${vehicle.marca} ${vehicle.modelo} • ${vehicle.anio}',
-                    style: GoogleFonts.inter(
-                      fontSize: Responsive.fontSize(context, 11),
+                    style: AppTextStyles.bodySmall.copyWith(
                       color: colors.textSecondary,
                     ),
                   ),
@@ -398,7 +345,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
             ),
             Icon(
               Icons.arrow_forward_ios,
-              size: Responsive.iconSize(context, 14),
+              size: 14,
               color: colors.primary.withValues(alpha: 0.3),
             ),
           ],
@@ -406,58 +353,50 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
       ),
     );
   }
+}
 
-  Widget _buildAssistantCard(bool isMobile, AppColors colors) {
+/// Aviso informativo sobre el escáner de placa.
+///
+/// Antes tenía un botón "SABER MÁS" con un callback vacío que no llevaba a
+/// ninguna parte: un control enfocable, anunciable y muerto. Se retira el
+/// botón y se conserva el texto — el escáner de esta pantalla sí lee placas,
+/// así que la descripción sigue siendo información válida para el usuario.
+class _AssistantCard extends StatelessWidget {
+  const _AssistantCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+
     return Container(
-      padding: EdgeInsets.all(Responsive.padding(context, 20)),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: colors.primary.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
         border: Border.all(color: colors.primary.withValues(alpha: 0.1)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                Icons.info_outline,
-                color: colors.secondary,
-                size: Responsive.iconSize(context, 24),
-              ),
-              const SizedBox(width: 12),
+              Icon(Icons.info_outline, color: colors.secondary, size: 24),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Text(
                   'Asistente de Servicio',
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.bold,
+                  style: AppTextStyles.titleSmall.copyWith(
                     color: colors.primary,
-                    fontSize: Responsive.fontSize(context, 14),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             'Escanee el VIN en el marco de la puerta del conductor para resultados automáticos.',
-            style: GoogleFonts.inter(
-              fontSize: Responsive.fontSize(context, 12),
+            style: AppTextStyles.bodySmall.copyWith(
               color: colors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () {},
-              child: Text(
-                'SABER MÁS',
-                style: GoogleFonts.inter(
-                  fontSize: Responsive.fontSize(context, 12),
-                  fontWeight: FontWeight.bold,
-                  color: colors.secondary,
-                ),
-              ),
             ),
           ),
         ],
