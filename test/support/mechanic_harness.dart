@@ -99,6 +99,15 @@ Future<void> pumpMechanicScreen(
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
 
+  // Desmonta del todo antes de reconstruir: sin esto, una segunda llamada a
+  // pumpMechanicScreen en el mismo test (mismo tester, misma forma de
+  // árbol: MaterialApp.router > MultiProvider > ...) hace que Flutter
+  // reconcilie los elementos existentes en vez de recrearlos, y el
+  // `ChangeNotifierProvider<UserProfileProvider>` reutiliza la instancia
+  // creada en la primera llamada — el nuevo `user` pasado aquí nunca llega
+  // a la pantalla. Mismo patrón que `pumpAtWidth` en responsive_harness.dart.
+  await tester.pumpWidget(const SizedBox.shrink());
+
   final router = GoRouter(
     initialLocation: location,
     routes: [GoRoute(path: location, builder: (context, state) => screen)],
