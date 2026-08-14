@@ -4,10 +4,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:autodoc/features/mechanic/data/repositories/reparacion_repository.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/reparacion_provider.dart';
 
+import '../../../../helpers/test_helpers.mocks.dart';
+
 void main() {
   test('watchTaller puebla reparaciones desde el repositorio', () async {
     final firestore = FakeFirebaseFirestore();
-    final repo = ReparacionRepository(firestore: firestore);
+    final repo = ReparacionRepository(
+      firestore: firestore,
+      functions: MockFirebaseFunctions(),
+    );
     await repo.iniciarReparacion(
       idVehiculo: 'v1',
       idTaller: 't1',
@@ -26,7 +31,10 @@ void main() {
     'iniciarOReutilizar reutiliza el ticket existente en vez de crear uno nuevo',
     () async {
       final firestore = FakeFirebaseFirestore();
-      final repo = ReparacionRepository(firestore: firestore);
+      final repo = ReparacionRepository(
+        firestore: firestore,
+        functions: MockFirebaseFunctions(),
+      );
       final provider = ReparacionProvider(repository: repo);
 
       final id1 = await provider.iniciarOReutilizar(
@@ -54,7 +62,10 @@ void main() {
     'cambiarEstado delega en el repositorio y no lanza si es válido',
     () async {
       final firestore = FakeFirebaseFirestore();
-      final repo = ReparacionRepository(firestore: firestore);
+      final repo = ReparacionRepository(
+        firestore: firestore,
+        functions: MockFirebaseFunctions(),
+      );
       final id = await repo.iniciarReparacion(
         idVehiculo: 'v1',
         idTaller: 't1',

@@ -3,10 +3,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:autodoc/features/mechanic/data/repositories/reparacion_repository.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
 
+import '../../../../helpers/test_helpers.mocks.dart';
+
 void main() {
   test('iniciarReparacion crea documento con estado recibido', () async {
     final firestore = FakeFirebaseFirestore();
-    final repo = ReparacionRepository(firestore: firestore);
+    final repo = ReparacionRepository(
+      firestore: firestore,
+      functions: MockFirebaseFunctions(),
+    );
 
     final id = await repo.iniciarReparacion(
       idVehiculo: 'v1',
@@ -26,7 +31,10 @@ void main() {
     'cambiarEstado actualiza estado y agrega entrada al historial',
     () async {
       final firestore = FakeFirebaseFirestore();
-      final repo = ReparacionRepository(firestore: firestore);
+      final repo = ReparacionRepository(
+        firestore: firestore,
+        functions: MockFirebaseFunctions(),
+      );
       final id = await repo.iniciarReparacion(
         idVehiculo: 'v1',
         idTaller: 't1',
@@ -47,7 +55,10 @@ void main() {
 
   test('cambiarEstado rechaza un estado fuera de la lista permitida', () async {
     final firestore = FakeFirebaseFirestore();
-    final repo = ReparacionRepository(firestore: firestore);
+    final repo = ReparacionRepository(
+      firestore: firestore,
+      functions: MockFirebaseFunctions(),
+    );
     final id = await repo.iniciarReparacion(
       idVehiculo: 'v1',
       idTaller: 't1',
@@ -63,7 +74,10 @@ void main() {
 
   test('cambiarEstado rechaza retroceder a un estado anterior', () async {
     final firestore = FakeFirebaseFirestore();
-    final repo = ReparacionRepository(firestore: firestore);
+    final repo = ReparacionRepository(
+      firestore: firestore,
+      functions: MockFirebaseFunctions(),
+    );
     final id = await repo.iniciarReparacion(
       idVehiculo: 'v1',
       idTaller: 't1',
@@ -88,7 +102,10 @@ void main() {
     'cambiarEstado permite avanzar directo saltando pasos intermedios',
     () async {
       final firestore = FakeFirebaseFirestore();
-      final repo = ReparacionRepository(firestore: firestore);
+      final repo = ReparacionRepository(
+        firestore: firestore,
+        functions: MockFirebaseFunctions(),
+      );
       final id = await repo.iniciarReparacion(
         idVehiculo: 'v1',
         idTaller: 't1',
@@ -114,7 +131,10 @@ void main() {
     'cambiarEstado rechaza un idReparacion inexistente con error de dominio',
     () async {
       final firestore = FakeFirebaseFirestore();
-      final repo = ReparacionRepository(firestore: firestore);
+      final repo = ReparacionRepository(
+        firestore: firestore,
+        functions: MockFirebaseFunctions(),
+      );
 
       expect(
         () => repo.cambiarEstado(
@@ -130,7 +150,10 @@ void main() {
     'buscarReparacionActiva devuelve null si no hay ninguna para ese vehículo+taller',
     () async {
       final firestore = FakeFirebaseFirestore();
-      final repo = ReparacionRepository(firestore: firestore);
+      final repo = ReparacionRepository(
+        firestore: firestore,
+        functions: MockFirebaseFunctions(),
+      );
 
       final id = await repo.buscarReparacionActiva(
         idVehiculo: 'v1',
@@ -145,7 +168,10 @@ void main() {
     'buscarReparacionActiva encuentra el ticket existente sin importar su estado',
     () async {
       final firestore = FakeFirebaseFirestore();
-      final repo = ReparacionRepository(firestore: firestore);
+      final repo = ReparacionRepository(
+        firestore: firestore,
+        functions: MockFirebaseFunctions(),
+      );
       final idCreado = await repo.iniciarReparacion(
         idVehiculo: 'v1',
         idTaller: 't1',
@@ -170,7 +196,10 @@ void main() {
     'buscarReparacionActiva no mezcla tickets de otro vehículo o taller',
     () async {
       final firestore = FakeFirebaseFirestore();
-      final repo = ReparacionRepository(firestore: firestore);
+      final repo = ReparacionRepository(
+        firestore: firestore,
+        functions: MockFirebaseFunctions(),
+      );
       await repo.iniciarReparacion(
         idVehiculo: 'v1',
         idTaller: 't1',
@@ -191,7 +220,10 @@ void main() {
 
   test('watchReparacionesActivas emite reparaciones del taller', () async {
     final firestore = FakeFirebaseFirestore();
-    final repo = ReparacionRepository(firestore: firestore);
+    final repo = ReparacionRepository(
+      firestore: firestore,
+      functions: MockFirebaseFunctions(),
+    );
     await repo.iniciarReparacion(
       idVehiculo: 'v1',
       idTaller: 't1',

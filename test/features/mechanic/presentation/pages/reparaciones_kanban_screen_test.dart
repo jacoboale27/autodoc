@@ -13,6 +13,8 @@ import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart'
 import 'package:autodoc/core/theme/app_theme.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 
+import '../../../../helpers/test_helpers.mocks.dart';
+
 // UserProfileProvider real construye un UserService que toca
 // FirebaseFirestore.instance en su inicializacion, lo que no existe en un
 // widget test sin Firebase.initializeApp(). MechanicSidebar (renderizado por
@@ -56,7 +58,10 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final repo = ReparacionRepository(firestore: FakeFirebaseFirestore());
+    final repo = ReparacionRepository(
+      firestore: FakeFirebaseFirestore(),
+      functions: MockFirebaseFunctions(),
+    );
     final router = GoRouter(
       initialLocation: '/mechanic_reparaciones',
       routes: [

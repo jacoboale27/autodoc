@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:provider/single_child_widget.dart';
 
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
@@ -82,7 +83,16 @@ Future<void> pumpMechanicScreen(
   UserModel? user,
   Brightness brightness = Brightness.light,
   bool disableAnimations = false,
-  List<ChangeNotifierProvider> extraProviders = const [],
+  // `List<SingleChildWidget>`, no `List<ChangeNotifierProvider>`: un
+  // parámetro tipado como el genérico crudo `ChangeNotifierProvider`
+  // instancia a su cota (`ChangeNotifierProvider<ChangeNotifier>`) por
+  // "instantiate-to-bound", y ese tipo de contexto gana en la inferencia
+  // sobre el literal `ChangeNotifierProvider(create: (_) => Foo())` de la
+  // lista — registra el provider como `ChangeNotifierProvider<ChangeNotifier>`
+  // en vez de `ChangeNotifierProvider<Foo>`, y `Provider.of<Foo>()` deja de
+  // encontrarlo. `SingleChildWidget` (la clase base sin genéricos) no fija
+  // ninguna cota, así que cada elemento infiere su propio `T` desde `create`.
+  List<SingleChildWidget> extraProviders = const [],
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = Size(width, height);
