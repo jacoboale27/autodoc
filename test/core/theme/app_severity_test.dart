@@ -106,6 +106,53 @@ void main() {
     });
   });
 
+  group('AppSeverity.forReservaEstado', () {
+    // Usa `_colors` (el mismo const de arriba) en vez de
+    // `AppTheme.light.extension<AppColors>()!`: ambos resuelven a los
+    // mismos valores de `AppPalette.light*` (ver `AppTheme.light`), pero
+    // `AppTheme.light` reconstruye el `TextTheme` completo vía
+    // `google_fonts` en cada evaluación. Con tres `test()` planos llamando a
+    // eso, el fetch de red (bloqueado por `TestWidgetsFlutterBinding`) deja
+    // un `Future` sin awaitar cuyo error termina atribuido al siguiente test
+    // en ejecutarse — un `test()` plano, a diferencia de `testWidgets()`, no
+    // sincroniza pendientes antes de continuar. `forStatus`/`forExpiry` ya
+    // evitan esto mismo usando `_colors` en vez de `AppTheme.light`.
+    AppSeverityStyle estilo(String estado) => AppSeverity.forReservaEstado(
+      estado,
+      _colors,
+      pendienteLabel: 'Pendiente',
+      confirmadaLabel: 'Confirmada',
+      rechazadaLabel: 'Rechazada',
+      cotizadaLabel: 'Cotización Enviada',
+    );
+
+    test('mapea los cuatro estados conocidos a color, icono y etiqueta', () {
+      expect(estilo('confirmada').color, _colors.success);
+      expect(estilo('rechazada').color, _colors.error);
+      expect(estilo('cotizada').color, _colors.primary);
+      expect(estilo('pendiente').color, _colors.warning);
+    });
+
+    test(
+      'cada estado tiene un icono distinto: el color no es el único canal',
+      () {
+        final iconos = [
+          'pendiente',
+          'confirmada',
+          'rechazada',
+          'cotizada',
+        ].map((e) => estilo(e).icon).toSet();
+        expect(iconos.length, 4);
+      },
+    );
+
+    test('un estado desconocido cae en pendiente y no lanza', () {
+      // El campo `estado` viene de Firestore como String libre; un valor
+      // nuevo introducido por una Cloud Function no debe romper la pantalla.
+      expect(estilo('estado_futuro_desconocido').label, 'Pendiente');
+    });
+  });
+
   test('forAlertPriority da icono distinto por prioridad, no solo color', () {
     final colors = AppTheme.light.extension<AppColors>()!;
 

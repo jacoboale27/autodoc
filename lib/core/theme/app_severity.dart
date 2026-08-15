@@ -117,4 +117,42 @@ class AppSeverity {
       label: bajaLabel,
     ),
   };
+
+  /// Severidad de una reserva o cotización a partir de su `estado` de
+  /// Firestore.
+  ///
+  /// A diferencia de [forStatus] y [forExpiry], que reciben enums, aquí el
+  /// argumento es un `String` porque eso es lo que hay en el documento
+  /// (`reservas/{id}.estado`) y esta fase no toca `data/`. El `default` no es
+  /// defensivo por costumbre: una Cloud Function puede introducir un estado
+  /// nuevo, y la pantalla debe seguir renderizando algo legible.
+  static AppSeverityStyle forReservaEstado(
+    String estado,
+    AppColors colors, {
+    required String pendienteLabel,
+    required String confirmadaLabel,
+    required String rechazadaLabel,
+    required String cotizadaLabel,
+  }) => switch (estado) {
+    'confirmada' || 'aceptada' => AppSeverityStyle(
+      color: colors.success,
+      icon: Icons.check_circle_rounded,
+      label: confirmadaLabel,
+    ),
+    'rechazada' => AppSeverityStyle(
+      color: colors.error,
+      icon: Icons.cancel_rounded,
+      label: rechazadaLabel,
+    ),
+    'cotizada' || 'finalizada' => AppSeverityStyle(
+      color: colors.primary,
+      icon: Icons.request_quote_rounded,
+      label: cotizadaLabel,
+    ),
+    _ => AppSeverityStyle(
+      color: colors.warning,
+      icon: Icons.schedule_rounded,
+      label: pendienteLabel,
+    ),
+  };
 }
