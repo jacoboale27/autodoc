@@ -39,6 +39,7 @@ void main() {
             .where((f) => f.path.endsWith('.dart'))) {
       final lines = file.readAsLinesSync();
       for (var i = 0; i < lines.length; i++) {
+        if (lines[i].trimLeft().startsWith('//')) continue;
         if (lines[i].contains('MediaQuery.of(context).size.width') ||
             lines[i].contains('MediaQuery.sizeOf(context).width')) {
           offenders.add(
