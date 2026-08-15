@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
@@ -15,12 +14,18 @@ import 'package:autodoc/features/mechanic/presentation/providers/reparacion_prov
 import 'package:autodoc/features/mechanic/presentation/providers/catalogo_provider.dart';
 import 'package:autodoc/core/models/catalogo_item_model.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
-import 'package:autodoc/core/models/maintenance_task_model.dart';
-import 'package:autodoc/core/models/alert_model.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_severity.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/widgets/app_page_body.dart';
+import 'package:autodoc/core/widgets/app_section_header.dart';
+import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/widgets/missing_argument_screen.dart';
-import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
 
@@ -431,123 +436,178 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       appBar: AppBar(
         title: Text(
           'Iniciar Servicio',
-          style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),
+          style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold),
         ),
         backgroundColor: colors.surfaceContainer,
         foregroundColor: colors.primary,
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(Responsive.padding(context, 20.0)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildVehicleHeader(colors),
-            const SizedBox(height: 16),
-            _buildTicketReparacionBanner(colors),
-            const SizedBox(height: 24),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final dosColumnas = AppBreakpoints.fromWidth(
+              constraints.maxWidth,
+            ).isAtLeastExpanded;
 
-            _buildSectionTitle('KILOMETRAJE DE INGRESO', colors),
-            const SizedBox(height: 12),
-            _buildKmInput(colors),
-            const SizedBox(height: 24),
+            final izquierda = <Widget>[
+              _VehicleHeaderCard(vehiculo: _vehiculo!),
+              const SizedBox(height: AppSpacing.base),
+              _buildTicketReparacionBanner(colors),
+              const SizedBox(height: AppSpacing.xl),
+              const AppSectionHeader(
+                title: 'Kilometraje de ingreso',
+                uppercase: true,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _BoxedField(
+                icon: Icons.speed,
+                label: 'Kilometraje de ingreso',
+                controller: _kmController,
+                keyboardType: TextInputType.number,
+                suffix: 'KM',
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              const AppSectionHeader(
+                title: 'Alertas detectadas',
+                uppercase: true,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _buildAlertsList(alertProvider, colors),
+              const SizedBox(height: AppSpacing.xl),
+              const AppSectionHeader(
+                title: 'Tareas a realizar',
+                uppercase: true,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _buildMaintenanceTasks(alertProvider, colors),
+            ];
 
-            _buildSectionTitle('ALERTAS DETECTADAS', colors),
-            const SizedBox(height: 12),
-            _buildAlertsList(alertProvider, colors),
-            const SizedBox(height: 24),
-
-            _buildSectionTitle('TAREAS A REALIZAR', colors),
-            const SizedBox(height: 12),
-            _buildMaintenanceTasks(alertProvider, colors),
-            const SizedBox(height: 24),
-
-            if (_hasApprovedQuote) ...[
-              Container(
-                padding: EdgeInsets.all(Responsive.padding(context, 16)),
-                decoration: BoxDecoration(
-                  color: colors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: colors.primary.withValues(alpha: 0.3),
+            final derecha = <Widget>[
+              if (_hasApprovedQuote) ...[
+                _buildApprovedQuoteBanner(colors),
+                const SizedBox(height: AppSpacing.xl),
+              ],
+              if (!_hasApprovedQuote) ...[
+                const AppSectionHeader(
+                  title: 'Materiales / repuestos',
+                  uppercase: true,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                _buildMaterialesList(colors),
+                const SizedBox(height: AppSpacing.xl),
+                const AppSectionHeader(title: 'Mano de obra', uppercase: true),
+                const SizedBox(height: AppSpacing.md),
+                _BoxedField(
+                  icon: Icons.build_circle_outlined,
+                  label: 'Mano de obra',
+                  controller: _manoDeObraController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
                   ),
                 ),
-                child: Row(
-                  children: [
-                    Icon(Icons.check_circle, color: colors.primary),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'El cliente aprobó una cotización previa por \$${_approvedQuote!.total.toStringAsFixed(2)}. El desglose ya está registrado.',
-                        style: GoogleFonts.inter(
-                          color: colors.primary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: Responsive.fontSize(context, 14),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                const SizedBox(height: AppSpacing.xl),
+              ],
+              const AppSectionHeader(
+                title: 'Costo del servicio (total)',
+                uppercase: true,
               ),
-              const SizedBox(height: 24),
-            ],
-
-            if (!_hasApprovedQuote) ...[
-              _buildSectionTitle('MATERIALES / REPUESTOS', colors),
-              const SizedBox(height: 12),
-              _buildMaterialesList(colors),
-              const SizedBox(height: 24),
-
-              _buildSectionTitle('MANO DE OBRA', colors),
-              const SizedBox(height: 12),
-              _buildManoDeObraInput(colors),
-              const SizedBox(height: 24),
-            ],
-
-            _buildSectionTitle('COSTO DEL SERVICIO (TOTAL)', colors),
-            const SizedBox(height: 12),
-            _buildCostoInput(colors),
-            const SizedBox(height: 24),
-
-            _buildSectionTitle('OBSERVACIONES TÉCNICAS', colors),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _notesController,
-              maxLines: 3,
-              style: GoogleFonts.inter(color: colors.textPrimary),
-              decoration: InputDecoration(
+              const SizedBox(height: AppSpacing.md),
+              _BoxedField(
+                icon: Icons.attach_money,
+                label: 'Costo del servicio',
+                controller: _costoController,
+                readOnly: true,
+                helperText: 'Se calcula sumando materiales y mano de obra',
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              const AppSectionHeader(
+                title: 'Observaciones técnicas',
+                uppercase: true,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              AppTextField(
+                controller: _notesController,
+                maxLines: 3,
                 hintText: 'Detalles del trabajo realizado...',
-                hintStyle: GoogleFonts.inter(color: colors.textSecondary),
-                filled: true,
-                fillColor: colors.surfaceContainer,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: colors.textSecondary.withValues(alpha: 0.2),
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: colors.textSecondary.withValues(alpha: 0.2),
-                  ),
-                ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              const AppSectionHeader(
+                title: 'Foto de factura / comprobante',
+                uppercase: true,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _buildInvoicePicker(colors),
+              const SizedBox(height: AppSpacing.xxl),
+              AppButton(
+                text: 'FINALIZAR SERVICIO',
+                onPressed: _isSaving ? null : _handleFinalizeService,
+                isLoading: _isSaving,
+              ),
+            ];
+
+            return AppPageBody(
+              maxWidth: dosColumnas
+                  ? AppBreakpoints.maxContentWidth
+                  : AppBreakpoints.maxFormWidth,
+              child: dosColumnas
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: izquierda,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.xxl),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: derecha,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ...izquierda,
+                        const SizedBox(height: AppSpacing.xl),
+                        ...derecha,
+                      ],
+                    ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildApprovedQuoteBanner(AppColors colors) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.base),
+      decoration: BoxDecoration(
+        color: colors.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: colors.primary.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.check_circle, color: colors.primary),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              'El cliente aprobó una cotización previa por '
+              '\$${_approvedQuote!.total.toStringAsFixed(2)}. El desglose '
+              'ya está registrado.',
+              style: AppTextStyles.labelLarge.copyWith(
+                color: colors.primary,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 24),
-
-            _buildSectionTitle('FOTO DE FACTURA / COMPROBANTE', colors),
-            const SizedBox(height: 12),
-            _buildInvoicePicker(colors),
-            const SizedBox(height: 40),
-
-            AppButton(
-              text: 'FINALIZAR SERVICIO',
-              onPressed: _isSaving ? null : _handleFinalizeService,
-              isLoading: _isSaving,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -555,17 +615,17 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   Widget _buildInvoicePicker(AppColors colors) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(Responsive.padding(context, 16)),
+      padding: const EdgeInsets.all(AppSpacing.base),
       decoration: BoxDecoration(
         color: colors.surfaceContainer,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: colors.outline.withValues(alpha: 0.4)),
       ),
       child: Column(
         children: [
           if (_invoiceImage != null) ...[
             ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppRadius.md),
               child: _isInvoicePdf
                   ? Container(
                       height: 200,
@@ -576,14 +636,13 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                         children: [
                           Icon(
                             Icons.picture_as_pdf,
-                            size: Responsive.iconSize(context, 64),
+                            size: 64,
                             color: colors.error,
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: AppSpacing.sm),
                           Text(
                             _invoiceImage!.name,
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.bold,
+                            style: AppTextStyles.titleSmall.copyWith(
                               color: colors.textPrimary,
                             ),
                           ),
@@ -610,7 +669,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                       },
                     ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -637,54 +696,42 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           ] else ...[
             Icon(
               Icons.receipt_long_outlined,
-              size: Responsive.iconSize(context, 48),
+              size: 48,
               color: colors.textSecondary.withValues(alpha: 0.5),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Text(
               '¿Deseas adjuntar una foto de la factura?',
-              style: GoogleFonts.inter(
-                fontSize: Responsive.fontSize(context, 14),
-                fontWeight: FontWeight.w600,
+              style: AppTextStyles.labelLarge.copyWith(
                 color: colors.textPrimary,
               ),
+              textAlign: TextAlign.center,
             ),
             Text(
               'Esto le servirá al propietario como comprobante legal.',
-              style: GoogleFonts.inter(
-                fontSize: Responsive.fontSize(context, 12),
+              style: AppTextStyles.bodySmall.copyWith(
                 color: colors.textSecondary,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            const SizedBox(height: AppSpacing.base),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: AppSpacing.md,
+              runSpacing: AppSpacing.sm,
               children: [
-                ElevatedButton.icon(
-                  onPressed: () => _pickInvoiceCamera(),
+                AppButton(
+                  text: 'Cámara',
                   icon: const Icon(Icons.camera_alt),
-                  label: const Text('Cámara'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
+                  size: AppButtonSize.small,
+                  onPressed: () => _pickInvoiceCamera(),
                 ),
-                const SizedBox(width: 12),
-                OutlinedButton.icon(
-                  onPressed: () => _pickInvoiceDocument(),
+                AppButton(
+                  type: AppButtonType.secondary,
+                  text: 'Archivo / PDF',
                   icon: const Icon(Icons.folder),
-                  label: const Text('Archivo / PDF'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: colors.primary,
-                    side: BorderSide(color: colors.primary),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
+                  size: AppButtonSize.small,
+                  onPressed: () => _pickInvoiceDocument(),
                 ),
               ],
             ),
@@ -701,28 +748,27 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     if (_reparacionError != null) {
       return Container(
         width: double.infinity,
-        padding: EdgeInsets.all(Responsive.padding(context, 12)),
+        padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
           color: colors.error.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(color: colors.error.withValues(alpha: 0.3)),
         ),
         child: Row(
           children: [
             Icon(Icons.error_outline, color: colors.error, size: 20),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Text(
                 _reparacionError!,
-                style: GoogleFonts.inter(
-                  color: colors.error,
-                  fontSize: Responsive.fontSize(context, 13),
-                ),
+                style: AppTextStyles.bodySmall.copyWith(color: colors.error),
               ),
             ),
-            TextButton(
+            AppButton(
+              type: AppButtonType.text,
+              size: AppButtonSize.small,
+              text: 'Reintentar',
               onPressed: () => _iniciarTicketReparacion(_vehiculo!),
-              child: const Text('Reintentar'),
             ),
           ],
         ),
@@ -732,28 +778,29 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     if (_idReparacion != null) {
       return Container(
         width: double.infinity,
-        padding: EdgeInsets.all(Responsive.padding(context, 12)),
+        padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
           color: colors.secondary.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(color: colors.secondary.withValues(alpha: 0.3)),
         ),
         child: Row(
           children: [
             Icon(Icons.check_circle_outline, color: colors.secondary, size: 20),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Text(
                 'Vehículo recibido: ya aparece en Reparaciones.',
-                style: GoogleFonts.inter(
+                style: AppTextStyles.bodySmall.copyWith(
                   color: colors.textPrimary,
-                  fontSize: Responsive.fontSize(context, 13),
                 ),
               ),
             ),
-            TextButton(
+            AppButton(
+              type: AppButtonType.text,
+              size: AppButtonSize.small,
+              text: 'Ver tablero',
               onPressed: () => context.go('/mechanic_reparaciones'),
-              child: const Text('Ver tablero'),
             ),
           ],
         ),
@@ -763,231 +810,6 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     return const SizedBox.shrink();
   }
 
-  Widget _buildSectionTitle(String title, AppColors colors) {
-    return Text(
-      title,
-      style: GoogleFonts.inter(
-        fontSize: Responsive.fontSize(context, 12),
-        fontWeight: FontWeight.bold,
-        color: colors.textSecondary,
-        letterSpacing: 1.2,
-      ),
-    );
-  }
-
-  Widget _buildVehicleHeader(AppColors colors) {
-    return Container(
-      padding: EdgeInsets.all(Responsive.padding(context, 20)),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [colors.primary, colors.primary.withValues(alpha: 0.8)],
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: colors.primary.withValues(alpha: 0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(Responsive.padding(context, 12)),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(
-                  Icons.directions_car,
-                  color: Colors.white,
-                  size: Responsive.iconSize(context, 32),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${_vehiculo!.marca} ${_vehiculo!.modelo}',
-                      style: GoogleFonts.montserrat(
-                        color: Colors.white,
-                        fontSize: Responsive.fontSize(context, 18),
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.visible,
-                    ),
-                    Text(
-                      'Placa: ${_vehiculo!.placa}',
-                      style: GoogleFonts.inter(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: Responsive.fontSize(context, 14),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(
-              horizontal: Responsive.padding(context, 16),
-              vertical: Responsive.padding(context, 10),
-            ),
-            decoration: BoxDecoration(
-              color: colors.secondary.withValues(alpha: 0.9),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Kilometraje Actual:',
-                  style: GoogleFonts.inter(
-                    color: colors.primary,
-                    fontWeight: FontWeight.w500,
-                    fontSize: Responsive.fontSize(context, 12),
-                  ),
-                ),
-                Text(
-                  '${_vehiculo!.kilometrajeActual} KM',
-                  style: GoogleFonts.inter(
-                    color: colors.primary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: Responsive.fontSize(context, 14),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildKmInput(AppColors colors) {
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surfaceContainer,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
-      ),
-      padding: EdgeInsets.symmetric(
-        horizontal: Responsive.padding(context, 20),
-        vertical: Responsive.padding(context, 8),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.speed, color: colors.primary),
-          const SizedBox(width: 16),
-          Expanded(
-            child: TextField(
-              controller: _kmController,
-              keyboardType: TextInputType.number,
-              style: GoogleFonts.inter(
-                fontSize: Responsive.fontSize(context, 18),
-                fontWeight: FontWeight.bold,
-                color: colors.textPrimary,
-              ),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                hintText: 'Kilometraje actual',
-                hintStyle: GoogleFonts.inter(color: colors.textSecondary),
-              ),
-            ),
-          ),
-          Text(
-            'KM',
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.bold,
-              color: colors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCostoInput(AppColors colors) {
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surfaceContainer,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
-      ),
-      padding: EdgeInsets.symmetric(
-        horizontal: Responsive.padding(context, 20),
-        vertical: Responsive.padding(context, 8),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.attach_money, color: colors.secondary),
-          const SizedBox(width: 16),
-          Expanded(
-            child: TextField(
-              controller: _costoController,
-              readOnly: true,
-              style: GoogleFonts.inter(
-                fontSize: Responsive.fontSize(context, 18),
-                fontWeight: FontWeight.bold,
-                color: colors.textPrimary,
-              ),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                hintText: 'Calculado automáticamente',
-                hintStyle: GoogleFonts.inter(color: colors.textSecondary),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildManoDeObraInput(AppColors colors) {
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surfaceContainer,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
-      ),
-      padding: EdgeInsets.symmetric(
-        horizontal: Responsive.padding(context, 20),
-        vertical: Responsive.padding(context, 8),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.build_circle_outlined, color: colors.secondary),
-          const SizedBox(width: 16),
-          Expanded(
-            child: TextField(
-              controller: _manoDeObraController,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              style: GoogleFonts.inter(
-                fontSize: Responsive.fontSize(context, 18),
-                fontWeight: FontWeight.bold,
-                color: colors.textPrimary,
-              ),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                hintText: 'Costo mano de obra',
-                hintStyle: GoogleFonts.inter(color: colors.textSecondary),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildMaterialesList(AppColors colors) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -995,7 +817,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
         if (_materiales.isEmpty)
           Text(
             'No hay materiales agregados.',
-            style: GoogleFonts.inter(color: colors.textSecondary),
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: colors.textSecondary,
+            ),
           )
         else
           ListView.builder(
@@ -1007,83 +831,69 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
               final subtotal =
                   (item['cantidad'] as num).toDouble() *
                   (item['precioUnitario'] as num).toDouble();
-              return Card(
-                color: colors.surfaceContainer,
-                margin: const EdgeInsets.only(bottom: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(
-                    color: colors.textSecondary.withValues(alpha: 0.2),
-                  ),
-                ),
-                elevation: 0,
-                child: ListTile(
-                  title: Text(
-                    item['nombre'],
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.bold,
-                      color: colors.textPrimary,
+              return AppCard(
+                margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                padding: const EdgeInsets.all(AppSpacing.base),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item['nombre'],
+                            style: AppTextStyles.titleSmall.copyWith(
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            'Cant: ${item['cantidad']} | P.U: '
+                            '\$${(item['precioUnitario'] as num).toStringAsFixed(2)}',
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  subtitle: Text(
-                    'Cant: ${item['cantidad']} | P.U: \$${(item['precioUnitario'] as num).toStringAsFixed(2)}',
-                    style: GoogleFonts.inter(color: colors.textSecondary),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '\$${subtotal.toStringAsFixed(2)}',
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.bold,
-                          color: colors.primary,
-                        ),
+                    Text(
+                      '\$${subtotal.toStringAsFixed(2)}',
+                      style: AppTextStyles.titleSmall.copyWith(
+                        color: colors.primary,
                       ),
-                      IconButton(
-                        icon: Icon(Icons.delete, color: colors.error),
-                        onPressed: () {
-                          setState(() {
-                            _materiales.removeAt(index);
-                            _updateTotalCost();
-                          });
-                        },
-                      ),
-                    ],
-                  ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.delete, color: colors.error),
+                      onPressed: () {
+                        setState(() {
+                          _materiales.removeAt(index);
+                          _updateTotalCost();
+                        });
+                      },
+                    ),
+                  ],
                 ),
               );
             },
           ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
         Row(
           children: [
             Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => _showAddMaterialDialog(colors),
+              child: AppButton(
+                type: AppButtonType.secondary,
+                text: 'Agregar Material/Repuesto',
                 icon: const Icon(Icons.add),
-                label: const Text('Agregar Material/Repuesto'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: colors.primary,
-                  side: BorderSide(color: colors.primary),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
+                onPressed: () => _showAddMaterialDialog(colors),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => _showCatalogoBottomSheet(colors),
+              child: AppButton(
+                type: AppButtonType.secondary,
+                text: 'Desde catálogo',
                 icon: const Icon(Icons.inventory_2_outlined),
-                label: const Text('Desde catálogo'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: colors.secondary,
-                  side: BorderSide(color: colors.secondary),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
+                onPressed: () => _showCatalogoBottomSheet(colors),
               ),
             ),
           ],
@@ -1103,39 +913,42 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       context: context,
       backgroundColor: colors.surface,
       isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: AppBreakpoints.maxFormWidth),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
       ),
       builder: (sheetContext) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.base),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                  ),
                   child: Text(
                     'Catálogo del taller',
-                    style: GoogleFonts.montserrat(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+                    style: AppTextStyles.titleMedium.copyWith(
                       color: colors.textPrimary,
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 if (items.isEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 24,
+                      horizontal: AppSpacing.lg,
+                      vertical: AppSpacing.xl,
                     ),
                     child: Text(
                       'El catálogo del taller está vacío. Agrega ítems '
                       'desde la sección "Catálogo" del panel.',
-                      style: GoogleFonts.inter(color: colors.textSecondary),
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: colors.textSecondary,
+                      ),
                     ),
                   )
                 else
@@ -1152,15 +965,13 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                           ),
                           title: Text(
                             item.nombre,
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.bold,
+                            style: AppTextStyles.titleSmall.copyWith(
                               color: colors.textPrimary,
                             ),
                           ),
                           trailing: Text(
                             '\$${item.precio.toStringAsFixed(2)}',
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.bold,
+                            style: AppTextStyles.titleSmall.copyWith(
                               color: colors.primary,
                             ),
                           ),
@@ -1200,58 +1011,46 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
 
     await showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           backgroundColor: colors.surface,
           title: Text(
             'Agregar Material',
-            style: GoogleFonts.montserrat(
-              fontWeight: FontWeight.bold,
+            style: AppTextStyles.titleMedium.copyWith(
               color: colors.textPrimary,
             ),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              AppTextField(
+                label: 'Nombre o descripción',
                 controller: nombreController,
-                style: GoogleFonts.inter(color: colors.textPrimary),
-                decoration: InputDecoration(
-                  labelText: 'Nombre o descripción',
-                  labelStyle: TextStyle(color: colors.textSecondary),
-                ),
               ),
-              TextField(
+              const SizedBox(height: AppSpacing.md),
+              AppTextField(
+                label: 'Cantidad',
                 controller: cantidadController,
                 keyboardType: TextInputType.number,
-                style: GoogleFonts.inter(color: colors.textPrimary),
-                decoration: InputDecoration(
-                  labelText: 'Cantidad',
-                  labelStyle: TextStyle(color: colors.textSecondary),
-                ),
               ),
-              TextField(
+              const SizedBox(height: AppSpacing.md),
+              AppTextField(
+                label: 'Precio unitario',
                 controller: precioController,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
-                ),
-                style: GoogleFonts.inter(color: colors.textPrimary),
-                decoration: InputDecoration(
-                  labelText: 'Precio Unitario',
-                  labelStyle: TextStyle(color: colors.textSecondary),
                 ),
               ),
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Cancelar',
-                style: TextStyle(color: colors.textSecondary),
-              ),
+            AppButton(
+              type: AppButtonType.text,
+              text: 'Cancelar',
+              onPressed: () => Navigator.pop(dialogContext),
             ),
-            ElevatedButton(
+            AppButton(
+              text: 'Agregar',
               onPressed: () {
                 final nombre = nombreController.text.trim();
                 final cantidad = double.tryParse(cantidadController.text);
@@ -1266,14 +1065,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                     });
                     _updateTotalCost();
                   });
-                  Navigator.pop(context);
+                  Navigator.pop(dialogContext);
                 }
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.primary,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Agregar'),
             ),
           ],
         );
@@ -1287,18 +1081,18 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     }
     if (provider.activeAlerts.isEmpty) {
       return Container(
-        padding: EdgeInsets.all(Responsive.padding(context, 16)),
+        padding: const EdgeInsets.all(AppSpacing.base),
         decoration: BoxDecoration(
           color: colors.secondary.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.md),
         ),
         child: Row(
           children: [
             Icon(Icons.check_circle, color: colors.secondary),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.md),
             Text(
               'No hay alertas pendientes',
-              style: GoogleFonts.inter(color: colors.secondary),
+              style: AppTextStyles.bodyMedium.copyWith(color: colors.secondary),
             ),
           ],
         ),
@@ -1307,32 +1101,38 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
 
     return Column(
       children: provider.activeAlerts.take(3).map((alert) {
-        final color = alert.prioridad == AlertPriority.high
-            ? colors.error
-            : colors.warning;
+        // `AppSeverity.forAlertPriority`: alta y media ya no comparten
+        // icono. Antes ambas dibujaban `Icons.warning_amber_rounded` y solo
+        // se distinguían por color, ilegible con protanopia.
+        final estilo = AppSeverity.forAlertPriority(
+          alert.prioridad,
+          colors,
+          altaLabel: 'Crítica',
+          mediaLabel: 'Preventiva',
+          bajaLabel: 'Informativa',
+        );
         return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: EdgeInsets.all(Responsive.padding(context, 12)),
+          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+          padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withValues(alpha: 0.2)),
+            color: estilo.color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: estilo.color.withValues(alpha: 0.2)),
           ),
           child: Row(
             children: [
-              Icon(
-                Icons.warning_amber_rounded,
-                color: color,
-                size: Responsive.iconSize(context, 20),
-              ),
-              const SizedBox(width: 12),
+              Icon(estilo.icon, color: estilo.color, size: 20),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
-                child: Text(
-                  alert.titulo,
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.bold,
-                    fontSize: Responsive.fontSize(context, 13),
-                    color: color,
+                child: Semantics(
+                  label: '${estilo.label}: ${alert.titulo}',
+                  excludeSemantics: true,
+                  child: Text(
+                    alert.titulo,
+                    style: AppTextStyles.labelLarge.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: estilo.color,
+                    ),
                   ),
                 ),
               ),
@@ -1350,7 +1150,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     if (provider.maintenanceTasks.isEmpty) {
       return Text(
         'No hay tareas configuradas para este vehículo',
-        style: GoogleFonts.inter(color: colors.textSecondary),
+        style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
       );
     }
 
@@ -1358,16 +1158,23 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       children: provider.maintenanceTasks.map((task) {
         final isSelected = _completedTaskIds.contains(task.id);
         final status = task.getStatus(_vehiculo!.kilometrajeActual);
+        final estilo = AppSeverity.forStatus(
+          status,
+          colors,
+          optimalLabel: 'Al día',
+          preventiveLabel: 'Próximo',
+          criticalLabel: 'Vencido',
+        );
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 12),
+          margin: const EdgeInsets.only(bottom: AppSpacing.md),
           decoration: BoxDecoration(
             color: colors.surfaceContainer,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppRadius.lg),
             border: Border.all(
               color: isSelected
                   ? colors.secondary
-                  : colors.textSecondary.withValues(alpha: 0.2),
+                  : colors.outline.withValues(alpha: 0.4),
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -1385,33 +1192,168 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
             activeColor: colors.secondary,
             title: Text(
               task.nombre,
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.bold,
+              style: AppTextStyles.titleSmall.copyWith(
                 color: colors.textPrimary,
               ),
             ),
             subtitle: Text(
               'Frecuencia: ${task.frecuenciaKm} km / ${task.frecuenciaMeses} meses',
-              style: GoogleFonts.inter(
-                fontSize: Responsive.fontSize(context, 12),
+              style: AppTextStyles.bodySmall.copyWith(
                 color: colors.textSecondary,
               ),
             ),
-            secondary: _getStatusIcon(status, colors),
+            secondary: Icon(estilo.icon, color: estilo.color),
           ),
         );
       }).toList(),
     );
   }
+}
 
-  Widget _getStatusIcon(MaintenanceStatus status, AppColors colors) {
-    switch (status) {
-      case MaintenanceStatus.critical:
-        return Icon(Icons.error, color: colors.error);
-      case MaintenanceStatus.preventive:
-        return Icon(Icons.warning, color: colors.warning);
-      case MaintenanceStatus.optimal:
-        return Icon(Icons.check_circle, color: colors.secondary);
-    }
+/// Cabecera del vehículo en servicio: nombre, placa y kilometraje actual
+/// sobre el degradado de `colors.primary`.
+///
+/// Extraída como su propio widget (era un método privado inline) al
+/// sustituir los cuatro literales blancos por `colors.onPrimary` — mismo
+/// defecto de contraste 1,47:1 en dark que Task 9 corrigió en el
+/// dashboard, misma corrección.
+class _VehicleHeaderCard extends StatelessWidget {
+  final VehicleModel vehiculo;
+
+  const _VehicleHeaderCard({required this.vehiculo});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [colors.primary, colors.primary.withValues(alpha: 0.8)],
+        ),
+        borderRadius: BorderRadius.circular(AppRadius.xxl),
+        boxShadow: [
+          BoxShadow(
+            color: colors.primary.withValues(alpha: 0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: colors.onPrimary.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+                child: Icon(
+                  Icons.directions_car,
+                  color: colors.onPrimary,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.base),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${vehiculo.marca} ${vehiculo.modelo}',
+                      style: AppTextStyles.titleLarge.copyWith(
+                        color: colors.onPrimary,
+                      ),
+                      overflow: TextOverflow.visible,
+                    ),
+                    Text(
+                      'Placa: ${vehiculo.placa}',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: colors.onPrimary.withValues(alpha: 0.8),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.base),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.base,
+              vertical: AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: colors.secondary.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Text(
+                    'Kilometraje Actual:',
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.labelMedium.copyWith(
+                      color: colors.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  '${vehiculo.kilometrajeActual} KM',
+                  style: AppTextStyles.labelLarge.copyWith(
+                    color: colors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Campo con caja e icono. Era el mismo `Container` con `Row(Icon,
+/// Expanded(TextField), [sufijo])` escrito tres veces (kilometraje, coste,
+/// mano de obra), y los tres con `TextField` crudo e `InputBorder.none`: sin
+/// etiqueta asociada al input y sin sitio donde mostrar un error.
+class _BoxedField extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final TextEditingController controller;
+  final TextInputType? keyboardType;
+  final String? suffix;
+  final bool readOnly;
+  final String? helperText;
+
+  const _BoxedField({
+    required this.icon,
+    required this.label,
+    required this.controller,
+    this.keyboardType,
+    this.suffix,
+    this.readOnly = false,
+    this.helperText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTextField(
+      label: label,
+      controller: controller,
+      keyboardType: keyboardType,
+      readOnly: readOnly,
+      suffixText: suffix,
+      helperText: helperText,
+      prefixIcon: Icon(icon, color: context.appColors.primary),
+    );
   }
 }

@@ -1,4 +1,5 @@
 // test/support/mechanic_harness.dart
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -14,8 +15,14 @@ import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/theme/app_theme.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
+import 'package:autodoc/features/mechanic/data/repositories/catalogo_repository.dart';
+import 'package:autodoc/features/mechanic/data/repositories/reparacion_repository.dart';
+import 'package:autodoc/features/mechanic/presentation/providers/catalogo_provider.dart';
+import 'package:autodoc/features/mechanic/presentation/providers/reparacion_provider.dart';
 
+import '../helpers/test_helpers.mocks.dart';
 import 'vehicle_fixtures.dart';
 
 /// Doble de `NotificationCenterProvider` para pantallas que montan
@@ -173,6 +180,37 @@ Future<void> pumpMechanicScreen(
         // `Consumer`, no lo declara como dependencia opcional).
         ChangeNotifierProvider<NotificationCenterProvider>(
           create: (_) => FakeNotificationCenterProvider(),
+        ),
+        // `InitiateServiceScreen` (Task 11) es la primera pantalla del panel
+        // de taller que consume estos tres providers a la vez: `AlertProvider`
+        // (alertas/tareas de mantenimiento del vehículo en servicio),
+        // `ReparacionProvider` (ticket Kanban que se crea/reutiliza al recibir
+        // el vehículo) y `CatalogoProvider` (catálogo rápido del taller). Los
+        // tres son clases concretas, no interfaces, así que en vez de un doble
+        // que las implemente se instancian de verdad con un
+        // `FakeFirebaseFirestore` (y los mocks de `FirebaseStorage`/
+        // `FirebaseFunctions` ya generados para `test_helpers.mocks.dart`)
+        // detrás, igual que `reparacion_provider_test.dart`/
+        // `catalogo_provider_test.dart` — mismo patrón que `FakeVehicleProvider`
+        // arriba, adaptado a que aquí sí se puede construir la clase real.
+        ChangeNotifierProvider<AlertProvider>(
+          create: (_) => AlertProvider(
+            firestore: FakeFirebaseFirestore(),
+            storage: MockFirebaseStorage(),
+          ),
+        ),
+        ChangeNotifierProvider<ReparacionProvider>(
+          create: (_) => ReparacionProvider(
+            repository: ReparacionRepository(
+              firestore: FakeFirebaseFirestore(),
+              functions: MockFirebaseFunctions(),
+            ),
+          ),
+        ),
+        ChangeNotifierProvider<CatalogoProvider>(
+          create: (_) => CatalogoProvider(
+            repository: CatalogoRepository(firestore: FakeFirebaseFirestore()),
+          ),
         ),
         ...extraProviders,
       ],

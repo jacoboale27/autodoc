@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:autodoc/core/models/alert_model.dart';
 import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 
@@ -88,4 +89,32 @@ class AppSeverity {
       label: okLabel,
     );
   }
+
+  /// Severidad de una alerta de mantenimiento.
+  ///
+  /// `initiate_service_screen` pintaba alta y media con distinto color pero
+  /// **el mismo icono**: con protanopia eran la misma tarjeta.
+  static AppSeverityStyle forAlertPriority(
+    AlertPriority prioridad,
+    AppColors colors, {
+    required String altaLabel,
+    required String mediaLabel,
+    required String bajaLabel,
+  }) => switch (prioridad) {
+    AlertPriority.high => AppSeverityStyle(
+      color: colors.error,
+      icon: Icons.error_rounded,
+      label: altaLabel,
+    ),
+    AlertPriority.medium => AppSeverityStyle(
+      color: colors.warning,
+      icon: Icons.warning_rounded,
+      label: mediaLabel,
+    ),
+    AlertPriority.low => AppSeverityStyle(
+      color: colors.secondary,
+      icon: Icons.info_rounded,
+      label: bajaLabel,
+    ),
+  };
 }

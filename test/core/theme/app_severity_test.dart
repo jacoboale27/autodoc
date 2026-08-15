@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:autodoc/core/models/alert_model.dart';
 import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_severity.dart';
+import 'package:autodoc/core/theme/app_theme.dart';
 
 const _colors = AppColors(
   primary: AppPalette.lightPrimary,
@@ -30,6 +32,14 @@ AppSeverityStyle styleFor(MaintenanceStatus status) => AppSeverity.forStatus(
 );
 
 void main() {
+  // `AppTheme.light` (usado por el nuevo test de `forAlertPriority`) resuelve
+  // `AppTextStyles.*`, que llama a `GoogleFonts.inter(...)`: sin el binding
+  // inicializado, `google_fonts` intenta tocar `ServicesBinding.instance`
+  // para cargar la fuente y lanza antes de que el test corra. Mismo patrón
+  // que el resto de la suite (`theme_test.dart`, etc.) cuando un test toca
+  // `AppTheme.light`/`.dark` fuera de un `testWidgets`.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('forStatus', () {
     test('cada estado usa su token de marca, nunca un color de Material', () {
       expect(styleFor(MaintenanceStatus.critical).color, _colors.error);
@@ -94,5 +104,32 @@ void main() {
       final icons = {expiry(-1).icon, expiry(10).icon, expiry(90).icon};
       expect(icons.length, 3);
     });
+  });
+
+  test('forAlertPriority da icono distinto por prioridad, no solo color', () {
+    final colors = AppTheme.light.extension<AppColors>()!;
+
+    final alta = AppSeverity.forAlertPriority(
+      AlertPriority.high,
+      colors,
+      altaLabel: 'Crítica',
+      mediaLabel: 'Media',
+      bajaLabel: 'Informativa',
+    );
+    final media = AppSeverity.forAlertPriority(
+      AlertPriority.medium,
+      colors,
+      altaLabel: 'Crítica',
+      mediaLabel: 'Media',
+      bajaLabel: 'Informativa',
+    );
+
+    expect(alta.color, colors.error);
+    expect(media.color, colors.warning);
+    expect(
+      alta.icon,
+      isNot(media.icon),
+      reason: 'con protanopia el color no distingue: la forma sí',
+    );
   });
 }
