@@ -2,7 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_severity.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/app_status_badge.dart';
+import 'package:autodoc/features/chat/presentation/widgets/chat_card_shell.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
@@ -18,12 +22,20 @@ class CotizacionChatCard extends StatefulWidget {
   final String mensajeId;
   final String conversacionId;
 
+  /// Inyectable para pruebas de widget (`FakeFirebaseFirestore`); por
+  /// defecto usa la instancia real. Mismo precedente que
+  /// `ReservaDetailScreen`: sin esto, el `StreamBuilder` de `build()` nunca
+  /// emite en un widget test y la tarjeta se queda en el placeholder de
+  /// carga.
+  final FirebaseFirestore? firestore;
+
   const CotizacionChatCard({
     super.key,
     required this.metadata,
     required this.isMe,
     required this.mensajeId,
     required this.conversacionId,
+    this.firestore,
   });
 
   @override
@@ -135,14 +147,15 @@ class _CotizacionChatCardState extends State<CotizacionChatCard> {
     }
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
+      stream: (widget.firestore ?? FirebaseFirestore.instance)
           .collection('cotizaciones')
           .doc(cotizacionId)
           .snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData || !snapshot.data!.exists) {
-          return const SizedBox(
-            width: 280,
+          return const ChatCardShell(
+            icon: Icons.request_quote,
+            title: 'Cotización de Servicio',
             child: Padding(
               padding: EdgeInsets.symmetric(vertical: 12),
               child: Center(child: CircularProgressIndicator()),
@@ -189,21 +202,16 @@ class _CotizacionCardBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final estado = cotizacion.estado;
 
-    Color badgeColor = Colors.orange;
-    String badgeText = 'Pendiente';
-    if (estado == 'aceptada') {
-      badgeColor = Colors.green;
-      badgeText = 'En Proceso';
-    } else if (estado == 'rechazada') {
-      badgeColor = Colors.red;
-      badgeText = 'Rechazada';
-    } else if (estado == 'finalizada') {
-      badgeColor = Colors.blue;
-      badgeText = 'Servicio Finalizado';
-    }
+    final severidad = AppSeverity.forReservaEstado(
+      estado,
+      colors,
+      pendienteLabel: 'Pendiente',
+      confirmadaLabel: 'En Proceso', // 'aceptada' en cotizaciones
+      rechazadaLabel: 'Rechazada',
+      cotizadaLabel: 'Servicio Finalizado', // 'finalizada'
+    );
 
     // El beneficio del mecánico nunca se muestra al cliente.
     final beneficioTotal = cotizacion.items.fold<double>(
@@ -211,277 +219,208 @@ class _CotizacionCardBody extends StatelessWidget {
       (acc, i) => acc + i.beneficio,
     );
 
-    return Container(
-      width: 300,
-      margin: const EdgeInsets.only(top: 8),
-      decoration: BoxDecoration(
-        color: isDark ? colors.surfaceContainer : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isMe
-              ? Colors.white30
-              : (isDark ? Colors.white12 : Colors.black12),
-        ),
+    return ChatCardShell(
+      icon: Icons.request_quote,
+      title: 'Cotización de Servicio',
+      semanticLabel: 'Cotización de servicio, ${severidad.label}',
+      trailing: AppStatusBadge(
+        text: severidad.label,
+        icon: severidad.icon,
+        type: _statusTypeDe(estado),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: isMe
-                  ? Colors.black12
-                  : (isDark ? Colors.black26 : Colors.grey.shade100),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(12),
+          if (cotizacion.fechaPropuesta != null) ...[
+            Row(
+              children: [
+                Icon(Icons.event, size: 14, color: colors.textSecondary),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    DateFormat(
+                      'dd/MM/yyyy hh:mm a',
+                    ).format(cotizacion.fechaPropuesta!),
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
+          ...cotizacion.items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${item.material} x${item.cantidad.toStringAsFixed(item.cantidad % 1 == 0 ? 0 : 1)}',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                  Text(
+                    '\$${item.subtotal.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: Row(
+          ),
+          const SizedBox(height: 6),
+          Divider(height: 1, color: colors.outline.withValues(alpha: 0.4)),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: colors.textSecondary,
+                ),
+              ),
+              Flexible(
+                child: Text(
+                  '\$${cotizacion.total.toStringAsFixed(2)}',
+                  textAlign: TextAlign.end,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.titleLarge.copyWith(
+                    fontWeight: FontWeight.bold,
+                    // Desviación del brief (que pedía `colors.secondary`
+                    // "sin ternario"): `lightSecondary` (#81E6D9) es un tono
+                    // pastel pensado para fondos/acentos, con `onSecondary`
+                    // oscuro como contraparte de texto — como texto directo
+                    // sobre `colors.surface` en tema claro da 1,37:1. Se usa
+                    // `colors.primary` en su lugar, que sí cumple ≥4.5:1 en
+                    // ambos temas y es el mismo tono que ya usa
+                    // `AppSeverity.forReservaEstado` para el estado
+                    // 'cotizada'/'finalizada'.
+                    color: colors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (isMe && beneficioTotal > 0) ...[
+            const SizedBox(height: 4),
+            Semantics(
+              label:
+                  'Tu beneficio, visible solo para ti: '
+                  '\$${beneficioTotal.toStringAsFixed(2)}',
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.visibility_off_outlined,
+                        size: 12,
+                        color: colors.textSecondary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Tu beneficio:',
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    '\$${beneficioTotal.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (estado == 'pendiente' && !isMe) ...[
+            const SizedBox(height: 16),
+            Row(
               children: [
                 Expanded(
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.request_quote,
-                        size: 16,
-                        color: isMe ? Colors.white : colors.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          'Cotización de Servicio',
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: isMe ? Colors.white : colors.textPrimary,
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: AppButton(
+                    text: context.l10n.chatAccept,
+                    type: AppButtonType.primary,
+                    onPressed: onAceptar,
                   ),
                 ),
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: badgeColor,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    badgeText,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: AppButton(
+                    text: context.l10n.chatReject,
+                    type: AppButtonType.secondary,
+                    onPressed: onRechazar,
                   ),
                 ),
               ],
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (cotizacion.fechaPropuesta != null) ...[
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.event,
-                        size: 14,
-                        color: isMe ? Colors.white70 : colors.textSecondary,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        DateFormat(
-                          'dd/MM/yyyy hh:mm a',
-                        ).format(cotizacion.fechaPropuesta!),
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: isMe ? Colors.white : colors.textPrimary,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
+          ],
+          if (estado == 'aceptada' && isMe) ...[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: colors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.directions_car_outlined,
+                    size: 16,
+                    color: colors.primary,
                   ),
-                  const SizedBox(height: 10),
-                ],
-                ...cotizacion.items.map(
-                  (item) => Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            '${item.material} x${item.cantidad.toStringAsFixed(item.cantidad % 1 == 0 ? 0 : 1)}',
-                            style: TextStyle(
-                              color: isMe ? Colors.white : colors.textPrimary,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          '\$${item.subtotal.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            color: isMe ? Colors.white70 : colors.textSecondary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                const Divider(height: 1, color: Colors.black12),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Total:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isMe ? Colors.white70 : colors.textSecondary,
-                      ),
-                    ),
-                    Text(
-                      '\$${cotizacion.total.toStringAsFixed(2)}',
-                      style: AppTextStyles.titleLarge.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: isMe ? Colors.white : colors.secondary,
-                      ),
-                    ),
-                  ],
-                ),
-                if (isMe && beneficioTotal > 0) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(
-                            Icons.visibility_off_outlined,
-                            size: 12,
-                            color: Colors.white54,
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            'Tu beneficio:',
-                            style: TextStyle(
-                              color: Colors.white54,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        '\$${beneficioTotal.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                if (estado == 'pendiente' && !isMe) ...[
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: onAceptar,
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: colors.primary,
-                            side: BorderSide(color: colors.primary),
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                          ),
-                          child: Text(context.l10n.chatAccept),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: onRechazar,
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red,
-                            side: const BorderSide(color: Colors.red),
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                          ),
-                          child: Text(context.l10n.chatReject),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                if (estado == 'aceptada' && isMe) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: colors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.directions_car_outlined,
-                          size: 16,
-                          color: isMe ? Colors.white : colors.primary,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Recibe el vehículo desde "Buscar Vehículo" para finalizar este servicio.',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isMe ? Colors.white70 : colors.primary,
-                            ),
-                          ),
-                        ),
-                      ],
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Recibe el vehículo desde "Buscar Vehículo" para finalizar este servicio.',
+                      style: TextStyle(fontSize: 12, color: colors.primary),
                     ),
                   ),
                 ],
-                if (estado == 'finalizada' && !isMe) ...[
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: isCheckingReview ? null : onCalificar,
-                      icon: isCheckingReview
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.star, size: 18),
-                      label: const Text('Calificar Servicio'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.amber.shade700,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
+              ),
             ),
-          ),
+          ],
+          if (estado == 'finalizada' && !isMe) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: AppButton(
+                text: 'Calificar Servicio',
+                type: AppButtonType.primary,
+                isLoading: isCheckingReview,
+                icon: const Icon(Icons.star),
+                onPressed: isCheckingReview ? null : onCalificar,
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
+
+  AppStatusType _statusTypeDe(String estado) => switch (estado) {
+    'aceptada' => AppStatusType.success,
+    'rechazada' => AppStatusType.error,
+    'finalizada' => AppStatusType.info,
+    _ => AppStatusType.warning,
+  };
 }

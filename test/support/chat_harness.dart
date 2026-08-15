@@ -120,6 +120,17 @@ class FakeChatProvider extends ChangeNotifier implements ChatProvider {
   Future<void> setTypingStatus(String conversacionId, String? userId) async =>
       llamadas.add('setTypingStatus:$conversacionId:$userId');
 
+  /// Sin beneficios por defecto: `CotizacionChatCard._cargarBeneficios()`
+  /// (Task 10) lo llama en `initState()` cuando `isMe` es verdadero, y sin
+  /// este `@override` caía en el `noSuchMethod` genérico, que lanza
+  /// `NoSuchMethodError` porque el tipo de retorno declarado es
+  /// `Future<List<double>>`, no `dynamic`.
+  @override
+  Future<List<double>> obtenerBeneficiosCotizacion(String cotizacionId) async {
+    llamadas.add('obtenerBeneficiosCotizacion:$cotizacionId');
+    return const [];
+  }
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
