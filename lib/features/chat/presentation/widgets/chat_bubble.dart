@@ -27,6 +27,11 @@ class ChatBubble extends StatelessWidget {
 
   /// Etiqueta para lector de pantalla. Debe decir **quién** envía el mensaje:
   /// sin ella, la lista se lee como una sucesión de textos sin autor.
+  ///
+  /// **Ojo**: si además se pasa `footer` (p. ej. acuse de recibo), su
+  /// semántica queda oculta por `excludeSemantics: true` más abajo — un
+  /// consumidor que necesite anunciar el estado del footer debe construir
+  /// un label combinado, no confiar en este wrapper.
   final String? semanticLabel;
 
   final EdgeInsetsGeometry? padding;
