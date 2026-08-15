@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import '../widgets/historial_chat_card.dart';
 import '../widgets/vehiculo_picker.dart';
 
 import 'package:provider/provider.dart';
@@ -13,6 +12,7 @@ import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart'
 import 'package:autodoc/features/chat/presentation/widgets/chat_background.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/vehiculo_chat_card.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/reserva_chat_card.dart';
+import 'package:autodoc/features/chat/presentation/widgets/cards/historial_chat_card.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
 
@@ -621,7 +621,7 @@ class _ChatScreenState extends State<ChatScreen> {
           isMe: isMe,
         );
       case 'historial':
-        return HistorialChatCard(mensaje: msg, isMe: isMe, colors: colors);
+        return HistorialChatCard(mensaje: msg);
       case 'texto':
       default:
         return Text(
