@@ -2,8 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/models/user_model.dart';
+import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/theme/app_theme.dart';
 import 'package:autodoc/l10n/app_localizations.dart';
@@ -11,6 +13,22 @@ import 'package:autodoc/features/chat/data/models/conversacion_model.dart';
 import 'package:autodoc/features/chat/data/models/mensaje_model.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
+
+import '../helpers/test_helpers.mocks.dart';
+
+/// `AuthSessionProvider()` por defecto cae en `FirebaseAuth.instance`, que
+/// lanza sin `Firebase.initializeApp()`; se inyecta un `MockFirebaseAuth`
+/// con un stream vacío, igual que en `garage_screen_test.dart`.
+///
+/// `ConversacionesListScreen` lee `context.watch<AuthSessionProvider>()`
+/// para inicializar la suscripción de conversaciones — un provider que este
+/// harness no registraba hasta ahora porque ningún test previo montaba esa
+/// pantalla completa.
+AuthSessionProvider _fakeAuthSessionProvider() {
+  final mockAuth = MockFirebaseAuth();
+  when(mockAuth.idTokenChanges()).thenAnswer((_) => const Stream.empty());
+  return AuthSessionProvider(firebaseAuth: mockAuth);
+}
 
 /// **Implementa** en vez de extender, y no es preferencia de estilo:
 /// `UserProfileProvider` inicializa `final UserService _userService =
@@ -219,6 +237,9 @@ Future<void> pumpChatWidget(
       providers: [
         ChangeNotifierProvider<UserProfileProvider>.value(
           value: FakeUserProfileProvider(user: user),
+        ),
+        ChangeNotifierProvider<AuthSessionProvider>.value(
+          value: _fakeAuthSessionProvider(),
         ),
         ChangeNotifierProvider<ChatProvider>.value(
           value: chatProvider ?? FakeChatProvider(),
