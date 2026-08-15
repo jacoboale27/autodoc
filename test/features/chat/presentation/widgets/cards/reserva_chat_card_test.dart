@@ -5,9 +5,16 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_theme.dart';
+import 'package:autodoc/core/widgets/app_status_badge.dart';
 import 'package:autodoc/l10n/app_localizations.dart';
+import 'package:autodoc/features/chat/presentation/widgets/chat_bubble.dart';
+import 'package:autodoc/features/chat/presentation/widgets/chat_card_shell.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/reserva_chat_card.dart';
+import '../../../../../support/chat_harness.dart';
+import '../../../../../support/contrast.dart';
+import '../../../../../support/responsive_harness.dart';
 
 // UserProfileProvider real construye un UserService que toca
 // FirebaseFirestore.instance en su inicializacion, lo que no existe en un
@@ -101,30 +108,11 @@ void main() {
         },
       );
 
-      // ReservaChatCard's header Row (icon + "Reserva de Cita" + estado
-      // badge) overflows under flutter_test's default fallback font
-      // metrics at the card's fixed 260px width — a pre-existing,
-      // unrelated layout issue reproducible on `main` before this change.
-      // It is orthogonal to the navigation bug under test here, so it's
-      // filtered out to keep this test focused on the routing regression;
-      // any other FlutterError still fails the test normally.
-      final originalOnError = FlutterError.onError;
-      FlutterError.onError = (details) {
-        // Only swallow the specific known-bad overflow: the header Row at
-        // reserva_chat_card.dart:202 (icon + "Reserva de Cita" + estado
-        // badge). Matching on the source location (not just the generic
-        // "RenderFlex overflowed" substring) means a genuinely new overflow
-        // introduced elsewhere in the tree — e.g. near the "Ver detalle"
-        // button itself — would NOT be silently swallowed here.
-        final message = details.toString();
-        if (details.exception is FlutterError &&
-            message.contains('RenderFlex overflowed') &&
-            message.contains('reserva_chat_card.dart:202')) {
-          return;
-        }
-        originalOnError?.call(details);
-      };
-      addTearDown(() => FlutterError.onError = originalOnError);
+      // El filtro de FlutterError.onError que vivía aquí tragaba un
+      // desbordamiento de 118 px del Row de cabecera, causado por el ancho
+      // fijo de 260 px sin hijos flexibles. La Fase 6 lo eliminó
+      // estructuralmente (ChatCardShell), así que el test ya no necesita
+      // tapar nada: cualquier desbordamiento debe hacerlo fallar.
 
       await tester.pumpWidget(
         MaterialApp.router(
@@ -151,4 +139,129 @@ void main() {
       );
     },
   );
+
+  testWidgets('la cabecera no desborda con el estado de etiqueta más larga', (
+    tester,
+  ) async {
+    // 'Cotización Enviada' es la etiqueta más larga de los cuatro estados.
+    await pumpChatWidget(
+      tester,
+      const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
+        child: ChatBubble(
+          isMe: false,
+          child: ReservaChatCard(
+            metadata: {
+              'id_reserva': 'r1',
+              'estado': 'cotizada',
+              'fecha': '2026-08-20T10:00:00.000',
+              'hora': '10:00 AM',
+            },
+            isMe: false,
+            mensajeId: 'm1',
+            conversacionId: 'c1',
+          ),
+        ),
+      ),
+      width: 320,
+    );
+    expectNoOverflow(tester);
+  });
+
+  testWidgets('no desborda en ningún ancho auditado, en ambos temas y roles', (
+    tester,
+  ) async {
+    for (final width in kAuditWidths) {
+      for (final brightness in [Brightness.light, Brightness.dark]) {
+        for (final rol in ['Propietario', 'Mecanico']) {
+          await pumpChatWidget(
+            tester,
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: ChatBubble(
+                isMe: false,
+                child: ReservaChatCard(
+                  metadata: {
+                    'id_reserva': 'r1',
+                    'estado': 'pendiente',
+                    'fecha': '2026-08-20T10:00:00.000',
+                    'hora': '10:00 AM',
+                  },
+                  isMe: false,
+                  mensajeId: 'm1',
+                  conversacionId: 'c1',
+                ),
+              ),
+            ),
+            width: width,
+            brightness: brightness,
+            user: fakeChatUser(rol: rol),
+          );
+          expectNoOverflow(tester);
+        }
+      }
+    }
+  });
+
+  testWidgets('el contenido es legible cuando el mensaje es propio', (
+    tester,
+  ) async {
+    await pumpChatWidget(
+      tester,
+      const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
+        child: ChatBubble(
+          isMe: true,
+          child: ReservaChatCard(
+            metadata: {
+              'id_reserva': 'r1',
+              'estado': 'confirmada',
+              'fecha': '2026-08-20T10:00:00.000',
+              'hora': '10:00 AM',
+            },
+            isMe: true,
+            mensajeId: 'm1',
+            conversacionId: 'c1',
+          ),
+        ),
+      ),
+      width: 375,
+    );
+    final context = tester.element(find.byType(ChatCardShell));
+    final colors = context.appColors;
+    final fecha = tester.widget<Text>(find.text('20 ago 2026'));
+    final color =
+        fecha.style?.color ??
+        DefaultTextStyle.of(
+          tester.element(find.text('20 ago 2026')),
+        ).style.color!;
+    expect(
+      contrastRatio(color, colors.surface),
+      greaterThanOrEqualTo(4.5),
+      reason:
+          'Con isMe=true la fecha se pintaba blanca sobre tarjeta '
+          'blanca: 1,00:1.',
+    );
+  });
+
+  testWidgets('el estado se pinta con AppStatusBadge', (tester) async {
+    await pumpChatWidget(
+      tester,
+      const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
+        child: ChatBubble(
+          isMe: false,
+          child: ReservaChatCard(
+            metadata: {'id_reserva': 'r1', 'estado': 'rechazada'},
+            isMe: false,
+            mensajeId: 'm1',
+            conversacionId: 'c1',
+          ),
+        ),
+      ),
+      width: 375,
+    );
+    final badge = tester.widget<AppStatusBadge>(find.byType(AppStatusBadge));
+    expect(badge.type, AppStatusType.error);
+  });
 }

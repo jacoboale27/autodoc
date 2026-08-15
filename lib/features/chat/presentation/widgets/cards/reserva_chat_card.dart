@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
-import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/theme/app_severity.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/app_status_badge.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
+import 'package:autodoc/features/chat/presentation/widgets/chat_card_shell.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/utils/role_utils.dart';
 import 'package:autodoc/core/utils/mechanic_profile_utils.dart';
@@ -161,7 +164,6 @@ class ReservaChatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isMecanico = isMechanicRole(
       context.watch<UserProfileProvider>().userData?.rol,
     );
@@ -178,239 +180,138 @@ class ReservaChatCard extends StatelessWidget {
       fecha = DateTime.tryParse(fechaRaw);
     }
 
-    Color badgeColor = Colors.orange;
-    String badgeText = 'Pendiente';
-    if (estado == 'confirmada') {
-      badgeColor = Colors.green;
-      badgeText = 'Confirmada';
-    } else if (estado == 'rechazada') {
-      badgeColor = Colors.red;
-      badgeText = 'Rechazada';
-    } else if (estado == 'cotizada') {
-      badgeColor = Colors.blue;
-      badgeText = 'Cotización Enviada';
-    }
+    final severidad = AppSeverity.forReservaEstado(
+      estado,
+      colors,
+      pendienteLabel: 'Pendiente',
+      confirmadaLabel: 'Confirmada',
+      rechazadaLabel: 'Rechazada',
+      cotizadaLabel: 'Cotización Enviada',
+    );
 
-    return Container(
-      width: 260,
-      margin: const EdgeInsets.only(top: 8),
-      decoration: BoxDecoration(
-        color: isDark ? colors.surfaceContainer : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isMe
-              ? Colors.white30
-              : (isDark ? Colors.white12 : Colors.black12),
-        ),
+    return ChatCardShell(
+      icon: Icons.event,
+      title: 'Reserva de Cita',
+      semanticLabel: 'Reserva de cita, ${severidad.label}',
+      trailing: AppStatusBadge(
+        text: severidad.label,
+        icon: severidad.icon,
+        type: _statusTypeDe(estado),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: isMe
-                  ? Colors.black12
-                  : (isDark ? Colors.black26 : Colors.grey.shade100),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(12),
+          Row(
+            children: [
+              Icon(Icons.calendar_today, size: 14, color: colors.textSecondary),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  fecha != null
+                      ? DateFormat('dd MMM yyyy', 'es').format(fecha)
+                      : 'Fecha sin definir',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
-            ),
-            child: Row(
-              // TODO: this header Row overflows horizontally at the card's fixed 260px width under some font metrics (pre-existing, tracked in reserva_chat_card_test.dart).
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.event,
-                      size: 16,
-                      color: isMe ? Colors.white : colors.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Reserva de Cita',
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: isMe ? Colors.white : colors.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: badgeColor,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    badgeText,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            ],
           ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today,
-                      size: 14,
-                      color: isMe ? Colors.white70 : colors.textSecondary,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      fecha != null
-                          ? DateFormat('dd MMM yyyy').format(fecha)
-                          : 'Fecha sin definir',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isMe ? Colors.white : colors.textPrimary,
-                      ),
-                    ),
-                  ],
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.access_time, size: 14, color: colors.textSecondary),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  hora.isNotEmpty ? hora : 'Hora sin definir',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.access_time,
-                      size: 14,
-                      color: isMe ? Colors.white70 : colors.textSecondary,
+              ),
+            ],
+          ),
+          if (estado == 'pendiente' && !isMe) ...[
+            const SizedBox(height: 12),
+            if (isMecanico) ...[
+              // El mecánico solo puede "aceptar" enviando una cotización
+              // para la misma fecha propuesta por el cliente: se deniega a
+              // propósito un "aceptar sin precio" para que el cliente nunca
+              // vea una cita confirmada sin costo claro.
+              Text(
+                'Aceptas la cita enviando tu cotización con esta fecha.',
+                style: TextStyle(fontSize: 11, color: colors.textSecondary),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: AppButton(
+                      text: context.l10n.chatReject,
+                      type: AppButtonType.secondary,
+                      onPressed: () => _actualizar(context, 'rechazada'),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      hora.isNotEmpty ? hora : 'Hora sin definir',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isMe ? Colors.white : colors.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-                if (estado == 'pendiente' && !isMe) ...[
-                  const SizedBox(height: 12),
-                  if (isMecanico) ...[
-                    // El mecánico solo puede "aceptar" enviando una cotización
-                    // para la misma fecha propuesta por el cliente: se
-                    // deniega a propósito un "aceptar sin precio" para que el
-                    // cliente nunca vea una cita confirmada sin costo claro.
-                    Text(
-                      'Aceptas la cita enviando tu cotización con esta fecha.',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isMe ? Colors.white70 : colors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => _actualizar(context, 'rechazada'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.red,
-                              side: const BorderSide(color: Colors.red),
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              minimumSize: Size.zero,
-                            ),
-                            child: Text(context.l10n.chatReject),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: fecha == null || reservaId == null
-                                ? null
-                                : () => _cotizarYAceptar(
-                                    context,
-                                    reservaId,
-                                    fecha!,
-                                  ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: colors.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              minimumSize: Size.zero,
-                            ),
-                            child: const Text('Cotizar y Aceptar'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ] else ...[
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => _actualizar(
-                              context,
-                              'confirmada',
-                              fechaConfirmada: DateTime.now(),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: colors.primary,
-                              side: BorderSide(color: colors.primary),
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              minimumSize: Size.zero,
-                            ),
-                            child: Text(context.l10n.chatAccept),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => _actualizar(context, 'rechazada'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.red,
-                              side: const BorderSide(color: Colors.red),
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              minimumSize: Size.zero,
-                            ),
-                            child: Text(context.l10n.chatReject),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: metadata['id_reserva'] == null
-                        ? null
-                        : () => context.push(
-                            '/reserva_detail/${metadata['id_reserva']}',
-                          ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: isMe ? Colors.white : colors.primary,
-                      side: BorderSide(
-                        color: isMe
-                            ? Colors.white70
-                            : colors.primary.withValues(alpha: 0.5),
-                      ),
-                    ),
-                    child: Text(context.l10n.chatViewDetail),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: AppButton(
+                      text: 'Cotizar y Aceptar',
+                      type: AppButtonType.primary,
+                      onPressed: fecha == null || reservaId == null
+                          ? null
+                          : () => _cotizarYAceptar(context, reservaId, fecha!),
+                    ),
+                  ),
+                ],
+              ),
+            ] else ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: AppButton(
+                      text: context.l10n.chatAccept,
+                      type: AppButtonType.secondary,
+                      onPressed: () => _actualizar(
+                        context,
+                        'confirmada',
+                        fechaConfirmada: DateTime.now(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: AppButton(
+                      text: context.l10n.chatReject,
+                      type: AppButtonType.secondary,
+                      onPressed: () => _actualizar(context, 'rechazada'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: AppButton(
+              text: context.l10n.chatViewDetail,
+              type: AppButtonType.text,
+              onPressed: metadata['id_reserva'] == null
+                  ? null
+                  : () => context.push(
+                      '/reserva_detail/${metadata['id_reserva']}',
+                    ),
             ),
           ),
         ],
       ),
     );
   }
+
+  AppStatusType _statusTypeDe(String estado) => switch (estado) {
+    'confirmada' || 'aceptada' => AppStatusType.success,
+    'rechazada' => AppStatusType.error,
+    'cotizada' || 'finalizada' => AppStatusType.info,
+    _ => AppStatusType.warning,
+  };
 }
