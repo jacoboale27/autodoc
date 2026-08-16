@@ -14,6 +14,9 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
+import 'package:autodoc/core/theme/app_motion.dart';
+import 'package:autodoc/core/theme/app_shadows.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
@@ -88,88 +91,128 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final windowClass = AppBreakpoints.of(context);
+    final isWide = windowClass.isAtLeastExpanded;
 
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: colors.surface,
-        child: Stack(
-          children: [
-            // Decorative blobs
-            Positioned.fill(
-              child: AuthBackgroundBlobs(colors: colors, isDark: isDark),
-            ),
-
-            // Main Content
-            Center(
+      backgroundColor: colors.surface,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: AuthBackgroundBlobs(colors: colors, isDark: isDark),
+          ),
+          SafeArea(
+            child: Center(
               child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(
-                  Responsive.padding(context, 24),
-                  Responsive.padding(context, 60),
-                  Responsive.padding(context, 24),
-                  Responsive.padding(context, 100),
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppBreakpoints.gutter(windowClass),
+                  vertical: AppSpacing.xl,
                 ),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
+                  constraints: const BoxConstraints(
+                    maxWidth: AppBreakpoints.maxContentWidth,
+                  ),
+                  // AuthBottomNav vive aquí, como último hijo del mismo flujo
+                  // que la tarjeta — no en un Stack ni fuera de un Expanded
+                  // acotado. Así nunca puede quedar por delante ni por
+                  // detrás de la tarjeta "por construcción": el orden
+                  // secuencial del Column lo impide con independencia de
+                  // cuánto crezca el formulario o si hace falta scroll.
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Logo Section
-                      AuthLogoSection(colors: colors),
-                      const SizedBox(height: 32),
-
-                      // Central Glassmorphism Card
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        child: _buildGlassCard(
-                          colors,
-                          isDark,
-                          key: ValueKey(_isLoginMode),
-                        ),
-                      ),
-
-                      const SizedBox(height: 32),
-                      // Bottom Switch Link
-                      TextButton(
-                        onPressed: _toggleMode,
-                        child: RichText(
-                          text: TextSpan(
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              color: colors.textSecondary,
-                            ),
-                            children: [
-                              TextSpan(
-                                text: _isLoginMode
-                                    ? context.l10n.authNoAccount
-                                    : context.l10n.authHaveAccount,
-                              ),
-                              TextSpan(
-                                text: _isLoginMode
-                                    ? context.l10n.authRegisterFree
-                                    : context.l10n.authLogin,
-                                style: AppTextStyles.bodyMedium.copyWith(
-                                  color: colors.primary,
-                                  fontWeight: FontWeight.bold,
-                                  decoration: TextDecoration.underline,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                      isWide
+                          ? _buildWideLayout(colors, isDark)
+                          : _buildNarrowLayout(colors, isDark),
+                      const SizedBox(height: AppSpacing.xxl),
+                      AuthBottomNav(
+                        key: const ValueKey('auth-bottom-nav'),
+                        colors: colors,
+                        isDark: isDark,
                       ),
                     ],
                   ),
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
 
-            // Bottom Navigation Bar for Mobile
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: AuthBottomNav(colors: colors, isDark: isDark),
+  Widget _buildNarrowLayout(AppColors colors, bool isDark) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        AuthLogoSection(colors: colors),
+        const SizedBox(height: AppSpacing.xxl),
+        _card(colors, isDark),
+        const SizedBox(height: AppSpacing.xxl),
+        _modeSwitchLink(colors),
+      ],
+    );
+  }
+
+  Widget _buildWideLayout(AppColors colors, bool isDark) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Padding(
+            key: const ValueKey('auth-brand-panel'),
+            padding: const EdgeInsets.only(right: AppSpacing.xxl),
+            child: AuthLogoSection(colors: colors),
+          ),
+        ),
+        SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _card(colors, isDark),
+              const SizedBox(height: AppSpacing.xxl),
+              _modeSwitchLink(colors),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _card(AppColors colors, bool isDark) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 400),
+      child: AnimatedSwitcher(
+        duration: AppMotion.transformDuration(context, AppMotion.dropdown),
+        switchInCurve: AppMotion.easeOut,
+        switchOutCurve: AppMotion.easeOut,
+        child: _buildGlassCard(colors, isDark, key: ValueKey(_isLoginMode)),
+      ),
+    );
+  }
+
+  Widget _modeSwitchLink(AppColors colors) {
+    return TextButton(
+      onPressed: _toggleMode,
+      child: RichText(
+        text: TextSpan(
+          style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
+          children: [
+            TextSpan(
+              text: _isLoginMode
+                  ? context.l10n.authNoAccount
+                  : context.l10n.authHaveAccount,
+            ),
+            TextSpan(
+              text: _isLoginMode
+                  ? context.l10n.authRegisterFree
+                  : context.l10n.authLogin,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: colors.primary,
+                fontWeight: FontWeight.bold,
+                decoration: TextDecoration.underline,
+              ),
             ),
           ],
         ),
@@ -187,8 +230,8 @@ class _AuthScreenState extends State<AuthScreen> {
           sigmaY: 10,
         ), // Reduced blur for performance
         child: Container(
+          key: const ValueKey('auth-card'),
           width: double.infinity,
-          constraints: BoxConstraints(maxWidth: Responsive.size(context, 450)),
           padding: EdgeInsets.all(Responsive.padding(context, 32)),
           decoration: BoxDecoration(
             color: colors.surfaceContainer.withValues(
@@ -196,13 +239,7 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: colors.outline.withValues(alpha: 0.5)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
+            boxShadow: isDark ? AppShadows.darkLg : AppShadows.lightLg,
           ),
           child: AutofillGroup(
             child: Form(
@@ -479,49 +516,22 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget _buildGoogleButton(AppColors colors) {
     final authProvider = context.read<AuthProvider>();
 
-    return Semantics(
-      label: 'Botón Continuar con Google',
-      button: true,
-      child: OutlinedButton(
-        onPressed: () async {
-          final success = await authProvider.signInWithGoogle();
-          if (success && mounted) {
-            HapticFeedback.lightImpact();
-            await _navigateAfterAuth(authProvider);
-          } else if (mounted && authProvider.error != null) {
-            HapticFeedback.heavyImpact();
-            UiUtils.showErrorSnackbar(context, authProvider.error!);
-          }
-        },
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(double.infinity, 54),
-          side: BorderSide(color: colors.outline, width: 1.5),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          foregroundColor: colors.textPrimary,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.network(
-              'https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png',
-              height: 20,
-              errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.g_mobiledata, size: 20, color: Colors.blue),
-            ),
-            const SizedBox(width: 12),
-            Flexible(
-              child: Text(
-                context.l10n.authGoogleLogin,
-                style: AppTextStyles.titleSmall,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return AppButton(
+      text: context.l10n.authGoogleLogin,
+      type: AppButtonType.secondary,
+      size: AppButtonSize.large,
+      semanticLabel: context.l10n.authGoogleLogin,
+      icon: Icon(Icons.g_mobiledata, size: 24, color: colors.textPrimary),
+      onPressed: () async {
+        final success = await authProvider.signInWithGoogle();
+        if (success && mounted) {
+          HapticFeedback.lightImpact();
+          await _navigateAfterAuth(authProvider);
+        } else if (mounted && authProvider.error != null) {
+          HapticFeedback.heavyImpact();
+          UiUtils.showErrorSnackbar(context, authProvider.error!);
+        }
+      },
     );
   }
 
@@ -738,7 +748,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       ScaffoldMessenger.of(ctx).showSnackBar(
                         SnackBar(
                           content: Text(ctx.l10n.authEmailVerifiedSuccess),
-                          backgroundColor: Colors.green,
+                          backgroundColor: colors.success,
                         ),
                       );
                     } else {
