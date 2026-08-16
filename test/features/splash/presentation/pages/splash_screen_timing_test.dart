@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
+import 'package:autodoc/core/services/push_notification_service.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_theme.dart';
 import 'package:autodoc/features/splash/presentation/pages/splash_screen.dart';
@@ -21,14 +22,21 @@ import '../../../../helpers/test_helpers.mocks.dart';
 import '../../../../support/contrast.dart';
 import '../../../../support/entry_harness.dart';
 
+class _FakePushNotificationService extends Fake
+    implements PushNotificationService {
+  @override
+  Future<void> updateUserToken(String userId) async {}
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setupFirebaseCoreMocks();
 
-  Future<void> pumpRouter(
+  Future<StreamController<User?>> pumpRouter(
     WidgetTester tester, {
     required double width,
     required double height,
+    List<GoRoute> extraRoutes = const [],
   }) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     await Firebase.initializeApp();
@@ -67,17 +75,32 @@ void main() {
                 path: '/login',
                 builder: (_, _) => const Scaffold(body: Text('LOGIN')),
               ),
+              GoRoute(
+                path: '/dashboard',
+                builder: (_, _) => const Scaffold(body: Text('DASHBOARD')),
+              ),
+              GoRoute(
+                path: '/profile_setup',
+                builder: (_, _) => const Scaffold(body: Text('PROFILE_SETUP')),
+              ),
+              ...extraRoutes,
             ],
           ),
         ),
       ),
     );
+    return controller;
   }
 
   testWidgets('un visitante sin sesion sale del splash en menos de 1 segundo', (
     tester,
   ) async {
-    await pumpRouter(tester, width: 375, height: 812);
+    final controller = await pumpRouter(tester, width: 375, height: 812);
+    // Simula el comportamiento real de Firebase: `idTokenChanges()` siempre
+    // emite su primer valor pronto (aqui, "sin sesion") en vez de quedarse
+    // callado para siempre como haria un stream nunca-emitido.
+    controller.add(null);
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 900));
     await tester.pumpAndSettle();
     expect(
@@ -86,6 +109,54 @@ void main() {
       reason: 'el splash sigue reteniendo al usuario mas de 900 ms',
     );
   });
+
+  testWidgets(
+    'un usuario logueado en frio no cae en /login mientras la sesion resuelve async '
+    '(regresion: la sesion tardaba en emitir y el splash la leia en null)',
+    (tester) async {
+      PushNotificationService.setInstanceForTesting(
+        _FakePushNotificationService(),
+      );
+      final controller = await pumpRouter(tester, width: 375, height: 812);
+      // No emite nada todavia: simula que `idTokenChanges()` tarda en
+      // resolver, igual que en un arranque en frio real donde el provider
+      // se construye justo antes de runApp y el splash ya esta en su
+      // primer frame antes de que el stream reporte nada.
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Ahora, dentro del presupuesto acotado de 2 s que el splash le da a
+      // la sesion, llega la primera emision real: un usuario logueado.
+      final mockUser = MockUser();
+      when(mockUser.uid).thenReturn('user123');
+      controller.add(mockUser);
+      await tester.pump();
+
+      // Deja correr el resto del presupuesto y el resto del flujo (sondeo
+      // de perfil, retardo minimo anti-parpadeo) hasta asentarse.
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+
+      expect(
+        find.text('LOGIN'),
+        findsNothing,
+        reason:
+            'un usuario con sesion real NUNCA debe terminar en /login: '
+            'el splash decidio "no hay sesion" antes de que el stream '
+            'de auth tuviera oportunidad de resolver.',
+      );
+      expect(
+        find.text('ONBOARDING'),
+        findsNothing,
+        reason:
+            'un usuario con sesion real NUNCA debe terminar varado en '
+            '/onboarding por leer session.user antes de que resuelva.',
+      );
+      // El perfil nunca resuelve en este harness (no hay fetch real), asi
+      // que tras agotar tambien su presupuesto de 2 s el splash cae en
+      // /profile_setup: confirma que efectivamente tomo la rama de
+      // "usuario autenticado", no que se quedo colgado en el splash.
+      expect(find.text('PROFILE_SETUP'), findsOneWidget);
+    },
+  );
 
   testWidgets('no hay barra de progreso falsa', (tester) async {
     final source = File(

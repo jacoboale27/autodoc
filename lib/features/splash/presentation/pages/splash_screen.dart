@@ -6,6 +6,7 @@ import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/auth/data/services/auth_preferences_service.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_motion.dart';
+import 'package:autodoc/core/theme/app_shadows.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -22,6 +23,16 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  AuthSessionProvider? _session;
+  // `AuthSessionProvider._user` arranca en null y solo se llena de forma
+  // ASINCRONA via su listener de `idTokenChanges()` (ver
+  // auth_session_provider.dart). El provider se construye justo antes de
+  // `runApp`, asi que su primera emision puede llegar bien despues del
+  // primer frame del splash. Sin este flag, `_resolveDestination` leeria
+  // `session.user` en null incluso para un usuario con sesion real y lo
+  // mandaria a /login u /onboarding. Se registra el listener aqui (antes
+  // del primer frame) para no perder esa primera emision.
+  bool _sessionEmitted = false;
 
   static const Duration _minimumSplash = Duration(milliseconds: 400);
   static const Duration _pollInterval = Duration(milliseconds: 100);
@@ -34,6 +45,8 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
+    _session = context.read<AuthSessionProvider>();
+    _session!.addListener(_onSessionChanged);
     // El giro solo arranca si el usuario no ha pedido menos movimiento;
     // se decide en el primer frame, cuando ya hay MediaQuery.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -43,10 +56,26 @@ class _SplashScreenState extends State<SplashScreen>
     });
   }
 
+  void _onSessionChanged() {
+    _sessionEmitted = true;
+  }
+
   Future<void> _resolveDestination() async {
     final started = DateTime.now();
     final session = context.read<AuthSessionProvider>();
     final profile = context.read<UserProfileProvider>();
+
+    // Espera acotada (mismo presupuesto de 2 s / 100 ms que el sondeo del
+    // perfil de abajo) a que la sesion emita su primer valor real antes de
+    // decidir "no hay sesion". Sin esto, un usuario logueado en frio caeria
+    // en la rama de no-sesion porque `session.user` sigue siendo null en el
+    // primer frame.
+    var sessionPolls = 0;
+    while (!_sessionEmitted && sessionPolls < _maxPolls) {
+      await Future<void>.delayed(_pollInterval);
+      sessionPolls++;
+    }
+    if (!mounted) return;
 
     String destination;
     final user = session.user;
@@ -111,6 +140,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
+    _session?.removeListener(_onSessionChanged);
     _controller.dispose();
     super.dispose();
   }
@@ -333,6 +363,12 @@ class _SplashLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final secondaryColor = colors.secondary;
+    // `colors.textPrimary` es blanco en modo oscuro (`darkTextPrimary`), asi
+    // que usarlo aqui invertiria la sombra en un resplandor blanco. Se usa
+    // `AppShadows.lightLg`/`darkLg` (mismo blurRadius/offset que antes),
+    // que en ambos temas es un oscurecimiento real, igual que en
+    // app_button.dart.
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox(
       width: 128,
       height: 128,
@@ -373,13 +409,7 @@ class _SplashLogo extends StatelessWidget {
             decoration: BoxDecoration(
               color: colors.onPrimary,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: colors.textPrimary.withValues(alpha: 0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
+              boxShadow: isDark ? AppShadows.darkLg : AppShadows.lightLg,
             ),
             padding: const EdgeInsets.all(14),
             child: SvgPicture.asset('assets/logo/autodoc_isotype.svg'),
