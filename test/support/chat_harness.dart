@@ -82,13 +82,22 @@ class FakeChatProvider extends ChangeNotifier implements ChatProvider {
   FakeChatProvider({
     List<ConversacionModel>? conversaciones,
     List<MensajeModel>? mensajes,
+    List<double>? beneficios,
     this.isLoading = false,
     this.error,
   }) : _conversaciones = conversaciones ?? const [],
-       _mensajes = mensajes ?? const [];
+       _mensajes = mensajes ?? const [],
+       _beneficios = beneficios ?? const [];
 
   final List<ConversacionModel> _conversaciones;
   final List<MensajeModel> _mensajes;
+
+  /// Valor devuelto por [obtenerBeneficiosCotizacion]. Por defecto vacío
+  /// (mismo comportamiento que antes de que esto fuera configurable), pero
+  /// los tests que necesitan que la fila "Tu beneficio" se dibuje deben
+  /// pasar valores no-cero aquí — `CotizacionModel.copyWithBeneficios`
+  /// fuerza a 0.0 cualquier renglón sin beneficio correspondiente.
+  final List<double> _beneficios;
 
   @override
   final bool isLoading;
@@ -128,7 +137,7 @@ class FakeChatProvider extends ChangeNotifier implements ChatProvider {
   @override
   Future<List<double>> obtenerBeneficiosCotizacion(String cotizacionId) async {
     llamadas.add('obtenerBeneficiosCotizacion:$cotizacionId');
-    return const [];
+    return _beneficios;
   }
 
   @override

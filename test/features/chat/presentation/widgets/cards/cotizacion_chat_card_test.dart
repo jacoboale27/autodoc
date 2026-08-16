@@ -95,15 +95,32 @@ void main() {
   ) async {
     // Esta fila solo se dibuja con isMe=true, y su color era Colors.white54
     // sobre una tarjeta Colors.white: nunca se ha visto en claro.
+    //
+    // `beneficioTotal` se computa en `_CotizacionCardBody` sumando
+    // `item.beneficio` de cada renglón, y `CotizacionModel.copyWithBeneficios`
+    // fuerza a 0.0 cualquier renglón sin entrada correspondiente en la lista
+    // de beneficios — así que el `FakeChatProvider` por defecto (beneficios
+    // vacíos) nunca dibuja esta fila y el `if (finder.evaluate().isEmpty)
+    // return;` de abajo la hacía pasar sin ejecutar la aserción. `_card`
+    // siembra un único item ('Filtro de aceite'), así que un solo beneficio
+    // no-cero es suficiente para que `beneficioTotal > 0`.
     final firestore = await _firestoreConCotizacion();
     await pumpChatWidget(
       tester,
       _card(isMe: true, firestore: firestore),
       width: 375,
+      chatProvider: FakeChatProvider(beneficios: const [12.5]),
     );
     await tester.pumpAndSettle();
     final finder = find.text('Tu beneficio:');
-    if (finder.evaluate().isEmpty) return; // sin beneficios cargados
+    expect(
+      finder,
+      findsOneWidget,
+      reason:
+          'con beneficios no-cero cargados, la fila "Tu beneficio" debe '
+          'dibujarse; si esto falla, la aserción de contraste de abajo '
+          'nunca se ejecutaría.',
+    );
     final context = tester.element(find.byType(ChatCardShell));
     final colors = context.appColors;
     final texto = tester.widget<Text>(finder);

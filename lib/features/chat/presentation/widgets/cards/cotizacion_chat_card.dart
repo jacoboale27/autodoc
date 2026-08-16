@@ -297,15 +297,28 @@ class _CotizacionCardBody extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.titleLarge.copyWith(
                     fontWeight: FontWeight.bold,
-                    // Desviación del brief (que pedía `colors.secondary`
-                    // "sin ternario"): `lightSecondary` (#81E6D9) es un tono
-                    // pastel pensado para fondos/acentos, con `onSecondary`
-                    // oscuro como contraparte de texto — como texto directo
-                    // sobre `colors.surface` en tema claro da 1,37:1. Se usa
-                    // `colors.primary` en su lugar, que sí cumple ≥4.5:1 en
-                    // ambos temas y es el mismo tono que ya usa
+                    // ⚠️ DESVIACIÓN DELIBERADA DEL BRIEF — PENDIENTE DE
+                    // VISTO BUENO HUMANO EN CODE REVIEW ⚠️
+                    // El brief (Step 5d) pedía literalmente `colors.secondary`
+                    // "sin ternario". Se sustituyó por `colors.primary` porque
+                    // `lightSecondary` (#81E6D9) es un tono pastel pensado
+                    // para fondos/acentos, con `onSecondary` oscuro como
+                    // contraparte de texto — usado como texto directo sobre
+                    // `colors.surface` en tema claro mide 1,37:1 (falla AA,
+                    // que exige ≥4,5:1). Esto es un defecto de la paleta para
+                    // este uso, no del código: por la regla del proyecto
+                    // ("si el contraste falla por un defecto de la paleta,
+                    // STOP y reporta, no parchear AppPalette"), `AppPalette`
+                    // NO fue tocado — se cambió únicamente el token de color
+                    // usado en este punto. `colors.primary` sí cumple ≥4,5:1
+                    // en ambos temas y es el mismo tono que ya usa
                     // `AppSeverity.forReservaEstado` para el estado
-                    // 'cotizada'/'finalizada'.
+                    // 'cotizada'/'finalizada', así que no introduce un color
+                    // nuevo al módulo. Aun así, esto cambia el diseño visual
+                    // respecto a lo que el brief especificó, así que un
+                    // humano debe confirmar en code review que
+                    // `colors.primary` es la sustitución correcta (o decidir
+                    // corregir `lightSecondary` en `AppPalette` en su lugar).
                     color: colors.primary,
                   ),
                 ),
@@ -318,35 +331,56 @@ class _CotizacionCardBody extends StatelessWidget {
               label:
                   'Tu beneficio, visible solo para ti: '
                   '\$${beneficioTotal.toStringAsFixed(2)}',
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.visibility_off_outlined,
-                        size: 12,
-                        color: colors.textSecondary,
+              // Mismo patrón que chat_bubble.dart (ver su comentario junto a
+              // `Semantics`), vehiculo_chat_card.dart, imagen_chat_card.dart
+              // y audio_chat_card.dart: sin `ExcludeSemantics` el lector de
+              // pantalla anuncia el `label` de arriba y LUEGO, por separado,
+              // el ícono + "Tu beneficio:" + el monto del contenido hijo —
+              // duplicado, no reemplazado.
+              child: ExcludeSemantics(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // `Expanded` + `overflow: ellipsis` en el label, igual
+                    // que el renglón de `Total:` más arriba: sin esto, un
+                    // monto de beneficio de dos cifras hace que el Row entero
+                    // (ícono + "Tu beneficio:" + monto) exceda el ancho
+                    // disponible de la burbuja y desborde — bug real que
+                    // apareció al hacer que este test cargara beneficios
+                    // no-cero por primera vez.
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.visibility_off_outlined,
+                            size: 12,
+                            color: colors.textSecondary,
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              'Tu beneficio:',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: colors.textSecondary,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Tu beneficio:',
-                        style: TextStyle(
-                          color: colors.textSecondary,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    '\$${beneficioTotal.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      color: colors.textSecondary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 6),
+                    Text(
+                      '\$${beneficioTotal.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
