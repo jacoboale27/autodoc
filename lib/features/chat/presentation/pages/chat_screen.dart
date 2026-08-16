@@ -10,6 +10,10 @@ import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:autodoc/features/chat/presentation/widgets/chat_background.dart';
+import 'package:autodoc/features/chat/presentation/widgets/chat_bubble.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
+import 'package:autodoc/core/widgets/app_page_body.dart';
+import 'package:autodoc/core/theme/app_motion.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/vehiculo_chat_card.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/reserva_chat_card.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/historial_chat_card.dart';
@@ -61,6 +65,30 @@ class _ChatScreenState extends State<ChatScreen> {
   // aquí para reintentar en cuanto el perfil llegue, en vez de no inicializar
   // nunca los mensajes ni marcarlos como leídos.
   UserProfileProvider? _userSessionPendiente;
+
+  /// Consulta del nombre real del receptor, cacheada.
+  ///
+  /// Estaba construida dentro de `build()`, y como la pantalla hace
+  /// `context.watch<ChatProvider>()`, cada notificación —incluido el estado
+  /// "escribiendo", que cambia cada 2 s— lanzaba un `get()` nuevo a
+  /// `usuarios/{receptorId}`.
+  @visibleForTesting
+  Future<DocumentSnapshot<Map<String, dynamic>>>? nombreReceptorFuture;
+  String? _receptorIdCacheado;
+
+  /// Devuelve el future, creándolo solo si el receptor cambió.
+  Future<DocumentSnapshot<Map<String, dynamic>>>? _futureNombreReceptor(
+    String receptorId,
+  ) {
+    if (receptorId.isEmpty) return null;
+    if (_receptorIdCacheado == receptorId) return nombreReceptorFuture;
+    _receptorIdCacheado = receptorId;
+    nombreReceptorFuture = FirebaseFirestore.instance
+        .collection(FirestoreCollections.usuarios)
+        .doc(receptorId)
+        .get();
+    return nombreReceptorFuture;
+  }
 
   @override
   void initState() {
@@ -276,6 +304,37 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  void _confirmarBorrado(MensajeModel msg, bool isMe) {
+    if (!isMe || msg.isDeleted) return;
+    final colors = context.appColors;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.l10n.chatDeleteMessage),
+        content: Text(context.l10n.chatConfirmDelete),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(context.l10n.adminCancel),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<ChatProvider>().deleteMensaje(
+                widget.conversacionId,
+                msg.id,
+              );
+            },
+            child: Text(
+              context.l10n.adminDelete,
+              style: TextStyle(color: colors.error),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
@@ -312,41 +371,49 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Icon(Icons.person, color: colors.primary, size: 18),
             ),
             const SizedBox(width: 12),
-            FutureBuilder<DocumentSnapshot>(
-              future: receptorId.isNotEmpty
-                  ? FirebaseFirestore.instance
-                        .collection(FirestoreCollections.usuarios)
-                        .doc(receptorId)
-                        .get()
-                  : null,
+            FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+              future: _futureNombreReceptor(receptorId),
               builder: (context, snapshot) {
                 String finalName = targetName;
                 if (snapshot.hasData && snapshot.data!.exists) {
-                  final data = snapshot.data!.data() as Map<String, dynamic>?;
+                  final data = snapshot.data!.data();
                   final realName = data?['nombre_completo'];
                   if (realName?.isNotEmpty == true) {
                     finalName = realName!;
                   }
                 }
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      finalName,
-                      style: AppTextStyles.titleMedium.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    if (conversacion != null &&
-                        conversacion.typingId == receptorId)
+                final estaEscribiendo =
+                    conversacion != null && conversacion.typingId == receptorId;
+                return AnimatedSize(
+                  duration: AppMotion.transformDuration(
+                    context,
+                    AppMotion.tooltip,
+                  ),
+                  curve: AppMotion.easeOut,
+                  alignment: Alignment.centerLeft,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       Text(
-                        'Escribiendo...',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: colors.primary,
-                          fontStyle: FontStyle.italic,
+                        finalName,
+                        style: AppTextStyles.titleMedium.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                  ],
+                      if (estaEscribiendo)
+                        Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            'Escribiendo...',
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: colors.primary,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 );
               },
             ),
@@ -371,206 +438,142 @@ class _ChatScreenState extends State<ChatScreen> {
                     chatProvider.mensajesActuales.isEmpty)
                   const Center(child: CircularProgressIndicator())
                 else
-                  ListView.builder(
-                    controller: _scrollController,
-                    reverse: true,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 24,
-                    ),
-                    itemCount: chatProvider.mensajesActuales.length,
-                    itemBuilder: (context, index) {
-                      final msg = chatProvider.mensajesActuales[index];
-                      final isMe = msg.idRemitente == userId;
+                  AppPageBody(
+                    maxWidth: AppBreakpoints.maxContentWidth,
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      reverse: true,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 24,
+                      ),
+                      itemCount: chatProvider.mensajesActuales.length,
+                      itemBuilder: (context, index) {
+                        final msg = chatProvider.mensajesActuales[index];
+                        final isMe = msg.idRemitente == userId;
+                        final nombreAutor = isMe ? 'Tú' : targetName;
 
-                      return Align(
-                        key: ValueKey(msg.id),
-                        alignment: isMe
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
-                        child: GestureDetector(
-                          onLongPress: () {
-                            if (isMe && !msg.isDeleted) {
-                              showDialog(
-                                context: context,
-                                builder: (ctx) => AlertDialog(
-                                  title: Text(context.l10n.chatDeleteMessage),
-                                  content: Text(context.l10n.chatConfirmDelete),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(ctx),
-                                      child: Text(context.l10n.adminCancel),
-                                    ),
-                                    TextButton(
-                                      onPressed: () {
-                                        Navigator.pop(ctx);
-                                        context
-                                            .read<ChatProvider>()
-                                            .deleteMensaje(
-                                              widget.conversacionId,
-                                              msg.id,
-                                            );
-                                      },
-                                      child: Text(
-                                        context.l10n.adminDelete,
-                                        style: const TextStyle(
-                                          color: Colors.red,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 12, top: 2),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isMe
-                                  ? (msg.isDeleted
-                                        ? colors.textSecondary.withValues(
-                                            alpha: 0.5,
-                                          )
-                                        : colors.primary)
-                                  : (isDark
-                                        ? Colors.white12
-                                        : Colors.grey.shade200),
-                              borderRadius: BorderRadius.only(
-                                topLeft: const Radius.circular(16),
-                                topRight: const Radius.circular(16),
-                                bottomLeft: Radius.circular(isMe ? 16 : 0),
-                                bottomRight: Radius.circular(isMe ? 0 : 16),
+                        return Align(
+                          key: ValueKey(msg.id),
+                          alignment: isMe
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: GestureDetector(
+                            onLongPress: () => _confirmarBorrado(msg, isMe),
+                            child: ChatBubble(
+                              isMe: isMe,
+                              isDeleted: msg.isDeleted,
+                              semanticLabel: '$nombreAutor: ${msg.contenido}',
+                              footer: isMe
+                                  ? _AcuseDeRecibo(estado: msg.estado)
+                                  : null,
+                              child: _buildMessageContent(
+                                msg,
+                                isMe,
+                                colors,
+                                conversacion?.idMecanico ?? '',
                               ),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                _buildMessageContent(
-                                  msg,
-                                  isMe,
-                                  colors,
-                                  isDark,
-                                  conversacion?.idMecanico ?? '',
-                                ),
-                                if (isMe && !msg.isDeleted) ...[
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        msg.estado == 'visto'
-                                            ? Icons.done_all
-                                            : Icons.check,
-                                        size: 14,
-                                        color: msg.estado == 'visto'
-                                            ? Colors.blue.shade200
-                                            : Colors.white70,
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ],
-                            ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
               ],
             ),
           ),
 
           // Input Bar
-          Container(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 12,
-              bottom: MediaQuery.of(context).padding.bottom + 12,
-            ),
-            decoration: BoxDecoration(
-              color: isDark ? colors.surfaceContainer : Colors.white,
-              border: Border(
-                top: BorderSide(
-                  color: isDark ? Colors.white12 : Colors.black12,
+          AppPageBody(
+            maxWidth: AppBreakpoints.maxContentWidth,
+            child: Container(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 12,
+                bottom: MediaQuery.of(context).padding.bottom + 12,
+              ),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                border: Border(
+                  top: BorderSide(color: colors.outline.withValues(alpha: 0.4)),
                 ),
               ),
-            ),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: Icon(Icons.add_circle_outline, color: colors.primary),
-                  onPressed: () {
-                    _mostrarMenuAdjuntos(
-                      context,
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.add_circle_outline, color: colors.primary),
+                    tooltip: 'Adjuntar',
+                    onPressed: () {
+                      _mostrarMenuAdjuntos(
+                        context,
+                        userId,
+                        isMecanico,
+                        receptorId,
+                        colors,
+                        isDark,
+                      );
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.camera_alt, color: colors.primary),
+                    tooltip: context.l10n.chatCamera,
+                    onPressed: () => _pickAndSendImage(
                       userId,
                       isMecanico,
                       receptorId,
-                      colors,
-                      isDark,
-                    );
-                  },
-                ),
-                IconButton(
-                  icon: Icon(Icons.camera_alt, color: colors.primary),
-                  onPressed: () => _pickAndSendImage(
-                    userId,
-                    isMecanico,
-                    receptorId,
-                    ImageSource.camera,
-                  ),
-                ),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.white12 : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(24),
+                      ImageSource.camera,
                     ),
-                    child: TextField(
-                      controller: _controller,
-                      decoration: const InputDecoration(
-                        hintText: 'Escribe un mensaje...',
-                        border: InputBorder.none,
+                  ),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: colors.surfaceContainer,
+                        borderRadius: BorderRadius.circular(24),
                       ),
-                      onSubmitted: (_) =>
+                      child: TextField(
+                        controller: _controller,
+                        decoration: const InputDecoration(
+                          hintText: 'Escribe un mensaje...',
+                          border: InputBorder.none,
+                        ),
+                        onSubmitted: (_) =>
+                            _enviarMensaje(userId, isMecanico, receptorId),
+                      ),
+                    ),
+                  ),
+                  // `record` no soporta grabación a un File real en web (stop()
+                  // devuelve un blob URL, no una ruta de filesystem), y
+                  // ChatProvider.subirAudioChat depende de File.readAsBytes().
+                  // Ocultamos el control en vez de mostrar uno que falla en
+                  // silencio (implementar grabación web queda fuera de alcance).
+                  if (!kIsWeb)
+                    VoiceRecordButton(
+                      onGrabacionCompleta: (file, duracion) =>
+                          _grabarYEnviarAudio(
+                            file,
+                            duracion,
+                            userId,
+                            isMecanico,
+                            receptorId,
+                          ),
+                    ),
+                  const SizedBox(width: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: colors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: Icon(Icons.send, color: colors.onPrimary, size: 20),
+                      tooltip: 'Enviar',
+                      onPressed: () =>
                           _enviarMensaje(userId, isMecanico, receptorId),
                     ),
                   ),
-                ),
-                // `record` no soporta grabación a un File real en web (stop()
-                // devuelve un blob URL, no una ruta de filesystem), y
-                // ChatProvider.subirAudioChat depende de File.readAsBytes().
-                // Ocultamos el control en vez de mostrar uno que falla en
-                // silencio (implementar grabación web queda fuera de alcance).
-                if (!kIsWeb)
-                  VoiceRecordButton(
-                    onGrabacionCompleta: (file, duracion) =>
-                        _grabarYEnviarAudio(
-                          file,
-                          duracion,
-                          userId,
-                          isMecanico,
-                          receptorId,
-                        ),
-                  ),
-                const SizedBox(width: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: colors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.send, color: Colors.white, size: 20),
-                    onPressed: () =>
-                        _enviarMensaje(userId, isMecanico, receptorId),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -582,7 +585,6 @@ class _ChatScreenState extends State<ChatScreen> {
     MensajeModel msg,
     bool isMe,
     AppColors colors,
-    bool isDark,
     String tallerId,
   ) {
     switch (msg.tipo) {
@@ -611,7 +613,11 @@ class _ChatScreenState extends State<ChatScreen> {
           conversacionId: widget.conversacionId,
         );
       case 'imagen':
-        return ImagenChatCard(urlArchivo: msg.urlArchivo ?? '', isMe: isMe);
+        return ImagenChatCard(
+          urlArchivo: msg.urlArchivo ?? '',
+          isMe: isMe,
+          mensajeId: msg.id,
+        );
       case 'audio':
         return AudioChatCard(
           urlArchivo: msg.urlArchivo ?? '',
@@ -627,9 +633,7 @@ class _ChatScreenState extends State<ChatScreen> {
         return Text(
           msg.contenido,
           style: TextStyle(
-            color: isMe
-                ? Colors.white
-                : (isDark ? Colors.white : Colors.black87),
+            color: isMe ? colors.onPrimary : colors.textPrimary,
             fontSize: 15,
           ),
         );
@@ -824,5 +828,31 @@ class _ChatScreenState extends State<ChatScreen> {
         const SnackBar(content: Text('No se pudo enviar la nota de voz')),
       );
     }
+  }
+}
+
+/// Acuse de recibo del mensaje propio.
+///
+/// Los colores salen de la paleta y no de `Colors.white70` / `blue.shade200`:
+/// sobre `colors.primary`, que en tema oscuro es #81E6D9, esos dos daban
+/// 1,31:1 y 1,19:1 respectivamente.
+class _AcuseDeRecibo extends StatelessWidget {
+  final String estado;
+  const _AcuseDeRecibo({required this.estado});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final visto = estado == 'visto';
+    return Semantics(
+      label: visto ? 'Visto' : 'Enviado',
+      child: ExcludeSemantics(
+        child: Icon(
+          visto ? Icons.done_all : Icons.check,
+          size: 14,
+          color: colors.onPrimary.withValues(alpha: visto ? 1.0 : 0.7),
+        ),
+      ),
+    );
   }
 }
