@@ -429,8 +429,13 @@ class _ChatScreenState extends State<ChatScreen> {
               children: [
                 Positioned.fill(
                   child: ChatBackgroundPattern(
+                    // outline (not textPrimary) is the neutral/structural
+                    // token used for faint decorative tints elsewhere in
+                    // this module; alpha bumped above the light-mode value
+                    // because darkOutline (slate) has less luminance
+                    // contrast against darkSurface than primary does.
                     color: isDark
-                        ? colors.textPrimary.withValues(alpha: 0.05)
+                        ? colors.outline.withValues(alpha: 0.15)
                         : colors.primary.withValues(alpha: 0.08),
                   ),
                 ),
