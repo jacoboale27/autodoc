@@ -468,7 +468,23 @@ class _ChatScreenState extends State<ChatScreen> {
                             child: ChatBubble(
                               isMe: isMe,
                               isDeleted: msg.isDeleted,
-                              semanticLabel: '$nombreAutor: ${msg.contenido}',
+                              // Solo mensajes de texto (o borrados, que se
+                              // muestran como texto atenuado) pasan
+                              // semanticLabel: ChatBubble usa
+                              // excludeSemantics: true cuando hay label, lo
+                              // que descarta TODO el subárbol semántico del
+                              // hijo. Las tarjetas (reserva, cotización,
+                              // review, historial, audio, imagen, vehículo)
+                              // tienen sus propios controles interactivos
+                              // (botones Aceptar/Rechazar, play/pause, etc.)
+                              // con su propia semántica: si les pasáramos
+                              // este label también, esos controles
+                              // quedarían inalcanzables para un lector de
+                              // pantalla.
+                              semanticLabel:
+                                  (msg.tipo == 'texto' || msg.isDeleted)
+                                  ? '$nombreAutor: ${msg.contenido}'
+                                  : null,
                               footer: isMe
                                   ? _AcuseDeRecibo(estado: msg.estado)
                                   : null,

@@ -297,28 +297,11 @@ class _CotizacionCardBody extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.titleLarge.copyWith(
                     fontWeight: FontWeight.bold,
-                    // ⚠️ DESVIACIÓN DELIBERADA DEL BRIEF — PENDIENTE DE
-                    // VISTO BUENO HUMANO EN CODE REVIEW ⚠️
-                    // El brief (Step 5d) pedía literalmente `colors.secondary`
-                    // "sin ternario". Se sustituyó por `colors.primary` porque
-                    // `lightSecondary` (#81E6D9) es un tono pastel pensado
-                    // para fondos/acentos, con `onSecondary` oscuro como
-                    // contraparte de texto — usado como texto directo sobre
-                    // `colors.surface` en tema claro mide 1,37:1 (falla AA,
-                    // que exige ≥4,5:1). Esto es un defecto de la paleta para
-                    // este uso, no del código: por la regla del proyecto
-                    // ("si el contraste falla por un defecto de la paleta,
-                    // STOP y reporta, no parchear AppPalette"), `AppPalette`
-                    // NO fue tocado — se cambió únicamente el token de color
-                    // usado en este punto. `colors.primary` sí cumple ≥4,5:1
-                    // en ambos temas y es el mismo tono que ya usa
-                    // `AppSeverity.forReservaEstado` para el estado
-                    // 'cotizada'/'finalizada', así que no introduce un color
-                    // nuevo al módulo. Aun así, esto cambia el diseño visual
-                    // respecto a lo que el brief especificó, así que un
-                    // humano debe confirmar en code review que
-                    // `colors.primary` es la sustitución correcta (o decidir
-                    // corregir `lightSecondary` en `AppPalette` en su lugar).
+                    // Desviación aceptada del brief (que pedía
+                    // `colors.secondary` sin ternario): `colors.secondary`
+                    // mide ~1,37:1 de contraste sobre `colors.surface`, por
+                    // debajo del mínimo AA (4,5:1). Se usa `colors.primary`
+                    // en su lugar, que sí cumple AA; `AppPalette` no se tocó.
                     color: colors.primary,
                   ),
                 ),

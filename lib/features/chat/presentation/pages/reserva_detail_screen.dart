@@ -257,19 +257,16 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
             snapshot.data!.id,
           );
 
-          // Etiquetas cortas ('Pendiente'/'Cotizada' en vez de 'Pendiente de
-          // Confirmación'/'Cotización Enviada'): AppStatusBadge pone el
-          // icono y el texto en un Row sin Expanded, así que un Text
-          // demasiado largo no envuelve, desborda. A 320-375 px, junto al
-          // icono de calendario en la misma cabecera, solo las frases
-          // cortas caben en una línea.
+          // 'Cotización Enviada' (no 'Cotizada'): mismo label que usa
+          // reserva_chat_card.dart para el estado 'cotizada' — evita que el
+          // mismo estado se lea distinto en dos pantallas.
           final severidad = AppSeverity.forReservaEstado(
             reserva.estado,
             colors,
             pendienteLabel: 'Pendiente',
             confirmadaLabel: 'Confirmada',
             rechazadaLabel: 'Rechazada',
-            cotizadaLabel: 'Cotizada',
+            cotizadaLabel: 'Cotización Enviada',
           );
 
           return _isLoading
@@ -291,11 +288,23 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
+                                  // `AppStatusBadge` no trunca su propio
+                                  // texto: con la etiqueta más larga
+                                  // ('Cotización Enviada', ver Finding 3 de
+                                  // la revisión final) un `Flexible` solo no
+                                  // basta — mismo patrón que ya usa
+                                  // `chat_card_shell.dart` para su
+                                  // `trailing`, `FittedBox(scaleDown)` en
+                                  // vez de truncar a la mitad.
                                   Flexible(
-                                    child: AppStatusBadge(
-                                      text: severidad.label,
-                                      icon: severidad.icon,
-                                      type: _statusTypeDe(reserva.estado),
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerLeft,
+                                      child: AppStatusBadge(
+                                        text: severidad.label,
+                                        icon: severidad.icon,
+                                        type: _statusTypeDe(reserva.estado),
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 8),

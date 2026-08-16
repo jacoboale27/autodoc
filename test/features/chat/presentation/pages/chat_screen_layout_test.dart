@@ -117,6 +117,57 @@ void main() {
     expect(find.bySemanticsLabel(RegExp(r'^Taller Escobar:')), findsWidgets);
   });
 
+  testWidgets(
+    'una tarjeta de reserva sigue exponiendo sus botones al lector de '
+    'pantalla (Finding 1: ChatBubble.excludeSemantics no debe tragarse '
+    'el contenido interactivo de las tarjetas)',
+    (tester) async {
+      await Firebase.initializeApp();
+      final provider = FakeChatProvider(
+        conversaciones: [_conv()],
+        mensajes: [
+          MensajeModel(
+            id: 'm-reserva',
+            idRemitente: 'm1',
+            contenido: 'Reserva de cita',
+            tipo: 'reserva_card',
+            metadata: const {
+              'id_reserva': 'r1',
+              'estado': 'pendiente',
+              'fecha': '2026-08-20T10:00:00.000',
+              'hora': '10:00 AM',
+            },
+            timestamp: DateTime(2026, 8, 11),
+            estado: 'visto',
+          ),
+        ],
+      );
+      await pumpChatWidget(
+        tester,
+        const ChatScreen(conversacionId: 'c1'),
+        width: 375,
+        chatProvider: provider,
+        user: fakeChatUser(),
+      );
+
+      // El bubble entero NO debe llevar un semanticLabel propio para este
+      // tipo de mensaje (si lo llevara, `excludeSemantics: true` en
+      // ChatBubble taparía todo lo de abajo).
+      expect(find.bySemanticsLabel(RegExp(r'^Taller Escobar:')), findsNothing);
+
+      // El botón "Ver detalle" de ReservaChatCard (siempre presente, sin
+      // importar el estado) debe seguir siendo alcanzable por su propio
+      // label semántico — prueba directa de que el subárbol no fue
+      // excluido.
+      expect(find.bySemanticsLabel('Ver detalle'), findsOneWidget);
+
+      // Los botones Aceptar/Rechazar (estado 'pendiente', mensaje ajeno,
+      // rol Propietario) también deben ser alcanzables.
+      expect(find.bySemanticsLabel('Aceptar'), findsOneWidget);
+      expect(find.bySemanticsLabel('Rechazar'), findsOneWidget);
+    },
+  );
+
   testWidgets('un rebuild del provider no relanza la consulta del receptor', (
     tester,
   ) async {
