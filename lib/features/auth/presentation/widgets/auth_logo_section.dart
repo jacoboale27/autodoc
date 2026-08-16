@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_motion.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
@@ -13,7 +14,7 @@ class AuthLogoSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final content = Column(
       children: [
         Container(
           padding: const EdgeInsets.all(16),
@@ -25,6 +26,7 @@ class AuthLogoSection extends StatelessWidget {
             'assets/logo/autodoc_isotype.svg',
             width: Responsive.iconSize(context, 48),
             height: Responsive.iconSize(context, 48),
+            semanticsLabel: 'AutoDoc',
           ),
         ),
         const SizedBox(height: 16),
@@ -41,6 +43,14 @@ class AuthLogoSection extends StatelessWidget {
           style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
         ),
       ],
-    ).animate().fadeIn(duration: 800.ms).slideY(begin: -0.2, end: 0);
+    );
+
+    if (AppMotion.reduced(context)) {
+      return content.animate().fadeIn(duration: AppMotion.sheetEnter);
+    }
+    return content
+        .animate()
+        .fadeIn(duration: AppMotion.sheetEnter)
+        .slideY(begin: -0.2, end: 0, curve: AppMotion.easeOut);
   }
 }
