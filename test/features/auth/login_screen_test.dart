@@ -1,58 +1,55 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:provider/provider.dart';
-import 'package:autodoc/core/theme/app_theme.dart';
-import 'package:autodoc/features/auth/presentation/screens/login_screen.dart';
-import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
-import 'package:autodoc/l10n/app_localizations.dart';
-import '../../helpers/test_helpers.mocks.dart';
+
+import 'package:autodoc/features/auth/presentation/pages/auth_screen.dart';
+
+import '../../support/entry_harness.dart';
 
 void main() {
-  late MockAuthService mockAuthService;
-  late MockAdminAuthService mockAdminAuthService;
-  late AuthProvider authProvider;
-
-  setUp(() {
-    mockAuthService = MockAuthService();
-    mockAdminAuthService = MockAdminAuthService();
-    authProvider = AuthProvider(
-      authService: mockAuthService,
-      adminAuthService: mockAdminAuthService,
+  test('no queda ninguna pantalla fuera de pages/', () {
+    final offenders = Directory('lib/features')
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((f) => f.path.endsWith('_screen.dart'))
+        .where((f) => f.path.replaceAll(r'\', '/').contains('/screens/'))
+        .map((f) => f.path)
+        .toList();
+    expect(
+      offenders,
+      isEmpty,
+      reason: 'CONVENTIONS.md §1: las pantallas viven en presentation/pages/',
     );
   });
 
-  Widget buildTestableWidget(Widget widget) {
-    return MaterialApp(
-      theme: AppTheme.light,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: ChangeNotifierProvider<AuthProvider>.value(
-        value: authProvider,
-        child: widget,
-      ),
+  testWidgets('la ruta de acceso renderiza AuthScreen en modo login', (
+    tester,
+  ) async {
+    await pumpEntry(tester, const AuthScreen(isLogin: true), width: 375);
+    final screen = tester.widget<AuthScreen>(find.byType(AuthScreen));
+    expect(screen.isLogin, isTrue);
+  });
+
+  testWidgets('en horizontal de telefono el acceso hace scroll y no desborda', (
+    tester,
+  ) async {
+    // Este es el contrato que el comentario de LoginScreen prometia
+    // y que ningun test comprobaba: 800x400 es un telefono girado.
+    final errors = await pumpEntryCollecting(
+      tester,
+      const AuthScreen(isLogin: true),
+      width: 800,
+      height: 400,
     );
-  }
-
-  testWidgets(
-    'LoginScreen uses SingleChildScrollView and ConstrainedBox for landscape layout',
-    (WidgetTester tester) async {
-      // Set landscape physical size
-      tester.view.physicalSize = const Size(800, 400);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(buildTestableWidget(const LoginScreen()));
-      await tester.pumpAndSettle();
-
-      // Verify SingleChildScrollView is used
-      expect(find.byType(SingleChildScrollView), findsAtLeastNWidgets(1));
-
-      // Verify ConstrainedBox is used to limit width on landscape/wide displays
-      expect(find.byType(ConstrainedBox), findsAtLeastNWidgets(1));
-
-      // Verify layout renders without any visual overflow errors
-      expect(tester.takeException(), isNull);
-    },
-  );
+    // AuthBackgroundBlobs (widget decorativo, fuera del alcance de esta
+    // tarea) anima con flutter_animate durante 2.5s reales. pumpEntryCollecting
+    // solo asienta un frame (para poder capturar errores de layout del
+    // primer pump), asi que hay que agotar ese timer aqui antes de que el
+    // arbol se destruya o el binding revienta con '!timersPending'. Mismo
+    // patron que test/features/auth/auth_screen_form_test.dart.
+    await tester.pump(const Duration(seconds: 3));
+    expect(errors, isEmpty);
+    expect(find.byType(SingleChildScrollView), findsAtLeastNWidgets(1));
+  });
 }
