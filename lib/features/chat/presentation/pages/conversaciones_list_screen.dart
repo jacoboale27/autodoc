@@ -62,8 +62,9 @@ class _ConversacionesListScreenState extends State<ConversacionesListScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       // Desde `expanded` el shell ya aporta su propia barra superior
       // (Fase 2), así que un AppBar aquí sería el segundo título de la
-      // pantalla. El corte pasa de 800 px (responsive_framework TABLET) a
-      // 840 px (AppBreakpoints.expanded), que es el del resto de la app.
+      // pantalla. El corte pasa de 800 px (el sistema de breakpoints
+      // anterior, TABLET) a 840 px (AppBreakpoints.expanded), que es el
+      // del resto de la app.
       appBar: AppBreakpoints.of(context).isAtLeastExpanded
           ? null
           : AppBar(

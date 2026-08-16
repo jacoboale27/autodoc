@@ -430,7 +430,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 Positioned.fill(
                   child: ChatBackgroundPattern(
                     color: isDark
-                        ? Colors.white.withValues(alpha: 0.05)
+                        ? colors.textPrimary.withValues(alpha: 0.05)
                         : colors.primary.withValues(alpha: 0.08),
                   ),
                 ),
@@ -650,7 +650,7 @@ class _ChatScreenState extends State<ChatScreen> {
   ) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: isDark ? colors.surfaceContainer : Colors.white,
+      backgroundColor: isDark ? colors.surfaceContainer : colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),

@@ -33,6 +33,35 @@ const List<String> kTokenizedPaths = [
   'lib/core/widgets/app_dialog_content.dart',
   'lib/features/mechanic/presentation/pages',
   'lib/features/mechanic/presentation/widgets',
+  // Dos ficheros del módulo chat NO entran en el ratchet, con motivo:
+  //
+  // - cards/imagen_chat_card.dart: el visor a pantalla completa se dibuja
+  //   sobre la foto del usuario, un fondo desconocido. El par
+  //   Colors.black54 + Colors.white garantiza el contraste sea cual sea la
+  //   imagen; seguir el tema aquí lo empeoraría (una X del color de la
+  //   superficie desaparece sobre una foto de ese color).
+  // - voice_record_button.dart: mismo caso. El overlay de grabación es un
+  //   HUD flotante sobre el chat, no una superficie del tema.
+  //
+  // Ambos están tokenizados en todo lo demás. Si en el futuro se añade a
+  // AppColors un par explícito tipo `scrim` / `onScrim`, estos dos ficheros
+  // deben migrarse y entrar aquí.
+  //
+  // ── Fase 6: módulo chat ──
+  'lib/features/chat/presentation/pages/chat_screen.dart',
+  'lib/features/chat/presentation/pages/conversaciones_list_screen.dart',
+  'lib/features/chat/presentation/pages/reserva_detail_screen.dart',
+  'lib/features/chat/presentation/widgets/chat_bubble.dart',
+  'lib/features/chat/presentation/widgets/chat_card_shell.dart',
+  'lib/features/chat/presentation/widgets/chat_background.dart',
+  'lib/features/chat/presentation/widgets/cotizacion_picker.dart',
+  'lib/features/chat/presentation/widgets/vehiculo_picker.dart',
+  'lib/features/chat/presentation/widgets/cards/audio_chat_card.dart',
+  'lib/features/chat/presentation/widgets/cards/cotizacion_chat_card.dart',
+  'lib/features/chat/presentation/widgets/cards/historial_chat_card.dart',
+  'lib/features/chat/presentation/widgets/cards/reserva_chat_card.dart',
+  'lib/features/chat/presentation/widgets/cards/review_chat_card.dart',
+  'lib/features/chat/presentation/widgets/cards/vehiculo_chat_card.dart',
 ];
 
 /// Ficheros exentos, con su motivo. `app_shadows.dart` define las sombras
