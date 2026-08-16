@@ -84,7 +84,10 @@ void main() {
         ),
       );
 
-      // The splash screen waits 3 seconds before navigating.
+      // The splash resolves the destination almost immediately now (400ms
+      // minimum + up to 2s of bounded profile polling for signed-in users;
+      // this visitor is signed out, so it's just the 400ms floor). 4s is
+      // still comfortably enough to let it settle.
       await tester.pump(const Duration(seconds: 4));
       await tester.pumpAndSettle();
 
