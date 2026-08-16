@@ -53,6 +53,54 @@ void main() {
     );
   });
 
+  testWidgets(
+    'la barra inferior queda pegada al fondo del viewport tras hacer scroll',
+    (tester) async {
+      // Guarda de posición real (no solo "no se solapa con la tarjeta"):
+      // AuthBottomNav vive dentro del mismo SingleChildScrollView que la
+      // tarjeta (colocación por flujo, ver comentario en auth_screen.dart
+      // sobre por qué el Expanded del brief original falla el layout con el
+      // contenido real del Task 4). Al ser el último hijo del Column, cuando
+      // el usuario hace scroll hasta el final, su borde inferior debe
+      // terminar pegado al borde inferior visible del viewport — eso es lo
+      // mínimo que se le puede pedir a algo llamado "barra inferior": que
+      // sea alcanzable con scroll y que, una vez alcanzada, quede anclada al
+      // fondo, no flotando a mitad de una zona vacía ni cortada fuera de la
+      // pantalla. Esto habría detectado tanto una regresión que insertara
+      // contenido después de la barra como un padding/SafeArea mal calculado.
+      const viewportHeight = 812.0;
+      const bottomPadding = 24.0; // AppSpacing.xl, padding inferior del scroll
+      for (final width in kAuditWidths) {
+        await pumpEntry(
+          tester,
+          const AuthScreen(isLogin: true),
+          width: width,
+          height: viewportHeight,
+        );
+        final scrollable = find.byType(SingleChildScrollView);
+        await tester.fling(scrollable, const Offset(0, -5000), 3000);
+        await tester.pumpAndSettle();
+
+        final nav = find.byKey(const ValueKey('auth-bottom-nav'));
+        final navBottom = tester.getBottomLeft(nav).dy;
+        expect(
+          navBottom,
+          closeTo(viewportHeight - bottomPadding, 4),
+          reason:
+              'a $width px, tras hacer scroll hasta el final la barra '
+              'inferior no queda anclada al fondo del viewport '
+              '(navBottom=$navBottom)',
+        );
+        final navTop = tester.getTopLeft(nav).dy;
+        expect(
+          navTop,
+          lessThanOrEqualTo(viewportHeight),
+          reason: 'a $width px la barra inferior queda fuera del viewport',
+        );
+      }
+    },
+  );
+
   testWidgets('el logo de Google no viene de la red', (tester) async {
     final source = File(
       'lib/features/auth/presentation/pages/auth_screen.dart',

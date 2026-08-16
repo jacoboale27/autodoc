@@ -118,6 +118,33 @@ class _AuthScreenState extends State<AuthScreen> {
                   // detrás de la tarjeta "por construcción": el orden
                   // secuencial del Column lo impide con independencia de
                   // cuánto crezca el formulario o si hace falta scroll.
+                  //
+                  // Se intentó (fix-round del task 5) la estructura del brief
+                  // original — SafeArea > Column [ Expanded(Center(
+                  // SingleChildScrollView(...))), AuthBottomNav ] — con
+                  // AuthBottomNav como hermano fijo FUERA del Expanded. Se
+                  // verificó empíricamente contra
+                  // `auth_screen_layout_test.dart` a 375×812 (altura por
+                  // defecto de `pumpEntry`) y falla de forma reproducible:
+                  // el `Expanded` fija la altura del área scrollable en
+                  // (818 lógicos de SafeArea − ~92 de AuthBottomNav) ≈ 720 px,
+                  // pero la tarjeta del Task 4 (con logo, ambos campos,
+                  // "remember me"/"forgot password", submit, divider y botón
+                  // de Google) mide ~747 px de alto ella sola, más el logo de
+                  // 210 px encima — muy por encima de esos ~720 px. Con
+                  // `Center` dentro del `Expanded`, el contenido no cabe y el
+                  // scroll arranca centrado/desde arriba: el borde inferior
+                  // de la tarjeta queda en dy≈1013, muy por debajo del techo
+                  // fijo de AuthBottomNav en dy≈731 — la tarjeta queda
+                  // literalmente detrás/debajo de la barra en el primer
+                  // frame, sin que el usuario haya hecho scroll todavía.
+                  // Output real de test capturado:
+                  //   Expected: a value less than or equal to <731.0>
+                  //     Actual: <1013.0>
+                  //   la tarjeta se mete debajo de la barra inferior
+                  // Por eso se mantiene la colocación por flujo: no es un
+                  // descuido, es la que pasa el test con el contenido real
+                  // del Task 4 en el viewport auditado más pequeño.
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
