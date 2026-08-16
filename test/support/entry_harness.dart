@@ -111,6 +111,7 @@ Widget _wrap(
   required Locale locale,
   required bool disableAnimations,
   UserProfileProvider? profile,
+  TextScaler textScaler = TextScaler.noScaling,
 }) {
   return MultiProvider(
     providers: [
@@ -135,9 +136,10 @@ Widget _wrap(
       supportedLocales: AppLocalizations.supportedLocales,
       home: Builder(
         builder: (context) => MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(disableAnimations: disableAnimations),
+          data: MediaQuery.of(context).copyWith(
+            disableAnimations: disableAnimations,
+            textScaler: textScaler,
+          ),
           child: child,
         ),
       ),
@@ -170,6 +172,7 @@ Future<void> pumpEntry(
   Locale locale = const Locale('es'),
   bool disableAnimations = false,
   UserProfileProvider? profile,
+  TextScaler textScaler = TextScaler.noScaling,
 }) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   _sizeView(tester, width, height);
@@ -180,6 +183,7 @@ Future<void> pumpEntry(
       locale: locale,
       disableAnimations: disableAnimations,
       profile: profile,
+      textScaler: textScaler,
     ),
   );
   await tester.pumpAndSettle(const Duration(milliseconds: 50));
@@ -240,6 +244,7 @@ Future<List<FlutterErrorDetails>> pumpEntryCollecting(
   Locale locale = const Locale('es'),
   bool disableAnimations = false,
   UserProfileProvider? profile,
+  TextScaler textScaler = TextScaler.noScaling,
 }) async {
   final captured = <FlutterErrorDetails>[];
   final previous = FlutterError.onError;
@@ -254,6 +259,7 @@ Future<List<FlutterErrorDetails>> pumpEntryCollecting(
         locale: locale,
         disableAnimations: disableAnimations,
         profile: profile,
+        textScaler: textScaler,
       ),
     );
     await tester.pump();

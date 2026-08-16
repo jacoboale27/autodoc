@@ -12,9 +12,13 @@ import '../providers/auth_provider.dart';
 import 'package:autodoc/features/auth/data/services/auth_preferences_service.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
+import 'package:autodoc/core/widgets/app_text_field.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
 
 class AuthScreen extends StatefulWidget {
   final bool isLogin;
@@ -30,6 +34,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authPreferences = AuthPreferencesService();
+  final _formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
@@ -199,194 +204,231 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                _isLoginMode
-                    ? context.l10n.authWelcomeBack
-                    : context.l10n.authCreateAccount,
-                style: AppTextStyles.headlineSmall.copyWith(
-                  color: colors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _isLoginMode
-                    ? context.l10n.authEnterCredentials
-                    : context.l10n.authRegisterToManage,
-                textAlign: TextAlign.center,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: colors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // Form Fields
-              _buildTextField(
-                label: _isLoginMode
-                    ? context.l10n.authEmailOrUserLabel
-                    : context.l10n.authEmailLabel,
-                hint: _isLoginMode
-                    ? context.l10n.authEmailOrUserHint
-                    : context.l10n.authEmailHint,
-                icon: Icons.mail_outline,
-                colors: colors,
-                controller: _emailController,
-              ),
-              const SizedBox(height: 20),
-              _buildTextField(
-                label: context.l10n.authPasswordLabel,
-                hint: context.l10n.authPasswordHint,
-                icon: Icons.lock_outline,
-                isPassword: true,
-                colors: colors,
-                controller: _passwordController,
-              ),
-
-              const SizedBox(height: 12),
-              // Extras
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
-                runSpacing: 8,
+          child: AutofillGroup(
+            child: Form(
+              key: _formKey,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+                  Text(
+                    _isLoginMode
+                        ? context.l10n.authWelcomeBack
+                        : context.l10n.authCreateAccount,
+                    style: AppTextStyles.headlineSmall.copyWith(
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _isLoginMode
+                        ? context.l10n.authEnterCredentials
+                        : context.l10n.authRegisterToManage,
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Form Fields
+                  AppTextField(
+                    key: const ValueKey('auth-email-field'),
+                    label: _isLoginMode
+                        ? context.l10n.authEmailOrUserLabel
+                        : context.l10n.authEmailLabel,
+                    hintText: _isLoginMode
+                        ? context.l10n.authEmailOrUserHint
+                        : context.l10n.authEmailHint,
+                    controller: _emailController,
+                    prefixIcon: Icon(
+                      Icons.mail_outline,
+                      color: colors.textSecondary,
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [AutofillHints.username],
+                    validator: (value) {
+                      final email = (value ?? '').trim();
+                      if (email.isEmpty) {
+                        return context.l10n.authCompleteCredentials;
+                      }
+                      // En login se admite tambien usuario admin sin arroba:
+                      // esa es la regla de negocio existente, no se cambia.
+                      if (!_isLoginMode && !_isValidEmail(email)) {
+                        return context.l10n.authEnterValidEmail;
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  AppTextField(
+                    key: const ValueKey('auth-password-field'),
+                    label: context.l10n.authPasswordLabel,
+                    hintText: context.l10n.authPasswordHint,
+                    controller: _passwordController,
+                    prefixIcon: Icon(
+                      Icons.lock_outline,
+                      color: colors.textSecondary,
+                    ),
+                    obscureText: true,
+                    obscureToggle: true,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: const [AutofillHints.password],
+                    onSubmitted: (_) => _submit(),
+                    validator: (value) {
+                      final pass = value ?? '';
+                      if (pass.isEmpty) {
+                        return context.l10n.authCompleteCredentials;
+                      }
+                      if (!_isLoginMode && pass.length < 6) {
+                        return context.l10n.authPasswordTooShort;
+                      }
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 12),
+                  // Extras
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: Checkbox(
-                          value: _rememberMe,
-                          onChanged: (value) {
-                            setState(() => _rememberMe = value ?? false);
-                          },
-                          activeColor: colors.primary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
+                      Semantics(
+                        label: context.l10n.authRememberMe,
+                        checked: _rememberMe,
+                        child: InkWell(
+                          key: const ValueKey('auth-remember-me'),
+                          onTap: () =>
+                              setState(() => _rememberMe = !_rememberMe),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 4,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: Checkbox(
+                                    value: _rememberMe,
+                                    onChanged: (value) => setState(
+                                      () => _rememberMe = value ?? false,
+                                    ),
+                                    activeColor: colors.primary,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                // Flexible: a 200% de escala de fuente el
+                                // texto puede exceder el ancho que le deja
+                                // el Wrap (mismo criterio que el separador
+                                // "OR CONTINUE WITH" del punto 4f).
+                                Flexible(
+                                  child: Text(
+                                    context.l10n.authRememberMe,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppTextStyles.labelMedium.copyWith(
+                                      color: colors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () => setState(() => _rememberMe = !_rememberMe),
-                        child: Text(
-                          context.l10n.authRememberMe,
-                          style: AppTextStyles.labelMedium.copyWith(
-                            color: colors.textSecondary,
+                      if (_isLoginMode)
+                        TextButton(
+                          key: const ValueKey('auth-forgot-password'),
+                          onPressed: _showForgotPasswordDialog,
+                          child: Text(
+                            context.l10n.authForgotPassword,
+                            style: AppTextStyles.labelMedium.copyWith(
+                              color: colors.primary,
+                            ),
                           ),
+                        ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+                  // Submit Button
+                  AppButton(
+                    key: const ValueKey('auth-submit'),
+                    text: _isLoginMode
+                        ? context.l10n.authLoginButton
+                        : context.l10n.authRegisterButton,
+                    size: AppButtonSize.large,
+                    isLoading: context.watch<AuthProvider>().isLoading,
+                    onPressed: _submit,
+                    semanticLabel: _isLoginMode
+                        ? context.l10n.authLoginButton
+                        : context.l10n.authRegisterButton,
+                  ),
+
+                  const SizedBox(height: 24),
+                  // Divider
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Divider(
+                          color: colors.outline.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      Flexible(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Text(
+                            context.l10n.authOrContinueWith,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: AppTextStyles.labelSmall.copyWith(
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Divider(
+                          color: colors.outline.withValues(alpha: 0.5),
                         ),
                       ),
                     ],
                   ),
-                  if (_isLoginMode)
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      onPressed: _showForgotPasswordDialog,
-                      child: Text(
-                        context.l10n.authForgotPassword,
-                        style: AppTextStyles.labelMedium.copyWith(
-                          color: colors.primary,
-                        ),
-                      ),
-                    ),
+
+                  const SizedBox(height: 24),
+                  // Google Button
+                  _buildGoogleButton(colors),
                 ],
               ),
-
-              const SizedBox(height: 24),
-              // Submit Button
-              _buildSubmitButton(colors),
-
-              const SizedBox(height: 24),
-              // Divider
-              Row(
-                children: [
-                  Expanded(
-                    child: Divider(
-                      color: colors.outline.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      context.l10n.authOrContinueWith,
-                      style: AppTextStyles.labelSmall.copyWith(
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Divider(
-                      color: colors.outline.withValues(alpha: 0.5),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-              // Google Button
-              _buildGoogleButton(colors),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildTextField({
-    required String label,
-    required String hint,
-    required IconData icon,
-    required AppColors colors,
-    required TextEditingController controller,
-    bool isPassword = false,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 6),
-          child: Text(
-            label,
-            style: AppTextStyles.labelMedium.copyWith(
-              color: colors.textPrimary,
-            ),
-          ),
-        ),
-        Container(
-          height: Responsive.size(context, 52),
-          decoration: BoxDecoration(
-            color: colors.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: colors.outline.withValues(alpha: 0.5)),
-          ),
-          child: TextField(
-            controller: controller,
-            obscureText: isPassword,
-            style: AppTextStyles.bodyLarge.copyWith(color: colors.textPrimary),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: AppTextStyles.bodyLarge.copyWith(
-                color: colors.textSecondary,
-              ),
-              prefixIcon: Icon(
-                icon,
-                color: colors.textSecondary,
-                size: Responsive.iconSize(context, 20),
-              ),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(vertical: 15),
-            ),
-          ),
-        ),
-      ],
-    );
+  Future<void> _submit() async {
+    final authProvider = context.read<AuthProvider>();
+    if (authProvider.isLoading) return;
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      HapticFeedback.heavyImpact();
+      return;
+    }
+    if (_isLoginMode) {
+      await _handleEmailSignIn(authProvider);
+    } else {
+      await _handleEmailRegister(authProvider);
+    }
   }
 
   Future<void> _navigateAfterAuth(AuthProvider authProvider) async {
@@ -403,14 +445,6 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _handleEmailSignIn(AuthProvider authProvider) async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
-
-    if (email.isEmpty || password.isEmpty) {
-      HapticFeedback.heavyImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.authCompleteCredentials)),
-      );
-      return;
-    }
 
     final success = await authProvider.signIn(email, password);
     if (!mounted) return;
@@ -429,22 +463,6 @@ class _AuthScreenState extends State<AuthScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
-      HapticFeedback.heavyImpact();
-      UiUtils.showErrorSnackbar(context, context.l10n.authCompleteCredentials);
-      return;
-    }
-    if (!_isValidEmail(email)) {
-      HapticFeedback.heavyImpact();
-      UiUtils.showErrorSnackbar(context, context.l10n.authEnterValidEmail);
-      return;
-    }
-    if (password.length < 6) {
-      HapticFeedback.heavyImpact();
-      UiUtils.showErrorSnackbar(context, context.l10n.authPasswordTooShort);
-      return;
-    }
-
     final success = await authProvider.register(email, password);
     if (!mounted) return;
 
@@ -456,54 +474,6 @@ class _AuthScreenState extends State<AuthScreen> {
       HapticFeedback.heavyImpact();
       UiUtils.showErrorSnackbar(context, authProvider.error!);
     }
-  }
-
-  Widget _buildSubmitButton(AppColors colors) {
-    final authProvider = context.watch<AuthProvider>();
-
-    return Semantics(
-      label: _isLoginMode ? 'Botón Iniciar sesión' : 'Botón Registrarse',
-      button: true,
-      enabled: !authProvider.isLoading,
-      child: SizedBox(
-        width: double.infinity,
-        height: 54,
-        child: ElevatedButton(
-          onPressed: authProvider.isLoading
-              ? null
-              : () async {
-                  if (_isLoginMode) {
-                    await _handleEmailSignIn(authProvider);
-                  } else {
-                    await _handleEmailRegister(authProvider);
-                  }
-                },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: colors.primary,
-            foregroundColor: colors.onPrimary,
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            textStyle: AppTextStyles.titleMedium,
-          ),
-          child: authProvider.isLoading
-              ? SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    color: colors.onPrimary,
-                    strokeWidth: 2,
-                  ),
-                )
-              : Text(
-                  _isLoginMode
-                      ? context.l10n.authLoginButton
-                      : context.l10n.authRegisterButton,
-                ),
-        ),
-      ),
-    );
   }
 
   Widget _buildGoogleButton(AppColors colors) {
