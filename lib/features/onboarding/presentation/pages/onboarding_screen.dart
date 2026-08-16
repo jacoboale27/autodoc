@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:ui';
 import 'package:autodoc/features/auth/data/services/auth_preferences_service.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_motion.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
@@ -22,29 +22,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  final List<OnboardingContent> _contents = [
+  static const List<OnboardingContent> _contents = <OnboardingContent>[
     OnboardingContent(
       title: 'Diagnóstico en tiempo real',
       description:
-          'Mantén tu auto en perfecto estado con monitoreo constante de todos los sistemas críticos.',
-      imageUrl:
-          'https://lh3.googleusercontent.com/aida-public/AB6AXuAGuLOtm-XW2HPNRArFEVcOAhv4hjIEx54m69ca89JZltsaqO4rUiGxbdPpKpBfxUAJa9aaFgZgvBfpkuHNw3e-iB4vf5LdvMmYdGCpG0Ofiv6z19ojLhGPnUe_9SWK48pl1BzBU1o8xvEILNvboHlEBMSw6NX3RaCY_yF8ZD2518ipqAt_1SQgzQ8BcaGIXp2h2d-agNaSJs-1c2VDrS78ys74l0KTKt-F03N6pKA9uLD6jQniKaI_eh4WtUrbNdZPSHFAjloNDtM',
+          'Mantén tu auto en perfecto estado con monitoreo constante de '
+          'todos los sistemas críticos.',
+      icon: Icons.monitor_heart_outlined,
       features: ['Motor OK', 'Frenos Seguros'],
     ),
     OnboardingContent(
       title: 'Recordatorios Inteligentes',
       description:
-          'Nunca más olvides un cambio de aceite o mantenimiento preventivo. Nosotros te avisamos.',
-      imageUrl:
-          'https://lh3.googleusercontent.com/aida-public/AB6AXuAGuLOtm-XW2HPNRArFEVcOAhv4hjIEx54m69ca89JZltsaqO4rUiGxbdPpKpBfxUAJa9aaFgZgvBfpkuHNw3e-iB4vf5LdvMmYdGCpG0Ofiv6z19ojLhGPnUe_9SWK48pl1BzBU1o8xvEILNvboHlEBMSw6NX3RaCY_yF8ZD2518ipqAt_1SQgzQ8BcaGIXp2h2d-agNaSJs-1c2VDrS78ys74l0KTKt-F03N6pKA9uLD6jQniKaI_eh4WtUrbNdZPSHFAjloNDtM', // Reusing placeholder as requested
+          'Nunca más olvides un cambio de aceite o mantenimiento '
+          'preventivo. Nosotros te avisamos.',
+      icon: Icons.notifications_active_outlined,
       features: ['Aceite 80%', 'Llantas OK'],
     ),
     OnboardingContent(
       title: 'Tu auto te lo agradecerá',
       description:
-          'Descubre una nueva forma de cuidar tu vehículo con recordatorios inteligentes y diagnósticos en tiempo real.',
-      imageUrl:
-          'https://lh3.googleusercontent.com/aida-public/AB6AXuAGuLOtm-XW2HPNRArFEVcOAhv4hjIEx54m69ca89JZltsaqO4rUiGxbdPpKpBfxUAJa9aaFgZgvBfpkuHNw3e-iB4vf5LdvMmYdGCpG0Ofiv6z19ojLhGPnUe_9SWK48pl1BzBU1o8xvEILNvboHlEBMSw6NX3RaCY_yF8ZD2518ipqAt_1SQgzQ8BcaGIXp2h2d-agNaSJs-1c2VDrS78ys74l0KTKt-F03N6pKA9uLD6jQniKaI_eh4WtUrbNdZPSHFAjloNDtM',
+          'Descubre una nueva forma de cuidar tu vehículo con recordatorios '
+          'inteligentes y diagnósticos en tiempo real.',
+      icon: Icons.directions_car_filled_outlined,
       features: ['Motor OK', '100% Vida'],
     ),
   ];
@@ -170,52 +170,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             // Illustration Section with Glassmorphism
                             SizedBox(
                               height: illustrationHeight,
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  // Decorative Blobs
-                                  Positioned(
-                                        top: 20,
-                                        right: 20,
-                                        child: Container(
-                                          width: 100,
-                                          height: 100,
-                                          decoration: BoxDecoration(
-                                            color: colors.primary.withValues(
-                                              alpha: 0.2,
+                              child: Center(
+                                // El panel ocupa el ancho disponible con
+                                // un tope de lectura. Antes era
+                                // `width: 280` literal: 19 % del ancho a
+                                // 1440 px y recortado a 320 px.
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: AppBreakpoints.maxReadingWidth,
+                                  ),
+                                  child:
+                                      ClipRRect(
+                                            key: const ValueKey(
+                                              'onboarding-panel',
                                             ),
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ).withBlur(30),
-                                      )
-                                      .animate(
-                                        target: _currentPage == index ? 1 : 0,
-                                      )
-                                      .scale(duration: 600.ms),
-                                  Positioned(
-                                        bottom: 20,
-                                        left: 20,
-                                        child: Container(
-                                          width: 120,
-                                          height: 120,
-                                          decoration: BoxDecoration(
-                                            color: colors.secondary.withValues(
-                                              alpha: 0.2,
-                                            ),
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ).withBlur(40),
-                                      )
-                                      .animate(
-                                        target: _currentPage == index ? 1 : 0,
-                                      )
-                                      .scale(duration: 800.ms),
-                                  // Glass Panel
-                                  LayoutBuilder(
-                                    builder: (context, constraints) {
-                                      return ClipRRect(
                                             borderRadius: BorderRadius.circular(
-                                              24,
+                                              AppRadius.xxl,
                                             ),
                                             child: BackdropFilter(
                                               filter: ImageFilter.blur(
@@ -223,8 +193,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                                 sigmaY: 12,
                                               ),
                                               child: Container(
-                                                width: 280,
-                                                height: constraints.maxHeight,
                                                 decoration: BoxDecoration(
                                                   color: colors.surfaceContainer
                                                       .withValues(
@@ -233,7 +201,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                                             : 0.8,
                                                       ),
                                                   borderRadius:
-                                                      BorderRadius.circular(24),
+                                                      BorderRadius.circular(
+                                                        AppRadius.xxl,
+                                                      ),
                                                   border: Border.all(
                                                     color: colors.outline
                                                         .withValues(alpha: 0.3),
@@ -241,32 +211,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                                   ),
                                                 ),
                                                 padding: const EdgeInsets.all(
-                                                  24,
+                                                  AppSpacing.xl,
                                                 ),
                                                 child: Column(
                                                   children: [
                                                     Expanded(
-                                                      child: ClipRRect(
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              16,
-                                                            ),
-                                                        child: CachedNetworkImage(
-                                                          imageUrl:
-                                                              content.imageUrl,
-                                                          fit: BoxFit.cover,
-                                                          placeholder:
-                                                              (
-                                                                context,
-                                                                url,
-                                                              ) => Container(
-                                                                color: colors
-                                                                    .surfaceContainer,
-                                                              ),
-                                                        ),
+                                                      child: _illustration(
+                                                        content,
+                                                        colors,
                                                       ),
                                                     ),
-                                                    const SizedBox(height: 16),
+                                                    const SizedBox(
+                                                      height: AppSpacing.base,
+                                                    ),
                                                     Row(
                                                       children: [
                                                         _buildFeatureItem(
@@ -302,10 +259,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                             end: 0,
                                             duration: 500.ms,
                                           )
-                                          .fadeIn();
-                                    },
-                                  ),
-                                ],
+                                          .fadeIn(),
+                                ),
                               ),
                             ),
 
@@ -406,6 +361,43 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
+  Widget _illustration(OnboardingContent content, AppColors colors) {
+    final fallback = Container(
+      key: const ValueKey('onboarding-illustration-fallback'),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colors.primary.withValues(alpha: 0.18),
+            colors.secondary.withValues(alpha: 0.18),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Center(
+        child: Icon(
+          content.icon,
+          size: 64,
+          color: colors.primary,
+          semanticLabel: content.title,
+        ),
+      ),
+    );
+
+    if (content.assetPath == null) return fallback;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: Image.asset(
+        content.assetPath!,
+        fit: BoxFit.cover,
+        semanticLabel: content.title,
+        errorBuilder: (_, _, _) => fallback,
+      ),
+    );
+  }
+
   Widget _buildFeatureItem(String text, IconData icon, AppColors colors) {
     return Expanded(
       child: Container(
@@ -439,20 +431,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 class OnboardingContent {
   final String title;
   final String description;
-  final String imageUrl;
+
+  /// Ilustracion local. `null` mientras no existan los assets: en ese caso
+  /// se dibuja el degradado con el icono, que es del design system y
+  /// funciona sin red.
+  final String? assetPath;
+
+  /// Icono de respaldo, que **siempre** existe.
+  final IconData icon;
+
   final List<String> features;
 
-  OnboardingContent({
+  const OnboardingContent({
     required this.title,
     required this.description,
-    required this.imageUrl,
+    required this.icon,
     required this.features,
+    this.assetPath,
   });
-}
-
-extension on Widget {
-  Widget withBlur(double sigma) => ImageFiltered(
-    imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-    child: this,
-  );
 }
