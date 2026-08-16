@@ -4,7 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'dart:ui';
 import 'package:autodoc/features/auth/data/services/auth_preferences_service.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_motion.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -46,6 +50,33 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   ];
 
   @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _previous() => _pageController.previousPage(
+    duration: AppMotion.transformDuration(context, AppMotion.dropdown),
+    curve: AppMotion.easeInOut,
+  );
+
+  Future<void> _skip() async {
+    await AuthPreferencesService().setOnboardingCompleted(true);
+    if (mounted) context.go('/login');
+  }
+
+  Future<void> _next() async {
+    if (_currentPage < _contents.length - 1) {
+      await _pageController.nextPage(
+        duration: AppMotion.transformDuration(context, AppMotion.dropdown),
+        curve: AppMotion.easeInOut,
+      );
+      return;
+    }
+    await _skip();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -67,38 +98,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    IconButton(
-                      onPressed: () {
-                        if (_currentPage > 0) {
-                          _pageController.previousPage(
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeInOut,
-                          );
-                        }
-                      },
-                      icon: Icon(
-                        Icons.arrow_back,
-                        color: _currentPage > 0
-                            ? colors.textPrimary
-                            : Colors.transparent,
-                      ),
+                    if (_currentPage > 0)
+                      IconButton(
+                        key: const ValueKey('onboarding-back'),
+                        tooltip: 'Anterior',
+                        onPressed: _previous,
+                        icon: const Icon(Icons.arrow_back),
+                      )
+                    else
+                      const SizedBox(width: 48),
+                    Flexible(
+                      child: Text(
+                        'AutoDoc',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.titleLarge.copyWith(
+                          color: colors.textPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ).animate().fadeIn(duration: 500.ms),
                     ),
-                    Text(
-                      'AutoDoc',
-                      style: AppTextStyles.titleLarge.copyWith(
-                        color: colors.textPrimary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ).animate().fadeIn(duration: 500.ms),
                     TextButton(
-                      onPressed: () async {
-                        await AuthPreferencesService().setOnboardingCompleted(
-                          true,
-                        );
-                        if (context.mounted) {
-                          context.go('/login');
-                        }
-                      },
+                      onPressed: _skip,
                       child: Text(
                         'Saltar',
                         style: AppTextStyles.labelLarge.copyWith(
@@ -122,6 +143,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   itemCount: _contents.length,
                   itemBuilder: (context, index) {
                     final content = _contents[index];
+                    // El alto de la ilustracion es una fraccion del viewport,
+                    // pero acotada por arriba y por abajo de forma que `min`
+                    // nunca supere a `max`. La version anterior calculaba
+                    // `maxHeight: height * 0.4` con `minHeight: 200` fijo, que
+                    // se desnormaliza con cualquier alto < 500 px — es decir,
+                    // en todo telefono girado.
+                    //
+                    // `MediaQuery.sizeOf` (no `MediaQuery.of(context).size`)
+                    // porque esto no elige estructura de layout (lo que
+                    // prohibe la regla de usar `WindowClass`): dimensiona una
+                    // ilustracion proporcionalmente al alto disponible, y
+                    // `WindowClass` solo conoce anchos.
+                    final viewportHeight = MediaQuery.sizeOf(context).height;
+                    final illustrationHeight = (viewportHeight * 0.4).clamp(
+                      120.0,
+                      360.0,
+                    );
                     return SingleChildScrollView(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -130,12 +168,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           children: [
                             const SizedBox(height: 20),
                             // Illustration Section with Glassmorphism
-                            ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxHeight:
-                                    MediaQuery.of(context).size.height * 0.4,
-                                minHeight: 200,
-                              ),
+                            SizedBox(
+                              height: illustrationHeight,
                               child: Stack(
                                 alignment: Alignment.center,
                                 children: [
@@ -313,22 +347,34 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
 
               // Pagination Dots
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    _contents.length,
-                    (index) => AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      margin: const EdgeInsets.only(right: 12),
-                      height: 8,
-                      width: _currentPage == index ? 32 : 8,
-                      decoration: BoxDecoration(
-                        color: _currentPage == index
-                            ? colors.primary
-                            : colors.outline.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(4),
+              Semantics(
+                key: const ValueKey('onboarding-dots'),
+                label: 'Paso ${_currentPage + 1} de ${_contents.length}',
+                child: ExcludeSemantics(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.xl,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        _contents.length,
+                        (index) => AnimatedContainer(
+                          duration: AppMotion.transformDuration(
+                            context,
+                            AppMotion.dropdown,
+                          ),
+                          curve: AppMotion.easeOut,
+                          margin: const EdgeInsets.only(right: AppSpacing.md),
+                          height: 8,
+                          width: _currentPage == index ? 32 : 8,
+                          decoration: BoxDecoration(
+                            color: _currentPage == index
+                                ? colors.primary
+                                : colors.outline.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(AppRadius.xs),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -337,57 +383,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
               // Bottom Button
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
-                child: GestureDetector(
-                  onTap: () async {
-                    if (_currentPage < _contents.length - 1) {
-                      _pageController.nextPage(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                      );
-                    } else {
-                      // Final Action: Navigate to Login
-                      await AuthPreferencesService().setOnboardingCompleted(
-                        true,
-                      );
-                      if (context.mounted) {
-                        context.go('/login');
-                      }
-                    }
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    width: double.infinity,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: colors.primary,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: colors.primary.withValues(alpha: 0.3),
-                          blurRadius: 15,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            _currentPage == _contents.length - 1
-                                ? 'Comenzar ahora'
-                                : 'Siguiente',
-                            style: AppTextStyles.titleMedium.copyWith(
-                              color: colors.onPrimary,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Icon(Icons.chevron_right, color: colors.onPrimary),
-                        ],
-                      ),
-                    ),
-                  ),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  0,
+                  AppSpacing.xl,
+                  AppSpacing.xxl,
+                ),
+                child: AppButton(
+                  key: const ValueKey('onboarding-next'),
+                  text: _currentPage == _contents.length - 1
+                      ? 'Comenzar ahora'
+                      : 'Siguiente',
+                  size: AppButtonSize.large,
+                  icon: const Icon(Icons.chevron_right),
+                  onPressed: _next,
                 ),
               ),
             ],
