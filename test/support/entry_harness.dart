@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -113,11 +114,17 @@ Widget _wrap(
   UserProfileProvider? profile,
   TextScaler textScaler = TextScaler.noScaling,
 }) {
+  final mockAuthService = MockAuthService();
+  // Sin stub, cualquier pantalla que lea `isEmailPasswordUser` (el dialogo de
+  // borrar cuenta de `user_profile_screen`) revienta con `MissingStubError`
+  // en vez de abrir el dialogo.
+  when(mockAuthService.isEmailPasswordUser).thenReturn(true);
+
   return MultiProvider(
     providers: [
       ChangeNotifierProvider<AuthProvider>(
         create: (_) => AuthProvider(
-          authService: MockAuthService(),
+          authService: mockAuthService,
           adminAuthService: MockAdminAuthService(),
         ),
       ),
@@ -176,6 +183,13 @@ Future<void> pumpEntry(
 }) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   _sizeView(tester, width, height);
+  // Desmontar del todo antes de reconstruir: un segundo `pumpEntry` en el
+  // mismo test (bucle sobre `kAuditWidths` con una pantalla con estado
+  // propio, p. ej. un toggle de edicion) reutilizaria si no el `State` ya
+  // montado en el mismo lugar del arbol y arrastraria su estado de una
+  // iteracion a la siguiente. Mismo patron que `pumpAtWidth` en
+  // `responsive_harness.dart`.
+  await tester.pumpWidget(const SizedBox.shrink());
   await tester.pumpWidget(
     _wrap(
       child,
@@ -252,6 +266,9 @@ Future<List<FlutterErrorDetails>> pumpEntryCollecting(
   try {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     _sizeView(tester, width, height);
+    // Ver la nota en `pumpEntry`: desmontar entre llamadas evita arrastrar
+    // el `State` de una iteracion del bucle a la siguiente.
+    await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpWidget(
       _wrap(
         child,

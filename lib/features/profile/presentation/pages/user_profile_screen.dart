@@ -5,6 +5,7 @@ import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_shadows.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -102,6 +103,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryPurple = colors.primary;
     final textColor = colors.textPrimary;
+    final isWide = AppBreakpoints.of(context).isAtLeastExpanded;
 
     final sessionProvider = context.watch<UserProfileProvider>();
     final user = sessionProvider.userData;
@@ -161,6 +163,31 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     }
 
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        // La flecha de atras solo tiene sentido si hay algo que desapilar.
+        // `/user_profile` es una pestana del ShellRoute: no lo hay.
+        automaticallyImplyLeading: false,
+        title: Text(
+          context.l10n.upMyProfile,
+          style: AppTextStyles.titleLarge.copyWith(color: textColor),
+        ),
+        actions: [
+          IconButton(
+            key: const ValueKey('profile-edit-toggle'),
+            // upEditProfile no existe en el ARB (la fase prohibe anadir
+            // claves): literal en espanol, mejor que ningun tooltip.
+            tooltip: _isEditing ? context.l10n.upCancel : 'Editar perfil',
+            onPressed: () => setState(() => _isEditing = !_isEditing),
+            icon: Icon(
+              _isEditing ? Icons.close : Icons.edit_outlined,
+              color: primaryPurple,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+        ],
+      ),
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -171,33 +198,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             colors: [colors.surfaceVariant, colors.surface],
           ),
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              if (!AppBreakpoints.of(context).isAtLeastExpanded)
-                _buildAppBar(context, primaryPurple, textColor),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.all(Responsive.padding(context, 24.0)),
-                  child: Column(
-                    children: [
-                      _buildProfileHeader(user, primaryPurple, textColor),
-                      const SizedBox(height: 40),
-                      _buildInfoSection(user, primaryPurple, isDark),
-                      const SizedBox(height: 24),
-                      _buildSettingsSection(context, primaryPurple, isDark),
-                      const SizedBox(height: 40),
-                      _buildLogoutButton(context, primaryPurple),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        child: SafeArea(child: _buildBody(user, colors, isDark, isWide)),
       ),
       floatingActionButton: _isEditing
           ? FloatingActionButton.extended(
+              key: const ValueKey('profile-save'),
               onPressed: isLoading ? null : _saveProfile,
               backgroundColor: primaryPurple,
               label: isLoading
@@ -224,40 +229,72 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
-  Widget _buildAppBar(BuildContext context, Color primary, Color textColor) {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: Responsive.padding(context, 16.0),
-        vertical: Responsive.padding(context, 8.0),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: Icon(
-              Icons.arrow_back_ios_new,
-              size: Responsive.iconSize(context, 20),
+  /// Compone cabecera + contenido: una columna por debajo de `expanded`, dos
+  /// a partir de ahi (cabecera fija a la izquierda, contenido con scroll
+  /// propio a la derecha), acotado a `maxContentWidth`.
+  Widget _buildBody(
+    UserModel user,
+    AppColors colors,
+    bool isDark,
+    bool isWide,
+  ) {
+    final header = _buildProfileHeader(
+      user,
+      colors.primary,
+      colors.textPrimary,
+    );
+    final details = Column(
+      children: [
+        _buildInfoSection(user, colors.primary, isDark),
+        const SizedBox(height: AppSpacing.xl),
+        _buildSettingsSection(context, colors.primary, isDark),
+        const SizedBox(height: AppSpacing.xxl),
+        _buildAccountActions(context, colors),
+      ],
+    );
+
+    if (!isWide) {
+      return SingleChildScrollView(
+        padding: EdgeInsets.all(
+          AppBreakpoints.gutter(AppBreakpoints.of(context)),
+        ),
+        child: Column(
+          children: [
+            header,
+            const SizedBox(height: AppSpacing.xxl),
+            details,
+          ],
+        ),
+      );
+    }
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: AppBreakpoints.maxContentWidth,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // La cabecera queda fija: es identidad, no contenido.
+            Expanded(
+              flex: 2,
+              child: Padding(
+                key: const ValueKey('profile-side-column'),
+                padding: const EdgeInsets.all(AppSpacing.xxl),
+                child: header,
+              ),
             ),
-          ),
-          Text(
-            context.l10n.upMyProfile,
-            style: AppTextStyles.titleLarge.copyWith(
-              fontSize: Responsive.fontSize(context, 18),
-              color: textColor,
+            Expanded(
+              flex: 3,
+              child: SingleChildScrollView(
+                key: const ValueKey('profile-main-column'),
+                padding: const EdgeInsets.all(AppSpacing.xxl),
+                child: details,
+              ),
             ),
-          ),
-          IconButton(
-            key: const ValueKey('profile-edit-toggle'),
-            onPressed: () {
-              setState(() => _isEditing = !_isEditing);
-            },
-            icon: Icon(
-              _isEditing ? Icons.close : Icons.edit_outlined,
-              color: primary,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -639,187 +676,185 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
-  void _showDeleteAccountDialog(BuildContext context) {
+  Future<void> _showDeleteAccountDialog(BuildContext context) async {
     final authProvider = context.read<AuthProvider>();
     final isEmailPassword = authProvider.isEmailPasswordUser;
     final passwordController = TextEditingController();
     final theme = Theme.of(context);
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        bool isLoading = false;
-        String? errorMessage;
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (context) {
+          bool isLoading = false;
+          String? errorMessage;
 
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text(context.l10n.upDeleteAccountTitle),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(context.l10n.upDeleteAccountConfirm),
-                  const SizedBox(height: 16),
-                  if (isEmailPassword) ...[
-                    Text(
-                      context.l10n.upEnterPasswordConfirm,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: passwordController,
-                      obscureText: true,
-                      decoration: InputDecoration(
-                        border: const OutlineInputBorder(),
-                        labelText: context.l10n.upPasswordLabel,
+          return StatefulBuilder(
+            builder: (context, setState) {
+              return AlertDialog(
+                title: Text(context.l10n.upDeleteAccountTitle),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(context.l10n.upDeleteAccountConfirm),
+                    const SizedBox(height: 16),
+                    if (isEmailPassword) ...[
+                      Text(
+                        context.l10n.upEnterPasswordConfirm,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                    ),
-                  ] else ...[
-                    Text(
-                      context.l10n.upGoogleReauthConfirm,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                  if (errorMessage != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      errorMessage!,
-                      style: TextStyle(
-                        color: theme.colorScheme.error,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isLoading ? null : () => Navigator.pop(context),
-                  child: Text(context.l10n.upCancel),
-                ),
-                TextButton(
-                  onPressed: isLoading
-                      ? null
-                      : () async {
-                          setState(() {
-                            isLoading = true;
-                            errorMessage = null;
-                          });
-
-                          bool canDelete = false;
-
-                          if (isEmailPassword) {
-                            final pass = passwordController.text;
-                            if (pass.isEmpty) {
-                              setState(() {
-                                errorMessage = context.l10n.upPasswordEmpty;
-                                isLoading = false;
-                              });
-                              return;
-                            }
-                            canDelete = await authProvider.verifyPassword(pass);
-                            if (!canDelete) {
-                              setState(() {
-                                errorMessage = context.l10n.upPasswordIncorrect;
-                                isLoading = false;
-                              });
-                              return;
-                            }
-                          } else {
-                            canDelete = await authProvider.signInWithGoogle();
-                            if (!canDelete) {
-                              setState(() {
-                                errorMessage =
-                                    context.l10n.upGoogleReauthFailed;
-                                isLoading = false;
-                              });
-                              return;
-                            }
-                          }
-
-                          if (canDelete) {
-                            final success = await authProvider.deleteAccount();
-                            if (success && context.mounted) {
-                              Navigator.pop(context);
-                              GoRouter.of(context).go('/login');
-                            } else if (context.mounted) {
-                              setState(() {
-                                errorMessage = context.l10n
-                                    .upDeleteAccountError(
-                                      authProvider.error ?? 'Unknown error',
-                                    );
-                                isLoading = false;
-                              });
-                            }
-                          }
-                        },
-                  child: isLoading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(
-                          context.l10n.upDelete,
-                          style: TextStyle(color: theme.colorScheme.error),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: passwordController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          border: const OutlineInputBorder(),
+                          labelText: context.l10n.upPasswordLabel,
                         ),
+                      ),
+                    ] else ...[
+                      Text(
+                        context.l10n.upGoogleReauthConfirm,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                    if (errorMessage != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        errorMessage!,
+                        style: TextStyle(
+                          color: theme.colorScheme.error,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-              ],
-            );
-          },
-        );
-      },
-    );
+                actions: [
+                  TextButton(
+                    key: const ValueKey('profile-delete-cancel'),
+                    onPressed: isLoading
+                        ? null
+                        : () => Navigator.of(context).pop(),
+                    child: Text(context.l10n.upCancel),
+                  ),
+                  TextButton(
+                    onPressed: isLoading
+                        ? null
+                        : () async {
+                            setState(() {
+                              isLoading = true;
+                              errorMessage = null;
+                            });
+
+                            bool canDelete = false;
+
+                            if (isEmailPassword) {
+                              final pass = passwordController.text;
+                              if (pass.isEmpty) {
+                                setState(() {
+                                  errorMessage = context.l10n.upPasswordEmpty;
+                                  isLoading = false;
+                                });
+                                return;
+                              }
+                              canDelete = await authProvider.verifyPassword(
+                                pass,
+                              );
+                              if (!canDelete) {
+                                setState(() {
+                                  errorMessage =
+                                      context.l10n.upPasswordIncorrect;
+                                  isLoading = false;
+                                });
+                                return;
+                              }
+                            } else {
+                              canDelete = await authProvider.signInWithGoogle();
+                              if (!canDelete) {
+                                setState(() {
+                                  errorMessage =
+                                      context.l10n.upGoogleReauthFailed;
+                                  isLoading = false;
+                                });
+                                return;
+                              }
+                            }
+
+                            if (canDelete) {
+                              final success = await authProvider
+                                  .deleteAccount();
+                              if (success && context.mounted) {
+                                Navigator.of(context).pop();
+                                GoRouter.of(context).go('/login');
+                              } else if (context.mounted) {
+                                setState(() {
+                                  errorMessage = context.l10n
+                                      .upDeleteAccountError(
+                                        authProvider.error ?? 'Unknown error',
+                                      );
+                                  isLoading = false;
+                                });
+                              }
+                            }
+                          },
+                    child: isLoading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(
+                            context.l10n.upDelete,
+                            style: TextStyle(color: theme.colorScheme.error),
+                          ),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    } finally {
+      // Antes no se liberaba nunca: una fuga por cada apertura del dialogo.
+      passwordController.dispose();
+    }
   }
 
-  Widget _buildLogoutButton(BuildContext context, Color primary) {
-    final theme = Theme.of(context);
+  Future<void> _signOut(BuildContext context) async {
+    final authProvider = context.read<AuthProvider>();
+    final router = GoRouter.of(context);
+    await authProvider.signOut();
+    router.go('/login');
+  }
+
+  /// Las dos acciones destructivas, diferenciadas: cerrar sesion no es
+  /// destructivo (sube a `AppButton` secundario), borrar la cuenta si lo es
+  /// y se queda como enlace en color de error, debajo y con menos peso.
+  Widget _buildAccountActions(BuildContext context, AppColors colors) {
     return Column(
       children: [
+        AppButton(
+          text: context.l10n.upSignOut,
+          type: AppButtonType.secondary,
+          icon: const Icon(Icons.logout),
+          onPressed: () => _signOut(context),
+        ),
+        const SizedBox(height: AppSpacing.md),
         TextButton.icon(
+          key: const ValueKey('profile-delete-account'),
           onPressed: () => _showDeleteAccountDialog(context),
-          icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
+          icon: Icon(Icons.delete_outline, color: colors.error),
           label: Text(
             context.l10n.upDeleteAccount,
-            style: TextStyle(
-              color: theme.colorScheme.error,
-              fontWeight: FontWeight.bold,
-            ),
+            style: AppTextStyles.labelLarge.copyWith(color: colors.error),
           ),
           style: TextButton.styleFrom(
-            padding: EdgeInsets.symmetric(
-              horizontal: Responsive.padding(context, 24),
-              vertical: Responsive.padding(context, 12),
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextButton.icon(
-          onPressed: () async {
-            final authProvider = context.read<AuthProvider>();
-            final router = GoRouter.of(context);
-            await authProvider.signOut();
-            router.go('/login');
-          },
-          icon: Icon(Icons.logout, color: theme.colorScheme.error),
-          label: Text(
-            context.l10n.upSignOut,
-            style: TextStyle(
-              color: theme.colorScheme.error,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          style: TextButton.styleFrom(
-            padding: EdgeInsets.symmetric(
-              horizontal: Responsive.padding(context, 24),
-              vertical: Responsive.padding(context, 12),
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+            minimumSize: const Size(0, 48),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl,
+              vertical: AppSpacing.md,
             ),
           ),
         ),
