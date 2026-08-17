@@ -1,20 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/firestore_collections.dart';
 import 'package:autodoc/core/models/review_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/widgets/app_empty_state.dart';
+import 'package:autodoc/core/widgets/app_grid.dart';
+import 'package:autodoc/core/widgets/app_page_body.dart';
+import 'package:autodoc/core/widgets/app_section_header.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
-import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
+import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 import 'package:autodoc/features/reviews/data/services/review_service.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/widgets/translated_text.dart';
 
 class MechanicReviewsScreen extends StatefulWidget {
-  const MechanicReviewsScreen({super.key});
+  final FirebaseFirestore? firestore;
+
+  const MechanicReviewsScreen({super.key, this.firestore});
 
   @override
   State<MechanicReviewsScreen> createState() => _MechanicReviewsScreenState();
@@ -22,12 +29,19 @@ class MechanicReviewsScreen extends StatefulWidget {
 
 class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
   ReviewSortOrder _orden = ReviewSortOrder.recientes;
+  late final ReviewService _reviewService;
+
+  FirebaseFirestore get _db => widget.firestore ?? FirebaseFirestore.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _reviewService = ReviewService(firestore: widget.firestore);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 700;
     final colors = context.appColors;
-    final theme = Theme.of(context);
     final userSession = context.watch<UserProfileProvider>();
     final userData = userSession.userData;
 
@@ -36,555 +50,206 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
     }
 
     final tallerId = userData.idUsuario;
-    final reviewService = ReviewService();
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: isMobile
-          ? AppBar(
-              title: Text(
-                'Mis Reseñas',
-                style: GoogleFonts.inter(
-                  color: colors.primary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              iconTheme: IconThemeData(color: colors.primary),
-            )
-          : null,
-      drawer: isMobile ? const Drawer(child: MechanicSidebar()) : null,
-      body: Row(
-        children: [
-          if (!isMobile) const MechanicSidebar(),
-          Expanded(
-            child: Column(
-              children: [
-                if (!isMobile)
-                  Container(
-                    height: 64,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: Responsive.padding(context, 32),
-                    ),
-                    alignment: Alignment.centerLeft,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      border: Border(
-                        bottom: BorderSide(
-                          color: colors.textSecondary.withValues(alpha: 0.1),
+    return MechanicScaffold(
+      title: 'Mis Reseñas',
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: _db
+            .collection(FirestoreCollections.usuarios)
+            .doc(tallerId)
+            .snapshots(),
+        builder: (context, userSnap) {
+          final tallerData = userSnap.data?.data() as Map<String, dynamic>?;
+          final promedio =
+              tallerData?['calificacion_promedio']?.toDouble() ?? 0.0;
+          final total = tallerData?['total_resenias'] ?? 0;
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+            child: AppPageBody(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AppCard(
+                    margin: EdgeInsets.zero,
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          decoration: BoxDecoration(
+                            color: colors.warning.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Icon(
+                            Icons.star_rounded,
+                            color: colors.warning,
+                            size: Responsive.iconSize(context, 40),
+                          ),
                         ),
-                      ),
-                    ),
-                    child: Text(
-                      'MIS RESEÑAS',
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w900,
-                        fontSize: Responsive.fontSize(context, 20),
-                        color: colors.primary,
-                      ),
+                        const SizedBox(width: AppSpacing.lg),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                promedio > 0
+                                    ? promedio.toStringAsFixed(1)
+                                    : '—',
+                                style: AppTextStyles.headlineMedium.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: colors.textPrimary,
+                                ),
+                              ),
+                              Text(
+                                '$total reseña${total == 1 ? '' : 's'} de clientes',
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                Expanded(
-                  child: StreamBuilder<DocumentSnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection(FirestoreCollections.usuarios)
-                        .doc(tallerId)
-                        .snapshots(),
-                    builder: (context, userSnap) {
-                      final userData =
-                          userSnap.data?.data() as Map<String, dynamic>?;
-                      final promedio =
-                          userData?['calificacion_promedio']?.toDouble() ?? 0.0;
-                      final total = userData?['total_resenias'] ?? 0;
-
-                      return Column(
-                        children: [
-                          Padding(
-                            padding: EdgeInsets.all(
-                              Responsive.padding(context, 24),
-                            ),
-                            child: AppCard(
-                              margin: EdgeInsets.zero,
-                              padding: EdgeInsets.all(
-                                Responsive.padding(context, 24),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: EdgeInsets.all(
-                                      Responsive.padding(context, 16),
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: colors.warning.withValues(
-                                        alpha: 0.15,
-                                      ),
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    child: Icon(
-                                      Icons.star_rounded,
-                                      color: colors.warning,
-                                      size: Responsive.iconSize(context, 40),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 20),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          promedio > 0
-                                              ? promedio.toStringAsFixed(1)
-                                              : '—',
-                                          style: GoogleFonts.inter(
-                                            fontSize: Responsive.fontSize(
-                                              context,
-                                              32,
-                                            ),
-                                            fontWeight: FontWeight.bold,
-                                            color: colors.primary,
-                                          ),
-                                        ),
-                                        Text(
-                                          '$total reseña${total == 1 ? '' : 's'} de clientes',
-                                          style: GoogleFonts.inter(
-                                            color: colors.textSecondary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
+                  const SizedBox(height: AppSpacing.lg),
+                  StreamBuilder<List<ReviewModel>>(
+                    stream: _reviewService.watchReviewsForTaller(tallerId),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: AppSpacing.xxl,
+                          ),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: colors.primary,
                             ),
                           ),
-                          Expanded(
-                            child: StreamBuilder<List<ReviewModel>>(
-                              stream: reviewService.watchReviewsForTaller(
-                                tallerId,
-                              ),
-                              builder: (context, snapshot) {
-                                if (snapshot.connectionState ==
-                                    ConnectionState.waiting) {
-                                  return Center(
-                                    child: CircularProgressIndicator(
-                                      color: colors.primary,
-                                    ),
-                                  );
-                                }
+                        );
+                      }
 
-                                final reviewsSinOrdenar = snapshot.data ?? [];
-                                final reviews = ordenarResenias(
-                                  reviewsSinOrdenar,
-                                  _orden,
-                                );
-                                if (reviews.isEmpty) {
-                                  return Center(
-                                    child: Padding(
-                                      padding: EdgeInsets.all(
-                                        Responsive.padding(context, 32),
-                                      ),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.rate_review_outlined,
-                                            size: Responsive.iconSize(
-                                              context,
-                                              56,
-                                            ),
-                                            color: colors.textSecondary
-                                                .withValues(alpha: 0.4),
-                                          ),
-                                          const SizedBox(height: 16),
-                                          Text(
-                                            'Aún no tienes reseñas',
-                                            style: GoogleFonts.inter(
-                                              fontWeight: FontWeight.bold,
-                                              color: colors.primary,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            'Los propietarios pueden calificarte desde el directorio de talleres o su historial de servicios.',
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              color: colors.textSecondary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                }
+                      final reviewsSinOrdenar = snapshot.data ?? [];
+                      final reviews = ordenarResenias(
+                        reviewsSinOrdenar,
+                        _orden,
+                      );
+                      if (reviews.isEmpty) {
+                        return const AppEmptyState(
+                          title: 'Aún no tienes reseñas',
+                          description:
+                              'Los propietarios pueden calificarte desde el '
+                              'directorio de talleres o su historial de '
+                              'servicios.',
+                          icon: Icons.rate_review_outlined,
+                        );
+                      }
 
-                                return Column(
-                                  children: [
-                                    _buildDistribution(
-                                      reviews,
-                                      colors,
-                                      context,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Padding(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: Responsive.padding(
-                                          context,
-                                          24,
-                                        ),
-                                      ),
-                                      child: Align(
-                                        alignment: Alignment.centerRight,
-                                        child: DropdownButton<ReviewSortOrder>(
-                                          value: _orden,
-                                          onChanged: (value) {
-                                            if (value == null) return;
-                                            setState(() => _orden = value);
-                                          },
-                                          items: const [
-                                            DropdownMenuItem(
-                                              value: ReviewSortOrder.recientes,
-                                              child: Text('Más Recientes'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: ReviewSortOrder.masAltas,
-                                              child: Text('Más Altas'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: ReviewSortOrder.masBajas,
-                                              child: Text('Más Bajas'),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Expanded(
-                                      child: ListView.separated(
-                                        padding: const EdgeInsets.fromLTRB(
-                                          24,
-                                          0,
-                                          24,
-                                          24,
-                                        ),
-                                        itemCount: reviews.length,
-                                        separatorBuilder: (context, index) =>
-                                            const SizedBox(height: 12),
-                                        itemBuilder: (context, index) {
-                                          final r = reviews[index];
-                                          return AppCard(
-                                            margin: EdgeInsets.zero,
-                                            padding: EdgeInsets.all(
-                                              Responsive.padding(context, 16),
-                                            ),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
-                                                  children: [
-                                                    Row(
-                                                      children: List.generate(5, (
-                                                        i,
-                                                      ) {
-                                                        return Icon(
-                                                          Icons.star,
-                                                          size:
-                                                              Responsive.iconSize(
-                                                                context,
-                                                                16,
-                                                              ),
-                                                          color: i < r.estrellas
-                                                              ? colors.warning
-                                                              : colors
-                                                                    .textSecondary
-                                                                    .withValues(
-                                                                      alpha:
-                                                                          0.2,
-                                                                    ),
-                                                        );
-                                                      }),
-                                                    ),
-                                                    Row(
-                                                      children: [
-                                                        Text(
-                                                          DateFormat(
-                                                            'dd MMM yyyy',
-                                                          ).format(
-                                                            r.fechaResenia,
-                                                          ),
-                                                          style: TextStyle(
-                                                            fontSize:
-                                                                Responsive.fontSize(
-                                                                  context,
-                                                                  12,
-                                                                ),
-                                                            color: colors
-                                                                .textSecondary,
-                                                          ),
-                                                        ),
-                                                        if (r.comentario !=
-                                                                null &&
-                                                            r
-                                                                .comentario!
-                                                                .isNotEmpty &&
-                                                            !r.isReported)
-                                                          IconButton(
-                                                            icon: Icon(
-                                                              Icons
-                                                                  .flag_outlined,
-                                                              size: 16,
-                                                              color: colors
-                                                                  .textSecondary,
-                                                            ),
-                                                            onPressed: () async {
-                                                              final confirm = await showDialog<bool>(
-                                                                context:
-                                                                    context,
-                                                                builder: (ctx) => AlertDialog(
-                                                                  title: const Text(
-                                                                    'Reportar Reseña',
-                                                                  ),
-                                                                  content:
-                                                                      const Text(
-                                                                        '¿Estás seguro de que deseas reportar esta reseña por lenguaje inapropiado o falso? Será revisada por el equipo de moderación.',
-                                                                      ),
-                                                                  actions: [
-                                                                    TextButton(
-                                                                      onPressed: () =>
-                                                                          Navigator.pop(
-                                                                            ctx,
-                                                                            false,
-                                                                          ),
-                                                                      child: const Text(
-                                                                        'Cancelar',
-                                                                      ),
-                                                                    ),
-                                                                    TextButton(
-                                                                      onPressed: () =>
-                                                                          Navigator.pop(
-                                                                            ctx,
-                                                                            true,
-                                                                          ),
-                                                                      child: const Text(
-                                                                        'Reportar',
-                                                                        style: TextStyle(
-                                                                          color:
-                                                                              Colors.red,
-                                                                        ),
-                                                                      ),
-                                                                    ),
-                                                                  ],
-                                                                ),
-                                                              );
-                                                              if (confirm ==
-                                                                  true) {
-                                                                try {
-                                                                  await reviewService
-                                                                      .reportReview(
-                                                                        r.idResenia,
-                                                                      );
-                                                                  if (context
-                                                                      .mounted) {
-                                                                    ScaffoldMessenger.of(
-                                                                      context,
-                                                                    ).showSnackBar(
-                                                                      const SnackBar(
-                                                                        content:
-                                                                            Text(
-                                                                              'Reseña reportada para moderación.',
-                                                                            ),
-                                                                      ),
-                                                                    );
-                                                                  }
-                                                                } catch (e) {
-                                                                  if (context
-                                                                      .mounted) {
-                                                                    ScaffoldMessenger.of(
-                                                                      context,
-                                                                    ).showSnackBar(
-                                                                      SnackBar(
-                                                                        content:
-                                                                            Text(
-                                                                              'No se pudo reportar la reseña: $e',
-                                                                            ),
-                                                                      ),
-                                                                    );
-                                                                  }
-                                                                }
-                                                              }
-                                                            },
-                                                          ),
-                                                        if (r.isReported)
-                                                          Padding(
-                                                            padding:
-                                                                const EdgeInsets.only(
-                                                                  left: 8.0,
-                                                                ),
-                                                            child: Icon(
-                                                              Icons.flag,
-                                                              size: 16,
-                                                              color:
-                                                                  colors.error,
-                                                            ),
-                                                          ),
-                                                      ],
-                                                    ),
-                                                  ],
-                                                ),
-                                                if (r.comentario != null &&
-                                                    r
-                                                        .comentario!
-                                                        .isNotEmpty) ...[
-                                                  const SizedBox(height: 12),
-                                                  TranslatedText(
-                                                    r.comentario!,
-                                                    style: GoogleFonts.inter(
-                                                      color: colors.textPrimary,
-                                                    ),
-                                                  ),
-                                                ],
-                                                if (r.fotos.isNotEmpty) ...[
-                                                  const SizedBox(height: 12),
-                                                  Wrap(
-                                                    spacing: 8,
-                                                    runSpacing: 8,
-                                                    children: [
-                                                      for (final url in r.fotos)
-                                                        ClipRRect(
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                8,
-                                                              ),
-                                                          child: Image.network(
-                                                            url,
-                                                            width: 64,
-                                                            height: 64,
-                                                            fit: BoxFit.cover,
-                                                            errorBuilder:
-                                                                (
-                                                                  context,
-                                                                  error,
-                                                                  stack,
-                                                                ) => Container(
-                                                                  width: 64,
-                                                                  height: 64,
-                                                                  color: colors
-                                                                      .textSecondary
-                                                                      .withValues(
-                                                                        alpha:
-                                                                            0.1,
-                                                                      ),
-                                                                  child: Icon(
-                                                                    Icons
-                                                                        .broken_image_outlined,
-                                                                    color: colors
-                                                                        .textSecondary,
-                                                                  ),
-                                                                ),
-                                                          ),
-                                                        ),
-                                                    ],
-                                                  ),
-                                                ],
-                                                if (r.respuestaTaller != null)
-                                                  Container(
-                                                    margin:
-                                                        const EdgeInsets.only(
-                                                          top: 8,
-                                                          left: 16,
-                                                        ),
-                                                    padding:
-                                                        const EdgeInsets.all(8),
-                                                    decoration: BoxDecoration(
-                                                      color: colors.primary
-                                                          .withValues(
-                                                            alpha: 0.08,
-                                                          ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            8,
-                                                          ),
-                                                    ),
-                                                    child: Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        Text(
-                                                          'Respuesta del taller',
-                                                          style:
-                                                              GoogleFonts.inter(
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                                color: colors
-                                                                    .primary,
-                                                              ),
-                                                        ),
-                                                        const SizedBox(
-                                                          height: 4,
-                                                        ),
-                                                        Text(
-                                                          r.respuestaTaller!['texto']
-                                                              as String,
-                                                          style:
-                                                              GoogleFonts.inter(
-                                                                color: colors
-                                                                    .textPrimary,
-                                                              ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  )
-                                                else
-                                                  Align(
-                                                    alignment:
-                                                        Alignment.centerLeft,
-                                                    child: TextButton.icon(
-                                                      icon: const Icon(
-                                                        Icons.reply,
-                                                      ),
-                                                      label: const Text(
-                                                        'Responder',
-                                                      ),
-                                                      onPressed: () =>
-                                                          _mostrarDialogoResponder(
-                                                            context,
-                                                            reviewService,
-                                                            r,
-                                                          ),
-                                                    ),
-                                                  ),
-                                              ],
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                );
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _DistribucionResenias(
+                            reviews: reviews,
+                            colors: colors,
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          AppSectionHeader(
+                            title: 'Reseñas',
+                            trailing: DropdownButton<ReviewSortOrder>(
+                              value: _orden,
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setState(() => _orden = value);
                               },
+                              items: const [
+                                DropdownMenuItem(
+                                  value: ReviewSortOrder.recientes,
+                                  child: Text('Más Recientes'),
+                                ),
+                                DropdownMenuItem(
+                                  value: ReviewSortOrder.masAltas,
+                                  child: Text('Más Altas'),
+                                ),
+                                DropdownMenuItem(
+                                  value: ReviewSortOrder.masBajas,
+                                  child: Text('Más Bajas'),
+                                ),
+                              ],
                             ),
+                          ),
+                          const SizedBox(height: AppSpacing.base),
+                          AppGrid(
+                            compactColumns: 1,
+                            mediumColumns: 1,
+                            expandedColumns: 2,
+                            largeColumns: 2,
+                            childAspectRatio: 1.9,
+                            children: [
+                              for (final r in reviews)
+                                _ReviewCard(
+                                  review: r,
+                                  onReportar: () => _reportar(context, r),
+                                  onResponder: () =>
+                                      _mostrarDialogoResponder(context, r),
+                                ),
+                            ],
                           ),
                         ],
                       );
                     },
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 
+  Future<void> _reportar(BuildContext context, ReviewModel review) async {
+    final colors = context.appColors;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reportar Reseña'),
+        content: const Text(
+          '¿Estás seguro de que deseas reportar esta reseña por lenguaje '
+          'inapropiado o falso? Será revisada por el equipo de moderación.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Reportar', style: TextStyle(color: colors.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      await _reviewService.reportReview(review.idResenia);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Reseña reportada para moderación.')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo reportar la reseña: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _mostrarDialogoResponder(
     BuildContext context,
-    ReviewService reviewService,
     ReviewModel review,
   ) async {
     final controller = TextEditingController();
@@ -617,7 +282,7 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
     if (texto == null || texto.trim().isEmpty) return;
 
     try {
-      await reviewService.responderResenia(
+      await _reviewService.responderResenia(
         reviewId: review.idResenia,
         tallerId: review.idTaller,
         texto: texto,
@@ -635,73 +300,261 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
       }
     }
   }
+}
 
-  Widget _buildDistribution(
-    List<ReviewModel> reviews,
-    AppColors colors,
-    BuildContext context,
-  ) {
-    if (reviews.isEmpty) return const SizedBox.shrink();
+/// Cinco estrellas con una única etiqueta semántica.
+///
+/// Antes eran cinco `Icon` sueltos: el lector de pantalla anunciaba cinco
+/// iconos sin nombre y la calificación no llegaba.
+class _Estrellas extends StatelessWidget {
+  final int estrellas;
 
+  const _Estrellas({required this.estrellas});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+
+    return Semantics(
+      label: '$estrellas de 5 estrellas',
+      child: ExcludeSemantics(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < 5; i++)
+              Icon(
+                i < estrellas ? Icons.star : Icons.star_border,
+                size: 16,
+                color: i < estrellas
+                    ? colors.warning
+                    : colors.textSecondary.withValues(alpha: 0.4),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Tarjeta de una reseña individual: calificación anunciable, comentario,
+/// fotos, acción de reporte y respuesta del taller.
+///
+/// Antes vivía inline en el `itemBuilder` de un `ListView.separated`
+/// (290 líneas, con el diálogo de reportar anidado dentro).
+class _ReviewCard extends StatelessWidget {
+  final ReviewModel review;
+  final VoidCallback onReportar;
+  final VoidCallback onResponder;
+
+  const _ReviewCard({
+    required this.review,
+    required this.onReportar,
+    required this.onResponder,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final r = review;
+
+    return AppCard(
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(AppSpacing.base),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: [
+                _Estrellas(estrellas: r.estrellas),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      DateFormat('dd MMM yyyy').format(r.fechaResenia),
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                    if (r.comentario != null &&
+                        r.comentario!.isNotEmpty &&
+                        !r.isReported)
+                      IconButton(
+                        icon: Icon(
+                          Icons.flag_outlined,
+                          size: 16,
+                          color: colors.textSecondary,
+                        ),
+                        tooltip: 'Reportar esta reseña',
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints(),
+                        padding: const EdgeInsets.only(left: 8),
+                        onPressed: onReportar,
+                      ),
+                    if (r.isReported)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8.0),
+                        child: Icon(Icons.flag, size: 16, color: colors.error),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+            if (r.comentario != null && r.comentario!.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              TranslatedText(
+                r.comentario!,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: colors.textPrimary,
+                ),
+              ),
+            ],
+            if (r.fotos.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  for (final url in r.fotos)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        url,
+                        width: 64,
+                        height: 64,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stack) => Container(
+                          width: 64,
+                          height: 64,
+                          color: colors.textSecondary.withValues(alpha: 0.1),
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+            if (r.respuestaTaller != null)
+              Container(
+                margin: const EdgeInsets.only(top: 8, left: 16),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: colors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Respuesta del taller',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: colors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      r.respuestaTaller!['texto'] as String,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  icon: const Icon(Icons.reply),
+                  label: const Text('Responder'),
+                  onPressed: onResponder,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Distribución de reseñas por número de estrellas.
+class _DistribucionResenias extends StatelessWidget {
+  final List<ReviewModel> reviews;
+  final AppColors colors;
+
+  const _DistribucionResenias({required this.reviews, required this.colors});
+
+  @override
+  Widget build(BuildContext context) {
     final counts = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
     for (var r in reviews) {
       counts[r.estrellas] = (counts[r.estrellas] ?? 0) + 1;
     }
     final total = reviews.length;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: AppCard(
-        margin: EdgeInsets.zero,
-        padding: EdgeInsets.all(Responsive.padding(context, 20)),
-        child: Column(
-          children: [
-            for (int i = 5; i >= 1; i--)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    Text(
-                      '$i',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: colors.textPrimary,
-                      ),
-                    ),
-                    Icon(Icons.star, size: 16, color: colors.warning),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: total > 0 ? (counts[i]! / total) : 0,
-                          backgroundColor: colors.textSecondary.withValues(
-                            alpha: 0.1,
-                          ),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            colors.warning,
-                          ),
-                          minHeight: 8,
+    return AppCard(
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        children: [
+          for (int i = 5; i >= 1; i--)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Semantics(
+                label: '$i estrellas: ${counts[i]} de $total reseñas',
+                child: ExcludeSemantics(
+                  child: Row(
+                    children: [
+                      Text(
+                        '$i',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colors.textPrimary,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 30,
-                      child: Text(
-                        '${counts[i]}',
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          color: colors.textSecondary,
-                          fontSize: 12,
+                      Icon(Icons.star, size: 16, color: colors.warning),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: total > 0 ? (counts[i]! / total) : 0,
+                            backgroundColor: colors.textSecondary.withValues(
+                              alpha: 0.1,
+                            ),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              colors.warning,
+                            ),
+                            minHeight: 8,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(minWidth: 32),
+                        child: Text(
+                          '${counts[i]}',
+                          textAlign: TextAlign.right,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }

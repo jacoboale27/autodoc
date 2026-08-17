@@ -1,7 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_severity.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
+import 'package:autodoc/core/widgets/app_page_body.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/widgets/app_empty_state.dart';
+import 'package:autodoc/core/widgets/app_status_badge.dart';
 import 'package:autodoc/features/chat/data/models/reserva_model.dart';
 import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
 import 'package:provider/provider.dart';
@@ -238,11 +245,10 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (!snapshot.hasData || !snapshot.data!.exists) {
-            return Center(
-              child: Text(
-                'No se encontró esta cita.',
-                style: TextStyle(color: colors.textPrimary),
-              ),
+            return const AppEmptyState(
+              icon: Icons.event_busy_rounded,
+              title: 'No se encontró esta cita',
+              description: 'Puede que se haya cancelado o eliminado.',
             );
           }
 
@@ -251,254 +257,206 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
             snapshot.data!.id,
           );
 
-          final estadoColor = reserva.estado == 'confirmada'
-              ? Colors.green
-              : (reserva.estado == 'rechazada'
-                    ? Colors.red
-                    : (reserva.estado == 'cotizada'
-                          ? Colors.blue
-                          : colors.warning));
-
-          final estadoTexto = switch (reserva.estado) {
-            'confirmada' => 'Confirmada',
-            'rechazada' => 'Rechazada',
-            'cotizada' => 'Cotización Enviada',
-            _ => 'Pendiente de Confirmación',
-          };
+          // 'Cotización Enviada' (no 'Cotizada'): mismo label que usa
+          // reserva_chat_card.dart para el estado 'cotizada' — evita que el
+          // mismo estado se lea distinto en dos pantallas.
+          final severidad = AppSeverity.forReservaEstado(
+            reserva.estado,
+            colors,
+            pendienteLabel: 'Pendiente',
+            confirmadaLabel: 'Confirmada',
+            rechazadaLabel: 'Rechazada',
+            cotizadaLabel: 'Cotización Enviada',
+          );
 
           return _isLoading
               ? const Center(child: CircularProgressIndicator())
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white12 : Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isDark ? Colors.white24 : Colors.black12,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: estadoColor.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    estadoTexto,
-                                    style: TextStyle(
-                                      color: estadoColor,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
+              : AppPageBody(
+                  maxWidth: AppBreakpoints.maxReadingWidth,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AppCard(
+                          padding: const EdgeInsets.all(24),
+                          margin: EdgeInsets.zero,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  // `AppStatusBadge` no trunca su propio
+                                  // texto: con la etiqueta más larga
+                                  // ('Cotización Enviada', ver Finding 3 de
+                                  // la revisión final) un `Flexible` solo no
+                                  // basta — mismo patrón que ya usa
+                                  // `chat_card_shell.dart` para su
+                                  // `trailing`, `FittedBox(scaleDown)` en
+                                  // vez de truncar a la mitad.
+                                  Flexible(
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerLeft,
+                                      child: AppStatusBadge(
+                                        text: severidad.label,
+                                        icon: severidad.icon,
+                                        type: _statusTypeDe(reserva.estado),
+                                      ),
                                     ),
                                   ),
-                                ),
-                                Icon(
-                                  Icons.calendar_month,
-                                  color: colors.primary,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 24),
-                            Text(
-                              context.l10n.chatService,
-                              style: TextStyle(
-                                color: colors.textSecondary,
-                                fontSize: 12,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              reserva.tipoServicio.isNotEmpty
-                                  ? reserva.tipoServicio
-                                  : 'Mantenimiento General',
-                              style: AppTextStyles.titleMedium.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const Divider(height: 32),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        context.l10n.chatDate,
-                                        style: TextStyle(
-                                          color: colors.textSecondary,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        DateFormat(
-                                          'EEE, dd MMM yyyy',
-                                          'es',
-                                        ).format(reserva.fechaHoraPropuesta),
-                                        style: AppTextStyles.titleMedium
-                                            .copyWith(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                      ),
-                                    ],
+                                  const SizedBox(width: 8),
+                                  Icon(
+                                    Icons.calendar_month,
+                                    color: colors.primary,
                                   ),
-                                ),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        context.l10n.chatTime,
-                                        style: TextStyle(
-                                          color: colors.textSecondary,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        DateFormat(
-                                          'hh:mm a',
-                                        ).format(reserva.fechaHoraPropuesta),
-                                        style: AppTextStyles.titleMedium
-                                            .copyWith(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Divider(height: 32),
-                            Text(
-                              context.l10n.chatVehicleId,
-                              style: TextStyle(
-                                color: colors.textSecondary,
-                                fontSize: 12,
+                                ],
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              reserva.idVehiculo.isNotEmpty
-                                  ? reserva.idVehiculo
-                                  : 'No especificado',
-                              style: AppTextStyles.titleMedium.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (reserva.estado == 'pendiente') ...[
-                        const SizedBox(height: 32),
-                        if (isMecanico) ...[
-                          Text(
-                            'Aceptas la cita enviando tu cotización con esta fecha.',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: colors.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton.icon(
-                              onPressed: () => _cotizar(reserva),
-                              icon: const Icon(Icons.request_quote),
-                              label: const Text(
-                                'Cotizar y Aceptar',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: colors.primary,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                              const SizedBox(height: 24),
+                              Text(
+                                context.l10n.chatService,
+                                style: TextStyle(
+                                  color: colors.textSecondary,
+                                  fontSize: 12,
                                 ),
                               ),
-                            ),
-                          ),
-                        ] else ...[
-                          SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton.icon(
-                              onPressed: () => _cambiarEstado('confirmada'),
-                              icon: const Icon(Icons.check),
-                              label: Text(
-                                context.l10n.chatAcceptAppointment,
-                                style: const TextStyle(
+                              const SizedBox(height: 4),
+                              Text(
+                                reserva.tipoServicio.isNotEmpty
+                                    ? reserva.tipoServicio
+                                    : 'Mantenimiento General',
+                                style: AppTextStyles.titleMedium.copyWith(
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: colors.primary,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                              const Divider(height: 32),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          context.l10n.chatDate,
+                                          style: TextStyle(
+                                            color: colors.textSecondary,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          DateFormat(
+                                            'EEE, dd MMM yyyy',
+                                            'es',
+                                          ).format(reserva.fechaHoraPropuesta),
+                                          style: AppTextStyles.titleMedium
+                                              .copyWith(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          context.l10n.chatTime,
+                                          style: TextStyle(
+                                            color: colors.textSecondary,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          DateFormat(
+                                            'hh:mm a',
+                                          ).format(reserva.fechaHoraPropuesta),
+                                          style: AppTextStyles.titleMedium
+                                              .copyWith(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const Divider(height: 32),
+                              Text(
+                                context.l10n.chatVehicleId,
+                                style: TextStyle(
+                                  color: colors.textSecondary,
+                                  fontSize: 12,
                                 ),
                               ),
-                            ),
+                              const SizedBox(height: 4),
+                              Text(
+                                reserva.idVehiculo.isNotEmpty
+                                    ? reserva.idVehiculo
+                                    : 'No especificado',
+                                style: AppTextStyles.titleMedium.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: OutlinedButton.icon(
-                            onPressed: () => _reprogramar(reserva),
-                            icon: const Icon(Icons.edit_calendar),
-                            label: const Text(
-                              'Reprogramar',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: colors.primary,
-                              side: BorderSide(color: colors.primary),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                        ),
+                        if (reserva.estado == 'pendiente') ...[
+                          const SizedBox(height: 32),
+                          if (isMecanico) ...[
+                            Text(
+                              'Aceptas la cita enviando tu cotización con esta fecha.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: colors.textSecondary,
                               ),
                             ),
+                            const SizedBox(height: 8),
+                            AppButton(
+                              text: 'Cotizar y Aceptar',
+                              onPressed: () => _cotizar(reserva),
+                              icon: const Icon(Icons.request_quote),
+                            ),
+                          ] else ...[
+                            AppButton(
+                              text: context.l10n.chatAcceptAppointment,
+                              onPressed: () => _cambiarEstado('confirmada'),
+                              icon: const Icon(Icons.check),
+                            ),
+                          ],
+                          const SizedBox(height: 12),
+                          AppButton(
+                            text: 'Reprogramar',
+                            type: AppButtonType.secondary,
+                            onPressed: () => _reprogramar(reserva),
+                            icon: const Icon(Icons.edit_calendar),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: TextButton(
+                          const SizedBox(height: 12),
+                          AppButton(
+                            text: 'Rechazar',
+                            type: AppButtonType.text,
                             onPressed: () => _cambiarEstado('rechazada'),
-                            style: TextButton.styleFrom(
-                              foregroundColor: colors.error,
-                            ),
-                            child: const Text(
-                              'Rechazar',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
                           ),
-                        ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 );
         },
       ),
     );
   }
+
+  AppStatusType _statusTypeDe(String estado) => switch (estado) {
+    'confirmada' => AppStatusType.success,
+    'rechazada' => AppStatusType.error,
+    'cotizada' => AppStatusType.info,
+    _ => AppStatusType.warning,
+  };
 }

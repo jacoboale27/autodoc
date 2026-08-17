@@ -1,116 +1,40 @@
 import 'package:flutter/material.dart';
-import 'package:autodoc/core/theme/app_colors.dart';
-import 'package:autodoc/core/theme/app_text_styles.dart';
-import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/features/chat/data/models/mensaje_model.dart';
+import 'package:autodoc/features/chat/presentation/widgets/chat_card_shell.dart';
 
+/// Tarjeta de "historial de vehículo compartido".
+///
+/// Hasta la Fase 6 existían **dos** clases con este nombre: una en
+/// `widgets/` (la que usaba `chat_screen`) y otra en `widgets/cards/` (código
+/// muerto que nadie importaba). Ésta las sustituye a las dos.
+///
+/// Ya no recibe `isMe` ni `colors`: la superficie y los colores los pone
+/// `ChatCardShell`, y la burbuja la pone `ChatBubble`. La versión anterior
+/// dibujaba su propio `Align` + `Container` coloreado **dentro** de la
+/// burbuja, lo que producía una burbuja dentro de otra del mismo color y
+/// estiraba el mensaje a todo el ancho de la lista.
 class HistorialChatCard extends StatelessWidget {
-  final Map<String, dynamic> metadata;
-  final bool isMe;
+  final MensajeModel mensaje;
 
-  const HistorialChatCard({
-    super.key,
-    required this.metadata,
-    required this.isMe,
-  });
+  const HistorialChatCard({super.key, required this.mensaje});
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.appColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final String tipoServicio =
-        metadata['tipo_servicio'] ?? 'Servicio anterior';
-    final double costo = metadata['costo']?.toDouble() ?? 0.0;
-    final String fechaRaw = metadata['fecha'] ?? '';
-
-    DateTime? fecha;
-    if (fechaRaw.isNotEmpty) {
-      fecha = DateTime.tryParse(fechaRaw);
-    }
-
-    return Container(
-      width: 260,
-      margin: const EdgeInsets.only(top: 8),
-      decoration: BoxDecoration(
-        color: isDark ? colors.surfaceContainer : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isMe
-              ? Colors.white30
-              : (isDark ? Colors.white12 : Colors.black12),
+    return ChatCardShell(
+      icon: Icons.history_edu,
+      title: 'Historial de Vehículo Compartido',
+      semanticLabel: 'Historial de vehículo compartido',
+      child: SizedBox(
+        width: double.infinity,
+        child: AppButton(
+          text: context.l10n.chatViewFullHistory,
+          type: AppButtonType.secondary,
+          onPressed: () =>
+              context.push('/dashboard/history/${mensaje.contenido}'),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: isMe
-                  ? Colors.black12
-                  : (isDark ? Colors.black26 : Colors.grey.shade100),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(12),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.history,
-                  size: 16,
-                  color: isMe ? Colors.white : colors.primary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Historial Adjunto',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: isMe ? Colors.white : colors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  tipoServicio,
-                  style: AppTextStyles.titleMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: isMe ? Colors.white : colors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      fecha != null
-                          ? DateFormat('dd MMM yyyy').format(fecha)
-                          : 'Fecha sin definir',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isMe ? Colors.white70 : colors.textSecondary,
-                      ),
-                    ),
-                    if (costo > 0)
-                      Text(
-                        '\$${costo.toStringAsFixed(2)}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: isMe ? Colors.white : colors.secondary,
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

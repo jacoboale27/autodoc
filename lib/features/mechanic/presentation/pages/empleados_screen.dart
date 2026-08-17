@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/models/empleado_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
-import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/widgets/app_dialog_content.dart';
+import 'package:autodoc/core/widgets/app_empty_state.dart';
+import 'package:autodoc/core/widgets/app_grid.dart';
+import 'package:autodoc/core/widgets/app_page_body.dart';
+import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/empleado_provider.dart';
-import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
+import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 
 /// Pantalla de gestión de sub-cuentas de empleados de un taller: lista los
 /// empleados vinculados (`talleres/{idTaller}/empleados`), permite
@@ -273,9 +279,6 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 700;
-    final colors = context.appColors;
-    final theme = Theme.of(context);
     final idTallerPropietario = context
         .watch<UserProfileProvider>()
         .userData
@@ -283,257 +286,151 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
     final esSubCuentaEmpleado =
         idTallerPropietario != null && idTallerPropietario.isNotEmpty;
 
-    if (esSubCuentaEmpleado) {
-      return Scaffold(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        appBar: isMobile
-            ? AppBar(
-                title: const Text('Empleados'),
-                iconTheme: IconThemeData(color: colors.primary),
-              )
-            : null,
-        drawer: isMobile ? const Drawer(child: MechanicSidebar()) : null,
-        body: Row(
-          children: [
-            if (!isMobile) const MechanicSidebar(),
-            Expanded(
-              child: Center(
-                child: Padding(
-                  padding: EdgeInsets.all(Responsive.padding(context, 32)),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.lock_outline,
-                        size: Responsive.iconSize(context, 56),
-                        color: colors.textSecondary.withValues(alpha: 0.4),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Acceso restringido',
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.bold,
-                          color: colors.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Solo el dueño del taller puede gestionar cuentas '
-                        'de empleados.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: colors.textSecondary),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+    return MechanicScaffold(
+      title: 'Empleados',
+      floatingActionButton: esSubCuentaEmpleado
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => _mostrarDialogoCrearEmpleado(context),
+              icon: const Icon(Icons.person_add),
+              label: const Text('Nuevo Empleado'),
             ),
-          ],
-        ),
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: isMobile
-          ? AppBar(
-              title: Text(
-                'Empleados',
-                style: GoogleFonts.inter(
-                  color: colors.primary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              iconTheme: IconThemeData(color: colors.primary),
+      body: esSubCuentaEmpleado
+          ? const AppEmptyState(
+              title: 'Acceso restringido',
+              description:
+                  'Solo el dueño del taller puede gestionar cuentas de '
+                  'empleados.',
+              icon: Icons.lock_outline,
             )
-          : null,
-      drawer: isMobile ? const Drawer(child: MechanicSidebar()) : null,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _mostrarDialogoCrearEmpleado(context),
-        icon: const Icon(Icons.person_add),
-        label: const Text('Nuevo Empleado'),
-      ),
-      body: Row(
+          : Consumer<EmpleadoProvider>(
+              builder: (context, provider, _) {
+                final empleados = provider.empleados;
+                if (empleados.isEmpty) {
+                  return const AppEmptyState(
+                    title: 'Aún no tienes empleados',
+                    description:
+                        'Crea sub-cuentas para que tu personal pueda operar '
+                        'el panel del taller.',
+                    icon: Icons.badge_outlined,
+                  );
+                }
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+                  child: AppPageBody(
+                    child: AppGrid(
+                      compactColumns: 1,
+                      mediumColumns: 2,
+                      expandedColumns: 2,
+                      largeColumns: 3,
+                      spacing: AppSpacing.base,
+                      childAspectRatio: 2.4,
+                      children: [
+                        for (final empleado in empleados)
+                          _EmpleadoCard(
+                            empleado: empleado,
+                            onDesactivar: () => _confirmarDesactivar(empleado),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+    );
+  }
+}
+
+class _EmpleadoCard extends StatelessWidget {
+  final EmpleadoModel empleado;
+  final VoidCallback onDesactivar;
+
+  const _EmpleadoCard({required this.empleado, required this.onDesactivar});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final rol = empleado.rol == 'Recepcionista' ? 'Recepcionista' : 'Mecánico';
+
+    return AppCard(
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(AppSpacing.base),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!isMobile) const MechanicSidebar(),
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: colors.primary.withValues(alpha: 0.15),
+            child: Icon(Icons.person, color: colors.primary),
+          ),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                if (!isMobile)
-                  Container(
-                    height: 64,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: Responsive.padding(context, 32),
-                    ),
-                    alignment: Alignment.centerLeft,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      border: Border(
-                        bottom: BorderSide(
-                          color: colors.textSecondary.withValues(alpha: 0.1),
-                        ),
-                      ),
-                    ),
-                    child: Text(
-                      'EMPLEADOS',
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w900,
-                        fontSize: Responsive.fontSize(context, 20),
-                        color: colors.primary,
-                      ),
-                    ),
+                Text(
+                  empleado.nombreCompleto,
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colors.textPrimary,
                   ),
-                Expanded(
-                  child: Consumer<EmpleadoProvider>(
-                    builder: (context, provider, _) {
-                      final empleados = provider.empleados;
-                      if (empleados.isEmpty) {
-                        return Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(
-                              Responsive.padding(context, 32),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.badge_outlined,
-                                  size: Responsive.iconSize(context, 56),
-                                  color: colors.textSecondary.withValues(
-                                    alpha: 0.4,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Aún no tienes empleados',
-                                  style: GoogleFonts.inter(
-                                    fontWeight: FontWeight.bold,
-                                    color: colors.primary,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Crea sub-cuentas para que tu personal '
-                                  'pueda operar el panel del taller.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: colors.textSecondary),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-
-                      return ListView.separated(
-                        padding: EdgeInsets.all(
-                          Responsive.padding(context, 24),
-                        ),
-                        itemCount: empleados.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(height: 12),
-                        itemBuilder: (context, index) {
-                          final empleado = empleados[index];
-                          return AppCard(
-                            margin: EdgeInsets.zero,
-                            padding: EdgeInsets.all(
-                              Responsive.padding(context, 16),
-                            ),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  backgroundColor: colors.primary.withValues(
-                                    alpha: 0.15,
-                                  ),
-                                  child: Icon(
-                                    Icons.person,
-                                    color: colors.primary,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        empleado.nombreCompleto,
-                                        style: GoogleFonts.inter(
-                                          fontWeight: FontWeight.bold,
-                                          color: colors.textPrimary,
-                                        ),
-                                      ),
-                                      Text(
-                                        empleado.correo,
-                                        style: TextStyle(
-                                          color: colors.textSecondary,
-                                          fontSize: Responsive.fontSize(
-                                            context,
-                                            13,
-                                          ),
-                                        ),
-                                      ),
-                                      Text(
-                                        empleado.rol == 'Recepcionista'
-                                            ? 'Recepcionista'
-                                            : 'Mecánico',
-                                        style: TextStyle(
-                                          color: colors.textSecondary,
-                                          fontSize: Responsive.fontSize(
-                                            context,
-                                            12,
-                                          ),
-                                        ),
-                                      ),
-                                      if (empleado.telefono != null &&
-                                          empleado.telefono!.isNotEmpty)
-                                        Text(
-                                          empleado.telefono!,
-                                          style: TextStyle(
-                                            color: colors.textSecondary,
-                                            fontSize: Responsive.fontSize(
-                                              context,
-                                              12,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                                Column(
-                                  children: [
-                                    Switch(
-                                      value: empleado.activo,
-                                      onChanged: empleado.activo
-                                          ? (_) =>
-                                                _confirmarDesactivar(empleado)
-                                          : null,
-                                    ),
-                                    Text(
-                                      empleado.activo ? 'Activo' : 'Inactivo',
-                                      style: TextStyle(
-                                        fontSize: Responsive.fontSize(
-                                          context,
-                                          11,
-                                        ),
-                                        color: empleado.activo
-                                            ? colors.success
-                                            : colors.textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
+                Text(
+                  empleado.correo,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                // El estado se comunica con texto además de con color: a un
+                // usuario con daltonismo el verde y el gris le llegan igual.
+                _EstadoChip(activo: empleado.activo, rol: rol),
               ],
             ),
           ),
+          if (empleado.activo)
+            IconButton(
+              icon: Icon(Icons.person_off_outlined, color: colors.error),
+              tooltip: 'Desactivar a ${empleado.nombreCompleto}',
+              onPressed: onDesactivar,
+            ),
         ],
+      ),
+    );
+  }
+}
+
+/// Estado de un empleado como texto además de color: el verde y el gris
+/// solos no bastan para un usuario con daltonismo.
+class _EstadoChip extends StatelessWidget {
+  final bool activo;
+  final String rol;
+
+  const _EstadoChip({required this.activo, required this.rol});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final color = activo ? colors.success : colors.textSecondary;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.full),
+      ),
+      child: Text(
+        activo ? '$rol · Activo' : '$rol · Inactivo',
+        style: AppTextStyles.labelSmall.copyWith(color: color),
       ),
     );
   }

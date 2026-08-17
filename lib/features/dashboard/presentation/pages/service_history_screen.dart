@@ -4,12 +4,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:autodoc/core/widgets/review_sheet.dart';
 import 'package:autodoc/features/reviews/data/services/review_service.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/firestore_collections.dart';
 import 'package:autodoc/core/models/service_record_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/theme/app_theme.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/widgets/app_empty_state.dart';
+import 'package:autodoc/core/widgets/app_grid.dart';
+import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_scaffold.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
@@ -53,7 +59,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
         ),
         title: Text(
           context.l10n.histTitle,
-          style: GoogleFonts.inter(
+          style: AppTextStyles.titleLarge.copyWith(
             color: colors.textPrimary,
             fontWeight: FontWeight.bold,
             fontSize: Responsive.fontSize(context, 18),
@@ -108,19 +114,6 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                         firstDate: DateTime(2000),
                         lastDate: DateTime.now(),
                         initialDateRange: _dateRange,
-                        builder: (context, child) {
-                          return Theme(
-                            data: Theme.of(context).copyWith(
-                              colorScheme: ColorScheme.light(
-                                primary: colors.primary,
-                                onPrimary: Colors.white,
-                                surface: colors.surface,
-                                onSurface: colors.textPrimary,
-                              ),
-                            ),
-                            child: child!,
-                          );
-                        },
                       );
                       if (picked != null) {
                         setState(() => _dateRange = picked);
@@ -132,6 +125,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     initialValue: _sortOption,
+                    isExpanded: true,
                     decoration: InputDecoration(
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -161,7 +155,14 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                               'Costo (Menor)',
                             ]
                             .map(
-                              (o) => DropdownMenuItem(value: o, child: Text(o)),
+                              (o) => DropdownMenuItem(
+                                value: o,
+                                child: Text(
+                                  o,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                             )
                             .toList(),
                     onChanged: (val) {
@@ -289,16 +290,28 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                   children: [
                     _buildStatistics(filteredRecords, colors),
                     Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.symmetric(
+                          vertical: Responsive.padding(context, AppSpacing.sm),
                         ),
-                        itemCount: filteredRecords.length,
-                        itemBuilder: (context, index) {
-                          final record = filteredRecords[index];
-                          return _buildServiceCard(record, colors, context);
-                        },
+                        child: AppPageBody(
+                          child: AppGrid(
+                            compactColumns: 1,
+                            mediumColumns: 1,
+                            expandedColumns: 2,
+                            largeColumns: 2,
+                            childAspectRatio: 1.3,
+                            children: filteredRecords
+                                .map(
+                                  (record) => _buildServiceCard(
+                                    record,
+                                    colors,
+                                    context,
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -320,32 +333,24 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
     );
     double avgCost = totalCost / records.length;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: colors.primary.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+    return AppCard(
+      margin: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.sm,
       ),
       child: Column(
         children: [
           Text(
             context.l10n.histTotalSpent,
-            style: GoogleFonts.inter(color: colors.textSecondary, fontSize: 14),
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: colors.textSecondary,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             '\$${totalCost.toStringAsFixed(2)}',
-            style: GoogleFonts.inter(
+            style: AppTextStyles.headlineSmall.copyWith(
               color: colors.primary,
-              fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -397,61 +402,35 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
   }
 
   Widget _buildEmptyState(AppColors colors) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.history_toggle_off,
-            size: 64,
-            color: colors.primary.withValues(alpha: 0.5),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            context.l10n.histNoServices,
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: colors.primary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            context.l10n.histNoServicesDesc,
-            style: TextStyle(color: colors.textSecondary),
-          ),
-        ],
-      ),
+    return AppEmptyState(
+      icon: Icons.history_toggle_off,
+      title: context.l10n.histNoServices,
+      description: context.l10n.histNoServicesDesc,
     );
   }
 
   Widget _buildFilterTab(String title, AppColors colors) {
     final isSelected = _filter == title;
     return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _filter = title),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: isSelected ? colors.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: isSelected
-                ? [
-                    const BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 4,
-                      offset: Offset(0, 2),
-                    ),
-                  ]
-                : null,
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            title,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-              color: isSelected ? Colors.white : colors.textSecondary,
+      child: Semantics(
+        selected: isSelected,
+        button: true,
+        child: InkWell(
+          onTap: () => setState(() => _filter = title),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 48),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: isSelected ? colors.primary : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+            ),
+            child: Text(
+              title,
+              style: AppTextStyles.labelLarge.copyWith(
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected ? colors.onPrimary : colors.textSecondary,
+              ),
             ),
           ),
         ),
@@ -464,8 +443,8 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(record.tipoServicio ?? 'Servicio'),
-        content: SizedBox(
-          width: 380,
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 380),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -474,29 +453,38 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                 _detalleRow(
                   'Fecha',
                   DateFormat('dd MMM yyyy').format(record.fecha),
+                  colors,
                 ),
                 _detalleRow(
                   'Kilometraje',
                   '${record.kilometrajeServicio ?? '--'} km',
+                  colors,
                 ),
                 if (record.idTaller != null)
-                  _detalleRow('Taller', record.idTaller!),
+                  _detalleRow('Taller', record.idTaller!, colors),
                 if (record.costo != null && record.costo! > 0)
-                  _detalleRow('Costo', '\$${record.costo!.toStringAsFixed(2)}'),
+                  _detalleRow(
+                    'Costo',
+                    '\$${record.costo!.toStringAsFixed(2)}',
+                    colors,
+                  ),
                 if (record.manoDeObra != null && record.manoDeObra! > 0)
                   _detalleRow(
                     'Mano de obra',
                     '\$${record.manoDeObra!.toStringAsFixed(2)}',
+                    colors,
                   ),
                 if (record.descripcion != null &&
                     record.descripcion!.isNotEmpty)
-                  _detalleRow('Descripción', record.descripcion!),
+                  _detalleRow('Descripción', record.descripcion!, colors),
                 if (record.materiales != null &&
                     record.materiales!.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Text(
                     'Materiales',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                    style: AppTextStyles.labelLarge.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   ...record.materiales!.map(
@@ -527,19 +515,21 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
     );
   }
 
-  Widget _detalleRow(String label, String value) {
+  Widget _detalleRow(String label, String value, AppColors colors) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 110,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.grey.shade600,
+          Flexible(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 96, maxWidth: 130),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: colors.textSecondary,
+                ),
               ),
             ),
           ),
@@ -577,7 +567,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
     }
 
     return AppCard(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.zero,
       padding: const EdgeInsets.all(16),
       onTap: () => _mostrarDetalleServicio(record, colors),
       child: Column(
@@ -601,10 +591,9 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                   children: [
                     Text(
                       record.tipoServicio ?? 'Servicio',
-                      style: GoogleFonts.inter(
+                      style: AppTextStyles.titleMedium.copyWith(
                         color: colors.textPrimary,
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
                       ),
                     ),
                     Text(
@@ -620,10 +609,9 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
               if (record.costo != null && record.costo! > 0)
                 Text(
                   '\$${record.costo!.toStringAsFixed(2)}',
-                  style: GoogleFonts.inter(
+                  style: AppTextStyles.titleMedium.copyWith(
                     color: colors.primary,
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
                   ),
                 ),
             ],
@@ -636,7 +624,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: isManual
-                      ? Colors.blueGrey.withValues(alpha: 0.1)
+                      ? colors.textSecondary.withValues(alpha: 0.1)
                       : colors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -646,7 +634,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                     Icon(
                       isManual ? Icons.person : Icons.store,
                       size: 14,
-                      color: isManual ? Colors.blueGrey : colors.primary,
+                      color: isManual ? colors.textSecondary : colors.primary,
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -656,7 +644,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: isManual ? Colors.blueGrey : colors.primary,
+                        color: isManual ? colors.textSecondary : colors.primary,
                       ),
                     ),
                   ],
@@ -673,24 +661,24 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.1),
+                      color: colors.success.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.receipt_long,
                           size: 14,
-                          color: Colors.green,
+                          color: colors.success,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           context.l10n.histEvidence,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: Colors.green,
+                            color: colors.success,
                           ),
                         ),
                       ],
@@ -800,25 +788,42 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
     if (result == true && mounted) setState(() {});
   }
 
+  // El visor de foto a pantalla completa se muestra siempre en chrome
+  // oscuro (como la mayoría de lightboxes), independiente del tema de la
+  // app: sobre una foto en pantalla completa, un icono que se invirtiera a
+  // oscuro en dark mode se volvería invisible. Theme(data: AppTheme.dark)
+  // fija ese chrome sin recurrir a un literal Colors.white.
   void _showImageDialog(BuildContext context, String imageUrl) {
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Stack(
-          alignment: Alignment.topRight,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: InteractiveViewer(
-                child: Image.network(imageUrl, fit: BoxFit.contain),
+      builder: (context) => Theme(
+        data: AppTheme.dark,
+        child: Builder(
+          builder: (context) {
+            final colors = context.appColors;
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              child: Stack(
+                alignment: Alignment.topRight,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: InteractiveViewer(
+                      child: Image.network(imageUrl, fit: BoxFit.contain),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.close,
+                      color: colors.textPrimary,
+                      size: 30,
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
               ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.close, color: Colors.white, size: 30),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

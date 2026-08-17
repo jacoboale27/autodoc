@@ -1,15 +1,26 @@
-import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:intl/intl.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_severity.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/widgets/app_page_body.dart';
+import 'package:autodoc/core/widgets/app_scaffold.dart';
+import 'package:autodoc/core/widgets/app_section_header.dart';
+import 'package:autodoc/core/widgets/app_text_field.dart';
 
 class TaskCompleteScreen extends StatefulWidget {
   final MaintenanceTask task;
@@ -84,523 +95,341 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final primary = const Color(0xFF522C81);
-    final bgColor = isDark ? const Color(0xFF18141E) : const Color(0xFFF7F6F8);
-    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final subTextColor = isDark ? Colors.white60 : const Color(0xFF64748B);
-    final cardColor = isDark
-        ? Colors.white.withValues(alpha: 0.05)
-        : Colors.white.withValues(alpha: 0.7);
-    final borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.1)
-        : Colors.white.withValues(alpha: 0.5);
+    final colors = context.appColors;
     final status = widget.task.getStatus(widget.currentKm);
-    final statusColor = status == MaintenanceStatus.critical
-        ? Colors.red
-        : status == MaintenanceStatus.preventive
-        ? Colors.amber[700]!
-        : Colors.green;
+    final severity = AppSeverity.forStatus(
+      status,
+      colors,
+      optimalLabel: widget.task.getStatusLabel(widget.currentKm),
+      preventiveLabel: widget.task.getStatusLabel(widget.currentKm),
+      criticalLabel: widget.task.getStatusLabel(widget.currentKm),
+    );
 
-    return Scaffold(
-      backgroundColor: bgColor,
-      body: Column(
-        children: [
-          // Header
-          ClipRRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(
-                padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).padding.top + 8,
-                  left: 8,
-                  right: 16,
-                  bottom: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  border: Border(
-                    bottom: BorderSide(color: primary.withValues(alpha: 0.1)),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        Icons.arrow_back_ios_new,
-                        color: isDark ? Colors.white70 : Colors.grey[700],
-                      ),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    Text(
-                      'Completar Servicio',
-                      style: GoogleFonts.inter(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: primary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+    return AppScaffold(
+      appBar: AppBar(
+        backgroundColor: colors.surfaceContainer,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new),
+          tooltip: 'Volver',
+          onPressed: () => context.pop(),
+        ),
+        title: Text(
+          'Completar Servicio',
+          style: AppTextStyles.titleLarge.copyWith(
+            fontWeight: FontWeight.bold,
+            color: colors.primary,
           ),
-
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(Responsive.padding(context, 20)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Task summary card
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(Responsive.padding(context, 20)),
-                    decoration: BoxDecoration(
-                      color: cardColor,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: borderColor),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                      child: Column(
-                        children: [
-                          Row(
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+        child: AppPageBody(
+          maxWidth: AppBreakpoints.maxFormWidth,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Task summary card
+              AppCard(
+                margin: EdgeInsets.zero,
+                padding: EdgeInsets.all(Responsive.padding(context, 20)),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: severity.color.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(AppRadius.lg),
+                          ),
+                          child: Icon(
+                            severity.icon,
+                            color: severity.color,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.base),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                width: 52,
-                                height: 52,
-                                decoration: BoxDecoration(
-                                  color: statusColor.withValues(
-                                    alpha: isDark ? 0.2 : 0.1,
-                                  ),
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: Icon(
-                                  Icons.build_circle_outlined,
-                                  color: statusColor,
-                                  size: 28,
+                              Text(
+                                widget.task.nombre,
+                                style: AppTextStyles.titleMedium.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: colors.textPrimary,
                                 ),
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      widget.task.nombre,
-                                      style: GoogleFonts.inter(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 17,
-                                        color: textColor,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      widget.task.getStatusLabel(
-                                        widget.currentKm,
-                                      ),
-                                      style: GoogleFonts.inter(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: statusColor,
-                                      ),
-                                    ),
-                                  ],
+                              const SizedBox(height: 2),
+                              Text(
+                                severity.label,
+                                style: AppTextStyles.labelMedium.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: severity.color,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.base),
+                    Container(
+                      padding: EdgeInsets.all(Responsive.padding(context, 12)),
+                      decoration: BoxDecoration(
+                        color: colors.primary.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: _infoItem(
+                              'Km Actual',
+                              NumberFormat('#,###').format(widget.currentKm),
+                              colors,
+                            ),
+                          ),
                           Container(
-                            padding: EdgeInsets.all(
-                              Responsive.padding(context, 12),
+                            width: 1,
+                            height: 30,
+                            color: colors.outline.withValues(alpha: 0.4),
+                          ),
+                          Expanded(
+                            child: _infoItem(
+                              'Último',
+                              '${NumberFormat('#,###').format(widget.task.ultimoKm)} km',
+                              colors,
                             ),
-                            decoration: BoxDecoration(
-                              color: primary.withValues(
-                                alpha: isDark ? 0.1 : 0.05,
-                              ),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                _infoItem(
-                                  'Km Actual',
-                                  NumberFormat(
-                                    '#,###',
-                                  ).format(widget.currentKm),
-                                  textColor,
-                                  subTextColor,
-                                ),
-                                Container(
-                                  width: 1,
-                                  height: 30,
-                                  color: subTextColor.withValues(alpha: 0.2),
-                                ),
-                                _infoItem(
-                                  'Último',
-                                  '${NumberFormat('#,###').format(widget.task.ultimoKm)} km',
-                                  textColor,
-                                  subTextColor,
-                                ),
-                                Container(
-                                  width: 1,
-                                  height: 30,
-                                  color: subTextColor.withValues(alpha: 0.2),
-                                ),
-                                _infoItem(
-                                  'Fecha',
-                                  DateFormat(
-                                    'dd/MM/yy',
-                                  ).format(widget.task.fechaUltimoServicio),
-                                  textColor,
-                                  subTextColor,
-                                ),
-                              ],
+                          ),
+                          Container(
+                            width: 1,
+                            height: 30,
+                            color: colors.outline.withValues(alpha: 0.4),
+                          ),
+                          Expanded(
+                            child: _infoItem(
+                              'Fecha',
+                              DateFormat(
+                                'dd/MM/yy',
+                              ).format(widget.task.fechaUltimoServicio),
+                              colors,
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-
-                  const SizedBox(height: 28),
-                  Text(
-                    'DETALLES DEL SERVICIO',
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                      color: subTextColor,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Registra la información del mantenimiento realizado.',
-                    style: GoogleFonts.inter(fontSize: 13, color: subTextColor),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Cost field
-                  _buildInputCard(
-                    icon: Icons.attach_money,
-                    label: 'Costo Total (Opcional)',
-                    child: TextField(
-                      controller: _costController,
-                      keyboardType: TextInputType.number,
-                      style: GoogleFonts.inter(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: textColor,
-                      ),
-                      decoration: InputDecoration(
-                        prefixText: '\$ ',
-                        prefixStyle: TextStyle(fontSize: 18, color: textColor),
-                        hintText: '0.00',
-                        hintStyle: TextStyle(
-                          color: subTextColor.withValues(alpha: 0.5),
-                        ),
-                        border: InputBorder.none,
-                        isDense: true,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                    isDark: isDark,
-                    primary: primary,
-                    cardColor: cardColor,
-                    borderColor: borderColor,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Notes field
-                  _buildInputCard(
-                    icon: Icons.note_alt_outlined,
-                    label: 'Notas / Taller / Refacciones',
-                    child: TextField(
-                      controller: _notesController,
-                      maxLines: 3,
-                      style: GoogleFonts.inter(fontSize: 14, color: textColor),
-                      decoration: InputDecoration(
-                        hintText: 'Ej: Se usó aceite sintético 5W-30...',
-                        hintStyle: TextStyle(
-                          color: subTextColor.withValues(alpha: 0.5),
-                          fontSize: 13,
-                        ),
-                        border: InputBorder.none,
-                        isDense: true,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                    isDark: isDark,
-                    primary: primary,
-                    cardColor: cardColor,
-                    borderColor: borderColor,
-                  ),
-
-                  const SizedBox(height: 24),
-                  Text(
-                    'EVIDENCIA (RECIBO O FOTO)',
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                      color: subTextColor,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Para validar el servicio, adjunta una foto del recibo o de la pieza cambiada.',
-                    style: GoogleFonts.inter(fontSize: 13, color: subTextColor),
-                  ),
-                  const SizedBox(height: 12),
-
-                  if (_receiptImage != null)
-                    Stack(
-                      children: [
-                        Container(
-                          width: double.infinity,
-                          height: 180,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: Colors.green.withValues(alpha: 0.3),
-                              width: 2,
-                            ),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(14),
-                            child: FutureBuilder<List<int>>(
-                              future: _receiptImage!.readAsBytes().then(
-                                (b) => b.toList(),
-                              ),
-                              builder: (context, snapshot) {
-                                if (snapshot.hasData) {
-                                  return Image.memory(
-                                    Uint8List.fromList(snapshot.data!),
-                                    fit: BoxFit.cover,
-                                  );
-                                }
-                                return const Center(
-                                  child: CircularProgressIndicator(),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: GestureDetector(
-                            onTap: () => setState(() => _receiptImage = null),
-                            child: Container(
-                              padding: EdgeInsets.all(
-                                Responsive.padding(context, 6),
-                              ),
-                              decoration: const BoxDecoration(
-                                color: Colors.black54,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.close,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 8,
-                          left: 8,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: Responsive.padding(context, 10),
-                              vertical: Responsive.padding(context, 4),
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.green,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.check,
-                                  color: Colors.white,
-                                  size: 14,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Imagen adjunta',
-                                  style: GoogleFonts.inter(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  else
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _photoButton(
-                            icon: Icons.camera_alt,
-                            label: 'Cámara',
-                            onTap: _pickImageCamera,
-                            isDark: isDark,
-                            primary: primary,
-                            cardColor: cardColor,
-                            borderColor: borderColor,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _photoButton(
-                            icon: Icons.photo_library,
-                            label: 'Galería',
-                            onTap: _pickImageGallery,
-                            isDark: isDark,
-                            primary: primary,
-                            cardColor: cardColor,
-                            borderColor: borderColor,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                  const SizedBox(height: 36),
-                  // Submit button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton.icon(
-                      onPressed: (_isLoading || _receiptImage == null)
-                          ? null
-                          : _submitCompletion,
-                      icon: _isLoading
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : const Icon(Icons.check_circle),
-                      label: Text(
-                        _isLoading ? 'Guardando...' : 'Confirmar y Validar',
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primary,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: primary.withValues(alpha: 0.4),
-                        disabledForegroundColor: Colors.white54,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (_receiptImage == null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Center(
-                        child: Text(
-                          '* Se requiere evidencia fotográfica para validar',
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            color: Colors.red.withValues(alpha: 0.7),
-                          ),
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 40),
-                ],
+                  ],
+                ),
               ),
-            ),
+
+              const SizedBox(height: AppSpacing.xxl),
+              const AppSectionHeader(
+                title: 'DETALLES DEL SERVICIO',
+                subtitle:
+                    'Registra la información del mantenimiento realizado.',
+                uppercase: true,
+              ),
+              const SizedBox(height: AppSpacing.base),
+
+              // Cost field
+              AppTextField(
+                label: 'Costo total',
+                controller: _costController,
+                keyboardType: TextInputType.number,
+                prefixIcon: const Icon(Icons.attach_money),
+                hintText: '0.00',
+                helperText: 'Opcional.',
+              ),
+              const SizedBox(height: AppSpacing.base),
+              AppTextField(
+                label: 'Notas, taller o refacciones',
+                controller: _notesController,
+                maxLines: 3,
+                prefixIcon: const Icon(Icons.note_alt_outlined),
+                hintText: 'Ej: Se usó aceite sintético 5W-30...',
+              ),
+
+              const SizedBox(height: AppSpacing.xl),
+              const AppSectionHeader(
+                title: 'EVIDENCIA (RECIBO O FOTO)',
+                subtitle:
+                    'Para validar el servicio, adjunta una foto del recibo o '
+                    'de la pieza cambiada.',
+                uppercase: true,
+              ),
+              const SizedBox(height: AppSpacing.base),
+
+              if (_receiptImage != null)
+                Stack(
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      height: 180,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        border: Border.all(
+                          color: colors.success.withValues(alpha: 0.3),
+                          width: 2,
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        child: FutureBuilder<List<int>>(
+                          future: _receiptImage!.readAsBytes().then(
+                            (b) => b.toList(),
+                          ),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData) {
+                              return Image.memory(
+                                Uint8List.fromList(snapshot.data!),
+                                fit: BoxFit.cover,
+                              );
+                            }
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: GestureDetector(
+                        onTap: () => setState(() => _receiptImage = null),
+                        child: Container(
+                          padding: EdgeInsets.all(
+                            Responsive.padding(context, 6),
+                          ),
+                          decoration: BoxDecoration(
+                            color: colors.textPrimary.withValues(alpha: 0.6),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.close,
+                            color: colors.surface,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 8,
+                      left: 8,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: Responsive.padding(context, 10),
+                          vertical: Responsive.padding(context, 4),
+                        ),
+                        decoration: BoxDecoration(
+                          color: colors.success,
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check, color: colors.surface, size: 14),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Imagen adjunta',
+                              style: AppTextStyles.labelSmall.copyWith(
+                                color: colors.surface,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              else
+                Row(
+                  children: [
+                    Expanded(
+                      child: _photoButton(
+                        icon: Icons.camera_alt,
+                        label: 'Cámara',
+                        onTap: _pickImageCamera,
+                        semanticLabel: 'Adjuntar foto con la cámara',
+                        colors: colors,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.base),
+                    Expanded(
+                      child: _photoButton(
+                        icon: Icons.photo_library,
+                        label: 'Galería',
+                        onTap: _pickImageGallery,
+                        semanticLabel: 'Adjuntar foto desde la galería',
+                        colors: colors,
+                      ),
+                    ),
+                  ],
+                ),
+
+              const SizedBox(height: AppSpacing.xxl),
+              AppButton(
+                text: _isLoading ? 'Guardando...' : 'Confirmar y validar',
+                icon: const Icon(Icons.check_circle),
+                isLoading: _isLoading,
+                onPressed: _receiptImage == null ? null : _submitCompletion,
+                semanticLabel:
+                    'Confirmar y validar el servicio con la evidencia adjunta',
+              ),
+              if (_receiptImage == null)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.sm),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.info_outline, size: 14, color: colors.error),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          'Se requiere evidencia fotográfica para validar',
+                          textAlign: TextAlign.center,
+                          style: AppTextStyles.labelSmall.copyWith(
+                            color: colors.error,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _infoItem(
-    String label,
-    String value,
-    Color textColor,
-    Color subTextColor,
-  ) {
+  Widget _infoItem(String label, String value, AppColors colors) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           label,
-          style: GoogleFonts.inter(fontSize: 10, color: subTextColor),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.labelSmall.copyWith(color: colors.textSecondary),
         ),
         const SizedBox(height: 2),
         Text(
           value,
-          style: GoogleFonts.inter(
-            fontSize: 13,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: AppTextStyles.labelLarge.copyWith(
             fontWeight: FontWeight.bold,
-            color: textColor,
+            color: colors.textPrimary,
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildInputCard({
-    required IconData icon,
-    required String label,
-    required Widget child,
-    required bool isDark,
-    required Color primary,
-    required Color cardColor,
-    required Color borderColor,
-  }) {
-    return Container(
-      padding: EdgeInsets.all(Responsive.padding(context, 16)),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: primary, size: 22),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: primary.withValues(alpha: 0.7),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                child,
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -608,37 +437,26 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
-    required bool isDark,
-    required Color primary,
-    required Color cardColor,
-    required Color borderColor,
+    required String semanticLabel,
+    required AppColors colors,
   }) {
-    return GestureDetector(
+    return AppCard(
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.symmetric(vertical: 28),
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 28),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: primary.withValues(alpha: 0.2),
-            style: BorderStyle.solid,
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: primary, size: 28),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: primary,
-              ),
+      semanticLabel: semanticLabel,
+      child: Column(
+        children: [
+          Icon(icon, color: colors.primary, size: 28),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            label,
+            style: AppTextStyles.labelLarge.copyWith(
+              fontWeight: FontWeight.w600,
+              color: colors.primary,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

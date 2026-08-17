@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/app_dialog_content.dart';
 import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
 
 class _ItemFormRow {
@@ -136,7 +139,6 @@ class _CotizacionPickerState extends State<CotizacionPicker> {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.85,
@@ -145,7 +147,7 @@ class _CotizacionPickerState extends State<CotizacionPicker> {
       expand: false,
       builder: (context, scrollController) => Container(
         decoration: BoxDecoration(
-          color: isDark ? colors.surfaceContainer : Colors.white,
+          color: colors.surface,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         padding: EdgeInsets.only(
@@ -154,159 +156,158 @@ class _CotizacionPickerState extends State<CotizacionPicker> {
           top: 20,
           bottom: MediaQuery.of(context).viewInsets.bottom + 20,
         ),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            controller: scrollController,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Nueva Cotización',
-                    style: AppTextStyles.titleLarge.copyWith(
-                      fontWeight: FontWeight.bold,
+        child: AppDialogContent(
+          maxWidth: AppBreakpoints.maxFormWidth,
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              controller: scrollController,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: colors.outline,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: _isSubmitting
-                        ? null
-                        : () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              if (widget.subtitle != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  widget.subtitle!,
-                  style: TextStyle(color: colors.textSecondary, fontSize: 13),
                 ),
-              ],
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: _isSubmitting
-                    ? null
-                    : () async {
-                        await _pickFecha();
-                        if (_fechaPropuesta != null) {
-                          setState(() => _fechaError = false);
-                        }
-                      },
-                icon: const Icon(Icons.event),
-                label: Text(
-                  _fechaPropuesta != null
-                      ? DateFormat(
-                          'dd/MM/yyyy hh:mm a',
-                        ).format(_fechaPropuesta!)
-                      : 'Día y hora del servicio *',
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: _fechaError ? colors.error : colors.primary,
-                  side: BorderSide(
-                    color: _fechaError ? colors.error : colors.primary,
-                    width: _fechaError ? 1.5 : 1,
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-              if (_fechaError) ...[
-                const SizedBox(height: 4),
-                Text(
-                  'Debes proponer el día y hora del servicio.',
-                  style: TextStyle(color: colors.error, fontSize: 12),
-                ),
-              ],
-              const SizedBox(height: 20),
-              Text(
-                'Materiales / Repuestos',
-                style: AppTextStyles.titleMedium.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              for (var i = 0; i < _rows.length; i++)
-                _buildItemRow(context, i, colors, isDark),
-              const SizedBox(height: 4),
-              OutlinedButton.icon(
-                onPressed: _isSubmitting ? null : _addRow,
-                icon: const Icon(Icons.add),
-                label: const Text('Agregar renglón'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: colors.primary,
-                  side: BorderSide(
-                    color: colors.primary.withValues(alpha: 0.4),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Total a cobrar:',
-                    style: AppTextStyles.titleMedium.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    '\$${_total.toStringAsFixed(2)}',
-                    style: AppTextStyles.titleLarge.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: colors.secondary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isSubmitting ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Text(
-                          context.l10n.chatGenerateAndSend,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Nueva Cotización',
+                        style: AppTextStyles.titleLarge.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: _isSubmitting
+                          ? null
+                          : () => Navigator.pop(context),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                if (widget.subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.subtitle!,
+                    style: TextStyle(color: colors.textSecondary, fontSize: 13),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: _isSubmitting
+                      ? null
+                      : () async {
+                          await _pickFecha();
+                          if (_fechaPropuesta != null) {
+                            setState(() => _fechaError = false);
+                          }
+                        },
+                  icon: const Icon(Icons.event),
+                  label: Text(
+                    _fechaPropuesta != null
+                        ? DateFormat(
+                            'dd/MM/yyyy hh:mm a',
+                          ).format(_fechaPropuesta!)
+                        : 'Día y hora del servicio *',
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _fechaError
+                        ? colors.error
+                        : colors.primary,
+                    side: BorderSide(
+                      color: _fechaError ? colors.error : colors.primary,
+                      width: _fechaError ? 1.5 : 1,
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+                if (_fechaError) ...[
+                  const SizedBox(height: 4),
+                  Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      'Debes proponer el día y hora del servicio.',
+                      style: TextStyle(color: colors.error, fontSize: 12),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                Text(
+                  'Materiales / Repuestos',
+                  style: AppTextStyles.titleMedium.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                for (var i = 0; i < _rows.length; i++)
+                  _buildItemRow(context, i, colors),
+                const SizedBox(height: 4),
+                OutlinedButton.icon(
+                  onPressed: _isSubmitting ? null : _addRow,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Agregar renglón'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: colors.primary,
+                    side: BorderSide(
+                      color: colors.primary.withValues(alpha: 0.4),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Total a cobrar:',
+                        style: AppTextStyles.titleMedium.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(
+                      '\$${_total.toStringAsFixed(2)}',
+                      style: AppTextStyles.titleLarge.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: colors.secondary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: AppButton(
+                    text: context.l10n.chatGenerateAndSend,
+                    onPressed: _isSubmitting ? null : _submit,
+                    isLoading: _isSubmitting,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildItemRow(
-    BuildContext context,
-    int index,
-    AppColors colors,
-    bool isDark,
-  ) {
+  Widget _buildItemRow(BuildContext context, int index, AppColors colors) {
     final row = _rows[index];
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.05)
-            : Colors.grey.shade50,
+        color: colors.surfaceContainer,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: colors.primary.withValues(alpha: 0.15)),
       ),

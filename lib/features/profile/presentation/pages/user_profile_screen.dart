@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:responsive_framework/responsive_framework.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_shadows.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
@@ -93,18 +99,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final primaryPurple = theme.colorScheme.primary;
-    final accentColor = const Color(0xFF98FFD9);
-    final bgColorStart = isDark
-        ? const Color(0xFF1E293B)
-        : const Color(0xFFF7F6F8);
-    final bgColorEnd = isDark
-        ? const Color(0xFF0F172A)
-        : const Color(0xFFECE9F1);
-    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final colors = context.appColors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryPurple = colors.primary;
+    final textColor = colors.textPrimary;
+    final isWide = AppBreakpoints.of(context).isAtLeastExpanded;
 
     final sessionProvider = context.watch<UserProfileProvider>();
     final user = sessionProvider.userData;
@@ -116,7 +115,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
     if (user == null) {
       return Scaffold(
-        appBar: ResponsiveBreakpoints.of(context).largerThan(TABLET)
+        appBar: AppBreakpoints.of(context).isAtLeastExpanded
             ? null
             : AppBar(title: Text(context.l10n.upProfileTitle)),
         body: Center(
@@ -126,7 +125,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               Icon(
                 Icons.person_off_outlined,
                 size: Responsive.iconSize(context, 64),
-                color: Colors.grey,
+                color: colors.textSecondary,
               ),
               const SizedBox(height: 16),
               Text(
@@ -154,7 +153,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 },
                 child: Text(
                   context.l10n.upSignOut,
-                  style: TextStyle(color: theme.colorScheme.error),
+                  style: TextStyle(color: colors.error),
                 ),
               ),
             ],
@@ -164,6 +163,31 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     }
 
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        // La flecha de atras solo tiene sentido si hay algo que desapilar.
+        // `/user_profile` es una pestana del ShellRoute: no lo hay.
+        automaticallyImplyLeading: false,
+        title: Text(
+          context.l10n.upMyProfile,
+          style: AppTextStyles.titleLarge.copyWith(color: textColor),
+        ),
+        actions: [
+          IconButton(
+            key: const ValueKey('profile-edit-toggle'),
+            // upEditProfile no existe en el ARB (la fase prohibe anadir
+            // claves): literal en espanol, mejor que ningun tooltip.
+            tooltip: _isEditing ? context.l10n.upCancel : 'Editar perfil',
+            onPressed: () => setState(() => _isEditing = !_isEditing),
+            icon: Icon(
+              _isEditing ? Icons.close : Icons.edit_outlined,
+              color: primaryPurple,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+        ],
+      ),
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -171,111 +195,112 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [bgColorStart, bgColorEnd],
+            colors: [colors.surfaceVariant, colors.surface],
           ),
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              if (!ResponsiveBreakpoints.of(context).largerThan(TABLET))
-                _buildAppBar(context, primaryPurple, textColor),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.all(Responsive.padding(context, 24.0)),
-                  child: Column(
-                    children: [
-                      _buildProfileHeader(
-                        user,
-                        primaryPurple,
-                        accentColor,
-                        textColor,
-                      ),
-                      const SizedBox(height: 40),
-                      _buildInfoSection(user, primaryPurple, isDark),
-                      const SizedBox(height: 24),
-                      _buildSettingsSection(context, primaryPurple, isDark),
-                      const SizedBox(height: 40),
-                      _buildLogoutButton(context, primaryPurple),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        child: SafeArea(child: _buildBody(user, colors, isDark, isWide)),
       ),
       floatingActionButton: _isEditing
           ? FloatingActionButton.extended(
+              key: const ValueKey('profile-save'),
               onPressed: isLoading ? null : _saveProfile,
               backgroundColor: primaryPurple,
               label: isLoading
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
-                        color: Colors.white,
+                        color: colors.onPrimary,
                         strokeWidth: 2,
                       ),
                     )
                   : Text(
                       context.l10n.upSaveChanges,
-                      style: const TextStyle(
+                      style: AppTextStyles.labelLarge.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: colors.onPrimary,
                       ),
                     ),
               icon: isLoading
                   ? null
-                  : const Icon(Icons.check, color: Colors.white),
+                  : Icon(Icons.check, color: colors.onPrimary),
             )
           : null,
     );
   }
 
-  Widget _buildAppBar(BuildContext context, Color primary, Color textColor) {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: Responsive.padding(context, 16.0),
-        vertical: Responsive.padding(context, 8.0),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: Icon(
-              Icons.arrow_back_ios_new,
-              size: Responsive.iconSize(context, 20),
+  /// Compone cabecera + contenido: una columna por debajo de `expanded`, dos
+  /// a partir de ahi (cabecera fija a la izquierda, contenido con scroll
+  /// propio a la derecha), acotado a `maxContentWidth`.
+  Widget _buildBody(
+    UserModel user,
+    AppColors colors,
+    bool isDark,
+    bool isWide,
+  ) {
+    final header = _buildProfileHeader(
+      user,
+      colors.primary,
+      colors.textPrimary,
+    );
+    final details = Column(
+      children: [
+        _buildInfoSection(user, colors.primary, isDark),
+        const SizedBox(height: AppSpacing.xl),
+        _buildSettingsSection(context, colors.primary, isDark),
+        const SizedBox(height: AppSpacing.xxl),
+        _buildAccountActions(context, colors),
+      ],
+    );
+
+    if (!isWide) {
+      return SingleChildScrollView(
+        padding: EdgeInsets.all(
+          AppBreakpoints.gutter(AppBreakpoints.of(context)),
+        ),
+        child: Column(
+          children: [
+            header,
+            const SizedBox(height: AppSpacing.xxl),
+            details,
+          ],
+        ),
+      );
+    }
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: AppBreakpoints.maxContentWidth,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // La cabecera queda fija: es identidad, no contenido.
+            Expanded(
+              flex: 2,
+              child: Padding(
+                key: const ValueKey('profile-side-column'),
+                padding: const EdgeInsets.all(AppSpacing.xxl),
+                child: header,
+              ),
             ),
-          ),
-          Text(
-            context.l10n.upMyProfile,
-            style: GoogleFonts.inter(
-              fontSize: Responsive.fontSize(context, 18),
-              fontWeight: FontWeight.bold,
-              color: textColor,
+            Expanded(
+              flex: 3,
+              child: SingleChildScrollView(
+                key: const ValueKey('profile-main-column'),
+                padding: const EdgeInsets.all(AppSpacing.xxl),
+                child: details,
+              ),
             ),
-          ),
-          IconButton(
-            onPressed: () {
-              setState(() => _isEditing = !_isEditing);
-            },
-            icon: Icon(
-              _isEditing ? Icons.close : Icons.edit_outlined,
-              color: primary,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildProfileHeader(
-    UserModel user,
-    Color primary,
-    Color accent,
-    Color textColor,
-  ) {
+  Widget _buildProfileHeader(UserModel user, Color primary, Color textColor) {
+    final colors = context.appColors;
     return Column(
       children: [
         Stack(
@@ -285,7 +310,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               height: 120,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 4),
+                border: Border.all(color: colors.surface, width: 4),
                 boxShadow: [
                   BoxShadow(
                     color: primary.withValues(alpha: 0.2),
@@ -313,12 +338,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         },
                       )
                     : CachedNetworkImage(
-                        imageUrl:
-                            user.fotoPerfilUrl ??
-                            'https://www.w3schools.com/howto/img_avatar.png',
+                        imageUrl: user.fotoPerfilUrl ?? '',
                         fit: BoxFit.cover,
                         placeholder: (context, url) =>
-                            Container(color: Colors.grey[200]),
+                            Container(color: colors.surfaceVariant),
                         errorWidget: (context, url, error) => Container(
                           color: primary.withValues(alpha: 0.1),
                           child: Icon(
@@ -334,19 +357,26 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               Positioned(
                 bottom: 0,
                 right: 0,
-                child: GestureDetector(
-                  onTap: _pickImage,
-                  child: Container(
-                    padding: EdgeInsets.all(Responsive.padding(context, 8)),
-                    decoration: BoxDecoration(
-                      color: primary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    child: Icon(
-                      Icons.camera_alt,
-                      color: Colors.white,
-                      size: Responsive.iconSize(context, 20),
+                child: Tooltip(
+                  message: 'Elegir foto de perfil',
+                  child: InkWell(
+                    key: const ValueKey('profile-photo-camera'),
+                    customBorder: const CircleBorder(),
+                    onTap: _pickImage,
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: colors.surface, width: 2),
+                        boxShadow: AppShadows.darkSm,
+                      ),
+                      child: Icon(
+                        Icons.camera_alt,
+                        color: colors.onPrimary,
+                        size: Responsive.iconSize(context, 20),
+                      ),
                     ),
                   ),
                 ),
@@ -356,17 +386,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         const SizedBox(height: 20),
         Text(
           user.nombreCompleto,
-          style: GoogleFonts.inter(
+          style: AppTextStyles.headlineSmall.copyWith(
             fontSize: Responsive.fontSize(context, 24),
-            fontWeight: FontWeight.bold,
             color: textColor,
           ),
         ),
         Text(
           user.rol,
-          style: GoogleFonts.inter(
+          style: AppTextStyles.titleSmall.copyWith(
             fontSize: Responsive.fontSize(context, 14),
-            fontWeight: FontWeight.w600,
             color: primary,
           ),
         ),
@@ -375,38 +403,29 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Widget _buildInfoSection(UserModel user, Color primary, bool isDark) {
+    final colors = context.appColors;
     return Container(
       padding: EdgeInsets.all(Responsive.padding(context, 24)),
-      decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.05)
-            : Colors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.1)
-              : Colors.white.withValues(alpha: 0.3),
-        ),
-      ),
+      decoration: _cardDecoration(colors, isDark),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildInfoField(
-            context.l10n.upFullName,
-            _nameController,
-            Icons.person_outline,
-            primary,
-            _isEditing,
-            isDark,
+          AppTextField(
+            key: const ValueKey('profile-name-field'),
+            label: context.l10n.upFullName,
+            controller: _nameController,
+            enabled: _isEditing,
+            prefixIcon: Icon(Icons.person_outline, color: colors.primary),
+            textInputAction: TextInputAction.done,
+            autofillHints: const [AutofillHints.name],
           ),
-          const SizedBox(height: 24),
-          _buildInfoField(
-            context.l10n.upEmailAddress,
-            _emailController,
-            Icons.email_outlined,
-            primary,
-            false,
-            isDark,
+          const SizedBox(height: AppSpacing.xl),
+          AppTextField(
+            key: const ValueKey('profile-email-field'),
+            label: context.l10n.upEmailAddress,
+            controller: _emailController,
+            enabled: false,
+            prefixIcon: Icon(Icons.email_outlined, color: colors.textSecondary),
           ), // Email usually not editable here
           const SizedBox(height: 24),
           _buildStaticField(
@@ -421,6 +440,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
+  BoxDecoration _cardDecoration(AppColors colors, bool isDark) {
+    return BoxDecoration(
+      color: colors.surfaceContainer.withValues(alpha: isDark ? 0.6 : 0.85),
+      borderRadius: BorderRadius.circular(AppRadius.xxl),
+      border: Border.all(color: colors.outline.withValues(alpha: 0.3)),
+      boxShadow: isDark ? AppShadows.darkSm : AppShadows.lightSm,
+    );
+  }
+
   Widget _buildSettingsSection(
     BuildContext context,
     Color primary,
@@ -428,30 +456,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   ) {
     final themeProvider = context.watch<ThemeProvider>();
     final languageProvider = context.watch<LanguageProvider>();
+    final colors = context.appColors;
 
     return Container(
       padding: EdgeInsets.all(Responsive.padding(context, 24)),
-      decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.05)
-            : Colors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.1)
-              : Colors.white.withValues(alpha: 0.3),
-        ),
-      ),
+      decoration: _cardDecoration(colors, isDark),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             context.l10n.upSettings,
-            style: GoogleFonts.inter(
+            style: AppTextStyles.labelMedium.copyWith(
               fontSize: Responsive.fontSize(context, 14),
               fontWeight: FontWeight.bold,
               color: primary,
-              letterSpacing: 0.5,
             ),
           ),
           const SizedBox(height: 16),
@@ -524,20 +542,21 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     Function(bool) onChanged,
     bool isDark,
   ) {
+    final colors = context.appColors;
     return Row(
       children: [
         Container(
           padding: EdgeInsets.all(Responsive.padding(context, 8)),
           decoration: BoxDecoration(
             color: isDark
-                ? Colors.white.withValues(alpha: 0.1)
-                : Colors.grey[100],
+                ? colors.textPrimary.withValues(alpha: 0.1)
+                : colors.surfaceVariant,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
             icon,
             size: Responsive.iconSize(context, 20),
-            color: isDark ? Colors.white70 : Colors.grey[700],
+            color: colors.textSecondary,
           ),
         ),
         const SizedBox(width: 16),
@@ -547,87 +566,26 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             children: [
               Text(
                 title,
-                style: GoogleFonts.inter(
+                style: AppTextStyles.titleMedium.copyWith(
                   fontSize: Responsive.fontSize(context, 16),
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white : const Color(0xFF1E293B),
+                  color: colors.textPrimary,
                 ),
               ),
               Text(
                 subtitle,
-                style: GoogleFonts.inter(
+                style: AppTextStyles.bodySmall.copyWith(
                   fontSize: Responsive.fontSize(context, 12),
-                  color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                  color: colors.textSecondary,
                 ),
               ),
             ],
           ),
         ),
-        Switch.adaptive(
+        Switch(
           value: value,
           onChanged: onChanged,
-          activeTrackColor: const Color(0xFF98FFD9),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInfoField(
-    String label,
-    TextEditingController controller,
-    IconData icon,
-    Color primary,
-    bool enabled,
-    bool isDark,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: Responsive.fontSize(context, 12),
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF64748B),
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          enabled: enabled,
-          style: GoogleFonts.inter(
-            fontSize: Responsive.fontSize(context, 16),
-            fontWeight: FontWeight.w600,
-            color: isDark ? Colors.white : const Color(0xFF1E293B),
-          ),
-          decoration: InputDecoration(
-            prefixIcon: Icon(
-              icon,
-              color: enabled ? primary : const Color(0xFF94A3B8),
-              size: 20,
-            ),
-            filled: true,
-            fillColor: enabled ? Colors.white : Colors.transparent,
-            contentPadding: EdgeInsets.symmetric(
-              horizontal: Responsive.padding(context, 0),
-              vertical: Responsive.padding(context, 12),
-            ),
-            border: enabled
-                ? OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[200]!),
-                  )
-                : InputBorder.none,
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[200]!),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: primary, width: 2),
-            ),
-          ),
+          activeThumbColor: colors.onPrimary,
+          activeTrackColor: colors.primary,
         ),
       ],
     );
@@ -640,29 +598,28 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     Color primary,
     bool isDark,
   ) {
+    final colors = context.appColors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: GoogleFonts.inter(
+          style: AppTextStyles.labelMedium.copyWith(
             fontSize: Responsive.fontSize(context, 12),
             fontWeight: FontWeight.bold,
-            color: const Color(0xFF64748B),
-            letterSpacing: 0.5,
+            color: colors.textSecondary,
           ),
         ),
         const SizedBox(height: 12),
         Row(
           children: [
-            Icon(icon, color: const Color(0xFF94A3B8), size: 20),
+            Icon(icon, color: colors.textSecondary, size: 20),
             const SizedBox(width: 12),
             Text(
               value,
-              style: GoogleFonts.inter(
+              style: AppTextStyles.titleMedium.copyWith(
                 fontSize: Responsive.fontSize(context, 16),
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white : const Color(0xFF1E293B),
+                color: colors.textPrimary,
               ),
             ),
           ],
@@ -679,6 +636,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     VoidCallback onTap,
     bool isDark,
   ) {
+    final colors = context.appColors;
     return InkWell(
       onTap: onTap,
       child: Row(
@@ -687,14 +645,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             padding: EdgeInsets.all(Responsive.padding(context, 8)),
             decoration: BoxDecoration(
               color: isDark
-                  ? Colors.white.withValues(alpha: 0.1)
-                  : Colors.grey[100],
+                  ? colors.textPrimary.withValues(alpha: 0.1)
+                  : colors.surfaceVariant,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               icon,
               size: Responsive.iconSize(context, 20),
-              color: isDark ? Colors.white70 : Colors.grey[700],
+              color: colors.textSecondary,
             ),
           ),
           const SizedBox(width: 16),
@@ -704,213 +662,206 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.inter(
+                  style: AppTextStyles.titleMedium.copyWith(
                     fontSize: Responsive.fontSize(context, 16),
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : const Color(0xFF1E293B),
+                    color: colors.textPrimary,
                   ),
                 ),
                 Text(
                   subtitle,
-                  style: GoogleFonts.inter(
+                  style: AppTextStyles.bodySmall.copyWith(
                     fontSize: Responsive.fontSize(context, 12),
-                    color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                    color: colors.textSecondary,
                   ),
                 ),
               ],
             ),
           ),
-          Icon(
-            Icons.arrow_forward_ios,
-            size: 16,
-            color: isDark ? Colors.white54 : Colors.grey[500],
-          ),
+          Icon(Icons.arrow_forward_ios, size: 16, color: colors.textSecondary),
         ],
       ),
     );
   }
 
-  void _showDeleteAccountDialog(BuildContext context) {
+  Future<void> _showDeleteAccountDialog(BuildContext context) async {
     final authProvider = context.read<AuthProvider>();
     final isEmailPassword = authProvider.isEmailPasswordUser;
     final passwordController = TextEditingController();
     final theme = Theme.of(context);
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        bool isLoading = false;
-        String? errorMessage;
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (context) {
+          bool isLoading = false;
+          String? errorMessage;
 
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Eliminar Cuenta'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(context.l10n.upDeleteAccountConfirm),
-                  const SizedBox(height: 16),
-                  if (isEmailPassword) ...[
-                    Text(
-                      context.l10n.upEnterPasswordConfirm,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: passwordController,
-                      obscureText: true,
-                      decoration: InputDecoration(
-                        border: const OutlineInputBorder(),
-                        labelText: context.l10n.upPasswordLabel,
+          return StatefulBuilder(
+            builder: (context, setState) {
+              return AlertDialog(
+                title: Text(context.l10n.upDeleteAccountTitle),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(context.l10n.upDeleteAccountConfirm),
+                    const SizedBox(height: 16),
+                    if (isEmailPassword) ...[
+                      Text(
+                        context.l10n.upEnterPasswordConfirm,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                    ),
-                  ] else ...[
-                    Text(
-                      context.l10n.upGoogleReauthConfirm,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                  if (errorMessage != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      errorMessage!,
-                      style: TextStyle(
-                        color: theme.colorScheme.error,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isLoading ? null : () => Navigator.pop(context),
-                  child: Text(context.l10n.upCancel),
-                ),
-                TextButton(
-                  onPressed: isLoading
-                      ? null
-                      : () async {
-                          setState(() {
-                            isLoading = true;
-                            errorMessage = null;
-                          });
-
-                          bool canDelete = false;
-
-                          if (isEmailPassword) {
-                            final pass = passwordController.text;
-                            if (pass.isEmpty) {
-                              setState(() {
-                                errorMessage = context.l10n.upPasswordEmpty;
-                                isLoading = false;
-                              });
-                              return;
-                            }
-                            canDelete = await authProvider.verifyPassword(pass);
-                            if (!canDelete) {
-                              setState(() {
-                                errorMessage = context.l10n.upPasswordIncorrect;
-                                isLoading = false;
-                              });
-                              return;
-                            }
-                          } else {
-                            canDelete = await authProvider.signInWithGoogle();
-                            if (!canDelete) {
-                              setState(() {
-                                errorMessage =
-                                    context.l10n.upGoogleReauthFailed;
-                                isLoading = false;
-                              });
-                              return;
-                            }
-                          }
-
-                          if (canDelete) {
-                            final success = await authProvider.deleteAccount();
-                            if (success && context.mounted) {
-                              Navigator.pop(context);
-                              GoRouter.of(context).go('/login');
-                            } else if (context.mounted) {
-                              setState(() {
-                                errorMessage = context.l10n
-                                    .upDeleteAccountError(
-                                      authProvider.error ?? 'Unknown error',
-                                    );
-                                isLoading = false;
-                              });
-                            }
-                          }
-                        },
-                  child: isLoading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(
-                          context.l10n.upDelete,
-                          style: TextStyle(color: theme.colorScheme.error),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: passwordController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          border: const OutlineInputBorder(),
+                          labelText: context.l10n.upPasswordLabel,
                         ),
+                      ),
+                    ] else ...[
+                      Text(
+                        context.l10n.upGoogleReauthConfirm,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                    if (errorMessage != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        errorMessage!,
+                        style: TextStyle(
+                          color: theme.colorScheme.error,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-              ],
-            );
-          },
-        );
-      },
-    );
+                actions: [
+                  TextButton(
+                    key: const ValueKey('profile-delete-cancel'),
+                    onPressed: isLoading
+                        ? null
+                        : () => Navigator.of(context).pop(),
+                    child: Text(context.l10n.upCancel),
+                  ),
+                  TextButton(
+                    onPressed: isLoading
+                        ? null
+                        : () async {
+                            setState(() {
+                              isLoading = true;
+                              errorMessage = null;
+                            });
+
+                            bool canDelete = false;
+
+                            if (isEmailPassword) {
+                              final pass = passwordController.text;
+                              if (pass.isEmpty) {
+                                setState(() {
+                                  errorMessage = context.l10n.upPasswordEmpty;
+                                  isLoading = false;
+                                });
+                                return;
+                              }
+                              canDelete = await authProvider.verifyPassword(
+                                pass,
+                              );
+                              if (!canDelete) {
+                                setState(() {
+                                  errorMessage =
+                                      context.l10n.upPasswordIncorrect;
+                                  isLoading = false;
+                                });
+                                return;
+                              }
+                            } else {
+                              canDelete = await authProvider.signInWithGoogle();
+                              if (!canDelete) {
+                                setState(() {
+                                  errorMessage =
+                                      context.l10n.upGoogleReauthFailed;
+                                  isLoading = false;
+                                });
+                                return;
+                              }
+                            }
+
+                            if (canDelete) {
+                              final success = await authProvider
+                                  .deleteAccount();
+                              if (success && context.mounted) {
+                                Navigator.of(context).pop();
+                                GoRouter.of(context).go('/login');
+                              } else if (context.mounted) {
+                                setState(() {
+                                  errorMessage = context.l10n
+                                      .upDeleteAccountError(
+                                        authProvider.error ?? 'Unknown error',
+                                      );
+                                  isLoading = false;
+                                });
+                              }
+                            }
+                          },
+                    child: isLoading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(
+                            context.l10n.upDelete,
+                            style: TextStyle(color: theme.colorScheme.error),
+                          ),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    } finally {
+      // Antes no se liberaba nunca: una fuga por cada apertura del dialogo.
+      passwordController.dispose();
+    }
   }
 
-  Widget _buildLogoutButton(BuildContext context, Color primary) {
-    final theme = Theme.of(context);
+  Future<void> _signOut(BuildContext context) async {
+    final authProvider = context.read<AuthProvider>();
+    final router = GoRouter.of(context);
+    await authProvider.signOut();
+    router.go('/login');
+  }
+
+  /// Las dos acciones destructivas, diferenciadas: cerrar sesion no es
+  /// destructivo (sube a `AppButton` secundario), borrar la cuenta si lo es
+  /// y se queda como enlace en color de error, debajo y con menos peso.
+  Widget _buildAccountActions(BuildContext context, AppColors colors) {
     return Column(
       children: [
+        AppButton(
+          text: context.l10n.upSignOut,
+          type: AppButtonType.secondary,
+          icon: const Icon(Icons.logout),
+          onPressed: () => _signOut(context),
+        ),
+        const SizedBox(height: AppSpacing.md),
         TextButton.icon(
+          key: const ValueKey('profile-delete-account'),
           onPressed: () => _showDeleteAccountDialog(context),
-          icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
+          icon: Icon(Icons.delete_outline, color: colors.error),
           label: Text(
             context.l10n.upDeleteAccount,
-            style: TextStyle(
-              color: theme.colorScheme.error,
-              fontWeight: FontWeight.bold,
-            ),
+            style: AppTextStyles.labelLarge.copyWith(color: colors.error),
           ),
           style: TextButton.styleFrom(
-            padding: EdgeInsets.symmetric(
-              horizontal: Responsive.padding(context, 24),
-              vertical: Responsive.padding(context, 12),
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextButton.icon(
-          onPressed: () async {
-            final authProvider = context.read<AuthProvider>();
-            final router = GoRouter.of(context);
-            await authProvider.signOut();
-            router.go('/login');
-          },
-          icon: Icon(Icons.logout, color: theme.colorScheme.error),
-          label: Text(
-            context.l10n.upSignOut,
-            style: TextStyle(
-              color: theme.colorScheme.error,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          style: TextButton.styleFrom(
-            padding: EdgeInsets.symmetric(
-              horizontal: Responsive.padding(context, 24),
-              vertical: Responsive.padding(context, 12),
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+            minimumSize: const Size(0, 48),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl,
+              vertical: AppSpacing.md,
             ),
           ),
         ),

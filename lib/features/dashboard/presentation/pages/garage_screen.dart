@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
@@ -10,15 +9,22 @@ import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/core/widgets/vehicle_image_widget.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_motion.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_severity.dart';
+import 'package:autodoc/core/theme/app_shadows.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/widgets/app_empty_state.dart';
+import 'package:autodoc/core/widgets/app_grid.dart';
+import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_scaffold.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
-import 'package:responsive_framework/responsive_framework.dart';
 import '../widgets/add_vehicle_form.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
-import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
 
@@ -43,32 +49,60 @@ class GarageScreen extends StatelessWidget {
               child: vehicleProvider.isLoading
                   ? AppSkeletonLayouts.listCards(itemCount: 3, cardHeight: 140)
                   : vehicles.isEmpty
-                  ? _buildEmptyState(context, colors)
-                  : AnimationLimiter(
-                      child: ListView.builder(
-                        padding: EdgeInsets.all(
-                          Responsive.padding(context, 16),
-                        ),
-                        itemCount: vehicles.length,
-                        itemBuilder: (context, index) {
-                          final vehicle = vehicles[index];
-                          return AnimationConfiguration.staggeredList(
-                            position: index,
-                            duration: const Duration(milliseconds: 375),
-                            child: SlideAnimation(
-                              verticalOffset: 50.0,
-                              child: FadeInAnimation(
-                                child: _buildVehicleCard(
-                                  context,
-                                  vehicle,
-                                  colors,
-                                  vehicleProvider,
-                                  currentUserId,
+                  ? AppEmptyState(
+                      icon: Icons.directions_car_outlined,
+                      title: context.l10n.garageNoVehicles,
+                      description: context.l10n.garageNoVehicles,
+                      action: AppButton(
+                        text: 'Añadir vehículo',
+                        icon: const Icon(Icons.add),
+                        onPressed: () =>
+                            _showAddVehicleDialog(context, colors.primary),
+                      ),
+                    )
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.base,
+                      ),
+                      child: AppPageBody(
+                        child: AnimationLimiter(
+                          child: AppGrid(
+                            compactColumns: 1,
+                            mediumColumns: 2,
+                            expandedColumns: 3,
+                            largeColumns: 4,
+                            childAspectRatio: 0.95,
+                            children: [
+                              for (
+                                var index = 0;
+                                index < vehicles.length;
+                                index++
+                              )
+                                AnimationConfiguration.staggeredGrid(
+                                  position: index,
+                                  columnCount: 1,
+                                  duration: AppMotion.transformDuration(
+                                    context,
+                                    AppMotion.sheetEnter,
+                                  ),
+                                  child: SlideAnimation(
+                                    verticalOffset: AppMotion.reduced(context)
+                                        ? 0
+                                        : 24,
+                                    child: FadeInAnimation(
+                                      child: _buildVehicleCard(
+                                        context,
+                                        vehicles[index],
+                                        colors,
+                                        vehicleProvider,
+                                        currentUserId,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                          );
-                        },
+                            ],
+                          ),
+                        ),
                       ),
                     ),
             ),
@@ -79,83 +113,34 @@ class GarageScreen extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context, AppColors colors) {
-    final isDesktop = ResponsiveBreakpoints.of(context).largerThan(TABLET);
-    return Container(
-      padding: EdgeInsets.all(Responsive.padding(context, 16)),
-      decoration: isDesktop
-          ? null
-          : BoxDecoration(
-              color: colors.surfaceContainer.withValues(alpha: 0.8),
-              border: Border(
-                bottom: BorderSide(
-                  color: colors.primary.withValues(alpha: 0.1),
+    // Garage es una pestaña del ShellRoute (Fase 2): no hay a dónde volver,
+    // así que ya no lleva un botón "atrás" propio.
+    return AppPageBody(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.base),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                context.l10n.garageMyVehicles,
+                style: AppTextStyles.titleLarge.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colors.textPrimary,
                 ),
               ),
             ),
-      child: Row(
-        mainAxisAlignment: isDesktop
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.spaceBetween,
-        children: [
-          if (!isDesktop) ...[
-            IconButton(
-              icon: const Icon(Icons.arrow_back),
-              color: colors.primary,
-              onPressed: () => context.pop(),
-            ),
-            Text(
-              context.l10n.garageMyVehicles,
-              style: GoogleFonts.inter(
-                fontSize: Responsive.fontSize(context, 18),
-                fontWeight: FontWeight.bold,
-                color: colors.textPrimary,
-              ),
-            ),
-          ],
-          Container(
-            decoration: BoxDecoration(
-              color: colors.primary,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: colors.primary.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: IconButton(
+            IconButton.filled(
               icon: const Icon(Icons.add),
-              color: Colors.white,
-              iconSize: 20,
+              tooltip: 'Añadir vehículo',
+              style: IconButton.styleFrom(
+                backgroundColor: colors.primary,
+                foregroundColor: colors.onPrimary,
+                minimumSize: const Size(48, 48),
+              ),
               onPressed: () => _showAddVehicleDialog(context, colors.primary),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(BuildContext context, AppColors colors) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.directions_car_outlined,
-            size: Responsive.iconSize(context, 64),
-            color: colors.primary.withValues(alpha: 0.5),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            context.l10n.garageNoVehicles,
-            style: GoogleFonts.inter(
-              fontSize: Responsive.fontSize(context, 16),
-              fontWeight: FontWeight.w500,
-              color: colors.textSecondary,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -167,21 +152,23 @@ class GarageScreen extends StatelessWidget {
     VehicleProvider provider,
     String? currentUserId,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return AppCard(
       onTap: () => context.push(
         '/vehicle_profile/${vehicle.idVehiculo}',
         extra: vehicle,
       ),
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.zero,
       padding: EdgeInsets.zero,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Image Section
-            SizedBox(
-              height: Responsive.heroHeight(context, 192),
+            AspectRatio(
+              aspectRatio: 16 / 10,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -194,70 +181,61 @@ class GarageScreen extends StatelessWidget {
                   ),
                   // Status Badge
                   Positioned(
-                    top: 12,
-                    left: 12,
+                    top: AppSpacing.md,
+                    left: AppSpacing.md,
                     child: FutureBuilder<MaintenanceStatus>(
                       future: context
                           .read<AlertProvider>()
                           .getVehicleOverallStatus(vehicle),
                       builder: (context, snapshot) {
-                        final worstStatus =
-                            snapshot.data ?? MaintenanceStatus.optimal;
+                        final severity = AppSeverity.forStatus(
+                          snapshot.data ?? MaintenanceStatus.optimal,
+                          colors,
+                          optimalLabel: context.l10n.garageOptimal,
+                          preventiveLabel: context.l10n.garageSuggestedReview,
+                          // No existe una clave l10n para el estado crítico
+                          // en lib/l10n/; añadirla queda fuera del alcance
+                          // de esta fase.
+                          criticalLabel: 'Atención requerida',
+                        );
 
-                        Color statusColor = colors.secondary;
-                        String statusText = 'ÓPTIMO';
-                        switch (worstStatus) {
-                          case MaintenanceStatus.critical:
-                            statusColor = colors.error;
-                            statusText = 'ATENCIÓN REQUERIDA';
-                            break;
-                          case MaintenanceStatus.preventive:
-                            statusColor = colors.warning;
-                            statusText = 'REVISIÓN PRONTA';
-                            break;
-                          case MaintenanceStatus.optimal:
-                            statusColor = colors.secondary;
-                            statusText = 'ÓPTIMO';
-                            break;
-                        }
-
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.1),
-                                blurRadius: 4,
+                        return Semantics(
+                          label: severity.label,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.md,
+                              vertical: AppSpacing.xs + 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colors.surfaceContainer.withValues(
+                                alpha: 0.92,
                               ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 10,
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  color: statusColor,
-                                  shape: BoxShape.circle,
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.full,
+                              ),
+                              boxShadow: isDark
+                                  ? AppShadows.darkSm
+                                  : AppShadows.lightSm,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  severity.icon,
+                                  color: severity.color,
+                                  size: 14,
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                statusText,
-                                style: GoogleFonts.inter(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF334155),
-                                  letterSpacing: 0.5,
+                                const SizedBox(width: AppSpacing.sm),
+                                Text(
+                                  severity.label.toUpperCase(),
+                                  style: AppTextStyles.labelSmall.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: colors.textPrimary,
+                                    letterSpacing: 0.5,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         );
                       },
@@ -266,24 +244,24 @@ class GarageScreen extends StatelessWidget {
                   // Primary Star Badge
                   if (vehicle.isPrimary)
                     Positioned(
-                      top: 12,
-                      right: 12,
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.amber,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
-                              blurRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.star,
-                          color: Colors.white,
-                          size: 16,
+                      top: AppSpacing.md,
+                      right: AppSpacing.md,
+                      child: Semantics(
+                        label: 'Vehículo principal',
+                        child: Container(
+                          padding: const EdgeInsets.all(AppSpacing.sm),
+                          decoration: BoxDecoration(
+                            color: colors.warning,
+                            shape: BoxShape.circle,
+                            boxShadow: isDark
+                                ? AppShadows.darkSm
+                                : AppShadows.lightSm,
+                          ),
+                          child: Icon(
+                            Icons.star,
+                            color: colors.onPrimary,
+                            size: 16,
+                          ),
                         ),
                       ),
                     ),
@@ -292,7 +270,7 @@ class GarageScreen extends StatelessWidget {
             ),
             // Details Section
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppSpacing.base),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -303,19 +281,17 @@ class GarageScreen extends StatelessWidget {
                       children: [
                         Text(
                           '${vehicle.marca ?? ''} ${vehicle.modelo ?? ''}',
-                          style: GoogleFonts.inter(
-                            fontSize: Responsive.fontSize(context, 20),
+                          style: AppTextStyles.titleLarge.copyWith(
                             fontWeight: FontWeight.bold,
                             color: colors.primary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: AppSpacing.xs),
                         Text(
                           vehicle.placa.toUpperCase(),
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
+                          style: AppTextStyles.bodyMedium.copyWith(
                             fontWeight: FontWeight.w600,
                             color: colors.textSecondary,
                             letterSpacing: 2,
@@ -345,7 +321,7 @@ class GarageScreen extends StatelessWidget {
                         height: 40,
                         decoration: BoxDecoration(
                           color: colors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
                         ),
                         child: Icon(Icons.chevron_right, color: colors.primary),
                       ),

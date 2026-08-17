@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/widgets/app_snackbar.dart';
 
 /// Formatea una duración como `m:ss` (p.ej. `Duration(seconds: 65)` -> `'1:05'`).
 String formatearDuracionGrabacion(Duration d) {
@@ -64,12 +66,10 @@ class _VoiceRecordButtonState extends State<VoiceRecordButton> {
     if (!permiso.isGranted) {
       _deberiaGrabar = false;
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Se requiere permiso de micrófono para grabar notas de voz',
-            ),
-          ),
+        AppSnackbar.show(
+          context,
+          'Se requiere permiso de micrófono para grabar notas de voz',
+          type: SnackbarType.error,
         );
       }
       return;
@@ -132,43 +132,55 @@ class _VoiceRecordButtonState extends State<VoiceRecordButton> {
     final overlayState = Overlay.of(context);
     _overlayEntry = OverlayEntry(
       builder: (ctx) {
-        final colorTexto = _cancelacionArmada ? Colors.red : Colors.white;
+        final colors = ctx.appColors;
+        final colorTexto = _cancelacionArmada ? colors.error : Colors.white;
+        final duracionTexto = formatearDuracionGrabacion(_transcurrido);
+        final cancelacionTexto = _cancelacionArmada
+            ? 'Suelta para cancelar'
+            : 'Desliza para cancelar';
         return Positioned(
           right: 16,
           bottom: 90,
           child: Material(
             color: Colors.transparent,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.black87,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.fiber_manual_record,
-                    color: Colors.red,
-                    size: 14,
+            child: Semantics(
+              liveRegion: true,
+              label: 'Grabando nota de voz, $duracionTexto. $cancelacionTexto.',
+              child: ExcludeSemantics(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    formatearDuracionGrabacion(_transcurrido),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  decoration: BoxDecoration(
+                    color: Colors.black87,
+                    borderRadius: BorderRadius.circular(24),
                   ),
-                  const SizedBox(width: 12),
-                  Icon(Icons.chevron_left, color: colorTexto, size: 18),
-                  Text(
-                    _cancelacionArmada
-                        ? 'Suelta para cancelar'
-                        : 'Desliza para cancelar',
-                    style: TextStyle(color: colorTexto, fontSize: 12),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.fiber_manual_record,
+                        color: colors.error,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        duracionTexto,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Icon(Icons.chevron_left, color: colorTexto, size: 18),
+                      Text(
+                        cancelacionTexto,
+                        style: TextStyle(color: colorTexto, fontSize: 12),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -198,7 +210,7 @@ class _VoiceRecordButtonState extends State<VoiceRecordButton> {
 
   @override
   Widget build(BuildContext context) {
-    final colorPrimario = Theme.of(context).colorScheme.primary;
+    final colors = context.appColors;
     return GestureDetector(
       onLongPressStart: (_) => _iniciarGrabacion(),
       onLongPressMoveUpdate: (details) {
@@ -213,16 +225,30 @@ class _VoiceRecordButtonState extends State<VoiceRecordButton> {
       onLongPressEnd: (_) => _detenerGrabacion(cancelar: _cancelacionArmada),
       onLongPressCancel: () => _detenerGrabacion(cancelar: true),
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Mantén presionado para grabar una nota de voz'),
-            duration: Duration(seconds: 2),
-          ),
+        AppSnackbar.show(
+          context,
+          'Mantén presionado para grabar una nota de voz',
         );
       },
-      child: CircleAvatar(
-        backgroundColor: _grabando ? Colors.red : colorPrimario,
-        child: Icon(_grabando ? Icons.stop : Icons.mic, color: Colors.white),
+      child: Semantics(
+        label: _grabando
+            ? 'Grabando nota de voz, ${formatearDuracionGrabacion(_transcurrido)}. '
+                  'Suelta para enviar, desliza a la izquierda para cancelar.'
+            : 'Grabar nota de voz. Mantén presionado.',
+        button: true,
+        child: ExcludeSemantics(
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: CircleAvatar(
+              backgroundColor: _grabando ? colors.error : colors.primary,
+              child: Icon(
+                _grabando ? Icons.stop : Icons.mic,
+                color: colors.onPrimary,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

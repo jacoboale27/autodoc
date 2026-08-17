@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:ui';
 import 'package:autodoc/features/auth/data/services/auth_preferences_service.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_motion.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -18,32 +22,59 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  final List<OnboardingContent> _contents = [
+  static const List<OnboardingContent> _contents = <OnboardingContent>[
     OnboardingContent(
       title: 'Diagnóstico en tiempo real',
       description:
-          'Mantén tu auto en perfecto estado con monitoreo constante de todos los sistemas críticos.',
-      imageUrl:
-          'https://lh3.googleusercontent.com/aida-public/AB6AXuAGuLOtm-XW2HPNRArFEVcOAhv4hjIEx54m69ca89JZltsaqO4rUiGxbdPpKpBfxUAJa9aaFgZgvBfpkuHNw3e-iB4vf5LdvMmYdGCpG0Ofiv6z19ojLhGPnUe_9SWK48pl1BzBU1o8xvEILNvboHlEBMSw6NX3RaCY_yF8ZD2518ipqAt_1SQgzQ8BcaGIXp2h2d-agNaSJs-1c2VDrS78ys74l0KTKt-F03N6pKA9uLD6jQniKaI_eh4WtUrbNdZPSHFAjloNDtM',
+          'Mantén tu auto en perfecto estado con monitoreo constante de '
+          'todos los sistemas críticos.',
+      icon: Icons.monitor_heart_outlined,
       features: ['Motor OK', 'Frenos Seguros'],
     ),
     OnboardingContent(
       title: 'Recordatorios Inteligentes',
       description:
-          'Nunca más olvides un cambio de aceite o mantenimiento preventivo. Nosotros te avisamos.',
-      imageUrl:
-          'https://lh3.googleusercontent.com/aida-public/AB6AXuAGuLOtm-XW2HPNRArFEVcOAhv4hjIEx54m69ca89JZltsaqO4rUiGxbdPpKpBfxUAJa9aaFgZgvBfpkuHNw3e-iB4vf5LdvMmYdGCpG0Ofiv6z19ojLhGPnUe_9SWK48pl1BzBU1o8xvEILNvboHlEBMSw6NX3RaCY_yF8ZD2518ipqAt_1SQgzQ8BcaGIXp2h2d-agNaSJs-1c2VDrS78ys74l0KTKt-F03N6pKA9uLD6jQniKaI_eh4WtUrbNdZPSHFAjloNDtM', // Reusing placeholder as requested
+          'Nunca más olvides un cambio de aceite o mantenimiento '
+          'preventivo. Nosotros te avisamos.',
+      icon: Icons.notifications_active_outlined,
       features: ['Aceite 80%', 'Llantas OK'],
     ),
     OnboardingContent(
       title: 'Tu auto te lo agradecerá',
       description:
-          'Descubre una nueva forma de cuidar tu vehículo con recordatorios inteligentes y diagnósticos en tiempo real.',
-      imageUrl:
-          'https://lh3.googleusercontent.com/aida-public/AB6AXuAGuLOtm-XW2HPNRArFEVcOAhv4hjIEx54m69ca89JZltsaqO4rUiGxbdPpKpBfxUAJa9aaFgZgvBfpkuHNw3e-iB4vf5LdvMmYdGCpG0Ofiv6z19ojLhGPnUe_9SWK48pl1BzBU1o8xvEILNvboHlEBMSw6NX3RaCY_yF8ZD2518ipqAt_1SQgzQ8BcaGIXp2h2d-agNaSJs-1c2VDrS78ys74l0KTKt-F03N6pKA9uLD6jQniKaI_eh4WtUrbNdZPSHFAjloNDtM',
+          'Descubre una nueva forma de cuidar tu vehículo con recordatorios '
+          'inteligentes y diagnósticos en tiempo real.',
+      icon: Icons.directions_car_filled_outlined,
       features: ['Motor OK', '100% Vida'],
     ),
   ];
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _previous() => _pageController.previousPage(
+    duration: AppMotion.transformDuration(context, AppMotion.dropdown),
+    curve: AppMotion.easeInOut,
+  );
+
+  Future<void> _skip() async {
+    await AuthPreferencesService().setOnboardingCompleted(true);
+    if (mounted) context.go('/login');
+  }
+
+  Future<void> _next() async {
+    if (_currentPage < _contents.length - 1) {
+      await _pageController.nextPage(
+        duration: AppMotion.transformDuration(context, AppMotion.dropdown),
+        curve: AppMotion.easeInOut,
+      );
+      return;
+    }
+    await _skip();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,38 +98,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    IconButton(
-                      onPressed: () {
-                        if (_currentPage > 0) {
-                          _pageController.previousPage(
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeInOut,
-                          );
-                        }
-                      },
-                      icon: Icon(
-                        Icons.arrow_back,
-                        color: _currentPage > 0
-                            ? colors.textPrimary
-                            : Colors.transparent,
-                      ),
+                    if (_currentPage > 0)
+                      IconButton(
+                        key: const ValueKey('onboarding-back'),
+                        tooltip: 'Anterior',
+                        onPressed: _previous,
+                        icon: const Icon(Icons.arrow_back),
+                      )
+                    else
+                      const SizedBox(width: 48),
+                    Flexible(
+                      child: Text(
+                        'AutoDoc',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.titleLarge.copyWith(
+                          color: colors.textPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ).animate().fadeIn(duration: 500.ms),
                     ),
-                    Text(
-                      'AutoDoc',
-                      style: AppTextStyles.titleLarge.copyWith(
-                        color: colors.textPrimary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ).animate().fadeIn(duration: 500.ms),
                     TextButton(
-                      onPressed: () async {
-                        await AuthPreferencesService().setOnboardingCompleted(
-                          true,
-                        );
-                        if (context.mounted) {
-                          context.go('/login');
-                        }
-                      },
+                      onPressed: _skip,
                       child: Text(
                         'Saltar',
                         style: AppTextStyles.labelLarge.copyWith(
@@ -122,6 +143,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   itemCount: _contents.length,
                   itemBuilder: (context, index) {
                     final content = _contents[index];
+                    // El alto de la ilustracion es una fraccion del viewport,
+                    // pero acotada por arriba y por abajo de forma que `min`
+                    // nunca supere a `max`. La version anterior calculaba
+                    // `maxHeight: height * 0.4` con `minHeight: 200` fijo, que
+                    // se desnormaliza con cualquier alto < 500 px — es decir,
+                    // en todo telefono girado.
+                    //
+                    // `MediaQuery.sizeOf` (no `MediaQuery.of(context).size`)
+                    // porque esto no elige estructura de layout (lo que
+                    // prohibe la regla de usar `WindowClass`): dimensiona una
+                    // ilustracion proporcionalmente al alto disponible, y
+                    // `WindowClass` solo conoce anchos.
+                    final viewportHeight = MediaQuery.sizeOf(context).height;
+                    final illustrationHeight = (viewportHeight * 0.4).clamp(
+                      120.0,
+                      360.0,
+                    );
                     return SingleChildScrollView(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -130,58 +168,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           children: [
                             const SizedBox(height: 20),
                             // Illustration Section with Glassmorphism
-                            ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxHeight:
-                                    MediaQuery.of(context).size.height * 0.4,
-                                minHeight: 200,
-                              ),
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  // Decorative Blobs
-                                  Positioned(
-                                        top: 20,
-                                        right: 20,
-                                        child: Container(
-                                          width: 100,
-                                          height: 100,
-                                          decoration: BoxDecoration(
-                                            color: colors.primary.withValues(
-                                              alpha: 0.2,
+                            SizedBox(
+                              height: illustrationHeight,
+                              child: Center(
+                                // El panel ocupa el ancho disponible con
+                                // un tope de lectura. Antes era
+                                // `width: 280` literal: 19 % del ancho a
+                                // 1440 px y recortado a 320 px.
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: AppBreakpoints.maxReadingWidth,
+                                  ),
+                                  child:
+                                      ClipRRect(
+                                            key: const ValueKey(
+                                              'onboarding-panel',
                                             ),
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ).withBlur(30),
-                                      )
-                                      .animate(
-                                        target: _currentPage == index ? 1 : 0,
-                                      )
-                                      .scale(duration: 600.ms),
-                                  Positioned(
-                                        bottom: 20,
-                                        left: 20,
-                                        child: Container(
-                                          width: 120,
-                                          height: 120,
-                                          decoration: BoxDecoration(
-                                            color: colors.secondary.withValues(
-                                              alpha: 0.2,
-                                            ),
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ).withBlur(40),
-                                      )
-                                      .animate(
-                                        target: _currentPage == index ? 1 : 0,
-                                      )
-                                      .scale(duration: 800.ms),
-                                  // Glass Panel
-                                  LayoutBuilder(
-                                    builder: (context, constraints) {
-                                      return ClipRRect(
                                             borderRadius: BorderRadius.circular(
-                                              24,
+                                              AppRadius.xxl,
                                             ),
                                             child: BackdropFilter(
                                               filter: ImageFilter.blur(
@@ -189,8 +193,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                                 sigmaY: 12,
                                               ),
                                               child: Container(
-                                                width: 280,
-                                                height: constraints.maxHeight,
                                                 decoration: BoxDecoration(
                                                   color: colors.surfaceContainer
                                                       .withValues(
@@ -199,7 +201,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                                             : 0.8,
                                                       ),
                                                   borderRadius:
-                                                      BorderRadius.circular(24),
+                                                      BorderRadius.circular(
+                                                        AppRadius.xxl,
+                                                      ),
                                                   border: Border.all(
                                                     color: colors.outline
                                                         .withValues(alpha: 0.3),
@@ -207,32 +211,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                                   ),
                                                 ),
                                                 padding: const EdgeInsets.all(
-                                                  24,
+                                                  AppSpacing.xl,
                                                 ),
                                                 child: Column(
                                                   children: [
                                                     Expanded(
-                                                      child: ClipRRect(
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              16,
-                                                            ),
-                                                        child: CachedNetworkImage(
-                                                          imageUrl:
-                                                              content.imageUrl,
-                                                          fit: BoxFit.cover,
-                                                          placeholder:
-                                                              (
-                                                                context,
-                                                                url,
-                                                              ) => Container(
-                                                                color: colors
-                                                                    .surfaceContainer,
-                                                              ),
-                                                        ),
+                                                      child: _illustration(
+                                                        content,
+                                                        colors,
                                                       ),
                                                     ),
-                                                    const SizedBox(height: 16),
+                                                    const SizedBox(
+                                                      height: AppSpacing.base,
+                                                    ),
                                                     Row(
                                                       children: [
                                                         _buildFeatureItem(
@@ -268,10 +259,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                             end: 0,
                                             duration: 500.ms,
                                           )
-                                          .fadeIn();
-                                    },
-                                  ),
-                                ],
+                                          .fadeIn(),
+                                ),
                               ),
                             ),
 
@@ -313,22 +302,34 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
 
               // Pagination Dots
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    _contents.length,
-                    (index) => AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      margin: const EdgeInsets.only(right: 12),
-                      height: 8,
-                      width: _currentPage == index ? 32 : 8,
-                      decoration: BoxDecoration(
-                        color: _currentPage == index
-                            ? colors.primary
-                            : colors.outline.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(4),
+              Semantics(
+                key: const ValueKey('onboarding-dots'),
+                label: 'Paso ${_currentPage + 1} de ${_contents.length}',
+                child: ExcludeSemantics(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.xl,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        _contents.length,
+                        (index) => AnimatedContainer(
+                          duration: AppMotion.transformDuration(
+                            context,
+                            AppMotion.dropdown,
+                          ),
+                          curve: AppMotion.easeOut,
+                          margin: const EdgeInsets.only(right: AppSpacing.md),
+                          height: 8,
+                          width: _currentPage == index ? 32 : 8,
+                          decoration: BoxDecoration(
+                            color: _currentPage == index
+                                ? colors.primary
+                                : colors.outline.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(AppRadius.xs),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -337,62 +338,62 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
               // Bottom Button
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
-                child: GestureDetector(
-                  onTap: () async {
-                    if (_currentPage < _contents.length - 1) {
-                      _pageController.nextPage(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                      );
-                    } else {
-                      // Final Action: Navigate to Login
-                      await AuthPreferencesService().setOnboardingCompleted(
-                        true,
-                      );
-                      if (context.mounted) {
-                        context.go('/login');
-                      }
-                    }
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    width: double.infinity,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: colors.primary,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: colors.primary.withValues(alpha: 0.3),
-                          blurRadius: 15,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            _currentPage == _contents.length - 1
-                                ? 'Comenzar ahora'
-                                : 'Siguiente',
-                            style: AppTextStyles.titleMedium.copyWith(
-                              color: colors.onPrimary,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Icon(Icons.chevron_right, color: colors.onPrimary),
-                        ],
-                      ),
-                    ),
-                  ),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  0,
+                  AppSpacing.xl,
+                  AppSpacing.xxl,
+                ),
+                child: AppButton(
+                  key: const ValueKey('onboarding-next'),
+                  text: _currentPage == _contents.length - 1
+                      ? 'Comenzar ahora'
+                      : 'Siguiente',
+                  size: AppButtonSize.large,
+                  icon: const Icon(Icons.chevron_right),
+                  onPressed: _next,
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _illustration(OnboardingContent content, AppColors colors) {
+    final fallback = Container(
+      key: const ValueKey('onboarding-illustration-fallback'),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colors.primary.withValues(alpha: 0.18),
+            colors.secondary.withValues(alpha: 0.18),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Center(
+        child: Icon(
+          content.icon,
+          size: 64,
+          color: colors.primary,
+          semanticLabel: content.title,
+        ),
+      ),
+    );
+
+    if (content.assetPath == null) return fallback;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: Image.asset(
+        content.assetPath!,
+        fit: BoxFit.cover,
+        semanticLabel: content.title,
+        errorBuilder: (_, _, _) => fallback,
       ),
     );
   }
@@ -430,20 +431,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 class OnboardingContent {
   final String title;
   final String description;
-  final String imageUrl;
+
+  /// Ilustracion local. `null` mientras no existan los assets: en ese caso
+  /// se dibuja el degradado con el icono, que es del design system y
+  /// funciona sin red.
+  final String? assetPath;
+
+  /// Icono de respaldo, que **siempre** existe.
+  final IconData icon;
+
   final List<String> features;
 
-  OnboardingContent({
+  const OnboardingContent({
     required this.title,
     required this.description,
-    required this.imageUrl,
+    required this.icon,
     required this.features,
+    this.assetPath,
   });
-}
-
-extension on Widget {
-  Widget withBlur(double sigma) => ImageFiltered(
-    imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-    child: this,
-  );
 }

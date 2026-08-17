@@ -6,6 +6,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:autodoc/core/theme/app_theme.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
+import 'package:autodoc/core/widgets/app_empty_state.dart';
 import 'package:autodoc/features/chat/presentation/pages/reserva_detail_screen.dart';
 import 'package:autodoc/l10n/app_localizations.dart';
 
@@ -70,7 +71,7 @@ void main() {
     // Deja que se resuelva la carga asincrona (doc.get() del fake).
     await tester.pumpAndSettle();
 
-    expect(find.text('No se encontró esta cita.'), findsOneWidget);
+    expect(find.byType(AppEmptyState), findsOneWidget);
     expect(find.byType(Text), findsWidgets);
   });
 }

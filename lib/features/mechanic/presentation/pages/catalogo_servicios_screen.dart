@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/models/catalogo_item_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
-import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/widgets/app_dialog_content.dart';
+import 'package:autodoc/core/widgets/app_empty_state.dart';
+import 'package:autodoc/core/widgets/app_grid.dart';
+import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/catalogo_provider.dart';
-import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
+import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 
 /// Pantalla de gestión del catálogo rápido de servicios/repuestos de un
 /// taller (`talleres/{idTaller}/catalogo_servicios`, Task 9). Permite
@@ -164,8 +168,6 @@ class CatalogoServiciosScreen extends StatefulWidget {
 }
 
 class _CatalogoServiciosScreenState extends State<CatalogoServiciosScreen> {
-  final _currencyFormat = NumberFormat.currency(locale: 'es', symbol: '\$');
-
   @override
   void initState() {
     super.initState();
@@ -221,160 +223,109 @@ class _CatalogoServiciosScreenState extends State<CatalogoServiciosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 700;
-    final colors = context.appColors;
-    final theme = Theme.of(context);
-
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: isMobile
-          ? AppBar(
-              title: Text(
-                'Catálogo',
-                style: GoogleFonts.inter(
-                  color: colors.primary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              iconTheme: IconThemeData(color: colors.primary),
-            )
-          : null,
-      drawer: isMobile ? const Drawer(child: MechanicSidebar()) : null,
+    return MechanicScaffold(
+      title: 'Catálogo de Servicios',
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _mostrarDialogoAgregar(context),
         icon: const Icon(Icons.add),
         label: const Text('Nuevo Ítem'),
       ),
-      body: Row(
+      body: Consumer<CatalogoProvider>(
+        builder: (context, provider, _) {
+          final items = provider.items;
+          if (items.isEmpty) {
+            return const AppEmptyState(
+              title: 'Aún no tienes ítems en tu catálogo',
+              description:
+                  'Agrega servicios y repuestos frecuentes para añadirlos '
+                  'con un clic al facturar.',
+              icon: Icons.inventory_2_outlined,
+            );
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+            child: AppPageBody(
+              child: AppGrid(
+                compactColumns: 1,
+                mediumColumns: 2,
+                expandedColumns: 2,
+                largeColumns: 3,
+                spacing: AppSpacing.base,
+                // Las columnas van de 288 px (compact a 320) a ~360 px
+                // (large con maxContentWidth 1200 y 3 columnas). Con 2.6 la
+                // altura mínima resultante (a 320 px) es de ~111 px, por
+                // encima de los ~97 que necesitan dos líneas de nombre
+                // (bodyLarge) más el precio (bodyMedium) y el padding del
+                // AppCard.
+                childAspectRatio: 2.6,
+                children: [
+                  for (final item in items)
+                    _CatalogoItemCard(item: item, onEliminar: _eliminar),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _CatalogoItemCard extends StatelessWidget {
+  final CatalogoItemModel item;
+  final Future<void> Function(CatalogoItemModel) onEliminar;
+
+  const _CatalogoItemCard({required this.item, required this.onEliminar});
+
+  static final _currencyFormat = NumberFormat.currency(
+    locale: 'es',
+    symbol: '\$',
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+
+    return AppCard(
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(AppSpacing.base),
+      child: Row(
         children: [
-          if (!isMobile) const MechanicSidebar(),
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: colors.primary.withValues(alpha: 0.15),
+            child: Icon(Icons.build_outlined, color: colors.primary),
+          ),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                if (!isMobile)
-                  Container(
-                    height: 64,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: Responsive.padding(context, 32),
-                    ),
-                    alignment: Alignment.centerLeft,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      border: Border(
-                        bottom: BorderSide(
-                          color: colors.textSecondary.withValues(alpha: 0.1),
-                        ),
-                      ),
-                    ),
-                    child: Text(
-                      'CATÁLOGO DE SERVICIOS',
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w900,
-                        fontSize: Responsive.fontSize(context, 20),
-                        color: colors.primary,
-                      ),
-                    ),
+                Text(
+                  item.nombre,
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colors.textPrimary,
                   ),
-                Expanded(
-                  child: Consumer<CatalogoProvider>(
-                    builder: (context, provider, _) {
-                      final items = provider.items;
-                      if (items.isEmpty) {
-                        return Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(
-                              Responsive.padding(context, 32),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.inventory_2_outlined,
-                                  size: Responsive.iconSize(context, 56),
-                                  color: colors.textSecondary.withValues(
-                                    alpha: 0.4,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Aún no tienes ítems en tu catálogo',
-                                  style: GoogleFonts.inter(
-                                    fontWeight: FontWeight.bold,
-                                    color: colors.primary,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Agrega servicios y repuestos frecuentes '
-                                  'para añadirlos con un clic al facturar.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: colors.textSecondary),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-
-                      return ListView.separated(
-                        padding: EdgeInsets.all(
-                          Responsive.padding(context, 24),
-                        ),
-                        itemCount: items.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(height: 12),
-                        itemBuilder: (context, index) {
-                          final item = items[index];
-                          return AppCard(
-                            margin: EdgeInsets.zero,
-                            padding: EdgeInsets.all(
-                              Responsive.padding(context, 16),
-                            ),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  backgroundColor: colors.primary.withValues(
-                                    alpha: 0.15,
-                                  ),
-                                  child: Icon(
-                                    Icons.build_outlined,
-                                    color: colors.primary,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Text(
-                                    item.nombre,
-                                    style: GoogleFonts.inter(
-                                      fontWeight: FontWeight.bold,
-                                      color: colors.textPrimary,
-                                    ),
-                                  ),
-                                ),
-                                Text(
-                                  _currencyFormat.format(item.precio),
-                                  style: GoogleFonts.inter(
-                                    fontWeight: FontWeight.bold,
-                                    color: colors.primary,
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: Icon(
-                                    Icons.delete_outline,
-                                    color: colors.error,
-                                  ),
-                                  onPressed: () => _eliminar(item),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      );
-                    },
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  _currencyFormat.format(item.precio),
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colors.primary,
                   ),
                 ),
               ],
             ),
+          ),
+          IconButton(
+            icon: Icon(Icons.delete_outline, color: colors.error),
+            tooltip: 'Eliminar ${item.nombre} del catálogo',
+            onPressed: () => onEliminar(item),
           ),
         ],
       ),

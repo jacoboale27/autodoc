@@ -96,7 +96,10 @@ void main() {
 
       expect(find.text('Juan Pérez'), findsOneWidget);
       expect(find.text('juan@taller.com'), findsOneWidget);
-      expect(find.text('Recepcionista'), findsOneWidget);
+      // Deliberado (Task 6, no una regresión): el rol ya no vive en un Text
+      // propio, sino dentro del chip de estado ("Recepcionista · Activo"),
+      // que comunica rol + actividad como un solo texto legible.
+      expect(find.textContaining('Recepcionista'), findsOneWidget);
     },
   );
 }

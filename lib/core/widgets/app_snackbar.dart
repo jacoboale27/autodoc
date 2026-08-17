@@ -1,67 +1,72 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
 
 enum SnackbarType { success, error, info }
 
 class AppSnackbar {
+  AppSnackbar._();
+
   static void show(
     BuildContext context,
     String message, {
     SnackbarType type = SnackbarType.info,
   }) {
     final colors = context.appColors;
+    final theme = Theme.of(context);
+
     // Capturamos el ScaffoldMessenger AHORA, mientras el context todavía es
     // válido: muchas llamadas hacen Navigator.pop justo antes de mostrar el
-    // snackbar, y si buscáramos el ScaffoldMessenger dentro del onPressed
-    // (que se ejecuta después, al tocar "OK"), el context ya podría estar
-    // desmontado y el botón no haría nada.
+    // snackbar, y si lo buscáramos dentro del onPressed (que se ejecuta
+    // después, al tocar "OK"), el context ya podría estar desmontado.
     final messenger = ScaffoldMessenger.of(context);
 
-    Color backgroundColor;
-    IconData icon;
+    // El fondo sale del tema (una superficie oscura en ambos modos), no del
+    // color semántico: pintar el fondo de #48BB78 con texto blanco daba
+    // 2.43:1, muy por debajo del 4.5:1 de WCAG AA. El significado lo lleva el
+    // icono, que como glifo solo necesita 3:1 y lo supera con holgura.
+    final background =
+        theme.snackBarTheme.backgroundColor ?? colors.surfaceVariant;
+    final foreground =
+        theme.snackBarTheme.contentTextStyle?.color ?? colors.textPrimary;
 
-    switch (type) {
-      case SnackbarType.success:
-        backgroundColor = colors.success;
-        icon = Icons.check_circle_outline;
-        break;
-      case SnackbarType.error:
-        backgroundColor = colors.error;
-        icon = Icons.error_outline;
-        break;
-      case SnackbarType.info:
-        backgroundColor = colors.primary;
-        icon = Icons.info_outline;
-        break;
-    }
+    final (IconData icon, Color accent) = switch (type) {
+      SnackbarType.success => (Icons.check_circle_outline, colors.success),
+      SnackbarType.error => (Icons.error_outline, colors.error),
+      // El morado de marca no llega a 3:1 sobre la superficie oscura del
+      // snackbar; el teal complementario sí.
+      SnackbarType.info => (Icons.info_outline, colors.secondary),
+    };
 
     final snackBar = SnackBar(
       content: Row(
         children: [
-          Icon(icon, color: Colors.white, size: 24),
-          const SizedBox(width: 12),
+          Icon(icon, color: accent, size: 24),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Text(
               message,
-              style: GoogleFonts.inter(
-                color: Colors.white,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: foreground,
                 fontWeight: FontWeight.w600,
-                fontSize: 14,
               ),
             ),
           ),
         ],
       ),
-      backgroundColor: backgroundColor,
+      backgroundColor: background,
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      margin: const EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      margin: const EdgeInsets.all(AppSpacing.base),
       elevation: 6,
       duration: const Duration(seconds: 4),
       action: SnackBarAction(
         label: 'OK',
-        textColor: Colors.white,
+        textColor: accent,
         onPressed: messenger.hideCurrentSnackBar,
       ),
     );

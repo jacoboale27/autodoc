@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
 
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
 
@@ -46,26 +48,20 @@ class MechanicSidebar extends StatelessWidget {
     final esSubCuentaEmpleado =
         idTallerPropietario != null && idTallerPropietario.isNotEmpty;
 
-    final bgColor = isDark
-        ? colors.surfaceContainer
-        : Colors.white.withValues(alpha: 0.7);
-
     return Container(
       width: 280,
       decoration: BoxDecoration(
-        color: bgColor,
+        color: colors.surfaceContainer,
         border: Border(
           right: BorderSide(
-            color: isDark
-                ? Colors.white10
-                : Colors.white.withValues(alpha: 0.4),
+            color: colors.outline.withValues(alpha: isDark ? 0.3 : 0.5),
           ),
         ),
       ),
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(AppSpacing.xl),
             child: Row(
               children: [
                 CircleAvatar(
@@ -73,32 +69,34 @@ class MechanicSidebar extends StatelessWidget {
                   backgroundColor: colors.primary.withValues(alpha: 0.15),
                   child: Icon(Icons.store, color: colors.primary),
                 ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'AutoDoc',
-                      style: GoogleFonts.montserrat(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: colors.textPrimary,
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'AutoDoc',
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.titleMedium.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colors.textPrimary,
+                        ),
                       ),
-                    ),
-                    Text(
-                      'Panel de Taller',
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        color: colors.textSecondary,
-                        fontWeight: FontWeight.w600,
+                      Text(
+                        'Panel de Taller',
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.labelSmall.copyWith(
+                          color: colors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xl),
           Expanded(
             child: SingleChildScrollView(
               child: Column(
@@ -191,7 +189,7 @@ class MechanicSidebar extends StatelessWidget {
             isDestructive: true,
             onTap: () => _signOut(context),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.base),
         ],
       ),
     );
@@ -219,12 +217,15 @@ class MechanicSidebar extends StatelessWidget {
         : colors.textSecondary;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      margin: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
         color: isActive && !isDestructive
             ? activeColor.withValues(alpha: 0.1)
             : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         border: isActive && !isDestructive
             ? Border(right: BorderSide(color: activeColor, width: 4))
             : null,
@@ -233,7 +234,7 @@ class MechanicSidebar extends StatelessWidget {
         leading: Icon(icon, color: iconColor),
         title: Text(
           label,
-          style: GoogleFonts.inter(
+          style: AppTextStyles.bodyMedium.copyWith(
             fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
             color: titleColor,
           ),

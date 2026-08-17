@@ -103,6 +103,12 @@ class AppColors extends ThemeExtension<AppColors> {
       )!,
     );
   }
+
+  /// Overlay derivado de [primary] para estado hover (puntero real).
+  Color get hoverOverlay => primary.withValues(alpha: 0.06);
+
+  /// Overlay derivado de [primary] para estado de press.
+  Color get pressedOverlay => primary.withValues(alpha: 0.12);
 }
 
 extension AppColorsExtension on BuildContext {
@@ -115,11 +121,26 @@ class AppPalette {
   static const Color lightSecondary = Color(0xFF81E6D9);
   static const Color lightSurface = Color(0xFFF7F6F8);
   static const Color lightSurfaceContainer = Color(0xFFEEEDF0);
-  static const Color lightError = Color(0xFFFC8181);
-  static const Color lightWarning = Color(0xFFF6AD55);
-  static const Color lightSuccess = Color(0xFF48BB78);
+  // Antes: static const Color lightError = Color(0xFFFC8181);
+  // 2.27:1 sobre lightSurface — falla el 3:1 de WCAG AA para glifo grande.
+  // Un escalón más oscuro en la misma familia de tono (rojo coral cálido,
+  // hue 0°): 3.17:1.
+  static const Color lightError = Color(0xFFE85D5D);
+  // Antes: static const Color lightWarning = Color(0xFFF6AD55);
+  // 1.77:1 sobre lightSurface — falla el 3:1 de WCAG AA para glifo grande.
+  // Un escalón más oscuro en la misma familia de tono (ámbar/naranja,
+  // hue ~33°): 3.27:1.
+  static const Color lightWarning = Color(0xFFC17817);
+  // Antes: static const Color lightSuccess = Color(0xFF48BB78);
+  // 2.25:1 sobre lightSurface — falla el 3:1 de WCAG AA para glifo grande.
+  // Un escalón más oscuro en la misma familia de tono (verde): 4.22:1.
+  static const Color lightSuccess = Color(0xFF2F855A);
   static const Color lightTextPrimary = Color(0xFF0F172A);
-  static const Color lightTextSecondary = Color(0xFF64748B);
+  // Antes: static const Color lightTextSecondary = Color(0xFF64748B);
+  // 4.42:1 sobre lightSurface y 4.08:1 sobre lightSurfaceContainer — falla
+  // WCAG AA. Un escalón más oscuro en la misma familia de tono: 5.05:1 y
+  // 4.67:1 respectivamente.
+  static const Color lightTextSecondary = Color(0xFF5B6B80);
   static const Color lightOnPrimary = Colors.white;
   static const Color lightOnSecondary = Color(0xFF0F172A);
   static const Color lightSurfaceVariant = Color(0xFFE2E8F0);

@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import 'package:autodoc/features/splash/presentation/pages/splash_screen.dart';
 import 'package:autodoc/features/onboarding/presentation/pages/onboarding_screen.dart';
 import 'package:autodoc/features/auth/presentation/pages/auth_screen.dart';
-import 'package:autodoc/features/auth/presentation/screens/login_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/dashboard_screen.dart';
 import 'package:autodoc/features/profile/presentation/pages/profile_setup_screen.dart';
 import 'package:autodoc/features/profile/presentation/pages/user_profile_screen.dart';
@@ -337,7 +336,7 @@ GoRouter createAppRouter(
         pageBuilder: (context, state) => buildPageWithFadeThrough(
           context: context,
           state: state,
-          child: const LoginScreen(),
+          child: const AuthScreen(isLogin: true),
         ),
       ),
       GoRoute(

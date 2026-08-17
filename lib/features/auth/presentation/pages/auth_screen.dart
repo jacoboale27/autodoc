@@ -12,9 +12,16 @@ import '../providers/auth_provider.dart';
 import 'package:autodoc/features/auth/data/services/auth_preferences_service.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
+import 'package:autodoc/core/theme/app_motion.dart';
+import 'package:autodoc/core/theme/app_shadows.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
+import 'package:autodoc/core/widgets/app_text_field.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
 
 class AuthScreen extends StatefulWidget {
   final bool isLogin;
@@ -30,6 +37,19 @@ class _AuthScreenState extends State<AuthScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authPreferences = AuthPreferencesService();
+  // Dos GlobalKey, uno por modo, en vez de una sola compartida: AnimatedSwitcher
+  // (ver `_card`) mantiene montado el widget saliente durante todo el cross-fade
+  // mientras el entrante ya se infla, asi que ambos Form coexisten brevemente en
+  // el arbol. Con una unica GlobalKey eso revienta con
+  // "Duplicate GlobalKey detected in widget tree" en cuanto el usuario toca el
+  // enlace de alternar login/registro. Cada _buildGlassCard se construye con el
+  // valor de _isLoginMode vigente en ESE build, asi que el arbol saliente (con
+  // el _isLoginMode anterior ya congelado) referencia su propia key y el
+  // entrante la suya: nunca coinciden.
+  final _loginFormKey = GlobalKey<FormState>();
+  final _registerFormKey = GlobalKey<FormState>();
+  GlobalKey<FormState> get _formKey =>
+      _isLoginMode ? _loginFormKey : _registerFormKey;
 
   @override
   void initState() {
@@ -83,88 +103,156 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final windowClass = AppBreakpoints.of(context);
+    final isWide = windowClass.isAtLeastExpanded;
 
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: colors.surface,
-        child: Stack(
-          children: [
-            // Decorative blobs
-            Positioned.fill(
-              child: AuthBackgroundBlobs(colors: colors, isDark: isDark),
-            ),
-
-            // Main Content
-            Center(
+      backgroundColor: colors.surface,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: AuthBackgroundBlobs(colors: colors, isDark: isDark),
+          ),
+          SafeArea(
+            child: Center(
               child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(
-                  Responsive.padding(context, 24),
-                  Responsive.padding(context, 60),
-                  Responsive.padding(context, 24),
-                  Responsive.padding(context, 100),
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppBreakpoints.gutter(windowClass),
+                  vertical: AppSpacing.xl,
                 ),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
+                  constraints: const BoxConstraints(
+                    maxWidth: AppBreakpoints.maxContentWidth,
+                  ),
+                  // AuthBottomNav vive aquí, como último hijo del mismo flujo
+                  // que la tarjeta — no en un Stack ni fuera de un Expanded
+                  // acotado. Así nunca puede quedar por delante ni por
+                  // detrás de la tarjeta "por construcción": el orden
+                  // secuencial del Column lo impide con independencia de
+                  // cuánto crezca el formulario o si hace falta scroll.
+                  //
+                  // Se intentó (fix-round del task 5) la estructura del brief
+                  // original — SafeArea > Column [ Expanded(Center(
+                  // SingleChildScrollView(...))), AuthBottomNav ] — con
+                  // AuthBottomNav como hermano fijo FUERA del Expanded. Se
+                  // verificó empíricamente contra
+                  // `auth_screen_layout_test.dart` a 375×812 (altura por
+                  // defecto de `pumpEntry`) y falla de forma reproducible:
+                  // el `Expanded` fija la altura del área scrollable en
+                  // (818 lógicos de SafeArea − ~92 de AuthBottomNav) ≈ 720 px,
+                  // pero la tarjeta del Task 4 (con logo, ambos campos,
+                  // "remember me"/"forgot password", submit, divider y botón
+                  // de Google) mide ~747 px de alto ella sola, más el logo de
+                  // 210 px encima — muy por encima de esos ~720 px. Con
+                  // `Center` dentro del `Expanded`, el contenido no cabe y el
+                  // scroll arranca centrado/desde arriba: el borde inferior
+                  // de la tarjeta queda en dy≈1013, muy por debajo del techo
+                  // fijo de AuthBottomNav en dy≈731 — la tarjeta queda
+                  // literalmente detrás/debajo de la barra en el primer
+                  // frame, sin que el usuario haya hecho scroll todavía.
+                  // Output real de test capturado:
+                  //   Expected: a value less than or equal to <731.0>
+                  //     Actual: <1013.0>
+                  //   la tarjeta se mete debajo de la barra inferior
+                  // Por eso se mantiene la colocación por flujo: no es un
+                  // descuido, es la que pasa el test con el contenido real
+                  // del Task 4 en el viewport auditado más pequeño.
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Logo Section
-                      AuthLogoSection(colors: colors),
-                      const SizedBox(height: 32),
-
-                      // Central Glassmorphism Card
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        child: _buildGlassCard(
-                          colors,
-                          isDark,
-                          key: ValueKey(_isLoginMode),
-                        ),
-                      ),
-
-                      const SizedBox(height: 32),
-                      // Bottom Switch Link
-                      TextButton(
-                        onPressed: _toggleMode,
-                        child: RichText(
-                          text: TextSpan(
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              color: colors.textSecondary,
-                            ),
-                            children: [
-                              TextSpan(
-                                text: _isLoginMode
-                                    ? context.l10n.authNoAccount
-                                    : context.l10n.authHaveAccount,
-                              ),
-                              TextSpan(
-                                text: _isLoginMode
-                                    ? context.l10n.authRegisterFree
-                                    : context.l10n.authLogin,
-                                style: AppTextStyles.bodyMedium.copyWith(
-                                  color: colors.primary,
-                                  fontWeight: FontWeight.bold,
-                                  decoration: TextDecoration.underline,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                      isWide
+                          ? _buildWideLayout(colors, isDark)
+                          : _buildNarrowLayout(colors, isDark),
+                      const SizedBox(height: AppSpacing.xxl),
+                      AuthBottomNav(
+                        key: const ValueKey('auth-bottom-nav'),
+                        colors: colors,
+                        isDark: isDark,
                       ),
                     ],
                   ),
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
 
-            // Bottom Navigation Bar for Mobile
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: AuthBottomNav(colors: colors, isDark: isDark),
+  Widget _buildNarrowLayout(AppColors colors, bool isDark) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        AuthLogoSection(colors: colors),
+        const SizedBox(height: AppSpacing.xxl),
+        _card(colors, isDark),
+        const SizedBox(height: AppSpacing.xxl),
+        _modeSwitchLink(colors),
+      ],
+    );
+  }
+
+  Widget _buildWideLayout(AppColors colors, bool isDark) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Padding(
+            key: const ValueKey('auth-brand-panel'),
+            padding: const EdgeInsets.only(right: AppSpacing.xxl),
+            child: AuthLogoSection(colors: colors),
+          ),
+        ),
+        SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _card(colors, isDark),
+              const SizedBox(height: AppSpacing.xxl),
+              _modeSwitchLink(colors),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _card(AppColors colors, bool isDark) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 400),
+      child: AnimatedSwitcher(
+        duration: AppMotion.transformDuration(context, AppMotion.dropdown),
+        switchInCurve: AppMotion.easeOut,
+        switchOutCurve: AppMotion.easeOut,
+        child: _buildGlassCard(colors, isDark, key: ValueKey(_isLoginMode)),
+      ),
+    );
+  }
+
+  Widget _modeSwitchLink(AppColors colors) {
+    return TextButton(
+      key: const ValueKey('auth-mode-switch'),
+      onPressed: _toggleMode,
+      child: RichText(
+        text: TextSpan(
+          style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
+          children: [
+            TextSpan(
+              text: _isLoginMode
+                  ? context.l10n.authNoAccount
+                  : context.l10n.authHaveAccount,
+            ),
+            TextSpan(
+              text: _isLoginMode
+                  ? context.l10n.authRegisterFree
+                  : context.l10n.authLogin,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: colors.primary,
+                fontWeight: FontWeight.bold,
+                decoration: TextDecoration.underline,
+              ),
             ),
           ],
         ),
@@ -182,8 +270,8 @@ class _AuthScreenState extends State<AuthScreen> {
           sigmaY: 10,
         ), // Reduced blur for performance
         child: Container(
+          key: const ValueKey('auth-card'),
           width: double.infinity,
-          constraints: BoxConstraints(maxWidth: Responsive.size(context, 450)),
           padding: EdgeInsets.all(Responsive.padding(context, 32)),
           decoration: BoxDecoration(
             color: colors.surfaceContainer.withValues(
@@ -191,202 +279,233 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: colors.outline.withValues(alpha: 0.5)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
+            boxShadow: isDark ? AppShadows.darkLg : AppShadows.lightLg,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                _isLoginMode
-                    ? context.l10n.authWelcomeBack
-                    : context.l10n.authCreateAccount,
-                style: AppTextStyles.headlineSmall.copyWith(
-                  color: colors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _isLoginMode
-                    ? context.l10n.authEnterCredentials
-                    : context.l10n.authRegisterToManage,
-                textAlign: TextAlign.center,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: colors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // Form Fields
-              _buildTextField(
-                label: _isLoginMode
-                    ? context.l10n.authEmailOrUserLabel
-                    : context.l10n.authEmailLabel,
-                hint: _isLoginMode
-                    ? context.l10n.authEmailOrUserHint
-                    : context.l10n.authEmailHint,
-                icon: Icons.mail_outline,
-                colors: colors,
-                controller: _emailController,
-              ),
-              const SizedBox(height: 20),
-              _buildTextField(
-                label: context.l10n.authPasswordLabel,
-                hint: context.l10n.authPasswordHint,
-                icon: Icons.lock_outline,
-                isPassword: true,
-                colors: colors,
-                controller: _passwordController,
-              ),
-
-              const SizedBox(height: 12),
-              // Extras
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
-                runSpacing: 8,
+          child: AutofillGroup(
+            child: Form(
+              key: _formKey,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+                  Text(
+                    _isLoginMode
+                        ? context.l10n.authWelcomeBack
+                        : context.l10n.authCreateAccount,
+                    style: AppTextStyles.headlineSmall.copyWith(
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _isLoginMode
+                        ? context.l10n.authEnterCredentials
+                        : context.l10n.authRegisterToManage,
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Form Fields
+                  AppTextField(
+                    key: const ValueKey('auth-email-field'),
+                    label: _isLoginMode
+                        ? context.l10n.authEmailOrUserLabel
+                        : context.l10n.authEmailLabel,
+                    hintText: _isLoginMode
+                        ? context.l10n.authEmailOrUserHint
+                        : context.l10n.authEmailHint,
+                    controller: _emailController,
+                    prefixIcon: Icon(
+                      Icons.mail_outline,
+                      color: colors.textSecondary,
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [AutofillHints.username],
+                    validator: (value) {
+                      final email = (value ?? '').trim();
+                      if (email.isEmpty) {
+                        return context.l10n.authCompleteCredentials;
+                      }
+                      // En login se admite tambien usuario admin sin arroba:
+                      // esa es la regla de negocio existente, no se cambia.
+                      if (!_isLoginMode && !_isValidEmail(email)) {
+                        return context.l10n.authEnterValidEmail;
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  AppTextField(
+                    key: const ValueKey('auth-password-field'),
+                    label: context.l10n.authPasswordLabel,
+                    hintText: context.l10n.authPasswordHint,
+                    controller: _passwordController,
+                    prefixIcon: Icon(
+                      Icons.lock_outline,
+                      color: colors.textSecondary,
+                    ),
+                    obscureText: true,
+                    obscureToggle: true,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: const [AutofillHints.password],
+                    onSubmitted: (_) => _submit(),
+                    validator: (value) {
+                      final pass = value ?? '';
+                      if (pass.isEmpty) {
+                        return context.l10n.authCompleteCredentials;
+                      }
+                      if (!_isLoginMode && pass.length < 6) {
+                        return context.l10n.authPasswordTooShort;
+                      }
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 12),
+                  // Extras
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: Checkbox(
-                          value: _rememberMe,
-                          onChanged: (value) {
-                            setState(() => _rememberMe = value ?? false);
-                          },
-                          activeColor: colors.primary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
+                      Semantics(
+                        label: context.l10n.authRememberMe,
+                        checked: _rememberMe,
+                        child: InkWell(
+                          key: const ValueKey('auth-remember-me'),
+                          onTap: () =>
+                              setState(() => _rememberMe = !_rememberMe),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 4,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: Checkbox(
+                                    value: _rememberMe,
+                                    onChanged: (value) => setState(
+                                      () => _rememberMe = value ?? false,
+                                    ),
+                                    activeColor: colors.primary,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                // Flexible: a 200% de escala de fuente el
+                                // texto puede exceder el ancho que le deja
+                                // el Wrap (mismo criterio que el separador
+                                // "OR CONTINUE WITH" del punto 4f).
+                                Flexible(
+                                  child: Text(
+                                    context.l10n.authRememberMe,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppTextStyles.labelMedium.copyWith(
+                                      color: colors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () => setState(() => _rememberMe = !_rememberMe),
-                        child: Text(
-                          context.l10n.authRememberMe,
-                          style: AppTextStyles.labelMedium.copyWith(
-                            color: colors.textSecondary,
+                      if (_isLoginMode)
+                        TextButton(
+                          key: const ValueKey('auth-forgot-password'),
+                          onPressed: _showForgotPasswordDialog,
+                          child: Text(
+                            context.l10n.authForgotPassword,
+                            style: AppTextStyles.labelMedium.copyWith(
+                              color: colors.primary,
+                            ),
                           ),
+                        ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+                  // Submit Button
+                  AppButton(
+                    key: const ValueKey('auth-submit'),
+                    text: _isLoginMode
+                        ? context.l10n.authLoginButton
+                        : context.l10n.authRegisterButton,
+                    size: AppButtonSize.large,
+                    isLoading: context.watch<AuthProvider>().isLoading,
+                    onPressed: _submit,
+                    semanticLabel: _isLoginMode
+                        ? context.l10n.authLoginButton
+                        : context.l10n.authRegisterButton,
+                  ),
+
+                  const SizedBox(height: 24),
+                  // Divider
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Divider(
+                          color: colors.outline.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      Flexible(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Text(
+                            context.l10n.authOrContinueWith,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: AppTextStyles.labelSmall.copyWith(
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Divider(
+                          color: colors.outline.withValues(alpha: 0.5),
                         ),
                       ),
                     ],
                   ),
-                  if (_isLoginMode)
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      onPressed: _showForgotPasswordDialog,
-                      child: Text(
-                        context.l10n.authForgotPassword,
-                        style: AppTextStyles.labelMedium.copyWith(
-                          color: colors.primary,
-                        ),
-                      ),
-                    ),
+
+                  const SizedBox(height: 24),
+                  // Google Button
+                  _buildGoogleButton(colors),
                 ],
               ),
-
-              const SizedBox(height: 24),
-              // Submit Button
-              _buildSubmitButton(colors),
-
-              const SizedBox(height: 24),
-              // Divider
-              Row(
-                children: [
-                  Expanded(
-                    child: Divider(
-                      color: colors.outline.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      context.l10n.authOrContinueWith,
-                      style: AppTextStyles.labelSmall.copyWith(
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Divider(
-                      color: colors.outline.withValues(alpha: 0.5),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-              // Google Button
-              _buildGoogleButton(colors),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildTextField({
-    required String label,
-    required String hint,
-    required IconData icon,
-    required AppColors colors,
-    required TextEditingController controller,
-    bool isPassword = false,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 6),
-          child: Text(
-            label,
-            style: AppTextStyles.labelMedium.copyWith(
-              color: colors.textPrimary,
-            ),
-          ),
-        ),
-        Container(
-          height: Responsive.size(context, 52),
-          decoration: BoxDecoration(
-            color: colors.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: colors.outline.withValues(alpha: 0.5)),
-          ),
-          child: TextField(
-            controller: controller,
-            obscureText: isPassword,
-            style: AppTextStyles.bodyLarge.copyWith(color: colors.textPrimary),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: AppTextStyles.bodyLarge.copyWith(
-                color: colors.textSecondary,
-              ),
-              prefixIcon: Icon(
-                icon,
-                color: colors.textSecondary,
-                size: Responsive.iconSize(context, 20),
-              ),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(vertical: 15),
-            ),
-          ),
-        ),
-      ],
-    );
+  Future<void> _submit() async {
+    final authProvider = context.read<AuthProvider>();
+    if (authProvider.isLoading) return;
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      HapticFeedback.heavyImpact();
+      return;
+    }
+    if (_isLoginMode) {
+      await _handleEmailSignIn(authProvider);
+    } else {
+      await _handleEmailRegister(authProvider);
+    }
   }
 
   Future<void> _navigateAfterAuth(AuthProvider authProvider) async {
@@ -403,14 +522,6 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _handleEmailSignIn(AuthProvider authProvider) async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
-
-    if (email.isEmpty || password.isEmpty) {
-      HapticFeedback.heavyImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.authCompleteCredentials)),
-      );
-      return;
-    }
 
     final success = await authProvider.signIn(email, password);
     if (!mounted) return;
@@ -429,22 +540,6 @@ class _AuthScreenState extends State<AuthScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
-      HapticFeedback.heavyImpact();
-      UiUtils.showErrorSnackbar(context, context.l10n.authCompleteCredentials);
-      return;
-    }
-    if (!_isValidEmail(email)) {
-      HapticFeedback.heavyImpact();
-      UiUtils.showErrorSnackbar(context, context.l10n.authEnterValidEmail);
-      return;
-    }
-    if (password.length < 6) {
-      HapticFeedback.heavyImpact();
-      UiUtils.showErrorSnackbar(context, context.l10n.authPasswordTooShort);
-      return;
-    }
-
     final success = await authProvider.register(email, password);
     if (!mounted) return;
 
@@ -458,100 +553,25 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-  Widget _buildSubmitButton(AppColors colors) {
-    final authProvider = context.watch<AuthProvider>();
-
-    return Semantics(
-      label: _isLoginMode ? 'Botón Iniciar sesión' : 'Botón Registrarse',
-      button: true,
-      enabled: !authProvider.isLoading,
-      child: SizedBox(
-        width: double.infinity,
-        height: 54,
-        child: ElevatedButton(
-          onPressed: authProvider.isLoading
-              ? null
-              : () async {
-                  if (_isLoginMode) {
-                    await _handleEmailSignIn(authProvider);
-                  } else {
-                    await _handleEmailRegister(authProvider);
-                  }
-                },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: colors.primary,
-            foregroundColor: colors.onPrimary,
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            textStyle: AppTextStyles.titleMedium,
-          ),
-          child: authProvider.isLoading
-              ? SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    color: colors.onPrimary,
-                    strokeWidth: 2,
-                  ),
-                )
-              : Text(
-                  _isLoginMode
-                      ? context.l10n.authLoginButton
-                      : context.l10n.authRegisterButton,
-                ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildGoogleButton(AppColors colors) {
     final authProvider = context.read<AuthProvider>();
 
-    return Semantics(
-      label: 'Botón Continuar con Google',
-      button: true,
-      child: OutlinedButton(
-        onPressed: () async {
-          final success = await authProvider.signInWithGoogle();
-          if (success && mounted) {
-            HapticFeedback.lightImpact();
-            await _navigateAfterAuth(authProvider);
-          } else if (mounted && authProvider.error != null) {
-            HapticFeedback.heavyImpact();
-            UiUtils.showErrorSnackbar(context, authProvider.error!);
-          }
-        },
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(double.infinity, 54),
-          side: BorderSide(color: colors.outline, width: 1.5),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          foregroundColor: colors.textPrimary,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.network(
-              'https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png',
-              height: 20,
-              errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.g_mobiledata, size: 20, color: Colors.blue),
-            ),
-            const SizedBox(width: 12),
-            Flexible(
-              child: Text(
-                context.l10n.authGoogleLogin,
-                style: AppTextStyles.titleSmall,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return AppButton(
+      text: context.l10n.authGoogleLogin,
+      type: AppButtonType.secondary,
+      size: AppButtonSize.large,
+      semanticLabel: context.l10n.authGoogleLogin,
+      icon: Icon(Icons.g_mobiledata, size: 24, color: colors.textPrimary),
+      onPressed: () async {
+        final success = await authProvider.signInWithGoogle();
+        if (success && mounted) {
+          HapticFeedback.lightImpact();
+          await _navigateAfterAuth(authProvider);
+        } else if (mounted && authProvider.error != null) {
+          HapticFeedback.heavyImpact();
+          UiUtils.showErrorSnackbar(context, authProvider.error!);
+        }
+      },
     );
   }
 
@@ -768,7 +788,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       ScaffoldMessenger.of(ctx).showSnackBar(
                         SnackBar(
                           content: Text(ctx.l10n.authEmailVerifiedSuccess),
-                          backgroundColor: Colors.green,
+                          backgroundColor: colors.success,
                         ),
                       );
                     } else {

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:autodoc/core/theme/app_breakpoints.dart';
+
 /// Utilidades de responsividad para adaptar la UI de AutoDoc
 /// a diferentes tamaños de pantalla (móvil, tablet, desktop).
 ///
@@ -9,20 +11,41 @@ class Responsive {
   Responsive._();
 
   // ── Breakpoints ──
-  static const double mobile = 600;
-  static const double tablet = 900;
-  static const double desktop = 1200;
+  //
+  // Conservados solo por compatibilidad con las llamadas existentes. La fuente
+  // de verdad es AppBreakpoints; estos valores se derivan de allí para que no
+  // puedan divergir.
+  static const double mobile = AppBreakpoints.medium;
+  static const double tablet = AppBreakpoints.expanded;
+  static const double desktop = AppBreakpoints.large;
 
-  // ── Detección de dispositivo ──
+  // ── Detección de dispositivo (legacy) ──
+
+  @Deprecated(
+    'Usa AppBreakpoints.of(context) == WindowClass.compact, o mejor '
+    'LayoutBuilder + AppBreakpoints.fromWidth(constraints.maxWidth). '
+    'Ver docs/superpowers/plans/2026-08-10-ui-ux-overhaul-00-master.md §3.',
+  )
   static bool isMobile(BuildContext context) =>
-      MediaQuery.of(context).size.width < mobile;
+      AppBreakpoints.of(context) == WindowClass.compact;
 
-  static bool isTablet(BuildContext context) =>
-      MediaQuery.of(context).size.width >= mobile &&
-      MediaQuery.of(context).size.width < desktop;
+  @Deprecated(
+    'Usa AppBreakpoints.of(context).isAtLeastMedium y .isAtLeastExpanded para '
+    'distinguir las dos clases que este predicado mezcla. '
+    'Ver docs/superpowers/plans/2026-08-10-ui-ux-overhaul-00-master.md §3.',
+  )
+  static bool isTablet(BuildContext context) {
+    final windowClass = AppBreakpoints.of(context);
+    return windowClass == WindowClass.medium ||
+        windowClass == WindowClass.expanded;
+  }
 
+  @Deprecated(
+    'Usa AppBreakpoints.of(context).isLarge. '
+    'Ver docs/superpowers/plans/2026-08-10-ui-ux-overhaul-00-master.md §3.',
+  )
   static bool isDesktop(BuildContext context) =>
-      MediaQuery.of(context).size.width >= desktop;
+      AppBreakpoints.of(context) == WindowClass.large;
 
   // ── Factor de escala global ──
   // 1.0 en móvil (≤600px), sube linealmente hasta 1.15 en ≥1400px
@@ -56,6 +79,7 @@ class Responsive {
   }
 
   /// Número de columnas para grids adaptativos.
+  @Deprecated('Usa AppGrid, que declara columnas por WindowClass.')
   static int gridColumns(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     if (width >= desktop) return 3;
@@ -65,6 +89,7 @@ class Responsive {
 
   /// Padding horizontal adaptativo para el contenido principal.
   /// En móvil: 24px fijo. En tablet: 4% del ancho. En desktop: 8% del ancho.
+  @Deprecated('Usa AppPageBody, que aplica el gutter de AppBreakpoints.')
   static double horizontalPadding(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     if (width >= desktop) return width * 0.08;
