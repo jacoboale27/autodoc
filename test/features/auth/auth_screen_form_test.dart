@@ -100,6 +100,28 @@ void main() {
     expect(find.text('Ingresa un correo electrónico válido.'), findsOneWidget);
   });
 
+  testWidgets(
+    'alternar login/registro a mitad de transicion no revienta con GlobalKey duplicada',
+    (tester) async {
+      await pumpEntry(tester, const AuthScreen(isLogin: true), width: 375);
+
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('auth-mode-switch')),
+      );
+      await tester.tap(find.byKey(const ValueKey('auth-mode-switch')));
+      // Un solo pump corto: a mitad del cross-fade de AnimatedSwitcher el
+      // widget saliente sigue montado mientras el entrante ya se infla, asi
+      // que ambos Form coexisten brevemente en el arbol.
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(tester.takeException(), isNull);
+
+      // Agota el resto de la transicion y el timer de AuthBackgroundBlobs
+      // para no dejar timers vivos en el teardown.
+      await tester.pump(const Duration(seconds: 3));
+    },
+  );
+
   testWidgets('el campo del correo no tiene altura fija', (tester) async {
     // pumpEntryCollecting (no pumpEntry): a 200% de escala de fuente,
     // AuthBottomNav (widget decorativo fuera del alcance de esta tarea, ver

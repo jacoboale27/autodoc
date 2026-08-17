@@ -94,6 +94,25 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('la camara de la foto de perfil mide 48x48', (tester) async {
+    await pumpEntry(
+      tester,
+      const UserProfileScreen(),
+      width: 375,
+      profile: FakeUserProfileProvider(userData: testUser()),
+    );
+
+    // El boton de camara solo aparece en modo edicion.
+    await tester.tap(find.byKey(const ValueKey('profile-edit-toggle')));
+    await tester.pumpAndSettle();
+
+    final camera = find.byKey(const ValueKey('profile-photo-camera'));
+    expect(camera, findsOneWidget);
+    final size = tester.getSize(camera);
+    expect(size.width, greaterThanOrEqualTo(48));
+    expect(size.height, greaterThanOrEqualTo(48));
+  });
+
   testWidgets('no desborda en ningun ancho auditado', (tester) async {
     for (final width in kAuditWidths) {
       final errors = await pumpEntryCollecting(

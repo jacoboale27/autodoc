@@ -37,7 +37,19 @@ class _AuthScreenState extends State<AuthScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authPreferences = AuthPreferencesService();
-  final _formKey = GlobalKey<FormState>();
+  // Dos GlobalKey, uno por modo, en vez de una sola compartida: AnimatedSwitcher
+  // (ver `_card`) mantiene montado el widget saliente durante todo el cross-fade
+  // mientras el entrante ya se infla, asi que ambos Form coexisten brevemente en
+  // el arbol. Con una unica GlobalKey eso revienta con
+  // "Duplicate GlobalKey detected in widget tree" en cuanto el usuario toca el
+  // enlace de alternar login/registro. Cada _buildGlassCard se construye con el
+  // valor de _isLoginMode vigente en ESE build, asi que el arbol saliente (con
+  // el _isLoginMode anterior ya congelado) referencia su propia key y el
+  // entrante la suya: nunca coinciden.
+  final _loginFormKey = GlobalKey<FormState>();
+  final _registerFormKey = GlobalKey<FormState>();
+  GlobalKey<FormState> get _formKey =>
+      _isLoginMode ? _loginFormKey : _registerFormKey;
 
   @override
   void initState() {
@@ -221,6 +233,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Widget _modeSwitchLink(AppColors colors) {
     return TextButton(
+      key: const ValueKey('auth-mode-switch'),
       onPressed: _toggleMode,
       child: RichText(
         text: TextSpan(

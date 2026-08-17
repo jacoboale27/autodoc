@@ -357,19 +357,26 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               Positioned(
                 bottom: 0,
                 right: 0,
-                child: GestureDetector(
-                  onTap: _pickImage,
-                  child: Container(
-                    padding: EdgeInsets.all(Responsive.padding(context, 8)),
-                    decoration: BoxDecoration(
-                      color: primary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: colors.surface, width: 2),
-                    ),
-                    child: Icon(
-                      Icons.camera_alt,
-                      color: colors.onPrimary,
-                      size: Responsive.iconSize(context, 20),
+                child: Tooltip(
+                  message: 'Elegir foto de perfil',
+                  child: InkWell(
+                    key: const ValueKey('profile-photo-camera'),
+                    customBorder: const CircleBorder(),
+                    onTap: _pickImage,
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: colors.surface, width: 2),
+                        boxShadow: AppShadows.darkSm,
+                      ),
+                      child: Icon(
+                        Icons.camera_alt,
+                        color: colors.onPrimary,
+                        size: Responsive.iconSize(context, 20),
+                      ),
                     ),
                   ),
                 ),
