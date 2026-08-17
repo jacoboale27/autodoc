@@ -208,7 +208,7 @@ Métricas medidas sobre el árbol en `HEAD` (2026-08-10). **HC** = ocurrencias d
 - **34 pantallas**, 33 rutas en [app_router.dart](../../../lib/core/router/app_router.dart), 5 de ellas dentro del `ShellRoute` que monta `MainScaffold`.
 - **6 pantallas con cero responsividad:** `chat_screen`, `conversaciones_list_screen`, `reserva_detail_screen`, `notifications_screen`, `onboarding_screen`, `splash_screen`.
 - **Solo 2 ficheros usan `LayoutBuilder`** en toda la app (`mechanic_dashboard_screen`, `onboarding_screen`). Esta es la causa raíz de que "responsivo" hoy signifique "el mismo layout un 15 % más grande".
-- **~270 colores hardcodeados** repartidos en 25+ ficheros, contra la regla explícita de `CONVENTIONS.md` §2.1.
+- **~270 colores hardcodeados** repartidos en 25+ ficheros, contra la regla explícita de `CONVENTIONS.md` §2.1. **Recontado el 2026-08-17 al cerrar la Fase 7: 108**, repartidos en 23 ficheros — bajado por las Fases 2-7 (la Fase 7 eliminó 64 literales, 53 de ellos solo en `user_profile_screen.dart`). Lo que queda se concentra en `dashboard` (widgets aún no tokenizados: `add_vehicle_form`, `share_vehicle_sheet`, `license_plate_widget`, `vehicle_gallery_widget`) y `admin` (pendiente de la Fase 8: `taller_admin_card`, `admin_logs_screen`, `account_row`, `admin_sidebar`, etc.).
 - **3 usos de `Semantics` en toda la app** (2 en `auth_screen`, 1 en `main.dart`). La app es prácticamente inaccesible por lector de pantalla.
 - **0 usos de reduced-motion.** Ninguna animación consulta la preferencia del sistema.
 - **~20 anchos fijos ≥ 100 px** dentro de layouts flexibles.

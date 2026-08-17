@@ -62,6 +62,16 @@ const List<String> kTokenizedPaths = [
   'lib/features/chat/presentation/widgets/cards/reserva_chat_card.dart',
   'lib/features/chat/presentation/widgets/cards/review_chat_card.dart',
   'lib/features/chat/presentation/widgets/cards/vehiculo_chat_card.dart',
+  // ── Fase 7 — auth / onboarding / profile / splash ──
+  'lib/features/auth/presentation/pages/auth_screen.dart',
+  'lib/features/auth/presentation/widgets/auth_bottom_nav.dart',
+  'lib/features/auth/presentation/widgets/auth_background_blobs.dart',
+  'lib/features/auth/presentation/widgets/auth_logo_section.dart',
+  'lib/features/onboarding/presentation/pages/onboarding_screen.dart',
+  'lib/features/profile/presentation/pages/about_screen.dart',
+  'lib/features/profile/presentation/pages/profile_setup_screen.dart',
+  'lib/features/profile/presentation/pages/user_profile_screen.dart',
+  'lib/features/splash/presentation/pages/splash_screen.dart',
 ];
 
 /// Ficheros exentos, con su motivo. `app_shadows.dart` define las sombras
