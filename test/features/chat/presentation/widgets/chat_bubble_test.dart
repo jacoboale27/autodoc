@@ -45,13 +45,13 @@ void main() {
       for (final width in kAuditWidths) {
         await pumpAtWidth(
           tester,
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
             child: Align(
               alignment: Alignment.centerRight,
               child: ChatBubble(
                 isMe: true,
-                child: const Text(
+                child: Text(
                   'Buenas tardes, necesito una revisión completa de frenos '
                   'para el jueves por la mañana si es posible, y también '
                   'cambio de aceite.',

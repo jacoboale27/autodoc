@@ -11,7 +11,7 @@ void main() {
   ) async {
     await pumpChatWidget(
       tester,
-      CotizacionPicker(onConfirm: (_, __) async {}),
+      CotizacionPicker(onConfirm: (_, _) async {}),
       width: 1440,
     );
     final ancho = tester.getSize(find.byType(Form)).width;
@@ -27,7 +27,7 @@ void main() {
   ) async {
     await pumpChatWidget(
       tester,
-      CotizacionPicker(onConfirm: (_, __) async {}),
+      CotizacionPicker(onConfirm: (_, _) async {}),
       width: 375,
     );
     await tester.tap(find.text('Generar y Enviar'));
@@ -44,7 +44,7 @@ void main() {
     for (final width in kAuditWidths) {
       await pumpChatWidget(
         tester,
-        CotizacionPicker(onConfirm: (_, __) async {}),
+        CotizacionPicker(onConfirm: (_, _) async {}),
         width: width,
       );
       expectNoOverflow(tester);

@@ -13,7 +13,7 @@ void main() {
   testWidgets('el botón de grabar cumple el mínimo de 48 dp', (tester) async {
     await pumpChatWidget(
       tester,
-      VoiceRecordButton(onGrabacionCompleta: (_, __) {}),
+      VoiceRecordButton(onGrabacionCompleta: (_, _) {}),
       width: 375,
     );
     final size = tester.getSize(find.byType(VoiceRecordButton));
@@ -24,7 +24,7 @@ void main() {
   testWidgets('anuncia qué hace al lector de pantalla', (tester) async {
     await pumpChatWidget(
       tester,
-      VoiceRecordButton(onGrabacionCompleta: (_, __) {}),
+      VoiceRecordButton(onGrabacionCompleta: (_, _) {}),
       width: 375,
     );
     expect(

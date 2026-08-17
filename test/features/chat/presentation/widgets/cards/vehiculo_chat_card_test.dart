@@ -66,11 +66,11 @@ void main() {
     // llegar sin claves si el mensaje se creó con una versión anterior.
     await pumpChatWidget(
       tester,
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+      const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
         child: ChatBubble(
           isMe: true,
-          child: const VehiculoChatCard(metadata: {}, isMe: true),
+          child: VehiculoChatCard(metadata: {}, isMe: true),
         ),
       ),
       width: 375,

@@ -1,5 +1,6 @@
+import 'dart:ui' show Tristate;
+
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:autodoc/core/theme/app_breakpoints.dart';
@@ -77,24 +78,24 @@ void main() {
 
     // Propietario viene seleccionado por defecto.
     expect(
-      tester.getSemantics(owner).hasFlag(SemanticsFlag.isSelected),
-      isTrue,
+      tester.getSemantics(owner).flagsCollection.isSelected,
+      Tristate.isTrue,
     );
     expect(
-      tester.getSemantics(mechanic).hasFlag(SemanticsFlag.isSelected),
-      isFalse,
+      tester.getSemantics(mechanic).flagsCollection.isSelected,
+      Tristate.isFalse,
     );
 
     // Y son mutuamente exclusivas.
     await tester.tap(mechanic);
     await tester.pumpAndSettle();
     expect(
-      tester.getSemantics(owner).hasFlag(SemanticsFlag.isSelected),
-      isFalse,
+      tester.getSemantics(owner).flagsCollection.isSelected,
+      Tristate.isFalse,
     );
     expect(
-      tester.getSemantics(mechanic).hasFlag(SemanticsFlag.isSelected),
-      isTrue,
+      tester.getSemantics(mechanic).flagsCollection.isSelected,
+      Tristate.isTrue,
     );
 
     // Y cada una mide al menos 48 dp.

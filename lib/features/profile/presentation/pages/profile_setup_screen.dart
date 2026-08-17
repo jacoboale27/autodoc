@@ -676,26 +676,24 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         await user.updateDisplayName(name);
         await user.reload();
 
-        if (context.mounted) {
-          final role = _selectedRole.trim().toLowerCase();
-          if (role == 'mecanico') {
-            context.go('/mechanic_dashboard');
-          } else {
-            context.go('/dashboard');
-          }
+        if (!mounted) return;
+        final role = _selectedRole.trim().toLowerCase();
+        if (role == 'mecanico') {
+          context.go('/mechanic_dashboard');
+        } else {
+          context.go('/dashboard');
         }
       } else {
         throw profileProvider.error ?? 'Error desconocido al guardar el perfil';
       }
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al guardar: $e'),
-            backgroundColor: appColors.error,
-          ),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al guardar: $e'),
+          backgroundColor: appColors.error,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
