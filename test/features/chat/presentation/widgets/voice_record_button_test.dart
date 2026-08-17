@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:autodoc/features/chat/presentation/widgets/voice_record_button.dart';
 import '../../../../support/chat_harness.dart';
