@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_shadows.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
@@ -93,18 +98,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final primaryPurple = theme.colorScheme.primary;
-    final accentColor = const Color(0xFF98FFD9);
-    final bgColorStart = isDark
-        ? const Color(0xFF1E293B)
-        : const Color(0xFFF7F6F8);
-    final bgColorEnd = isDark
-        ? const Color(0xFF0F172A)
-        : const Color(0xFFECE9F1);
-    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final colors = context.appColors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryPurple = colors.primary;
+    final textColor = colors.textPrimary;
 
     final sessionProvider = context.watch<UserProfileProvider>();
     final user = sessionProvider.userData;
@@ -126,7 +123,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               Icon(
                 Icons.person_off_outlined,
                 size: Responsive.iconSize(context, 64),
-                color: Colors.grey,
+                color: colors.textSecondary,
               ),
               const SizedBox(height: 16),
               Text(
@@ -154,7 +151,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 },
                 child: Text(
                   context.l10n.upSignOut,
-                  style: TextStyle(color: theme.colorScheme.error),
+                  style: TextStyle(color: colors.error),
                 ),
               ),
             ],
@@ -171,7 +168,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [bgColorStart, bgColorEnd],
+            colors: [colors.surfaceVariant, colors.surface],
           ),
         ),
         child: SafeArea(
@@ -184,12 +181,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   padding: EdgeInsets.all(Responsive.padding(context, 24.0)),
                   child: Column(
                     children: [
-                      _buildProfileHeader(
-                        user,
-                        primaryPurple,
-                        accentColor,
-                        textColor,
-                      ),
+                      _buildProfileHeader(user, primaryPurple, textColor),
                       const SizedBox(height: 40),
                       _buildInfoSection(user, primaryPurple, isDark),
                       const SizedBox(height: 24),
@@ -209,24 +201,24 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               onPressed: isLoading ? null : _saveProfile,
               backgroundColor: primaryPurple,
               label: isLoading
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
-                        color: Colors.white,
+                        color: colors.onPrimary,
                         strokeWidth: 2,
                       ),
                     )
                   : Text(
                       context.l10n.upSaveChanges,
-                      style: const TextStyle(
+                      style: AppTextStyles.labelLarge.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: colors.onPrimary,
                       ),
                     ),
               icon: isLoading
                   ? null
-                  : const Icon(Icons.check, color: Colors.white),
+                  : Icon(Icons.check, color: colors.onPrimary),
             )
           : null,
     );
@@ -250,13 +242,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           ),
           Text(
             context.l10n.upMyProfile,
-            style: GoogleFonts.inter(
+            style: AppTextStyles.titleLarge.copyWith(
               fontSize: Responsive.fontSize(context, 18),
-              fontWeight: FontWeight.bold,
               color: textColor,
             ),
           ),
           IconButton(
+            key: const ValueKey('profile-edit-toggle'),
             onPressed: () {
               setState(() => _isEditing = !_isEditing);
             },
@@ -270,12 +262,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
-  Widget _buildProfileHeader(
-    UserModel user,
-    Color primary,
-    Color accent,
-    Color textColor,
-  ) {
+  Widget _buildProfileHeader(UserModel user, Color primary, Color textColor) {
+    final colors = context.appColors;
     return Column(
       children: [
         Stack(
@@ -285,7 +273,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               height: 120,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 4),
+                border: Border.all(color: colors.surface, width: 4),
                 boxShadow: [
                   BoxShadow(
                     color: primary.withValues(alpha: 0.2),
@@ -313,12 +301,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         },
                       )
                     : CachedNetworkImage(
-                        imageUrl:
-                            user.fotoPerfilUrl ??
-                            'https://www.w3schools.com/howto/img_avatar.png',
+                        imageUrl: user.fotoPerfilUrl ?? '',
                         fit: BoxFit.cover,
                         placeholder: (context, url) =>
-                            Container(color: Colors.grey[200]),
+                            Container(color: colors.surfaceVariant),
                         errorWidget: (context, url, error) => Container(
                           color: primary.withValues(alpha: 0.1),
                           child: Icon(
@@ -341,11 +327,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     decoration: BoxDecoration(
                       color: primary,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                      border: Border.all(color: colors.surface, width: 2),
                     ),
                     child: Icon(
                       Icons.camera_alt,
-                      color: Colors.white,
+                      color: colors.onPrimary,
                       size: Responsive.iconSize(context, 20),
                     ),
                   ),
@@ -356,17 +342,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         const SizedBox(height: 20),
         Text(
           user.nombreCompleto,
-          style: GoogleFonts.inter(
+          style: AppTextStyles.headlineSmall.copyWith(
             fontSize: Responsive.fontSize(context, 24),
-            fontWeight: FontWeight.bold,
             color: textColor,
           ),
         ),
         Text(
           user.rol,
-          style: GoogleFonts.inter(
+          style: AppTextStyles.titleSmall.copyWith(
             fontSize: Responsive.fontSize(context, 14),
-            fontWeight: FontWeight.w600,
             color: primary,
           ),
         ),
@@ -375,38 +359,29 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Widget _buildInfoSection(UserModel user, Color primary, bool isDark) {
+    final colors = context.appColors;
     return Container(
       padding: EdgeInsets.all(Responsive.padding(context, 24)),
-      decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.05)
-            : Colors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.1)
-              : Colors.white.withValues(alpha: 0.3),
-        ),
-      ),
+      decoration: _cardDecoration(colors, isDark),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildInfoField(
-            context.l10n.upFullName,
-            _nameController,
-            Icons.person_outline,
-            primary,
-            _isEditing,
-            isDark,
+          AppTextField(
+            key: const ValueKey('profile-name-field'),
+            label: context.l10n.upFullName,
+            controller: _nameController,
+            enabled: _isEditing,
+            prefixIcon: Icon(Icons.person_outline, color: colors.primary),
+            textInputAction: TextInputAction.done,
+            autofillHints: const [AutofillHints.name],
           ),
-          const SizedBox(height: 24),
-          _buildInfoField(
-            context.l10n.upEmailAddress,
-            _emailController,
-            Icons.email_outlined,
-            primary,
-            false,
-            isDark,
+          const SizedBox(height: AppSpacing.xl),
+          AppTextField(
+            key: const ValueKey('profile-email-field'),
+            label: context.l10n.upEmailAddress,
+            controller: _emailController,
+            enabled: false,
+            prefixIcon: Icon(Icons.email_outlined, color: colors.textSecondary),
           ), // Email usually not editable here
           const SizedBox(height: 24),
           _buildStaticField(
@@ -421,6 +396,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
+  BoxDecoration _cardDecoration(AppColors colors, bool isDark) {
+    return BoxDecoration(
+      color: colors.surfaceContainer.withValues(alpha: isDark ? 0.6 : 0.85),
+      borderRadius: BorderRadius.circular(AppRadius.xxl),
+      border: Border.all(color: colors.outline.withValues(alpha: 0.3)),
+      boxShadow: isDark ? AppShadows.darkSm : AppShadows.lightSm,
+    );
+  }
+
   Widget _buildSettingsSection(
     BuildContext context,
     Color primary,
@@ -428,30 +412,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   ) {
     final themeProvider = context.watch<ThemeProvider>();
     final languageProvider = context.watch<LanguageProvider>();
+    final colors = context.appColors;
 
     return Container(
       padding: EdgeInsets.all(Responsive.padding(context, 24)),
-      decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.05)
-            : Colors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.1)
-              : Colors.white.withValues(alpha: 0.3),
-        ),
-      ),
+      decoration: _cardDecoration(colors, isDark),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             context.l10n.upSettings,
-            style: GoogleFonts.inter(
+            style: AppTextStyles.labelMedium.copyWith(
               fontSize: Responsive.fontSize(context, 14),
               fontWeight: FontWeight.bold,
               color: primary,
-              letterSpacing: 0.5,
             ),
           ),
           const SizedBox(height: 16),
@@ -524,20 +498,21 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     Function(bool) onChanged,
     bool isDark,
   ) {
+    final colors = context.appColors;
     return Row(
       children: [
         Container(
           padding: EdgeInsets.all(Responsive.padding(context, 8)),
           decoration: BoxDecoration(
             color: isDark
-                ? Colors.white.withValues(alpha: 0.1)
-                : Colors.grey[100],
+                ? colors.textPrimary.withValues(alpha: 0.1)
+                : colors.surfaceVariant,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
             icon,
             size: Responsive.iconSize(context, 20),
-            color: isDark ? Colors.white70 : Colors.grey[700],
+            color: colors.textSecondary,
           ),
         ),
         const SizedBox(width: 16),
@@ -547,87 +522,26 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             children: [
               Text(
                 title,
-                style: GoogleFonts.inter(
+                style: AppTextStyles.titleMedium.copyWith(
                   fontSize: Responsive.fontSize(context, 16),
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white : const Color(0xFF1E293B),
+                  color: colors.textPrimary,
                 ),
               ),
               Text(
                 subtitle,
-                style: GoogleFonts.inter(
+                style: AppTextStyles.bodySmall.copyWith(
                   fontSize: Responsive.fontSize(context, 12),
-                  color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                  color: colors.textSecondary,
                 ),
               ),
             ],
           ),
         ),
-        Switch.adaptive(
+        Switch(
           value: value,
           onChanged: onChanged,
-          activeTrackColor: const Color(0xFF98FFD9),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInfoField(
-    String label,
-    TextEditingController controller,
-    IconData icon,
-    Color primary,
-    bool enabled,
-    bool isDark,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: Responsive.fontSize(context, 12),
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF64748B),
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          enabled: enabled,
-          style: GoogleFonts.inter(
-            fontSize: Responsive.fontSize(context, 16),
-            fontWeight: FontWeight.w600,
-            color: isDark ? Colors.white : const Color(0xFF1E293B),
-          ),
-          decoration: InputDecoration(
-            prefixIcon: Icon(
-              icon,
-              color: enabled ? primary : const Color(0xFF94A3B8),
-              size: 20,
-            ),
-            filled: true,
-            fillColor: enabled ? Colors.white : Colors.transparent,
-            contentPadding: EdgeInsets.symmetric(
-              horizontal: Responsive.padding(context, 0),
-              vertical: Responsive.padding(context, 12),
-            ),
-            border: enabled
-                ? OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[200]!),
-                  )
-                : InputBorder.none,
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[200]!),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: primary, width: 2),
-            ),
-          ),
+          activeThumbColor: colors.onPrimary,
+          activeTrackColor: colors.primary,
         ),
       ],
     );
@@ -640,29 +554,28 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     Color primary,
     bool isDark,
   ) {
+    final colors = context.appColors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: GoogleFonts.inter(
+          style: AppTextStyles.labelMedium.copyWith(
             fontSize: Responsive.fontSize(context, 12),
             fontWeight: FontWeight.bold,
-            color: const Color(0xFF64748B),
-            letterSpacing: 0.5,
+            color: colors.textSecondary,
           ),
         ),
         const SizedBox(height: 12),
         Row(
           children: [
-            Icon(icon, color: const Color(0xFF94A3B8), size: 20),
+            Icon(icon, color: colors.textSecondary, size: 20),
             const SizedBox(width: 12),
             Text(
               value,
-              style: GoogleFonts.inter(
+              style: AppTextStyles.titleMedium.copyWith(
                 fontSize: Responsive.fontSize(context, 16),
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white : const Color(0xFF1E293B),
+                color: colors.textPrimary,
               ),
             ),
           ],
@@ -679,6 +592,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     VoidCallback onTap,
     bool isDark,
   ) {
+    final colors = context.appColors;
     return InkWell(
       onTap: onTap,
       child: Row(
@@ -687,14 +601,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             padding: EdgeInsets.all(Responsive.padding(context, 8)),
             decoration: BoxDecoration(
               color: isDark
-                  ? Colors.white.withValues(alpha: 0.1)
-                  : Colors.grey[100],
+                  ? colors.textPrimary.withValues(alpha: 0.1)
+                  : colors.surfaceVariant,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               icon,
               size: Responsive.iconSize(context, 20),
-              color: isDark ? Colors.white70 : Colors.grey[700],
+              color: colors.textSecondary,
             ),
           ),
           const SizedBox(width: 16),
@@ -704,27 +618,22 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.inter(
+                  style: AppTextStyles.titleMedium.copyWith(
                     fontSize: Responsive.fontSize(context, 16),
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : const Color(0xFF1E293B),
+                    color: colors.textPrimary,
                   ),
                 ),
                 Text(
                   subtitle,
-                  style: GoogleFonts.inter(
+                  style: AppTextStyles.bodySmall.copyWith(
                     fontSize: Responsive.fontSize(context, 12),
-                    color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                    color: colors.textSecondary,
                   ),
                 ),
               ],
             ),
           ),
-          Icon(
-            Icons.arrow_forward_ios,
-            size: 16,
-            color: isDark ? Colors.white54 : Colors.grey[500],
-          ),
+          Icon(Icons.arrow_forward_ios, size: 16, color: colors.textSecondary),
         ],
       ),
     );
@@ -745,7 +654,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: const Text('Eliminar Cuenta'),
+              title: Text(context.l10n.upDeleteAccountTitle),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
