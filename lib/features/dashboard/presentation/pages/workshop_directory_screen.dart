@@ -16,17 +16,13 @@ import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_shadows.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_empty_state.dart';
-import 'package:autodoc/core/widgets/app_grid.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_skeleton.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 
-import 'package:autodoc/core/widgets/review_sheet.dart';
 import 'package:autodoc/core/widgets/workshop_reviews_list_sheet.dart';
-import 'package:autodoc/features/reviews/data/services/review_service.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
-import 'package:autodoc/core/utils/ui_utils.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
@@ -40,7 +36,6 @@ class WorkshopDirectoryScreen extends StatefulWidget {
 }
 
 class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
-  final _reviewService = ReviewService();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   bool _showFavorites = false;
@@ -62,36 +57,6 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
     super.initState();
     _requestLocationPermission();
     _loadFilters();
-  }
-
-  Future<void> _reviewWorkshop(
-    BuildContext context,
-    String tallerId,
-    String tallerNombre,
-  ) async {
-    final userId = context.read<UserProfileProvider>().userData?.idUsuario;
-    if (userId == null) return;
-
-    final idServicio = await _reviewService.findReviewableServiceId(
-      userId,
-      tallerId,
-    );
-    if (!context.mounted) return;
-
-    if (idServicio == null) {
-      UiUtils.showErrorSnackbar(
-        context,
-        'Debes completar un servicio con este taller antes de reseñarlo.',
-      );
-      return;
-    }
-
-    await showReviewBottomSheet(
-      context,
-      tallerId: tallerId,
-      tallerNombre: tallerNombre,
-      idServicio: idServicio,
-    );
   }
 
   Future<void> _loadFilters() async {
@@ -144,10 +109,15 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
           children: [
             // Header
             _buildHeader(colors, isDark),
-            // Search Bar
-            _buildSearchBar(colors, isDark),
-            // Filters
-            _buildFilters(colors, isDark),
+            // Search + Filters: una sola fila en pantallas anchas, dos
+            // apiladas en el resto (ver comentario de
+            // `_buildDesktopSearchAndFilters`).
+            if (AppBreakpoints.of(context).isAtLeastExpanded)
+              _buildDesktopSearchAndFilters(colors, isDark)
+            else ...[
+              _buildSearchBar(colors, isDark),
+              _buildFilters(colors, isDark),
+            ],
             const SizedBox(height: 8),
             // Content: List or Map
             Expanded(
@@ -273,23 +243,52 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                             vertical: Responsive.padding(context, 16),
                           ).copyWith(bottom: 100),
                           child: AppPageBody(
-                            child: AppGrid(
-                              compactColumns: 1,
-                              mediumColumns: 1,
-                              expandedColumns: 1,
-                              largeColumns: 2,
-                              childAspectRatio: 1.1,
-                              children: items
-                                  .map(
-                                    (item) => _buildWorkshopCard(
-                                      tallerId: item['id'],
-                                      data: item['data'],
-                                      colors: colors,
-                                      isDark: isDark,
-                                      distance: item['distance'],
-                                    ),
-                                  )
-                                  .toList(),
+                            // `AppGrid`/`GridView` fuerza una altura de celda
+                            // fija via `childAspectRatio`, pero esta tarjeta
+                            // tiene alto variable (nombre a 1-2 lineas, chip
+                            // de distancia opcional, botones que pueden
+                            // partirse en 2 lineas): cualquier aspect ratio
+                            // fijo eventualmente se queda corto y desborda.
+                            // `Wrap` deja que cada tarjeta mida su propio
+                            // contenido.
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final columns =
+                                    AppBreakpoints.fromWidth(
+                                          constraints.maxWidth,
+                                        ) ==
+                                        WindowClass.large
+                                    ? 2
+                                    : 1;
+                                final cards = items
+                                    .map(
+                                      (item) => _buildWorkshopCard(
+                                        tallerId: item['id'],
+                                        data: item['data'],
+                                        colors: colors,
+                                        isDark: isDark,
+                                        distance: item['distance'],
+                                      ),
+                                    )
+                                    .toList();
+                                if (columns == 1) {
+                                  return Column(children: cards);
+                                }
+                                const spacing = 16.0;
+                                final cardWidth =
+                                    (constraints.maxWidth - spacing) / 2;
+                                return Wrap(
+                                  spacing: spacing,
+                                  children: cards
+                                      .map(
+                                        (card) => SizedBox(
+                                          width: cardWidth,
+                                          child: card,
+                                        ),
+                                      )
+                                      .toList(),
+                                );
+                              },
                             ),
                           ),
                         );
@@ -330,38 +329,35 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
   }
 
   Widget _buildHeader(AppColors colors, bool isDark) {
-    final isDesktop = AppBreakpoints.of(context).isAtLeastExpanded;
+    // A partir de `expanded` el split lista/mapa es persistente (ver el
+    // `LayoutBuilder` mas abajo): el toggle no cambia nada ahi, asi que
+    // mostrarlo solo restaba una fila entera de espacio vertical sin
+    // aportar ninguna función.
+    if (AppBreakpoints.of(context).isAtLeastExpanded) {
+      return const SizedBox.shrink();
+    }
     return Container(
       padding: EdgeInsets.all(Responsive.padding(context, 16)),
-      decoration: isDesktop
-          ? null
-          : BoxDecoration(
-              color: colors.surfaceContainer.withValues(alpha: 0.8),
-              border: Border(
-                bottom: BorderSide(
-                  color: colors.primary.withValues(alpha: 0.1),
-                ),
-              ),
-            ),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainer.withValues(alpha: 0.8),
+        border: Border(
+          bottom: BorderSide(color: colors.primary.withValues(alpha: 0.1)),
+        ),
+      ),
       child: Row(
-        mainAxisAlignment: isDesktop
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
         children: [
-          if (!isDesktop) ...[
-            IconButton(
-              icon: Icon(Icons.arrow_back, color: colors.textPrimary),
-              onPressed: () => context.pop(),
+          IconButton(
+            icon: Icon(Icons.arrow_back, color: colors.textPrimary),
+            onPressed: () => context.pop(),
+          ),
+          Text(
+            context.l10n.wdTitle,
+            style: AppTextStyles.titleLarge.copyWith(
+              fontWeight: FontWeight.bold,
+              color: colors.textPrimary,
             ),
-            Text(
-              context.l10n.wdTitle,
-              style: AppTextStyles.titleLarge.copyWith(
-                fontWeight: FontWeight.bold,
-                color: colors.textPrimary,
-              ),
-            ),
-            const Spacer(),
-          ],
+          ),
+          const Spacer(),
           // Toggle Map/List
           Container(
             decoration: BoxDecoration(
@@ -415,50 +411,84 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
     );
   }
 
+  List<Widget> _filterChips(bool isDark, AppColors colors) {
+    return [
+      _buildFilterChip(
+        'Todos',
+        Icons.all_inclusive,
+        !_showFavorites &&
+            _minRating == null &&
+            _maxDistance == null &&
+            _specialty == null,
+        () {
+          setState(() {
+            _showFavorites = false;
+            _minRating = null;
+            _maxDistance = null;
+            _specialty = null;
+          });
+          _workshopService.saveFilters();
+        },
+        isDark,
+        colors,
+      ),
+      const SizedBox(width: 8),
+      _buildFilterChip(
+        'Favoritos',
+        Icons.favorite,
+        _showFavorites,
+        () => setState(() => _showFavorites = true),
+        isDark,
+        colors,
+      ),
+      const SizedBox(width: 8),
+      _buildFilterChip(
+        'Filtros Avanzados',
+        Icons.tune,
+        _minRating != null || _maxDistance != null || _specialty != null,
+        _showFiltersSheet,
+        isDark,
+        colors,
+      ),
+    ];
+  }
+
   Widget _buildFilters(AppColors colors, bool isDark) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: EdgeInsets.symmetric(
         horizontal: Responsive.padding(context, 16),
       ),
+      child: Row(children: _filterChips(isDark, colors)),
+    );
+  }
+
+  /// A partir de `expanded` sobra el ancho para poner la busqueda y los
+  /// filtros en una sola fila: hacerlo en dos filas apiladas (el layout de
+  /// movil) dejaba una franja horizontal casi vacia bajo cada una.
+  Widget _buildDesktopSearchAndFilters(AppColors colors, bool isDark) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: Responsive.padding(context, 16),
+        vertical: Responsive.padding(context, 8),
+      ),
       child: Row(
         children: [
-          _buildFilterChip(
-            'Todos',
-            Icons.all_inclusive,
-            !_showFavorites &&
-                _minRating == null &&
-                _maxDistance == null &&
-                _specialty == null,
-            () {
-              setState(() {
-                _showFavorites = false;
-                _minRating = null;
-                _maxDistance = null;
-                _specialty = null;
-              });
-              _workshopService.saveFilters();
-            },
-            isDark,
-            colors,
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: AppTextField(
+              controller: _searchController,
+              onChanged: (value) => setState(() => _searchQuery = value),
+              hintText: context.l10n.wdSearchHint,
+              prefixIcon: const Icon(Icons.search),
+            ),
           ),
-          const SizedBox(width: 8),
-          _buildFilterChip(
-            'Favoritos',
-            Icons.favorite,
-            _showFavorites,
-            () => setState(() => _showFavorites = true),
-            isDark,
-            colors,
-          ),
-          const SizedBox(width: 8),
-          _buildFilterChip(
-            'Filtros Avanzados',
-            Icons.tune,
-            _minRating != null || _maxDistance != null || _specialty != null,
-            _showFiltersSheet,
-            isDark,
-            colors,
+          const SizedBox(width: 16),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(children: _filterChips(isDark, colors)),
+            ),
           ),
         ],
       ),
@@ -1076,90 +1106,88 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                       ),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              reviewsCount == 1
-                                  ? context.l10n.wdReviewCount(
-                                      reviewsCount.toString(),
-                                    )
-                                  : context.l10n.wdReviewsCount(
-                                      reviewsCount.toString(),
-                                    ),
-                              style: TextStyle(
-                                fontSize: Responsive.fontSize(context, 12),
-                                color: colors.textSecondary,
-                              ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            reviewsCount == 1
+                                ? context.l10n.wdReviewCount(
+                                    reviewsCount.toString(),
+                                  )
+                                : context.l10n.wdReviewsCount(
+                                    reviewsCount.toString(),
+                                  ),
+                            style: TextStyle(
+                              fontSize: Responsive.fontSize(context, 12),
+                              color: colors.textSecondary,
                             ),
-                          ],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        Wrap(
-                          alignment: WrapAlignment.end,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 4,
-                          runSpacing: 4,
-                          children: [
-                            TextButton(
-                              onPressed: () => showWorkshopReviewsSheet(
-                                context,
-                                tallerId: tallerId,
-                                tallerNombre: name,
+                        const SizedBox(width: 8),
+                        Flexible(
+                          flex: 3,
+                          child: Wrap(
+                            alignment: WrapAlignment.end,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 4,
+                            runSpacing: 4,
+                            children: [
+                              TextButton(
+                                onPressed: () => showWorkshopReviewsSheet(
+                                  context,
+                                  tallerId: tallerId,
+                                  tallerNombre: name,
+                                ),
+                                child: const Text('Ver reseñas'),
                               ),
-                              child: const Text('Ver reseñas'),
-                            ),
-                            TextButton.icon(
-                              onPressed: () =>
-                                  _reviewWorkshop(context, tallerId, name),
-                              icon: Icon(
-                                Icons.star_outline,
-                                size: Responsive.iconSize(context, 18),
-                              ),
-                              label: Text(context.l10n.wdReview),
-                            ),
-                            AppButton(
-                              onPressed: () async {
-                                final userSession = context
-                                    .read<UserProfileProvider>();
-                                final userId = userSession.userData?.idUsuario;
-                                if (userId == null) return;
+                              AppButton(
+                                onPressed: () async {
+                                  final userSession = context
+                                      .read<UserProfileProvider>();
+                                  final userId =
+                                      userSession.userData?.idUsuario;
+                                  if (userId == null) return;
 
-                                // The logged user is assuming the Propietario role in this case
-                                // (Mechanics could also contact other mechanics theoretically, but usually this is Prop -> Mec)
-                                final chatId = await context
-                                    .read<ChatProvider>()
-                                    .iniciarOCrearConversacion(
-                                      idPropietario: userId,
-                                      idMecanico:
-                                          tallerId, // tallerId is the mechanic's UID
-                                      nombrePropietario:
-                                          userSession
-                                              .userData
-                                              ?.nombreCompleto ??
-                                          'Propietario',
-                                      nombreMecanico: name,
-                                      idTaller: tallerId,
-                                    );
+                                  // The logged user is assuming the Propietario role in this case
+                                  // (Mechanics could also contact other mechanics theoretically, but usually this is Prop -> Mec)
+                                  final chatId = await context
+                                      .read<ChatProvider>()
+                                      .iniciarOCrearConversacion(
+                                        idPropietario: userId,
+                                        idMecanico:
+                                            tallerId, // tallerId is the mechanic's UID
+                                        nombrePropietario:
+                                            userSession
+                                                .userData
+                                                ?.nombreCompleto ??
+                                            'Propietario',
+                                        nombreMecanico: name,
+                                        idTaller: tallerId,
+                                      );
 
-                                if (chatId.isNotEmpty && mounted) {
-                                  context.push('/chat/$chatId');
-                                } else {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Error al iniciar el chat',
+                                  if (chatId.isNotEmpty && mounted) {
+                                    context.push('/chat/$chatId');
+                                  } else {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Error al iniciar el chat',
+                                          ),
                                         ),
-                                      ),
-                                    );
+                                      );
+                                    }
                                   }
-                                }
-                              },
-                              text: context.l10n.wdContact,
-                            ),
-                          ],
+                                },
+                                text: context.l10n.wdContact,
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
