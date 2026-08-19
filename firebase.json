@@ -60,7 +60,8 @@
     },
     {
       "target": "landing",
-      "source": "landing-web",
+      "public": "landing-web/out",
+      "cleanUrls": true,
       "ignore": [
         "firebase.json",
         "**/.*",
