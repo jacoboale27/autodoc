@@ -86,7 +86,11 @@ void main() {
       Tristate.isFalse,
     );
 
-    // Y son mutuamente exclusivas.
+    // Y son mutuamente exclusivas. El campo de fecha de nacimiento empuja
+    // las tarjetas de rol fuera del viewport inicial en pantallas bajas,
+    // asi que hay que desplazarlas a la vista antes de tocarlas.
+    await tester.ensureVisible(mechanic);
+    await tester.pumpAndSettle();
     await tester.tap(mechanic);
     await tester.pumpAndSettle();
     expect(

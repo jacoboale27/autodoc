@@ -30,6 +30,7 @@ class ProfileSetupScreen extends StatefulWidget {
 
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final TextEditingController _nameController = TextEditingController();
+  DateTime? _birthDate;
   String _selectedRole = 'Propietario'; // 'Propietario' or 'Mecanico'
   bool _notificationsEnabled = true;
   XFile? _imageFile;
@@ -53,6 +54,29 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     if (pickedFile != null) {
       setState(() => _imageFile = pickedFile);
     }
+  }
+
+  Future<void> _pickBirthDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(now.year - 18, now.month, now.day),
+      firstDate: DateTime(now.year - 120),
+      lastDate: now,
+      helpText: 'Fecha de nacimiento',
+    );
+    if (picked != null) {
+      setState(() => _birthDate = picked);
+    }
+  }
+
+  static int _ageAt(DateTime birthDate, DateTime now) {
+    int age = now.year - birthDate.year;
+    final hasHadBirthdayThisYear =
+        (now.month > birthDate.month) ||
+        (now.month == birthDate.month && now.day >= birthDate.day);
+    if (!hasHadBirthdayThisYear) age--;
+    return age;
   }
 
   @override
@@ -400,6 +424,79 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                   ),
                                   const SizedBox(height: 28),
 
+                                  // Birth Date Label
+                                  Text(
+                                    'FECHA DE NACIMIENTO',
+                                    style: AppTextStyles.labelSmall.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: appColors.textSecondary,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+
+                                  // Birth Date Picker Field
+                                  InkWell(
+                                    key: const ValueKey('setup-birth-date'),
+                                    borderRadius: BorderRadius.circular(14),
+                                    onTap: _pickBirthDate,
+                                    child: Container(
+                                      constraints: const BoxConstraints(
+                                        minHeight: 48,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isDarkMode
+                                            ? appColors.surfaceVariant
+                                                  .withValues(alpha: 0.6)
+                                            : appColors.surface,
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(
+                                          color: appColors.outline.withValues(
+                                            alpha: 0.5,
+                                          ),
+                                        ),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 14,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.cake_outlined,
+                                            color: appColors.textSecondary,
+                                            size: Responsive.iconSize(
+                                              context,
+                                              20,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(
+                                              _birthDate != null
+                                                  ? '${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}'
+                                                  : 'Selecciona tu fecha de nacimiento',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: AppTextStyles.bodyLarge
+                                                  .copyWith(
+                                                    fontWeight:
+                                                        _birthDate != null
+                                                        ? FontWeight.w500
+                                                        : FontWeight.normal,
+                                                    color: _birthDate != null
+                                                        ? appColors.textPrimary
+                                                        : appColors
+                                                              .textSecondary,
+                                                  ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 28),
+
                                   // Role Selection Label
                                   Text(
                                     'SELECCIONA TU ROL',
@@ -643,6 +740,27 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       return;
     }
 
+    final birthDate = _birthDate;
+    if (birthDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Por favor, ingresa tu fecha de nacimiento'),
+          backgroundColor: appColors.error,
+        ),
+      );
+      return;
+    }
+
+    if (_ageAt(birthDate, DateTime.now()) < 18) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Debes ser mayor de 18 años para usar AutoDoc'),
+          backgroundColor: appColors.error,
+        ),
+      );
+      return;
+    }
+
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -664,6 +782,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         correo: user.email ?? '',
         rol: _selectedRole,
         fechaRegistro: DateTime.now(),
+        fechaNacimiento: birthDate,
       );
 
       final success = await profileProvider.updateProfile(

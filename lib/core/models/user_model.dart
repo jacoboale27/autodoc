@@ -6,6 +6,7 @@ class UserModel {
   final String correo;
   final String rol;
   final DateTime fechaRegistro;
+  final DateTime? fechaNacimiento;
   final List<String> talleresFavoritos;
   final String? fotoPerfilUrl;
   final String? especialidad;
@@ -54,6 +55,7 @@ class UserModel {
     required this.correo,
     required this.rol,
     required this.fechaRegistro,
+    this.fechaNacimiento,
     this.talleresFavoritos = const [],
     this.fotoPerfilUrl,
     this.especialidad,
@@ -76,6 +78,7 @@ class UserModel {
     String? correo,
     String? rol,
     DateTime? fechaRegistro,
+    DateTime? fechaNacimiento,
     List<String>? talleresFavoritos,
     String? fotoPerfilUrl,
     String? especialidad,
@@ -97,6 +100,7 @@ class UserModel {
       correo: correo ?? this.correo,
       rol: rol ?? this.rol,
       fechaRegistro: fechaRegistro ?? this.fechaRegistro,
+      fechaNacimiento: fechaNacimiento ?? this.fechaNacimiento,
       talleresFavoritos: talleresFavoritos ?? this.talleresFavoritos,
       fotoPerfilUrl: fotoPerfilUrl ?? this.fotoPerfilUrl,
       especialidad: especialidad ?? this.especialidad,
@@ -121,6 +125,8 @@ class UserModel {
       'correo': correo,
       'rol': rol,
       'fecha_registro': Timestamp.fromDate(fechaRegistro),
+      if (fechaNacimiento != null)
+        'fecha_nacimiento': Timestamp.fromDate(fechaNacimiento!),
       'talleres_favoritos': talleresFavoritos,
       'foto_perfil_url': fotoPerfilUrl,
       if (especialidad != null) 'especialidad': especialidad,
@@ -147,6 +153,11 @@ class UserModel {
       if (val is String) return DateTime.tryParse(val) ?? DateTime.now();
       if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
       return DateTime.now();
+    }
+
+    DateTime? parseNullableDate(dynamic val) {
+      if (val == null) return null;
+      return parseDate(val);
     }
 
     double? parseDouble(dynamic val) {
@@ -179,6 +190,9 @@ class UserModel {
       correo: (map['correo'] ?? map['email'] ?? '').toString(),
       rol: (map['rol'] ?? map['role'] ?? 'Propietario').toString(),
       fechaRegistro: parseDate(map['fecha_registro'] ?? map['fechaRegistro']),
+      fechaNacimiento: parseNullableDate(
+        map['fecha_nacimiento'] ?? map['fechaNacimiento'],
+      ),
       talleresFavoritos: parseStringList(
         map['talleres_favoritos'] ?? map['talleresFavoritos'],
       ),
