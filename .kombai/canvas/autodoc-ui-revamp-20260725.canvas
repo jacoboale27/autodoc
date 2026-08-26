@@ -266,7 +266,8 @@
       "comments": [],
       "created": "2026-08-15T15:37:02.738744+00:00",
       "modified": "2026-08-17T21:04:00.666178+00:00",
-      "id": "var_c49a9d1e51c7"
+      "id": "var_c49a9d1e51c7",
+      "viewportScrollY": 33
     },
     "var_ddb1f9d5a3cb": {
       "type": "variant",
@@ -1049,7 +1050,8 @@
       "comments": [],
       "created": "2026-08-17T20:11:54.261846+00:00",
       "modified": "2026-08-17T21:02:29.666709+00:00",
-      "id": "var_e9983f600901"
+      "id": "var_e9983f600901",
+      "viewportScrollY": 6
     },
     "var_1c1e0ddac970": {
       "type": "variant",
