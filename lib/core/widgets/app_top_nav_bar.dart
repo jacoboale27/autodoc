@@ -90,7 +90,9 @@ class AppTopNavBar extends StatelessWidget {
           // Theme & Language Toggles
           Consumer2<ThemeProvider, LanguageProvider>(
             builder: (context, themeProvider, languageProvider, _) {
-              final isDark = themeProvider.themeMode == ThemeMode.dark;
+              // isDarkMode (no `themeMode == dark`) resuelve tambien
+              // ThemeMode.system contra el brillo real de la plataforma.
+              final isDark = themeProvider.isDarkMode;
               final isEnglish =
                   languageProvider.currentLocale.languageCode == 'en';
               return Row(
@@ -102,11 +104,7 @@ class AppTopNavBar extends StatelessWidget {
                           : Icons.dark_mode_outlined,
                       color: colors.textSecondary,
                     ),
-                    onPressed: () {
-                      themeProvider.setThemeMode(
-                        isDark ? ThemeMode.light : ThemeMode.dark,
-                      );
-                    },
+                    onPressed: themeProvider.toggleTheme,
                     tooltip: 'Theme',
                   ),
                   SizedBox(width: Responsive.padding(context, 8)),

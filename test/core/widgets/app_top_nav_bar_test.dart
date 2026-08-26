@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:autodoc/core/providers/theme_provider.dart';
+import 'package:autodoc/core/widgets/app_top_nav_bar.dart';
 import 'package:autodoc/core/widgets/navigation/app_nav_destination.dart';
 
 import '../../support/shell_harness.dart';
@@ -61,4 +64,61 @@ void main() {
     await pumpTopNav(tester, width: 1440, brightness: Brightness.dark);
     expectNoOverflow(tester);
   });
+
+  // Regresion del interruptor de tema.
+  //
+  // El boton calculaba el estado actual como `themeMode == ThemeMode.dark`.
+  // Arrancando en ThemeMode.system con el sistema operativo en oscuro, eso da
+  // `false` aunque la app YA se vea oscura, asi que el primer toque hacia
+  // setThemeMode(dark): no cambiaba nada en pantalla y habia que pulsar dos
+  // veces. El sintoma reportado era "el cambio de tema no funciona".
+  //
+  // El contrato es: UN toque siempre invierte lo que el usuario esta viendo.
+  ThemeProvider themeProviderDe(WidgetTester tester) => Provider.of<ThemeProvider>(
+    tester.element(find.byType(AppTopNavBar)),
+    listen: false,
+  );
+
+  testWidgets(
+    'con el sistema en oscuro, UN toque en el interruptor pasa a claro',
+    (tester) async {
+      final binding = tester.binding;
+      binding.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+      addTearDown(binding.platformDispatcher.clearPlatformBrightnessTestValue);
+
+      await pumpTopNav(tester, width: 1440, brightness: Brightness.dark);
+
+      final theme = themeProviderDe(tester);
+      expect(
+        theme.themeMode,
+        ThemeMode.system,
+        reason: 'el estado de partida del bug es ThemeMode.system',
+      );
+
+      await tester.tap(find.byTooltip('Theme'));
+      await tester.pumpAndSettle();
+
+      expect(
+        themeProviderDe(tester).themeMode,
+        ThemeMode.light,
+        reason: 'un solo toque debe invertir el tema que el usuario esta viendo',
+      );
+    },
+  );
+
+  testWidgets(
+    'con el sistema en claro, UN toque en el interruptor pasa a oscuro',
+    (tester) async {
+      final binding = tester.binding;
+      binding.platformDispatcher.platformBrightnessTestValue = Brightness.light;
+      addTearDown(binding.platformDispatcher.clearPlatformBrightnessTestValue);
+
+      await pumpTopNav(tester, width: 1440);
+
+      await tester.tap(find.byTooltip('Theme'));
+      await tester.pumpAndSettle();
+
+      expect(themeProviderDe(tester).themeMode, ThemeMode.dark);
+    },
+  );
 }

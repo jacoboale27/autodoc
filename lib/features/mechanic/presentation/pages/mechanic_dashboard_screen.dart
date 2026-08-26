@@ -544,7 +544,7 @@ class _TemaIdiomaActions extends StatelessWidget {
 
     return Consumer2<ThemeProvider, LanguageProvider>(
       builder: (context, themeProvider, languageProvider, _) {
-        final isDark = themeProvider.themeMode == ThemeMode.dark;
+        final isDark = themeProvider.isDarkMode;
         final isEnglish = languageProvider.currentLocale.languageCode == 'en';
 
         return Row(
@@ -558,9 +558,7 @@ class _TemaIdiomaActions extends StatelessWidget {
                 isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
                 color: colors.primary,
               ),
-              onPressed: () => themeProvider.setThemeMode(
-                isDark ? ThemeMode.light : ThemeMode.dark,
-              ),
+              onPressed: themeProvider.toggleTheme,
             ),
             IconButton(
               tooltip: isEnglish ? 'Cambiar a español' : 'Switch to English',
