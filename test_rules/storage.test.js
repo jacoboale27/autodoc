@@ -2,9 +2,13 @@ const { assertFails, assertSucceeds } = require('@firebase/rules-unit-testing');
 const { makeEnv, seed, UIDS } = require('./helpers');
 
 let env;
-beforeAll(async () => { env = await makeEnv(); });
+// 30 s y no los 5 s por defecto de Jest: el emulador de Storage tarda bastante
+// mas que el de Firestore en aceptar la carga inicial de reglas en un arranque
+// en frio, y con el default toda la suite moria en "Exceeded timeout of 5000 ms
+// for a hook" antes de ejecutar un solo test.
+beforeAll(async () => { env = await makeEnv(); }, 30000);
 afterAll(async () => { await env.cleanup(); });
-beforeEach(async () => { await env.clearStorage(); await env.clearFirestore(); });
+beforeEach(async () => { await env.clearStorage(); await env.clearFirestore(); }, 30000);
 
 const imagen = (kb) => Buffer.alloc(kb * 1024, 1);
 const META_JPEG = { contentType: 'image/jpeg' };
@@ -317,5 +321,48 @@ describe('storage: notas de voz de chat (chat_audios)', () => {
     });
     const st = env.authenticatedContext(UIDS.admin).storage();
     await assertSucceeds(st.ref('chat_audios/c1/audio1.m4a').getDownloadURL());
+  });
+});
+
+// Galeria de fotos del vehiculo: VehiclePhotoService.addPhoto sube a
+// `vehiculos/{vehicleId}/fotos/{uuid}.jpg`, DOS segmentos bajo el vehiculo.
+// El match usaba {fileName} (un solo segmento), asi que esa ruta no casaba
+// con ninguna regla y toda subida moria en permission-denied.
+describe('storage: galeria de fotos del vehiculo (ruta anidada)', () => {
+  test('el propietario SI puede subir a vehiculos/{id}/fotos/{archivo}', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedVehiculo('v1', UIDS.owner1);
+    const st = env.authenticatedContext(UIDS.owner1).storage();
+    await assertSucceeds(st.ref('vehiculos/v1/fotos/abc.jpg').put(imagen(120), META_JPEG));
+  });
+
+  test('el propietario SI sigue pudiendo subir a la raiz del vehiculo', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedVehiculo('v1', UIDS.owner1);
+    const st = env.authenticatedContext(UIDS.owner1).storage();
+    await assertSucceeds(st.ref('vehiculos/v1/portada.jpg').put(imagen(120), META_JPEG));
+  });
+
+  test('un tercero NO puede subir a la galeria de un vehiculo ajeno', async () => {
+    await seedUsuario(UIDS.owner2, 'Propietario');
+    await seedVehiculo('v1', UIDS.owner1);
+    const st = env.authenticatedContext(UIDS.owner2).storage();
+    await assertFails(st.ref('vehiculos/v1/fotos/abc.jpg').put(imagen(120), META_JPEG));
+  });
+
+  test('la galeria sigue rechazando ficheros que no son imagen', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedVehiculo('v1', UIDS.owner1);
+    const st = env.authenticatedContext(UIDS.owner1).storage();
+    await assertFails(
+      st.ref('vehiculos/v1/fotos/abc.html').put(imagen(10), { contentType: 'text/html' }),
+    );
+  });
+
+  test('la galeria sigue rechazando subidas por encima de 5 MB', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedVehiculo('v1', UIDS.owner1);
+    const st = env.authenticatedContext(UIDS.owner1).storage();
+    await assertFails(st.ref('vehiculos/v1/fotos/big.jpg').put(imagen(6 * 1024), META_JPEG));
   });
 });

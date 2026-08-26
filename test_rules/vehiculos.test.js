@@ -189,3 +189,95 @@ describe('vehiculos', () => {
     );
   });
 });
+
+// Galeria de fotos: vehiculos/{id}/fotos/{fotoId} (VehiclePhotoService).
+// Las reglas NO se heredan de la coleccion padre; sin el match anidado tanto
+// el stream como el set() morian en permission-denied y la galeria salia
+// siempre vacia sin poder subir nada.
+describe('vehiculos/{id}/fotos (galeria)', () => {
+  const foto = { url: 'https://x/f.jpg', timestamp: new Date() };
+
+  test('el propietario SI puede añadir una foto a su vehiculo', async () => {
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await seed(env, seedVehiculo('v-mio', UIDS.owner1));
+    await assertSucceeds(
+      db.collection('vehiculos').doc('v-mio').collection('fotos').doc('f1').set(foto),
+    );
+  });
+
+  test('el propietario SI puede leer y borrar las fotos de su vehiculo', async () => {
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await seed(env, seedVehiculo('v-mio', UIDS.owner1));
+    await seed(env, async (s) => {
+      await s.collection('vehiculos').doc('v-mio').collection('fotos').doc('f1').set(foto);
+    });
+    await assertSucceeds(db.collection('vehiculos').doc('v-mio').collection('fotos').get());
+    await assertSucceeds(
+      db.collection('vehiculos').doc('v-mio').collection('fotos').doc('f1').delete(),
+    );
+  });
+
+  test('un tercero NO puede leer ni escribir las fotos de un vehiculo ajeno', async () => {
+    const db = await withRole(env, UIDS.owner2, 'Propietario');
+    await seed(env, seedVehiculo('v-ajeno', UIDS.owner1));
+    await assertFails(db.collection('vehiculos').doc('v-ajeno').collection('fotos').get());
+    await assertFails(
+      db.collection('vehiculos').doc('v-ajeno').collection('fotos').doc('f1').set(foto),
+    );
+  });
+
+  test('un taller vinculado SI puede ver las fotos pero NO añadir ni borrar', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await seed(env, seedVehiculo('v-vinculado', UIDS.owner1, [UIDS.taller1]));
+    await seed(env, async (s) => {
+      await s.collection('vehiculos').doc('v-vinculado').collection('fotos').doc('f1').set(foto);
+    });
+    await assertSucceeds(db.collection('vehiculos').doc('v-vinculado').collection('fotos').get());
+    await assertFails(
+      db.collection('vehiculos').doc('v-vinculado').collection('fotos').doc('f2').set(foto),
+    );
+    await assertFails(
+      db.collection('vehiculos').doc('v-vinculado').collection('fotos').doc('f1').delete(),
+    );
+  });
+
+  test('un taller NO vinculado NO puede ver las fotos', async () => {
+    const db = await withRole(env, UIDS.taller2, 'Taller');
+    await seed(env, seedVehiculo('v-ajeno', UIDS.owner1, [UIDS.taller1]));
+    await assertFails(db.collection('vehiculos').doc('v-ajeno').collection('fotos').get());
+  });
+
+  test('sin autenticar NO se pueden leer las fotos', async () => {
+    await seed(env, seedVehiculo('v-mio', UIDS.owner1));
+    await assertFails(anon(env).collection('vehiculos').doc('v-mio').collection('fotos').get());
+  });
+});
+
+// Leer un vehiculo que TODAVIA no existe.
+//
+// Sin la rama `resource == null` del allow read, un get() sobre un id
+// inexistente no devuelve "no existe": evalua resource.data.id_propietario
+// sobre null, error de evaluacion, PERMISSION_DENIED. Eso rompia
+// VehicleImageService.getVehicleImage(), que consulta el vehiculo ANTES de que
+// addVehicle() lo escriba: la excepcion tumbaba la funcion y el vehiculo nuevo
+// se guardaba con el asset por defecto en foto_url sin haber buscado nunca.
+describe('vehiculos: documento inexistente', () => {
+  test('un usuario autenticado SI puede consultar un id que aun no existe', async () => {
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    const snap = await assertSucceeds(
+      db.collection('vehiculos').doc('todavia-no-existe').get(),
+    );
+    expect(snap.exists).toBe(false);
+  });
+
+  test('sin autenticar NO se puede consultar un id inexistente', async () => {
+    await assertFails(anon(env).collection('vehiculos').doc('todavia-no-existe').get());
+  });
+
+  test('la lectura de un vehiculo AJENO que SI existe sigue denegada', async () => {
+    // La rama de null no debe haber abierto la lectura de datos reales.
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await seed(env, seedVehiculo('v-ajeno', UIDS.owner2));
+    await assertFails(db.collection('vehiculos').doc('v-ajeno').get());
+  });
+});

@@ -140,7 +140,13 @@ service firebase.storage {
     }
 
     // Reglas para imágenes de vehículos
-    match /vehiculos/{vehicleId}/{fileName} {
+    //
+    // {allPaths=**} y no {fileName}: la galeria de fotos sube a
+    // `vehiculos/{vehicleId}/fotos/{uuid}.jpg` (ver VehiclePhotoService.addPhoto),
+    // que son DOS segmentos bajo el vehiculo. Un comodin simple como {fileName}
+    // solo captura un segmento, asi que esa ruta no casaba con ninguna regla y
+    // toda subida a la galeria moria en permission-denied.
+    match /vehiculos/{vehicleId}/{allPaths=**} {
       allow read: if isAuthenticated() && (
         isVehicleOwner(vehicleId)
         || isVinculadoAlVehiculo(vehicleId)

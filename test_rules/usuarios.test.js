@@ -172,6 +172,72 @@ describe('usuarios', () => {
     );
   });
 
+  // --- Alta de cuenta de mecanico (bucle de registro en profile_setup) ---
+  // Antes, `allow create` exigia rol == 'Propietario', asi que elegir
+  // "Mecanico" en profile_setup daba permission-denied: updateProfile()
+  // devolvia false, userData seguia null y resolveRedirect() rebotaba a
+  // /profile_setup indefinidamente. Ahora se admite 'Mecanico' pero solo con
+  // estado == 'pendiente', que NO esta en estadosMecanicoAprobado, de modo
+  // que la cuenta queda retenida en /mechanic_pending hasta que un admin la
+  // apruebe.
+
+  test('un mecanico SI puede crear su propio perfil con estado pendiente', async () => {
+    const db = env.authenticatedContext(UIDS.taller1).firestore();
+    await assertSucceeds(
+      db.collection('usuarios').doc(UIDS.taller1).set({
+        id_usuario: UIDS.taller1, correo: 'mec@test.com', nombre_completo: 'Mecanico Nuevo',
+        rol: 'Mecanico', estado: 'pendiente', calificacion_promedio: 0, total_resenias: 0,
+      }),
+    );
+  });
+
+  test('un mecanico NO puede auto-crearse ya aprobado', async () => {
+    const db = env.authenticatedContext(UIDS.taller1).firestore();
+    for (const estado of ['activo', 'aprobado']) {
+      await assertFails(
+        db.collection('usuarios').doc(UIDS.taller1).set({
+          id_usuario: UIDS.taller1, correo: 'mec@test.com', nombre_completo: 'Mecanico Listillo',
+          rol: 'Mecanico', estado,
+        }),
+      );
+    }
+  });
+
+  test('un mecanico NO puede auto-crearse sin el campo estado', async () => {
+    // Sin estado explicito isMecanico() aplica el default 'pendiente', pero
+    // dejar el campo ausente abriria la puerta a que un update posterior lo
+    // introdujera; se exige explicito.
+    const db = env.authenticatedContext(UIDS.taller1).firestore();
+    await assertFails(
+      db.collection('usuarios').doc(UIDS.taller1).set({
+        id_usuario: UIDS.taller1, correo: 'mec@test.com', nombre_completo: 'Mecanico', rol: 'Mecanico',
+      }),
+    );
+  });
+
+  test('un mecanico pendiente NO puede autoaprobarse via update', async () => {
+    await seed(env, async (s) => {
+      await s.collection('usuarios').doc(UIDS.taller1).set({
+        id_usuario: UIDS.taller1, rol: 'Mecanico', estado: 'pendiente',
+      });
+    });
+    const db = env.authenticatedContext(UIDS.taller1).firestore();
+    await assertFails(
+      db.collection('usuarios').doc(UIDS.taller1).update({ estado: 'activo' }),
+    );
+  });
+
+  test('nadie puede auto-crearse como Administrador ni Superusuario', async () => {
+    const db = env.authenticatedContext(UIDS.owner1).firestore();
+    for (const rol of ['Administrador', 'Superusuario', 'Taller']) {
+      await assertFails(
+        db.collection('usuarios').doc(UIDS.owner1).set({
+          id_usuario: UIDS.owner1, correo: 'x@test.com', nombre_completo: 'X', rol, estado: 'pendiente',
+        }),
+      );
+    }
+  });
+
   test('sin autenticar NO se puede leer usuarios', async () => {
     await assertFails(anon(env).collection('usuarios').get());
   });

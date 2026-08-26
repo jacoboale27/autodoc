@@ -132,3 +132,56 @@ describe('servicios: update (no se puede reescribir id_vehiculo/id_taller)', () 
     );
   });
 });
+
+// Servicio de mantenimiento registrado por el propio propietario
+// (task_complete_screen.dart -> AlertProvider.userCompleteTask). Antes el
+// `allow create` solo admitia admin o mecanico, asi que este flujo moria en
+// permission-denied DESPUES de haber subido ya la factura a Storage, dejando
+// el archivo huerfano y sin foto_factura_url en ningun documento.
+describe('servicios: create manual del propietario', () => {
+  const MANUAL = 'Manual (Propietario)';
+
+  test('el propietario SI puede registrar un servicio manual sobre su vehiculo', async () => {
+    await seedVehiculo('v1', UIDS.owner1);
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertSucceeds(
+      db.collection('servicios').add({
+        id_vehiculo: 'v1', id_taller: MANUAL, tipo_servicio: 'Cambio de aceite',
+        costo: 45.5, kilometraje_servicio: 82000,
+      }),
+    );
+  });
+
+  test('el propietario NO puede registrar un servicio manual sobre el vehiculo de otro', async () => {
+    await seedVehiculo('v-ajeno', UIDS.owner2);
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('servicios').add({
+        id_vehiculo: 'v-ajeno', id_taller: MANUAL, tipo_servicio: 'Cambio de aceite',
+      }),
+    );
+  });
+
+  test('el propietario NO puede usar la rama manual para imputar el servicio a un taller real', async () => {
+    // El centinela es lo unico que autoriza esta rama: si se pudiera poner un
+    // uid de taller, el propietario estaria fabricando historial ajeno (y el
+    // trigger requestReviewOnServiceComplete si actua sobre esos id_taller).
+    await seedVehiculo('v1', UIDS.owner1);
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('servicios').add({
+        id_vehiculo: 'v1', id_taller: UIDS.taller1, tipo_servicio: 'Cambio de aceite',
+      }),
+    );
+  });
+
+  test('un tercero NO puede registrar un servicio manual sobre un vehiculo que no es suyo', async () => {
+    await seedVehiculo('v1', UIDS.owner1);
+    const db = await withRole(env, UIDS.owner2, 'Propietario');
+    await assertFails(
+      db.collection('servicios').add({
+        id_vehiculo: 'v1', id_taller: MANUAL, tipo_servicio: 'Cambio de aceite',
+      }),
+    );
+  });
+});

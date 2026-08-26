@@ -124,11 +124,29 @@ service cloud.firestore {
       //   permiten solo con su valor por defecto inofensivo: eso deja pasar
       //   el registro legitimo pero sigue bloqueando que alguien se plante
       //   un estado 'aprobado' o una reputacion no nula desde el create.
-      allow create: if isOwner(userId) && request.resource.data.rol == 'Propietario'
+      //
+      // AMPLIACION (alta de mecanico): el auto-registro tambien admite
+      // rol == 'Mecanico', pero SOLO con estado == 'pendiente'. Antes solo se
+      // aceptaba 'Propietario', asi que elegir "Mecanico" en profile_setup
+      // moria en permission-denied: updateProfile() devolvia false, userData
+      // seguia null y resolveRedirect() rebotaba a /profile_setup una y otra
+      // vez (bucle de registro).
+      // 'pendiente' NO esta en estadosMecanicoAprobado ({'aprobado','activo'},
+      // ver app_router.dart e isMecanico() aqui abajo), asi que la cuenta
+      // recien creada queda retenida en /mechanic_pending sin ningun acceso de
+      // taller hasta que un admin la apruebe. Y como 'estado' esta excluido del
+      // allow update del propio usuario, el mecanico no puede autoaprobarse
+      // despues: el unico camino a 'activo'/'aprobado' pasa por AdminService.
+      allow create: if isOwner(userId)
                     && !('id_taller_propietario' in request.resource.data)
-                    && (!('estado' in request.resource.data) || request.resource.data.estado == 'activo')
                     && (!('calificacion_promedio' in request.resource.data) || request.resource.data.calificacion_promedio == 0)
-                    && (!('total_resenias' in request.resource.data) || request.resource.data.total_resenias == 0);
+                    && (!('total_resenias' in request.resource.data) || request.resource.data.total_resenias == 0)
+                    && (
+                         (request.resource.data.rol == 'Propietario'
+                            && (!('estado' in request.resource.data) || request.resource.data.estado == 'activo'))
+                         || (request.resource.data.rol == 'Mecanico'
+                            && request.resource.data.estado == 'pendiente')
+                       );
       
       // El usuario puede editar su propio perfil básico, pero no puede tocar
       // 'rol' (escalamiento de privilegios) ni las métricas agregadas de
@@ -229,8 +247,19 @@ service cloud.firestore {
       // La búsqueda de vehículos nuevos por placa NO usa esta regla: pasa
       // por la Cloud Function callable buscarVehiculoPorPlaca, que devuelve
       // solo datos identificatorios sin exponer el documento completo.
+      //
+      // `resource == null` (documento inexistente) se permite explicitamente.
+      // Sin esa rama, un get() sobre un id que aun no existe no devuelve "no
+      // existe": evalua `resource.data.id_propietario` sobre null, lo que es
+      // un error de evaluacion y se traduce en PERMISSION_DENIED. Eso rompia
+      // VehicleImageService.getVehicleImage(), que consulta el vehiculo ANTES
+      // de que addVehicle() lo escriba: la excepcion tumbaba la funcion entera
+      // y ningun vehiculo nuevo llegaba a buscar su foto.
+      // No filtra nada: un documento inexistente no tiene datos que exponer, y
+      // los ids son UUID, no enumerables.
       allow read: if isAuthenticated() && (
-        resource.data.id_propietario == request.auth.uid
+        resource == null
+        || resource.data.id_propietario == request.auth.uid
         || isAdmin()
         || (isMecanico() && resource.data.get('talleres_vinculados', []).hasAny([request.auth.uid]))
         // Usuarios con quien el propietario comparte el vehiculo (ver
@@ -254,6 +283,37 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['kilometraje_actual']))
         || isAdmin()
       );
+
+      // Galeria de fotos del vehiculo (VehiclePhotoService: streamPhotos /
+      // addPhoto / deletePhoto sobre vehiculos/{id}/fotos/{fotoId}).
+      // Las reglas NO se heredan de la coleccion padre, asi que sin este match
+      // anidado tanto el stream como el set() morian en permission-denied y la
+      // galeria aparecia siempre vacia y sin poder subir nada.
+      //
+      // Lectura: el mismo publico que ya puede leer el vehiculo (dueño,
+      // taller vinculado, alguien con quien se compartio, admin). Se
+      // reevalua contra el documento padre en vez de duplicar la condicion,
+      // para que no se desincronicen.
+      // Escritura: solo el dueño real (o admin). Un taller vinculado puede
+      // ver las fotos pero no añadir ni borrar: la galeria es del propietario.
+      match /fotos/{fotoId} {
+        function vehiculo() {
+          return get(/databases/$(database)/documents/vehiculos/$(vehiculoId)).data;
+        }
+        function puedeVerVehiculo() {
+          return isAuthenticated()
+            && exists(/databases/$(database)/documents/vehiculos/$(vehiculoId))
+            && (
+                 vehiculo().id_propietario == request.auth.uid
+                 || isAdmin()
+                 || (isMecanico() && vehiculo().get('talleres_vinculados', []).hasAny([request.auth.uid]))
+                 || vehiculo().get('shared_with', []).hasAny([request.auth.uid])
+               );
+        }
+        allow read: if puedeVerVehiculo();
+        allow create, update, delete: if isAuthenticated()
+          && (isVehicleOwner(vehiculoId) || isAdmin());
+      }
     }
 
     // 4. Tabla de Servicios (Historial de Mantenimiento)
@@ -294,8 +354,22 @@ service cloud.firestore {
       // esta: permite crear el servicio del walk-in (que dispara el
       // trigger), porque el vinculo permanente ahora depende de ese paso
       // posterior fuera de esta coleccion.
+      //
+      // RAMA DEL PROPIETARIO (mantenimiento hecho por uno mismo): la version
+      // anterior solo admitia admin o mecanico, pero el flujo real de
+      // task_complete_screen.dart -> AlertProvider.userCompleteTask() lo
+      // ejecuta el PROPIETARIO del vehiculo, con el centinela
+      // id_taller == 'Manual (Propietario)'. Sin esta rama, completar un
+      // servicio manual moria en permission-denied despues de haber subido ya
+      // la factura a Storage, dejando el archivo huerfano.
+      // No reabre el hallazgo C1: el centinela no es el uid de ningun taller y
+      // el trigger requestReviewOnServiceComplete descarta explicitamente los
+      // id_taller que contienen 'Manual' (functions/index.js), asi que este
+      // create no puede otorgar talleres_vinculados a nadie.
       allow create: if isAuthenticated() && (
         isAdmin() ||
+        (isVehicleOwner(request.resource.data.id_vehiculo)
+          && request.resource.data.id_taller == 'Manual (Propietario)') ||
         (isMecanico() && request.resource.data.id_taller == request.auth.uid
           && exists(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
           && (
