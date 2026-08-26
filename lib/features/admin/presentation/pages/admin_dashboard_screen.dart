@@ -50,7 +50,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         actions: [
           Consumer2<ThemeProvider, LanguageProvider>(
             builder: (context, themeProvider, languageProvider, _) {
-              final isDark = themeProvider.themeMode == ThemeMode.dark;
+              final isDark = themeProvider.isDarkMode;
               final isEnglish =
                   languageProvider.currentLocale.languageCode == 'en';
               return Row(
@@ -62,9 +62,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           ? Icons.light_mode_outlined
                           : Icons.dark_mode_outlined,
                     ),
-                    onPressed: () => themeProvider.setThemeMode(
-                      isDark ? ThemeMode.light : ThemeMode.dark,
-                    ),
+                    onPressed: themeProvider.toggleTheme,
                   ),
                   TextButton(
                     onPressed: () => languageProvider.changeLanguage(

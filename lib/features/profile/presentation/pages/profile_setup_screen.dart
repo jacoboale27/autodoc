@@ -19,6 +19,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:autodoc/core/utils/responsive.dart';
+import 'package:autodoc/core/utils/role_utils.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
@@ -776,6 +777,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     try {
       setState(() => _isLoading = true);
 
+      // Un taller nace SIEMPRE 'pendiente': no puede operar hasta que un
+      // administrador lo apruebe (ver AdminService.aprobarUsuario). Es lo que
+      // exige `firestore.rules` para el create de rol 'Mecanico', y lo que
+      // mantiene la cuenta retenida en /mechanic_pending — 'pendiente' no está
+      // en `estadosMecanicoAprobado`. Un propietario conserva el 'activo' por
+      // defecto de UserModel: no necesita aprobación de nadie.
+      final esMecanico = isMechanicRole(_selectedRole);
+
       UserModel userModel = UserModel(
         idUsuario: user.uid,
         nombreCompleto: name,
@@ -783,6 +792,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         rol: _selectedRole,
         fechaRegistro: DateTime.now(),
         fechaNacimiento: birthDate,
+        estado: esMecanico ? 'pendiente' : 'activo',
       );
 
       final success = await profileProvider.updateProfile(
@@ -796,12 +806,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         await user.reload();
 
         if (!mounted) return;
-        final role = _selectedRole.trim().toLowerCase();
-        if (role == 'mecanico') {
-          context.go('/mechanic_dashboard');
-        } else {
-          context.go('/dashboard');
-        }
+        // El taller recién creado está 'pendiente', así que /mechanic_dashboard
+        // sería rebotado por resolveRedirect() a /mechanic_pending igualmente.
+        // Navegar ahí directamente evita el salto visible y deja claro al
+        // usuario que su cuenta está en revisión.
+        context.go(esMecanico ? '/mechanic_pending' : '/dashboard');
       } else {
         throw profileProvider.error ?? 'Error desconocido al guardar el perfil';
       }

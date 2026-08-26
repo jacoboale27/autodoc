@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:autodoc/core/theme/app_estado_cuenta.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/firestore_collections.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -33,7 +34,13 @@ List<WorkshopModel> filtrarTalleres(
   String? especialidad,
 }) {
   return talleres.where((t) {
-    if (estado != null && estado != 'todos' && t.estado != estado) {
+    // Comparacion por estado NORMALIZADO y no por texto crudo: 'activo' y
+    // 'aprobado' significan lo mismo (aprobarUsuario escribe uno, aprobarTaller
+    // el otro), asi que filtrar por igualdad de string dejaba fuera de
+    // "Aprobados" a la mitad de los talleres aprobados.
+    if (estado != null &&
+        estado != 'todos' &&
+        AppEstadoCuenta.parse(t.estado) != AppEstadoCuenta.parse(estado)) {
       return false;
     }
     if (busqueda != null &&

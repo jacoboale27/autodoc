@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:autodoc/core/utils/role_utils.dart';
 import 'package:go_router/go_router.dart';
+import 'package:autodoc/core/theme/app_estado_cuenta.dart';
 import 'package:animations/animations.dart';
 import 'package:provider/provider.dart';
 
@@ -95,9 +97,13 @@ const _mechanicRoutes = <String>{
 /// acceder a la app. Espejo exacto de `isMecanico()` en `firestore.rules`
 /// (`getUserData().get('estado', 'pendiente') in ['aprobado', 'activo']`):
 /// cualquier otro valor (incluido ausente, 'pendiente' o 'suspendido') se
-/// retiene en `/mechanic_pending`. `mechanic_pending_screen.dart` referencia
-/// esta misma constante — si cambia aqui, cambia alli tambien.
-const estadosMecanicoAprobado = <String>{'aprobado', 'activo'};
+/// retiene en `/mechanic_pending`.
+///
+/// Alias de [AppEstadoCuenta.aprobados], que es la fuente unica del
+/// vocabulario de `estado` en toda la app (router, pantalla de espera y las
+/// tres vistas de administracion). `mechanic_pending_screen.dart` sigue
+/// importando este nombre.
+const estadosMecanicoAprobado = AppEstadoCuenta.aprobados;
 
 /// Routes exclusively for Admin role
 const _adminRoutes = <String>{
@@ -109,15 +115,21 @@ const _adminRoutes = <String>{
   '/admin/seed',
 };
 
-/// Determines the normalized role string
+/// Rol normalizado, delegado en `role_utils.dart` (fuente unica).
+///
+/// Antes esta funcion tenia su propia tabla de equivalencias, distinta de la de
+/// `isMechanicRole` y de la comparacion exacta de `MainScaffold`: una cuenta
+/// 'Taller' era taller para el router y propietario para el shell, y acababa
+/// navegando con la barra del rol equivocado.
 String _normalizeRole(String? rol) {
-  if (rol == null) return '';
-  final r = rol.trim().toLowerCase();
-  if (r == 'admin' || r == 'administrador' || r == 'superusuario') {
-    return 'admin';
+  switch (appRoleOf(rol)) {
+    case AppRole.admin:
+      return 'admin';
+    case AppRole.mechanic:
+      return 'mechanic';
+    case AppRole.owner:
+      return 'owner';
   }
-  if (r == 'mecanico' || r == 'taller') return 'mechanic';
-  return 'owner'; // Propietario or default
 }
 
 /// Returns the home route for a given role

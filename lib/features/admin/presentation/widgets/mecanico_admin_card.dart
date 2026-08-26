@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_estado_cuenta.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 
 class MecanicoAdminCard extends StatelessWidget {
@@ -19,11 +20,8 @@ class MecanicoAdminCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final estadoColor = usuario.estado == 'activo'
-        ? colors.secondary
-        : usuario.estado == 'suspendido'
-        ? colors.error
-        : colors.warning;
+    // Mismo semaforo que AccountRow y que el resto del panel de admin.
+    final estadoStyle = AppEstadoCuenta.style(usuario.estado, colors);
 
     return AppCard(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -75,9 +73,10 @@ class MecanicoAdminCard extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               _chip(
-                usuario.estado,
-                estadoColor.withValues(alpha: 0.1),
-                estadoColor,
+                estadoStyle.label,
+                estadoStyle.color.withValues(alpha: 0.1),
+                estadoStyle.color,
+                icon: estadoStyle.icon,
               ),
             ],
           ),
@@ -105,16 +104,29 @@ class MecanicoAdminCard extends StatelessWidget {
     );
   }
 
-  Widget _chip(String label, Color bg, Color fg) {
+  Widget _chip(String label, Color bg, Color fg, {IconData? icon}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(
-        label,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fg),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 12, color: fg),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: fg,
+            ),
+          ),
+        ],
       ),
     );
   }

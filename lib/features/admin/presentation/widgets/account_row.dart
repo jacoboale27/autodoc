@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/models/user_model.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_estado_cuenta.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class AccountRow extends StatelessWidget {
@@ -26,6 +28,12 @@ class AccountRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Fuente unica del semaforo: ambar pendiente, verde aprobada ('activo' Y
+    // 'aprobado'), rojo suspendida/rechazada. Antes esto se decidia aqui con
+    // `estado == 'activo'`, asi que una cuenta aprobada via aprobarTaller()
+    // —que escribe 'aprobado'— se pintaba en rojo.
+    final estadoStyle = AppEstadoCuenta.style(usuario.estado, context.appColors);
+
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: Theme.of(
@@ -63,20 +71,25 @@ class AccountRow extends StatelessWidget {
                 margin: const EdgeInsets.only(top: 4),
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: usuario.estado == 'activo'
-                      ? Colors.green.withValues(alpha: 0.2)
-                      : Colors.red.withValues(alpha: 0.2),
+                  color: estadoStyle.color.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text(
-                  usuario.estado.toUpperCase(),
-                  style: TextStyle(
-                    color: usuario.estado == 'activo'
-                        ? Colors.green[800]
-                        : Colors.red[800],
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
+                // El icono acompaña al color: el estado no puede depender solo
+                // de distinguir verde de rojo de ambar.
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(estadoStyle.icon, size: 11, color: estadoStyle.color),
+                    const SizedBox(width: 3),
+                    Text(
+                      estadoStyle.label.toUpperCase(),
+                      style: TextStyle(
+                        color: estadoStyle.color,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -92,7 +105,10 @@ class AccountRow extends StatelessWidget {
           if (value == 'eliminar') onEliminar();
         },
         itemBuilder: (context) => [
-          if (usuario.estado != 'activo' && usuario.estado != 'suspendido')
+          // Solo una cuenta PENDIENTE se aprueba. Antes la condicion era
+          // `!= 'activo' && != 'suspendido'`, que dejaba pasar 'aprobado' y
+          // por eso el menu ofrecia aprobar una cuenta ya aprobada.
+          if (AppEstadoCuenta.admiteAprobacion(usuario.estado))
             PopupMenuItem(
               value: 'aprobar',
               child: Text(
@@ -100,7 +116,7 @@ class AccountRow extends StatelessWidget {
                 style: const TextStyle(color: Colors.green),
               ),
             ),
-          if (usuario.estado == 'activo' && !isCurrentAdmin)
+          if (AppEstadoCuenta.esAprobada(usuario.estado) && !isCurrentAdmin)
             PopupMenuItem(
               value: 'suspender',
               child: Text(
@@ -108,7 +124,7 @@ class AccountRow extends StatelessWidget {
                 style: const TextStyle(color: Colors.red),
               ),
             ),
-          if (usuario.estado == 'suspendido')
+          if (AppEstadoCuenta.esSuspendida(usuario.estado))
             PopupMenuItem(
               value: 'reactivar',
               child: Text(

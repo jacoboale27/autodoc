@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:autodoc/core/utils/role_utils.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
@@ -26,14 +27,14 @@ class MainScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final windowClass = AppBreakpoints.of(context);
-    // Comparación exacta heredada de la Fase 2. El repo tiene tres criterios
-    // de rol distintos (`_normalizeRole` en app_router.dart, `isMechanicRole`
-    // en role_utils.dart, y `mechanicFirestoreRoles`), y `rol == 'Taller'`
-    // también identifica sub-cuentas de empleado (mechanic_sidebar.dart).
-    // Cuál es el correcto es una pregunta de modelo de datos, no de UI: no se
-    // toca aquí, ver nota de la Task 1 de la Fase 5 (mechanic) en el PR.
-    final isMecanico =
-        context.watch<UserProfileProvider>().userData?.rol == 'Mecanico';
+    // Mismo criterio que `_normalizeRole` en app_router.dart: ambos delegan ya
+    // en `role_utils.dart`. La comparación exacta anterior (`== 'Mecanico'`)
+    // dejaba fuera a `'Taller'`, así que el router mandaba esas cuentas al
+    // panel de taller mientras este shell les montaba la navegación de
+    // propietario.
+    final isMecanico = isMechanicRole(
+      context.watch<UserProfileProvider>().userData?.rol,
+    );
 
     return isMecanico
         ? _MechanicShell(child: child)

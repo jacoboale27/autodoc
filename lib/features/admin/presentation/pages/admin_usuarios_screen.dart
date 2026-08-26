@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:autodoc/core/theme/app_estado_cuenta.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/admin_provider.dart';
@@ -210,9 +211,13 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
           u.nombreCompleto.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           u.correo.toLowerCase().contains(_searchQuery.toLowerCase());
       final matchRol = _filterRol == 'Todos' || u.rol == _filterRol;
+      // Por estado normalizado: 'aprobado' y 'activo' son el mismo estado, y
+      // comparar el texto crudo hacia invisible a las cuentas guardadas con el
+      // otro sinonimo bajo cualquier filtro que no fuese 'Todos'.
       final matchEstado =
           _filterEstado == 'Todos' ||
-          u.estado.toLowerCase() == _filterEstado.toLowerCase();
+          AppEstadoCuenta.parse(u.estado) ==
+              AppEstadoCuenta.parse(_filterEstado);
       final matchDate =
           _filterDateFrom == null || u.fechaRegistro.isAfter(_filterDateFrom!);
       return matchSearch && matchRol && matchEstado && matchDate;
@@ -492,14 +497,17 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
-                    children: ['Todos', 'activo', 'suspendido', 'Pendiente']
+                    children:
+                        ['Todos', 'activo', 'pendiente', 'suspendido']
                         .map((estado) {
                           return ChoiceChip(
                             label: Text(
                               estado == 'Todos'
                                   ? 'Todos'
-                                  : estado[0].toUpperCase() +
-                                        estado.substring(1),
+                                  : AppEstadoCuenta.style(
+                                      estado,
+                                      context.appColors,
+                                    ).label,
                             ),
                             selected: _filterEstado == estado,
                             onSelected: (_) {
