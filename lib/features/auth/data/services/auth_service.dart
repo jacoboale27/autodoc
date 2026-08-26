@@ -95,9 +95,15 @@ class AuthService {
 
   // Sign out
   Future<void> signOut() async {
-    try {
-      await _googleSignIn.signOut();
-    } catch (_) {}
+    // En web el login va por FirebaseAuth.signInWithPopup y el paquete
+    // google_sign_in nunca llega a inicializarse, asi que su signOut() no tiene
+    // sesion que cerrar: lo unico que conseguia era arrancar el SDK de Google
+    // Identity Services para nada en cada cierre de sesion.
+    if (!kIsWeb) {
+      try {
+        await _googleSignIn.signOut();
+      } catch (_) {}
+    }
     await _auth.signOut();
   }
 

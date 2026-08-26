@@ -21,7 +21,21 @@
   <meta name="description" content="AutoDoc - Gestión inteligente de mantenimiento vehicular.">
   <meta property="og:title" content="AutoDoc">
   <meta property="og:description" content="Tu garaje virtual y control de servicios.">
-  <meta name="google-signin-client_id" content="$GOOGLE_SIGNIN_CLIENT_ID_WEB">
+  <!--
+    Client ID OAuth de tipo Web del proyecto (el mismo `client_type: 3` que ya
+    viene commiteado en android/app/google-services.json). Va literal a
+    proposito: de este archivo `flutter build web` solo sustituye la base href,
+    asi que el placeholder que habia aqui antes llegaba tal cual al navegador.
+    Un client ID de OAuth es un identificador publico —se envia en cada peticion
+    de autorizacion—, no un secreto.
+
+    Hoy el login web NO pasa por aqui: AuthService usa
+    FirebaseAuth.signInWithPopup, que resuelve su cliente OAuth desde la consola
+    de Firebase y nunca lee este meta. Se deja correcto para el unico consumidor
+    real que queda (google_sign_in_web, que lo lee al inicializarse) y para si
+    algun dia el flujo web se migra al paquete.
+  -->
+  <meta name="google-signin-client_id" content="702895874700-ffjqoc3c4a8uca611o7r86k06g91213d.apps.googleusercontent.com">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
