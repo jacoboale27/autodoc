@@ -32,7 +32,10 @@ class AccountRow extends StatelessWidget {
     // 'aprobado'), rojo suspendida/rechazada. Antes esto se decidia aqui con
     // `estado == 'activo'`, asi que una cuenta aprobada via aprobarTaller()
     // —que escribe 'aprobado'— se pintaba en rojo.
-    final estadoStyle = AppEstadoCuenta.style(usuario.estado, context.appColors);
+    final estadoStyle = AppEstadoCuenta.style(
+      usuario.estado,
+      context.appColors,
+    );
 
     return ListTile(
       leading: CircleAvatar(

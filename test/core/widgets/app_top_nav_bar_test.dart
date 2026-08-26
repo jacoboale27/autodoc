@@ -74,10 +74,11 @@ void main() {
   // veces. El sintoma reportado era "el cambio de tema no funciona".
   //
   // El contrato es: UN toque siempre invierte lo que el usuario esta viendo.
-  ThemeProvider themeProviderDe(WidgetTester tester) => Provider.of<ThemeProvider>(
-    tester.element(find.byType(AppTopNavBar)),
-    listen: false,
-  );
+  ThemeProvider themeProviderDe(WidgetTester tester) =>
+      Provider.of<ThemeProvider>(
+        tester.element(find.byType(AppTopNavBar)),
+        listen: false,
+      );
 
   testWidgets(
     'con el sistema en oscuro, UN toque en el interruptor pasa a claro',
@@ -101,7 +102,8 @@ void main() {
       expect(
         themeProviderDe(tester).themeMode,
         ThemeMode.light,
-        reason: 'un solo toque debe invertir el tema que el usuario esta viendo',
+        reason:
+            'un solo toque debe invertir el tema que el usuario esta viendo',
       );
     },
   );

@@ -497,8 +497,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
-                    children:
-                        ['Todos', 'activo', 'pendiente', 'suspendido']
+                    children: ['Todos', 'activo', 'pendiente', 'suspendido']
                         .map((estado) {
                           return ChoiceChip(
                             label: Text(
