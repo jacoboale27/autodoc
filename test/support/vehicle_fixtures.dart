@@ -4,16 +4,18 @@ import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provid
 
 import '../helpers/test_helpers.mocks.dart';
 
-VehicleModel fakeVehicle(int index) => VehicleModel(
-  idVehiculo: 'v$index',
-  idPropietario: 'u1',
-  placa: 'P00$index-123',
-  marca: 'Toyota',
-  modelo: 'Corolla',
-  anio: 2019 + index,
-  color: 'Blanco',
-  kilometrajeActual: 50000 + index * 1000,
-);
+VehicleModel fakeVehicle(int index, {List<String> notas = const []}) =>
+    VehicleModel(
+      idVehiculo: 'v$index',
+      idPropietario: 'u1',
+      placa: 'P00$index-123',
+      marca: 'Toyota',
+      modelo: 'Corolla',
+      anio: 2019 + index,
+      color: 'Blanco',
+      kilometrajeActual: 50000 + index * 1000,
+      notas: notas,
+    );
 
 /// Provider de vehículos con datos fijos, sin tocar Firestore.
 ///

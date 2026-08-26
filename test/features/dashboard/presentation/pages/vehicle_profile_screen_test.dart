@@ -67,17 +67,24 @@ Future<void> pumpScreen(
   WidgetTester tester,
   double width, {
   Brightness brightness = Brightness.light,
+  List<String> notas = const [],
 }) async {
   await Firebase.initializeApp();
   final mockAuth = MockFirebaseAuth();
   when(mockAuth.idTokenChanges()).thenAnswer((_) => const Stream.empty());
-  final vehicle = fakeVehicle(0);
+  final vehicle = fakeVehicle(0, notas: notas);
   await pumpAtWidth(
     tester,
     MultiProvider(
       providers: [
+        // La pantalla resuelve el vehiculo por id contra la lista del
+        // provider, no contra `vehiculoPrecargado`: las notas tienen que
+        // llegar por aqui. Mismo contenido que `fakeVehicleProvider()`.
         ChangeNotifierProvider<VehicleProvider>.value(
-          value: fakeVehicleProvider(),
+          value: FakeVehicleProvider([
+            vehicle,
+            for (var i = 1; i < 4; i++) fakeVehicle(i),
+          ]),
         ),
         ChangeNotifierProvider<AuthSessionProvider>.value(
           value: AuthSessionProvider(firebaseAuth: mockAuth),
@@ -239,5 +246,77 @@ void main() {
         expectNoOverflow(tester);
       });
     }
+  });
+
+  group('notas rápidas', () {
+    // Cada nota era una tarjeta a ancho completo apilada en una Column, así
+    // que la sección crecía una fila por nota por mucho ancho que sobrara:
+    // "el apartado de notas está muy estirado verticalmente".
+    const notas = ['Cambiar limpiaparabrisas', 'Revisar presión', 'Lavar'];
+
+    Future<double> anchoDeLaPrimeraNota(WidgetTester tester) async {
+      final rejilla = find.byKey(const Key('vehicle-notes-grid'));
+      expect(rejilla, findsOneWidget);
+      final tarjetas = find.descendant(
+        of: rejilla,
+        matching: find.byType(Dismissible),
+      );
+      expect(tarjetas, findsNWidgets(notas.length));
+      return tester.getSize(tarjetas.first).width;
+    }
+
+    testWidgets('en compact ocupan el ancho completo (una columna)', (
+      tester,
+    ) async {
+      await pumpScreen(tester, 375, notas: notas);
+      final anchoRejilla = tester
+          .getSize(find.byKey(const Key('vehicle-notes-grid')))
+          .width;
+      expect(
+        await anchoDeLaPrimeraNota(tester),
+        closeTo(anchoRejilla, 0.5),
+        reason: 'en un teléfono una nota por fila sigue siendo lo correcto',
+      );
+    });
+
+    testWidgets('a partir de medium se reparten en columnas', (tester) async {
+      for (final width in [768.0, 1024.0, 1440.0]) {
+        await pumpScreen(tester, width, notas: notas);
+        final anchoRejilla = tester
+            .getSize(find.byKey(const Key('vehicle-notes-grid')))
+            .width;
+        expect(
+          await anchoDeLaPrimeraNota(tester),
+          lessThan(anchoRejilla * 0.6),
+          reason: 'a $width px las notas siguen apiladas a ancho completo',
+        );
+      }
+    });
+
+    testWidgets('cada nota se mide por su texto, no por una altura fija', (
+      tester,
+    ) async {
+      // Es la razón de usar Wrap y no AppGrid: un GridView.count con
+      // childAspectRatio impone la misma altura a todas las celdas.
+      await pumpScreen(tester, 1024, notas: ['Ok', 'x' * 400]);
+      final tarjetas = find.descendant(
+        of: find.byKey(const Key('vehicle-notes-grid')),
+        matching: find.byType(Dismissible),
+      );
+      expect(
+        tester.getSize(tarjetas.at(1)).height,
+        greaterThan(tester.getSize(tarjetas.first).height),
+        reason: 'la nota larga y la corta miden lo mismo: hay altura fija',
+      );
+    });
+
+    testWidgets('no desborda con notas en ningún ancho de auditoría', (
+      tester,
+    ) async {
+      await forEachAuditWidth(tester, (width) async {
+        await pumpScreen(tester, width, notas: notas);
+        expectNoOverflow(tester);
+      });
+    });
   });
 }

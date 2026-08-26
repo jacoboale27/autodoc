@@ -14,6 +14,7 @@ import '../providers/vehicle_provider.dart';
 import '../widgets/license_plate_widget.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_severity.dart';
@@ -51,6 +52,12 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
   VehicleModel? _currentVehicle;
   bool _cargando = false;
   String? _errorCarga;
+
+  /// Notas que ya se descartaron con el gesto pero cuyo borrado en Firestore
+  /// sigue en vuelo. Ver el comentario en [_buildNotaCard]: sin este filtro,
+  /// el rebuild que dispara `fetchVehicles` al empezar remonta la nota
+  /// descartada y `Dismissible` lanza.
+  final Set<String> _notasEliminandose = <String>{};
 
   @override
   void initState() {
@@ -531,45 +538,120 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
             ),
           )
         else
-          ...vehicle.notas.map(
-            (nota) => Dismissible(
-              key: Key(nota),
-              direction: DismissDirection.endToStart,
-              onDismissed: (direction) async {
-                final uid = context.read<AuthSessionProvider>().user?.uid;
-                final provider = context.read<VehicleProvider>();
-                await VehicleService().removeNote(vehicle.idVehiculo, nota);
-                if (uid != null) {
-                  provider.fetchVehicles(uid);
-                }
-              },
-              background: Container(
-                color: colors.error,
-                alignment: Alignment.centerRight,
-                padding: const EdgeInsets.only(right: AppSpacing.base),
-                child: Icon(Icons.delete, color: colors.onPrimary),
-              ),
-              child: AppCard(
-                margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Row(
-                  children: [
-                    Icon(Icons.sticky_note_2, color: colors.primary, size: 20),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Text(
-                        nota,
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: colors.textPrimary,
-                        ),
-                      ),
+          // Rejilla en vez de una columna: una nota suele ser media linea de
+          // texto, y apilarlas a ancho completo estiraba la seccion varias
+          // pantallas hacia abajo en cuanto habia unas pocas.
+          //
+          // Wrap y no AppGrid a proposito: AppGrid es un GridView.count con
+          // childAspectRatio fijo, asi que impone la MISMA altura a todas las
+          // celdas —la nota de una palabra deja un hueco enorme y la larga
+          // desborda—. Wrap deja que cada tarjeta se mida por su texto.
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final notas = _notasVisibles(vehicle);
+              final columnas = _columnasDeNotas(constraints.maxWidth);
+              final ancho =
+                  (constraints.maxWidth - AppSpacing.sm * (columnas - 1)) /
+                  columnas;
+              return Wrap(
+                key: const Key('vehicle-notes-grid'),
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  for (final nota in notas)
+                    SizedBox(
+                      width: ancho,
+                      child: _buildNotaCard(vehicle, nota, colors),
                     ),
-                  ],
+                ],
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  /// Columnas de la rejilla de notas para el ancho **disponible**.
+  ///
+  /// Se decide por `constraints.maxWidth` y no por `MediaQuery`: esta seccion
+  /// puede vivir dentro de un panel mas estrecho que la ventana.
+  static int _columnasDeNotas(double ancho) =>
+      switch (AppBreakpoints.fromWidth(ancho)) {
+        WindowClass.compact => 1,
+        WindowClass.medium => 2,
+        WindowClass.expanded => 2,
+        WindowClass.large => 3,
+      };
+
+  /// Notas del vehiculo menos las que estan en vuelo hacia el borrado.
+  List<String> _notasVisibles(VehicleModel vehicle) => vehicle.notas
+      .where((nota) => !_notasEliminandose.contains(nota))
+      .toList();
+
+  Widget _buildNotaCard(VehicleModel vehicle, String nota, AppColors colors) {
+    return Dismissible(
+      // `addNote` escribe con arrayUnion, que no admite duplicados, asi que el
+      // propio texto es una clave unica.
+      key: Key(nota),
+      direction: DismissDirection.endToStart,
+      onDismissed: (direction) async {
+        final uid = context.read<AuthSessionProvider>().user?.uid;
+        final provider = context.read<VehicleProvider>();
+        final messenger = ScaffoldMessenger.of(context);
+
+        // Fuera de la lista ya mismo. `Dismissible` exige que su elemento
+        // desaparezca del arbol en cuanto dispara onDismissed, y esperar al
+        // round-trip de Firestore no vale: `fetchVehicles` empieza con
+        // _setLoading(true) -> notifyListeners(), y ese rebuild intermedio
+        // vuelve a montar la nota ya descartada. Al reconstruirse despues de
+        // completar su animacion, Dismissible lanza "A dismissed Dismissible
+        // widget is still part of the tree".
+        setState(() => _notasEliminandose.add(nota));
+        try {
+          await VehicleService().removeNote(vehicle.idVehiculo, nota);
+          if (uid != null) await provider.fetchVehicles(uid);
+          if (mounted) setState(() => _notasEliminandose.remove(nota));
+        } catch (e) {
+          if (!mounted) return;
+          // Se queda sin borrar: devolverla a la lista es mas honesto que
+          // dejarla oculta y que reaparezca al siguiente refresco.
+          setState(() => _notasEliminandose.remove(nota));
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('No se pudo eliminar la nota: $e'),
+              backgroundColor: colors.error,
+            ),
+          );
+        }
+      },
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: AppSpacing.base),
+        decoration: BoxDecoration(
+          color: colors.error,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+        child: Icon(Icons.delete, color: colors.onPrimary),
+      ),
+      child: AppCard(
+        margin: EdgeInsets.zero,
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.sticky_note_2, color: colors.primary, size: 20),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(
+                nota,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: colors.textPrimary,
                 ),
               ),
             ),
-          ),
-      ],
+          ],
+        ),
+      ),
     );
   }
 

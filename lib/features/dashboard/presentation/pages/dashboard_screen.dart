@@ -10,6 +10,7 @@ import 'package:autodoc/features/dashboard/data/services/workshop_service.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/widgets/vehicle_image_widget.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/widgets/app_horizontal_scroller.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 import 'package:autodoc/core/widgets/notification_bell_button.dart';
@@ -159,7 +160,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildHeader(context, isDark, textColor, subTextColor),
+                      _buildHeader(
+                        context,
+                        isDark,
+                        textColor,
+                        subTextColor,
+                        windowClass,
+                      ),
                       const SizedBox(height: AppSpacing.sm),
                       if (vehicle?.tallerPendienteConfirmacion != null) ...[
                         _buildTallerPendienteBanner(
@@ -215,11 +222,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  /// Saludo del dashboard, con campana de notificaciones y avatar de perfil.
+  ///
+  /// Esos dos controles se ocultan en [WindowClass.large] porque ahi el shell
+  /// ya monta [AppTopNavBar], que lleva los mismos dos destinos
+  /// (`/notifications` y `/user_profile`) a unos centimetros de distancia.
+  ///
+  /// La condicion es la clase de ventana y no `kIsWeb` a proposito: lo que
+  /// decide si sobran no es la plataforma sino si el shell los esta pintando
+  /// ya, y eso pasa exactamente en `large` (ver `MainScaffold._OwnerShell`).
+  /// En compact el shell usa `AppBottomNav` y en medium/expanded `AppNavRail`,
+  /// y ninguno de los dos incluye notificaciones ni perfil: ahi son la unica
+  /// via de acceso y quitarlos los dejaria inalcanzables.
   Widget _buildHeader(
     BuildContext context,
     bool isDark,
     Color textColor,
     Color subTextColor,
+    WindowClass windowClass,
   ) {
     final userSession = context.watch<UserProfileProvider>();
     final userName =
@@ -260,50 +280,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-          const SizedBox(width: AppSpacing.sm),
-          Row(
-            children: [
-              NotificationBellButton(readColor: subTextColor),
-              const SizedBox(width: AppSpacing.xs),
-              GestureDetector(
-                onTap: () => context.push('/user_profile'),
-                child: Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: Responsive.size(context, 24),
-                      backgroundColor: colors.primary,
-                      backgroundImage: userPhoto != null
-                          ? NetworkImage(userPhoto)
-                          : null,
-                      child: userPhoto == null
-                          ? Text(
-                              userName.isNotEmpty
-                                  ? userName[0].toUpperCase()
-                                  : 'U',
-                              style: AppTextStyles.titleMedium.copyWith(
-                                color: colors.onPrimary,
-                              ),
-                            )
-                          : null,
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        width: Responsive.size(context, 12),
-                        height: Responsive.size(context, 12),
-                        decoration: BoxDecoration(
-                          color: colors.secondary,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: colors.surface, width: 2),
+          if (!windowClass.isLarge) ...[
+            const SizedBox(width: AppSpacing.sm),
+            Row(
+              key: const Key('dashboard-header-acciones'),
+              children: [
+                NotificationBellButton(readColor: subTextColor),
+                const SizedBox(width: AppSpacing.xs),
+                GestureDetector(
+                  onTap: () => context.push('/user_profile'),
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: Responsive.size(context, 24),
+                        backgroundColor: colors.primary,
+                        backgroundImage: userPhoto != null
+                            ? NetworkImage(userPhoto)
+                            : null,
+                        child: userPhoto == null
+                            ? Text(
+                                userName.isNotEmpty
+                                    ? userName[0].toUpperCase()
+                                    : 'U',
+                                style: AppTextStyles.titleMedium.copyWith(
+                                  color: colors.onPrimary,
+                                ),
+                              )
+                            : null,
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          width: Responsive.size(context, 12),
+                          height: Responsive.size(context, 12),
+                          decoration: BoxDecoration(
+                            color: colors.secondary,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: colors.surface, width: 2),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -836,42 +859,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           )
         else
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: activeAlerts.map((alert) {
-                Color color;
-                IconData icon;
-                switch (alert.tipoAlerta) {
-                  case 'Aceite':
-                    icon = Icons.oil_barrel;
-                    color = colors.warning;
-                    break;
-                  case 'SOAT':
-                    icon = Icons.verified_user;
-                    color = colors.error;
-                    break;
-                  case 'Llantas':
-                    icon = Icons.tire_repair;
-                    color = colors.primary;
-                    break;
-                  default:
-                    icon = Icons.notifications;
-                    color = primary;
-                }
-                return Padding(
-                  padding: const EdgeInsets.only(right: AppSpacing.base),
-                  child: _buildAlertCard(
-                    icon,
-                    alert.titulo,
-                    alert.descripcion,
-                    color,
-                    isDark,
-                    subTextColor,
-                  ),
-                );
-              }).toList(),
-            ),
+          // Con flechas: en desktop la rueda del raton no mueve un scroll
+          // horizontal y las alertas a partir de la tercera eran inalcanzables.
+          AppHorizontalScroller(
+            semanticLabel: 'alertas',
+            children: activeAlerts.map((alert) {
+              Color color;
+              IconData icon;
+              switch (alert.tipoAlerta) {
+                case 'Aceite':
+                  icon = Icons.oil_barrel;
+                  color = colors.warning;
+                  break;
+                case 'SOAT':
+                  icon = Icons.verified_user;
+                  color = colors.error;
+                  break;
+                case 'Llantas':
+                  icon = Icons.tire_repair;
+                  color = colors.primary;
+                  break;
+                default:
+                  icon = Icons.notifications;
+                  color = primary;
+              }
+              return _buildAlertCard(
+                icon,
+                alert.titulo,
+                alert.descripcion,
+                color,
+                isDark,
+                subTextColor,
+              );
+            }).toList(),
           ),
       ],
     );

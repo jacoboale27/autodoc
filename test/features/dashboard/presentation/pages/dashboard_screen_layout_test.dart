@@ -142,4 +142,27 @@ void main() {
       });
     }
   });
+
+  group('campana y avatar del saludo', () {
+    // En `large` el shell monta AppTopNavBar, que ya lleva /notifications y
+    // /user_profile: repetirlos en el saludo era ofrecer los mismos dos
+    // destinos dos veces a unos centímetros de distancia.
+    const acciones = Key('dashboard-header-acciones');
+
+    testWidgets('en large no se repiten: los lleva la barra superior', (
+      tester,
+    ) async {
+      await pumpScreen(tester, 1440);
+      expect(find.byKey(acciones), findsNothing);
+    });
+
+    testWidgets('por debajo de large siguen, son la única vía', (tester) async {
+      // AppBottomNav (compact) y AppNavRail (medium/expanded) no incluyen
+      // notificaciones ni perfil: quitarlos aquí los dejaría inalcanzables.
+      for (final width in [375.0, 768.0, 1024.0]) {
+        await pumpScreen(tester, width);
+        expect(find.byKey(acciones), findsOneWidget, reason: '$width px');
+      }
+    });
+  });
 }
