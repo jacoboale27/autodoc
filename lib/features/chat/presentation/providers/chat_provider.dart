@@ -351,12 +351,19 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteMensaje(String conversacionId, String mensajeId) async {
+  /// Borra un mensaje. Devuelve `false` si no se pudo.
+  ///
+  /// Devuelve resultado en vez de `void` porque el unico rastro del fallo era
+  /// `_error`, que nadie mira: al usuario le quedaba un mensaje intacto sin
+  /// explicacion.
+  Future<bool> deleteMensaje(String conversacionId, String mensajeId) async {
     try {
       await _chatRepository.deleteMensaje(conversacionId, mensajeId);
+      return true;
     } catch (e) {
       _error = e.toString();
       notifyListeners();
+      return false;
     }
   }
 

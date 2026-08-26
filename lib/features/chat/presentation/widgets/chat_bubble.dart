@@ -79,11 +79,16 @@ class ChatBubble extends StatelessWidget {
     final colors = context.appColors;
     final windowClass = AppBreakpoints.of(context);
 
-    final fondo = isMe
-        ? (isDeleted
-              ? colors.textSecondary.withValues(alpha: 0.5)
-              : colors.primary)
-        : colors.surfaceContainer;
+    // Un mensaje borrado se apaga venga de quien venga. Antes solo se atenuaba
+    // el propio, asi que al receptor le llegaba el "Este mensaje ha sido
+    // eliminado" con exactamente el mismo aspecto que cualquier otro mensaje.
+    //
+    // Lleva ademas contorno: `surfaceVariant` y `surfaceContainer` quedan a un
+    // paso de distancia, y sin el borde una burbuja borrada del otro lado se
+    // confunde con una normal.
+    final fondo = isDeleted
+        ? colors.surfaceVariant
+        : (isMe ? colors.primary : colors.surfaceContainer);
 
     final burbuja = LayoutBuilder(
       builder: (context, constraints) {
@@ -98,6 +103,9 @@ class ChatBubble extends StatelessWidget {
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: fondo,
+              border: isDeleted
+                  ? Border.all(color: colors.outline.withValues(alpha: 0.6))
+                  : null,
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(16),
                 topRight: const Radius.circular(16),

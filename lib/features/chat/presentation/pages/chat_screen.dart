@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:autodoc/core/utils/role_utils.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -141,7 +142,7 @@ class _ChatScreenState extends State<ChatScreen> {
       return;
     }
     final userId = user.idUsuario;
-    final isMecanico = user.rol == 'Mecanico';
+    final isMecanico = isMechanicRole(user.rol);
     _chatProvider.inicializarMensajes(widget.conversacionId);
     _chatProvider.marcarComoLeidos(widget.conversacionId, isMecanico, userId);
   }
@@ -318,12 +319,24 @@ class _ChatScreenState extends State<ChatScreen> {
             child: Text(context.l10n.adminCancel),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
+              // Capturados antes del await: tras el pop, `ctx` ya no sirve.
+              final chatProvider = context.read<ChatProvider>();
+              final messenger = ScaffoldMessenger.of(context);
               Navigator.pop(ctx);
-              context.read<ChatProvider>().deleteMensaje(
+
+              final borrado = await chatProvider.deleteMensaje(
                 widget.conversacionId,
                 msg.id,
               );
+              if (!borrado && mounted) {
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: const Text('No se pudo eliminar el mensaje.'),
+                    backgroundColor: colors.error,
+                  ),
+                );
+              }
             },
             child: Text(
               context.l10n.adminDelete,
@@ -344,7 +357,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final chatProvider = context.watch<ChatProvider>();
     final userSession = context.watch<UserProfileProvider>();
     final userId = userSession.userData?.idUsuario ?? '';
-    final isMecanico = userSession.userData?.rol == 'Mecanico';
+    final isMecanico = isMechanicRole(userSession.userData?.rol);
 
     // Necesitamos el receptorId (el ID del otro usuario). Para este demo lo hardcodearemos si no lo tenemos
     // en un caso real se obtiene del conversacion_model
@@ -608,6 +621,37 @@ class _ChatScreenState extends State<ChatScreen> {
     AppColors colors,
     String tallerId,
   ) {
+    // Antes de mirar el tipo. `deleteMensaje` es un borrado suave: marca
+    // `is_deleted` y sustituye `contenido`, pero NO toca `tipo` ni
+    // `url_archivo`. Sin este corte, borrar una imagen o un audio caia igual
+    // en su `case` y seguia pintando la foto o el reproductor: lo unico que
+    // cambiaba era el fondo de la burbuja, atenuado. De ahi la sensacion de
+    // "solo se pone en gris y no se si lo borra o no" — si lo borraba, pero
+    // el contenido seguia a la vista.
+    if (msg.isDeleted) {
+      // El mismo color en ambos lados: la burbuja borrada usa `surfaceVariant`
+      // venga de quien venga (ver ChatBubble), asi que `onPrimary` no
+      // contrastaria.
+      final atenuado = colors.textSecondary;
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.do_not_disturb_on_outlined, size: 15, color: atenuado),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              msg.contenido,
+              style: TextStyle(
+                color: atenuado,
+                fontSize: 14,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     switch (msg.tipo) {
       case 'vehiculo_card':
         return VehiculoChatCard(metadata: msg.metadata ?? {}, isMe: isMe);
