@@ -28,21 +28,44 @@ class VehicleImageService {
     required String color,
   }) async {
     try {
-      // 1. Verificar primero en Cloud Firestore
+      // 1. Verificar primero en Cloud Firestore.
+      //
+      // Este paso es un ATAJO, no un requisito, y por eso lleva su propio
+      // try/catch. El llamador principal es VehicleProvider.addVehicle(), que
+      // pide la imagen ANTES de escribir el vehiculo, asi que aqui el
+      // documento todavia no existe. Y leer un documento inexistente de
+      // /vehiculos no devuelve "no existe": la regla evalua
+      // `resource.data.id_propietario` sobre un `resource` nulo, lo que es un
+      // error de evaluacion y por tanto un PERMISSION_DENIED.
+      //
+      // Cuando esa excepcion se propagaba al catch exterior, la funcion
+      // devolvia _defaultImage sin haber llamado nunca a SearchAPI: ningun
+      // vehiculo nuevo obtenia jamas su foto, y en Firestore quedaba
+      // 'assets/images/default_vehicle.jpg' como si la busqueda no hubiera
+      // encontrado nada. Aislarlo aqui hace que un fallo de lectura degrade a
+      // "no hay atajo, busca" en vez de a "no hay imagen".
       if (vehicleId.isNotEmpty) {
-        final doc = await _firestore
-            .collection(FirestoreCollections.vehiculos)
-            .doc(vehicleId)
-            .get();
+        try {
+          final doc = await _firestore
+              .collection(FirestoreCollections.vehiculos)
+              .doc(vehicleId)
+              .get();
 
-        if (doc.exists) {
-          final data = doc.data();
-          if (data != null &&
-              data['foto_url'] != null &&
-              (data['foto_url'] as String).isNotEmpty &&
-              data['foto_url'] != _defaultImage) {
-            return data['foto_url'];
+          if (doc.exists) {
+            final data = doc.data();
+            if (data != null &&
+                data['foto_url'] != null &&
+                (data['foto_url'] as String).isNotEmpty &&
+                data['foto_url'] != _defaultImage) {
+              return data['foto_url'];
+            }
           }
+        } catch (e) {
+          debugPrint(
+            'Nota: no se pudo consultar la foto ya guardada del vehiculo '
+            '(normal si aun no existe en Firestore); se continua con la '
+            'busqueda: $e',
+          );
         }
       }
 
@@ -86,6 +109,18 @@ class VehicleImageService {
     int year,
     String color,
   ) async {
+    // La key entra por --dart-define (String.fromEnvironment se resuelve en
+    // COMPILACION, no en ejecucion): si se arranca sin
+    // `--dart-define-from-file=.env` vale '' y SearchAPI responde 401. Sin
+    // este aviso el sintoma era indistinguible de "no hay resultados".
+    if (_searchApiKey.isEmpty) {
+      debugPrint(
+        '[SearchAPI.io] VEHICLE_IMAGE_API_KEY vacia: la app se compilo sin '
+        '--dart-define-from-file=.env. No se buscara imagen.',
+      );
+      return null;
+    }
+
     try {
       final String cleanBrand = brand.trim();
       final String cleanModel = model.trim();

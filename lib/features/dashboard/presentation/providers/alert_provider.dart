@@ -358,35 +358,46 @@ class AlertProvider extends ChangeNotifier {
       // Actualizar localmente
       final taskIndex = _maintenanceTasks.indexWhere((t) => t.id == taskId);
       final task = taskIndex != -1 ? _maintenanceTasks[taskIndex] : null;
-      if (task != null) {
-        _maintenanceTasks[taskIndex] = MaintenanceTask(
-          id: task.id,
-          vehicleId: task.vehicleId,
-          nombre: task.nombre,
-          ultimoKm: currentKm,
-          fechaUltimoServicio: now,
-          frecuenciaKm: task.frecuenciaKm,
-          frecuenciaMeses: task.frecuenciaMeses,
+      if (task == null) {
+        // Antes todo el registro del servicio colgaba de este `if (task != null)`,
+        // asi que si la tarea no estaba en la lista en memoria el historial no
+        // se escribia en absoluto y la UI mostraba igualmente "Servicio validado
+        // y registrado en historial". Fallar en voz alta es preferible a mentir.
+        throw StateError(
+          'La tarea $taskId no esta cargada; recarga el mantenimiento e intentalo de nuevo.',
         );
+      }
 
-        if (receiptImage != null) {
-          final metadataInfo = InvoiceUploadService.getFileMetadata(
-            receiptImage.name,
-          );
-          final extension = metadataInfo['extension']!;
-          final contentType = metadataInfo['contentType']!;
+      _maintenanceTasks[taskIndex] = MaintenanceTask(
+        id: task.id,
+        vehicleId: task.vehicleId,
+        nombre: task.nombre,
+        ultimoKm: currentKm,
+        fechaUltimoServicio: now,
+        frecuenciaKm: task.frecuenciaKm,
+        frecuenciaMeses: task.frecuenciaMeses,
+      );
 
-          final ref = _storage
-              .ref()
-              .child(StoragePaths.facturas)
-              .child(task.vehicleId)
-              .child('${DateTime.now().millisecondsSinceEpoch}$extension');
-          final bytes = await receiptImage.readAsBytes();
-          final metadata = SettableMetadata(contentType: contentType);
-          await ref.putData(bytes, metadata);
-          receiptUrl = await ref.getDownloadURL();
-        }
+      Reference? receiptRef;
+      if (receiptImage != null) {
+        final metadataInfo = InvoiceUploadService.getFileMetadata(
+          receiptImage.name,
+        );
+        final extension = metadataInfo['extension']!;
+        final contentType = metadataInfo['contentType']!;
 
+        receiptRef = _storage
+            .ref()
+            .child(StoragePaths.facturas)
+            .child(task.vehicleId)
+            .child('${DateTime.now().millisecondsSinceEpoch}$extension');
+        final bytes = await receiptImage.readAsBytes();
+        final metadata = SettableMetadata(contentType: contentType);
+        await receiptRef.putData(bytes, metadata);
+        receiptUrl = await receiptRef.getDownloadURL();
+      }
+
+      try {
         // Registrar como un servicio hecho manualmente
         await _firestore.collection(FirestoreCollections.servicios).add({
           'id_vehiculo': task.vehicleId,
@@ -402,6 +413,18 @@ class AlertProvider extends ChangeNotifier {
           'materiales': materiales,
           'foto_factura_url': receiptUrl,
         });
+      } catch (e) {
+        // La factura ya esta en Storage pero el documento que la referencia no
+        // llego a existir: sin esta limpieza el archivo queda huerfano en el
+        // bucket para siempre, sin ninguna forma de encontrarlo desde la app.
+        if (receiptRef != null) {
+          try {
+            await receiptRef.delete();
+          } catch (_) {
+            // Si tampoco se puede borrar, no tapamos el error original.
+          }
+        }
+        rethrow;
       }
 
       // Limpiar también cualquier alerta activa relacionada a este task

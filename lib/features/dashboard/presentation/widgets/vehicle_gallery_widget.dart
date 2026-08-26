@@ -47,12 +47,26 @@ class VehicleGalleryWidget extends StatelessWidget {
                     source: ImageSource.gallery,
                     imageQuality: 70,
                   );
-                  if (picked != null) {
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Subiendo foto...')),
-                    );
+                  if (picked == null) return;
+                  if (!context.mounted) return;
+                  final messenger = ScaffoldMessenger.of(context);
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Subiendo foto...')),
+                  );
+                  // Sin este try/catch la excepción se perdía y el snackbar
+                  // "Subiendo foto..." se quedaba colgado: el usuario no tenía
+                  // forma de saber que la subida había fallado.
+                  try {
                     await photoService.addPhoto(vehicleId, picked);
+                    messenger.hideCurrentSnackBar();
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Foto añadida')),
+                    );
+                  } catch (e) {
+                    messenger.hideCurrentSnackBar();
+                    messenger.showSnackBar(
+                      SnackBar(content: Text('No se pudo subir la foto: $e')),
+                    );
                   }
                 },
               ),
