@@ -86,12 +86,15 @@ jobs:
         run: npm install -g firebase-tools
 
       - name: Enable webframeworks experiment
-        # El target de hosting "landing" usa "source": "landing-web" (hosting
-        # consciente de frameworks), lo que hace que `firebase emulators:exec`
-        # intente detectar frameworks web aunque el job solo necesita firestore
-        # y storage. Sin este experimento habilitado, el comando falla con
-        # "Cannot emulate a web framework because the experiment webframeworks
-        # is not enabled" antes de llegar a correr ningun test.
+        # Historico: cuando el target "landing" usaba "source": "landing-web"
+        # (hosting consciente de frameworks), `firebase emulators:exec` intentaba
+        # detectar frameworks web aunque este job solo necesita firestore y
+        # storage, y sin el experimento fallaba con "Cannot emulate a web
+        # framework because the experiment webframeworks is not enabled".
+        #
+        # Desde 332a384 el target sirve "public": "landing-web/out" (export
+        # estatico), asi que esto probablemente ya sobra. Se deja porque es
+        # inocuo y barato, y quitarlo solo se puede validar ejecutando el job.
         run: firebase experiments:enable webframeworks
 
       - name: Install rules test dependencies
@@ -289,6 +292,17 @@ jobs:
             --dart-define=GOOGLE_CUSTOM_SEARCH_API_KEY=${{ secrets.GOOGLE_CUSTOM_SEARCH_API_KEY }} \
             --dart-define=GOOGLE_CUSTOM_SEARCH_CX=${{ secrets.GOOGLE_CUSTOM_SEARCH_CX }}
 
+      - name: Install Cloud Functions dependencies
+        # Mismo motivo que en deploy_production: sin functions/node_modules el CLI
+        # no puede cargar functions/index.js para descubrir los exports y aborta.
+        working-directory: functions
+        run: |
+          npm ci
+          node -e "require.resolve('firebase-functions')" || {
+            echo "❌ firebase-functions no quedo instalado en functions/node_modules"
+            exit 1
+          }
+
       - name: Deploy Cloud Functions to Staging
         run: firebase deploy --only functions --project ${{ secrets.FIREBASE_PROJECT_STAGING }}
         env:
@@ -307,7 +321,14 @@ jobs:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
       - name: Deploy Flutter Web to Firebase Hosting (Staging)
-        run: firebase deploy --only hosting --project ${{ secrets.FIREBASE_PROJECT_STAGING }}
+        # Solo el target "app". firebase.json declara dos targets de hosting
+        # ("app" y "landing") pero .firebaserc unicamente mapea "landing" para
+        # autodoc-6ef5a, asi que un "--only hosting" a secas contra staging
+        # aborta con "Hosting target landing not configured for
+        # autodoc-staging" y se lleva por delante tambien el deploy de "app".
+        # Staging no tiene sitio de landing propio; cuando lo tenga, basta con
+        # anadir el target a .firebaserc y volver a "--only hosting".
+        run: firebase deploy --only hosting:app --project ${{ secrets.FIREBASE_PROJECT_STAGING }}
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
@@ -425,28 +446,49 @@ jobs:
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
+      - name: Install Cloud Functions dependencies
+        # `firebase deploy --only functions` carga functions/index.js EN EL RUNNER
+        # para descubrir que exports hay que desplegar. functions/node_modules esta
+        # en .gitignore (linea 69), asi que en una VM limpia el
+        # require('firebase-functions') de index.js:1 falla y el CLI aborta con un
+        # inutil "An unexpected error has occurred." (exit 2), precedido solo de un
+        # warning. firebase-tools NO instala dependencias por ti en local: solo las
+        # instala Cloud Build, del lado del servidor, y para eso el descubrimiento
+        # tiene que haber funcionado antes.
+        working-directory: functions
+        run: |
+          npm ci
+          node -e "require.resolve('firebase-functions')" || {
+            echo "❌ firebase-functions no quedo instalado en functions/node_modules"
+            exit 1
+          }
+
       - name: Deploy Cloud Functions to Production
         run: firebase deploy --only functions --project ${{ secrets.FIREBASE_PROJECT_PROD }}
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
-      - name: Install landing-web dependencies
-        # El target de hosting "landing" (firebase.json) usa "source": "landing-web"
-        # (hosting consciente de frameworks / Next.js). Sin este paso, "firebase
-        # deploy --only hosting" de abajo intenta construir landing-web sin sus
-        # node_modules y ese target queda sin desplegar (o falla el deploy
-        # completo), aunque el resto de "hosting" (target "app") parezca exitoso.
+      - name: Build landing-web static export
+        # El target "landing" de firebase.json sirve "public": "landing-web/out",
+        # un export estatico ya construido (desde 332a384 dejo de usar hosting
+        # consciente de frameworks, que era lo que justificaba el antiguo
+        # "firebase experiments:enable webframeworks" de este job).
+        #
+        # "landing-web/out/" esta en .gitignore, asi que en una VM limpia NO
+        # existe: sin este "pnpm build" el deploy publicaba un directorio vacio
+        # y la landing se quedaba servida desde lo ultimo que alguien hubiera
+        # subido a mano. Instalar dependencias sin construir, que es lo que
+        # hacia este paso antes, no producia ningun "out".
         run: |
           npm install -g pnpm
           cd landing-web
           pnpm install --frozen-lockfile
+          pnpm build
 
-      - name: Enable webframeworks experiment
-        # Necesario para que "firebase deploy --only hosting" sepa construir el
-        # target "landing" (Next.js). Cada job de GitHub Actions corre en una VM
-        # nueva, asi que este experimento debe habilitarse aqui de nuevo aunque
-        # ya se habilite por separado en el job "rules_tests" para el emulador.
-        run: firebase experiments:enable webframeworks
+      - name: Verify landing-web export exists
+        # Un "out" vacio o ausente aqui significa publicar una landing en blanco.
+        # Mejor romper el pipeline que desplegar la nada.
+        run: test -s landing-web/out/es.html
 
       - name: Deploy Flutter Web to Firebase Hosting (Production)
         run: firebase deploy --only hosting --project ${{ secrets.FIREBASE_PROJECT_PROD }}

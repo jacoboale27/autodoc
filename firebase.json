@@ -66,6 +66,13 @@
         "firebase.json",
         "**/.*",
         "**/node_modules/**"
+      ],
+      "redirects": [
+        {
+          "source": "/",
+          "destination": "/es",
+          "type": 302
+        }
       ]
     }
   ],
