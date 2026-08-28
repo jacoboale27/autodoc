@@ -8,10 +8,19 @@ service firebase.storage {
     }
 
     // Verifica si el usuario es administrador consultando Firestore
+    //
+    // ESTA LISTA DEBE COINCIDIR CON isAdmin() DE firestore.rules:30.
+    // Estuvieron desincronizadas hasta 2026-08-28: aqui faltaba
+    // 'Superusuario', asi que el superadmin pasaba todos los checks de
+    // Firestore y fallaba TODOS los de Storage — incluida la foto de
+    // fachada de /admin/verificaciones, la unica evidencia obligatoria
+    // para aprobar un taller. Hay 12 reglas en este archivo que dependen
+    // de isAdmin(); el agujero las afectaba a todas.
     function isAdmin() {
       return isAuthenticated() &&
         firestore.exists(/databases/(default)/documents/usuarios/$(request.auth.uid)) &&
-        firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.rol in ['Administrador', 'admin'];
+        firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.rol
+          in ['Administrador', 'admin', 'Superusuario'];
     }
 
     // Verifica si el usuario es propietario de un vehículo
