@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_core_platform_interface/test.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:autodoc/core/models/user_model.dart';
+import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/core/providers/notification_center_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
@@ -66,6 +68,21 @@ class _SpyVehicleProvider extends VehicleProvider {
   Future<void> fetchVehicles(String ownerId) async {
     fetchCallCount++;
     lastOwnerId = ownerId;
+  }
+}
+
+// Registra cada llamada a fetchAlertsForVehicles (incluida la lista vacia,
+// que es justo la que el guard original se saltaba) y delega en la
+// implementacion real para comprobar que _alerts termina vacio.
+class _SpyAlertProvider extends AlertProvider {
+  _SpyAlertProvider({required super.firestore, required super.storage});
+
+  final List<List<VehicleModel>> fetchCalls = [];
+
+  @override
+  Future<void> fetchAlertsForVehicles(List<VehicleModel> vehicles) {
+    fetchCalls.add(vehicles);
+    return super.fetchAlertsForVehicles(vehicles);
   }
 }
 
@@ -176,6 +193,129 @@ void main() {
 
       expect(vehicleProvider.fetchCallCount, 1);
       expect(vehicleProvider.lastOwnerId, 'owner-1');
+    },
+  );
+
+  testWidgets(
+    'con el garaje vacio se piden alertas igualmente, para limpiar las del '
+    'usuario anterior',
+    (tester) async {
+      await Firebase.initializeApp();
+      tester.view.physicalSize = const Size(1400, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final fakeFirestore = FakeFirebaseFirestore();
+      // Alerta dejada por la sesion anterior: un SOAT vencido de un
+      // vehiculo que no pertenece al usuario que va a iniciar sesion ahora.
+      await fakeFirestore.collection('alertas').add({
+        'id_vehiculo': 'vehiculo-usuario-anterior',
+        'estado': 'Pendiente',
+        'titulo': 'SOAT vencido',
+        'descripcion': 'Tu SOAT vencio hace 29 dias',
+      });
+
+      final alertProvider = _SpyAlertProvider(
+        firestore: fakeFirestore,
+        storage: MockFirebaseStorage(),
+      );
+      // Precarga alertProvider.alerts como si las hubiera dejado la sesion
+      // del usuario anterior (simula lo que dashboard_screen ya habia
+      // pedido para esa cuenta antes del logout).
+      await alertProvider.fetchAlertsForVehicles([
+        VehicleModel(
+          idVehiculo: 'vehiculo-usuario-anterior',
+          idPropietario: 'owner-anterior',
+          placa: 'ABC-123',
+          marca: 'Toyota',
+          modelo: 'Corolla',
+          kilometrajeActual: 10000,
+        ),
+      ]);
+      expect(
+        alertProvider.alerts,
+        isNotEmpty,
+        reason:
+            'sanity check: la alerta del usuario anterior debe quedar '
+            'cargada antes de simular el cambio de cuenta',
+      );
+      // Solo nos interesan las llamadas que dispara el montaje del
+      // dashboard para la cuenta nueva, no la precarga de arriba.
+      alertProvider.fetchCalls.clear();
+
+      final profileProvider = _LateUserProfileProvider();
+      // fetchVehicles no rellena `vehicles`: representa fielmente a un
+      // usuario recien creado, con el garaje vacio.
+      final vehicleProvider = _SpyVehicleProvider();
+
+      final router = GoRouter(
+        initialLocation: '/dashboard',
+        routes: [
+          GoRoute(
+            path: '/dashboard',
+            builder: (_, _) => const DashboardScreen(),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => ThemeProvider()),
+            ChangeNotifierProvider(
+              create: (_) => AuthProvider(
+                authService: MockAuthService(),
+                adminAuthService: MockAdminAuthService(),
+              ),
+            ),
+            ChangeNotifierProvider<UserProfileProvider>.value(
+              value: profileProvider,
+            ),
+            ChangeNotifierProvider<VehicleProvider>.value(
+              value: vehicleProvider,
+            ),
+            ChangeNotifierProvider<AlertProvider>.value(value: alertProvider),
+            ChangeNotifierProvider(
+              create: (_) => NotificationCenterProvider(
+                firestore: MockFirebaseFirestore(),
+              ),
+            ),
+          ],
+          child: MaterialApp.router(
+            theme: AppTheme.light,
+            routerConfig: router,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Llega el usuario nuevo, con garaje vacio.
+      profileProvider.arriveLate(
+        UserModel(
+          idUsuario: 'owner-nuevo',
+          nombreCompleto: 'Owner Nuevo',
+          correo: 'nuevo@test.com',
+          rol: 'Propietario',
+          fechaRegistro: DateTime(2024, 1, 1),
+          estado: 'aprobado',
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(vehicleProvider.fetchCallCount, 1);
+      expect(
+        alertProvider.fetchCalls,
+        [<VehicleModel>[]],
+        reason:
+            'fetchAlertsForVehicles([]) vacia la lista; no llamarlo deja '
+            'las alertas del usuario anterior en pantalla',
+      );
+      expect(alertProvider.alerts, isEmpty);
     },
   );
 }

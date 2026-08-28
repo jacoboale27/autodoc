@@ -52,11 +52,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           vehicleProvider.fetchVehicles(userSession.userData!.idUsuario).then((
             _,
           ) {
-            if (mounted && vehicleProvider.vehicles.isNotEmpty) {
-              context.read<AlertProvider>().fetchAlertsForVehicles(
-                vehicleProvider.vehicles,
-              );
-            }
+            if (!mounted) return;
+            // Se llama SIEMPRE, tambien con la lista vacia: el provider ya
+            // trata ese caso vaciando `_alerts` (alert_provider.dart:97).
+            // Con el `isNotEmpty` que habia aqui, un usuario recien creado
+            // veia las alertas del usuario de la sesion anterior — incluido
+            // "Tu SOAT vencio hace 29 dias" de un coche que no es suyo.
+            context.read<AlertProvider>().fetchAlertsForVehicles(
+              vehicleProvider.vehicles,
+            );
           });
         });
       }
