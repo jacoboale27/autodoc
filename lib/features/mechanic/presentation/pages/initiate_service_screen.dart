@@ -314,7 +314,14 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       return;
     }
 
-    if (_completedTaskIds.isEmpty) {
+    final tareasDisponibles = context
+        .read<AlertProvider>()
+        .maintenanceTasks
+        .length;
+    if (requiereTareaSeleccionada(
+      tareasDisponibles: tareasDisponibles,
+      tareasMarcadas: _completedTaskIds.length,
+    )) {
       HapticFeedback.heavyImpact();
       UiUtils.showErrorSnackbar(
         context,
@@ -1153,9 +1160,27 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       return Center(child: CircularProgressIndicator(color: colors.primary));
     }
     if (provider.maintenanceTasks.isEmpty) {
-      return Text(
-        'No hay tareas configuradas para este vehículo',
-        style: AppTextStyles.bodyMedium.copyWith(color: colors.textSecondary),
+      // Sin tareas que marcar, el guard de _guardarServicio ya no exige
+      // ninguna: este texto deja claro que cerrar el servicio así es
+      // intencional y no un callejón sin salida (ver requiereTareaSeleccionada).
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Este vehículo no tiene tareas de mantenimiento configuradas.',
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: colors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Las configura el propietario desde Alertas. Puedes cerrar el '
+            'servicio igualmente: quedará registrado en el historial.',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: colors.textSecondary,
+            ),
+          ),
+        ],
       );
     }
 
@@ -1361,4 +1386,20 @@ class _BoxedField extends StatelessWidget {
       prefixIcon: Icon(icon, color: context.appColors.primary),
     );
   }
+}
+
+/// Decide si hay que exigir al mecanico marcar una tarea antes de cerrar el
+/// servicio.
+///
+/// Hasta 2026-08-28 el guard era `_completedTaskIds.isEmpty` a secas, sin
+/// mirar si habia tareas que marcar. Cuando el vehiculo no tenia ninguna
+/// configurada, la pantalla pintaba "No hay tareas configuradas para este
+/// vehiculo" (sin casillas) y el submit respondia "Selecciona al menos una
+/// tarea realizada": un callejon sin salida con el parte entero relleno.
+bool requiereTareaSeleccionada({
+  required int tareasDisponibles,
+  required int tareasMarcadas,
+}) {
+  if (tareasDisponibles == 0) return false;
+  return tareasMarcadas == 0;
 }
