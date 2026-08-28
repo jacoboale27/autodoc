@@ -79,4 +79,43 @@ void main() {
       expect(provider.error, isNull);
     },
   );
+
+  test('cancelar cambia el estado a cancelado y devuelve true', () async {
+    final firestore = FakeFirebaseFirestore();
+    final repo = ReparacionRepository(
+      firestore: firestore,
+      functions: MockFirebaseFunctions(),
+    );
+    final id = await repo.iniciarReparacion(
+      idVehiculo: 'v1',
+      idTaller: 't1',
+      idPropietario: 'p1',
+      placa: 'P1',
+    );
+
+    final provider = ReparacionProvider(repository: repo);
+    final ok = await provider.cancelar(id);
+
+    expect(ok, isTrue);
+    expect(provider.error, isNull);
+    final doc = await firestore.collection('reparaciones').doc(id).get();
+    expect(doc.data()!['estado'], 'cancelado');
+  });
+
+  test(
+    'cancelar devuelve false y guarda el error si el ticket no existe',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = ReparacionRepository(
+        firestore: firestore,
+        functions: MockFirebaseFunctions(),
+      );
+      final provider = ReparacionProvider(repository: repo);
+
+      final ok = await provider.cancelar('no-existe');
+
+      expect(ok, isFalse);
+      expect(provider.error, isNotNull);
+    },
+  );
 }

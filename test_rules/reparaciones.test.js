@@ -229,4 +229,21 @@ describe('reparaciones (Tarea 5 — kanban de estado, panel mecanico)', () => {
       }),
     );
   });
+
+  // --- Cancelar un ticket (Tarea 5 — el tablero solo ofrecia "Avanzar") ---
+  test('el taller dueno del ticket puede cancelarlo', async () => {
+    await seedReparacion();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertSucceeds(
+      db.collection('reparaciones').doc('rep1').update({ estado: 'cancelado' }),
+    );
+  });
+
+  test('otro taller NO puede cancelarlo', async () => {
+    await seedReparacion();
+    const db = await withRole(env, UIDS.taller2, 'Taller');
+    await assertFails(
+      db.collection('reparaciones').doc('rep1').update({ estado: 'cancelado' }),
+    );
+  });
 });

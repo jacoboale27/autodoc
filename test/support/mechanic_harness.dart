@@ -158,6 +158,9 @@ class FakeReparacionProvider extends ChangeNotifier
 
   @override
   Future<void> cambiarEstado(String idReparacion, String nuevoEstado) async {}
+
+  @override
+  Future<bool> cancelar(String idReparacion) async => true;
 }
 
 /// Cuenta de taller dueña. Pasa [idTallerPropietario] para simular una

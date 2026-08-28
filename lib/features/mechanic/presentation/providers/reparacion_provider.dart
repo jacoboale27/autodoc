@@ -147,6 +147,20 @@ class ReparacionProvider extends ChangeNotifier {
     }
   }
 
+  /// Cancela un ticket. Existe porque el tablero solo ofrecía "Avanzar": un
+  /// ticket abierto por error (p. ej. una placa mal tecleada) no había forma
+  /// de retirarlo desde la interfaz. Reutiliza [cambiarEstado] (que ya
+  /// delega en el repositorio, guarda el error y notifica), así que aquí
+  /// solo hace falta traducir la excepción a un booleano para la UI.
+  Future<bool> cancelar(String idReparacion) async {
+    try {
+      await cambiarEstado(idReparacion, 'cancelado');
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   @override
   void dispose() {
     _sub?.cancel();
