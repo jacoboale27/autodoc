@@ -1730,6 +1730,18 @@ abstract class AppLocalizations {
   /// **'Year'**
   String get addVehicleYear;
 
+  /// No description provided for @addVehicleYearHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select the year'**
+  String get addVehicleYearHint;
+
+  /// No description provided for @addVehicleYearInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid year'**
+  String get addVehicleYearInvalid;
+
   /// No description provided for @addVehicleColor.
   ///
   /// In en, this message translates to:
@@ -1741,6 +1753,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Gray'**
   String get addVehicleColorHint;
+
+  /// No description provided for @addVehicleColorRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Color is required'**
+  String get addVehicleColorRequired;
+
+  /// No description provided for @addVehicleColorTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Color must not exceed 30 characters'**
+  String get addVehicleColorTooLong;
 
   /// No description provided for @addVehicleMileage.
   ///

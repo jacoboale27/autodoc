@@ -71,7 +71,10 @@ Future<void> _advanceToDetailsStep(WidgetTester tester) async {
 }
 
 Future<void> _fillYear(WidgetTester tester, String year) async {
-  await tester.tap(find.widgetWithText(InkWell, '2024'));
+  // El placeholder ya no es el literal '2024' (ver
+  // add_vehicle_form_anio_test.dart): con el campo vacío se pinta el hint
+  // localizado.
+  await tester.tap(find.widgetWithText(InkWell, 'Selecciona el año'));
   await tester.pumpAndSettle();
   await tester.tap(find.text(year).last);
   await tester.pumpAndSettle();

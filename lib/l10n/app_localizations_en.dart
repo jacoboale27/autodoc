@@ -889,10 +889,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addVehicleYear => 'Year';
 
   @override
+  String get addVehicleYearHint => 'Select the year';
+
+  @override
+  String get addVehicleYearInvalid => 'Invalid year';
+
+  @override
   String get addVehicleColor => 'Color';
 
   @override
   String get addVehicleColorHint => 'Gray';
+
+  @override
+  String get addVehicleColorRequired => 'Color is required';
+
+  @override
+  String get addVehicleColorTooLong => 'Color must not exceed 30 characters';
 
   @override
   String get addVehicleMileage => 'Current Mileage';
