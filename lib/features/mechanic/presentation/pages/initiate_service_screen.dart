@@ -670,26 +670,31 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                     ),
             ),
             const SizedBox(height: AppSpacing.md),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
               children: [
-                TextButton.icon(
-                  onPressed: () => _pickInvoiceCamera(),
+                AppButton(
+                  text: 'Tomar otra',
+                  type: AppButtonType.text,
+                  size: AppButtonSize.small,
                   icon: const Icon(Icons.camera_alt),
-                  label: const Text('Tomar otra'),
+                  onPressed: _pickInvoiceCamera,
                 ),
-                TextButton.icon(
-                  onPressed: () => _pickInvoiceDocument(),
+                AppButton(
+                  text: 'Archivo',
+                  type: AppButtonType.text,
+                  size: AppButtonSize.small,
                   icon: const Icon(Icons.folder),
-                  label: const Text('Archivo'),
+                  onPressed: _pickInvoiceDocument,
                 ),
-                TextButton.icon(
+                AppButton(
+                  text: 'Eliminar',
+                  type: AppButtonType.danger,
+                  size: AppButtonSize.small,
+                  icon: const Icon(Icons.delete),
                   onPressed: () => setState(() => _invoiceImage = null),
-                  icon: Icon(Icons.delete, color: colors.error),
-                  label: Text(
-                    'Eliminar',
-                    style: TextStyle(color: colors.error),
-                  ),
                 ),
               ],
             ),

@@ -34,6 +34,7 @@ class AppMotion {
   static const Duration tooltip = Duration(milliseconds: 150);
   static const Duration dropdown = Duration(milliseconds: 200);
   static const Duration sheetEnter = Duration(milliseconds: 300);
+  static const Duration shimmer = Duration(milliseconds: 1500);
 
   /// Siempre más corta que [sheetEnter]: al cerrar, el usuario ya decidió;
   /// esperar la animación es fricción pura.

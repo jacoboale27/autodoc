@@ -242,3 +242,73 @@ describe('usuarios', () => {
     await assertFails(anon(env).collection('usuarios').get());
   });
 });
+
+describe('usuarios: URLs que acaban en un documento de lectura anonima', () => {
+  // `talleres/{uid}` es `allow read: if true` y se alimenta de `usuarios/{uid}`
+  // via publishTallerProfile. Una URL libre en un campo de imagen es una
+  // peticion que hace la app de CADA visitante del directorio contra un
+  // servidor que elige el taller: cosecha de IP y User-Agent, no una imagen
+  // rota.
+  const URL_PROPIA = (uid) =>
+    `https://firebasestorage.googleapis.com/v0/b/autodoc.appspot.com/o/perfiles%2F${uid}.jpg?alt=media&token=abc-123`;
+
+  test('acepta la foto de perfil que apunta al propio objeto en Storage', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertSucceeds(
+      db.collection('usuarios').doc(UIDS.taller1)
+        .update({ foto_perfil_url: URL_PROPIA(UIDS.taller1) }),
+    );
+  });
+
+  test('rechaza una URL de un servidor cualquiera', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    for (const url of [
+      'https://rastreador.example.com/pixel.gif',
+      'http://firebasestorage.googleapis.com/v0/b/x/o/perfiles%2Fuid-taller-1.jpg',
+      'javascript:alert(1)',
+      'https://evil.example.com/#firebasestorage.googleapis.com',
+    ]) {
+      await assertFails(
+        db.collection('usuarios').doc(UIDS.taller1).update({ foto_perfil_url: url }),
+      );
+    }
+  });
+
+  test('rechaza apuntar al objeto de OTRO usuario', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db.collection('usuarios').doc(UIDS.taller1)
+        .update({ foto_perfil_url: URL_PROPIA(UIDS.taller2) }),
+    );
+  });
+
+  test('permite quitar la foto: vacia o nula', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertSucceeds(
+      db.collection('usuarios').doc(UIDS.taller1).update({ foto_perfil_url: '' }),
+    );
+    await assertSucceeds(
+      db.collection('usuarios').doc(UIDS.taller1).update({ foto_perfil_url: null }),
+    );
+  });
+
+  test('la galeria acepta hasta seis huecos y no mas', async () => {
+    // La galeria guarda nombres de hueco, no URLs, asi que no hay nada que
+    // validar contra inyeccion: la ruta se reconstruye del uid y del hueco.
+    // El tope existe para que un taller no plante una lista enorme que
+    // publishTallerProfile copiaria al documento publico.
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+
+    await assertSucceeds(
+      db.collection('usuarios').doc(UIDS.taller1)
+        .update({ galeria: ['logo', 'local-1', 'local-2', 'local-3', 'local-4', 'local-5'] }),
+    );
+    await assertFails(
+      db.collection('usuarios').doc(UIDS.taller1)
+        .update({ galeria: ['logo', 'local-1', 'local-2', 'local-3', 'local-4', 'local-5', 'de-mas'] }),
+    );
+    await assertFails(
+      db.collection('usuarios').doc(UIDS.taller1).update({ galeria: 'no soy una lista' }),
+    );
+  });
+});

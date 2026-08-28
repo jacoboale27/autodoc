@@ -43,7 +43,14 @@ class VehicleImageWidget extends StatelessWidget {
         color: Colors.grey[200],
         child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
       ),
-      errorWidget: (context, url, error) => _buildPlaceholder(placeholderAsset),
+      errorWidget: (context, url, error) {
+        // Sin esto el fallo es invisible: el usuario ve el placeholder y en
+        // Firestore hay una foto_url perfectamente valida, asi que parece que
+        // la busqueda no encontro nada cuando en realidad fue la descarga la
+        // que fallo (anti-hotlink, CORS en web, enlace muerto...).
+        debugPrint('[VehicleImageWidget] No se pudo cargar $url: $error');
+        return _buildPlaceholder(placeholderAsset);
+      },
     );
   }
 

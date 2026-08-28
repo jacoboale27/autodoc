@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:flutter/foundation.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
@@ -11,6 +12,7 @@ class AdminSeedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     if (!kDebugMode) {
       return Scaffold(
         appBar: AppBar(title: Text(context.l10n.adminAccessDenied)),
@@ -32,23 +34,23 @@ class AdminSeedScreen extends StatelessWidget {
               Icon(
                 Icons.security,
                 size: Responsive.iconSize(context, 80),
-                color: Colors.green,
+                color: colors.success,
               ),
               const SizedBox(height: 24),
               Text(
                 'Migración Completada',
-                style: GoogleFonts.inter(
+                style: AppTextStyles.headlineSmall.copyWith(
                   fontSize: Responsive.fontSize(context, 24),
-                  fontWeight: FontWeight.bold,
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 16),
               Text(
                 'Las cuentas administrativas ya fueron configuradas y los secretos se eliminaron del código fuente por motivos de seguridad.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
+                style: AppTextStyles.bodyLarge.copyWith(
                   fontSize: Responsive.fontSize(context, 16),
-                  color: Colors.grey[700],
+                  color: colors.textSecondary,
                 ),
               ),
             ],

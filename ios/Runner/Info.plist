@@ -74,5 +74,19 @@
 		<string>Autodoc requiere acceso a tu ubicación para encontrar los talleres mecánicos más cercanos a ti.</string>
 		<key>NSMicrophoneUsageDescription</key>
 		<string>Autodoc requiere acceso a tu micrófono para grabar notas de voz en el chat.</string>
+		<!-- Esquema de URL que Google Sign-In necesita para recibir el callback
+		     tras autenticar. Es el REVERSED_CLIENT_ID de GoogleService-Info.plist;
+		     si falta, el login en iOS abre Safari y nunca vuelve a la app. -->
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>com.googleusercontent.apps.702895874700-9aovvbmph3qlg9f226na3e0d8cngpvob</string>
+				</array>
+			</dict>
+		</array>
 	</dict>
 </plist>

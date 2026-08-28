@@ -1286,6 +1286,18 @@ abstract class AppLocalizations {
   /// **'Your Location'**
   String get wdYourLocation;
 
+  /// No description provided for @wdMapUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Map unavailable'**
+  String get wdMapUnavailableTitle;
+
+  /// No description provided for @wdMapUnavailableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The map could not be loaded because this build is missing its Google Maps key. In the meantime you can browse the workshops in list view.'**
+  String get wdMapUnavailableBody;
+
   /// No description provided for @wdWorkshop.
   ///
   /// In en, this message translates to:

@@ -9,7 +9,7 @@ import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 
-enum AppButtonType { primary, secondary, text }
+enum AppButtonType { primary, secondary, outlined, danger, text }
 
 enum AppButtonSize { small, medium, large }
 
@@ -26,6 +26,10 @@ class AppButton extends StatefulWidget {
   final bool hapticFeedback;
   final Widget? icon;
 
+  /// Contenido opcional para etiquetas enriquecidas, por ejemplo un texto con
+  /// una parte subrayada. Si se omite se renderiza [text].
+  final Widget? child;
+
   /// Descripción para lector de pantalla cuando [text] no basta por sí solo
   /// ("Guardar" → "Guardar los cambios del vehículo").
   final String? semanticLabel;
@@ -39,6 +43,7 @@ class AppButton extends StatefulWidget {
     this.isLoading = false,
     this.hapticFeedback = true,
     this.icon,
+    this.child,
     this.semanticLabel,
   });
 
@@ -70,24 +75,43 @@ class _AppButtonState extends State<AppButton> {
     widget.onPressed!();
   }
 
-  ({Color background, Color foreground, List<Color>? gradient}) _palette(
-    AppColors colors,
-  ) {
+  ({
+    Color background,
+    Color foreground,
+    List<Color>? gradient,
+    Color? borderColor,
+  })
+  _palette(AppColors colors) {
     return switch (widget.type) {
       AppButtonType.primary => (
         background: colors.primary,
         foreground: colors.onPrimary,
         gradient: [colors.primary, colors.primary.withValues(alpha: 0.85)],
+        borderColor: null,
       ),
       AppButtonType.secondary => (
         background: colors.secondary,
         foreground: colors.onSecondary,
         gradient: null,
+        borderColor: null,
+      ),
+      AppButtonType.outlined => (
+        background: Colors.transparent,
+        foreground: colors.primary,
+        gradient: null,
+        borderColor: colors.primary,
+      ),
+      AppButtonType.danger => (
+        background: colors.error,
+        foreground: colors.onError,
+        gradient: null,
+        borderColor: null,
       ),
       AppButtonType.text => (
         background: Colors.transparent,
         foreground: colors.primary,
         gradient: null,
+        borderColor: null,
       ),
     };
   }
@@ -134,11 +158,13 @@ class _AppButtonState extends State<AppButton> {
       borderRadius: BorderRadius.circular(AppRadius.full),
     );
 
-    final textWidget = Text(
-      widget.text,
-      style: metrics.textStyle.copyWith(color: palette.foreground),
-      overflow: TextOverflow.ellipsis,
-    );
+    final textWidget =
+        widget.child ??
+        Text(
+          widget.text,
+          style: metrics.textStyle.copyWith(color: palette.foreground),
+          overflow: TextOverflow.ellipsis,
+        );
 
     Widget childContent;
     if (widget.isLoading) {
@@ -195,6 +221,9 @@ class _AppButtonState extends State<AppButton> {
               )
             : null,
         borderRadius: BorderRadius.circular(AppRadius.full),
+        border: palette.borderColor == null
+            ? null
+            : Border.all(color: palette.borderColor!),
         boxShadow: _isHovered ? hovered : resting,
       ),
       child: childContent,
@@ -204,7 +233,7 @@ class _AppButtonState extends State<AppButton> {
       surface = surface
           .animate(onPlay: (controller) => controller.repeat())
           .shimmer(
-            duration: 1500.ms,
+            duration: AppMotion.shimmer,
             color: palette.foreground.withValues(alpha: 0.2),
           );
     }

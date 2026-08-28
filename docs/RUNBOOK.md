@@ -83,7 +83,7 @@ secreto está atado a un GitHub **Environment** o es un secreto de
 
 | Secreto | Dónde configurarlo |
 |---|---|
-| `FIREBASE_WEB_API_KEY`, `FIREBASE_APP_ID_WEB`, `FIREBASE_MEASUREMENT_ID`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_PROJECT_ID`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_STORAGE_BUCKET`, `GOOGLE_MAPS_API_KEY`, `VEHICLE_IMAGE_API_KEY`, `GOOGLE_CUSTOM_SEARCH_API_KEY`, `GOOGLE_CUSTOM_SEARCH_CX`, `RECAPTCHA_SITE_KEY`, `GOOGLE_SIGNIN_CLIENT_ID_WEB` | **Ambos niveles a la vez**, no uno u otro: (1) **Settings → Environments → `staging`** y **Settings → Environments → `production`** por separado, mismo nombre, **valor distinto** en cada uno — esto es lo que consumen `deploy_staging`/`deploy_production`. (2) **También** en Settings → Secrets and variables → Actions (nivel repositorio), con un valor razonable (p. ej. el de staging, o un valor de desarrollo) — este nivel es el único que puede ver `build_web_smoke` (ver la limitación de abajo: ese job no declara `environment:`), y sus guardias `[ -z ... ]; exit 1` (`ci.yml:118-147`) hacen fallar el job en cada PR si el secreto de repositorio no existe. GitHub resuelve el secreto de **Environment** con prioridad sobre el de **repositorio** para los jobs que sí declaran ese entorno, así que tener también un valor a nivel de repositorio **no** hace que `deploy_staging`/`deploy_production` usen el valor equivocado — el de Environment siempre gana ahí. |
+| `FIREBASE_WEB_API_KEY`, `FIREBASE_APP_ID_WEB`, `FIREBASE_MEASUREMENT_ID`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_PROJECT_ID`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_STORAGE_BUCKET`, `GOOGLE_MAPS_API_KEY`, `VEHICLE_IMAGE_API_KEY`, `RECAPTCHA_SITE_KEY`, `GOOGLE_SIGNIN_CLIENT_ID_WEB` | **Ambos niveles a la vez**, no uno u otro: (1) **Settings → Environments → `staging`** y **Settings → Environments → `production`** por separado, mismo nombre, **valor distinto** en cada uno — esto es lo que consumen `deploy_staging`/`deploy_production`. (2) **También** en Settings → Secrets and variables → Actions (nivel repositorio), con un valor razonable (p. ej. el de staging, o un valor de desarrollo) — este nivel es el único que puede ver `build_web_smoke` (ver la limitación de abajo: ese job no declara `environment:`), y sus guardias `[ -z ... ]; exit 1` (`ci.yml:118-147`) hacen fallar el job en cada PR si el secreto de repositorio no existe. GitHub resuelve el secreto de **Environment** con prioridad sobre el de **repositorio** para los jobs que sí declaran ese entorno, así que tener también un valor a nivel de repositorio **no** hace que `deploy_staging`/`deploy_production` usen el valor equivocado — el de Environment siempre gana ahí. |
 | `FIREBASE_PROJECT_STAGING`, `FIREBASE_PROJECT_PROD`, `FIREBASE_TOKEN` | Settings → Secrets and variables → Actions (nivel repositorio) — nombres ya sufijados por entorno o de uso compartido; no requieren Environments. |
 
 **Limitación conocida — el job `build_web_smoke` NO declara `environment:`.**
@@ -315,6 +315,33 @@ Para crear manualmente: Firebase Console → Firestore → Indexes → Create In
 
 ---
 
+## 8.1 CORS del bucket de Storage (solo afecta a Flutter Web)
+
+`cors.json` es la configuracion CORS del bucket. **No se despliega con
+`firebase deploy`**: hay que aplicarla a mano con `gcloud`, y hasta que se
+aplica el bucket conserva la que tuviera antes.
+
+Solo importa en la build web. En Android/iOS el SDK no pasa por CORS, asi que
+un `cors.json` mal puesto no se nota hasta que alguien sube un archivo desde
+el navegador — y entonces el error que llega a Dart no dice "CORS", dice
+`unauthorized` o un fallo de red generico.
+
+```bash
+# Ver la configuracion que tiene el bucket ahora mismo
+gcloud storage buckets describe gs://autodoc-6ef5a.firebasestorage.app   --format="default(cors_config)"
+
+# Aplicar la de este repositorio
+gcloud storage buckets update gs://autodoc-6ef5a.firebasestorage.app   --cors-file=cors.json
+```
+
+El fichero incluye `PUT`/`POST`/`DELETE` ademas de `GET`: una configuracion de
+solo lectura deja pasar las descargas —que es lo que se ve al navegar— pero
+tumba toda subida desde web (fotos de perfil, evidencia de verificacion,
+galeria del taller, facturas). `origin` esta en `*`; conviene acotarlo a los
+dominios de hosting reales cuando esten fijados.
+
+---
+
 ## 9. Backup de Firestore
 
 ### Backup manual (emergencia pre-deploy)
@@ -427,8 +454,7 @@ de secretos que `lib/config/secrets.dart` necesita para que la app funcione en
 tiempo de ejecución (`FIREBASE_WEB_API_KEY`, `FIREBASE_APP_ID_WEB`,
 `FIREBASE_MEASUREMENT_ID`, `FIREBASE_MESSAGING_SENDER_ID`,
 `FIREBASE_PROJECT_ID`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_STORAGE_BUCKET`,
-`GOOGLE_MAPS_API_KEY`, `VEHICLE_IMAGE_API_KEY`, `GOOGLE_CUSTOM_SEARCH_API_KEY`,
-`GOOGLE_CUSTOM_SEARCH_CX`), que hasta entonces NO se pasaban a
+`GOOGLE_MAPS_API_KEY`, `VEHICLE_IMAGE_API_KEY`), que hasta entonces NO se pasaban a
 `flutter build web` en CI pese a estar ya disponibles en el job (la Tarea 16
 los usaba solo para el service worker). Sigue existiendo el modo tolerante a
 fallos si `RECAPTCHA_SITE_KEY` está vacío (App Check no bloquea el arranque),

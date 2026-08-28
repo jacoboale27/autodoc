@@ -12,6 +12,7 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color textSecondary;
   final Color onPrimary;
   final Color onSecondary;
+  final Color onError;
   final Color surfaceVariant;
   final Color outline;
   final Color shimmerBase;
@@ -29,6 +30,7 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.textSecondary,
     required this.onPrimary,
     required this.onSecondary,
+    required this.onError,
     required this.surfaceVariant,
     required this.outline,
     required this.shimmerBase,
@@ -48,6 +50,7 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? textSecondary,
     Color? onPrimary,
     Color? onSecondary,
+    Color? onError,
     Color? surfaceVariant,
     Color? outline,
     Color? shimmerBase,
@@ -65,6 +68,7 @@ class AppColors extends ThemeExtension<AppColors> {
       textSecondary: textSecondary ?? this.textSecondary,
       onPrimary: onPrimary ?? this.onPrimary,
       onSecondary: onSecondary ?? this.onSecondary,
+      onError: onError ?? this.onError,
       surfaceVariant: surfaceVariant ?? this.surfaceVariant,
       outline: outline ?? this.outline,
       shimmerBase: shimmerBase ?? this.shimmerBase,
@@ -93,6 +97,7 @@ class AppColors extends ThemeExtension<AppColors> {
       textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
       onPrimary: Color.lerp(onPrimary, other.onPrimary, t)!,
       onSecondary: Color.lerp(onSecondary, other.onSecondary, t)!,
+      onError: Color.lerp(onError, other.onError, t)!,
       surfaceVariant: Color.lerp(surfaceVariant, other.surfaceVariant, t)!,
       outline: Color.lerp(outline, other.outline, t)!,
       shimmerBase: Color.lerp(shimmerBase, other.shimmerBase, t)!,
@@ -143,6 +148,7 @@ class AppPalette {
   static const Color lightTextSecondary = Color(0xFF5B6B80);
   static const Color lightOnPrimary = Colors.white;
   static const Color lightOnSecondary = Color(0xFF0F172A);
+  static const Color lightOnError = Color(0xFF0F172A);
   static const Color lightSurfaceVariant = Color(0xFFE2E8F0);
   static const Color lightOutline = Color(0xFFCBD5E1);
   static const Color lightShimmerBase = Color(0xFFE2E8F0);
@@ -160,6 +166,7 @@ class AppPalette {
   static const Color darkTextSecondary = Colors.white60;
   static const Color darkOnPrimary = Color(0xFF0F172A);
   static const Color darkOnSecondary = Colors.white;
+  static const Color darkOnError = Color(0xFF0F172A);
   static const Color darkSurfaceVariant = Color(0xFF1E293B);
   static const Color darkOutline = Color(0xFF334155);
   static const Color darkShimmerBase = Color(0xFF1E293B);

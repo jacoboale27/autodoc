@@ -124,7 +124,11 @@ void main() {
     test(
       'rechazarTaller updates usuarios/{uid} (not talleres) and logs action',
       () async {
-        await adminService.rechazarTaller('admin1', 'taller1');
+        await adminService.rechazarTaller(
+          'admin1',
+          'taller1',
+          motivo: 'La foto de la fachada no deja ver el rótulo',
+        );
 
         expect(fakeRepository.lastUpdatedUid, 'taller1');
         expect(fakeRepository.lastUpdatedEstado, 'rechazado');
@@ -132,6 +136,34 @@ void main() {
         expect(fakeRepository.lastLog?.accion, 'RECHAZAR_TALLER');
       },
     );
+
+    test('rechazarTaller guarda el motivo como detalle del log', () async {
+      // Antes escribia siempre el literal 'Taller rechazado': el taller no
+      // tenia forma de saber que corregir y reenviaba lo mismo.
+      await adminService.rechazarTaller(
+        'admin1',
+        'taller1',
+        motivo: '  La dirección no coincide con la fachada  ',
+      );
+
+      expect(
+        fakeRepository.lastLog?.detalle,
+        'La dirección no coincide con la fachada',
+      );
+    });
+
+    test('rechazarTaller se niega a rechazar sin motivo', () async {
+      for (final motivo in ['', '   ']) {
+        expect(
+          () =>
+              adminService.rechazarTaller('admin1', 'taller1', motivo: motivo),
+          throwsArgumentError,
+        );
+      }
+
+      // Y no deja el rechazo aplicado a medias.
+      expect(fakeRepository.lastUpdatedEstado, isNull);
+    });
 
     test('suspenderTaller writes estado=suspendido to usuarios/{uid}, not '
         'talleres/{uid} (regression test: talleres is a read-only projection '

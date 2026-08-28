@@ -1,15 +1,36 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/core/models/user_model.dart';
+import 'package:autodoc/core/theme/app_estado_cuenta.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class WorkshopService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore;
+
+  WorkshopService({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
+
+  /// Valores de `estado` que hacen visible a un taller en el directorio
+  /// publico, en el formato que espera `whereIn`.
+  ///
+  /// Debe ser el conjunto COMPLETO de [AppEstadoCuenta.aprobados], no solo
+  /// `'aprobado'`: `AdminService.aprobarUsuario` escribe `'activo'` mientras
+  /// que `aprobarTaller`/`reactivarTaller` escriben `'aprobado'` (ver
+  /// admin_service.dart:69 y :145). Filtrar solo por `'aprobado'` dejaba
+  /// permanentemente fuera del directorio a todo taller habilitado desde la
+  /// pantalla de Usuarios, aunque la app le diera acceso completo.
+  ///
+  /// El indice compuesto `talleres (estado ASC, calificacion_promedio DESC)`
+  /// de firestore.indexes.json sirve igual para `whereIn` que para la
+  /// igualdad anterior: no hace falta indice nuevo.
+  static final List<String> _estadosVisibles = AppEstadoCuenta.aprobados.toList(
+    growable: false,
+  );
 
   Stream<List<UserModel>> getWorkshopsStream({int limit = 50}) {
     return _firestore
         .collection(FirestoreCollections.talleres)
-        .where('estado', isEqualTo: 'aprobado')
+        .where('estado', whereIn: _estadosVisibles)
         .orderBy('calificacion_promedio', descending: true)
         .limit(limit)
         .snapshots()
@@ -23,7 +44,7 @@ class WorkshopService {
   Future<List<UserModel>> getWorkshops({int limit = 50}) async {
     final snapshot = await _firestore
         .collection(FirestoreCollections.talleres)
-        .where('estado', isEqualTo: 'aprobado')
+        .where('estado', whereIn: _estadosVisibles)
         .orderBy('calificacion_promedio', descending: true)
         .limit(limit)
         .get();

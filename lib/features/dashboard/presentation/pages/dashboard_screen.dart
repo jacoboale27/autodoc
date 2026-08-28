@@ -413,7 +413,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Row(
             children: [
               Expanded(
-                child: OutlinedButton(
+                child: AppButton(
+                  text: context.l10n.chatAccept,
+                  type: AppButtonType.outlined,
                   onPressed: () async {
                     final success = await vehicleProvider
                         .confirmarVinculoTaller(vehicle.idVehiculo, tallerId);
@@ -425,20 +427,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       );
                     }
                   },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: primary,
-                    side: BorderSide(color: primary),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: AppSpacing.sm,
-                    ),
-                    minimumSize: Size.zero,
-                  ),
-                  child: Text(context.l10n.chatAccept),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: OutlinedButton(
+                child: AppButton(
+                  text: context.l10n.chatReject,
+                  type: AppButtonType.danger,
                   onPressed: () async {
                     final success = await vehicleProvider.rechazarVinculoTaller(
                       vehicle.idVehiculo,
@@ -452,15 +447,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       );
                     }
                   },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: colors.error,
-                    side: BorderSide(color: colors.error),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: AppSpacing.sm,
-                    ),
-                    minimumSize: Size.zero,
-                  ),
-                  child: Text(context.l10n.chatReject),
                 ),
               ),
             ],
@@ -844,9 +830,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         AppSectionHeader(
           title: context.l10n.dashActiveAlerts,
-          trailing: TextButton(
+          trailing: AppButton(
+            text: context.l10n.dashViewAll,
+            type: AppButtonType.text,
+            size: AppButtonSize.small,
             onPressed: () => context.push('/alerts'),
-            child: Text(context.l10n.dashViewAll),
           ),
         ),
         const SizedBox(height: AppSpacing.base),
@@ -953,9 +941,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         AppSectionHeader(
           title: context.l10n.dashNearbyWorkshops,
-          trailing: TextButton(
+          trailing: AppButton(
+            text: context.l10n.dashViewAllWorkshops,
+            type: AppButtonType.text,
+            size: AppButtonSize.small,
             onPressed: () => context.push('/workshop_directory'),
-            child: Text(context.l10n.dashViewAllWorkshops),
           ),
         ),
         const SizedBox(height: AppSpacing.base),

@@ -14,7 +14,29 @@ class TranslationService {
   final String _baseUrl =
       'https://translation.googleapis.com/language/translate/v2';
 
+  /// Debe coincidir con `applicationId` de android/app/build.gradle.kts.
+  static const String _androidPackageName = 'com.autodoc.app';
+
   bool get isInitialized => _translationBox != null;
+
+  /// Cabeceras que Google Cloud exige para aceptar una peticion REST hecha con
+  /// una API key restringida a apps Android.
+  ///
+  /// Solo se mandan corriendo en Android: la misma key se usa en web, donde se
+  /// valida por HTTP referrer, y anunciar ahi un package Android es incoherente.
+  /// El SHA-1 llega por --dart-define en vez de hardcodeado porque depende de
+  /// quien firme el binario — la keystore de debug en local, la de release en
+  /// CI — y mandar la huella de la otra hace que Google responda 403.
+  Map<String, String> _cabecerasDeRestriccion() {
+    final cabeceras = {'Content-Type': 'application/json'};
+    final enAndroid =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    if (enAndroid && AppSecrets.androidCertSha1.isNotEmpty) {
+      cabeceras['X-Android-Package'] = _androidPackageName;
+      cabeceras['X-Android-Cert'] = AppSecrets.androidCertSha1.toUpperCase();
+    }
+    return cabeceras;
+  }
 
   Future<void> initialize() async {
     if (isInitialized) return;
@@ -57,13 +79,7 @@ class TranslationService {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl?key=$_apiKey'),
-        headers: {
-          'Content-Type': 'application/json',
-          // Cabeceras de seguridad requeridas por Google Cloud para validar peticiones REST
-          // que usan una API Key restringida para la app de Android.
-          'X-Android-Package': 'com.example.autodoc',
-          'X-Android-Cert': '9520B26195264F6D2DD7178EB2C9708A31B131A2',
-        },
+        headers: _cabecerasDeRestriccion(),
         body: jsonEncode({
           'q': [cleanText],
           'target': targetLang,

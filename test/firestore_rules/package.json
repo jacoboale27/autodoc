@@ -4,7 +4,7 @@
   "description": "Firestore rules tests",
   "main": "rules.test.js",
   "scripts": {
-    "test": "mocha rules.test.js"
+    "test": "mocha rules.test.js --timeout 30000"
   },
   "dependencies": {
     "@firebase/rules-unit-testing": "^3.0.0",

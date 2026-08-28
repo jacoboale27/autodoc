@@ -7,8 +7,11 @@ import 'package:autodoc/core/models/review_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/widgets/app_dialog_content.dart';
 import 'package:autodoc/core/widgets/app_empty_state.dart';
+import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/widgets/app_grid.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_section_header.dart';
@@ -209,7 +212,6 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
   }
 
   Future<void> _reportar(BuildContext context, ReviewModel review) async {
-    final colors = context.appColors;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -219,13 +221,17 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
           'inapropiado o falso? Será revisada por el equipo de moderación.',
         ),
         actions: [
-          TextButton(
+          AppButton(
+            text: 'Cancelar',
+            type: AppButtonType.text,
+            size: AppButtonSize.small,
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
           ),
-          TextButton(
+          AppButton(
+            text: 'Reportar',
+            type: AppButtonType.danger,
+            size: AppButtonSize.small,
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Reportar', style: TextStyle(color: colors.error)),
           ),
         ],
       ),
@@ -257,22 +263,26 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Responder a la reseña'),
-        content: TextField(
-          controller: controller,
-          maxLines: 3,
-          maxLength: 300,
-          decoration: const InputDecoration(
+        content: AppDialogContent(
+          child: AppTextField(
+            controller: controller,
+            maxLines: 3,
+            maxLength: 300,
             hintText: 'Ej. Gracias por tu confianza...',
+            label: 'Respuesta',
           ),
         ),
         actions: [
-          TextButton(
+          AppButton(
+            text: 'Cancelar',
+            type: AppButtonType.text,
+            size: AppButtonSize.small,
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
           ),
-          FilledButton(
+          AppButton(
+            text: 'Publicar',
+            size: AppButtonSize.small,
             onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Publicar'),
           ),
         ],
       ),
@@ -473,9 +483,11 @@ class _ReviewCard extends StatelessWidget {
             else
               Align(
                 alignment: Alignment.centerLeft,
-                child: TextButton.icon(
+                child: AppButton(
+                  text: 'Responder',
+                  type: AppButtonType.text,
+                  size: AppButtonSize.small,
                   icon: const Icon(Icons.reply),
-                  label: const Text('Responder'),
                   onPressed: onResponder,
                 ),
               ),

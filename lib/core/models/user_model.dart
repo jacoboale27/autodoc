@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:autodoc/core/models/galeria_taller.dart';
+
 class UserModel {
   final String idUsuario;
   final String nombreCompleto;
@@ -20,6 +22,14 @@ class UserModel {
   final double? longitud;
   final double calificacionPromedio;
   final int totalResenias;
+
+  /// Galeria comercial del taller (logo y fotos del local).
+  ///
+  /// Vacia para cualquier rol que no sea taller. Guarda nombres de archivo de
+  /// un whitelist, nunca URLs: ver [GaleriaTaller] para por que esa distincion
+  /// es lo que impide que un taller inyecte una URL ajena en el directorio
+  /// publico.
+  final GaleriaTaller galeria;
 
   /// Uid del taller dueño cuando esta cuenta es una sub-cuenta de empleado
   /// (`crearEmpleadoTaller` la fija en `usuarios/{uid}.id_taller_propietario`,
@@ -70,6 +80,7 @@ class UserModel {
     this.calificacionPromedio = 0.0,
     this.totalResenias = 0,
     this.idTallerPropietario,
+    this.galeria = const GaleriaTaller(),
   });
 
   UserModel copyWith({
@@ -93,6 +104,7 @@ class UserModel {
     double? calificacionPromedio,
     int? totalResenias,
     String? idTallerPropietario,
+    GaleriaTaller? galeria,
   }) {
     return UserModel(
       idUsuario: idUsuario ?? this.idUsuario,
@@ -115,6 +127,7 @@ class UserModel {
       calificacionPromedio: calificacionPromedio ?? this.calificacionPromedio,
       totalResenias: totalResenias ?? this.totalResenias,
       idTallerPropietario: idTallerPropietario ?? this.idTallerPropietario,
+      galeria: galeria ?? this.galeria,
     );
   }
 
@@ -142,6 +155,9 @@ class UserModel {
       'total_resenias': totalResenias,
       if (idTallerPropietario != null)
         'id_taller_propietario': idTallerPropietario,
+      // Solo viaja si tiene algo: asi un propietario o un admin no escriben un
+      // array vacio en cada guardado de su perfil.
+      if (!galeria.estaVacia) 'galeria': galeria.toLista(),
     };
   }
 
@@ -220,6 +236,7 @@ class UserModel {
       calificacionPromedio: parseDouble(map['calificacion_promedio']) ?? 0.0,
       totalResenias: (map['total_resenias'] as num?)?.toInt() ?? 0,
       idTallerPropietario: (map['id_taller_propietario'])?.toString(),
+      galeria: GaleriaTaller.fromLista(map['galeria']),
     );
   }
 }

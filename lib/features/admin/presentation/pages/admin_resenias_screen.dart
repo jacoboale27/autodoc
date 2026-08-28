@@ -5,7 +5,11 @@ import '../providers/admin_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import '../widgets/admin_sidebar.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/widgets/app_dialog_content.dart';
+import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/widgets/translated_text.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
@@ -45,31 +49,36 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
     showDialog(
       context: context,
       builder: (ctx) {
-        final colors = ctx.appColors;
         return AlertDialog(
           title: Text(ctx.l10n.adminDeleteReview),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                '¿Estás seguro de que quieres eliminar esta reseña? Esta acción no se puede deshacer.',
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                decoration: const InputDecoration(
-                  labelText: 'Motivo de eliminación',
-                  hintText: 'Ej: Contenido ofensivo',
+          content: AppDialogContent(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  '¿Estás seguro de que quieres eliminar esta reseña? Esta acción no se puede deshacer.',
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                AppTextField(
+                  controller: controller,
+                  label: 'Motivo de eliminación',
+                  hintText: 'Ej: Contenido ofensivo',
+                  maxLines: 2,
+                ),
+              ],
+            ),
           ),
           actions: [
-            TextButton(
+            AppButton(
+              text: ctx.l10n.adminCancel,
+              type: AppButtonType.text,
+              size: AppButtonSize.small,
               onPressed: () => Navigator.pop(ctx),
-              child: Text(ctx.l10n.adminCancel),
             ),
-            ElevatedButton(
+            AppButton(
+              text: ctx.l10n.adminDelete,
+              type: AppButtonType.danger,
+              size: AppButtonSize.small,
               onPressed: () {
                 Navigator.pop(ctx);
                 adminProvider.eliminarResenia(
@@ -80,11 +89,6 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
                       : controller.text,
                 );
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.error,
-                foregroundColor: Colors.white,
-              ),
-              child: Text(ctx.l10n.adminDelete),
             ),
           ],
         );
@@ -173,20 +177,18 @@ class _AdminReseniasScreenState extends State<AdminReseniasScreen> {
                                               const SizedBox(width: 8),
                                               Chip(
                                                 label: const Text('Reportada'),
-                                                backgroundColor:
-                                                    Colors.red.shade100,
-                                                labelStyle: TextStyle(
-                                                  color: Colors.red.shade900,
-                                                  fontSize: Responsive.fontSize(
-                                                    context,
-                                                    11,
-                                                  ),
-                                                ),
-                                                visualDensity:
-                                                    VisualDensity.compact,
-                                                materialTapTargetSize:
-                                                    MaterialTapTargetSize
-                                                        .shrinkWrap,
+                                                backgroundColor: colors.error
+                                                    .withValues(alpha: 0.12),
+                                                labelStyle: AppTextStyles
+                                                    .labelSmall
+                                                    .copyWith(
+                                                      color: colors.error,
+                                                      fontSize:
+                                                          Responsive.fontSize(
+                                                            context,
+                                                            11,
+                                                          ),
+                                                    ),
                                               ),
                                             ],
                                           ],

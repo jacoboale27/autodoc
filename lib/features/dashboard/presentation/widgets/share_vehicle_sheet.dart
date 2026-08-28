@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/firestore_collections.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/app_snackbar.dart';
+import 'package:autodoc/core/widgets/app_text_field.dart';
 
 class ShareVehicleSheet extends StatefulWidget {
   final VehicleModel vehicle;
@@ -67,12 +72,13 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primary = const Color(0xFF522C81);
-    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final subTextColor = isDark ? Colors.white60 : const Color(0xFF64748B);
+    final colors = context.appColors;
+    final primary = colors.primary;
+    final textColor = colors.textPrimary;
+    final subTextColor = colors.textSecondary;
     final cardColor = isDark
-        ? Colors.white.withValues(alpha: 0.05)
-        : Colors.white.withValues(alpha: 0.85);
+        ? colors.surfaceVariant.withValues(alpha: 0.65)
+        : colors.surfaceContainer;
 
     return Container(
       padding: EdgeInsets.only(
@@ -82,8 +88,10 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
         right: 20,
       ),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1B2E) : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        color: colors.surface,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppRadius.xxl),
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -95,8 +103,8 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2),
+                color: colors.outline.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(AppRadius.xs),
               ),
             ),
           ),
@@ -109,9 +117,8 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
               const SizedBox(width: 10),
               Text(
                 'Compartir Vehículo',
-                style: GoogleFonts.inter(
+                style: AppTextStyles.titleLarge.copyWith(
                   fontSize: 20,
-                  fontWeight: FontWeight.bold,
                   color: textColor,
                 ),
               ),
@@ -120,78 +127,35 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
           const SizedBox(height: 6),
           Text(
             '${widget.vehicle.marca ?? ''} ${widget.vehicle.modelo ?? ''} • ${widget.vehicle.placa}',
-            style: GoogleFonts.inter(fontSize: 13, color: subTextColor),
+            style: AppTextStyles.bodySmall.copyWith(
+              fontSize: 13,
+              color: subTextColor,
+            ),
           ),
           const SizedBox(height: 20),
 
           // Email input
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: TextField(
+                child: AppTextField(
                   controller: _emailController,
+                  hintText: 'Agregar correo electrónico...',
                   keyboardType: TextInputType.emailAddress,
-                  style: TextStyle(color: textColor),
-                  decoration: InputDecoration(
-                    hintText: 'Agregar correo electrónico...',
-                    hintStyle: TextStyle(
-                      color: subTextColor.withValues(alpha: 0.5),
-                    ),
-                    prefixIcon: Icon(
-                      Icons.mail_outline,
-                      color: primary,
-                      size: 20,
-                    ),
-                    filled: true,
-                    fillColor: cardColor,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: primary.withValues(alpha: 0.2),
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: primary.withValues(alpha: 0.15),
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: primary, width: 1.5),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 14,
-                    ),
-                  ),
+                  prefixIcon: const Icon(Icons.mail_outline),
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _addUser(),
                 ),
               ),
               const SizedBox(width: 10),
-              SizedBox(
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _addUser,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Icon(Icons.person_add, size: 20),
-                ),
+              AppButton(
+                text: '',
+                semanticLabel: 'Agregar persona',
+                icon: const Icon(Icons.person_add),
+                size: AppButtonSize.small,
+                isLoading: _isLoading,
+                onPressed: _isLoading ? null : _addUser,
               ),
             ],
           ),
@@ -201,8 +165,7 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
           // Shared users list
           Text(
             'PERSONAS CON ACCESO',
-            style: GoogleFonts.inter(
-              fontSize: 11,
+            style: AppTextStyles.labelSmall.copyWith(
               fontWeight: FontWeight.w700,
               letterSpacing: 1,
               color: subTextColor,
@@ -232,7 +195,10 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
                   const SizedBox(height: 8),
                   Text(
                     'Solo tú tienes acceso',
-                    style: GoogleFonts.inter(fontSize: 13, color: subTextColor),
+                    style: AppTextStyles.bodySmall.copyWith(
+                      fontSize: 13,
+                      color: subTextColor,
+                    ),
                   ),
                 ],
               ),
@@ -258,7 +224,7 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
                       backgroundColor: primary.withValues(alpha: 0.12),
                       child: Text(
                         (user['name'] ?? 'U')[0].toUpperCase(),
-                        style: GoogleFonts.inter(
+                        style: AppTextStyles.labelLarge.copyWith(
                           fontWeight: FontWeight.bold,
                           color: primary,
                         ),
@@ -271,15 +237,14 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
                         children: [
                           Text(
                             user['name'] ?? '',
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w600,
+                            style: AppTextStyles.titleSmall.copyWith(
                               fontSize: 14,
                               color: textColor,
                             ),
                           ),
                           Text(
                             user['email'] ?? '',
-                            style: GoogleFonts.inter(
+                            style: AppTextStyles.bodySmall.copyWith(
                               fontSize: 12,
                               color: subTextColor,
                             ),
@@ -290,7 +255,7 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
                     IconButton(
                       icon: Icon(
                         Icons.close,
-                        color: Colors.red.withValues(alpha: 0.6),
+                        color: colors.error.withValues(alpha: 0.8),
                         size: 18,
                       ),
                       onPressed: () => _removeUser(user['uid']!),
@@ -390,7 +355,7 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
 
   void _showSnack(String msg) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      AppSnackbar.show(context, msg);
     }
   }
 }

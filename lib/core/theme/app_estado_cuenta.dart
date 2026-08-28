@@ -54,6 +54,19 @@ class AppEstadoCuenta {
   /// si cambia aquí, cambia el guard del router y la pantalla de espera.
   static const Set<String> aprobados = {'aprobado', 'activo'};
 
+  /// Valor que debe ESCRIBIRSE al habilitar una cuenta.
+  ///
+  /// [aprobados] dice que se ACEPTA; esto dice que se escribe. La distincion
+  /// importa porque el campo arrastra dos vocabularios: `aprobarUsuario`
+  /// escribe `'activo'` y `aprobarTaller` todavia escribe `'aprobado'`. La
+  /// direccion acordada es converger en `'activo'` y dejar `'aprobado'` solo
+  /// como valor aceptado por retrocompatibilidad con datos migrados, asi que
+  /// todo codigo nuevo escribe a traves de esta constante.
+  static const String valorAprobado = 'activo';
+
+  /// Valor que debe ESCRIBIRSE al denegar una cuenta.
+  static const String valorRechazado = 'rechazado';
+
   static const Set<String> suspendidos = {'suspendido'};
   static const Set<String> rechazados = {'rechazado', 'denegado'};
 

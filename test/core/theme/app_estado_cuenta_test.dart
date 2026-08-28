@@ -29,6 +29,7 @@ void main() {
     textSecondary: AppPalette.lightTextSecondary,
     onPrimary: AppPalette.lightOnPrimary,
     onSecondary: AppPalette.lightOnSecondary,
+    onError: AppPalette.lightOnError,
     surfaceVariant: AppPalette.lightSurfaceVariant,
     outline: AppPalette.lightOutline,
     shimmerBase: AppPalette.lightShimmerBase,

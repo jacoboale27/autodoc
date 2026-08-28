@@ -18,7 +18,9 @@ class AppTextField extends StatefulWidget {
   final String? Function(String?)? validator;
   final void Function(String)? onChanged;
   final List<TextInputFormatter>? inputFormatters;
+  final int? maxLength;
   final int maxLines;
+  final bool autofocus;
   final TextCapitalization textCapitalization;
   final bool readOnly;
   final VoidCallback? onTap;
@@ -26,6 +28,9 @@ class AppTextField extends StatefulWidget {
   /// Pista bajo el campo. Prefiérela a meter la explicación en [hintText],
   /// que desaparece en cuanto el usuario escribe.
   final String? helperText;
+
+  /// Error explícito para campos fuera de un `Form` o antes de validar.
+  final String? errorText;
 
   /// Marca el campo como obligatorio: añade un asterisco visible y lo anuncia
   /// al lector de pantalla.
@@ -60,11 +65,14 @@ class AppTextField extends StatefulWidget {
     this.validator,
     this.onChanged,
     this.inputFormatters,
+    this.maxLength,
     this.maxLines = 1,
+    this.autofocus = false,
     this.textCapitalization = TextCapitalization.none,
     this.readOnly = false,
     this.onTap,
     this.helperText,
+    this.errorText,
     this.isRequired = false,
     this.enabled = true,
     this.focusNode,
@@ -172,7 +180,9 @@ class _AppTextFieldState extends State<AppTextField> {
               validator: widget.validator,
               onChanged: widget.onChanged,
               inputFormatters: widget.inputFormatters,
+              maxLength: widget.maxLength,
               maxLines: widget.maxLines,
+              autofocus: widget.autofocus,
               textCapitalization: widget.textCapitalization,
               readOnly: widget.readOnly,
               onTap: widget.onTap,
@@ -206,6 +216,7 @@ class _AppTextFieldState extends State<AppTextField> {
                 errorBorder: errorBorder,
                 focusedErrorBorder: errorBorder,
                 helperText: widget.helperText,
+                errorText: widget.errorText,
                 helperStyle: AppTextStyles.bodySmall.copyWith(
                   color: colors.textSecondary,
                 ),

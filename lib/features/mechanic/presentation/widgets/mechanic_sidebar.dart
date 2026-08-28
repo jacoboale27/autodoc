@@ -169,6 +169,14 @@ class MechanicSidebar extends StatelessWidget {
                   ),
                   _buildNavItem(
                     context,
+                    icon: Icons.photo_library_outlined,
+                    label: 'Fotos del taller',
+                    isActive: currentPath == '/workshop_gallery',
+                    colors: colors,
+                    onTap: () => _navigate(context, '/workshop_gallery'),
+                  ),
+                  _buildNavItem(
+                    context,
                     icon: Icons.settings_outlined,
                     label: 'Configuración',
                     isActive: currentPath == '/workshop_settings',

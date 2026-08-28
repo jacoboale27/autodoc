@@ -3,6 +3,7 @@ import 'package:autodoc/core/models/reparacion_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 
 class ReparacionCard extends StatelessWidget {
@@ -55,11 +56,12 @@ class ReparacionCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             Align(
               alignment: Alignment.centerLeft,
-              child: TextButton.icon(
+              child: AppButton(
+                text: 'Avanzar a $siguienteEstadoLabel',
+                type: AppButtonType.text,
+                size: AppButtonSize.small,
+                icon: const Icon(Icons.arrow_forward),
                 onPressed: onAvanzar,
-                icon: const Icon(Icons.arrow_forward, size: 16),
-                label: Text('Avanzar a $siguienteEstadoLabel'),
-                style: TextButton.styleFrom(foregroundColor: colors.primary),
               ),
             ),
           ],

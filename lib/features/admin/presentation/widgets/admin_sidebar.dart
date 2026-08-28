@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
 
 class AdminSidebar extends StatelessWidget {
@@ -11,10 +14,11 @@ class AdminSidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     final userSession = context.watch<UserProfileProvider>();
     final user = userSession.userData;
+    final colors = context.appColors;
 
     return Drawer(
       child: Container(
-        color: Theme.of(context).colorScheme.surface,
+        color: colors.surface,
         child: Column(
           children: [
             Container(
@@ -25,10 +29,8 @@ class AdminSidebar extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Theme.of(context).colorScheme.primary,
-                    Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.8),
+                    colors.primary,
+                    colors.primary.withValues(alpha: 0.8),
                   ],
                 ),
               ),
@@ -37,71 +39,91 @@ class AdminSidebar extends StatelessWidget {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.white24,
+                    decoration: BoxDecoration(
+                      color: colors.onPrimary.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
-                    child: const CircleAvatar(
+                    child: CircleAvatar(
                       radius: 35,
-                      backgroundColor: Colors.white,
+                      backgroundColor: colors.onPrimary,
                       child: Icon(
                         Icons.admin_panel_settings,
                         size: 40,
-                        color: Color(0xFF522C81),
+                        color: colors.primary,
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     user?.nombreCompleto ?? 'Administrador',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                    style: AppTextStyles.titleLarge.copyWith(
+                      color: colors.onPrimary,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     user?.correo ?? '',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontSize: 14,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: colors.onPrimary.withValues(alpha: 0.8),
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 12),
-            _buildDrawerItem(
-              context,
-              icon: Icons.dashboard_outlined,
-              label: 'Dashboard',
-              route: '/admin/dashboard',
+            // La navegacion va en un ListView y no directamente en la Column:
+            // la cabecera (~200 dp) mas los seis destinos mas el pie suman
+            // unos 700 dp, asi que en cualquier ventana mas baja que eso el
+            // `Spacer()` que habia aqui pedia espacio libre inexistente y el
+            // Drawer entero desbordaba. Cabecera y "Cerrar sesion" siguen
+            // fijos —el pie es lo que no debe irse de la vista al scrollear—
+            // y lo unico que se desplaza son los destinos.
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.dashboard_outlined,
+                    label: 'Dashboard',
+                    route: '/admin/dashboard',
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.people_outline,
+                    label: 'Usuarios',
+                    route: '/admin/usuarios',
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.build_circle_outlined,
+                    label: 'Talleres',
+                    route: '/admin/talleres',
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.verified_outlined,
+                    label: 'Verificación',
+                    route: '/admin/verificaciones',
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.rate_review_outlined,
+                    label: 'Reseñas',
+                    route: '/admin/resenias',
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.history_outlined,
+                    label: 'Registro de Actividad',
+                    route: '/admin/logs',
+                  ),
+                ],
+              ),
             ),
-            _buildDrawerItem(
-              context,
-              icon: Icons.people_outline,
-              label: 'Usuarios',
-              route: '/admin/usuarios',
-            ),
-            _buildDrawerItem(
-              context,
-              icon: Icons.build_circle_outlined,
-              label: 'Talleres',
-              route: '/admin/talleres',
-            ),
-            _buildDrawerItem(
-              context,
-              icon: Icons.rate_review_outlined,
-              label: 'Reseñas',
-              route: '/admin/resenias',
-            ),
-            _buildDrawerItem(
-              context,
-              icon: Icons.history_outlined,
-              label: 'Registro de Actividad',
-              route: '/admin/logs',
-            ),
-            const Spacer(),
             const Divider(indent: 20, endIndent: 20),
             _buildDrawerItem(
               context,
@@ -131,11 +153,12 @@ class AdminSidebar extends StatelessWidget {
     VoidCallback? onTap,
   }) {
     final bool isSelected = GoRouterState.of(context).uri.toString() == route;
+    final colors = context.appColors;
     final color = isDestructive
-        ? Colors.red
+        ? colors.error
         : isSelected
-        ? Theme.of(context).colorScheme.primary
-        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7);
+        ? colors.primary
+        : colors.textSecondary;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -149,15 +172,15 @@ class AdminSidebar extends StatelessWidget {
         leading: Icon(icon, color: color),
         title: Text(
           label,
-          style: TextStyle(
+          style: AppTextStyles.bodyMedium.copyWith(
             color: color,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        tileColor: isSelected
-            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
-            : null,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+        tileColor: isSelected ? colors.primary.withValues(alpha: 0.1) : null,
       ),
     );
   }

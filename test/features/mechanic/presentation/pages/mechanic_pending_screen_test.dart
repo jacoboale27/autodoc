@@ -51,7 +51,10 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(AppButton), findsOneWidget);
+    // findsWidgets y no findsOneWidget: la pantalla tiene dos acciones
+    // (verificar estado y completar la verificacion). Lo que este test
+    // protege es que ninguna sea un ElevatedButton crudo.
+    expect(find.byType(AppButton), findsWidgets);
     expect(find.byType(ElevatedButton), findsNothing);
   });
 

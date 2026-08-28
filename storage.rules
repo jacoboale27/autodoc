@@ -28,6 +28,25 @@ service firebase.storage {
         firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.rol in ['Mecanico', 'Taller'];
     }
 
+    // Mecanico/taller cuya cuenta esta ADEMAS habilitada.
+    //
+    // isMecanico() de este archivo mira `rol` pero no `estado`, al reves que
+    // su homonima de firestore.rules. Esa asimetria es deliberada y util para
+    // el expediente de verificacion —que se sube justo cuando la cuenta aun
+    // no esta aprobada— pero seria un agujero en la galeria comercial: sin
+    // este chequeo, cualquiera que se registre como taller podria publicar
+    // imagenes en una ruta de lectura publica antes de que un humano lo haya
+    // mirado, sin haber pasado ninguna revision.
+    //
+    // Los valores son los mismos que AppEstadoCuenta.aprobados e isMecanico()
+    // de firestore.rules; si cambian alli, cambian aqui.
+    function esTallerAprobado(uid) {
+      return isAuthenticated() &&
+        firestore.exists(/databases/(default)/documents/usuarios/$(uid)) &&
+        firestore.get(/databases/(default)/documents/usuarios/$(uid)).data.rol in ['Mecanico', 'Taller'] &&
+        firestore.get(/databases/(default)/documents/usuarios/$(uid)).data.get('estado', 'pendiente') in ['aprobado', 'activo'];
+    }
+
     // Toda escritura de imagen: maximo 5 MB y tipo de imagen permitido.
     // Se excluye deliberadamente image/svg+xml: un SVG puede contener script
     // y se serviria desde el dominio del propio proyecto.
@@ -156,6 +175,101 @@ service firebase.storage {
         && esImagenValida()
         && (isVehicleOwner(vehicleId) || isAdmin());
       allow delete: if isAuthenticated() && (isVehicleOwner(vehicleId) || isAdmin());
+    }
+
+    // Evidencia de verificacion de un taller.
+    //
+    // Contrapartida en Storage de la coleccion `verificaciones` de Firestore:
+    // los documentos con los que un taller demuestra que el negocio existe.
+    // NO es contenido comercial y nunca se publica; la galeria que si se
+    // enseña al publico es otra ruta.
+    //
+    // Lectura: solo el propio taller y un administrador. A diferencia de
+    // `perfiles/` o `resenia_fotos/`, aqui NO vale "cualquier autenticado":
+    // un NIT es un dato identificativo del negocio.
+    //
+    // Escritura: solo el propio taller, y a proposito SIN exigir que este
+    // aprobado. Es el unico bloque del archivo donde esa asimetria de
+    // isMecanico() —que mira `rol` pero no `estado`— es justo lo que hace
+    // falta: un taller sube su expediente precisamente cuando todavia no
+    // esta aprobado. Que el taller no sea aun un mecanico operativo se sigue
+    // comprobando donde importa, en firestore.rules.
+    //
+    // Los nombres de archivo son un whitelist fijo de tres. Las reglas de
+    // Storage no pueden CONTAR archivos, asi que un `{fileName}` libre deja
+    // subir ilimitados objetos de 5 MB a una cuenta que ni siquiera esta
+    // aprobada: spam de almacenamiento facturable sin ninguna cuota que lo
+    // frene. Fijar los nombres da un tope duro de 3 archivos por taller sin
+    // contador, sin Cloud Function y sin huerfanos que limpiar, porque
+    // corregir una subida es sobrescribirla. Debe coincidir con
+    // VerificacionTallerModel.slotsPermitidos.
+    //
+    // El PDF se admite solo para el NIT, que es lo unico que llega
+    // razonablemente como escaneo; fachada y rotulo son fotos y solo aceptan
+    // imagen.
+    //
+    // Borrado: solo admin, misma postura que `facturas/`. La evidencia es el
+    // rastro de por que se aprobo un taller; si el propio taller pudiera
+    // borrarla, bastaria con aprobarse y limpiar detras. Para corregir una
+    // subida se sobrescribe.
+    match /verificaciones/{tallerId}/{fileName} {
+      allow read: if isAuthenticated() && (request.auth.uid == tallerId || isAdmin());
+
+      // `write` en Storage cubre tambien el DELETE, y en un delete
+      // `request.resource` es null: sin este guarda, borrar dispara un
+      // "Null value error" al evaluar el content-type. El borrado real lo
+      // resuelve el `allow delete` de abajo; esto solo evita que esta regla
+      // reviente en vez de denegar limpiamente.
+      allow write: if isAuthenticated()
+        && request.resource != null
+        && request.auth.uid == tallerId
+        && isMecanico()
+        && (
+             (fileName.matches('^nit\\.(jpg|jpeg|png|webp|pdf)$') && esFacturaValida())
+             || (fileName.matches('^(fachada|rotulo)\\.(jpg|jpeg|png|webp)$') && esImagenValida())
+           );
+
+      allow delete: if isAdmin();
+    }
+
+    // Galeria comercial de un taller: logo y fotos del local.
+    //
+    // No confundir con `verificaciones/`, que es su opuesto en todo: aquella
+    // es evidencia privada que se sube ANTES de estar aprobado y solo ven el
+    // taller y un administrador; esta es escaparate publico que solo se puede
+    // publicar DESPUES de estar aprobado.
+    //
+    // Lectura publica y sin autenticar, igual que `talleres` en
+    // firestore.rules (`allow read: if true`). El directorio de talleres es
+    // publico por diseño; unas fotos de escaparate que exigieran login no se
+    // verian en el sitio donde tienen sentido.
+    //
+    // Escritura solo del propio taller Y solo si esta aprobado: publicar en
+    // una ruta de lectura publica es exactamente lo que la revision viene a
+    // autorizar.
+    //
+    // Seis nombres fijos, misma razon que en `verificaciones/`: las reglas de
+    // Storage no pueden CONTAR archivos, asi que fijar los nombres es lo unico
+    // que pone un tope duro (aqui, 1 logo + 5 fotos del local) sin contador ni
+    // Cloud Function. Cambiar una foto es sobrescribir su hueco.
+    //
+    // Debe coincidir con GaleriaTaller.slotsPermitidos.
+    match /talleres_fotos/{tallerId}/{fileName} {
+      allow read: if true;
+
+      allow write: if request.resource != null
+        && request.auth.uid == tallerId
+        && esTallerAprobado(tallerId)
+        && esImagenValida()
+        && fileName.matches('^(logo|local-[1-5])\\.(jpg|jpeg|png|webp)$');
+
+      // A diferencia de la evidencia de verificacion, que solo borra un admin,
+      // aqui el taller SI borra lo suyo: son sus fotos comerciales, quitar la
+      // foto de un local que ya no existe es gestion normal del negocio y no
+      // destruye ningun rastro de por que se le aprobo. El admin conserva el
+      // borrado para moderar contenido reportado.
+      allow delete: if isAdmin() ||
+        (request.auth.uid == tallerId && esTallerAprobado(tallerId));
     }
 
     // Reglas para fotos adjuntas a resenias

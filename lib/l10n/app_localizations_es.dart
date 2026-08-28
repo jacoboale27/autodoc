@@ -651,6 +651,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get wdYourLocation => 'Tu Ubicación';
 
   @override
+  String get wdMapUnavailableTitle => 'Mapa no disponible';
+
+  @override
+  String get wdMapUnavailableBody =>
+      'No se pudo cargar el mapa porque a esta versión de la app le falta la clave de Google Maps. Mientras tanto puedes ver los talleres en la vista de lista.';
+
+  @override
   String get wdWorkshop => 'Taller';
 
   @override

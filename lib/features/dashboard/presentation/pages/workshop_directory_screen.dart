@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/features/dashboard/data/services/workshop_service.dart';
@@ -21,11 +22,14 @@ import 'package:autodoc/core/widgets/app_skeleton.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 
 import 'package:autodoc/core/widgets/workshop_reviews_list_sheet.dart';
+import 'package:autodoc/core/utils/maps_availability.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
+import 'package:autodoc/config/secrets.dart';
+import 'package:autodoc/core/models/galeria_taller.dart';
 
 class WorkshopDirectoryScreen extends StatefulWidget {
   const WorkshopDirectoryScreen({super.key});
@@ -674,6 +678,16 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
     AppColors colors,
     bool isDark,
   ) {
+    // Sin la clave de Maps el plugin de web monta un div vacio y el usuario ve
+    // un rectangulo gris sin explicacion. Decirlo es mejor que fingir un mapa.
+    if (isMapUnavailable(isWeb: kIsWeb, apiKey: AppSecrets.googleMapsApiKey)) {
+      return AppEmptyState(
+        title: context.l10n.wdMapUnavailableTitle,
+        description: context.l10n.wdMapUnavailableBody,
+        icon: Icons.map_outlined,
+      );
+    }
+
     final markers = <Marker>{};
 
     // Marcador de la ubicación del usuario
@@ -938,7 +952,22 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
     double? distance,
   }) {
     final name = data['nombre_completo'] ?? context.l10n.wdNamelessWorkshop;
-    final imageUrl = data['foto_url'] ?? data['foto_perfil_url'];
+    // El logo de la galeria manda sobre la foto de perfil. Son dos cosas
+    // distintas: el logo es escaparate que el taller sube a proposito para su
+    // ficha (`talleres_fotos/`, publicable solo con la cuenta aprobada),
+    // mientras que la foto de perfil es su avatar personal. Ademas la URL del
+    // logo se CONSTRUYE a partir del uid y de un nombre de archivo validado
+    // (ver GaleriaTaller), asi que no hay forma de que apunte a un servidor
+    // ajeno; la de perfil es una cadena que escribe el cliente y solo la acota
+    // la validacion de firestore.rules.
+    final logo = GaleriaTaller.fromLista(data['galeria']).archivoLogo;
+    final imageUrl = logo != null
+        ? GaleriaTaller.urlDe(
+            bucket: AppSecrets.firebaseStorageBucket,
+            idTaller: tallerId,
+            nombreArchivo: logo,
+          )
+        : (data['foto_url'] ?? data['foto_perfil_url']);
     final specialty = data['especialidad'] ?? context.l10n.wdGeneralMechanics;
     final rating = data['calificacion_promedio']?.toDouble() ?? 0.0;
     final reviewsCount = data['total_resenias'] ?? 0;

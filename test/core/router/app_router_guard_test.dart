@@ -147,6 +147,80 @@ void main() {
       );
     });
 
+    test('un taller sin aprobar puede editar su perfil y armar su '
+        'expediente', () {
+      // Son las dos unicas rutas, ademas de la de espera, que funcionan de
+      // verdad sin aprobacion: /workshop_settings escribe en usuarios/{uid}
+      // (autorizado por isOwner) y /workshop_verification en
+      // verificaciones/{uid}. Sin esto la pantalla de espera no lleva a
+      // ninguna parte y el administrador nunca recibe evidencia que revisar.
+      for (final ruta in ['/workshop_settings', '/workshop_verification']) {
+        expect(
+          _redirect(
+            currentPath: ruta,
+            userData: _user('uid-t', 'Taller', estado: 'pendiente'),
+          ),
+          isNull,
+          reason: '$ruta debe seguir accesible sin aprobacion',
+        );
+      }
+    });
+
+    test('la galeria comercial NO esta en las rutas de onboarding', () {
+      // Publicar escaparate en una ruta de lectura publica es exactamente lo
+      // que la aprobacion viene a autorizar, asi que /workshop_gallery se
+      // queda fuera del onboarding. storage.rules lo exige por su lado con
+      // esTallerAprobado(); esto solo evita ofrecer una pantalla que iba a
+      // fallar de todas formas.
+      expect(
+        _redirect(
+          currentPath: '/workshop_gallery',
+          userData: _user('uid-t', 'Taller', estado: 'pendiente'),
+        ),
+        '/mechanic_pending',
+      );
+      expect(
+        _redirect(
+          currentPath: '/workshop_gallery',
+          userData: _user('uid-t', 'Taller', estado: 'activo'),
+        ),
+        isNull,
+      );
+    });
+
+    test('el resto del panel de taller sigue cerrado sin aprobacion', () {
+      // Abrirlo no daria acceso: cada consulta pasa por isMecanico() en
+      // firestore.rules, que exige estado in ['aprobado','activo'], asi que
+      // el dashboard se pintaria roto en vez de bloqueado.
+      for (final ruta in [
+        '/mechanic_dashboard',
+        '/mechanic_search',
+        '/mechanic_reparaciones',
+        '/mechanic/empleados',
+      ]) {
+        expect(
+          _redirect(
+            currentPath: ruta,
+            userData: _user('uid-t', 'Taller', estado: 'pendiente'),
+          ),
+          '/mechanic_pending',
+          reason: '$ruta no funciona sin aprobacion',
+        );
+      }
+    });
+
+    test('un taller suspendido tampoco entra por la puerta del onboarding', () {
+      // Una suspension no es un registro a medias: no debe reabrir el tramite.
+      // Se comprueba que al menos se le retiene en la pantalla de espera.
+      expect(
+        _redirect(
+          currentPath: '/mechanic_dashboard',
+          userData: _user('uid-t', 'Taller', estado: 'suspendido'),
+        ),
+        '/mechanic_pending',
+      );
+    });
+
     test(
       'un mecanico suspendido es enviado a /mechanic_pending, no dejado pasar',
       () {

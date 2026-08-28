@@ -197,7 +197,11 @@ void main() {
             'estado': 'pendiente',
           });
 
-      await service.rechazarTaller('admin1', 'taller3');
+      await service.rechazarTaller(
+        'admin1',
+        'taller3',
+        motivo: 'Sin evidencia del local',
+      );
 
       final usuarioDoc = await firestore
           .collection(FirestoreCollections.usuarios)

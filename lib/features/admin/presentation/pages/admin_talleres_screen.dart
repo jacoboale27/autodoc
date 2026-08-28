@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/theme/app_estado_cuenta.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/firestore_collections.dart';
@@ -9,6 +10,9 @@ import '../widgets/admin_sidebar.dart';
 import '../widgets/mecanico_admin_card.dart';
 import 'package:autodoc/core/models/workshop_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/app_dialog_content.dart';
+import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
@@ -92,18 +96,91 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(title),
-        content: Text(content),
+        content: AppDialogContent(child: Text(content)),
         actions: [
-          TextButton(
+          AppButton(
+            text: context.l10n.adminCancel,
+            type: AppButtonType.text,
+            size: AppButtonSize.small,
             onPressed: () => Navigator.pop(context),
-            child: Text(context.l10n.adminCancel),
           ),
-          ElevatedButton(
+          AppButton(
+            text: context.l10n.adminConfirm,
+            size: AppButtonSize.small,
             onPressed: () {
               Navigator.pop(context);
               onConfirm();
             },
-            child: Text(context.l10n.adminConfirm),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Pide el motivo antes de rechazar.
+  ///
+  /// A diferencia de `_mostrarDialogoMotivo` en admin_usuarios_screen, aqui el
+  /// motivo NO puede quedar vacio ni caer en un 'Sin motivo' por defecto: es
+  /// lo unico que el taller va a leer para saber que corregir, y un rechazo
+  /// mudo solo consigue que reenvie lo mismo. El boton permanece deshabilitado
+  /// mientras no haya texto.
+  void _mostrarDialogoRechazo(
+    BuildContext context,
+    String nombreTaller,
+    void Function(String motivo) onConfirm,
+  ) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Rechazar taller'),
+        content: AppDialogContent(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'El taller «$nombreTaller» verá este mensaje y podrá corregir y '
+                'volver a enviar su solicitud.',
+              ),
+              const SizedBox(height: 16),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: controller,
+                builder: (context, value, _) => AppTextField(
+                  controller: controller,
+                  enabled: true,
+                  autofocus: true,
+                  maxLines: 3,
+                  maxLength: 300,
+                  hintText: 'Ej.: la foto de la fachada no deja ver el rótulo.',
+                  label: 'Motivo del rechazo',
+                  errorText: value.text.trim().isEmpty
+                      ? 'Explica qué debe corregir'
+                      : null,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          AppButton(
+            text: context.l10n.adminCancel,
+            type: AppButtonType.text,
+            size: AppButtonSize.small,
+            onPressed: () => Navigator.pop(context),
+          ),
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: controller,
+            builder: (context, value, _) => AppButton(
+              text: context.l10n.adminConfirm,
+              size: AppButtonSize.small,
+              onPressed: value.text.trim().isEmpty
+                  ? null
+                  : () {
+                      Navigator.pop(context);
+                      onConfirm(controller.text.trim());
+                    },
+            ),
           ),
         ],
       ),
@@ -205,14 +282,9 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                      child: TextField(
-                        decoration: InputDecoration(
-                          labelText: 'Buscar taller / mecánico...',
-                          prefixIcon: const Icon(Icons.search),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
+                      child: AppTextField(
+                        label: 'Buscar taller / mecánico',
+                        prefixIcon: const Icon(Icons.search),
                         onChanged: (value) =>
                             setState(() => _searchQuery = value),
                       ),
@@ -341,25 +413,35 @@ class _AdminTalleresScreenState extends State<AdminTalleresScreen> {
                           final taller = talleresFiltrados[index];
                           return TallerAdminCard(
                             taller: taller,
-                            onAprobar: () {
+                            // Un taller PENDIENTE ya no se aprueba desde
+                            // aqui: esta tarjeta no enseña la evidencia, y
+                            // aprobar sin mirarla es lo que la bandeja de
+                            // verificacion existe para impedir.
+                            onVerExpediente: () =>
+                                context.go('/admin/verificaciones'),
+                            onReactivar: () {
                               _mostrarConfirmacion(
                                 context,
-                                'Aprobar Taller',
-                                '¿Estás seguro de que quieres aprobar este taller?',
-                                () => provider.aprobarTaller(
+                                'Reactivar Taller',
+                                '¿Estás seguro de que quieres reactivar este taller?',
+                                // `reactivarTaller` y no `aprobarTaller`: el
+                                // efecto en `estado` es el mismo, pero el log
+                                // de auditoria tiene que decir lo que de
+                                // verdad paso.
+                                () => provider.reactivarTaller(
                                   currentUid,
                                   taller.idTaller,
                                 ),
                               );
                             },
                             onRechazar: () {
-                              _mostrarConfirmacion(
+                              _mostrarDialogoRechazo(
                                 context,
-                                'Rechazar Taller',
-                                '¿Estás seguro de que quieres rechazar este taller?',
-                                () => provider.rechazarTaller(
+                                taller.nombre,
+                                (motivo) => provider.rechazarTaller(
                                   currentUid,
                                   taller.idTaller,
+                                  motivo,
                                 ),
                               );
                             },

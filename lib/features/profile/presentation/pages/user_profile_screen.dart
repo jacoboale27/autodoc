@@ -6,6 +6,7 @@ import 'package:autodoc/core/theme/app_shadows.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/app_dialog_content.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -141,20 +142,21 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
+              AppButton(
+                text: context.l10n.upSetupProfile,
+                size: AppButtonSize.medium,
                 onPressed: () => context.go('/profile_setup'),
-                child: Text(context.l10n.upSetupProfile),
               ),
-              TextButton(
+              const SizedBox(height: AppSpacing.sm),
+              AppButton(
+                text: context.l10n.upSignOut,
+                type: AppButtonType.text,
+                size: AppButtonSize.small,
                 onPressed: () async {
                   final router = GoRouter.of(context);
                   await context.read<AuthProvider>().signOut();
                   router.go('/login');
                 },
-                child: Text(
-                  context.l10n.upSignOut,
-                  style: TextStyle(color: colors.error),
-                ),
               ),
             ],
           ),
@@ -685,9 +687,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Future<void> _showDeleteAccountDialog(BuildContext context) async {
     final authProvider = context.read<AuthProvider>();
+    final colors = context.appColors;
     final isEmailPassword = authProvider.isEmailPasswordUser;
     final passwordController = TextEditingController();
-    final theme = Theme.of(context);
 
     try {
       await showDialog<void>(
@@ -700,53 +702,65 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             builder: (context, setState) {
               return AlertDialog(
                 title: Text(context.l10n.upDeleteAccountTitle),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(context.l10n.upDeleteAccountConfirm),
-                    const SizedBox(height: 16),
-                    if (isEmailPassword) ...[
-                      Text(
-                        context.l10n.upEnterPasswordConfirm,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: passwordController,
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          border: const OutlineInputBorder(),
-                          labelText: context.l10n.upPasswordLabel,
+                content: AppDialogContent(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(context.l10n.upDeleteAccountConfirm),
+                      const SizedBox(height: 16),
+                      if (isEmailPassword) ...[
+                        Text(
+                          context.l10n.upEnterPasswordConfirm,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: colors.textPrimary,
+                          ),
                         ),
-                      ),
-                    ] else ...[
-                      Text(
-                        context.l10n.upGoogleReauthConfirm,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                    if (errorMessage != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        errorMessage!,
-                        style: TextStyle(
-                          color: theme.colorScheme.error,
-                          fontSize: 12,
+                        const SizedBox(height: 8),
+                        AppTextField(
+                          controller: passwordController,
+                          label: context.l10n.upPasswordLabel,
+                          obscureText: true,
+                          obscureToggle: true,
+                          enabled: !isLoading,
                         ),
-                      ),
+                      ] else ...[
+                        Text(
+                          context.l10n.upGoogleReauthConfirm,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                      ],
+                      if (errorMessage != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          errorMessage!,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: colors.error,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
                 actions: [
-                  TextButton(
+                  AppButton(
                     key: const ValueKey('profile-delete-cancel'),
+                    text: context.l10n.upCancel,
+                    type: AppButtonType.text,
+                    size: AppButtonSize.small,
                     onPressed: isLoading
                         ? null
                         : () => Navigator.of(context).pop(),
-                    child: Text(context.l10n.upCancel),
                   ),
-                  TextButton(
+                  AppButton(
+                    text: context.l10n.upDelete,
+                    type: AppButtonType.danger,
+                    size: AppButtonSize.small,
+                    isLoading: isLoading,
                     onPressed: isLoading
                         ? null
                         : () async {
@@ -806,16 +820,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               }
                             }
                           },
-                    child: isLoading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(
-                            context.l10n.upDelete,
-                            style: TextStyle(color: theme.colorScheme.error),
-                          ),
                   ),
                 ],
               );
@@ -849,21 +853,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           onPressed: () => _signOut(context),
         ),
         const SizedBox(height: AppSpacing.md),
-        TextButton.icon(
+        AppButton(
           key: const ValueKey('profile-delete-account'),
+          text: context.l10n.upDeleteAccount,
+          type: AppButtonType.danger,
+          size: AppButtonSize.small,
+          icon: const Icon(Icons.delete_outline),
           onPressed: () => _showDeleteAccountDialog(context),
-          icon: Icon(Icons.delete_outline, color: colors.error),
-          label: Text(
-            context.l10n.upDeleteAccount,
-            style: AppTextStyles.labelLarge.copyWith(color: colors.error),
-          ),
-          style: TextButton.styleFrom(
-            minimumSize: const Size(0, 48),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.xl,
-              vertical: AppSpacing.md,
-            ),
-          ),
         ),
       ],
     );

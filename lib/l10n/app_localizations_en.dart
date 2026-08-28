@@ -646,6 +646,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get wdYourLocation => 'Your Location';
 
   @override
+  String get wdMapUnavailableTitle => 'Map unavailable';
+
+  @override
+  String get wdMapUnavailableBody =>
+      'The map could not be loaded because this build is missing its Google Maps key. In the meantime you can browse the workshops in list view.';
+
+  @override
   String get wdWorkshop => 'Workshop';
 
   @override

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_estado_cuenta.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 
 class MecanicoAdminCard extends StatelessWidget {
@@ -50,18 +50,19 @@ class MecanicoAdminCard extends StatelessWidget {
                   children: [
                     Text(
                       usuario.nombreCompleto,
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                      style: AppTextStyles.titleMedium.copyWith(
                         color: colors.textPrimary,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       usuario.correo,
-                      style: TextStyle(
-                        fontSize: 12,
+                      style: AppTextStyles.bodySmall.copyWith(
                         color: colors.textSecondary,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -86,12 +87,21 @@ class MecanicoAdminCard extends StatelessWidget {
             runSpacing: 8,
             children: [
               if (usuario.especialidad != null)
-                _info(Icons.build_circle_outlined, usuario.especialidad!),
+                _info(
+                  context,
+                  Icons.build_circle_outlined,
+                  usuario.especialidad!,
+                ),
               if (usuario.ubicacionMunicipio != null)
-                _info(Icons.location_on_outlined, usuario.ubicacionMunicipio!),
+                _info(
+                  context,
+                  Icons.location_on_outlined,
+                  usuario.ubicacionMunicipio!,
+                ),
               if (usuario.telefono != null)
-                _info(Icons.phone_outlined, usuario.telefono!),
+                _info(context, Icons.phone_outlined, usuario.telefono!),
               _info(
+                context,
                 Icons.star_outline,
                 totalResenias > 0
                     ? '${calificacionPromedio?.toStringAsFixed(1) ?? '0'} ($totalResenias reseñas)'
@@ -120,8 +130,7 @@ class MecanicoAdminCard extends StatelessWidget {
           ],
           Text(
             label,
-            style: TextStyle(
-              fontSize: 11,
+            style: AppTextStyles.labelSmall.copyWith(
               fontWeight: FontWeight.bold,
               color: fg,
             ),
@@ -131,13 +140,20 @@ class MecanicoAdminCard extends StatelessWidget {
     );
   }
 
-  Widget _info(IconData icon, String text) {
+  Widget _info(BuildContext context, IconData icon, String text) {
+    final colors = context.appColors;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: Colors.grey),
+        Icon(icon, size: 14, color: colors.textSecondary),
         const SizedBox(width: 4),
-        Text(text, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        Text(
+          text,
+          style: AppTextStyles.bodySmall.copyWith(
+            fontSize: 12,
+            color: colors.textSecondary,
+          ),
+        ),
       ],
     );
   }

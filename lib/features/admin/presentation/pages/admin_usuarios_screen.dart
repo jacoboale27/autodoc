@@ -9,6 +9,10 @@ import '../widgets/admin_sidebar.dart';
 import '../widgets/account_row.dart';
 import '../widgets/dialog_crear_usuario.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/app_dialog_content.dart';
+import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
@@ -45,23 +49,29 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(title),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(labelText: 'Motivo / Detalle'),
+        content: AppDialogContent(
+          child: AppTextField(
+            controller: controller,
+            label: 'Motivo / Detalle',
+            maxLines: 3,
+          ),
         ),
         actions: [
-          TextButton(
+          AppButton(
+            text: context.l10n.adminCancel,
+            type: AppButtonType.text,
+            size: AppButtonSize.small,
             onPressed: () => Navigator.pop(context),
-            child: Text(context.l10n.adminCancel),
           ),
-          ElevatedButton(
+          AppButton(
+            text: context.l10n.adminConfirm,
+            size: AppButtonSize.small,
             onPressed: () {
               Navigator.pop(context);
               onConfirm(
                 controller.text.isEmpty ? 'Sin motivo' : controller.text,
               );
             },
-            child: Text(context.l10n.adminConfirm),
           ),
         ],
       ),
@@ -77,22 +87,27 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Eliminar cuenta permanentemente'),
-        content: Text(
-          'Esta acción borrará la cuenta de "$nombreUsuario" de forma '
-          'irreversible (login y todos sus datos). ¿Deseas continuar?',
+        content: AppDialogContent(
+          child: Text(
+            'Esta acción borrará la cuenta de "$nombreUsuario" de forma '
+            'irreversible (login y todos sus datos). ¿Deseas continuar?',
+          ),
         ),
         actions: [
-          TextButton(
+          AppButton(
+            text: context.l10n.adminCancel,
+            type: AppButtonType.text,
+            size: AppButtonSize.small,
             onPressed: () => Navigator.pop(context),
-            child: Text(context.l10n.adminCancel),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          AppButton(
+            text: 'Eliminar',
+            type: AppButtonType.danger,
+            size: AppButtonSize.small,
             onPressed: () {
               Navigator.pop(context);
               onConfirm();
             },
-            child: const Text('Eliminar'),
           ),
         ],
       ),
@@ -118,58 +133,65 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
+          final colors = context.appColors;
           return AlertDialog(
             title: Text(context.l10n.adminChangeRole),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Rol actual: $rolActual',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: Responsive.fontSize(context, 13),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  context.l10n.adminSelectNewRole,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 12),
-                ...roles
-                    .where((r) => r != rolActual)
-                    .map(
-                      (rol) => ListTile(
-                        title: Text(rol),
-                        subtitle: Text(
-                          _descRol(rol),
-                          style: TextStyle(
-                            fontSize: Responsive.fontSize(context, 12),
-                          ),
-                        ),
-                        trailing: selectedRol == rol
-                            ? Icon(
-                                Icons.check_circle,
-                                color: Theme.of(context).colorScheme.primary,
-                              )
-                            : const Icon(
-                                Icons.circle_outlined,
-                                color: Colors.grey,
-                              ),
-                        onTap: () => setDialogState(() => selectedRol = rol),
-                        contentPadding: EdgeInsets.zero,
-                        dense: true,
-                      ),
+            content: AppDialogContent(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Rol actual: $rolActual',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: colors.textSecondary,
+                      fontSize: Responsive.fontSize(context, 13),
                     ),
-              ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    context.l10n.adminSelectNewRole,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...roles
+                      .where((r) => r != rolActual)
+                      .map(
+                        (rol) => ListTile(
+                          title: Text(rol),
+                          subtitle: Text(
+                            _descRol(rol),
+                            style: TextStyle(
+                              fontSize: Responsive.fontSize(context, 12),
+                            ),
+                          ),
+                          trailing: selectedRol == rol
+                              ? Icon(Icons.check_circle, color: colors.primary)
+                              : Icon(
+                                  Icons.circle_outlined,
+                                  color: colors.textSecondary,
+                                ),
+                          onTap: () => setDialogState(() => selectedRol = rol),
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                        ),
+                      ),
+                ],
+              ),
             ),
             actions: [
-              TextButton(
+              AppButton(
+                text: context.l10n.adminCancel,
+                type: AppButtonType.text,
+                size: AppButtonSize.small,
                 onPressed: () => Navigator.pop(context),
-                child: Text(context.l10n.adminCancel),
               ),
-              ElevatedButton(
+              AppButton(
+                text: context.l10n.adminConfirm,
+                size: AppButtonSize.small,
                 onPressed: selectedRol == null
                     ? null
                     : () {
@@ -180,7 +202,6 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                           selectedRol!,
                         );
                       },
-                child: Text(context.l10n.adminConfirm),
               ),
             ],
           );
@@ -320,14 +341,9 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
         children: [
           Padding(
             padding: EdgeInsets.all(Responsive.padding(context, 16.0)),
-            child: TextField(
-              decoration: InputDecoration(
-                labelText: 'Buscar usuario...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
+            child: AppTextField(
+              label: 'Buscar usuario',
+              prefixIcon: const Icon(Icons.search),
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
           ),
@@ -524,13 +540,13 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                     style: Theme.of(context).textTheme.labelLarge,
                   ),
                   const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.calendar_today, size: 16),
-                    label: Text(
-                      _filterDateFrom != null
-                          ? 'Desde ${_filterDateFrom!.day}/${_filterDateFrom!.month}/${_filterDateFrom!.year}'
-                          : 'Seleccionar fecha',
-                    ),
+                  AppButton(
+                    text: _filterDateFrom != null
+                        ? 'Desde ${_filterDateFrom!.day}/${_filterDateFrom!.month}/${_filterDateFrom!.year}'
+                        : 'Seleccionar fecha',
+                    type: AppButtonType.outlined,
+                    size: AppButtonSize.small,
+                    icon: const Icon(Icons.calendar_today),
                     onPressed: () async {
                       final picked = await showDatePicker(
                         context: context,
@@ -551,7 +567,10 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton(
+                        child: AppButton(
+                          text: 'Limpiar',
+                          type: AppButtonType.outlined,
+                          size: AppButtonSize.small,
                           onPressed: () {
                             setState(() {
                               _filterEstado = 'Todos';
@@ -559,14 +578,14 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                             });
                             Navigator.pop(ctx);
                           },
-                          child: const Text('Limpiar'),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: FilledButton(
+                        child: AppButton(
+                          text: 'Aplicar',
+                          size: AppButtonSize.small,
                           onPressed: () => Navigator.pop(ctx),
-                          child: const Text('Aplicar'),
                         ),
                       ),
                     ],

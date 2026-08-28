@@ -100,6 +100,59 @@ service cloud.firestore {
     }
 
 
+    // ¿Es `url` un enlace a un objeto del Storage de ESTE proyecto, bajo la
+    // ruta `prefijoRuta`?
+    //
+    // Existe porque `talleres/{uid}` es de lectura ANONIMA y se alimenta de
+    // `usuarios/{uid}` via publishTallerProfile. Cualquier campo de URL que el
+    // cliente pueda escribir libremente acaba siendo una URL elegida por el
+    // taller que la app de CADA visitante del directorio va a descargar: eso
+    // no es una imagen rota, es cosecha de IP y User-Agent de todo el que abra
+    // el listado, servida por un tercero.
+    //
+    // Se ancla el HOST, que es donde esta la amenaza. El segmento del bucket
+    // se deja abierto a proposito: el nombre real del bucket es un valor de
+    // entorno (FIREBASE_STORAGE_BUCKET) que no vive en el repositorio, y
+    // clavarlo aqui obligaria a mantener sincronizados dos sitios sin ganar
+    // gran cosa. Lo que queda permitido apuntando a otro bucket de Firebase es
+    // contenido, no telemetria: la peticion sigue yendo a un host de Google,
+    // nunca a un servidor del atacante.
+    //
+    // La cadena de consulta se deja libre (`.*`): el token de descarga que
+    // añade getDownloadURL() es un detalle del formato de Firebase, y atarlo
+    // aqui convertiria un cambio de formato en subidas denegadas.
+    function esUrlDeStoragePropia(url, prefijoRuta) {
+      return url is string
+        && url.size() < 2000
+        && url.matches('^https://firebasestorage\\.googleapis\\.com/v0/b/[^/]+/o/' + prefijoRuta + '.*');
+    }
+
+    // La foto de perfil solo puede apuntar al objeto del propio usuario en
+    // `perfiles/` (ver UserService.uploadProfilePhoto, que sube a
+    // `perfiles/{uid}.jpg`). Ausente o vacia tambien vale: no todo el mundo
+    // tiene foto.
+    function fotoDePerfilValida(userId) {
+      return !('foto_perfil_url' in request.resource.data)
+        || request.resource.data.foto_perfil_url == null
+        || request.resource.data.foto_perfil_url == ''
+        || esUrlDeStoragePropia(request.resource.data.foto_perfil_url, 'perfiles%2F' + userId);
+    }
+
+    // La galeria comercial NO guarda URLs, guarda nombres de hueco ('logo',
+    // 'local-1'...). La ruta de Storage se reconstruye a partir del uid y del
+    // hueco, los dos de confianza, asi que por construccion no hay ninguna URL
+    // que un taller pueda elegir. Ver GaleriaTaller.
+    //
+    // Aqui solo se acota el tamaño: sin tope, un taller podria escribir una
+    // lista enorme que publishTallerProfile copiaria tal cual al documento
+    // publico. Que los nombres sean validos lo resuelve el parseo del modelo,
+    // que descarta cualquier hueco fuera del whitelist.
+    function galeriaValida() {
+      return !('galeria' in request.resource.data)
+        || (request.resource.data.galeria is list
+            && request.resource.data.galeria.size() <= 6);
+    }
+
     // --- REGLAS POR COLECCIÓN ---
 
     // 1. Tabla de Usuarios
@@ -137,15 +190,27 @@ service cloud.firestore {
       // taller hasta que un admin la apruebe. Y como 'estado' esta excluido del
       // allow update del propio usuario, el mecanico no puede autoaprobarse
       // despues: el unico camino a 'activo'/'aprobado' pasa por AdminService.
+      //
+      // Los accesos a 'rol' y 'estado' van guardados con `in` / `.get()` a
+      // proposito. Sin el guarda, un create sin 'rol' no se DENIEGA: revienta
+      // con "Property rol is undefined on object", que es un error de
+      // evaluacion. El efecto neto sobre ese write es el mismo (no pasa), pero
+      // el modo de fallo es peor: el mensaje no dice que regla fallo, no se
+      // puede razonar sobre el como sobre un `false`, y en cuanto esta
+      // condicion se meta dentro de un `||` el error se propaga y tumba
+      // tambien la rama que si deberia conceder. Se prefiere denegar limpio.
       allow create: if isOwner(userId)
                     && !('id_taller_propietario' in request.resource.data)
                     && (!('calificacion_promedio' in request.resource.data) || request.resource.data.calificacion_promedio == 0)
                     && (!('total_resenias' in request.resource.data) || request.resource.data.total_resenias == 0)
+                    && 'rol' in request.resource.data
+                    && fotoDePerfilValida(userId)
+                    && galeriaValida()
                     && (
                          (request.resource.data.rol == 'Propietario'
-                            && (!('estado' in request.resource.data) || request.resource.data.estado == 'activo'))
+                            && request.resource.data.get('estado', 'activo') == 'activo')
                          || (request.resource.data.rol == 'Mecanico'
-                            && request.resource.data.estado == 'pendiente')
+                            && request.resource.data.get('estado', '') == 'pendiente')
                        );
       
       // El usuario puede editar su propio perfil básico, pero no puede tocar
@@ -170,8 +235,17 @@ service cloud.firestore {
       // 'rol' Y el valor resultante es uno de esos dos — así un Administrador
       // sigue pudiendo aprobar/suspender/reasignar a Propietario/Mecanico
       // sin restricciones nuevas.
+      //
+      // fotoDePerfilValida/galeriaValida se aplican a la rama del PROPIO
+      // usuario y no a la de administracion: el vector es el taller que se
+      // publica a si mismo una URL ajena en un documento de lectura anonima.
+      // Un administrador que escriba una URL rara es un problema distinto —y
+      // ya tiene permisos para mucho mas—, y ademas es quien tiene que poder
+      // corregir a mano un dato heredado que no case con el formato nuevo.
       allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data)
-                          .affectedKeys().hasAny(['rol', 'calificacion_promedio', 'total_resenias', 'estado', 'id_taller_propietario', 'suma_estrellas']))
+                          .affectedKeys().hasAny(['rol', 'calificacion_promedio', 'total_resenias', 'estado', 'id_taller_propietario', 'suma_estrellas'])
+                          && fotoDePerfilValida(userId)
+                          && galeriaValida())
                     || isSuperUser()
                     || (isAdmin() && !(
                          request.resource.data.diff(resource.data).affectedKeys().hasAny(['rol']) &&
@@ -237,6 +311,80 @@ service cloud.firestore {
         // taller (dueño) y no el propio uid del empleado.
         allow create, update, delete: if isAuthenticated() && actuaPorTaller(tallerId);
       }
+    }
+
+    // 2.b Expedientes de verificacion de taller
+    //
+    // Contrapartida PRIVADA de 'talleres': ahi vive la ficha publica
+    // (allow read: if true), aqui el tramite. Nunca se mezclan — este
+    // documento guarda el motivo de un rechazo, quien reviso y el rastro de
+    // los documentos de identidad del negocio, y publishTallerProfile ni
+    // siquiera mira esta coleccion, asi que una fuga por descuido de
+    // CAMPOS_PUBLICOS es estructuralmente imposible.
+    //
+    // Ojo con los dos ejes: 'estado_verificacion' NO concede acceso. Quien
+    // opera lo sigue diciendo usuarios/{uid}.estado via isMecanico(), que no
+    // se toca. Este campo solo gobierna el flujo de onboarding.
+    match /verificaciones/{tallerId} {
+      allow read: if isAuthenticated() && (request.auth.uid == tallerId || isAdmin());
+
+      // Un taller solo puede dejar SU expediente en 'listo_para_revision', o
+      // no tocar el estado en absoluto (subir evidencia). 'en_revision'
+      // (tomar el caso) y 'aprobada'/'rechazada' (resolverlo) son exclusivos
+      // de isAdmin(): sin esto un taller se autoverifica con un solo write,
+      // que es el mismo agujero que ya cierra la exclusion de 'estado' en el
+      // allow update de 'usuarios'.
+      //
+      // 'perfil_incompleto' TAMPOCO lo puede escribir el taller, aunque sea un
+      // estado "menor". Nada en la app lo escribe —es solo el valor por
+      // defecto al leer un expediente que no existe— y dejarselo escribir
+      // abria la puerta de atras de la re-revision: un taller aprobado edita
+      // su direccion, la Cloud Function le devuelve el expediente a la cola, y
+      // el se autodegrada a 'perfil_incompleto' para desaparecer de la bandeja
+      // del administrador conservando la cuenta activa. La condicion se
+      // escribe sobre la AUSENCIA de la clave para que un write que no habla
+      // del estado (subir evidencia, incluida la creacion del expediente con
+      // el primer archivo) siga pasando.
+      //
+      // Los tres campos de resolucion (motivo_rechazo, revisado_por,
+      // fecha_revision) no pueden ESTAR en el documento resultante de un
+      // write del taller. Se comprueba sobre el resultado y no sobre el diff
+      // a proposito: asi el taller puede BORRARLOS al reenviar tras un
+      // rechazo —que es justo lo que hace copyWith(limpiarMotivoRechazo:
+      // true)— pero no puede escribirlos. El historial de la resolucion no se
+      // pierde: queda en admin_logs, igual que el resto de acciones de
+      // administracion.
+      //
+      // Lo que estas reglas NO validan es que el perfil este realmente
+      // completo cuando el taller escribe 'listo_para_revision': exigiria un
+      // get() de usuarios/{uid} y replicar aqui la lista de campos de
+      // AppEstadoVerificacion.camposFaltantes, duplicando una fuente de
+      // verdad por un chequeo que no protege nada — un expediente enviado en
+      // falso solo consigue que un administrador lo mire y lo rechace.
+      function esWriteDeTaller() {
+        return request.auth.uid == tallerId
+          && (!('estado_verificacion' in request.resource.data)
+              || request.resource.data.estado_verificacion == 'listo_para_revision')
+          && !request.resource.data.keys().hasAny(['motivo_rechazo', 'revisado_por', 'fecha_revision']);
+      }
+
+      // 'reapertura' la escribe la Cloud Function con SDK de Admin y dice POR
+      // QUE un expediente ya aprobado volvio a la cola. Es lo unico que el
+      // administrador tiene para saber que mirar, asi que el taller no puede
+      // borrarla de un set(merge:false). No se exige que sea inmutable —solo
+      // que siga estando—: quien la escribe salta estas reglas de todas
+      // formas, y lo que hay que impedir es el borrado.
+      function conservaLaReapertura() {
+        return !('reapertura' in resource.data)
+          || 'reapertura' in request.resource.data;
+      }
+
+      allow create: if isAuthenticated() && (esWriteDeTaller() || isAdmin());
+      allow update: if isAuthenticated()
+                    && ((esWriteDeTaller() && conservaLaReapertura()) || isAdmin());
+
+      // El expediente es el rastro de la verificacion: solo un admin lo borra.
+      allow delete: if isAdmin();
     }
 
     // 3. Tabla de Vehículos
@@ -643,10 +791,28 @@ service cloud.firestore {
     match /admin_logs/{logId} {
       allow read: if isAdmin();
       
-      // Solo admin puede crear logs desde el cliente
-      // Cloud Functions usan Admin SDK que bypasea estas reglas
-      allow create: if isAdmin();
-      
+      // El log SI se escribe desde el cliente: AdminService._logAction lo
+      // emite tras cada accion de administracion (aprobar, suspender, cambiar
+      // rol...) via AdminRepository.registrarLog. Cerrar este create tumbaria
+      // todo el panel de administracion, no solo la auditoria.
+      //
+      // Lo que si se cierra es la ATRIBUCION: 'admin_uid' viaja en el payload
+      // del cliente (AdminLogModel.toMap), asi que sin este chequeo un
+      // administrador podia firmar una entrada con el uid de OTRO
+      // administrador y ensuciarle el historial. Todas las llamadas reales
+      // pasan `currentUid` (ver admin_usuarios_screen / admin_talleres_screen),
+      // asi que exigir que coincida con el llamante no rompe ningun flujo.
+      //
+      // LIMITE CONOCIDO, y es estructural: esto garantiza que un log escrito
+      // sea autentico, no que la accion quede logueada. La accion y su log son
+      // dos writes independientes del cliente; un administrador que omita el
+      // segundo actua sin dejar rastro, y 'fecha' es un DateTime.now() del
+      // cliente, o sea antedatable. La unica cura real es mover las acciones de
+      // administracion a Cloud Functions y que el log lo escriba el Admin SDK
+      // en la misma transaccion. Fuera del alcance de esta tanda.
+      allow create: if isAdmin()
+                    && request.resource.data.get('admin_uid', '') == request.auth.uid;
+
       allow update, delete: if false; // Logs son inmutables
     }
 

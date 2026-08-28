@@ -232,8 +232,14 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget _modeSwitchLink(AppColors colors) {
-    return TextButton(
+    return AppButton(
       key: const ValueKey('auth-mode-switch'),
+      text: '',
+      type: AppButtonType.text,
+      size: AppButtonSize.small,
+      semanticLabel: _isLoginMode
+          ? context.l10n.authRegisterFree
+          : context.l10n.authLogin,
       onPressed: _toggleMode,
       child: RichText(
         text: TextSpan(
@@ -423,15 +429,12 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                       ),
                       if (_isLoginMode)
-                        TextButton(
+                        AppButton(
                           key: const ValueKey('auth-forgot-password'),
+                          text: context.l10n.authForgotPassword,
+                          type: AppButtonType.text,
+                          size: AppButtonSize.small,
                           onPressed: _showForgotPasswordDialog,
-                          child: Text(
-                            context.l10n.authForgotPassword,
-                            style: AppTextStyles.labelMedium.copyWith(
-                              color: colors.primary,
-                            ),
-                          ),
                         ),
                     ],
                   ),
@@ -606,26 +609,26 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              TextField(
+              AppTextField(
                 controller: resetEmailController,
+                label: context.l10n.authEmailLabel,
                 keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: context.l10n.authEmailLabel,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  prefixIcon: const Icon(Icons.mail_outline),
-                ),
+                prefixIcon: const Icon(Icons.mail_outline),
+                autofillHints: const [AutofillHints.email],
               ),
             ],
           ),
           actions: [
-            TextButton(
+            AppButton(
+              text: context.l10n.authCancel,
+              type: AppButtonType.text,
+              size: AppButtonSize.small,
               onPressed: () => Navigator.pop(ctx, false),
-              child: Text(context.l10n.authCancel),
             ),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: colors.primary),
+            AppButton(
+              text: context.l10n.authSendLink,
+              type: AppButtonType.primary,
+              size: AppButtonSize.small,
               onPressed: () async {
                 final email = resetEmailController.text.trim();
                 if (!_isValidEmail(email)) {
@@ -663,7 +666,6 @@ class _AuthScreenState extends State<AuthScreen> {
                   }
                 }
               },
-              child: Text(context.l10n.authSendLink),
             ),
           ],
         );
@@ -746,19 +748,23 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
             actions: [
               if (isRegistration)
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: colors.primary,
-                  ),
+                AppButton(
+                  text: context.l10n.authUnderstood,
+                  type: AppButtonType.primary,
+                  size: AppButtonSize.small,
                   onPressed: () => Navigator.pop(ctx, true),
-                  child: Text(context.l10n.authUnderstood),
                 )
               else
-                TextButton(
+                AppButton(
+                  text: context.l10n.authContinueWithoutVerify,
+                  type: AppButtonType.text,
+                  size: AppButtonSize.small,
                   onPressed: () => Navigator.pop(ctx, true),
-                  child: Text(context.l10n.authContinueWithoutVerify),
                 ),
-              TextButton(
+              AppButton(
+                text: context.l10n.authResendEmail,
+                type: AppButtonType.text,
+                size: AppButtonSize.small,
                 onPressed: () async {
                   final ok = await authProvider.sendEmailVerification();
                   if (!ctx.mounted) return;
@@ -772,13 +778,12 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                   );
                 },
-                child: Text(context.l10n.authResendEmail),
               ),
               if (!isRegistration)
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: colors.primary,
-                  ),
+                AppButton(
+                  text: context.l10n.authAlreadyVerified,
+                  type: AppButtonType.primary,
+                  size: AppButtonSize.small,
                   onPressed: () async {
                     final verified = await authProvider
                         .refreshEmailVerificationStatus();
@@ -799,7 +804,6 @@ class _AuthScreenState extends State<AuthScreen> {
                       );
                     }
                   },
-                  child: Text(context.l10n.authAlreadyVerified),
                 ),
             ],
           ),

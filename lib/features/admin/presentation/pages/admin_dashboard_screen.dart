@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../providers/admin_dashboard_provider.dart';
 import '../providers/admin_provider.dart';
 import '../widgets/admin_sidebar.dart';
@@ -11,6 +10,8 @@ import '../widgets/user_growth_chart.dart';
 import '../widgets/workshops_growth_chart.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:intl/intl.dart';
 import 'package:autodoc/core/utils/responsive.dart';
@@ -64,13 +65,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ),
                     onPressed: themeProvider.toggleTheme,
                   ),
-                  TextButton(
+                  AppButton(
+                    text: isEnglish ? 'EN' : 'ES',
+                    type: AppButtonType.text,
+                    size: AppButtonSize.small,
+                    semanticLabel: 'Cambiar idioma',
                     onPressed: () => languageProvider.changeLanguage(
                       isEnglish ? 'es' : 'en',
-                    ),
-                    child: Text(
-                      isEnglish ? 'EN' : 'ES',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -162,12 +163,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Container(
             padding: EdgeInsets.all(Responsive.padding(context, 12)),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
+              color: colors.onPrimary.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(
               Icons.admin_panel_settings,
-              color: Colors.white,
+              color: colors.onPrimary,
               size: Responsive.iconSize(context, 28),
             ),
           ),
@@ -180,17 +181,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   context.l10n.adminDashboardWelcome(
                     userSession.userData?.nombreCompleto ?? 'Admin',
                   ),
-                  style: GoogleFonts.inter(
+                  style: AppTextStyles.titleLarge.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: colors.onPrimary,
                     fontSize: Responsive.fontSize(context, 20),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   context.l10n.adminDashboardSubtitle,
-                  style: GoogleFonts.inter(
-                    color: Colors.white.withValues(alpha: 0.8),
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: colors.onPrimary.withValues(alpha: 0.8),
                     fontSize: Responsive.fontSize(context, 14),
                   ),
                 ),
@@ -349,43 +350,32 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: Responsive.padding(context, 16),
-            vertical: Responsive.padding(context, 12),
+    return AppButton(
+      text: '',
+      type: AppButtonType.outlined,
+      size: AppButtonSize.small,
+      semanticLabel: label,
+      onPressed: onTap,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: Responsive.iconSize(context, 20)),
+          const SizedBox(width: 10),
+          Text(
+            label,
+            style: AppTextStyles.labelLarge.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: Responsive.fontSize(context, 13),
+            ),
           ),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: color.withValues(alpha: 0.2)),
+          const SizedBox(width: 6),
+          Icon(
+            Icons.arrow_forward_ios,
+            color: color,
+            size: Responsive.iconSize(context, 12),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: color, size: Responsive.iconSize(context, 20)),
-              const SizedBox(width: 10),
-              Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                  fontSize: Responsive.fontSize(context, 13),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Icon(
-                Icons.arrow_forward_ios,
-                color: color,
-                size: Responsive.iconSize(context, 12),
-              ),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }
@@ -475,17 +465,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           }),
           Padding(
             padding: EdgeInsets.all(Responsive.padding(context, 12)),
-            child: TextButton.icon(
+            child: AppButton(
+              text: context.l10n.adminViewAllLogs,
+              type: AppButtonType.text,
+              size: AppButtonSize.small,
+              icon: const Icon(Icons.arrow_forward),
               onPressed: () => context.go('/admin/logs'),
-              icon: Icon(
-                Icons.arrow_forward,
-                size: Responsive.iconSize(context, 16),
-                color: colors.primary,
-              ),
-              label: Text(
-                context.l10n.adminViewAllLogs,
-                style: TextStyle(color: colors.primary),
-              ),
             ),
           ),
         ],

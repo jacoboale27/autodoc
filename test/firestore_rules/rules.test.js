@@ -31,25 +31,33 @@ describe('Firestore Security Rules', () => {
   }
 
   // Seed user data to satisfy isAdmin/isMecanico helper functions
-  async function seedUser(uid, rol) {
+  // `extra` permite anadir campos que las reglas miran de verdad. El mas
+  // importante es 'estado': isMecanico() exige `estado in ['aprobado','activo']`
+  // y por defecto asume 'pendiente', asi que un mecanico sembrado sin ese campo
+  // NO es un mecanico a efectos de reglas.
+  async function seedUser(uid, rol, extra = {}) {
     await testEnv.withSecurityRulesDisabled(async (context) => {
       const db = context.firestore();
       await db.collection('usuarios').doc(uid).set({
         id_usuario: uid,
         nombre_completo: `Test User ${rol}`,
         correo: `test${uid}@test.com`,
-        rol: rol
+        rol: rol,
+        ...extra
       });
     });
   }
 
-  async function seedVehicle(vehiculoId, ownerId) {
+  // Un mecanico solo alcanza los datos de un vehiculo si ADEMAS de estar
+  // aprobado figura en `talleres_vinculados` (ver isVinculadoAlVehiculo).
+  async function seedVehicle(vehiculoId, ownerId, talleresVinculados = []) {
     await testEnv.withSecurityRulesDisabled(async (context) => {
       const db = context.firestore();
       await db.collection('vehiculos').doc(vehiculoId).set({
         id_vehiculo: vehiculoId,
         id_propietario: ownerId,
-        placa: 'TEST123'
+        placa: 'TEST123',
+        talleres_vinculados: talleresVinculados
       });
     });
   }
@@ -72,11 +80,42 @@ describe('Firestore Security Rules', () => {
       await assertFails(db.collection('usuarios').doc('user1').set({ foo: 'bar' }));
     });
 
-    it('should allow authenticated users to read and create their own profile', async () => {
+    it('should allow a user to create and read their own Propietario profile', async () => {
       const db = getAuthedDb('user1');
-      await assertSucceeds(db.collection('usuarios').doc('user1').set({ foo: 'bar' }));
+      await assertSucceeds(
+        db.collection('usuarios').doc('user1').set({ rol: 'Propietario', estado: 'activo' })
+      );
       await assertSucceeds(db.collection('usuarios').doc('user1').get());
-      await assertSucceeds(db.collection('usuarios').doc('user2').get());
+    });
+
+    // Este test afirmaba `assertSucceeds(...doc('user2').get())`, es decir, que
+    // cualquier autenticado puede leer el perfil de cualquier otro: correo,
+    // telefono y fcm_token incluidos. Las reglas lo deniegan correctamente
+    // (`allow read: if isOwner(userId) || isAdmin()`), asi que el test estaba
+    // fijando un IDOR que no existe. El perfil publico de un taller vive en
+    // `talleres`, proyectado por publishTallerProfile.
+    it('should deny reading another user profile', async () => {
+      await seedUser('user1', 'Propietario');
+      await seedUser('user2', 'Propietario');
+      const db = getAuthedDb('user1');
+      await assertFails(db.collection('usuarios').doc('user2').get());
+    });
+
+    // Regresion del "Property rol is undefined on object": un create sin 'rol'
+    // debe denegarse limpiamente, no reventar la evaluacion de la regla.
+    it('should deny creating a profile with no rol', async () => {
+      const db = getAuthedDb('user1');
+      await assertFails(db.collection('usuarios').doc('user1').set({ foo: 'bar' }));
+    });
+
+    it('should deny self-registering a Mecanico as already approved', async () => {
+      const db = getAuthedDb('mec1');
+      await assertFails(
+        db.collection('usuarios').doc('mec1').set({ rol: 'Mecanico', estado: 'activo' })
+      );
+      await assertSucceeds(
+        db.collection('usuarios').doc('mec1').set({ rol: 'Mecanico', estado: 'pendiente' })
+      );
     });
 
     it('should deny non-admins from changing their role', async () => {
@@ -168,14 +207,41 @@ describe('Firestore Security Rules', () => {
       await assertFails(db.collection('mantenimientos').doc('m1').get());
     });
     
-    it('should allow mechanic to update maintenance', async () => {
-      await seedUser('mec1', 'Mecanico');
-      await seedVehicle('veh1', 'owner1');
+    // Este test sembraba `seedUser('mec1','Mecanico')` sin 'estado' y un
+    // vehiculo sin 'talleres_vinculados', y aun asi esperaba exito. Las reglas
+    // lo denegaban con razon: isVinculadoAlVehiculo() exige las DOS cosas.
+    // El test se habia quedado atras respecto a las reglas, no al reves.
+    it('should allow a linked, approved mechanic to update maintenance', async () => {
+      await seedUser('mec1', 'Mecanico', { estado: 'activo' });
+      await seedVehicle('veh1', 'owner1', ['mec1']);
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await context.firestore().collection('mantenimientos').doc('m1').set({ id_vehiculo: 'veh1' });
       });
       const db = getAuthedDb('mec1');
       await assertSucceeds(db.collection('mantenimientos').doc('m1').update({ status: 'done' }));
+    });
+
+    it('should deny a mechanic not linked to the vehicle', async () => {
+      await seedUser('mec1', 'Mecanico', { estado: 'activo' });
+      await seedVehicle('veh1', 'owner1');
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await context.firestore().collection('mantenimientos').doc('m1').set({ id_vehiculo: 'veh1' });
+      });
+      const db = getAuthedDb('mec1');
+      await assertFails(db.collection('mantenimientos').doc('m1').update({ status: 'done' }));
+    });
+
+    // El bloqueo del enrutador no basta: la API es accesible directamente, asi
+    // que un taller pendiente de aprobacion no puede tocar datos aunque este
+    // vinculado al vehiculo.
+    it('should deny a linked but still pending mechanic', async () => {
+      await seedUser('mec1', 'Mecanico', { estado: 'pendiente' });
+      await seedVehicle('veh1', 'owner1', ['mec1']);
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await context.firestore().collection('mantenimientos').doc('m1').set({ id_vehiculo: 'veh1' });
+      });
+      const db = getAuthedDb('mec1');
+      await assertFails(db.collection('mantenimientos').doc('m1').update({ status: 'done' }));
     });
   });
 
@@ -215,10 +281,49 @@ describe('Firestore Security Rules', () => {
   });
 
   describe('5. Admin Logs & Notificaciones', () => {
-    it('should deny writing to admin_logs from any client (even admin)', async () => {
+    // Este test esperaba que NINGUN cliente pudiera escribir el log. Es la
+    // postura correcta para una auditoria, pero no es la arquitectura actual:
+    // AdminService._logAction escribe la entrada desde el cliente tras cada
+    // accion de administracion, asi que denegarlo tumbaria el panel entero.
+    // Lo que si se puede exigir, y ahora se exige, es que la entrada este
+    // firmada por quien la escribe.
+    it('should allow an admin to write a log entry signed with their own uid', async () => {
+      await seedUser('admin1', 'Administrador');
+      const db = getAuthedDb('admin1');
+      await assertSucceeds(
+        db.collection('admin_logs').doc('log1').set({ admin_uid: 'admin1', accion: 'APROBAR_USUARIO' })
+      );
+    });
+
+    it('should deny an admin from signing a log entry as another admin', async () => {
+      await seedUser('admin1', 'Administrador');
+      await seedUser('admin2', 'Administrador');
+      const db = getAuthedDb('admin1');
+      await assertFails(
+        db.collection('admin_logs').doc('log1').set({ admin_uid: 'admin2', accion: 'APROBAR_USUARIO' })
+      );
+    });
+
+    it('should deny a log entry with no admin_uid at all', async () => {
       await seedUser('admin1', 'Administrador');
       const db = getAuthedDb('admin1');
       await assertFails(db.collection('admin_logs').doc('log1').set({ event: 'test' }));
+    });
+
+    it('should deny a non-admin from writing logs', async () => {
+      await seedUser('user1', 'Propietario');
+      const db = getAuthedDb('user1');
+      await assertFails(db.collection('admin_logs').doc('log1').set({ admin_uid: 'user1' }));
+    });
+
+    it('should keep log entries immutable once written', async () => {
+      await seedUser('admin1', 'Administrador');
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await context.firestore().collection('admin_logs').doc('log1').set({ admin_uid: 'admin1' });
+      });
+      const db = getAuthedDb('admin1');
+      await assertFails(db.collection('admin_logs').doc('log1').update({ accion: 'otra cosa' }));
+      await assertFails(db.collection('admin_logs').doc('log1').delete());
     });
 
     it('should allow admin to read admin_logs', async () => {
@@ -294,6 +399,131 @@ describe('Firestore Security Rules', () => {
         db.collection('resenias').doc('r3').update({
           respuesta_taller: { texto: 'Gracias!', fecha: new Date() },
         })
+      );
+    });
+  });
+
+  describe('verificaciones/{tallerId}', () => {
+
+    // El expediente ya resuelto por un admin, sembrado saltandose las reglas.
+    async function seedExpediente(tallerId, extra) {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await context.firestore().collection('verificaciones').doc(tallerId).set(
+          Object.assign({ id_taller: tallerId, estado_verificacion: 'listo_para_revision' }, extra || {})
+        );
+      });
+    }
+
+    it('deja al taller crear su propio expediente y enviarlo a revision', async () => {
+      await seedUser('taller1', 'Taller');
+      await assertSucceeds(
+        getAuthedDb('taller1').collection('verificaciones').doc('taller1').set({
+          id_taller: 'taller1',
+          estado_verificacion: 'listo_para_revision',
+          documentos: { fachada: new Date() },
+        })
+      );
+    });
+
+    it('impide que un taller se autoverifique escribiendo aprobada', async () => {
+      await seedUser('taller1', 'Taller');
+      await assertFails(
+        getAuthedDb('taller1').collection('verificaciones').doc('taller1').set({
+          id_taller: 'taller1',
+          estado_verificacion: 'aprobada',
+        })
+      );
+    });
+
+    it('impide que un taller se ponga en_revision (tomar el caso es de admin)', async () => {
+      await seedUser('taller1', 'Taller');
+      await assertFails(
+        getAuthedDb('taller1').collection('verificaciones').doc('taller1').set({
+          id_taller: 'taller1',
+          estado_verificacion: 'en_revision',
+        })
+      );
+    });
+
+    it('impide que un taller se invente un motivo_rechazo o un revisado_por', async () => {
+      await seedUser('taller1', 'Taller');
+      for (const campo of ['motivo_rechazo', 'revisado_por', 'fecha_revision']) {
+        const payload = {
+          id_taller: 'taller1',
+          estado_verificacion: 'listo_para_revision',
+        };
+        payload[campo] = campo === 'fecha_revision' ? new Date() : 'inventado';
+        await assertFails(
+          getAuthedDb('taller1').collection('verificaciones').doc('taller1').set(payload)
+        );
+      }
+    });
+
+    it('deja al taller LIMPIAR el motivo de rechazo al reenviar', async () => {
+      await seedUser('taller1', 'Taller');
+      await seedExpediente('taller1', {
+        estado_verificacion: 'rechazada',
+        motivo_rechazo: 'La foto no es legible',
+        revisado_por: 'admin1',
+      });
+      // set() sin merge reemplaza el documento entero: el resultado ya no
+      // contiene los campos de resolucion, que es lo que la regla exige.
+      await assertSucceeds(
+        getAuthedDb('taller1').collection('verificaciones').doc('taller1').set({
+          id_taller: 'taller1',
+          estado_verificacion: 'listo_para_revision',
+          documentos: { fachada: new Date() },
+        })
+      );
+    });
+
+    it('impide que un taller toque el expediente de otro', async () => {
+      await seedUser('taller1', 'Taller');
+      await seedUser('taller2', 'Taller');
+      await seedExpediente('taller2');
+      await assertFails(
+        getAuthedDb('taller1').collection('verificaciones').doc('taller2').set({
+          id_taller: 'taller2',
+          estado_verificacion: 'listo_para_revision',
+        })
+      );
+    });
+
+    it('impide que un taller LEA el expediente de otro', async () => {
+      await seedUser('taller1', 'Taller');
+      await seedExpediente('taller2');
+      await assertFails(
+        getAuthedDb('taller1').collection('verificaciones').doc('taller2').get()
+      );
+    });
+
+    it('nunca es de lectura anonima, al reves que talleres/', async () => {
+      await seedExpediente('taller1');
+      await assertFails(
+        getUnauthedDb().collection('verificaciones').doc('taller1').get()
+      );
+    });
+
+    it('deja al admin leer y resolver el expediente', async () => {
+      await seedUser('admin1', 'Administrador');
+      await seedExpediente('taller1');
+      const db = getAuthedDb('admin1');
+      await assertSucceeds(db.collection('verificaciones').doc('taller1').get());
+      await assertSucceeds(
+        db.collection('verificaciones').doc('taller1').update({
+          estado_verificacion: 'rechazada',
+          motivo_rechazo: 'La direccion no coincide',
+          revisado_por: 'admin1',
+          fecha_revision: new Date(),
+        })
+      );
+    });
+
+    it('solo el admin borra el expediente', async () => {
+      await seedUser('taller1', 'Taller');
+      await seedExpediente('taller1');
+      await assertFails(
+        getAuthedDb('taller1').collection('verificaciones').doc('taller1').delete()
       );
     });
   });

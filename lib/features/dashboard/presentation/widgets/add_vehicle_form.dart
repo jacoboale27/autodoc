@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/models/vehicle_model.dart';
@@ -7,6 +6,11 @@ import '../../../../core/utils/plate_formatter.dart';
 import '../../../../core/models/nhtsa_models.dart';
 import '../../../../core/services/vehicle_api_service.dart';
 import '../../../../core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_motion.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/app_dialog_content.dart';
+import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class AddVehicleForm extends StatefulWidget {
@@ -189,7 +193,10 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
           const SizedBox(height: 20),
           Expanded(
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
+              duration: AppMotion.transformDuration(
+                context,
+                AppMotion.sheetEnter,
+              ),
               child: _buildCurrentStep(),
             ),
           ),
@@ -233,9 +240,7 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
             ),
           Text(
             title,
-            style: GoogleFonts.inter(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+            style: AppTextStyles.headlineSmall.copyWith(
               color: colors.textPrimary,
             ),
           ),
@@ -300,22 +305,9 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: TextField(
-            style: TextStyle(color: colors.textPrimary),
-            decoration: InputDecoration(
-              hintText: context.l10n.addVehicleSearchBrand,
-              hintStyle: TextStyle(
-                color: colors.textSecondary.withValues(alpha: 0.5),
-              ),
-              prefixIcon: Icon(Icons.search, color: colors.textSecondary),
-              filled: true,
-              fillColor: colors.surfaceContainer,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
-            ),
+          child: AppTextField(
+            hintText: context.l10n.addVehicleSearchBrand,
+            prefixIcon: const Icon(Icons.search),
             onChanged: (val) {
               setState(() => _brandSearchQuery = val);
             },
@@ -332,11 +324,15 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                     children: [
                       Text(
                         context.l10n.addVehicleErrorBrands,
-                        style: const TextStyle(color: Colors.red),
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: colors.error,
+                        ),
                       ),
-                      TextButton(
+                      AppButton(
+                        text: context.l10n.addVehicleRetry,
+                        type: AppButtonType.text,
+                        size: AppButtonSize.small,
                         onPressed: _fetchAllMakes,
-                        child: Text(context.l10n.addVehicleRetry),
                       ),
                     ],
                   ),
@@ -410,22 +406,9 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: TextField(
-            style: TextStyle(color: colors.textPrimary),
-            decoration: InputDecoration(
-              hintText: context.l10n.addVehicleSearchModel,
-              hintStyle: TextStyle(
-                color: colors.textSecondary.withValues(alpha: 0.5),
-              ),
-              prefixIcon: Icon(Icons.search, color: colors.textSecondary),
-              filled: true,
-              fillColor: colors.surfaceContainer,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
-            ),
+          child: AppTextField(
+            hintText: context.l10n.addVehicleSearchModel,
+            prefixIcon: const Icon(Icons.search),
             onChanged: (val) {
               setState(() => _searchQuery = val);
             },
@@ -442,11 +425,15 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                     children: [
                       Text(
                         context.l10n.addVehicleErrorModels,
-                        style: const TextStyle(color: Colors.red),
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: colors.error,
+                        ),
                       ),
-                      TextButton(
+                      AppButton(
+                        text: context.l10n.addVehicleRetry,
+                        type: AppButtonType.text,
+                        size: AppButtonSize.small,
                         onPressed: () => _fetchModels(_selectedBrand!),
-                        child: Text(context.l10n.addVehicleRetry),
                       ),
                     ],
                   ),
@@ -611,8 +598,9 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
+              child: AppButton(
+                text: context.l10n.addVehicleFinish,
+                size: AppButtonSize.large,
                 onPressed: () {
                   if (!(_formKey.currentState?.validate() ?? false)) {
                     return;
@@ -652,19 +640,6 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
 
                   _nextStep();
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: widget.primaryColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: Text(
-                  context.l10n.addVehicleFinish,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
               ),
             ),
             const SizedBox(height: 24),
@@ -682,13 +657,11 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.check_circle_rounded, size: 80, color: Colors.green),
+          Icon(Icons.check_circle_rounded, size: 80, color: colors.success),
           const SizedBox(height: 24),
           Text(
             context.l10n.addVehicleSuccess,
-            style: GoogleFonts.inter(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+            style: AppTextStyles.headlineSmall.copyWith(
               color: colors.textPrimary,
             ),
           ),
@@ -720,9 +693,7 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                 const SizedBox(height: 16),
                 Text(
                   '$_selectedBrand $_selectedModel',
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
+                  style: AppTextStyles.titleLarge.copyWith(
                     color: colors.textPrimary,
                   ),
                 ),
@@ -732,8 +703,10 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
           const SizedBox(height: 40),
           SizedBox(
             width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
+            child: AppButton(
+              text: context.l10n.addVehicleGoDashboard,
+              size: AppButtonSize.large,
+              isLoading: _isFinishing,
               onPressed: _isFinishing
                   ? null
                   : () async {
@@ -762,25 +735,6 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                         }
                       }
                     },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: widget.primaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: _isFinishing
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : Text(
-                      context.l10n.addVehicleGoDashboard,
-                      style: const TextStyle(color: Colors.white),
-                    ),
             ),
           ),
         ],
@@ -794,47 +748,17 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
     TextEditingController controller,
     IconData icon, {
     TextInputType? keyboardType,
-    List<dynamic>? formatters,
+    List<TextInputFormatter>? formatters,
     String? Function(String?)? validator,
   }) {
-    final colors = context.appColors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: colors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          keyboardType: keyboardType,
-          style: TextStyle(color: colors.textPrimary),
-          inputFormatters: formatters?.cast<TextInputFormatter>(),
-          validator: validator,
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: TextStyle(
-              color: colors.textSecondary.withValues(alpha: 0.5),
-            ),
-            prefixIcon: Icon(icon, color: widget.primaryColor, size: 20),
-            filled: true,
-            fillColor: colors.surfaceContainer,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
-            ),
-          ),
-        ),
-      ],
+    return AppTextField(
+      label: label,
+      hintText: hint,
+      controller: controller,
+      keyboardType: keyboardType,
+      inputFormatters: formatters,
+      validator: validator,
+      prefixIcon: Icon(icon, color: widget.primaryColor, size: 20),
     );
   }
 
@@ -894,16 +818,23 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Ingresa la marca'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(hintText: 'Ej: Tesla'),
+        content: AppDialogContent(
+          child: AppTextField(
+            controller: controller,
+            hintText: 'Ej: Tesla',
+            textInputAction: TextInputAction.done,
+          ),
         ),
         actions: [
-          TextButton(
+          AppButton(
+            text: 'Cancelar',
+            type: AppButtonType.text,
+            size: AppButtonSize.small,
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
           ),
-          ElevatedButton(
+          AppButton(
+            text: 'Continuar',
+            size: AppButtonSize.small,
             onPressed: () {
               setState(() {
                 _selectedBrand = controller.text;
@@ -913,7 +844,6 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
               _fetchModels(controller.text);
               _nextStep();
             },
-            child: const Text('Continuar'),
           ),
         ],
       ),
@@ -926,22 +856,28 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Ingresa el modelo'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(hintText: 'Ej: Model 3'),
+        content: AppDialogContent(
+          child: AppTextField(
+            controller: controller,
+            hintText: 'Ej: Model 3',
+            textInputAction: TextInputAction.done,
+          ),
         ),
         actions: [
-          TextButton(
+          AppButton(
+            text: 'Cancelar',
+            type: AppButtonType.text,
+            size: AppButtonSize.small,
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
           ),
-          ElevatedButton(
+          AppButton(
+            text: 'Continuar',
+            size: AppButtonSize.small,
             onPressed: () {
               setState(() => _selectedModel = controller.text);
               Navigator.pop(context);
               _nextStep();
             },
-            child: const Text('Continuar'),
           ),
         ],
       ),
@@ -964,8 +900,7 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
               padding: const EdgeInsets.all(16.0),
               child: Text(
                 'Selecciona el Año',
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.bold,
+                style: AppTextStyles.titleMedium.copyWith(
                   fontSize: 18,
                   color: context.appColors.textPrimary,
                 ),

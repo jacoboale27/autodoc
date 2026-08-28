@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 
 /// Gráfico de barras que muestra la cantidad de talleres afiliados
@@ -55,7 +55,7 @@ class WorkshopsGrowthChart extends StatelessWidget {
         children: [
           Text(
             'Talleres Afiliados (Últimos 6 meses)',
-            style: GoogleFonts.inter(
+            style: AppTextStyles.titleMedium.copyWith(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: colors.primary,

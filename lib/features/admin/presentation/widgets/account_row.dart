@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/models/user_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_estado_cuenta.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class AccountRow extends StatelessWidget {
@@ -32,16 +33,12 @@ class AccountRow extends StatelessWidget {
     // 'aprobado'), rojo suspendida/rechazada. Antes esto se decidia aqui con
     // `estado == 'activo'`, asi que una cuenta aprobada via aprobarTaller()
     // —que escribe 'aprobado'— se pintaba en rojo.
-    final estadoStyle = AppEstadoCuenta.style(
-      usuario.estado,
-      context.appColors,
-    );
+    final colors = context.appColors;
+    final estadoStyle = AppEstadoCuenta.style(usuario.estado, colors);
 
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: Theme.of(
-          context,
-        ).colorScheme.primary.withValues(alpha: 0.1),
+        backgroundColor: colors.primary.withValues(alpha: 0.1),
         child: Text(
           usuario.nombreCompleto.isNotEmpty
               ? usuario.nombreCompleto[0].toUpperCase()
@@ -59,14 +56,15 @@ class AccountRow extends StatelessWidget {
                 margin: const EdgeInsets.only(top: 4, right: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.secondaryContainer,
+                  color: colors.surfaceVariant,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
                   usuario.rol.toUpperCase(),
-                  style: const TextStyle(
+                  style: AppTextStyles.labelSmall.copyWith(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
+                    color: colors.textPrimary,
                   ),
                 ),
               ),
@@ -86,7 +84,7 @@ class AccountRow extends StatelessWidget {
                     const SizedBox(width: 3),
                     Text(
                       estadoStyle.label.toUpperCase(),
-                      style: TextStyle(
+                      style: AppTextStyles.labelSmall.copyWith(
                         color: estadoStyle.color,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -116,7 +114,7 @@ class AccountRow extends StatelessWidget {
               value: 'aprobar',
               child: Text(
                 context.l10n.adminApproveAccount,
-                style: const TextStyle(color: Colors.green),
+                style: AppTextStyles.bodyMedium.copyWith(color: colors.success),
               ),
             ),
           if (AppEstadoCuenta.esAprobada(usuario.estado) && !isCurrentAdmin)
@@ -124,7 +122,7 @@ class AccountRow extends StatelessWidget {
               value: 'suspender',
               child: Text(
                 context.l10n.adminSuspendAccount,
-                style: const TextStyle(color: Colors.red),
+                style: AppTextStyles.bodyMedium.copyWith(color: colors.error),
               ),
             ),
           if (AppEstadoCuenta.esSuspendida(usuario.estado))
@@ -132,7 +130,7 @@ class AccountRow extends StatelessWidget {
               value: 'reactivar',
               child: Text(
                 context.l10n.adminReactivateAccount,
-                style: const TextStyle(color: Colors.green),
+                style: AppTextStyles.bodyMedium.copyWith(color: colors.success),
               ),
             ),
           if (!isCurrentAdmin)
@@ -141,11 +139,11 @@ class AccountRow extends StatelessWidget {
               child: Text(context.l10n.adminChangeUserRole),
             ),
           if (canHardDelete && !isCurrentAdmin && usuario.rol != 'Superusuario')
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'eliminar',
               child: Text(
                 'Eliminar cuenta (permanente)',
-                style: TextStyle(color: Colors.red),
+                style: AppTextStyles.bodyMedium.copyWith(color: colors.error),
               ),
             ),
         ],

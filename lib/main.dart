@@ -24,12 +24,15 @@ import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/reparacion_provider.dart';
+import 'package:autodoc/features/mechanic/presentation/providers/galeria_provider.dart';
+import 'package:autodoc/features/mechanic/presentation/providers/verificacion_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/empleado_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/catalogo_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/theme/app_theme.dart';
 import 'package:autodoc/features/admin/presentation/providers/admin_provider.dart';
+import 'package:autodoc/features/admin/presentation/providers/admin_verificacion_provider.dart';
 import 'package:autodoc/features/admin/presentation/providers/admin_dashboard_provider.dart';
 import 'package:autodoc/core/services/notification_service.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
@@ -257,8 +260,11 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ReparacionProvider()),
         ChangeNotifierProvider(create: (_) => EmpleadoProvider()),
         ChangeNotifierProvider(create: (_) => CatalogoProvider()),
+        ChangeNotifierProvider(create: (_) => VerificacionProvider()),
+        ChangeNotifierProvider(create: (_) => GaleriaProvider()),
         ChangeNotifierProvider(create: (_) => AdminProvider()),
         ChangeNotifierProvider(create: (_) => AdminDashboardProvider()),
+        ChangeNotifierProvider(create: (_) => AdminVerificacionProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => ReservaProvider()),
         ChangeNotifierProvider(create: (_) => NotificationCenterProvider()),

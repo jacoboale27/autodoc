@@ -157,7 +157,8 @@ class _MechanicPendingScreenState extends State<MechanicPendingScreen> {
                             _infoRow(
                               icon: Icons.email_outlined,
                               text:
-                                  '¿Qué sigue? El administrador revisará tu solicitud y te notificará por email.',
+                                  'Completa tu verificación: sin la foto de la fachada y los datos del '
+                                  'taller, el administrador no tiene con qué revisarte.',
                               colors: colors,
                             ),
                             const SizedBox(height: AppSpacing.md),
@@ -195,20 +196,29 @@ class _MechanicPendingScreenState extends State<MechanicPendingScreen> {
 
                   const SizedBox(height: AppSpacing.base),
 
+                  // Acceso al expediente de verificacion. Es lo que convierte
+                  // esta pantalla de espera en algo accionable: sin evidencia
+                  // el administrador no tiene con que verificar el taller, asi
+                  // que "esperar" no avanzaba el tramite por si solo.
+                  SizedBox(
+                    width: double.infinity,
+                    child: AppButton(
+                      text: 'Completar verificación',
+                      type: AppButtonType.secondary,
+                      onPressed: () => context.push('/workshop_verification'),
+                      icon: const Icon(Icons.assignment_outlined),
+                    ),
+                  ),
+
+                  const SizedBox(height: AppSpacing.base),
+
                   // Sign out option
-                  TextButton.icon(
+                  AppButton(
+                    text: 'Cerrar sesión',
+                    type: AppButtonType.text,
+                    size: AppButtonSize.small,
+                    icon: const Icon(Icons.logout_rounded),
                     onPressed: _signOut,
-                    icon: Icon(
-                      Icons.logout_rounded,
-                      color: colors.textSecondary,
-                      size: 18,
-                    ),
-                    label: Text(
-                      'Cerrar sesión',
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: colors.textSecondary,
-                      ),
-                    ),
                   ),
                 ],
               ),

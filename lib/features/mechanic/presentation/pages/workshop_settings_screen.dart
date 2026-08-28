@@ -397,12 +397,11 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                 ),
               ),
               actions: [
-                TextButton(
+                AppButton(
+                  text: 'Cancelar',
+                  type: AppButtonType.text,
+                  size: AppButtonSize.small,
                   onPressed: () => Navigator.pop(ctx),
-                  child: Text(
-                    'Cancelar',
-                    style: TextStyle(color: colors.textSecondary),
-                  ),
                 ),
                 AppButton(
                   text: 'Confirmar',

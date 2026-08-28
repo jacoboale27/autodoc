@@ -39,27 +39,27 @@ class AppSecrets {
   static String get firebaseStorageBucket =>
       const String.fromEnvironment('FIREBASE_STORAGE_BUCKET', defaultValue: '');
 
-  // Search API (Fotos de vehículos en concesionario con fondo sólido)
-  static String get vehicleImageApiKey =>
-      const String.fromEnvironment('VEHICLE_IMAGE_API_KEY', defaultValue: '');
-
   // Google Maps & Translation API Key
   static String get googleMapsApiKey =>
       const String.fromEnvironment('GOOGLE_MAPS_API_KEY', defaultValue: '');
 
-  // Google Custom Search API (Opcional)
-  static String get googleCustomSearchApiKey => const String.fromEnvironment(
-    'GOOGLE_CUSTOM_SEARCH_API_KEY',
-    defaultValue: '',
-  );
-  static String get googleCustomSearchCx =>
-      const String.fromEnvironment('GOOGLE_CUSTOM_SEARCH_CX', defaultValue: '');
+  // SearchAPI.io (engine google_images) — fotos de vehiculos estilo concesionario
+  static String get vehicleImageApiKey =>
+      const String.fromEnvironment('VEHICLE_IMAGE_API_KEY', defaultValue: '');
 
   // Google Sign-In (web)
   static String get googleSignInClientIdWeb => const String.fromEnvironment(
     'GOOGLE_SIGNIN_CLIENT_ID_WEB',
     defaultValue: '',
   );
+
+  // Huella SHA-1 del certificado que firma el binario Android. Google Cloud la
+  // exige en la cabecera X-Android-Cert para validar peticiones REST hechas con
+  // una API key restringida a apps Android. NO puede ir hardcodeada: cambia
+  // segun quien firme (keystore de debug en local, de release en CI), y una
+  // huella que no corresponde con la firma real hace que Google devuelva 403.
+  static String get androidCertSha1 =>
+      const String.fromEnvironment('ANDROID_CERT_SHA1', defaultValue: '');
 
   // App Check (web) — clave de sitio de reCAPTCHA Enterprise
   static String get recaptchaSiteKey =>

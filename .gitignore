@@ -43,6 +43,17 @@ app.*.map.json
 .env
 app.env
 !.env.example
+
+# Firma de Android. El keystore de release y sus contrasenas NUNCA se comitean:
+# quien tenga el .jks + password puede publicar actualizaciones que Android
+# acepta como legitimas. En CI entra por secreto (ANDROID_KEYSTORE_BASE64).
+*.jks
+*.keystore
+android/key.properties
+
+# Artefactos de build de la app
+*.apk
+*.aab
 DEV_SETUP.md
 ios/Runner/GoogleService-Info.plist
 android/app/google-services.json
@@ -81,3 +92,7 @@ testsprite_tests/
 functions/enable_email_password_auth.js
 functions/seed_testsprite.js
 functions/seed_testsprite_staging.js
+
+# Scratch de herramientas (Playwright MCP, superpowers SDD)
+.playwright-mcp/
+.superpowers/

@@ -181,10 +181,14 @@ class AdminProvider with ChangeNotifier {
     }
   }
 
-  Future<void> rechazarTaller(String adminUid, String idTaller) async {
+  Future<void> rechazarTaller(
+    String adminUid,
+    String idTaller,
+    String motivo,
+  ) async {
     _setLoading(true);
     try {
-      await _adminService.rechazarTaller(adminUid, idTaller);
+      await _adminService.rechazarTaller(adminUid, idTaller, motivo: motivo);
       _setSuccess('Taller rechazado');
       _talleres = await _adminService.fetchTalleres();
     } catch (e) {

@@ -45,6 +45,23 @@ void main() {
     );
   });
 
+  test('la vista de mapa se rinde antes de montar GoogleMap sin API key', () {
+    // Regresion: durante semanas se desplego web sin GOOGLE_MAPS_API_KEY y el
+    // directorio pintaba un rectangulo gris mudo. El guardia tiene que estar
+    // antes del GoogleMap, no despues.
+    final guard = source.indexOf('isMapUnavailable(');
+    expect(
+      guard,
+      greaterThan(-1),
+      reason: 'la vista de mapa no comprueba si falta la API key',
+    );
+    expect(
+      guard,
+      lessThan(source.indexOf('GoogleMap(')),
+      reason: 'el guardia va antes de construir el GoogleMap',
+    );
+  });
+
   test('no importa responsive_framework', () {
     expect(source.contains('responsive_framework'), isFalse);
   });

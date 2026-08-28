@@ -319,6 +319,8 @@
   "wdFilterSpecialty": "Especialidad",
   "wdFilterRating": "Rating",
   "wdYourLocation": "Tu Ubicación",
+  "wdMapUnavailableTitle": "Mapa no disponible",
+  "wdMapUnavailableBody": "No se pudo cargar el mapa porque a esta versión de la app le falta la clave de Google Maps. Mientras tanto puedes ver los talleres en la vista de lista.",
   "wdWorkshop": "Taller",
   "wdGeneralMechanics": "Mecánica General",
   "wdMechanics": "Mecánica",

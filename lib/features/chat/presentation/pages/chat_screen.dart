@@ -485,7 +485,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               // muestran como texto atenuado) pasan
                               // semanticLabel: ChatBubble usa
                               // excludeSemantics: true cuando hay label, lo
-                              // que descarta TODO el subárbol semántico del
+                              // que descarta todo el subárbol semántico del
                               // hijo. Las tarjetas (reserva, cotización,
                               // review, historial, audio, imagen, vehículo)
                               // tienen sus propios controles interactivos

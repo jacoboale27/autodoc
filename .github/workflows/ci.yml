@@ -188,9 +188,7 @@ jobs:
             --dart-define=FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }} \
             --dart-define=FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }} \
             --dart-define=GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }} \
-            --dart-define=VEHICLE_IMAGE_API_KEY=${{ secrets.VEHICLE_IMAGE_API_KEY }} \
-            --dart-define=GOOGLE_CUSTOM_SEARCH_API_KEY=${{ secrets.GOOGLE_CUSTOM_SEARCH_API_KEY }} \
-            --dart-define=GOOGLE_CUSTOM_SEARCH_CX=${{ secrets.GOOGLE_CUSTOM_SEARCH_CX }}
+            --dart-define=VEHICLE_IMAGE_API_KEY=${{ secrets.VEHICLE_IMAGE_API_KEY }}
 
   # ─────────────────────────────────────────
   # Deploy to Staging (on merge to staging branch)
@@ -288,9 +286,7 @@ jobs:
             --dart-define=FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }} \
             --dart-define=FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }} \
             --dart-define=GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }} \
-            --dart-define=VEHICLE_IMAGE_API_KEY=${{ secrets.VEHICLE_IMAGE_API_KEY }} \
-            --dart-define=GOOGLE_CUSTOM_SEARCH_API_KEY=${{ secrets.GOOGLE_CUSTOM_SEARCH_API_KEY }} \
-            --dart-define=GOOGLE_CUSTOM_SEARCH_CX=${{ secrets.GOOGLE_CUSTOM_SEARCH_CX }}
+            --dart-define=VEHICLE_IMAGE_API_KEY=${{ secrets.VEHICLE_IMAGE_API_KEY }}
 
       - name: Install Cloud Functions dependencies
         # Mismo motivo que en deploy_production: sin functions/node_modules el CLI
@@ -432,9 +428,7 @@ jobs:
             --dart-define=FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }} \
             --dart-define=FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }} \
             --dart-define=GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }} \
-            --dart-define=VEHICLE_IMAGE_API_KEY=${{ secrets.VEHICLE_IMAGE_API_KEY }} \
-            --dart-define=GOOGLE_CUSTOM_SEARCH_API_KEY=${{ secrets.GOOGLE_CUSTOM_SEARCH_API_KEY }} \
-            --dart-define=GOOGLE_CUSTOM_SEARCH_CX=${{ secrets.GOOGLE_CUSTOM_SEARCH_CX }}
+            --dart-define=VEHICLE_IMAGE_API_KEY=${{ secrets.VEHICLE_IMAGE_API_KEY }}
 
       - name: Deploy Firestore Rules & Indexes to Production
         run: firebase deploy --only firestore --project ${{ secrets.FIREBASE_PROJECT_PROD }}
@@ -530,3 +524,218 @@ jobs:
           fi
           git tag "v$VERSION"
           git push origin "v$VERSION"
+
+  # ─────────────────────────────────────────
+  # Build APK firmado + publicar GitHub Release (solo main)
+  # ─────────────────────────────────────────
+  release_apk:
+    name: Build APK & Publish Release
+    runs-on: ubuntu-latest
+    # Va DESPUES del deploy, no en paralelo: asi el tag vSemVer ya existe cuando
+    # se crea la release, y un fallo firmando el APK nunca puede tumbar el
+    # despliegue de produccion, que es lo critico.
+    needs: deploy_production
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    permissions:
+      contents: write
+    steps:
+      # Firmar el APK necesita una keystore propia. Mientras no exista, este job
+      # se SALTA en vez de fallar: un job rojo permanente ensena a ignorar el
+      # rojo, y el resto del pipeline (incluido el deploy a produccion, que ya
+      # ha terminado a estas alturas) esta perfectamente sano sin el APK.
+      - name: Check signing configuration
+        id: firma
+        run: |
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]              && [ -n "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::APK no publicado: faltan los secretos de firma."
+            echo "ℹ️ Sin ANDROID_KEYSTORE_BASE64 / GOOGLE_SERVICES_JSON_BASE64."
+            echo "   Este job queda en verde a proposito; ver docs/RELEASE_APK.md."
+          fi
+
+      - name: Checkout code
+        if: steps.firma.outputs.ready == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        if: steps.firma.outputs.ready == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Setup Flutter
+        if: steps.firma.outputs.ready == 'true'
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install Flutter dependencies
+        if: steps.firma.outputs.ready == 'true'
+        run: flutter pub get
+
+      - name: Restore release keystore
+        if: steps.firma.outputs.ready == 'true'
+        # Sin keystore propia, Gradle cae a la clave de debug que el runner genera
+        # al vuelo: SHA-1 distinto en cada ejecucion, ninguno registrado en
+        # Firebase, y Google Sign-In muere con ApiException 10 en el dispositivo.
+        # Un APK asi parece correcto hasta que alguien intenta iniciar sesion, de
+        # modo que aqui se falla en voz alta en vez de publicar esa trampa.
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          MAPS_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY_ANDROID || secrets.GOOGLE_MAPS_API_KEY }}
+        run: |
+          faltan=""
+          [ -z "$KEYSTORE_B64" ]  && faltan="$faltan ANDROID_KEYSTORE_BASE64"
+          [ -z "$STORE_PASSWORD" ] && faltan="$faltan ANDROID_KEYSTORE_PASSWORD"
+          [ -z "$KEY_PASSWORD" ]  && faltan="$faltan ANDROID_KEY_PASSWORD"
+          [ -z "$KEY_ALIAS" ]     && faltan="$faltan ANDROID_KEY_ALIAS"
+          if [ -n "$faltan" ]; then
+            echo "❌ Faltan secretos para firmar el APK:$faltan"
+            echo "   Genera la keystore y registra su SHA-1 en Firebase Console"
+            echo "   (Project settings › Android app › Add fingerprint) antes de"
+            echo "   configurarlos. Ver docs/RELEASE_APK.md"
+            exit 1
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > android/autodoc-release.jks
+          cat > android/key.properties <<EOF
+          storeFile=autodoc-release.jks
+          storePassword=$STORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+          if [ -z "$MAPS_KEY" ]; then
+            echo "❌ Falta el secreto GOOGLE_MAPS_API_KEY (el manifest de Android lo necesita)"
+            exit 1
+          fi
+          # El SHA-1 se calcula de la keystore que se acaba de restaurar en vez
+          # de leerlo de otro secreto: asi la huella que la app anuncia en la
+          # cabecera X-Android-Cert es siempre, por construccion, la del
+          # certificado con el que este APK queda firmado. Un secreto aparte
+          # podria quedar desfasado al rotar la keystore, y Google devolveria
+          # 403 en las traducciones sin motivo aparente.
+          CERT_SHA1=$(keytool -list -v \
+            -keystore android/autodoc-release.jks \
+            -alias "$KEY_ALIAS" -storepass "$STORE_PASSWORD" \
+            | grep -m1 'SHA1:' | awk '{print $2}' | tr -d ':')
+          if [ ${#CERT_SHA1} -ne 40 ]; then
+            echo "❌ No se pudo extraer el SHA-1 de la keystore (se obtuvo: '$CERT_SHA1')"
+            exit 1
+          fi
+          echo "ANDROID_CERT_SHA1=$CERT_SHA1" >> "$GITHUB_ENV"
+          echo "✅ keystore restaurada (SHA-1 $CERT_SHA1)"
+
+      - name: Restore Firebase Android config
+        if: steps.firma.outputs.ready == 'true'
+        # android/app/google-services.json esta en .gitignore, asi que el runner
+        # no lo tiene. El plugin com.google.gms.google-services lo exige y aborta
+        # el build sin el. No es material secreto —va incrustado en cada APK que
+        # se distribuye— pero se respeta la decision del repo de no versionarlo y
+        # entra por secreto, igual que la keystore.
+        env:
+          GS_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          if [ -z "$GS_JSON_B64" ]; then
+            echo "❌ Falta el secreto GOOGLE_SERVICES_JSON_BASE64"
+            echo "   Generalo con: base64 -w0 android/app/google-services.json"
+            exit 1
+          fi
+          echo "$GS_JSON_B64" | base64 -d > android/app/google-services.json
+          # Sin cliente OAuth de Android (client_type 1) no hay huella SHA-1
+          # registrada, y Google Sign-In muere con ApiException 10 en el telefono
+          # aunque el APK se instale y arranque sin quejarse. Comprobarlo aqui
+          # cuesta un segundo y evita publicar una release inservible.
+          python3 - <<'EOF'
+          import json, sys
+          d = json.load(open('android/app/google-services.json'))
+          c = next((c for c in d['client']
+                    if c['client_info']['android_client_info']['package_name']
+                    == 'com.autodoc.app'), None)
+          if c is None:
+              sys.exit('ERROR: google-services.json no describe com.autodoc.app')
+          if not any(o['client_type'] == 1 for o in c.get('oauth_client', [])):
+              sys.exit('ERROR: com.autodoc.app no tiene huella SHA-1 registrada '
+                       'en Firebase; Google Sign-In fallaria con ApiException 10')
+          print('OK: google-services.json correcto y con huella SHA-1')
+          EOF
+
+      - name: Build release APK
+        if: steps.firma.outputs.ready == 'true'
+        # El APK usa GOOGLE_MAPS_API_KEY_ANDROID si existe, y si no cae a la key
+        # compartida. Las de Firebase nacen sin restringir, pero en cuanto se
+        # restrinjan —y hay que hacerlo: una key abierta dentro de un APK publico
+        # es cuota de terceros a tu cuenta— la de Android va atada a package +
+        # SHA-1 y la de web a referrer HTTP: la misma key no puede servir a las
+        # dos plataformas.
+        # GOOGLE_MAPS_API_KEY va como variable de entorno ademas de --dart-define:
+        # el lado Dart lo lee por dart-define, pero el manifestPlaceholder de
+        # AndroidManifest lo resuelve Gradle, que en CI no tiene .env que leer.
+        env:
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY_ANDROID || secrets.GOOGLE_MAPS_API_KEY }}
+        run: |
+          if [ -z "${{ secrets.FIREBASE_ANDROID_API_KEY }}" ] || [ -z "${{ secrets.FIREBASE_APP_ID_ANDROID }}" ]; then
+            echo "❌ Faltan FIREBASE_ANDROID_API_KEY o FIREBASE_APP_ID_ANDROID."
+            echo "   Sin ellos Firebase.initializeApp falla al arrancar la app."
+            exit 1
+          fi
+          flutter build apk --release \
+            --dart-define=FLAVOR=prod \
+            --dart-define=RECAPTCHA_SITE_KEY=${{ secrets.RECAPTCHA_SITE_KEY }} \
+            --dart-define=FIREBASE_ANDROID_API_KEY=${{ secrets.FIREBASE_ANDROID_API_KEY }} \
+            --dart-define=FIREBASE_APP_ID_ANDROID=${{ secrets.FIREBASE_APP_ID_ANDROID }} \
+            --dart-define=FIREBASE_MESSAGING_SENDER_ID=${{ secrets.FIREBASE_MESSAGING_SENDER_ID }} \
+            --dart-define=FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }} \
+            --dart-define=FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }} \
+            --dart-define=FIREBASE_DATABASE_URL=${{ secrets.FIREBASE_DATABASE_URL }} \
+            --dart-define=FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }} \
+            --dart-define=GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY_ANDROID || secrets.GOOGLE_MAPS_API_KEY }} \
+            --dart-define=ANDROID_CERT_SHA1=${{ env.ANDROID_CERT_SHA1 }} \
+            --dart-define=VEHICLE_IMAGE_API_KEY=${{ secrets.VEHICLE_IMAGE_API_KEY }}
+
+      - name: Verify APK signature
+        if: steps.firma.outputs.ready == 'true'
+        # apksigner dice con que certificado quedo firmado de verdad. Si aqui
+        # aparece "CN=Android Debug" es que key.properties no se aplico y el APK
+        # no sirve para iniciar sesion, aunque se instale sin problemas.
+        run: |
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          test -s "$APK" || { echo "❌ No se genero el APK"; exit 1; }
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          APKSIGNER=$(find "$SDK/build-tools" -name apksigner | sort -V | tail -1)
+          test -n "$APKSIGNER" || { echo "❌ apksigner no encontrado en $SDK"; exit 1; }
+          "$APKSIGNER" verify --print-certs "$APK" | tee /tmp/certs.txt
+          if grep -qi 'CN=Android Debug' /tmp/certs.txt; then
+            echo "❌ El APK quedo firmado con la clave de DEBUG, no con la de release"
+            exit 1
+          fi
+          echo "✅ APK firmado con la keystore de release ($(du -h "$APK" | cut -f1))"
+
+      - name: Publish GitHub Release
+        if: steps.firma.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}')
+          TAG="v$VERSION"
+          # El '+' del build number es valido en un tag de git pero se interpreta
+          # como espacio al descargar por URL, asi que el archivo lo evita.
+          ASSET="autodoc-$(echo "$VERSION" | sed 's/+/-build/').apk"
+          cp build/app/outputs/flutter-apk/app-release.apk "$ASSET"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "ℹ️ La release $TAG ya existe; se reemplaza el APK adjunto"
+            gh release upload "$TAG" "$ASSET" --clobber
+          else
+            gh release create "$TAG" "$ASSET" \
+              --title "AutoDoc $VERSION" \
+              --notes "APK de release firmado, construido automaticamente desde \`main\` (commit ${GITHUB_SHA:0:7}).
+
+          Instalacion: descarga el APK y permite \"instalar apps de origenes desconocidos\" en el dispositivo."
+          fi
+          echo "✅ Release $TAG publicada con $ASSET"

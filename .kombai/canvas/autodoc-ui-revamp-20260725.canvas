@@ -1051,7 +1051,7 @@
       "created": "2026-08-17T20:11:54.261846+00:00",
       "modified": "2026-08-17T21:02:29.666709+00:00",
       "id": "var_e9983f600901",
-      "viewportScrollY": 6
+      "viewportScrollY": 0
     },
     "var_1c1e0ddac970": {
       "type": "variant",
@@ -1105,7 +1105,7 @@
       "created": "2026-08-17T20:11:57.433076+00:00",
       "modified": "2026-08-17T20:40:21.847405+00:00",
       "id": "var_5ff7647d0c6f",
-      "viewportScrollY": 272
+      "viewportScrollY": 0
     },
     "var_3b2a8844d091": {
       "type": "variant",

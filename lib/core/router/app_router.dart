@@ -19,6 +19,8 @@ import 'package:autodoc/features/dashboard/presentation/pages/vehicle_profile_sc
 import 'package:autodoc/features/mechanic/presentation/pages/mechanic_dashboard_screen.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/vehicle_search_screen.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/workshop_settings_screen.dart';
+import 'package:autodoc/features/mechanic/presentation/pages/workshop_gallery_screen.dart';
+import 'package:autodoc/features/mechanic/presentation/pages/workshop_verification_screen.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/initiate_service_screen.dart';
@@ -33,6 +35,7 @@ import 'package:autodoc/features/mechanic/presentation/pages/catalogo_servicios_
 import 'package:autodoc/features/admin/presentation/pages/admin_dashboard_screen.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_usuarios_screen.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_talleres_screen.dart';
+import 'package:autodoc/features/admin/presentation/pages/admin_verificaciones_screen.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_resenias_screen.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_logs_screen.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_seed_screen.dart';
@@ -79,6 +82,16 @@ const _ownerRoutes = <String>{
   '/service_history',
 };
 
+/// Rutas por las que un taller AUN NO APROBADO puede moverse.
+///
+/// Subconjunto de [_mechanicRoutes]. Son las unicas que funcionan de verdad
+/// sin aprobacion; ver la nota en `resolveRedirect`.
+const _mechanicOnboardingRoutes = <String>{
+  '/mechanic_pending',
+  '/workshop_settings',
+  '/workshop_verification',
+};
+
 /// Routes exclusively for Mecánico/Taller role
 const _mechanicRoutes = <String>{
   '/mechanic_dashboard',
@@ -91,6 +104,8 @@ const _mechanicRoutes = <String>{
   '/mechanic_reparaciones',
   '/mechanic/empleados',
   '/mechanic/catalogo',
+  '/workshop_verification',
+  '/workshop_gallery',
 };
 
 /// Valores de `usuarios/{uid}.estado` que permiten a un mecanico/taller
@@ -110,6 +125,7 @@ const _adminRoutes = <String>{
   '/admin/dashboard',
   '/admin/usuarios',
   '/admin/talleres',
+  '/admin/verificaciones',
   '/admin/resenias',
   '/admin/logs',
   '/admin/seed',
@@ -253,7 +269,23 @@ String? resolveRedirect({
 
     final estado = userData.estado.trim().toLowerCase();
     if (role == 'mechanic' && !estadosMecanicoAprobado.contains(estado)) {
-      return currentPath == '/mechanic_pending' ? null : '/mechanic_pending';
+      // Un taller sin aprobar se queda dentro del onboarding, pero puede
+      // moverse por el: espera, editar su perfil y armar el expediente de
+      // verificacion.
+      //
+      // El resto sigue cerrado, y no por gusto: abrir el dashboard aqui no
+      // daria acceso a nada, daria una pantalla rota. Todas sus consultas
+      // pasan por isMecanico() en firestore.rules, que exige
+      // `estado in ['aprobado','activo']`, asi que cada una moriria en
+      // permission-denied. Las tres rutas de esta lista son justo las que SI
+      // funcionan sin aprobacion: /workshop_settings escribe en
+      // usuarios/{uid} (autorizado por isOwner, no por isMecanico) y
+      // /workshop_verification escribe en verificaciones/{uid}, cuyo bloque
+      // de reglas autoriza al propio taller precisamente porque todavia no
+      // esta aprobado.
+      return _matchesRouteSet(currentPath, _mechanicOnboardingRoutes)
+          ? null
+          : '/mechanic_pending';
     }
 
     if (currentPath.startsWith('/chat/') ||
@@ -537,6 +569,22 @@ GoRouter createAppRouter(
         ),
       ),
       GoRoute(
+        path: '/workshop_verification',
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const WorkshopVerificationScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/workshop_gallery',
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const WorkshopGalleryScreen(),
+        ),
+      ),
+      GoRoute(
         path: '/mechanic_reviews',
         pageBuilder: (context, state) => buildPageWithFadeThrough(
           context: context,
@@ -638,6 +686,14 @@ GoRouter createAppRouter(
           context: context,
           state: state,
           child: const AdminTalleresScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/verificaciones',
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const AdminVerificacionesScreen(),
         ),
       ),
       GoRoute(

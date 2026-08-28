@@ -152,15 +152,27 @@ class AdminService {
     );
   }
 
-  Future<void> rechazarTaller(String adminUid, String idTaller) async {
+  /// Rechaza un taller dejando constancia del porque.
+  ///
+  /// [motivo] es obligatorio y no puede quedar en blanco. Antes este metodo
+  /// escribia el literal 'Taller rechazado' y no guardaba ninguna razon en
+  /// ningun sitio, asi que el taller veia su cuenta rechazada sin saber que
+  /// corregir y reenviaba exactamente lo mismo: trabajo repetido para el
+  /// propio administrador. El motivo viaja a dos sitios distintos y con dos
+  /// audiencias distintas — a `admin_logs` como detalle de auditoria, y al
+  /// expediente de verificacion, que es lo unico que el taller puede leer.
+  Future<void> rechazarTaller(
+    String adminUid,
+    String idTaller, {
+    required String motivo,
+  }) async {
+    final limpio = motivo.trim();
+    if (limpio.isEmpty) {
+      throw ArgumentError('El rechazo de un taller exige un motivo.');
+    }
+
     await _repository.updateUsuarioEstado(idTaller, 'rechazado');
-    await _logAction(
-      adminUid,
-      'RECHAZAR_TALLER',
-      'Talleres',
-      idTaller,
-      'Taller rechazado',
-    );
+    await _logAction(adminUid, 'RECHAZAR_TALLER', 'Talleres', idTaller, limpio);
   }
 
   Future<void> suspenderTaller(

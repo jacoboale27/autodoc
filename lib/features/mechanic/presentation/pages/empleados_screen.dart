@@ -5,8 +5,11 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/widgets/app_dialog_content.dart';
 import 'package:autodoc/core/widgets/app_empty_state.dart';
+import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/widgets/app_grid.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
@@ -105,47 +108,44 @@ class _NuevoEmpleadoDialogState extends State<_NuevoEmpleadoDialog> {
     return AlertDialog(
       scrollable: true,
       title: const Text('Nuevo empleado'),
-      content: SizedBox(
-        width: 420,
+      content: AppDialogContent(
         child: Form(
           key: _formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextFormField(
+              AppTextField(
                 controller: _nombreController,
-                decoration: const InputDecoration(labelText: 'Nombre completo'),
+                label: 'Nombre completo',
                 validator: (v) =>
                     (v == null || v.trim().isEmpty) ? 'Requerido' : null,
               ),
               const SizedBox(height: 12),
-              TextFormField(
+              AppTextField(
                 controller: _correoController,
-                decoration: const InputDecoration(labelText: 'Correo'),
+                label: 'Correo',
                 keyboardType: TextInputType.emailAddress,
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return 'Requerido';
                   if (!v.contains('@')) return 'Correo inválido';
                   return null;
                 },
+                autofillHints: const [AutofillHints.email],
               ),
               const SizedBox(height: 12),
-              TextFormField(
+              AppTextField(
                 controller: _passwordController,
-                decoration: const InputDecoration(
-                  labelText: 'Contraseña temporal',
-                ),
+                label: 'Contraseña temporal',
                 obscureText: true,
+                obscureToggle: true,
                 validator: (v) =>
                     (v == null || v.length < 6) ? 'Mínimo 6 caracteres' : null,
               ),
               const SizedBox(height: 12),
-              TextFormField(
+              AppTextField(
                 controller: _telefonoController,
-                decoration: const InputDecoration(
-                  labelText: 'Teléfono (opcional)',
-                ),
+                label: 'Teléfono (opcional)',
                 keyboardType: TextInputType.phone,
               ),
               const SizedBox(height: 12),
@@ -170,19 +170,17 @@ class _NuevoEmpleadoDialogState extends State<_NuevoEmpleadoDialog> {
         ),
       ),
       actions: [
-        TextButton(
+        AppButton(
+          text: 'Cancelar',
+          type: AppButtonType.text,
+          size: AppButtonSize.small,
           onPressed: isLoading ? null : () => Navigator.pop(context),
-          child: const Text('Cancelar'),
         ),
-        FilledButton(
+        AppButton(
+          text: 'Crear',
+          size: AppButtonSize.small,
+          isLoading: isLoading,
           onPressed: isLoading ? null : _crear,
-          child: isLoading
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Crear'),
         ),
       ],
     );
@@ -230,13 +228,17 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
           'en el panel del taller.',
         ),
         actions: [
-          TextButton(
+          AppButton(
+            text: 'Cancelar',
+            type: AppButtonType.text,
+            size: AppButtonSize.small,
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
           ),
-          FilledButton(
+          AppButton(
+            text: 'Desactivar',
+            type: AppButtonType.danger,
+            size: AppButtonSize.small,
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Desactivar'),
           ),
         ],
       ),

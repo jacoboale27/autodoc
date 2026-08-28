@@ -319,6 +319,8 @@
   "wdFilterSpecialty": "Specialty",
   "wdFilterRating": "Rating",
   "wdYourLocation": "Your Location",
+  "wdMapUnavailableTitle": "Map unavailable",
+  "wdMapUnavailableBody": "The map could not be loaded because this build is missing its Google Maps key. In the meantime you can browse the workshops in list view.",
   "wdWorkshop": "Workshop",
   "wdGeneralMechanics": "General Mechanics",
   "wdMechanics": "Mechanics",

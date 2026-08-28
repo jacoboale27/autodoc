@@ -4,6 +4,11 @@ import 'package:intl/intl.dart';
 import '../providers/admin_provider.dart';
 import '../widgets/admin_sidebar.dart';
 import 'package:autodoc/core/models/admin_log_model.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/utils/csv_export_util.dart';
@@ -51,19 +56,19 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
     }
   }
 
-  Color _colorForAction(String accion) {
+  Color _colorForAction(String accion, AppColors colors) {
     if (accion.contains('SUSPENDER') ||
         accion.contains('RECHAZAR') ||
         accion.contains('ELIMINAR')) {
-      return Colors.red;
+      return colors.error;
     }
     if (accion.contains('REACTIVAR') || accion.contains('APROBAR')) {
-      return Colors.green;
+      return colors.success;
     }
     if (accion.contains('CAMBIAR')) {
-      return Colors.orange;
+      return colors.warning;
     }
-    return Colors.blue;
+    return colors.primary;
   }
 
   /// Applies current filters to the full list of logs
@@ -146,6 +151,7 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AdminProvider>();
+    final colors = context.appColors;
     final filtered = _filteredLogs(provider.logs);
     final df = DateFormat('dd/MM/yy');
 
@@ -220,13 +226,15 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
                                 Icon(
                                   Icons.history,
                                   size: Responsive.iconSize(context, 64),
-                                  color: Colors.grey[300],
+                                  color: colors.textSecondary.withValues(
+                                    alpha: 0.3,
+                                  ),
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
                                   context.l10n.adminNoRecentActivity,
-                                  style: TextStyle(
-                                    color: Colors.grey[500],
+                                  style: AppTextStyles.bodyLarge.copyWith(
+                                    color: colors.textSecondary,
                                     fontSize: Responsive.fontSize(context, 16),
                                   ),
                                 ),
@@ -242,120 +250,111 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
                                 const SizedBox(height: 8),
                             itemBuilder: (context, index) {
                               final log = filtered[index];
-                              final actionColor = _colorForAction(log.accion);
+                              final actionColor = _colorForAction(
+                                log.accion,
+                                colors,
+                              );
 
-                              return Card(
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  side: BorderSide(
-                                    color: Theme.of(
-                                      context,
-                                    ).dividerColor.withValues(alpha: 0.1),
-                                  ),
+                              return AppCard(
+                                margin: EdgeInsets.zero,
+                                padding: EdgeInsets.all(
+                                  Responsive.padding(context, 16),
                                 ),
-                                child: Padding(
-                                  padding: EdgeInsets.all(
-                                    Responsive.padding(context, 16),
-                                  ),
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Container(
-                                        padding: EdgeInsets.all(
-                                          Responsive.padding(context, 10),
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: actionColor.withValues(
-                                            alpha: 0.1,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                        child: Icon(
-                                          _iconForAction(log.accion),
-                                          color: actionColor,
-                                          size: 22,
-                                        ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(
+                                        Responsive.padding(context, 10),
                                       ),
-                                      const SizedBox(width: 14),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Expanded(
-                                                  child: Text(
-                                                    log.accion.replaceAll(
-                                                      '_',
-                                                      ' ',
-                                                    ),
-                                                    style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize:
-                                                          Responsive.fontSize(
-                                                            context,
-                                                            14,
-                                                          ),
-                                                      color: actionColor,
-                                                    ),
+                                      decoration: BoxDecoration(
+                                        color: actionColor.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Icon(
+                                        _iconForAction(log.accion),
+                                        color: actionColor,
+                                        size: 22,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  log.accion.replaceAll(
+                                                    '_',
+                                                    ' ',
                                                   ),
-                                                ),
-                                                Text(
-                                                  DateFormat(
-                                                    'dd/MM/yy HH:mm',
-                                                  ).format(log.fecha),
                                                   style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
                                                     fontSize:
                                                         Responsive.fontSize(
                                                           context,
-                                                          11,
+                                                          14,
                                                         ),
-                                                    color: Colors.grey[500],
+                                                    color: actionColor,
                                                   ),
                                                 ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              log.detalle,
-                                              style: TextStyle(
-                                                fontSize: Responsive.fontSize(
-                                                  context,
-                                                  13,
-                                                ),
-                                                color: Colors.grey[700],
                                               ),
-                                            ),
-                                            const SizedBox(height: 6),
-                                            Row(
-                                              children: [
-                                                _buildTag(
-                                                  Icons.category,
-                                                  log.modulo,
+                                              Text(
+                                                DateFormat(
+                                                  'dd/MM/yy HH:mm',
+                                                ).format(log.fecha),
+                                                style: AppTextStyles.labelSmall
+                                                    .copyWith(
+                                                      fontSize:
+                                                          Responsive.fontSize(
+                                                            context,
+                                                            11,
+                                                          ),
+                                                      color:
+                                                          colors.textSecondary,
+                                                    ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            log.detalle,
+                                            style: AppTextStyles.bodyMedium
+                                                .copyWith(
+                                                  fontSize: Responsive.fontSize(
+                                                    context,
+                                                    13,
+                                                  ),
+                                                  color: colors.textPrimary,
                                                 ),
-                                                const SizedBox(width: 8),
-                                                _buildTag(
-                                                  Icons.fingerprint,
-                                                  log.referenciaId.length > 12
-                                                      ? '${log.referenciaId.substring(0, 12)}...'
-                                                      : log.referenciaId,
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Row(
+                                            children: [
+                                              _buildTag(
+                                                Icons.category,
+                                                log.modulo,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              _buildTag(
+                                                Icons.fingerprint,
+                                                log.referenciaId.length > 12
+                                                    ? '${log.referenciaId.substring(0, 12)}...'
+                                                    : log.referenciaId,
+                                              ),
+                                            ],
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               );
                             },
@@ -425,15 +424,13 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.calendar_today, size: 16),
-                          label: Text(
-                            _filterDateFrom != null
-                                ? DateFormat(
-                                    'dd/MM/yy',
-                                  ).format(_filterDateFrom!)
-                                : 'Desde',
-                          ),
+                        child: AppButton(
+                          text: _filterDateFrom != null
+                              ? DateFormat('dd/MM/yy').format(_filterDateFrom!)
+                              : 'Desde',
+                          type: AppButtonType.outlined,
+                          size: AppButtonSize.small,
+                          icon: const Icon(Icons.calendar_today),
                           onPressed: () async {
                             await _pickDateFrom();
                             setSheetState(() {});
@@ -442,13 +439,13 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.calendar_today, size: 16),
-                          label: Text(
-                            _filterDateTo != null
-                                ? DateFormat('dd/MM/yy').format(_filterDateTo!)
-                                : 'Hasta',
-                          ),
+                        child: AppButton(
+                          text: _filterDateTo != null
+                              ? DateFormat('dd/MM/yy').format(_filterDateTo!)
+                              : 'Hasta',
+                          type: AppButtonType.outlined,
+                          size: AppButtonSize.small,
+                          icon: const Icon(Icons.calendar_today),
                           onPressed: () async {
                             await _pickDateTo();
                             setSheetState(() {});
@@ -461,7 +458,10 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton(
+                        child: AppButton(
+                          text: 'Limpiar',
+                          type: AppButtonType.outlined,
+                          size: AppButtonSize.small,
                           onPressed: () {
                             setState(() {
                               _filterType = 'Todos';
@@ -470,14 +470,14 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
                             });
                             Navigator.pop(ctx);
                           },
-                          child: const Text('Limpiar'),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: FilledButton(
+                        child: AppButton(
+                          text: 'Aplicar',
+                          size: AppButtonSize.small,
                           onPressed: () => Navigator.pop(ctx),
-                          child: const Text('Aplicar'),
                         ),
                       ),
                     ],
@@ -498,8 +498,8 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
         vertical: Responsive.padding(context, 3),
       ),
       decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
+        color: context.appColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -507,14 +507,14 @@ class _AdminLogsScreenState extends State<AdminLogsScreen> {
           Icon(
             icon,
             size: Responsive.iconSize(context, 12),
-            color: Colors.grey[600],
+            color: context.appColors.textSecondary,
           ),
           const SizedBox(width: 4),
           Text(
             text,
-            style: TextStyle(
+            style: AppTextStyles.labelSmall.copyWith(
               fontSize: Responsive.fontSize(context, 11),
-              color: Colors.grey[700],
+              color: context.appColors.textSecondary,
             ),
           ),
         ],

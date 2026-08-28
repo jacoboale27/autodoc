@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
+import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/app_card.dart';
 
 class MetricCard extends StatelessWidget {
   final String title;
@@ -17,20 +20,12 @@ class MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
+    final colors = context.appColors;
+    return AppCard(
+      margin: EdgeInsets.zero,
+      padding: EdgeInsets.zero,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         child: Stack(
           children: [
             Positioned(
@@ -43,7 +38,7 @@ class MetricCard extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(20.0),
+              padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -61,19 +56,15 @@ class MetricCard extends StatelessWidget {
                     children: [
                       Text(
                         value,
-                        style: GoogleFonts.inter(
+                        style: AppTextStyles.displaySmall.copyWith(
                           fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSurface,
+                          color: colors.textPrimary,
                         ),
                       ),
                       Text(
                         title,
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.6),
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: colors.textSecondary,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
