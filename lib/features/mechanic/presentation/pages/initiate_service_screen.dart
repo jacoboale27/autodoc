@@ -70,6 +70,11 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   /// registrado en "Reparaciones" cuando en realidad nunca se guardó nada.
   String? _reparacionError;
 
+  /// Controla el estado de carga del botón "Recibir vehículo" (independiente
+  /// de `_cargando`, que solo cubre la carga inicial del vehículo). Evita
+  /// dobles envíos mientras `_iniciarTicketReparacion` está en vuelo.
+  bool _recibiendo = false;
+
   bool get _isInvoicePdf =>
       _invoiceImage?.name.toLowerCase().endsWith('.pdf') ?? false;
 
@@ -172,13 +177,12 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     }
   }
 
-  /// El spinner de carga ('_cargando') se mantiene activo hasta que el
-  /// ticket de reparación termine de guardarse (o falle explícitamente):
-  /// antes se soltaba el spinner apenas llegaba el vehículo y el guardado
-  /// del ticket seguía en segundo plano sin feedback, así que si el
-  /// mecánico salía con la flecha de atrás antes de que esa llamada a
-  /// Firestore terminara, el vehículo nunca quedaba registrado en
-  /// "Reparaciones" y no había ninguna señal de que eso había pasado.
+  /// El spinner de carga ('_cargando') solo cubre encontrar el vehículo:
+  /// antes se quedaba activo hasta que el ticket Kanban de reparación
+  /// terminara de guardarse, porque este método lo creaba automáticamente al
+  /// llegar aquí. Ya no lo hace (ver comentario más abajo), así que suelta el
+  /// spinner en cuanto el vehículo está listo, sin esperar a ninguna
+  /// escritura en Firestore.
   Future<void> _onVehiculoListo() async {
     final vehiculo = _vehiculo!;
     _kmController.text = vehiculo.kilometrajeActual.toString();
@@ -210,22 +214,33 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           }
         });
 
-    await _iniciarTicketReparacion(vehiculo);
+    // NO se crea el ticket aquí. Hasta 2026-08-28 se creaba al montar la
+    // pantalla, así que teclear una placa en "Buscar Vehículo" ya metía el
+    // coche en el kanban Y mandaba un push al propietario ("Tu vehículo ya
+    // está en seguimiento") antes de que el taller confirmara nada. Un error
+    // de tecleo era además irreversible: el tablero solo ofrece "Avanzar".
+    // Ahora lo dispara el botón "Recibir vehículo".
+    if (mounted) {
+      setState(() => _cargando = false);
+    }
   }
 
-  /// Crea (o reutiliza) el ticket Kanban de reparación en cuanto el
-  /// mecánico recibe el vehículo. Se espera (`await`) desde
-  /// `_onVehiculoListo` antes de soltar el spinner de carga, así que la
-  /// pantalla no queda interactuable hasta que el ticket ya esté guardado
-  /// o el error quede visible en `_reparacionError` con opción de
-  /// reintentar.
+  /// Crea (o reutiliza) el ticket Kanban de reparación. A diferencia de
+  /// antes, ya no se dispara solo con cargar la pantalla: la llama el botón
+  /// "Recibir vehículo" (o "Reintentar" si la escritura falló), así que el
+  /// taller decide explícitamente cuándo el vehículo entra al tablero y se
+  /// notifica al propietario.
   Future<void> _iniciarTicketReparacion(VehicleModel vehiculo) async {
     final userSession = context.read<UserProfileProvider>();
     final tallerId = userSession.userData?.idTallerEfectivo ?? '';
     if (tallerId.isEmpty) {
-      if (mounted) setState(() => _cargando = false);
       return;
     }
+
+    setState(() {
+      _recibiendo = true;
+      _reparacionError = null;
+    });
 
     try {
       final reparacionProvider = context.read<ReparacionProvider>();
@@ -250,20 +265,20 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
         setState(() {
           _reparacionError =
               'No se pudo guardar el ticket de reparación de este vehículo.';
-          _cargando = false;
+          _recibiendo = false;
         });
         return;
       }
       setState(() {
         _idReparacion = idReparacion;
         _reparacionError = null;
-        _cargando = false;
+        _recibiendo = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _reparacionError = 'No se pudo guardar el ticket de reparación: $e';
-        _cargando = false;
+        _recibiendo = false;
       });
     }
   }
@@ -819,7 +834,19 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       );
     }
 
-    return const SizedBox.shrink();
+    // El taller todavía no confirmó nada: el ticket no existe y no hay error
+    // que reintentar. Antes de este fix, llegar aquí ya implicaba que el
+    // ticket estaba creado y el propietario notificado — ahora hace falta
+    // este botón explícito.
+    return AppButton(
+      text: 'Recibir vehículo',
+      type: AppButtonType.secondary,
+      icon: const Icon(Icons.garage_outlined),
+      isLoading: _recibiendo,
+      onPressed: _recibiendo
+          ? null
+          : () => _iniciarTicketReparacion(_vehiculo!),
+    );
   }
 
   Widget _buildMaterialesList(AppColors colors) {
