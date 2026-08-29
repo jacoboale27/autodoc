@@ -304,7 +304,14 @@ class GarageScreen extends StatelessWidget {
                     children: [
                       if (!vehicle.isPrimary &&
                           vehicle.idPropietario == currentUserId)
-                        AppButton(
+                        // Icono y no boton con texto: "Hacer Principal" mide
+                        // ~150 px y, junto al chevron de 40, no dejaba sitio
+                        // al Expanded del nombre. A 768 px el titulo caia a
+                        // dos letras.
+                        IconButton(
+                          tooltip: context.l10n.garageMakePrimary,
+                          icon: const Icon(Icons.star_border),
+                          color: colors.primary,
                           onPressed: provider.isLoading
                               ? null
                               : () => _setVehicleAsPrimary(
@@ -312,9 +319,6 @@ class GarageScreen extends StatelessWidget {
                                   vehicle,
                                   provider,
                                 ),
-                          text: context.l10n.garageMakePrimary,
-                          type: AppButtonType.text,
-                          icon: const Icon(Icons.star_border),
                         ),
                       Container(
                         width: 40,
