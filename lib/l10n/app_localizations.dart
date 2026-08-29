@@ -350,6 +350,12 @@ abstract class AppLocalizations {
   /// **'Open the link in the email and then press \"I already verified\" to continue.'**
   String get authOpenLinkThenVerify;
 
+  /// No description provided for @authOpenLinkOnRegister.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the link in the email to activate your account. You can continue in the meantime.'**
+  String get authOpenLinkOnRegister;
+
   /// No description provided for @authUnderstood.
   ///
   /// In en, this message translates to:

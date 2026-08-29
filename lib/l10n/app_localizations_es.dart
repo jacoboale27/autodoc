@@ -140,6 +140,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Abre el enlace del correo y luego pulsa \"Ya verifiqué\" para continuar.';
 
   @override
+  String get authOpenLinkOnRegister =>
+      'Abre el enlace del correo para activar tu cuenta. Puedes continuar mientras tanto.';
+
+  @override
   String get authUnderstood => 'Entendido';
 
   @override

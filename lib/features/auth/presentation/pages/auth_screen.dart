@@ -739,7 +739,9 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  context.l10n.authOpenLinkThenVerify,
+                  isRegistration
+                      ? context.l10n.authOpenLinkOnRegister
+                      : context.l10n.authOpenLinkThenVerify,
                   style: AppTextStyles.bodySmall.copyWith(
                     color: colors.textSecondary,
                   ),

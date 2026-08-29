@@ -45,6 +45,7 @@
   "authSentLinkTo": "We sent a verification link to:",
   "authAccountNotVerified": "Your account is not verified yet. Check the email sent to:",
   "authOpenLinkThenVerify": "Open the link in the email and then press \"I already verified\" to continue.",
+  "authOpenLinkOnRegister": "Open the link in the email to activate your account. You can continue in the meantime.",
   "authUnderstood": "Understood",
   "authContinueWithoutVerify": "Continue without verifying",
   "authResendEmail": "Resend email",
