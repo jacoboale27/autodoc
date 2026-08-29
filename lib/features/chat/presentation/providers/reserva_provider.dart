@@ -23,6 +23,33 @@ class ReservaProvider extends ChangeNotifier {
     super.dispose();
   }
 
+  /// Vacia el estado por usuario y cancela la suscripcion activa. Se llama
+  /// al cerrar sesion: sin cancelarla, sigue escuchando con el uid del
+  /// usuario saliente y repuebla la lista en cuanto llegue el siguiente
+  /// snapshot.
+  void clear() {
+    _reservasSub?.cancel();
+    _reservasSub = null;
+    _reservas = [];
+    _error = null;
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  /// Siembra [_reservas] directamente para tests.
+  ///
+  /// A diferencia de [ChatProvider]/[AlertProvider]/
+  /// [NotificationCenterProvider], [ReservaRepository] no acepta un
+  /// `FirebaseFirestore` inyectado (usa `FirebaseFirestore.instance`
+  /// directo), asi que no hay forma de sembrar este provider contra un
+  /// `FakeFirebaseFirestore` a traves de su API publica real sin ampliar el
+  /// alcance de esta tarea a esa clase.
+  @visibleForTesting
+  void debugSeedReservas(List<ReservaModel> reservas) {
+    _reservas = reservas;
+    notifyListeners();
+  }
+
   void inicializarReservasUsuario(String userId, {bool isMecanico = false}) {
     _isLoading = true;
     notifyListeners();

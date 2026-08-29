@@ -36,6 +36,8 @@ class _FakeNotificationCenterProvider extends ChangeNotifier
 
   @override
   Future<void> deleteNotification(String userId, String notificationId) async {}
+  @override
+  void clear() {}
 }
 
 void main() {

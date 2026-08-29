@@ -31,6 +31,17 @@ class AlertProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  /// Vacia el estado por usuario. Se llama al cerrar sesion: sin esto, el
+  /// siguiente usuario que entre sin recargar la pagina ve las alertas del
+  /// anterior.
+  void clear() {
+    _alerts = [];
+    _maintenanceTasks = [];
+    _error = null;
+    _isLoading = false;
+    notifyListeners();
+  }
+
   Future<void> fetchAlerts(String vehicleId, VehicleModel vehicle) async {
     _isLoading = true;
     _error = null;

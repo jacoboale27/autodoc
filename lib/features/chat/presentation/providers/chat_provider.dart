@@ -43,6 +43,22 @@ class ChatProvider extends ChangeNotifier {
     super.dispose();
   }
 
+  /// Vacia el estado por usuario y cancela las suscripciones activas. Se
+  /// llama al cerrar sesion: sin cancelar las suscripciones, siguen
+  /// escuchando con el uid del usuario saliente y repueblan las listas en
+  /// cuanto llegue el siguiente snapshot.
+  void clear() {
+    _conversacionesSub?.cancel();
+    _mensajesSub?.cancel();
+    _conversacionesSub = null;
+    _mensajesSub = null;
+    _conversaciones = [];
+    _mensajesActuales = [];
+    _error = null;
+    _isLoading = false;
+    notifyListeners();
+  }
+
   void inicializarConversaciones(String userId, bool isMecanico) {
     _conversacionesSub?.cancel();
     _error = null;

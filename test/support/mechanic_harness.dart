@@ -49,6 +49,8 @@ class FakeNotificationCenterProvider extends ChangeNotifier
   Future<void> markAllAsRead(String userId) async {}
   @override
   Future<void> deleteNotification(String userId, String notificationId) async {}
+  @override
+  void clear() {}
 }
 
 /// Doble de `UserProfileProvider` para los tests del panel de taller.

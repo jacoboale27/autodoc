@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:autodoc/core/providers/session_reset.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/router/app_router.dart'
     show estadosMecanicoAprobado;
@@ -62,7 +63,9 @@ class _MechanicPendingScreenState extends State<MechanicPendingScreen> {
   }
 
   Future<void> _signOut() async {
-    await context.read<AuthProvider>().signOut();
+    final authProvider = context.read<AuthProvider>();
+    clearSessionFrom(context);
+    await authProvider.signOut();
     if (mounted) context.go('/login');
   }
 
