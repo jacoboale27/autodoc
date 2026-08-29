@@ -4,14 +4,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_core_platform_interface/test.dart';
 
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/core/providers/notification_center_provider.dart';
 import 'package:autodoc/core/providers/session_reset.dart';
-import 'package:autodoc/features/chat/data/models/reserva_model.dart';
 import 'package:autodoc/features/chat/data/repositories/chat_repository.dart';
+import 'package:autodoc/features/chat/data/repositories/reserva_repository.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
@@ -41,17 +39,8 @@ Future<void> _waitUntil(
 }
 
 void main() {
-  // ReservaProvider() (sin inyeccion de repositorio disponible, ver mas
-  // abajo) toca FirebaseFirestore.instance en su propio inicializador de
-  // campo, lo que lanza sin una app de Firebase registrada.
-  setUpAll(() async {
-    TestWidgetsFlutterBinding.ensureInitialized();
-    setupFirebaseCoreMocks();
-  });
-
   test('clearUserScopedProviders vacia todos los providers con estado por '
       'usuario y cancela sus suscripciones activas', () async {
-    await Firebase.initializeApp();
     final fakeFirestore = FakeFirebaseFirestore();
 
     // --- AlertProvider: fetchAlerts es un fetch puntual (Future), no un
@@ -113,32 +102,24 @@ void main() {
     notis.initialize('owner-1');
     await _waitUntil(notis, () => notis.notifications.isNotEmpty);
 
-    // --- ReservaProvider: ReservaRepository (a diferencia de
-    // ChatRepository/AlertProvider/NotificationCenterProvider) no acepta
-    // un FirebaseFirestore inyectado: usa `FirebaseFirestore.instance`
-    // directo en su propio campo. No hay forma honesta de sembrarlo
-    // contra un fake sin ampliar el alcance de esta tarea a esa clase, asi
-    // que este es el unico de los cuatro providers que usa un seed
-    // @visibleForTesting en vez de su API publica real.
-    final reservas = ReservaProvider();
-    reservas.debugSeedReservas([
-      ReservaModel(
-        id: 'r1',
-        idConversacion: 'c1',
-        idPropietario: 'owner-1',
-        idMecanico: 'mec-1',
-        idVehiculo: 'v1',
-        idTaller: 'taller-1',
-        fechaHoraPropuesta: DateTime(2026, 1, 1),
-        tipoServicio: 'Cambio de aceite',
-        fechaCreacion: DateTime(2026, 1, 1),
-      ),
-    ]);
-    expect(
-      reservas.reservas,
-      isNotEmpty,
-      reason: 'sanity check: la siembra debe quedar cargada',
+    // --- ReservaProvider: mismo patron de stream, via ReservaRepository
+    // inyectado con el mismo FakeFirebaseFirestore. ---
+    await fakeFirestore.collection('reservas').add({
+      'id_conversacion': 'c1',
+      'id_propietario': 'owner-1',
+      'id_mecanico': 'mec-1',
+      'id_vehiculo': 'v1',
+      'id_taller': 'taller-1',
+      'fecha_hora_propuesta': Timestamp.fromDate(DateTime(2026, 1, 1)),
+      'tipo_servicio': 'Cambio de aceite',
+      'estado': 'pendiente',
+      'fecha_creacion': Timestamp.fromDate(DateTime(2026, 1, 1)),
+    });
+    final reservas = ReservaProvider(
+      repository: ReservaRepository(firestore: fakeFirestore),
     );
+    reservas.inicializarReservasUsuario('owner-1');
+    await _waitUntil(reservas, () => reservas.reservas.isNotEmpty);
 
     clearUserScopedProviders(
       alertas: alertas,
@@ -175,6 +156,17 @@ void main() {
           'leida': false,
           'timestamp': Timestamp.fromDate(DateTime(2026, 1, 2)),
         });
+    await fakeFirestore.collection('reservas').add({
+      'id_conversacion': 'c2',
+      'id_propietario': 'owner-1',
+      'id_mecanico': 'mec-1',
+      'id_vehiculo': 'v1',
+      'id_taller': 'taller-1',
+      'fecha_hora_propuesta': Timestamp.fromDate(DateTime(2026, 1, 2)),
+      'tipo_servicio': 'Otra reserva tras cerrar sesion',
+      'estado': 'pendiente',
+      'fecha_creacion': Timestamp.fromDate(DateTime(2026, 1, 2)),
+    });
     // Deja correr los microtasks pendientes: si la suscripcion seguia
     // viva, este es el momento en que repoblaria las listas.
     await Future<void>.delayed(const Duration(milliseconds: 50));
@@ -193,12 +185,17 @@ void main() {
           'clear() debe cancelar _subscription, no solo vaciar la lista '
           'una vez',
     );
+    expect(
+      reservas.reservas,
+      isEmpty,
+      reason:
+          'clear() debe cancelar _reservasSub, no solo vaciar la lista '
+          'una vez',
+    );
   });
 
-  test('clear() es seguro de llamar dos veces seguidas, incluso sin haber '
-      'iniciado ninguna suscripcion', () async {
-    await Firebase.initializeApp();
-
+  test('clear() es seguro de llamar dos veces seguidas, incluso con una '
+      'suscripcion realmente iniciada y luego con ninguna', () async {
     final alertas = AlertProvider(
       firestore: FakeFirebaseFirestore(),
       storage: MockFirebaseStorage(),
@@ -206,10 +203,31 @@ void main() {
     final chat = ChatProvider(
       repository: ChatRepository(firestore: FakeFirebaseFirestore()),
     );
-    final reservas = ReservaProvider();
     final notis = NotificationCenterProvider(
       firestore: FakeFirebaseFirestore(),
     );
+
+    // reservas SI arranca una suscripcion real antes de llamar clear(), a
+    // diferencia de los otros tres providers de este test (que aqui se
+    // prueban sin iniciar nada): confirma que cancelar dos veces una
+    // suscripcion que si llego a existir tampoco lanza.
+    final reservasFirestore = FakeFirebaseFirestore();
+    await reservasFirestore.collection('reservas').add({
+      'id_conversacion': 'c1',
+      'id_propietario': 'owner-1',
+      'id_mecanico': 'mec-1',
+      'id_vehiculo': 'v1',
+      'id_taller': 'taller-1',
+      'fecha_hora_propuesta': Timestamp.fromDate(DateTime(2026, 1, 1)),
+      'tipo_servicio': 'Cambio de aceite',
+      'estado': 'pendiente',
+      'fecha_creacion': Timestamp.fromDate(DateTime(2026, 1, 1)),
+    });
+    final reservas = ReservaProvider(
+      repository: ReservaRepository(firestore: reservasFirestore),
+    );
+    reservas.inicializarReservasUsuario('owner-1');
+    await _waitUntil(reservas, () => reservas.reservas.isNotEmpty);
 
     expect(() => alertas.clear(), returnsNormally);
     expect(() => alertas.clear(), returnsNormally);

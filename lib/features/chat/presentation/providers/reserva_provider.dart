@@ -4,7 +4,10 @@ import '../../data/models/reserva_model.dart';
 import '../../data/repositories/reserva_repository.dart';
 
 class ReservaProvider extends ChangeNotifier {
-  final ReservaRepository _reservaRepository = ReservaRepository();
+  ReservaProvider({ReservaRepository? repository})
+    : _reservaRepository = repository ?? ReservaRepository();
+
+  final ReservaRepository _reservaRepository;
 
   List<ReservaModel> _reservas = [];
   List<ReservaModel> get reservas => _reservas;
@@ -33,20 +36,6 @@ class ReservaProvider extends ChangeNotifier {
     _reservas = [];
     _error = null;
     _isLoading = false;
-    notifyListeners();
-  }
-
-  /// Siembra [_reservas] directamente para tests.
-  ///
-  /// A diferencia de [ChatProvider]/[AlertProvider]/
-  /// [NotificationCenterProvider], [ReservaRepository] no acepta un
-  /// `FirebaseFirestore` inyectado (usa `FirebaseFirestore.instance`
-  /// directo), asi que no hay forma de sembrar este provider contra un
-  /// `FakeFirebaseFirestore` a traves de su API publica real sin ampliar el
-  /// alcance de esta tarea a esa clase.
-  @visibleForTesting
-  void debugSeedReservas(List<ReservaModel> reservas) {
-    _reservas = reservas;
     notifyListeners();
   }
 
