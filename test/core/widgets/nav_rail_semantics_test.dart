@@ -23,7 +23,7 @@ void main() {
       for (final destination in AppNavDestinations.owner) {
         expect(
           find.bySemanticsLabel(RegExp(RegExp.escape(destination.label))),
-          findsWidgets,
+          findsOneWidget,
           reason:
               'a 768px no se encuentra ningun nodo semantico para '
               '"${destination.label}" (${destination.route}) en el '
@@ -46,7 +46,7 @@ void main() {
       for (final destination in AppNavDestinations.owner) {
         expect(
           find.bySemanticsLabel(RegExp(RegExp.escape(destination.label))),
-          findsWidgets,
+          findsOneWidget,
           reason:
               'a 1024px no se encuentra ningun nodo semantico para '
               '"${destination.label}" (${destination.route}) en el '

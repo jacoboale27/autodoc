@@ -86,7 +86,12 @@ class _OwnerShell extends StatelessWidget {
             // traga el arbol de accesibilidad de su hermano — aqui,
             // `AppNavRail`. Demostrado en rojo con
             // `nav_rail_semantics_test.dart` a 768px y 1024px antes de tocar
-            // esta rama.
+            // esta rama. La cobertura de que este wrap no aplana ni traga el
+            // contenido en sí (a estos mismos anchos) vive en
+            // `main_scaffold_large_content_semantics_test.dart`, validada
+            // con el mismo sanity-check: romper este wrap con
+            // `ExcludeSemantics` pone en rojo justo los casos de 768/1024 px
+            // de ese test, sin tocar el de 1440.
             Expanded(
               child: Semantics(
                 container: true,
