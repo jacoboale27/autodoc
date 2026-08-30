@@ -990,16 +990,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     data['calificacion_promedio'] as num? ?? 0.0;
                 final especialidad =
                     data['especialidad'] as String? ?? 'General';
-                return InkWell(
+                final nombre = data['nombre_completo'] as String? ?? 'Taller';
+                return _buildServiceTile(
+                  Icons.build,
+                  nombre,
+                  'Especialidad: $especialidad • ${calificacion.toStringAsFixed(1)}★',
+                  primary,
+                  isDark,
+                  subTextColor,
                   onTap: () => context.push('/workshop_directory'),
-                  child: _buildServiceTile(
-                    Icons.build,
-                    data['nombre_completo'] as String? ?? 'Taller',
-                    'Especialidad: $especialidad • ${calificacion.toStringAsFixed(1)}★',
-                    primary,
-                    isDark,
-                    subTextColor,
-                  ),
+                  semanticLabel: '$nombre, $especialidad',
                 );
               }).toList(),
             );
@@ -1015,11 +1015,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String subtitle,
     Color primary,
     bool isDark,
-    Color subTextColor,
-  ) {
+    Color subTextColor, {
+    required VoidCallback onTap,
+    required String semanticLabel,
+  }) {
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.base),
       margin: EdgeInsets.zero,
+      onTap: onTap,
+      semanticLabel: semanticLabel,
       child: Row(
         children: [
           Container(

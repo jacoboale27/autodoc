@@ -32,7 +32,13 @@ class AppCard extends StatefulWidget {
     this.margin = const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
     this.onTap,
     this.semanticLabel,
-  });
+  }) : assert(
+         onTap == null || semanticLabel != null,
+         'Una AppCard pulsable necesita semanticLabel: excludeSemantics borra '
+         'el texto de los hijos, asi que sin label queda un boton sin nombre. '
+         'En el garaje se anunciaban cinco "boton" seguidos, sin decir cual '
+         'es cual.',
+       );
 
   @override
   State<AppCard> createState() => _AppCardState();

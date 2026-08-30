@@ -159,6 +159,9 @@ class GarageScreen extends StatelessWidget {
         '/vehicle_profile/${vehicle.idVehiculo}',
         extra: vehicle,
       ),
+      semanticLabel:
+          '${vehicle.marca ?? ''} ${vehicle.modelo ?? ''}, placa '
+          '${vehicle.placa}',
       margin: EdgeInsets.zero,
       padding: EdgeInsets.zero,
       child: ClipRRect(

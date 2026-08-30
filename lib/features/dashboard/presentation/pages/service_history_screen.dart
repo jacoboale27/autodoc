@@ -570,6 +570,9 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
       margin: EdgeInsets.zero,
       padding: const EdgeInsets.all(16),
       onTap: () => _mostrarDetalleServicio(record, colors),
+      semanticLabel:
+          '${record.tipoServicio ?? 'Servicio'}, '
+          '${DateFormat('dd MMM yyyy').format(record.fecha)}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
