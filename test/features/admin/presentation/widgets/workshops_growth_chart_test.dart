@@ -94,9 +94,19 @@ void main() {
     },
   );
 
+  // Guardián de caracterización, NO test de regresión: a diferencia de las
+  // otras tres gráficas (LineChart), WorkshopsGrowthChart es un BarChart, y
+  // en fl_chart 1.2.0 las posiciones del eje X de un BarChart se calculan en
+  // `calculateGroupsX`/`barGroups[].x` (side_titles_widget.dart:147-159), no
+  // a través de `interval`/`iterateThroughAxis`. Por eso esta gráfica nunca
+  // exhibió el bug de QA ("Mar Mar Mar Mar Abr Abr") y este test ya pasaba
+  // en rojo, antes de fijar `interval: 1` en month_axis.dart. Se mantiene
+  // como guardián ante una futura regresión en ese cálculo de posiciones,
+  // no como prueba de que aquí se corrigió algo.
   testWidgets(
-    'WorkshopsGrowthChart no repite ninguna etiqueta de mes en el eje X '
-    '(hallazgo QA: "Mar Mar Mar Mar Abr Abr")',
+    'WorkshopsGrowthChart (BarChart): las posiciones de sus grupos vienen de '
+    'calculateGroupsX, no de interval, así que nunca repite etiquetas de mes '
+    '— guardián de caracterización, no regresión',
     (tester) async {
       final now = DateTime.now();
       final dataPorMes = <String, int>{};
