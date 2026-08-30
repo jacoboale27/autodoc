@@ -1202,4 +1202,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get upDeleteAccount => 'Delete account';
+
+  @override
+  String get topNavThemeTooltip => 'Toggle theme';
+
+  @override
+  String get topNavLanguageTooltip => 'Change language';
+
+  @override
+  String get topNavAccountTooltip => 'Your account';
 }

@@ -12,6 +12,7 @@ import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/widgets/main_scaffold.dart';
 import 'package:autodoc/core/widgets/app_top_nav_bar.dart';
 import 'package:autodoc/core/theme/app_theme.dart';
+import 'package:autodoc/l10n/app_localizations.dart';
 
 /// Doble del provider de perfil que solo fija el rol y el nombre.
 ///
@@ -115,7 +116,12 @@ Future<void> pumpShell(
   await tester.pumpWidget(
     MultiProvider(
       providers: _shellProviders(rol),
-      child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      child: MaterialApp.router(
+        theme: AppTheme.light,
+        routerConfig: router,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
     ),
   );
   await tester.pumpAndSettle();
@@ -159,6 +165,8 @@ Future<void> pumpTopNav(
       child: MaterialApp.router(
         theme: brightness == Brightness.dark ? AppTheme.dark : AppTheme.light,
         routerConfig: router,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
       ),
     ),
   );

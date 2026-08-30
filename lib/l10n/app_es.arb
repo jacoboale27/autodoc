@@ -644,5 +644,8 @@
   },
   "upCancel": "Cancelar",
   "upDelete": "Eliminar",
-  "upDeleteAccount": "Eliminar cuenta"
+  "upDeleteAccount": "Eliminar cuenta",
+  "topNavThemeTooltip": "Cambiar tema",
+  "topNavLanguageTooltip": "Cambiar idioma",
+  "topNavAccountTooltip": "Tu cuenta"
 }

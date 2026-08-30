@@ -4,11 +4,18 @@ import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/widgets/app_top_nav_bar.dart';
 import 'package:autodoc/core/widgets/navigation/app_nav_destination.dart';
+import 'package:autodoc/l10n/app_localizations.dart';
 
 import '../../support/shell_harness.dart';
 import '../../support/responsive_harness.dart';
 
 void main() {
+  // El tooltip del boton de tema vive en l10n (topNavThemeTooltip): no se
+  // puede asumir un literal fijo como 'Theme'.
+  String themeTooltipDe(WidgetTester tester) => AppLocalizations.of(
+    tester.element(find.byType(AppTopNavBar)),
+  )!.topNavThemeTooltip;
+
   testWidgets('no desborda a 1200px, el ancho mínimo donde se muestra', (
     tester,
   ) async {
@@ -96,7 +103,7 @@ void main() {
         reason: 'el estado de partida del bug es ThemeMode.system',
       );
 
-      await tester.tap(find.byTooltip('Theme'));
+      await tester.tap(find.byTooltip(themeTooltipDe(tester)));
       await tester.pumpAndSettle();
 
       expect(
@@ -117,7 +124,7 @@ void main() {
 
       await pumpTopNav(tester, width: 1440);
 
-      await tester.tap(find.byTooltip('Theme'));
+      await tester.tap(find.byTooltip(themeTooltipDe(tester)));
       await tester.pumpAndSettle();
 
       expect(themeProviderDe(tester).themeMode, ThemeMode.dark);

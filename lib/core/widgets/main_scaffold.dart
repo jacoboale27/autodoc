@@ -87,8 +87,33 @@ class _OwnerShell extends StatelessWidget {
       WindowClass.large => Scaffold(
         body: Column(
           children: [
-            const AppTopNavBar(),
-            Expanded(child: child),
+            // La hipotesis original era que a `AppTopNavBar` le faltaba un
+            // limite semantico explicito. Verificado con un repro minimo
+            // (Column con un hijo etiquetado junto a un `Expanded` que
+            // envuelve el `Navigator` anidado de la `ShellRoute`): el
+            // problema NO es que a la barra le falte el envoltorio, es que
+            // el `Navigator` anidado, al no tener su propio limite semantico
+            // explicito, absorbe el arbol de accesibilidad de SU HERMANO —
+            // sin importar cual sea ese hermano. Envolver solo la barra no
+            // alcanza; hay que darle tambien al lado del `Navigator` su
+            // propio `Semantics(container: true, explicitChildNodes: true)`
+            // para que deje de "tragarse" el subarbol de la barra. Sin
+            // ninguno de los dos, a 1440 px el arbol de /dashboard tenia 34
+            // nodos y todos eran de contenido: la navegacion principal era
+            // inalcanzable con teclado y con lector de pantalla, y los tests
+            // E2E tenian que ir por coordenadas.
+            Semantics(
+              container: true,
+              explicitChildNodes: true,
+              child: const AppTopNavBar(),
+            ),
+            Expanded(
+              child: Semantics(
+                container: true,
+                explicitChildNodes: true,
+                child: child,
+              ),
+            ),
           ],
         ),
       ),

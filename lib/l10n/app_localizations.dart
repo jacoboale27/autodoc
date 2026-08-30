@@ -2305,6 +2305,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete account'**
   String get upDeleteAccount;
+
+  /// No description provided for @topNavThemeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle theme'**
+  String get topNavThemeTooltip;
+
+  /// No description provided for @topNavLanguageTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Change language'**
+  String get topNavLanguageTooltip;
+
+  /// No description provided for @topNavAccountTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account'**
+  String get topNavAccountTooltip;
 }
 
 class _AppLocalizationsDelegate
