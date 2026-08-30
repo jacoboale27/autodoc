@@ -229,7 +229,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       crossAxisSpacing: 20,
       mainAxisSpacing: 20,
       shrinkWrap: true,
-      childAspectRatio: 1.6,
+      childAspectRatio: 2.1,
       physics: const NeverScrollableScrollPhysics(),
       children: [
         MetricCard(
