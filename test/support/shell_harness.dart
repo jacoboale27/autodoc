@@ -84,11 +84,19 @@ Future<void> pumpShell(
   required double width,
   required String rol,
   String location = '/dashboard',
+  // Permite a un test inyectar contenido real (con su propia semantica) en
+  // el `child` de la `ShellRoute`, en vez del `Text` de relleno por
+  // defecto. Lo usa `main_scaffold_large_content_semantics_test.dart` para
+  // comprobar que el limite semantico explicito que envuelve `child` en la
+  // rama `WindowClass.large` no aplana ni traga el contenido real.
+  Widget Function(String path)? bodyBuilder,
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = Size(width, 900);
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
+
+  final buildBody = bodyBuilder ?? (path) => Center(child: Text('body $path'));
 
   final router = GoRouter(
     initialLocation: location,
@@ -103,10 +111,7 @@ Future<void> pumpShell(
             '/workshop_directory',
             '/user_profile',
           ])
-            GoRoute(
-              path: path,
-              builder: (context, state) => Center(child: Text('body $path')),
-            ),
+            GoRoute(path: path, builder: (context, state) => buildBody(path)),
         ],
       ),
     ],
