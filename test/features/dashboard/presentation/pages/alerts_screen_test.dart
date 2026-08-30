@@ -54,12 +54,13 @@ class _FakeAlertProvider extends AlertProvider {
 }
 
 /// Reproduce el hallazgo QA §16: el provider trae mezcladas, sin filtrar,
-/// las tareas/alertas de dos vehiculos distintos (`fetchAlertsForVehicles`
-/// acumula alertas de todos los vehiculos del dueño; `maintenanceTasks`
-/// se queda con las del ultimo vehiculo procesado -- ver el docstring de
-/// `fetchAlertsForVehicles` en alert_provider.dart). /alerts debe filtrar
-/// por el vehiculo seleccionado al pintar, no confiar en que el provider ya
-/// venga filtrado.
+/// las tareas/alertas de dos vehiculos distintos. Es exactamente el estado
+/// que produce `fetchAlertsForVehicles`, que FUSIONA tanto `alerts` como
+/// `maintenanceTasks` de todos los vehiculos del dueño (ver su docstring en
+/// alert_provider.dart): por eso esta fixture tiene a la vez una tarea de
+/// 'v-otro' y una de 'v0'. /alerts debe filtrar por el vehiculo
+/// seleccionado al pintar, no confiar en que el provider ya venga
+/// filtrado.
 class _MultiVehicleFakeAlertProvider extends AlertProvider {
   _MultiVehicleFakeAlertProvider()
     : super(firestore: FakeFirebaseFirestore(), storage: MockFirebaseStorage());

@@ -209,14 +209,13 @@ class _AlertsScreenState extends State<AlertsScreen> {
     Color subTextColor,
     Color cardColor,
   ) {
-    // `provider.maintenanceTasks`/`provider.alerts` pueden traer datos de
-    // OTRO vehiculo mezclados (fetchAlertsForVehicles acumula alertas de
-    // todos los vehiculos del dueño para el dashboard, y deja
-    // maintenanceTasks con las del ultimo vehiculo procesado; ver su
-    // docstring en alert_provider.dart). Sin este filtro, una tarea de
-    // otro vehiculo se graduaba contra el odometro del seleccionado y
-    // aparecia a la vez como alerta critica (la real, de otro vehiculo) y
-    // como sugerencia ÓPTIMA (mal graduada aqui) -- el hallazgo QA §16.
+    // `provider.maintenanceTasks`/`provider.alerts` traen datos de TODOS
+    // los vehiculos del dueño mezclados (fetchAlertsForVehicles fusiona
+    // ambas listas para el dashboard; ver su docstring en
+    // alert_provider.dart). Sin este filtro, una tarea de otro vehiculo se
+    // graduaba contra el odometro del seleccionado y aparecia a la vez como
+    // alerta critica (la real, de otro vehiculo) y como sugerencia ÓPTIMA
+    // (mal graduada aqui) -- el hallazgo QA §16.
     final tasksForVehicle = provider.maintenanceTasks
         .where((t) => t.vehicleId == vehicleId)
         .toList();

@@ -2,17 +2,16 @@
 //
 // Mismo mecanismo del hallazgo QA §16, vivo en otra pantalla: el semaforo
 // de mantenimiento del dashboard (_buildMaintenanceSemaphore) gradua
-// `provider.maintenanceTasks` -que tras fetchAlertsForVehicles se queda con
-// las tareas del ULTIMO vehiculo procesado, no las del vehiculo seleccionado
-// (ver el docstring de fetchAlertsForVehicles en alert_provider.dart)-
-// contra el odometro del vehiculo SELECCIONADO. Si esas tareas pertenecen a
-// otro vehiculo, el semaforo miente sobre el estado del vehiculo que el
-// usuario tiene delante.
+// `provider.maintenanceTasks` contra el odometro del vehiculo SELECCIONADO.
+// Si esas tareas pertenecen a otro vehiculo, el semaforo miente sobre el
+// estado del vehiculo que el usuario tiene delante.
 //
-// El bug depende del ORDEN: si el vehiculo seleccionado resulta ser el
-// ultimo procesado, no se manifiesta. Este test fuerza que NO lo sea: el
-// AlertProvider fake solo conoce tareas de 'v-otro', nunca de 'v0'
-// (seleccionado).
+// Desde que `fetchAlertsForVehicles` FUSIONA las tareas de todos los
+// vehiculos, `maintenanceTasks` trae las de todos mezcladas y el filtro por
+// `vehicleId` del semaforo es lo unico que evita graduar una tarea ajena.
+// Aqui se cubren los dos lados del contrato:
+//   1. una tarea de OTRO vehiculo no decide el semaforo del seleccionado;
+//   2. una tarea PROPIA si lo pinta, y con el estado correcto.
 
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -34,26 +33,41 @@ import '../../../../support/responsive_harness.dart';
 import '../../../../support/shell_harness.dart';
 import '../../../../support/vehicle_fixtures.dart';
 
-/// El provider solo conoce una tarea de 'v-otro' -nunca de 'v0', el
-/// vehiculo seleccionado en este test-, igual que le pasaria de verdad a
-/// `_maintenanceTasks` si 'v-otro' fue el ultimo vehiculo procesado por
-/// `fetchAlertsForVehicles`.
-class _OtherVehicleTasksAlertProvider extends AlertProvider {
-  _OtherVehicleTasksAlertProvider()
+/// Tarea de OTRO vehiculo ('v-otro'), presente en la lista fusionada que
+/// deja `fetchAlertsForVehicles`. Graduada contra el odometro de 'v0'
+/// (6000 km: ultimo_km 100 + frecuencia 5000 -> kmRestantes < 0) daria
+/// CRITICO; graduada contra su propio vehiculo seguiria optima.
+final _tareaDeOtroVehiculo = MaintenanceTask(
+  id: 't-otro',
+  vehicleId: 'v-otro',
+  nombre: 'Bujías',
+  ultimoKm: 100,
+  fechaUltimoServicio: DateTime.now(),
+  frecuenciaKm: 5000,
+  frecuenciaMeses: 24,
+);
+
+/// Tarea PROPIA de 'v0' (6000 km): ultimo_km 5900 -> kmRestantes 4900 y
+/// dos años de margen temporal -> OPTIMO.
+final _tareaPropia = MaintenanceTask(
+  id: 't-propia',
+  vehicleId: 'v0',
+  nombre: 'Cambio de Aceite',
+  ultimoKm: 5900,
+  fechaUltimoServicio: DateTime.now(),
+  frecuenciaKm: 5000,
+  frecuenciaMeses: 24,
+);
+
+/// AlertProvider con una lista fija de tareas, sin tocar Firestore.
+class _FixedTasksAlertProvider extends AlertProvider {
+  _FixedTasksAlertProvider(this._tasks)
     : super(firestore: FakeFirebaseFirestore(), storage: MockFirebaseStorage());
 
+  final List<MaintenanceTask> _tasks;
+
   @override
-  List<MaintenanceTask> get maintenanceTasks => [
-    MaintenanceTask(
-      id: 't-otro',
-      vehicleId: 'v-otro',
-      nombre: 'Bujías',
-      ultimoKm: 100,
-      fechaUltimoServicio: DateTime.now(),
-      frecuenciaKm: 5000,
-      frecuenciaMeses: 24,
-    ),
-  ];
+  List<MaintenanceTask> get maintenanceTasks => _tasks;
 
   @override
   List<AlertModel> get activeAlerts => [];
@@ -62,7 +76,10 @@ class _OtherVehicleTasksAlertProvider extends AlertProvider {
   bool get isLoading => false;
 }
 
-Future<void> pumpScreen(WidgetTester tester) async {
+Future<void> pumpScreen(
+  WidgetTester tester,
+  List<MaintenanceTask> tasks,
+) async {
   await Firebase.initializeApp();
   await pumpAtWidth(
     tester,
@@ -86,7 +103,7 @@ Future<void> pumpScreen(WidgetTester tester) async {
           ]),
         ),
         ChangeNotifierProvider<AlertProvider>(
-          create: (_) => _OtherVehicleTasksAlertProvider(),
+          create: (_) => _FixedTasksAlertProvider(tasks),
         ),
         ChangeNotifierProvider<UserProfileProvider>.value(
           value: FakeProfileProvider('Propietario'),
@@ -111,7 +128,7 @@ void main() {
     'el semaforo no gradua una tarea de otro vehiculo contra el odometro '
     'del vehiculo seleccionado',
     (tester) async {
-      await pumpScreen(tester);
+      await pumpScreen(tester, [_tareaDeOtroVehiculo]);
 
       final element = tester.element(find.byType(DashboardScreen));
       final l10n = AppLocalizations.of(element)!;
@@ -126,6 +143,29 @@ void main() {
             'una tarea de otro vehiculo no puede decidir el semaforo del '
             'vehiculo seleccionado',
       );
+    },
+  );
+
+  testWidgets(
+    'el semaforo si se pinta, y con el estado correcto, cuando el vehiculo '
+    'seleccionado tiene tareas propias entre las de otros vehiculos',
+    (tester) async {
+      // Estado realista tras la fusion de fetchAlertsForVehicles: tareas de
+      // varios vehiculos en la misma lista.
+      await pumpScreen(tester, [_tareaDeOtroVehiculo, _tareaPropia]);
+
+      final element = tester.element(find.byType(DashboardScreen));
+      final l10n = AppLocalizations.of(element)!;
+
+      // El filtro no puede apagar el semaforo: 'v0' tiene tarea propia.
+      expect(
+        find.text(l10n.dashMaintStatusLabel),
+        findsOneWidget,
+        reason: 'el semaforo debe seguir visible si el vehiculo tiene tareas',
+      );
+      // Y el estado sale de SU tarea (OPTIMO), no de la ajena (CRITICO).
+      expect(find.text(l10n.dashMaintOptimal), findsOneWidget);
+      expect(find.text(l10n.dashMaintCritical), findsNothing);
     },
   );
 }
