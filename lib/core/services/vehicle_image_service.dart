@@ -131,13 +131,15 @@ class VehicleImageService {
     String color,
   ) async {
     // La key entra por --dart-define (String.fromEnvironment se resuelve en
-    // COMPILACION, no en ejecucion): si se arranca sin
-    // `--dart-define-from-file=.env` vale '' y SearchAPI responde 401. Sin
-    // este aviso el sintoma es indistinguible de "no hay resultados".
+    // COMPILACION, no en ejecucion): si VEHICLE_IMAGE_API_KEY esta vacia en
+    // el .env con el que se compilo, llega '' aunque el flag
+    // --dart-define-from-file si se haya usado. Sin este aviso el sintoma es
+    // indistinguible de "no hay resultados".
     if (_apiKey.isEmpty) {
       debugPrint(
-        '[SearchAPI.io] VEHICLE_IMAGE_API_KEY vacia: la app se compilo sin '
-        '--dart-define-from-file=.env. No se buscara imagen.',
+        '[SearchAPI.io] VEHICLE_IMAGE_API_KEY llega vacia: revisa que la '
+        'variable tenga VALOR en el .env con el que se compilo (no solo que '
+        'exista la linea). No se buscara imagen.',
       );
       return null;
     }
