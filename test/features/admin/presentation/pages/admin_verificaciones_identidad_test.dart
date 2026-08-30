@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 import 'package:autodoc/core/providers/auth_session_provider.dart';
+import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_theme.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_verificaciones_screen.dart';
@@ -112,7 +113,11 @@ void main() {
   }) => firestore.collection('talleres').doc(uid).set({
     'nombre_completo': nombre,
     'especialidad': ?especialidad,
-    'estado': 'listo_para_revision',
+    // Estado de cuenta valido (`AppEstadoCuenta.aprobados`), no un estado de
+    // verificacion: `talleres/{uid}` es la proyeccion publica del perfil, no
+    // el expediente, y `getWorkshopById` no filtra por esto, pero sembrar un
+    // valor que no es un estado de cuenta real es enganoso igualmente.
+    'estado': 'aprobado',
   });
 
   testWidgets('la tarjeta muestra el nombre del taller, no solo su uid', (
@@ -133,6 +138,26 @@ void main() {
       find.text(uid),
       findsNothing,
       reason: 'el uid crudo no le dice al admin a quien esta aprobando',
+    );
+
+    // El uid sigue siendo trazable, pero como dato subordinado: "ID: $uid"
+    // en vez del uid aislado (por eso el `find.text(uid)` de arriba no lo
+    // encuentra), en un estilo secundario y monoespaciado, no como el titulo.
+    // Esto guarda la deviacion B: si esta linea se borrara, el test de arriba
+    // seguiria en verde sin esta asercion.
+    final colors = AppTheme.light.extension<AppColors>()!;
+    final lineaId = tester.widget<Text>(find.text('ID: $uid'));
+    expect(
+      lineaId.style?.fontFamily,
+      'monospace',
+      reason: 'el uid debe verse monoespaciado, segun el encargo',
+    );
+    expect(
+      lineaId.style?.color,
+      colors.textSecondary,
+      reason:
+          'el uid es informacion secundaria: no puede llevar el mismo '
+          'color que el nombre del taller',
     );
   });
 
@@ -167,6 +192,25 @@ void main() {
         AppButtonType.text,
         reason:
             'la destructiva no puede tener el mismo peso visual que aprobar',
+      );
+
+      // AppButtonType.text por si solo pinta en colors.primary (ver
+      // AppButton._palette): sin el Theme(...) que sobreescribe la
+      // extension AppColors para ese subarbol, "Rechazar" se veria del
+      // mismo color que cualquier accion de texto neutra, no como una
+      // destructiva. Esto es justo lo que la revision de QA senalo: nada
+      // fallaba si alguien quitaba ese wrapper.
+      final colors = AppTheme.light.extension<AppColors>()!;
+      final textoRechazar = tester.widget<Text>(
+        find.descendant(
+          of: find.widgetWithText(AppButton, 'Rechazar'),
+          matching: find.text('Rechazar'),
+        ),
+      );
+      expect(
+        textoRechazar.style?.color,
+        colors.error,
+        reason: 'rechazar debe leerse como destructivo, aunque sea de texto',
       );
     },
   );

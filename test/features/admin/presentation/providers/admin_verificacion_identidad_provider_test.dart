@@ -1,4 +1,6 @@
 // test/features/admin/presentation/providers/admin_verificacion_identidad_provider_test.dart
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -33,6 +35,33 @@ class _WorkshopServiceContador extends WorkshopService {
     }
     enVuelo--;
     return perfiles[id];
+  }
+}
+
+/// Deja cada resolucion "colgada" hasta que el test decide completarla, para
+/// poder forzar deliberadamente una segunda reemision del stream MIENTRAS la
+/// primera resolucion de un uid sigue en vuelo (el escenario real: Firestore
+/// reemite dos veces al suscribirse, cache local y luego servidor).
+class _WorkshopServiceControlable extends WorkshopService {
+  final List<String> llamadas = [];
+  final Map<String, Completer<UserModel?>> _pendientes = {};
+
+  _WorkshopServiceControlable() : super(firestore: FakeFirebaseFirestore());
+
+  @override
+  Future<UserModel?> getWorkshopById(String id) {
+    llamadas.add(id);
+    final completer = Completer<UserModel?>();
+    _pendientes[id] = completer;
+    return completer.future;
+  }
+
+  void completar(String id, UserModel? perfil) {
+    _pendientes.remove(id)!.complete(perfil);
+  }
+
+  void fallar(String id, Object error) {
+    _pendientes.remove(id)!.completeError(error);
   }
 }
 
@@ -180,6 +209,88 @@ void main() {
       );
       expect(provider.identidadDe('a')!.nombreCompleto, 'Taller A');
       expect(provider.identidadDe('b')!.nombreCompleto, 'Taller B');
+    },
+  );
+
+  test('un uid en vuelo no se vuelve a pedir si el stream reemite antes de que '
+      'la primera resolucion termine', () async {
+    await sembrar('a', 'listo_para_revision');
+    final workshopService = _WorkshopServiceControlable();
+    final provider = AdminVerificacionProvider(
+      service: service,
+      workshopService: workshopService,
+    );
+
+    provider.escuchar();
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    // La resolucion de 'a' esta en vuelo (el completer no se ha resuelto
+    // todavia): esto es justo la ventana que una segunda emision (cache +
+    // servidor, o cualquier reemision no relacionada) puede pisar.
+    expect(workshopService.llamadas, ['a']);
+
+    await firestore.collection('verificaciones').doc('a').update({
+      'fecha_envio': Timestamp.fromDate(DateTime.utc(2026, 3, 3)),
+    });
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      workshopService.llamadas,
+      ['a'],
+      reason:
+          '"a" seguia en vuelo cuando el stream reemitio; no debia '
+          'volver a pedirse una segunda vez',
+    );
+
+    workshopService.completar('a', taller('a', 'Taller A'));
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(provider.identidadDe('a')!.nombreCompleto, 'Taller A');
+  });
+
+  test(
+    'un fallo al resolver no bloquea reintentos futuros para ese uid',
+    () async {
+      await sembrar('a', 'listo_para_revision');
+      final workshopService = _WorkshopServiceControlable();
+      final provider = AdminVerificacionProvider(
+        service: service,
+        workshopService: workshopService,
+      );
+
+      provider.escuchar();
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      expect(workshopService.llamadas, ['a']);
+
+      workshopService.fallar('a', Exception('boom'));
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        provider.identidadDe('a'),
+        isNull,
+        reason: 'un fallo no debe dejar una entrada falsa en el cache',
+      );
+
+      // El stream reemite; como el intento anterior fallo (y salio de
+      // "en vuelo" en el finally), 'a' debe poder pedirse de nuevo.
+      await firestore.collection('verificaciones').doc('a').update({
+        'fecha_envio': Timestamp.fromDate(DateTime.utc(2026, 3, 4)),
+      });
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(workshopService.llamadas, ['a', 'a']);
+
+      workshopService.completar('a', taller('a', 'Taller A'));
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(provider.identidadDe('a')!.nombreCompleto, 'Taller A');
     },
   );
 }
