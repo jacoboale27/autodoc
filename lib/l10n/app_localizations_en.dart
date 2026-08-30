@@ -1052,6 +1052,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String adminVerificacionTallerId(String uid) {
+    return 'ID: $uid';
+  }
+
+  @override
   String chatOpeningSection(String label) {
     return 'Opening $label section...';
   }

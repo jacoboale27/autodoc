@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/models/verificacion_taller_model.dart';
+import 'package:autodoc/features/dashboard/data/services/workshop_service.dart';
 import 'package:autodoc/features/mechanic/data/services/verificacion_service.dart';
 
 /// Bandeja de expedientes de verificación para el administrador.
@@ -20,9 +22,13 @@ import 'package:autodoc/features/mechanic/data/services/verificacion_service.dar
 /// retira nada.
 class AdminVerificacionProvider extends ChangeNotifier {
   final VerificacionService _service;
+  final WorkshopService _workshopService;
 
-  AdminVerificacionProvider({VerificacionService? service})
-    : _service = service ?? VerificacionService();
+  AdminVerificacionProvider({
+    VerificacionService? service,
+    WorkshopService? workshopService,
+  }) : _service = service ?? VerificacionService(),
+       _workshopService = workshopService ?? WorkshopService();
 
   StreamSubscription<List<VerificacionTallerModel>>? _suscripcion;
 
@@ -31,6 +37,20 @@ class AdminVerificacionProvider extends ChangeNotifier {
 
   bool _cargando = true;
   bool get cargando => _cargando;
+
+  /// Perfil publico (`talleres/{uid}`) de cada taller con expediente en la
+  /// bandeja, cacheado por uid.
+  ///
+  /// Hasta 2026-08-28 la pantalla identificaba la solicitud unicamente por el
+  /// uid crudo y el administrador aprobaba o rechazaba a ciegas. El nombre y
+  /// la especialidad viven fuera de [VerificacionTallerModel] a proposito
+  /// (ver el doc del propio modelo): por eso se resuelven aqui, en un cache
+  /// aparte, en vez de mutar el expediente.
+  final Map<String, UserModel?> _identidades = {};
+
+  /// Perfil publico ya resuelto para `idTaller`, o `null` si todavia no ha
+  /// llegado (o el taller no tiene perfil publico).
+  UserModel? identidadDe(String idTaller) => _identidades[idTaller];
 
   /// Uid del taller cuyo expediente se está resolviendo ahora mismo, para
   /// poner el spinner solo en esa fila.
@@ -50,6 +70,7 @@ class AdminVerificacionProvider extends ChangeNotifier {
         _cargando = false;
         _error = null;
         notifyListeners();
+        unawaited(_hidratarIdentidades(expedientes));
       },
       onError: (Object e) {
         _error = e.toString();
@@ -57,6 +78,35 @@ class AdminVerificacionProvider extends ChangeNotifier {
         notifyListeners();
       },
     );
+  }
+
+  /// Resuelve el perfil publico de cada taller nuevo en la bandeja.
+  ///
+  /// Concurrente, no secuencial: un `for`+`await` haria una consulta a
+  /// Firestore por expediente, una detras de otra. Con `Future.wait` todas
+  /// salen a la vez. Y solo por los uids que faltan en el cache: cada vez que
+  /// el stream de `observarBandeja` reemite (p. ej. un taller mas que entra a
+  /// la cola), los ya resueltos no vuelven a pedirse.
+  Future<void> _hidratarIdentidades(
+    List<VerificacionTallerModel> expedientes,
+  ) async {
+    final pendientes = expedientes
+        .map((e) => e.idTaller)
+        .where((uid) => !_identidades.containsKey(uid))
+        .toSet();
+    if (pendientes.isEmpty) return;
+
+    final resueltos = await Future.wait(
+      pendientes.map(
+        (uid) async =>
+            MapEntry(uid, await _workshopService.getWorkshopById(uid)),
+      ),
+    );
+
+    for (final entrada in resueltos) {
+      _identidades[entrada.key] = entrada.value;
+    }
+    notifyListeners();
   }
 
   Future<String?> urlDeEvidencia(

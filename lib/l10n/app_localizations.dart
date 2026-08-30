@@ -2024,6 +2024,12 @@ abstract class AppLocalizations {
   /// **'Error: {error}'**
   String adminError(String error);
 
+  /// No description provided for @adminVerificacionTallerId.
+  ///
+  /// In en, this message translates to:
+  /// **'ID: {uid}'**
+  String adminVerificacionTallerId(String uid);
+
   /// No description provided for @chatOpeningSection.
   ///
   /// In en, this message translates to:

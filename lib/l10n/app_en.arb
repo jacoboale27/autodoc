@@ -570,6 +570,14 @@
       }
     }
   },
+  "adminVerificacionTallerId": "ID: {uid}",
+  "@adminVerificacionTallerId": {
+    "placeholders": {
+      "uid": {
+        "type": "String"
+      }
+    }
+  },
   "chatOpeningSection": "Opening {label} section...",
   "@chatOpeningSection": {
     "placeholders": {
