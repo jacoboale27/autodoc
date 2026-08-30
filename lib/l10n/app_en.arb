@@ -623,7 +623,7 @@
   "noNotifications": "You have no notifications",
   "markAllRead": "Mark all as read",
   "upLanguage": "Language / Idioma",
-  "upLanguageDesc": "EN (Enabled) / ES (Disabled)",
+  "upLanguageDesc": "Turn the switch on to use the app in English",
   "upAbout": "About AutoDoc",
   "upAboutDesc": "Version, credits and legal",
   "upDeleteAccountTitle": "Delete Account",

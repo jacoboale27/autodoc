@@ -1155,7 +1155,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get upLanguage => 'Language / Idioma';
 
   @override
-  String get upLanguageDesc => 'EN (Enabled) / ES (Disabled)';
+  String get upLanguageDesc => 'Turn the switch on to use the app in English';
 
   @override
   String get upAbout => 'About AutoDoc';

@@ -2219,7 +2219,7 @@ abstract class AppLocalizations {
   /// No description provided for @upLanguageDesc.
   ///
   /// In en, this message translates to:
-  /// **'EN (Enabled) / ES (Disabled)'**
+  /// **'Turn the switch on to use the app in English'**
   String get upLanguageDesc;
 
   /// No description provided for @upAbout.

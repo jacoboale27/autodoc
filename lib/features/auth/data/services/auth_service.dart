@@ -180,8 +180,14 @@ class AuthService {
         return 'Correo o contraseña incorrectos.';
       case 'operation-not-allowed':
         return 'Esta operación no está habilitada. Contacta a soporte.';
+      case 'network-request-failed':
+        return 'No se pudo conectar. Revisa tu conexión a internet e inténtalo de nuevo.';
       default:
-        return 'Ocurrió un error inesperado: ${e.message}';
+        // No se le muestra e.message al usuario: viene en ingles y crudo del
+        // SDK. El codigo queda en el log para poder diagnosticar el caso no
+        // mapeado sin enseñarle texto del SDK al usuario.
+        debugPrint('[AuthService] Codigo de error no mapeado: ${e.code}');
+        return 'Ocurrió un error inesperado. Inténtalo de nuevo.';
     }
   }
 }
