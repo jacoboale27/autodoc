@@ -23,6 +23,7 @@ import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_section_header.dart';
 import 'package:uuid/uuid.dart';
+import 'package:intl/intl.dart';
 
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
@@ -871,14 +872,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   icon = Icons.tire_repair;
                   color = colors.primary;
                   break;
+                case 'MantenimientoInconsistente':
+                  icon = Icons.speed;
+                  color = colors.error;
+                  break;
                 default:
                   icon = Icons.notifications;
                   color = primary;
               }
+              // El provider no puede localizar este texto (no tiene
+              // BuildContext); se arma aquí a partir de metadata.
+              final descripcion =
+                  alert.tipoAlerta == 'MantenimientoInconsistente'
+                  ? context.l10n.alertsInconsistentMileage(
+                      NumberFormat(
+                        '#,###',
+                      ).format(alert.metadata?['ultimo_km'] ?? 0),
+                    )
+                  : alert.descripcion;
               return _buildAlertCard(
                 icon,
                 alert.titulo,
-                alert.descripcion,
+                descripcion,
                 color,
                 isDark,
                 subTextColor,

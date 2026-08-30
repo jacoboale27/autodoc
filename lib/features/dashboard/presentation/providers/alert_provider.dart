@@ -209,6 +209,29 @@ class AlertProvider extends ChangeNotifier {
 
     // --- 5. Integración con MaintenanceTasks Robustas ---
     for (var task in _maintenanceTasks) {
+      // Un odómetro por debajo del último servicio registrado es un dato
+      // inconsistente, no una tarea con "kilometraje restante" enorme:
+      // getStatus() resta un negativo y cree que faltan decenas de miles
+      // de km, marcando la tarea ÓPTIMA y ocultando el problema real (ver
+      // hallazgo QA §16). No es un fallo de carga (`_error`): es un dato
+      // de ESTA tarea, así que se representa como su propia alerta.
+      if (vehicle.kilometrajeActual < task.ultimoKm) {
+        _addOrUpdateLocalAlert(
+          AlertModel(
+            idAlerta: 'task_inconsistente_${task.id}',
+            idVehiculo: vehicle.idVehiculo,
+            tipoAlerta: 'MantenimientoInconsistente',
+            titulo: task.nombre,
+            // El texto visible se arma en la pantalla que la muestra
+            // (l10n): el provider no tiene BuildContext/locale.
+            descripcion: '',
+            prioridad: AlertPriority.high,
+            metadata: {'ultimo_km': task.ultimoKm},
+          ),
+        );
+        continue;
+      }
+
       final status = task.getStatus(vehicle.kilometrajeActual);
       if (status != MaintenanceStatus.optimal) {
         _addOrUpdateLocalAlert(

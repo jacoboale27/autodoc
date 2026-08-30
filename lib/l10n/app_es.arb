@@ -302,6 +302,14 @@
   "alertsSave": "Guardar",
   "alertsCancel": "Cancelar",
   "alertsNewMileage": "Nuevo Kilometraje",
+  "alertsInconsistentMileage": "El kilometraje actual es menor al del último servicio registrado ({km} km). Corrige el kilometraje del vehículo.",
+  "@alertsInconsistentMileage": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
   "histTitle": "Historial de Servicios",
   "histTabAll": "Todos",
   "histTabManual": "Manual",
@@ -470,6 +478,7 @@
   "addVehicleColorHint": "Gris",
   "addVehicleColorRequired": "El color es obligatorio",
   "addVehicleColorTooLong": "El color no debe exceder 30 caracteres",
+  "addVehicleColorInvalidChars": "Solo letras y espacios",
   "addVehicleMileage": "Kilometraje Actual",
   "addVehicleDocs": "Documentación",
   "addVehicleCardExp": "Vencimiento Tarjeta",

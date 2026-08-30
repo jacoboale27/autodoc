@@ -1184,6 +1184,12 @@ abstract class AppLocalizations {
   /// **'New Mileage'**
   String get alertsNewMileage;
 
+  /// No description provided for @alertsInconsistentMileage.
+  ///
+  /// In en, this message translates to:
+  /// **'Current mileage is lower than the last recorded service ({km} km). Correct the vehicle\'s mileage.'**
+  String alertsInconsistentMileage(String km);
+
   /// No description provided for @histTitle.
   ///
   /// In en, this message translates to:
@@ -1771,6 +1777,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Color must not exceed 30 characters'**
   String get addVehicleColorTooLong;
+
+  /// No description provided for @addVehicleColorInvalidChars.
+  ///
+  /// In en, this message translates to:
+  /// **'Only letters and spaces'**
+  String get addVehicleColorInvalidChars;
 
   /// No description provided for @addVehicleMileage.
   ///

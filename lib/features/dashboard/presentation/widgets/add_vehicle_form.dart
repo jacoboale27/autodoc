@@ -121,6 +121,12 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
   String? _anioError;
   String? _colorError;
 
+  // Solo letras (con acentos/ñ) y espacios, 3-30 caracteres: "Gris13" pasó
+  // a producción porque este campo era texto libre.
+  static final RegExp _colorValidoRegExp = RegExp(
+    r'^[A-Za-zÁÉÍÓÚáéíóúÑñ ]{3,30}$',
+  );
+
   @override
   void initState() {
     super.initState();
@@ -659,9 +665,14 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                     );
                     return;
                   }
-                  if (_colorController.text.length > 30) {
+                  // "Gris13" llegó a producción porque el campo era texto
+                  // libre sin más validación que "no vacío". El patrón ya
+                  // acota 3-30 caracteres, así que reemplaza (no se suma a)
+                  // el chequeo de longitud que había aquí antes.
+                  if (!_colorValidoRegExp.hasMatch(_colorController.text)) {
                     setState(
-                      () => _colorError = context.l10n.addVehicleColorTooLong,
+                      () => _colorError =
+                          context.l10n.addVehicleColorInvalidChars,
                     );
                     return;
                   }

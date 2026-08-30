@@ -596,6 +596,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get alertsNewMileage => 'New Mileage';
 
   @override
+  String alertsInconsistentMileage(String km) {
+    return 'Current mileage is lower than the last recorded service ($km km). Correct the vehicle\'s mileage.';
+  }
+
+  @override
   String get histTitle => 'Service History';
 
   @override
@@ -909,6 +914,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addVehicleColorTooLong => 'Color must not exceed 30 characters';
+
+  @override
+  String get addVehicleColorInvalidChars => 'Only letters and spaces';
 
   @override
   String get addVehicleMileage => 'Current Mileage';
