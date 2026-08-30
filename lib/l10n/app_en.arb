@@ -477,7 +477,6 @@
   "addVehicleColor": "Color",
   "addVehicleColorHint": "Gray",
   "addVehicleColorRequired": "Color is required",
-  "addVehicleColorTooLong": "Color must not exceed 30 characters",
   "addVehicleColorInvalidChars": "Only letters and spaces",
   "addVehicleMileage": "Current Mileage",
   "addVehicleDocs": "Documentation",

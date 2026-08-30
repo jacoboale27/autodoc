@@ -466,7 +466,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     VehicleModel vehicle,
     AppColors colors,
   ) {
-    final tasks = provider.maintenanceTasks;
+    // provider.maintenanceTasks puede traer las tareas de OTRO vehiculo
+    // (fetchAlertsForVehicles las deja con las del ultimo vehiculo
+    // procesado, no las del seleccionado; ver su docstring en
+    // alert_provider.dart). Sin este filtro el semaforo graduaba una tarea
+    // ajena contra el odometro de este vehiculo -mismo mecanismo del
+    // hallazgo QA §16 ya corregido en alerts_screen.dart.
+    final tasks = provider.maintenanceTasks
+        .where((t) => t.vehicleId == vehicle.idVehiculo)
+        .toList();
     if (tasks.isEmpty) return const SizedBox.shrink();
 
     // Aggregate worst status across all tasks

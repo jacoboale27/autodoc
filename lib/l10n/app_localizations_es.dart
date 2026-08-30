@@ -920,9 +920,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get addVehicleColorRequired => 'El color es obligatorio';
 
   @override
-  String get addVehicleColorTooLong => 'El color no debe exceder 30 caracteres';
-
-  @override
   String get addVehicleColorInvalidChars => 'Solo letras y espacios';
 
   @override

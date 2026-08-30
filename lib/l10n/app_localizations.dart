@@ -1772,12 +1772,6 @@ abstract class AppLocalizations {
   /// **'Color is required'**
   String get addVehicleColorRequired;
 
-  /// No description provided for @addVehicleColorTooLong.
-  ///
-  /// In en, this message translates to:
-  /// **'Color must not exceed 30 characters'**
-  String get addVehicleColorTooLong;
-
   /// No description provided for @addVehicleColorInvalidChars.
   ///
   /// In en, this message translates to:
