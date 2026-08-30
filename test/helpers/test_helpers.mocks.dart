@@ -219,6 +219,14 @@ class MockAuthService extends _i1.Mock implements _i10.AuthService {
           as bool);
 
   @override
+  bool get isCurrentUserSignedIn =>
+      (super.noSuchMethod(
+            Invocation.getter(#isCurrentUserSignedIn),
+            returnValue: false,
+          )
+          as bool);
+
+  @override
   bool get isEmailPasswordUser =>
       (super.noSuchMethod(
             Invocation.getter(#isEmailPasswordUser),

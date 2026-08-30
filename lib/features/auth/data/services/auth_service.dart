@@ -152,6 +152,8 @@ class AuthService {
   bool get isCurrentUserEmailVerified =>
       _auth.currentUser?.emailVerified ?? false;
 
+  bool get isCurrentUserSignedIn => _auth.currentUser != null;
+
   bool get isEmailPasswordUser {
     final user = _auth.currentUser;
     if (user == null) return false;
