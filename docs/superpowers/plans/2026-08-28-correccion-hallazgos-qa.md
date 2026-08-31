@@ -1,5 +1,13 @@
 # Corrección de los hallazgos del recorrido QA — Plan de implementación
 
+> ⚠️ **PLAN YA EJECUTADO (2026-08-28 → 2026-08-31). No lo sigas al pie de la letra.**
+> Varias tareas de este plan resultaron mal diagnosticadas durante la ejecución: pasos que citan
+> funciones inexistentes, snippets que no compilan, y —dos veces— un arreglo propuesto que no
+> habría arreglado nada. Todas las correcciones están en
+> **[`2026-08-28-decisiones-de-ejecucion.md`](2026-08-28-decisiones-de-ejecucion.md)**, que hay
+> que leer **antes** que este documento. Lo entregado es lo que dice ese registro, no lo que dice
+> este plan.
+
 > **Para trabajadores agénticos:** SUB-SKILL REQUERIDA: usa `superpowers:subagent-driven-development`
 > (recomendado) o `superpowers:executing-plans` para implementar este plan tarea a tarea.
 > Los pasos usan sintaxis de casilla (`- [ ]`) para el seguimiento.
