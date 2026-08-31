@@ -7,6 +7,7 @@ import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart'
 import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
+import 'package:autodoc/features/mechanic/presentation/providers/reparacion_provider.dart';
 
 /// Vacia todo el estado que pertenece a **un** usuario.
 ///
@@ -18,6 +19,7 @@ void clearUserScopedProviders({
   required ChatProvider chat,
   required ReservaProvider reservas,
   required NotificationCenterProvider notificaciones,
+  ReparacionProvider? reparaciones,
   VehicleProvider? vehiculos,
   UserProfileProvider? perfil,
 }) {
@@ -25,6 +27,10 @@ void clearUserScopedProviders({
   chat.clear();
   reservas.clear();
   notificaciones.clear();
+  // ReparacionProvider mantiene una suscripcion viva por taller: si no se
+  // cancela aqui, el stream del taller saliente sigue emitiendo tras el
+  // logout.
+  reparaciones?.clear();
   vehiculos?.clearVehicles();
   perfil?.clearUserData();
 }
@@ -36,6 +42,7 @@ void clearSessionFrom(BuildContext context) {
     chat: context.read<ChatProvider>(),
     reservas: context.read<ReservaProvider>(),
     notificaciones: context.read<NotificationCenterProvider>(),
+    reparaciones: context.read<ReparacionProvider>(),
     vehiculos: context.read<VehicleProvider>(),
     perfil: context.read<UserProfileProvider>(),
   );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
+import 'package:autodoc/core/providers/session_reset.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
@@ -24,10 +25,15 @@ class MechanicSidebar extends StatelessWidget {
 
   Future<void> _signOut(BuildContext context) async {
     final router = GoRouter.of(context);
+    final auth = context.read<AuthProvider>();
     if (Scaffold.maybeOf(context)?.isDrawerOpen ?? false) {
       Navigator.pop(context);
     }
-    await context.read<AuthProvider>().signOut();
+    // Es el unico logout normal del rol taller: sin esto, ChatProvider,
+    // NotificationCenterProvider y la suscripcion por taller de
+    // ReparacionProvider siguen vivos con el uid saliente (hallazgo QA §5).
+    clearSessionFrom(context);
+    await auth.signOut();
     router.go('/login');
   }
 

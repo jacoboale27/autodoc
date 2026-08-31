@@ -6,6 +6,7 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/providers/session_reset.dart';
 
 class AdminSidebar extends StatelessWidget {
   const AdminSidebar({super.key});
@@ -133,7 +134,12 @@ class AdminSidebar extends StatelessWidget {
               isDestructive: true,
               onTap: () async {
                 final router = GoRouter.of(context);
-                await context.read<AuthProvider>().signOut();
+                final auth = context.read<AuthProvider>();
+                // Mismo motivo que en MechanicSidebar: un admin que cierra
+                // sesion tambien deja los providers por usuario escuchando
+                // con el uid saliente (hallazgo QA §5).
+                clearSessionFrom(context);
+                await auth.signOut();
                 router.go('/login');
               },
             ),

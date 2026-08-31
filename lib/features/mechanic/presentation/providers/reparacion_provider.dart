@@ -161,6 +161,19 @@ class ReparacionProvider extends ChangeNotifier {
     }
   }
 
+  /// Vacia el estado por usuario y **cancela la suscripcion viva por
+  /// taller**. Se llama al cerrar sesion (`clearUserScopedProviders`): sin
+  /// esto, el stream del taller saliente sigue emitiendo y el siguiente
+  /// usuario que entre sin recargar la pagina ve sus reparaciones.
+  void clear() {
+    _sub?.cancel();
+    _sub = null;
+    _reparaciones = [];
+    _error = null;
+    _isLoading = false;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _sub?.cancel();

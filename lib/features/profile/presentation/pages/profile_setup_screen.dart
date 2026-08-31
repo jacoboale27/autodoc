@@ -20,6 +20,7 @@ import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/role_utils.dart';
+import 'package:autodoc/core/providers/session_reset.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
@@ -46,7 +47,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
   Future<void> _signOut() async {
     final router = GoRouter.of(context);
-    await context.read<app_auth.AuthProvider>().signOut();
+    final auth = context.read<app_auth.AuthProvider>();
+    clearSessionFrom(context);
+    await auth.signOut();
     router.go('/login');
   }
 

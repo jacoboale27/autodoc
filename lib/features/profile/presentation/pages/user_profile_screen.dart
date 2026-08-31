@@ -155,7 +155,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 size: AppButtonSize.small,
                 onPressed: () async {
                   final router = GoRouter.of(context);
-                  await context.read<AuthProvider>().signOut();
+                  final auth = context.read<AuthProvider>();
+                  clearSessionFrom(context);
+                  await auth.signOut();
                   router.go('/login');
                 },
               ),

@@ -13,6 +13,8 @@ import 'package:autodoc/features/chat/data/repositories/reserva_repository.dart'
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
+import 'package:autodoc/features/mechanic/data/repositories/reparacion_repository.dart';
+import 'package:autodoc/features/mechanic/presentation/providers/reparacion_provider.dart';
 
 import '../../helpers/test_helpers.mocks.dart';
 
@@ -121,17 +123,39 @@ void main() {
     reservas.inicializarReservasUsuario('owner-1');
     await _waitUntil(reservas, () => reservas.reservas.isNotEmpty);
 
+    // --- ReparacionProvider: suscripcion viva por taller, mismo patron
+    // de stream. Es el provider que faltaba en clearUserScopedProviders. ---
+    await fakeFirestore.collection('reparaciones').add({
+      'id_vehiculo': 'v1',
+      'id_taller': 'taller-1',
+      'id_propietario': 'owner-1',
+      'placa': 'ABC-123',
+      'estado': 'recibido',
+      'fecha_creacion': Timestamp.fromDate(DateTime(2026, 1, 1)),
+      'fecha_actualizacion': Timestamp.fromDate(DateTime(2026, 1, 1)),
+    });
+    final reparaciones = ReparacionProvider(
+      repository: ReparacionRepository(
+        firestore: fakeFirestore,
+        functions: MockFirebaseFunctions(),
+      ),
+    );
+    reparaciones.watchTaller('taller-1');
+    await _waitUntil(reparaciones, () => reparaciones.reparaciones.isNotEmpty);
+
     clearUserScopedProviders(
       alertas: alertas,
       chat: chat,
       reservas: reservas,
       notificaciones: notis,
+      reparaciones: reparaciones,
     );
 
     expect(alertas.alerts, isEmpty);
     expect(chat.conversaciones, isEmpty);
     expect(reservas.reservas, isEmpty);
     expect(notis.notifications, isEmpty);
+    expect(reparaciones.reparaciones, isEmpty);
 
     // La limpieza no vale solo por vaciar la lista una vez: si la
     // suscripcion del usuario saliente sigue viva, el siguiente snapshot
@@ -156,6 +180,15 @@ void main() {
           'leida': false,
           'timestamp': Timestamp.fromDate(DateTime(2026, 1, 2)),
         });
+    await fakeFirestore.collection('reparaciones').add({
+      'id_vehiculo': 'v2',
+      'id_taller': 'taller-1',
+      'id_propietario': 'owner-1',
+      'placa': 'XYZ-987',
+      'estado': 'recibido',
+      'fecha_creacion': Timestamp.fromDate(DateTime(2026, 1, 2)),
+      'fecha_actualizacion': Timestamp.fromDate(DateTime(2026, 1, 2)),
+    });
     await fakeFirestore.collection('reservas').add({
       'id_conversacion': 'c2',
       'id_propietario': 'owner-1',
@@ -190,6 +223,13 @@ void main() {
       isEmpty,
       reason:
           'clear() debe cancelar _reservasSub, no solo vaciar la lista '
+          'una vez',
+    );
+    expect(
+      reparaciones.reparaciones,
+      isEmpty,
+      reason:
+          'clear() debe cancelar _sub del taller, no solo vaciar la lista '
           'una vez',
     );
   });
