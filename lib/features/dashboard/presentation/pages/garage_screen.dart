@@ -159,6 +159,13 @@ class GarageScreen extends StatelessWidget {
         '/vehicle_profile/${vehicle.idVehiculo}',
         extra: vehicle,
       ),
+      semanticLabel:
+          '${vehicle.marca ?? ''} ${vehicle.modelo ?? ''}, placa '
+          '${vehicle.placa}',
+      // La tarjeta lleva dentro el IconButton de "Hacer Principal": es una
+      // segunda accion, y una accion no se puede plegar en el semanticLabel
+      // de la tarjeta. Sin esto, excludeSemantics la borraba del arbol.
+      interactiveChildren: true,
       margin: EdgeInsets.zero,
       padding: EdgeInsets.zero,
       child: ClipRRect(
@@ -304,7 +311,14 @@ class GarageScreen extends StatelessWidget {
                     children: [
                       if (!vehicle.isPrimary &&
                           vehicle.idPropietario == currentUserId)
-                        AppButton(
+                        // Icono y no boton con texto: "Hacer Principal" mide
+                        // ~150 px y, junto al chevron de 40, no dejaba sitio
+                        // al Expanded del nombre. A 768 px el titulo caia a
+                        // dos letras.
+                        IconButton(
+                          tooltip: context.l10n.garageMakePrimary,
+                          icon: const Icon(Icons.star_border),
+                          color: colors.primary,
                           onPressed: provider.isLoading
                               ? null
                               : () => _setVehicleAsPrimary(
@@ -312,9 +326,6 @@ class GarageScreen extends StatelessWidget {
                                   vehicle,
                                   provider,
                                 ),
-                          text: context.l10n.garageMakePrimary,
-                          type: AppButtonType.text,
-                          icon: const Icon(Icons.star_border),
                         ),
                       Container(
                         width: 40,

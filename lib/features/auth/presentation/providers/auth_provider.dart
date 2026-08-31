@@ -18,7 +18,7 @@ class AuthProvider with ChangeNotifier {
   String? get error => _error;
 
   bool get needsEmailVerification {
-    if (FirebaseAuth.instance.currentUser == null) return false;
+    if (!_authService.isCurrentUserSignedIn) return false;
     return _authService.isEmailPasswordUser &&
         !_authService.isCurrentUserEmailVerified;
   }

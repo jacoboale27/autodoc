@@ -15,6 +15,7 @@ import 'dart:typed_data';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/providers/session_reset.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
@@ -154,7 +155,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 size: AppButtonSize.small,
                 onPressed: () async {
                   final router = GoRouter.of(context);
-                  await context.read<AuthProvider>().signOut();
+                  final auth = context.read<AuthProvider>();
+                  clearSessionFrom(context);
+                  await auth.signOut();
                   router.go('/login');
                 },
               ),
@@ -836,6 +839,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   Future<void> _signOut(BuildContext context) async {
     final authProvider = context.read<AuthProvider>();
     final router = GoRouter.of(context);
+    clearSessionFrom(context);
     await authProvider.signOut();
     router.go('/login');
   }

@@ -4,7 +4,10 @@ import '../../data/models/reserva_model.dart';
 import '../../data/repositories/reserva_repository.dart';
 
 class ReservaProvider extends ChangeNotifier {
-  final ReservaRepository _reservaRepository = ReservaRepository();
+  ReservaProvider({ReservaRepository? repository})
+    : _reservaRepository = repository ?? ReservaRepository();
+
+  final ReservaRepository _reservaRepository;
 
   List<ReservaModel> _reservas = [];
   List<ReservaModel> get reservas => _reservas;
@@ -21,6 +24,19 @@ class ReservaProvider extends ChangeNotifier {
   void dispose() {
     _reservasSub?.cancel();
     super.dispose();
+  }
+
+  /// Vacia el estado por usuario y cancela la suscripcion activa. Se llama
+  /// al cerrar sesion: sin cancelarla, sigue escuchando con el uid del
+  /// usuario saliente y repuebla la lista en cuanto llegue el siguiente
+  /// snapshot.
+  void clear() {
+    _reservasSub?.cancel();
+    _reservasSub = null;
+    _reservas = [];
+    _error = null;
+    _isLoading = false;
+    notifyListeners();
   }
 
   void inicializarReservasUsuario(String userId, {bool isMecanico = false}) {

@@ -138,6 +138,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Open the link in the email and then press \"I already verified\" to continue.';
 
   @override
+  String get authOpenLinkOnRegister =>
+      'Open the link in the email to activate your account. You can continue in the meantime.';
+
+  @override
   String get authUnderstood => 'Understood';
 
   @override
@@ -592,6 +596,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get alertsNewMileage => 'New Mileage';
 
   @override
+  String alertsInconsistentMileage(String km) {
+    return 'Current mileage is lower than the last recorded service ($km km). Correct the vehicle\'s mileage.';
+  }
+
+  @override
   String get histTitle => 'Service History';
 
   @override
@@ -889,10 +898,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addVehicleYear => 'Year';
 
   @override
+  String get addVehicleYearHint => 'Select the year';
+
+  @override
+  String get addVehicleYearInvalid => 'Invalid year';
+
+  @override
   String get addVehicleColor => 'Color';
 
   @override
   String get addVehicleColorHint => 'Gray';
+
+  @override
+  String get addVehicleColorRequired => 'Color is required';
+
+  @override
+  String get addVehicleColorInvalidChars => 'Only letters and spaces';
 
   @override
   String get addVehicleMileage => 'Current Mileage';
@@ -1036,6 +1057,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String adminVerificacionTallerId(String uid) {
+    return 'ID: $uid';
+  }
+
+  @override
   String chatOpeningSection(String label) {
     return 'Opening $label section...';
   }
@@ -1134,7 +1160,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get upLanguage => 'Language / Idioma';
 
   @override
-  String get upLanguageDesc => 'EN (Enabled) / ES (Disabled)';
+  String get upLanguageDesc => 'Turn the switch on to use the app in English';
 
   @override
   String get upAbout => 'About AutoDoc';
@@ -1181,4 +1207,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get upDeleteAccount => 'Delete account';
+
+  @override
+  String get topNavThemeTooltip => 'Toggle theme';
+
+  @override
+  String get topNavLanguageTooltip => 'Change language';
+
+  @override
+  String get topNavAccountTooltip => 'Your account';
 }

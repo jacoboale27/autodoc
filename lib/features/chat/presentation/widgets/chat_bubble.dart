@@ -86,9 +86,16 @@ class ChatBubble extends StatelessWidget {
     // Lleva ademas contorno: `surfaceVariant` y `surfaceContainer` quedan a un
     // paso de distancia, y sin el borde una burbuja borrada del otro lado se
     // confunde con una normal.
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // El Scaffold del chat usa surfaceContainer en oscuro
+    // (chat_screen.dart:377). Si la burbuja ajena usara ese mismo token —
+    // como hasta 2026-08-28 — el mensaje recibido se leia como texto suelto
+    // sobre el papel tapiz: sin fondo, sin padding visible y sin hora.
+    final fondoAjeno = isDark ? colors.surface : colors.surfaceContainer;
+
     final fondo = isDeleted
         ? colors.surfaceVariant
-        : (isMe ? colors.primary : colors.surfaceContainer);
+        : (isMe ? colors.primary : fondoAjeno);
 
     final burbuja = LayoutBuilder(
       builder: (context, constraints) {

@@ -35,7 +35,14 @@ void main() {
   testWidgets('con onTap se encoge al presionar y vuelve al soltar', (
     tester,
   ) async {
-    await pump(tester, AppCard(onTap: () {}, child: const Text('Contenido')));
+    await pump(
+      tester,
+      AppCard(
+        onTap: () {},
+        semanticLabel: 'Contenido',
+        child: const Text('Contenido'),
+      ),
+    );
 
     double currentScale() =>
         tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale;
@@ -54,7 +61,14 @@ void main() {
   });
 
   testWidgets('con onTap se eleva al pasar el puntero', (tester) async {
-    await pump(tester, AppCard(onTap: () {}, child: const Text('Contenido')));
+    await pump(
+      tester,
+      AppCard(
+        onTap: () {},
+        semanticLabel: 'Contenido',
+        child: const Text('Contenido'),
+      ),
+    );
 
     List<BoxShadow>? shadowOf() {
       final container = tester.widget<AnimatedContainer>(
@@ -82,7 +96,11 @@ void main() {
     var tapped = false;
     await pump(
       tester,
-      AppCard(onTap: () => tapped = true, child: const Text('Contenido')),
+      AppCard(
+        onTap: () => tapped = true,
+        semanticLabel: 'Contenido',
+        child: const Text('Contenido'),
+      ),
     );
 
     await tester.tap(find.byType(AppCard));
@@ -94,7 +112,11 @@ void main() {
   testWidgets('con reduced motion no se encoge', (tester) async {
     await pump(
       tester,
-      AppCard(onTap: () {}, child: const Text('Contenido')),
+      AppCard(
+        onTap: () {},
+        semanticLabel: 'Contenido',
+        child: const Text('Contenido'),
+      ),
       disableAnimations: true,
     );
 
@@ -124,7 +146,11 @@ void main() {
     for (final brightness in Brightness.values) {
       await pump(
         tester,
-        AppCard(onTap: () {}, child: const Text('Contenido')),
+        AppCard(
+          onTap: () {},
+          semanticLabel: 'Contenido',
+          child: const Text('Contenido'),
+        ),
         brightness: brightness,
       );
       expectNoOverflow(tester);

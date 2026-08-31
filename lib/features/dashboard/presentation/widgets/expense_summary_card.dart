@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/widgets/charts/month_axis.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class ExpenseSummaryCard extends StatelessWidget {
@@ -73,40 +74,9 @@ class ExpenseSummaryCard extends StatelessWidget {
                 gridData: const FlGridData(show: false),
                 titlesData: FlTitlesData(
                   bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 30,
-                      getTitlesWidget: (value, meta) {
-                        if (value.toInt() >= 0 &&
-                            value.toInt() < monthsOrder.length) {
-                          final month = monthsOrder[value.toInt()];
-                          final monthNames = [
-                            'Ene',
-                            'Feb',
-                            'Mar',
-                            'Abr',
-                            'May',
-                            'Jun',
-                            'Jul',
-                            'Ago',
-                            'Sep',
-                            'Oct',
-                            'Nov',
-                            'Dic',
-                          ];
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              monthNames[month - 1],
-                              style: TextStyle(
-                                color: colors.textSecondary,
-                                fontSize: 12,
-                              ),
-                            ),
-                          );
-                        }
-                        return const Text('');
-                      },
+                    sideTitles: monthAxisSideTitles(
+                      monthNumbers: monthsOrder,
+                      colors: colors,
                     ),
                   ),
                   leftTitles: AxisTitles(

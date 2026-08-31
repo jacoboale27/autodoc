@@ -218,6 +218,65 @@ void main() {
     },
   );
 
+  test(
+    'cambiarEstado a cancelado se acepta desde cualquier estado del pipeline',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = ReparacionRepository(
+        firestore: firestore,
+        functions: MockFirebaseFunctions(),
+      );
+      final id = await repo.iniciarReparacion(
+        idVehiculo: 'v1',
+        idTaller: 't1',
+        idPropietario: 'p1',
+        placa: 'P123-456',
+      );
+
+      // recibido -> cancelado no es un "avance" del pipeline, pero debe
+      // aceptarse igual: 'cancelado' es un estado terminal fuera de
+      // estadosReparacion, no un retroceso.
+      await repo.cambiarEstado(idReparacion: id, nuevoEstado: 'cancelado');
+
+      final doc = await firestore
+          .collection(FirestoreCollections.reparaciones)
+          .doc(id)
+          .get();
+      expect(doc.data()!['estado'], 'cancelado');
+    },
+  );
+
+  test(
+    'cambiarEstado a cancelado tambien se acepta mas avanzado en el pipeline',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = ReparacionRepository(
+        firestore: firestore,
+        functions: MockFirebaseFunctions(),
+      );
+      final id = await repo.iniciarReparacion(
+        idVehiculo: 'v1',
+        idTaller: 't1',
+        idPropietario: 'p1',
+        placa: 'P123-456',
+      );
+      await repo.cambiarEstado(
+        idReparacion: id,
+        nuevoEstado: 'listo_para_entrega',
+      );
+
+      // Sin el carve-out de 'cancelado', esto lanzaría "no se puede
+      // retroceder" porque estadosReparacion.indexOf('cancelado') == -1.
+      await repo.cambiarEstado(idReparacion: id, nuevoEstado: 'cancelado');
+
+      final doc = await firestore
+          .collection(FirestoreCollections.reparaciones)
+          .doc(id)
+          .get();
+      expect(doc.data()!['estado'], 'cancelado');
+    },
+  );
+
   test('watchReparacionesActivas emite reparaciones del taller', () async {
     final firestore = FakeFirebaseFirestore();
     final repo = ReparacionRepository(

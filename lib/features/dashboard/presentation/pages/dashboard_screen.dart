@@ -23,6 +23,7 @@ import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_section_header.dart';
 import 'package:uuid/uuid.dart';
+import 'package:intl/intl.dart';
 
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
@@ -52,11 +53,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           vehicleProvider.fetchVehicles(userSession.userData!.idUsuario).then((
             _,
           ) {
-            if (mounted && vehicleProvider.vehicles.isNotEmpty) {
-              context.read<AlertProvider>().fetchAlertsForVehicles(
-                vehicleProvider.vehicles,
-              );
-            }
+            if (!mounted) return;
+            // Se llama SIEMPRE, tambien con la lista vacia: el provider ya
+            // trata ese caso vaciando `_alerts` (alert_provider.dart:97).
+            // Con el `isNotEmpty` que habia aqui, un usuario recien creado
+            // veia las alertas del usuario de la sesion anterior — incluido
+            // "Tu SOAT vencio hace 29 dias" de un coche que no es suyo.
+            context.read<AlertProvider>().fetchAlertsForVehicles(
+              vehicleProvider.vehicles,
+            );
           });
         });
       }
@@ -461,7 +466,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     VehicleModel vehicle,
     AppColors colors,
   ) {
-    final tasks = provider.maintenanceTasks;
+    // provider.maintenanceTasks trae las tareas de TODOS los vehiculos del
+    // dueño (fetchAlertsForVehicles las fusiona; ver su docstring en
+    // alert_provider.dart). Sin este filtro el semaforo graduaria una tarea
+    // ajena contra el odometro de este vehiculo -mismo mecanismo del
+    // hallazgo QA §16 ya corregido en alerts_screen.dart.
+    final tasks = provider.maintenanceTasks
+        .where((t) => t.vehicleId == vehicle.idVehiculo)
+        .toList();
     if (tasks.isEmpty) return const SizedBox.shrink();
 
     // Aggregate worst status across all tasks
@@ -867,14 +879,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   icon = Icons.tire_repair;
                   color = colors.primary;
                   break;
+                case 'MantenimientoInconsistente':
+                  icon = Icons.speed;
+                  color = colors.error;
+                  break;
                 default:
                   icon = Icons.notifications;
                   color = primary;
               }
+              // El provider no puede localizar este texto (no tiene
+              // BuildContext); se arma aquí a partir de metadata.
+              final descripcion =
+                  alert.tipoAlerta == 'MantenimientoInconsistente'
+                  ? context.l10n.alertsInconsistentMileage(
+                      NumberFormat(
+                        '#,###',
+                      ).format(alert.metadata?['ultimo_km'] ?? 0),
+                    )
+                  : alert.descripcion;
               return _buildAlertCard(
                 icon,
                 alert.titulo,
-                alert.descripcion,
+                descripcion,
                 color,
                 isDark,
                 subTextColor,
@@ -986,16 +1012,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     data['calificacion_promedio'] as num? ?? 0.0;
                 final especialidad =
                     data['especialidad'] as String? ?? 'General';
-                return InkWell(
+                final nombre = data['nombre_completo'] as String? ?? 'Taller';
+                return _buildServiceTile(
+                  Icons.build,
+                  nombre,
+                  'Especialidad: $especialidad • ${calificacion.toStringAsFixed(1)}★',
+                  primary,
+                  isDark,
+                  subTextColor,
                   onTap: () => context.push('/workshop_directory'),
-                  child: _buildServiceTile(
-                    Icons.build,
-                    data['nombre_completo'] as String? ?? 'Taller',
-                    'Especialidad: $especialidad • ${calificacion.toStringAsFixed(1)}★',
-                    primary,
-                    isDark,
-                    subTextColor,
-                  ),
+                  semanticLabel: '$nombre, $especialidad',
                 );
               }).toList(),
             );
@@ -1011,11 +1037,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String subtitle,
     Color primary,
     bool isDark,
-    Color subTextColor,
-  ) {
+    Color subTextColor, {
+    required VoidCallback onTap,
+    required String semanticLabel,
+  }) {
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.base),
       margin: EdgeInsets.zero,
+      onTap: onTap,
+      semanticLabel: semanticLabel,
       child: Row(
         children: [
           Container(

@@ -569,3 +569,48 @@ describe('storage: galeria comercial del taller', () => {
     await assertSucceeds(st.ref(ruta1).delete());
   });
 });
+
+describe('storage: isAdmin acepta Superusuario', () => {
+  test('un Superusuario puede leer la evidencia de verificacion de un taller', async () => {
+    await seedUsuario(UIDS.taller1, 'Mecanico');
+    await seed(env, async (db) => {
+      await db.collection('usuarios').doc(UIDS.admin).set({
+        id_usuario: UIDS.admin, rol: 'Superusuario', estado: 'activo',
+      });
+    });
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.storage().ref(`verificaciones/${UIDS.taller1}/fachada.jpg`)
+        .put(imagen(50), META_JPEG);
+    });
+    const st = env.authenticatedContext(UIDS.admin).storage();
+    await assertSucceeds(
+      st.ref(`verificaciones/${UIDS.taller1}/fachada.jpg`).getDownloadURL(),
+    );
+  });
+
+  test('un Administrador tambien puede leerla', async () => {
+    await seedUsuario(UIDS.taller1, 'Mecanico');
+    await seedUsuario(UIDS.admin, 'Administrador');
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.storage().ref(`verificaciones/${UIDS.taller1}/fachada.jpg`)
+        .put(imagen(50), META_JPEG);
+    });
+    const st = env.authenticatedContext(UIDS.admin).storage();
+    await assertSucceeds(
+      st.ref(`verificaciones/${UIDS.taller1}/fachada.jpg`).getDownloadURL(),
+    );
+  });
+
+  test('un propietario cualquiera sigue sin poder leerla', async () => {
+    await seedUsuario(UIDS.taller1, 'Mecanico');
+    await seedUsuario(UIDS.owner2, 'Propietario');
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.storage().ref(`verificaciones/${UIDS.taller1}/fachada.jpg`)
+        .put(imagen(50), META_JPEG);
+    });
+    const st = env.authenticatedContext(UIDS.owner2).storage();
+    await assertFails(
+      st.ref(`verificaciones/${UIDS.taller1}/fachada.jpg`).getDownloadURL(),
+    );
+  });
+});

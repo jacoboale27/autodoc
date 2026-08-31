@@ -74,4 +74,73 @@ void main() {
     );
     expect(source.contains('isAtLeastExpanded'), isTrue);
   });
+
+  test('la tarjeta del mapa centra el tap en la propia AppCard, sin '
+      'GestureDetector externo redundante', () {
+    // Regresion de accesibilidad (hallazgo QA #13): un GestureDetector
+    // externo con onTap envolviendo una AppCard sin onTap/semanticLabel es
+    // peor que "boton sin nombre" — el lector de pantalla ni siquiera
+    // anuncia que la tarjeta es interactiva. El onTap (que centra el mapa
+    // vía workshopCameraUpdate) y el semanticLabel tienen que vivir en la
+    // propia AppCard, no en un wrapper.
+    final start = source.indexOf('Widget _buildMapCard(');
+    expect(start, greaterThan(-1), reason: 'no se encontró _buildMapCard');
+    final end = source.indexOf('Widget _buildWorkshopCard(', start);
+    expect(end, greaterThan(start));
+    final body = source.substring(start, end);
+
+    expect(
+      body.contains('GestureDetector'),
+      isFalse,
+      reason:
+          'la AppCard del mapa ya no debe envolverse en un GestureDetector '
+          'externo; el tap vive en AppCard.onTap',
+    );
+    expect(
+      body.contains('workshopCameraUpdate(data)'),
+      isTrue,
+      reason: 'el tap dejó de calcular el centrado del mapa',
+    );
+    expect(
+      body.contains('onTap:'),
+      isTrue,
+      reason: 'la AppCard del mapa necesita su propio onTap',
+    );
+    expect(
+      body.contains('semanticLabel:'),
+      isTrue,
+      reason: 'la AppCard del mapa necesita semanticLabel',
+    );
+  });
+
+  test('la valoracion de la tarjeta del mapa vive en el semanticLabel de la '
+      'AppCard, no en un Semantics hijo (que quedaba mudo)', () {
+    // `AppCard` pulsable excluye la semantica de sus hijos, asi que el
+    // `Semantics(label: "... de 5 estrellas")` que envolvia la insignia de
+    // valoracion era codigo muerto: no se anunciaba en ninguna parte y la
+    // valoracion tampoco estaba en el label de la tarjeta.
+    final start = source.indexOf('Widget _buildMapCard(');
+    expect(start, greaterThan(-1), reason: 'no se encontró _buildMapCard');
+    final end = source.indexOf('Widget _buildWorkshopCard(', start);
+    expect(end, greaterThan(start));
+    final body = source.substring(start, end);
+
+    expect(
+      body.contains('Semantics('),
+      isFalse,
+      reason:
+          'un Semantics hijo dentro de una AppCard pulsable es codigo '
+          'muerto: la informacion va en el semanticLabel de la tarjeta',
+    );
+    expect(
+      body.contains(r"semanticLabel: '$name, $spec, $ratingLabel'"),
+      isTrue,
+      reason: 'la valoracion tiene que estar en el nombre de la tarjeta',
+    );
+    expect(
+      body.contains('de 5 estrellas'),
+      isTrue,
+      reason: 'y el texto de la valoracion no puede haberse perdido',
+    );
+  });
 }

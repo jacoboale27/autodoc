@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/models/alert_model.dart';
 import 'package:autodoc/core/models/maintenance_task_model.dart';
+import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/alerts_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
@@ -45,6 +46,66 @@ class _FakeAlertProvider extends AlertProvider {
       titulo: 'SOAT por vencer',
       descripcion: 'El SOAT vence pronto',
       prioridad: AlertPriority.medium,
+    ),
+  ];
+
+  @override
+  bool get isLoading => false;
+}
+
+/// Reproduce el hallazgo QA §16: el provider trae mezcladas, sin filtrar,
+/// las tareas/alertas de dos vehiculos distintos. Es exactamente el estado
+/// que produce `fetchAlertsForVehicles`, que FUSIONA tanto `alerts` como
+/// `maintenanceTasks` de todos los vehiculos del dueño (ver su docstring en
+/// alert_provider.dart): por eso esta fixture tiene a la vez una tarea de
+/// 'v-otro' y una de 'v0'. /alerts debe filtrar por el vehiculo
+/// seleccionado al pintar, no confiar en que el provider ya venga
+/// filtrado.
+class _MultiVehicleFakeAlertProvider extends AlertProvider {
+  _MultiVehicleFakeAlertProvider()
+    : super(firestore: FakeFirebaseFirestore(), storage: MockFirebaseStorage());
+
+  @override
+  List<MaintenanceTask> get maintenanceTasks => [
+    // Pertenece a OTRO vehiculo ('v-otro'), no al seleccionado ('v0', 254
+    // km). Su ultimo servicio fue a 54.621 km: graduada contra los 254 km
+    // del vehiculo seleccionado sale "OPTIMO" (el km restante se calcula
+    // negativo -> mucho margen), que es justo el hallazgo.
+    MaintenanceTask(
+      id: 't-otro',
+      vehicleId: 'v-otro',
+      nombre: 'Rotación de Llantas',
+      ultimoKm: 54621,
+      fechaUltimoServicio: DateTime.now().subtract(const Duration(days: 400)),
+      frecuenciaKm: 10000,
+      frecuenciaMeses: 12,
+    ),
+    // Tarea propia del vehiculo seleccionado: debe seguir mostrandose. La
+    // correccion no puede vaciar la pantalla entera.
+    MaintenanceTask(
+      id: 't-propio',
+      vehicleId: 'v0',
+      nombre: 'Cambio de Aceite',
+      ultimoKm: 100,
+      fechaUltimoServicio: DateTime.now(),
+      frecuenciaKm: 5000,
+      frecuenciaMeses: 6,
+    ),
+  ];
+
+  @override
+  List<AlertModel> get activeAlerts => [
+    // La alerta critica real: se genero correctamente para 'v-otro' (su
+    // propio odometro si superaba el limite), pero el provider la mezcla
+    // en la misma lista que ve /alerts sea cual sea el vehiculo
+    // seleccionado.
+    AlertModel(
+      idAlerta: 'task_t-otro',
+      idVehiculo: 'v-otro',
+      tipoAlerta: 'Mantenimiento',
+      titulo: 'Rotación de Llantas',
+      descripcion: '¡CRÍTICO! Límite de Rotación de Llantas superado.',
+      prioridad: AlertPriority.high,
     ),
   ];
 
@@ -178,5 +239,59 @@ void main() {
         expectNoOverflow(tester);
       });
     }
+  });
+
+  group('coherencia entre vehiculos (hallazgo QA §16)', () {
+    Future<void> pumpMultiVehicleScreen(WidgetTester tester) async {
+      await pumpAtWidth(
+        tester,
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<VehicleProvider>.value(
+              value: FakeVehicleProvider([
+                VehicleModel(
+                  idVehiculo: 'v0',
+                  idPropietario: 'u1',
+                  placa: 'P001-123',
+                  marca: 'Toyota',
+                  modelo: 'Corolla',
+                  kilometrajeActual: 254,
+                ),
+              ]),
+            ),
+            ChangeNotifierProvider<AlertProvider>(
+              create: (_) => _MultiVehicleFakeAlertProvider(),
+            ),
+          ],
+          child: const AlertsScreen(),
+        ),
+        width: 375,
+      );
+      await tester.pump();
+    }
+
+    testWidgets('una tarea de otro vehiculo no aparece como critica ni como '
+        'sugerencia optima del vehiculo seleccionado', (tester) async {
+      await pumpMultiVehicleScreen(tester);
+
+      // 'Rotación de Llantas' pertenece a 'v-otro', no al vehiculo
+      // seleccionado ('v0', 254 km de odometro). Antes de filtrar por
+      // vehiculo en el punto de render, esta pantalla mostraba esta
+      // misma tarea simultaneamente en PRIORIDAD ALTA (la alerta
+      // critica real de 'v-otro') y en SUGERENCIAS/ÓPTIMO (la tarea
+      // graduada contra los 254 km de 'v0') -- el hallazgo exacto.
+      expect(
+        find.text('Rotación de Llantas'),
+        findsNothing,
+        reason:
+            'una tarea de otro vehiculo no debe aparecer en /alerts del '
+            'vehiculo seleccionado, ni como critica ni como optima',
+      );
+
+      // La tarea propia del vehiculo seleccionado si debe seguir
+      // mostrandose: la correccion filtra por vehiculo, no vacia la
+      // pantalla entera.
+      expect(find.text('Cambio de Aceite'), findsOneWidget);
+    });
   });
 }

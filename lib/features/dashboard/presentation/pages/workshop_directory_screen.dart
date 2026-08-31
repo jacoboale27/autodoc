@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/features/dashboard/data/services/workshop_service.dart';
@@ -30,6 +30,23 @@ import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:autodoc/config/secrets.dart';
 import 'package:autodoc/core/models/galeria_taller.dart';
+
+/// Actualización de cámara para centrar el mapa en el taller descrito por
+/// [data] (con claves `latitud`/`longitud`), o `null` si no tiene
+/// coordenadas registradas.
+///
+/// Extraída como función pura y testeable: `GoogleMapController` solo se
+/// puede construir a través del plugin nativo (constructor privado,
+/// `init()` exige una `_GoogleMapState`), así que no hay forma de verificar
+/// en un test que `animateCamera` se invoque de verdad. Lo que sí se puede
+/// y se debe cubrir es que el tap sigue calculando el destino correcto.
+@visibleForTesting
+CameraUpdate? workshopCameraUpdate(Map<String, dynamic> data) {
+  final lat = data['latitud']?.toDouble();
+  final lng = data['longitud']?.toDouble();
+  if (lat == null || lng == null) return null;
+  return CameraUpdate.newLatLngZoom(LatLng(lat, lng), 15);
+}
 
 class WorkshopDirectoryScreen extends StatefulWidget {
   const WorkshopDirectoryScreen({super.key});
@@ -835,110 +852,109 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
     final rating = data['calificacion_promedio']?.toDouble() ?? 0.0;
     final reviewsCount = data['total_resenias'] ?? 0;
     final location = data['ubicacion_municipio'] ?? '';
+    final ratingLabel = reviewsCount > 0
+        ? '${rating.toStringAsFixed(1)} de 5 estrellas'
+        : 'Taller nuevo, sin calificación';
 
-    return GestureDetector(
-      onTap: () {
-        final lat = data['latitud']?.toDouble();
-        final lng = data['longitud']?.toDouble();
-        if (lat != null && lng != null && _mapController != null) {
-          _mapController!.animateCamera(
-            CameraUpdate.newLatLngZoom(LatLng(lat, lng), 15),
-          );
-        }
-      },
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 200, maxWidth: 280),
-        child: AppCard(
-          margin: const EdgeInsets.only(right: 12),
-          padding: EdgeInsets.all(Responsive.padding(context, 14)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      name,
-                      style: AppTextStyles.labelLarge.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: colors.textPrimary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 200, maxWidth: 280),
+      child: AppCard(
+        margin: const EdgeInsets.only(right: 12),
+        padding: EdgeInsets.all(Responsive.padding(context, 14)),
+        onTap: () {
+          final update = workshopCameraUpdate(data);
+          if (update != null && _mapController != null) {
+            _mapController!.animateCamera(update);
+          }
+        },
+        // La valoracion va en el label de la tarjeta, no en un `Semantics`
+        // hijo: `AppCard` pulsable excluye la semantica de sus hijos, asi
+        // que ese envoltorio era codigo muerto y la valoracion no se
+        // anunciaba en ninguna parte. Aqui no hay ningun control propio que
+        // haga falta activar -es informacion-, asi que plegarla en el label
+        // deja un solo nodo por taller: un swipe por tarjeta en el carrusel
+        // del mapa, en vez de cuatro paradas por tarjeta.
+        semanticLabel: '$name, $spec, $ratingLabel',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    name,
+                    style: AppTextStyles.labelLarge.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: colors.textPrimary,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  Semantics(
-                    label: reviewsCount > 0
-                        ? '${rating.toStringAsFixed(1)} de 5 estrellas'
-                        : 'Taller nuevo, sin calificación',
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: Responsive.padding(context, 5),
-                        vertical: Responsive.padding(context, 1),
-                      ),
-                      decoration: BoxDecoration(
-                        color: colors.warning.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.star,
-                            size: Responsive.iconSize(context, 12),
-                            color: colors.warning,
-                          ),
-                          const SizedBox(width: 2),
-                          Text(
-                            reviewsCount > 0
-                                ? rating.toStringAsFixed(1)
-                                : 'Nuevo',
-                            style: AppTextStyles.labelSmall.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: colors.warning,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Responsive.padding(context, 5),
+                    vertical: Responsive.padding(context, 1),
                   ),
-                ],
+                  decoration: BoxDecoration(
+                    color: colors.warning.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.star,
+                        size: Responsive.iconSize(context, 12),
+                        color: colors.warning,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        reviewsCount > 0 ? rating.toStringAsFixed(1) : 'Nuevo',
+                        style: AppTextStyles.labelSmall.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colors.warning,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              spec,
+              style: TextStyle(
+                fontSize: Responsive.fontSize(context, 12),
+                color: colors.textSecondary,
               ),
-              const SizedBox(height: 6),
-              Text(
-                spec,
-                style: TextStyle(
-                  fontSize: Responsive.fontSize(context, 12),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(
+                  Icons.location_on,
+                  size: Responsive.iconSize(context, 13),
                   color: colors.textSecondary,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(
-                    Icons.location_on,
-                    size: Responsive.iconSize(context, 13),
-                    color: colors.textSecondary,
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      location,
-                      style: TextStyle(
-                        fontSize: Responsive.fontSize(context, 11),
-                        color: colors.textSecondary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    location,
+                    style: TextStyle(
+                      fontSize: Responsive.fontSize(context, 11),
+                      color: colors.textSecondary,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

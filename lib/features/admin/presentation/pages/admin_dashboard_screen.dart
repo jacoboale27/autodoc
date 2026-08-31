@@ -20,6 +20,10 @@ import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/providers/language_provider.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 
+/// Aspect ratio for metric cards grid. Defines the height-to-width ratio of each card cell.
+/// Higher values = wider/shorter cells. Used to minimize empty space above content.
+const double adminMetricCardsAspectRatio = 2.1;
+
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
 
@@ -229,7 +233,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       crossAxisSpacing: 20,
       mainAxisSpacing: 20,
       shrinkWrap: true,
-      childAspectRatio: 1.6,
+      childAspectRatio: adminMetricCardsAspectRatio,
       physics: const NeverScrollableScrollPhysics(),
       children: [
         MetricCard(

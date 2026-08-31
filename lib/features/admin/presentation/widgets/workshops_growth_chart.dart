@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/widgets/charts/month_axis.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 
 /// Gráfico de barras que muestra la cantidad de talleres afiliados
@@ -30,6 +31,10 @@ class WorkshopsGrowthChart extends StatelessWidget {
       final date = DateTime(now.year, now.month - i, 1);
       monthsOrder.add('${date.year}-${date.month.toString().padLeft(2, '0')}');
     }
+
+    final monthNumbers = monthsOrder
+        .map((key) => int.parse(key.split('-')[1]))
+        .toList();
 
     final barGroups = monthsOrder.asMap().entries.map((entry) {
       final index = entry.key;
@@ -69,41 +74,9 @@ class WorkshopsGrowthChart extends StatelessWidget {
                 gridData: const FlGridData(show: false),
                 titlesData: FlTitlesData(
                   bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 30,
-                      getTitlesWidget: (value, meta) {
-                        if (value.toInt() >= 0 &&
-                            value.toInt() < monthsOrder.length) {
-                          final key = monthsOrder[value.toInt()];
-                          final month = int.parse(key.split('-')[1]);
-                          final monthNames = [
-                            'Ene',
-                            'Feb',
-                            'Mar',
-                            'Abr',
-                            'May',
-                            'Jun',
-                            'Jul',
-                            'Ago',
-                            'Sep',
-                            'Oct',
-                            'Nov',
-                            'Dic',
-                          ];
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              monthNames[month - 1],
-                              style: TextStyle(
-                                color: colors.textSecondary,
-                                fontSize: 12,
-                              ),
-                            ),
-                          );
-                        }
-                        return const Text('');
-                      },
+                    sideTitles: monthAxisSideTitles(
+                      monthNumbers: monthNumbers,
+                      colors: colors,
                     ),
                   ),
                   leftTitles: AxisTitles(

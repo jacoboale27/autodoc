@@ -11,6 +11,7 @@ import 'package:autodoc/core/providers/notification_center_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/widgets/navigation/app_nav_destination.dart';
+import 'package:autodoc/l10n/app_localizations.dart';
 
 class AppTopNavBar extends StatelessWidget {
   const AppTopNavBar({super.key});
@@ -18,6 +19,7 @@ class AppTopNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final l10n = AppLocalizations.of(context)!;
     final currentPath = GoRouterState.of(context).uri.path;
 
     return Container(
@@ -105,33 +107,44 @@ class AppTopNavBar extends StatelessWidget {
                       color: colors.textSecondary,
                     ),
                     onPressed: themeProvider.toggleTheme,
-                    tooltip: 'Theme',
+                    tooltip: l10n.topNavThemeTooltip,
                   ),
                   SizedBox(width: Responsive.padding(context, 8)),
-                  InkWell(
-                    onTap: () {
-                      languageProvider.changeLanguage(isEnglish ? 'es' : 'en');
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: Tooltip(
-                      message: 'Cambiar idioma',
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: colors.outline.withValues(alpha: 0.5),
+                  // Solo `button: true`: el `Tooltip` de dentro ya publica
+                  // el nombre en el campo `tooltip` del nodo, y anadir un
+                  // `label` con la MISMA cadena la hace sonar dos veces
+                  // (etiqueta duplicada del §2.13). Lo que el envoltorio si
+                  // aporta es el rol: `InkWell` no marca `isButton`, a
+                  // diferencia del `IconButton` del tema.
+                  Semantics(
+                    button: true,
+                    child: InkWell(
+                      onTap: () {
+                        languageProvider.changeLanguage(
+                          isEnglish ? 'es' : 'en',
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Tooltip(
+                        message: l10n.topNavLanguageTooltip,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
                           ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          isEnglish ? 'EN' : 'ES',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: colors.textSecondary,
-                            fontSize: Responsive.fontSize(context, 12),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: colors.outline.withValues(alpha: 0.5),
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            isEnglish ? 'EN' : 'ES',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: colors.textSecondary,
+                              fontSize: Responsive.fontSize(context, 12),
+                            ),
                           ),
                         ),
                       ),
@@ -148,6 +161,10 @@ class AppTopNavBar extends StatelessWidget {
             builder: (context, notifProvider, _) {
               return Stack(
                 children: [
+                  // Sin envoltorio `Semantics`: el `IconButton` ya publica
+                  // isButton, la accion de tap y su nombre (via `tooltip`).
+                  // El envoltorio solo anadia un nodo padre SIN acciones con
+                  // la misma cadena: dos paradas seguidas que dicen lo mismo.
                   IconButton(
                     icon: Icon(
                       notifProvider.hasUnread
@@ -158,7 +175,7 @@ class AppTopNavBar extends StatelessWidget {
                           : colors.textSecondary,
                     ),
                     onPressed: () => context.push('/notifications'),
-                    tooltip: 'Notificaciones',
+                    tooltip: l10n.notifications,
                   ),
                   if (notifProvider.hasUnread)
                     Positioned(
@@ -200,27 +217,33 @@ class AppTopNavBar extends StatelessWidget {
           Consumer<UserProfileProvider>(
             builder: (context, userSession, _) {
               final user = userSession.userData;
-              return Tooltip(
-                message: 'Tu cuenta',
-                child: InkWell(
-                  onTap: () => context.push('/user_profile'),
-                  borderRadius: BorderRadius.circular(999),
-                  child: CircleAvatar(
-                    radius: Responsive.size(context, 16),
-                    backgroundColor: colors.primary,
-                    backgroundImage: user?.fotoPerfilUrl != null
-                        ? NetworkImage(user!.fotoPerfilUrl!)
-                        : null,
-                    child: user?.fotoPerfilUrl == null
-                        ? Text(
-                            user?.nombreCompleto.isNotEmpty == true
-                                ? user!.nombreCompleto[0].toUpperCase()
-                                : 'U',
-                            style: AppTextStyles.bodySmall.copyWith(
-                              color: colors.surface,
-                            ),
-                          )
-                        : null,
+              // Mismo caso que el selector de idioma: el `Tooltip` ya
+              // nombra el control y el `InkWell` no aporta el rol de boton,
+              // asi que el envoltorio se queda solo con `button: true`.
+              return Semantics(
+                button: true,
+                child: Tooltip(
+                  message: l10n.topNavAccountTooltip,
+                  child: InkWell(
+                    onTap: () => context.push('/user_profile'),
+                    borderRadius: BorderRadius.circular(999),
+                    child: CircleAvatar(
+                      radius: Responsive.size(context, 16),
+                      backgroundColor: colors.primary,
+                      backgroundImage: user?.fotoPerfilUrl != null
+                          ? NetworkImage(user!.fotoPerfilUrl!)
+                          : null,
+                      child: user?.fotoPerfilUrl == null
+                          ? Text(
+                              user?.nombreCompleto.isNotEmpty == true
+                                  ? user!.nombreCompleto[0].toUpperCase()
+                                  : 'U',
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: colors.surface,
+                              ),
+                            )
+                          : null,
+                    ),
                   ),
                 ),
               );

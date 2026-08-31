@@ -81,7 +81,24 @@ class MechanicScaffold extends StatelessWidget {
               children: [
                 if (showFixedSidebar)
                   _MechanicTopBar(title: title, actions: actions),
-                Expanded(child: body),
+                // El `body` de las rutas del `ShellRoute` es el `Navigator`
+                // anidado de go_router. Sin un limite semantico explicito
+                // propio se traga el arbol de accesibilidad de sus hermanos
+                // — aqui, `MechanicSidebar` y `_MechanicTopBar` —, que es la
+                // segunda mitad del hallazgo QA §2.13: en `/chat_list` (la
+                // unica ruta del taller que pasa por `_MechanicShell`) la
+                // barra lateral desaparecia del arbol. Mismo arreglo, y por
+                // el mismo motivo, que en la rama `large` de
+                // `main_scaffold.dart`: se envuelve el lado del `Navigator`,
+                // NO la barra. Demostrado en rojo a 1024 px con
+                // `mechanic_sidebar_semantics_test.dart` antes de tocar.
+                Expanded(
+                  child: Semantics(
+                    container: true,
+                    explicitChildNodes: true,
+                    child: body,
+                  ),
+                ),
               ],
             ),
           ),

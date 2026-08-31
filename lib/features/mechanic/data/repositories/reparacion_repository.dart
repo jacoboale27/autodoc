@@ -86,7 +86,14 @@ class ReparacionRepository {
     required String idReparacion,
     required String nuevoEstado,
   }) async {
-    if (!estadosReparacion.contains(nuevoEstado)) {
+    // 'cancelado' es un estado terminal fuera del pipeline secuencial de
+    // `estadosReparacion` (a propósito: si viviera en esa lista aparecería
+    // como una columna más del kanban y desordenaría el índice que decide
+    // "avanzar"/"retroceder" — ver ReparacionesKanbanScreen, que itera
+    // `estadosReparacion` para las columnas). Se acepta aparte, sin
+    // importar el estado actual del ticket.
+    if (nuevoEstado != 'cancelado' &&
+        !estadosReparacion.contains(nuevoEstado)) {
       throw ArgumentError('Estado inválido: $nuevoEstado');
     }
     final docRef = _firestore
@@ -104,7 +111,9 @@ class ReparacionRepository {
       final estadoActual = (data['estado'] ?? 'recibido').toString();
       final indiceActual = estadosReparacion.indexOf(estadoActual);
       final indiceNuevo = estadosReparacion.indexOf(nuevoEstado);
-      if (indiceActual != -1 && indiceNuevo < indiceActual) {
+      if (nuevoEstado != 'cancelado' &&
+          indiceActual != -1 &&
+          indiceNuevo < indiceActual) {
         throw ArgumentError(
           'No se puede retroceder de "$estadoActual" a "$nuevoEstado"',
         );

@@ -3,7 +3,10 @@ import '../models/reserva_model.dart';
 import '../../../../core/constants/firestore_collections.dart';
 
 class ReservaRepository {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  ReservaRepository({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
+
+  final FirebaseFirestore _firestore;
 
   // Obtener reservas de un usuario
   Stream<List<ReservaModel>> streamReservasUsuario(

@@ -163,4 +163,74 @@ void main() {
     // The failure must still be surfaced.
     expect(provider.error, isNotNull);
   });
+
+  test('fetchAlertsForVehicles conserva las tareas de mantenimiento de TODOS '
+      'los vehiculos, no solo las del ultimo procesado', () async {
+    final firestore = FakeFirebaseFirestore();
+
+    // Una tarea propia por vehiculo, ya existente, para que fetchAlerts
+    // no entre en createDefaultTasks.
+    await firestore.collection('mantenimientos').add({
+      'id_vehiculo': 'v1',
+      'nombre': 'Cambio de Aceite',
+      'ultimo_km': 9000,
+      'fecha_ultimo_servicio': Timestamp.fromDate(DateTime.now()),
+      'frecuencia_km': 5000,
+      'frecuencia_meses': 6,
+    });
+    await firestore.collection('mantenimientos').add({
+      'id_vehiculo': 'v2',
+      'nombre': 'Rotacion de Llantas',
+      'ultimo_km': 19000,
+      'fecha_ultimo_servicio': Timestamp.fromDate(DateTime.now()),
+      'frecuencia_km': 10000,
+      'frecuencia_meses': 12,
+    });
+
+    final provider = AlertProvider(
+      firestore: firestore,
+      storage: MockFirebaseStorage(),
+    );
+    // 'v1' es el PRIMARIO (el que VehicleProvider selecciona) y 'v2' el
+    // ultimo procesado por el bucle. Los consumidores filtran
+    // `maintenanceTasks` por el vehiculo seleccionado: si la lista se
+    // queda solo con las del ultimo procesado, ese filtro da vacio y la
+    // pantalla se apaga.
+    final v1 = VehicleModel(
+      idVehiculo: 'v1',
+      idPropietario: 'owner-1',
+      placa: 'P111-111',
+      marca: 'Toyota',
+      modelo: 'Corolla',
+      kilometrajeActual: 10000,
+      isPrimary: true,
+    );
+    final v2 = VehicleModel(
+      idVehiculo: 'v2',
+      idPropietario: 'owner-1',
+      placa: 'P222-222',
+      marca: 'Honda',
+      modelo: 'Civic',
+      kilometrajeActual: 20000,
+    );
+
+    await provider.fetchAlertsForVehicles([v1, v2]);
+
+    expect(
+      provider.maintenanceTasks.map((t) => t.vehicleId).toSet(),
+      {'v1', 'v2'},
+      reason:
+          'las tareas del vehiculo primario no pueden desaparecer solo '
+          'porque no fue el ultimo del bucle',
+    );
+
+    // Y el filtro que aplican dashboard_screen/alerts_screen sobre el
+    // vehiculo seleccionado debe encontrar algo.
+    expect(
+      provider.maintenanceTasks
+          .where((t) => t.vehicleId == v1.idVehiculo)
+          .map((t) => t.nombre),
+      contains('Cambio de Aceite'),
+    );
+  });
 }

@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/models/verificacion_taller_model.dart';
+import 'package:autodoc/features/dashboard/data/services/workshop_service.dart';
 import 'package:autodoc/features/mechanic/data/services/verificacion_service.dart';
 
 /// Bandeja de expedientes de verificación para el administrador.
@@ -20,9 +22,13 @@ import 'package:autodoc/features/mechanic/data/services/verificacion_service.dar
 /// retira nada.
 class AdminVerificacionProvider extends ChangeNotifier {
   final VerificacionService _service;
+  final WorkshopService _workshopService;
 
-  AdminVerificacionProvider({VerificacionService? service})
-    : _service = service ?? VerificacionService();
+  AdminVerificacionProvider({
+    VerificacionService? service,
+    WorkshopService? workshopService,
+  }) : _service = service ?? VerificacionService(),
+       _workshopService = workshopService ?? WorkshopService();
 
   StreamSubscription<List<VerificacionTallerModel>>? _suscripcion;
 
@@ -31,6 +37,33 @@ class AdminVerificacionProvider extends ChangeNotifier {
 
   bool _cargando = true;
   bool get cargando => _cargando;
+
+  /// Perfil publico (`talleres/{uid}`) de cada taller con expediente en la
+  /// bandeja, cacheado por uid.
+  ///
+  /// Hasta 2026-08-28 la pantalla identificaba la solicitud unicamente por el
+  /// uid crudo y el administrador aprobaba o rechazaba a ciegas. El nombre y
+  /// la especialidad viven fuera de [VerificacionTallerModel] a proposito
+  /// (ver el doc del propio modelo): por eso se resuelven aqui, en un cache
+  /// aparte, en vez de mutar el expediente.
+  final Map<String, UserModel?> _identidades = {};
+
+  /// Perfil publico ya resuelto para `idTaller`, o `null` si todavia no ha
+  /// llegado (o el taller no tiene perfil publico).
+  UserModel? identidadDe(String idTaller) => _identidades[idTaller];
+
+  /// Uids cuya resolucion de perfil publico esta en vuelo ahora mismo.
+  ///
+  /// `observarBandeja()` es un `.snapshots()` normal, sin `.distinct()`
+  /// (Firestore reemite dos veces al suscribirse: cache local y luego
+  /// servidor). Sin este set, una segunda reemision que llega mientras la
+  /// primera resolucion de un uid todavia no termina lo vuelve a pedir: el
+  /// cache (`_identidades`) todavia no tiene la entrada porque el primer
+  /// `Future.wait` no ha resuelto, asi que `pendientes` lo calcularia como
+  /// "falta" otra vez. Es exactamente el costo de lectura redundante que la
+  /// Ruling 20 pedia eliminar, solo que entre emisiones solapadas en vez de
+  /// dentro de una sola.
+  final Set<String> _enVuelo = {};
 
   /// Uid del taller cuyo expediente se está resolviendo ahora mismo, para
   /// poner el spinner solo en esa fila.
@@ -50,6 +83,7 @@ class AdminVerificacionProvider extends ChangeNotifier {
         _cargando = false;
         _error = null;
         notifyListeners();
+        unawaited(_hidratarIdentidades(expedientes));
       },
       onError: (Object e) {
         _error = e.toString();
@@ -57,6 +91,51 @@ class AdminVerificacionProvider extends ChangeNotifier {
         notifyListeners();
       },
     );
+  }
+
+  /// Resuelve el perfil publico de cada taller nuevo en la bandeja.
+  ///
+  /// Concurrente, no secuencial: un `for`+`await` haria una consulta a
+  /// Firestore por expediente, una detras de otra. Con `Future.wait` todas
+  /// salen a la vez. Y solo por los uids que faltan en el cache Y que no
+  /// esten ya en vuelo: cada vez que el stream de `observarBandeja` reemite
+  /// (un taller mas que entra a la cola, o simplemente la doble emision
+  /// cache+servidor de Firestore), los ya resueltos o ya en camino no vuelven
+  /// a pedirse.
+  Future<void> _hidratarIdentidades(
+    List<VerificacionTallerModel> expedientes,
+  ) async {
+    final pendientes = expedientes
+        .map((e) => e.idTaller)
+        .where(
+          (uid) => !_identidades.containsKey(uid) && !_enVuelo.contains(uid),
+        )
+        .toSet();
+    if (pendientes.isEmpty) return;
+
+    _enVuelo.addAll(pendientes);
+    try {
+      final resueltos = await Future.wait(
+        pendientes.map((uid) async {
+          try {
+            return MapEntry(uid, await _workshopService.getWorkshopById(uid));
+          } catch (_) {
+            // Un perfil que no se pudo resolver no debe tumbar el resto del
+            // lote ni quedar atascado para siempre: al no escribirse en
+            // `_identidades`, la proxima reemision del stream lo vuelve a
+            // intentar (una vez que salga de `_enVuelo` en el `finally`).
+            return null;
+          }
+        }),
+      );
+
+      for (final entrada in resueltos) {
+        if (entrada != null) _identidades[entrada.key] = entrada.value;
+      }
+      notifyListeners();
+    } finally {
+      _enVuelo.removeAll(pendientes);
+    }
   }
 
   Future<String?> urlDeEvidencia(

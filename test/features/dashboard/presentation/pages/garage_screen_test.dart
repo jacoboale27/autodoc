@@ -7,6 +7,8 @@ import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
+import 'package:autodoc/core/services/push_notification_service.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_empty_state.dart';
 import 'package:autodoc/core/widgets/app_grid.dart';
@@ -19,12 +21,49 @@ import '../../../../support/responsive_harness.dart';
 import '../../../../support/shell_harness.dart';
 import '../../../../support/vehicle_fixtures.dart';
 
+/// No-op: evita que `AuthSessionProvider` dispare
+/// `PushNotificationService().updateUserToken(...)` contra Firebase
+/// Messaging real cuando el stream emite un usuario autenticado (mismo
+/// patrón que `test/core/providers/auth_session_provider_test.dart`).
+class _FakePushNotificationService extends Fake
+    implements PushNotificationService {
+  @override
+  Future<void> updateUserToken(String userId) async {}
+}
+
 /// `AuthSessionProvider()` por defecto cae en `FirebaseAuth.instance`, que
-/// lanza sin `Firebase.initializeApp()`; se inyecta un `MockFirebaseAuth`
-/// con un stream vacío, igual que en `auth_session_provider_test.dart`.
-AuthSessionProvider _fakeAuthSessionProvider() {
+/// lanza sin `Firebase.initializeApp()`; se inyecta un `MockFirebaseAuth`,
+/// igual que en `auth_session_provider_test.dart`.
+///
+/// Por defecto emite un usuario autenticado con uid `'u1'`: es el
+/// `idPropietario` fijo de `fakeVehicle` (`test/support/vehicle_fixtures.dart`),
+/// así que las acciones de "dueño" de cada tarjeta del garaje (p.ej. el
+/// botón "Hacer Principal") se pintan como en producción en vez de quedar
+/// ocultas por un `currentUserId` nulo. Pasa `uid: null` para simular una
+/// sesión sin usuario.
+///
+/// Usa `Stream.value(...)` (de un solo valor), no un `StreamController` con
+/// `await Future.delayed(...)`: `testWidgets` corre en la zona `FakeAsync`
+/// del binding de test, donde un `Future.delayed` no se resuelve hasta que
+/// algo avanza el reloj falso con `tester.pump(...)` — awaitarlo aquí, antes
+/// de que exista un `tester` para pumpear, deja el listener de
+/// `idTokenChanges()` colgado para siempre y cuelga el test (y con él, cada
+/// test siguiente del archivo). `AuthSessionProvider` ya se suscribe en su
+/// propio constructor (`lib/core/providers/auth_session_provider.dart:19`),
+/// así que basta con dejar que el primer `pumpAndSettle`/`pump` de cada test
+/// recoja el evento.
+AuthSessionProvider _fakeAuthSessionProvider({String? uid = 'u1'}) {
+  PushNotificationService.setInstanceForTesting(_FakePushNotificationService());
+
   final mockAuth = MockFirebaseAuth();
-  when(mockAuth.idTokenChanges()).thenAnswer((_) => const Stream.empty());
+  if (uid == null) {
+    when(mockAuth.idTokenChanges()).thenAnswer((_) => const Stream.empty());
+  } else {
+    final mockUser = MockUser();
+    when(mockUser.uid).thenReturn(uid);
+    when(mockAuth.idTokenChanges()).thenAnswer((_) => Stream.value(mockUser));
+  }
+
   return AuthSessionProvider(firebaseAuth: mockAuth);
 }
 
@@ -166,5 +205,49 @@ void main() {
         expectNoOverflow(tester);
       });
     }
+  });
+
+  testWidgets('a 768 px el nombre del vehiculo no se recorta', (tester) async {
+    await pumpScreen(tester, 768, vehicleCount: 4);
+    await tester.pumpAndSettle();
+
+    final l10n = tester.element(find.byType(GarageScreen)).l10n;
+
+    // Ruling 17: sin el botón "Hacer Principal" en el árbol no hay nada
+    // compitiendo por el ancho del Expanded del nombre, y la prueba de
+    // ancho de abajo pasaría en verde aunque el bug siguiera sin corregir.
+    // Se comprueba primero que el botón sí se pinta. Se usa el icono
+    // (`Icons.star_border`), no el tooltip: lo comparten el `AppButton`
+    // pre-fix (garage_screen.dart:317) y el `IconButton` post-fix, así que
+    // este guard vale en ambos árboles y no hace que el red-run falle aquí
+    // en vez de en la aserción de ancho de abajo.
+    expect(
+      find.byIcon(Icons.star_border),
+      findsWidgets,
+      reason:
+          'sin "Hacer Principal" en el árbol la prueba de ancho del '
+          'título sería vacía: nada compite por el espacio del Expanded',
+    );
+
+    // Ruling 16: la fixture (test/support/vehicle_fixtures.dart) siempre
+    // arma 'Toyota'/'Corolla', nunca 'NISSAN GT-R'.
+    final tituloFinder = find.text('Toyota Corolla').first;
+    final titulo = tester.widget<Text>(tituloFinder);
+    final render = tester.renderObject<RenderBox>(tituloFinder);
+    final pintado = render.size.width;
+
+    expect(
+      pintado,
+      greaterThan(120),
+      reason:
+          'con "Hacer Principal" sin restricción el Expanded se queda con '
+          'las sobras y el título cae a dos letras ("To...")',
+    );
+    expect(titulo.overflow, TextOverflow.ellipsis);
+
+    // Post-fix: el nombre accesible ("Hacer Principal") debe sobrevivir el
+    // cambio de AppButton a IconButton (protege contra la Task 14, que es
+    // justamente sobre nombres accesibles).
+    expect(find.byTooltip(l10n.garageMakePrimary), findsWidgets);
   });
 }

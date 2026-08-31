@@ -8,6 +8,7 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_dialog_content.dart';
@@ -96,6 +97,7 @@ class _ExpedienteCard extends StatelessWidget {
     final adminUid = context.read<AuthSessionProvider>().currentUid;
     final ocupado = provider.resolviendo == expediente.idTaller;
     final abierto = expediente.estado == EstadoVerificacion.enRevision;
+    final identidad = provider.identidadDe(expediente.idTaller);
 
     return AppCard(
       margin: EdgeInsets.zero,
@@ -104,13 +106,43 @@ class _ExpedienteCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Text(
-                  expediente.idTaller,
-                  style: AppTextStyles.titleSmall.copyWith(
-                    color: colors.textPrimary,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Mientras no llega el perfil publico de `talleres/{uid}`
+                    // se usa el uid como titulo transitorio: es peor que el
+                    // nombre, pero solo dura hasta la primera hidratacion, y
+                    // es mejor que un hueco en blanco.
+                    Text(
+                      identidad?.nombreCompleto ?? expediente.idTaller,
+                      style: AppTextStyles.titleSmall.copyWith(
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    if (identidad?.especialidad != null &&
+                        identidad!.especialidad!.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        identidad.especialidad!,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      context.l10n.adminVerificacionTallerId(
+                        expediente.idTaller,
+                      ),
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: colors.textSecondary,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ],
                 ),
               ),
               _chipEstado(context, expediente.estado),
@@ -231,17 +263,14 @@ class _ExpedienteCard extends StatelessWidget {
               ),
             )
           else
-            Wrap(
-              alignment: WrapAlignment.end,
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
+            // Aprobar primero y con el peso visual del botón primario;
+            // rechazar debajo y como acción de texto. La destructiva no
+            // puede ser la más prominente de las dos: eso era lo que hacía
+            // que un click apurado cayera más fácil en "Rechazar" que en
+            // "Aprobar".
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                AppButton(
-                  text: 'Rechazar',
-                  type: AppButtonType.danger,
-                  size: AppButtonSize.small,
-                  onPressed: () => _pedirMotivo(context, provider, adminUid),
-                ),
                 AppButton(
                   text: 'Aprobar',
                   size: AppButtonSize.small,
@@ -254,6 +283,18 @@ class _ExpedienteCard extends StatelessWidget {
                       _avisar(context, provider.error!);
                     }
                   },
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Theme(
+                  data: Theme.of(context).copyWith(
+                    extensions: [colors.copyWith(primary: colors.error)],
+                  ),
+                  child: AppButton(
+                    text: 'Rechazar',
+                    type: AppButtonType.text,
+                    size: AppButtonSize.small,
+                    onPressed: () => _pedirMotivo(context, provider, adminUid),
+                  ),
                 ),
               ],
             ),

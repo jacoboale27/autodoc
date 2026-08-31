@@ -12,6 +12,7 @@ import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/widgets/main_scaffold.dart';
 import 'package:autodoc/core/widgets/app_top_nav_bar.dart';
 import 'package:autodoc/core/theme/app_theme.dart';
+import 'package:autodoc/l10n/app_localizations.dart';
 
 /// Doble del provider de perfil que solo fija el rol y el nombre.
 ///
@@ -83,11 +84,19 @@ Future<void> pumpShell(
   required double width,
   required String rol,
   String location = '/dashboard',
+  // Permite a un test inyectar contenido real (con su propia semantica) en
+  // el `child` de la `ShellRoute`, en vez del `Text` de relleno por
+  // defecto. Lo usa `main_scaffold_large_content_semantics_test.dart` para
+  // comprobar que el limite semantico explicito que envuelve `child` en la
+  // rama `WindowClass.large` no aplana ni traga el contenido real.
+  Widget Function(String path)? bodyBuilder,
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = Size(width, 900);
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
+
+  final buildBody = bodyBuilder ?? (path) => Center(child: Text('body $path'));
 
   final router = GoRouter(
     initialLocation: location,
@@ -102,10 +111,7 @@ Future<void> pumpShell(
             '/workshop_directory',
             '/user_profile',
           ])
-            GoRoute(
-              path: path,
-              builder: (context, state) => Center(child: Text('body $path')),
-            ),
+            GoRoute(path: path, builder: (context, state) => buildBody(path)),
         ],
       ),
     ],
@@ -115,7 +121,12 @@ Future<void> pumpShell(
   await tester.pumpWidget(
     MultiProvider(
       providers: _shellProviders(rol),
-      child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      child: MaterialApp.router(
+        theme: AppTheme.light,
+        routerConfig: router,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
     ),
   );
   await tester.pumpAndSettle();
@@ -159,6 +170,8 @@ Future<void> pumpTopNav(
       child: MaterialApp.router(
         theme: brightness == Brightness.dark ? AppTheme.dark : AppTheme.light,
         routerConfig: router,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
       ),
     ),
   );

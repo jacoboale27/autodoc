@@ -116,6 +116,17 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
   DateTime? _vencimientoTarjeta;
   DateTime? _vencimientoSoat;
 
+  // Errores de año/color señalados en el propio campo. Antes se avisaban
+  // con un snackbar, que desaparece solo y no indica qué campo lo causó.
+  String? _anioError;
+  String? _colorError;
+
+  // Solo letras (con acentos/ñ) y espacios, 3-30 caracteres: "Gris13" pasó
+  // a producción porque este campo era texto libre.
+  static final RegExp _colorValidoRegExp = RegExp(
+    r'^[A-Za-zÁÉÍÓÚáéíóúÑñ ]{3,30}$',
+  );
+
   @override
   void initState() {
     super.initState();
@@ -513,46 +524,73 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
             Row(
               children: [
                 Expanded(
-                  child: InkWell(
-                    onTap: _showYearPicker,
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: colors.surfaceContainer,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.calendar_today,
-                            color: widget.primaryColor,
-                            size: 20,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      InkWell(
+                        onTap: _showYearPicker,
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: colors.surfaceContainer,
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Row(
                             children: [
-                              Text(
-                                context.l10n.addVehicleYear,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: colors.textSecondary,
-                                ),
+                              Icon(
+                                Icons.calendar_today,
+                                color: widget.primaryColor,
+                                size: 20,
                               ),
-                              Text(
-                                _anioController.text.isEmpty
-                                    ? '2024'
-                                    : _anioController.text,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: colors.textPrimary,
-                                ),
+                              const SizedBox(width: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    context.l10n.addVehicleYear,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: colors.textSecondary,
+                                    ),
+                                  ),
+                                  Text(
+                                    _anioController.text.isEmpty
+                                        ? context.l10n.addVehicleYearHint
+                                        : _anioController.text,
+                                    style: TextStyle(
+                                      // Un placeholder NO puede parecer un
+                                      // valor elegido: hasta 2026-08-28 aqui
+                                      // se pintaba el literal '2024' en
+                                      // bold/textPrimary, y el usuario no
+                                      // tenia forma de saber que el campo
+                                      // seguia vacio. Al enviar saltaba "Ano
+                                      // invalido" senalando un campo que a
+                                      // la vista tenia un ano correcto.
+                                      fontWeight: _anioController.text.isEmpty
+                                          ? FontWeight.normal
+                                          : FontWeight.bold,
+                                      color: _anioController.text.isEmpty
+                                          ? colors.textSecondary
+                                          : colors.textPrimary,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
+                      if (_anioError != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            _anioError!,
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: colors.error,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -562,6 +600,11 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                     context.l10n.addVehicleColorHint,
                     _colorController,
                     Icons.palette,
+                    // Mismo mecanismo que el resto del formulario: un solo
+                    // sitio (`_colorError`) decide el mensaje, sin una ruta
+                    // paralela de snackbar. T19 reutilizara este campo para
+                    // el validador de formato.
+                    errorText: _colorError,
                   ),
                 ),
               ],
@@ -609,26 +652,31 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                   final anio = int.tryParse(_anioController.text);
                   final currentYear = DateTime.now().year;
                   if (anio == null || anio < 1900 || anio > currentYear) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Año inválido')),
+                    setState(
+                      () => _anioError = context.l10n.addVehicleYearInvalid,
                     );
                     return;
                   }
+                  setState(() => _anioError = null);
 
                   if (_colorController.text.trim().isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('El color es obligatorio')),
+                    setState(
+                      () => _colorError = context.l10n.addVehicleColorRequired,
                     );
                     return;
                   }
-                  if (_colorController.text.length > 30) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('El color no debe exceder 30 caracteres'),
-                      ),
+                  // "Gris13" llegó a producción porque el campo era texto
+                  // libre sin más validación que "no vacío". El patrón ya
+                  // acota 3-30 caracteres, así que reemplaza (no se suma a)
+                  // el chequeo de longitud que había aquí antes.
+                  if (!_colorValidoRegExp.hasMatch(_colorController.text)) {
+                    setState(
+                      () => _colorError =
+                          context.l10n.addVehicleColorInvalidChars,
                     );
                     return;
                   }
+                  setState(() => _colorError = null);
 
                   final km = int.tryParse(_kilometrajeController.text);
                   if (km == null || km < 0) {
@@ -750,6 +798,7 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
     TextInputType? keyboardType,
     List<TextInputFormatter>? formatters,
     String? Function(String?)? validator,
+    String? errorText,
   }) {
     return AppTextField(
       label: label,
@@ -758,6 +807,7 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
       keyboardType: keyboardType,
       inputFormatters: formatters,
       validator: validator,
+      errorText: errorText,
       prefixIcon: Icon(icon, color: widget.primaryColor, size: 20),
     );
   }

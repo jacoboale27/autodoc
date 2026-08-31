@@ -350,6 +350,12 @@ abstract class AppLocalizations {
   /// **'Open the link in the email and then press \"I already verified\" to continue.'**
   String get authOpenLinkThenVerify;
 
+  /// No description provided for @authOpenLinkOnRegister.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the link in the email to activate your account. You can continue in the meantime.'**
+  String get authOpenLinkOnRegister;
+
   /// No description provided for @authUnderstood.
   ///
   /// In en, this message translates to:
@@ -1178,6 +1184,12 @@ abstract class AppLocalizations {
   /// **'New Mileage'**
   String get alertsNewMileage;
 
+  /// No description provided for @alertsInconsistentMileage.
+  ///
+  /// In en, this message translates to:
+  /// **'Current mileage is lower than the last recorded service ({km} km). Correct the vehicle\'s mileage.'**
+  String alertsInconsistentMileage(String km);
+
   /// No description provided for @histTitle.
   ///
   /// In en, this message translates to:
@@ -1730,6 +1742,18 @@ abstract class AppLocalizations {
   /// **'Year'**
   String get addVehicleYear;
 
+  /// No description provided for @addVehicleYearHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select the year'**
+  String get addVehicleYearHint;
+
+  /// No description provided for @addVehicleYearInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid year'**
+  String get addVehicleYearInvalid;
+
   /// No description provided for @addVehicleColor.
   ///
   /// In en, this message translates to:
@@ -1741,6 +1765,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Gray'**
   String get addVehicleColorHint;
+
+  /// No description provided for @addVehicleColorRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Color is required'**
+  String get addVehicleColorRequired;
+
+  /// No description provided for @addVehicleColorInvalidChars.
+  ///
+  /// In en, this message translates to:
+  /// **'Only letters and spaces'**
+  String get addVehicleColorInvalidChars;
 
   /// No description provided for @addVehicleMileage.
   ///
@@ -1994,6 +2030,12 @@ abstract class AppLocalizations {
   /// **'Error: {error}'**
   String adminError(String error);
 
+  /// No description provided for @adminVerificacionTallerId.
+  ///
+  /// In en, this message translates to:
+  /// **'ID: {uid}'**
+  String adminVerificacionTallerId(String uid);
+
   /// No description provided for @chatOpeningSection.
   ///
   /// In en, this message translates to:
@@ -2183,7 +2225,7 @@ abstract class AppLocalizations {
   /// No description provided for @upLanguageDesc.
   ///
   /// In en, this message translates to:
-  /// **'EN (Enabled) / ES (Disabled)'**
+  /// **'Turn the switch on to use the app in English'**
   String get upLanguageDesc;
 
   /// No description provided for @upAbout.
@@ -2269,6 +2311,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete account'**
   String get upDeleteAccount;
+
+  /// No description provided for @topNavThemeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle theme'**
+  String get topNavThemeTooltip;
+
+  /// No description provided for @topNavLanguageTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Change language'**
+  String get topNavLanguageTooltip;
+
+  /// No description provided for @topNavAccountTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account'**
+  String get topNavAccountTooltip;
 }
 
 class _AppLocalizationsDelegate

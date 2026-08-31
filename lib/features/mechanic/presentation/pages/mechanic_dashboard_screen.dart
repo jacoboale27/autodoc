@@ -618,6 +618,9 @@ class _MetricCard extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.sm),
       margin: EdgeInsets.zero,
       onTap: onTap,
+      semanticLabel: onTap == null
+          ? null
+          : (subtitle != null ? '$title: $value, $subtitle' : '$title: $value'),
       child: Row(
         children: [
           Container(
@@ -688,6 +691,9 @@ class _ServiceTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
       padding: EdgeInsets.all(Responsive.padding(context, AppSpacing.base)),
       onTap: () => context.push('/mechanic_service_history'),
+      semanticLabel:
+          '${record.tipoServicio ?? 'Servicio'}, '
+          '${DateFormat('dd MMM yyyy').format(record.fecha)}',
       child: Row(
         children: [
           Container(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:autodoc/l10n/app_localizations.dart';
@@ -65,6 +67,28 @@ String? _resolveNotificationRoute(Map<String, dynamic> data) {
 }
 
 // Global navigator key for deep linking from background (removed because unused)
+
+/// Arranca [PushNotificationService] en segundo plano y retorna sin esperar
+/// a que termine. En web, `requestPermission()` no resuelve hasta que el
+/// usuario decide (aceptar/rechazar), asi que su timeout de 5 s se agotaba
+/// SIEMPRE y retrasaba `runApp` de 2,0 s a 7,0 s por estar en el camino
+/// critico del arranque. `push` es inyectable para test: esta funcion debe
+/// volver de inmediato aunque `push.initialize()` nunca complete.
+@visibleForTesting
+Future<void> startPushNotifications({PushNotificationService? push}) {
+  // Sin await: el servicio se inicializa en segundo plano y notifica por su
+  // cuenta cuando termina (o falla) sin bloquear el resto del arranque.
+  unawaited(
+    (push ?? PushNotificationService()).initialize().catchError((
+      Object e,
+      StackTrace stack,
+    ) {
+      debugPrint("=== [AutoDoc Init] ERROR en PushNotificationService: $e ===");
+      debugPrint(stack.toString());
+    }),
+  );
+  return Future<void>.value();
+}
 
 void main() async {
   usePathUrlStrategy();
@@ -167,14 +191,10 @@ void main() async {
   }
 
   // 4. Configurar Firebase Messaging y permisos de notificaciones
-  try {
-    debugPrint("=== [AutoDoc Init] Inicializando PushNotificationService ===");
-    await PushNotificationService().initialize();
-    debugPrint("=== [AutoDoc Init] PushNotificationService inicializado ===");
-  } catch (e, stack) {
-    debugPrint("=== [AutoDoc Init] ERROR en PushNotificationService: $e ===");
-    debugPrint(stack.toString());
-  }
+  debugPrint(
+    "=== [AutoDoc Init] Inicializando PushNotificationService en segundo plano ===",
+  );
+  await startPushNotifications();
 
   // 5. Inicializar Local Notifications y FCM en foreground
   try {

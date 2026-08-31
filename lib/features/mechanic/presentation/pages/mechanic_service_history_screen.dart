@@ -309,6 +309,9 @@ class _MechanicServiceHistoryScreenState
       margin: EdgeInsets.zero,
       padding: const EdgeInsets.all(AppSpacing.base),
       onTap: () => _mostrarDetalleServicio(record, colors),
+      semanticLabel:
+          '${record.tipoServicio ?? 'Servicio Genérico'}, '
+          '${DateFormat('dd MMM yyyy').format(record.fecha)}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

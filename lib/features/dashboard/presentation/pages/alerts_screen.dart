@@ -72,6 +72,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 ? AppSkeletonLayouts.listCards(itemCount: 4, cardHeight: 100)
                 : _buildContent(
                     alertProvider,
+                    vehicle.idVehiculo,
                     vehicle.kilometrajeActual,
                     isDark,
                     colors.primary,
@@ -200,6 +201,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   Widget _buildContent(
     AlertProvider provider,
+    String vehicleId,
     int currentKm,
     bool isDark,
     Color primary,
@@ -207,12 +209,26 @@ class _AlertsScreenState extends State<AlertsScreen> {
     Color subTextColor,
     Color cardColor,
   ) {
+    // `provider.maintenanceTasks`/`provider.alerts` traen datos de TODOS
+    // los vehiculos del dueño mezclados (fetchAlertsForVehicles fusiona
+    // ambas listas para el dashboard; ver su docstring en
+    // alert_provider.dart). Sin este filtro, una tarea de otro vehiculo se
+    // graduaba contra el odometro del seleccionado y aparecia a la vez como
+    // alerta critica (la real, de otro vehiculo) y como sugerencia ÓPTIMA
+    // (mal graduada aqui) -- el hallazgo QA §16.
+    final tasksForVehicle = provider.maintenanceTasks
+        .where((t) => t.vehicleId == vehicleId)
+        .toList();
+    final alertsForVehicle = provider.activeAlerts
+        .where((a) => a.idVehiculo == vehicleId)
+        .toList();
+
     // Separate tasks by status
     final criticalTasks = <MaintenanceTask>[];
     final preventiveTasks = <MaintenanceTask>[];
     final optimalTasks = <MaintenanceTask>[];
 
-    for (var task in provider.maintenanceTasks) {
+    for (var task in tasksForVehicle) {
       switch (task.getStatus(currentKm)) {
         case MaintenanceStatus.critical:
           criticalTasks.add(task);
@@ -227,13 +243,13 @@ class _AlertsScreenState extends State<AlertsScreen> {
     }
 
     // Also separate alerts by priority
-    final highAlerts = provider.activeAlerts
+    final highAlerts = alertsForVehicle
         .where((a) => a.prioridad == AlertPriority.high)
         .toList();
-    final medAlerts = provider.activeAlerts
+    final medAlerts = alertsForVehicle
         .where((a) => a.prioridad == AlertPriority.medium)
         .toList();
-    final lowAlerts = provider.activeAlerts
+    final lowAlerts = alertsForVehicle
         .where((a) => a.prioridad == AlertPriority.low)
         .toList();
 
@@ -646,9 +662,21 @@ class _AlertsScreenState extends State<AlertsScreen> {
       case 'Luces':
         icon = Icons.lightbulb;
         break;
+      case 'MantenimientoInconsistente':
+        icon = Icons.speed;
+        break;
       default:
         icon = Icons.info_outline;
     }
+
+    // El provider no puede localizar este texto (no tiene BuildContext),
+    // así que la pantalla lo arma aquí a partir del dato guardado en
+    // metadata.
+    final descripcion = alert.tipoAlerta == 'MantenimientoInconsistente'
+        ? context.l10n.alertsInconsistentMileage(
+            NumberFormat('#,###').format(alert.metadata?['ultimo_km'] ?? 0),
+          )
+        : alert.descripcion;
 
     return Semantics(
       label: '${style.label}: ${alert.titulo}',
@@ -696,7 +724,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            alert.descripcion,
+                            descripcion,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: AppTextStyles.bodySmall.copyWith(

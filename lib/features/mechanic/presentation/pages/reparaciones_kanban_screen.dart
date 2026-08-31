@@ -266,6 +266,7 @@ class _EstadoColumn extends StatelessWidget {
                             items[i].idReparacion,
                             siguienteEstado,
                           ),
+                    onCancelar: () => provider.cancelar(items[i].idReparacion),
                   ),
                 ),
         ),

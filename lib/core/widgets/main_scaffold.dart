@@ -80,15 +80,56 @@ class _OwnerShell extends StatelessWidget {
                   _onDestinationSelected(context, index),
             ),
             const VerticalDivider(width: 1, thickness: 1),
-            Expanded(child: child),
+            // Mismo defecto que en `WindowClass.large` (ver el comentario de
+            // esa rama mas abajo): el `Navigator` anidado de la `ShellRoute`
+            // (este `child`), sin su propio limite semantico explicito, se
+            // traga el arbol de accesibilidad de su hermano — aqui,
+            // `AppNavRail`. Demostrado en rojo con
+            // `nav_rail_semantics_test.dart` a 768px y 1024px antes de tocar
+            // esta rama. La cobertura de que este wrap no aplana ni traga el
+            // contenido en sí (a estos mismos anchos) vive en
+            // `main_scaffold_large_content_semantics_test.dart`, validada
+            // con el mismo sanity-check: romper este wrap con
+            // `ExcludeSemantics` pone en rojo justo los casos de 768/1024 px
+            // de ese test, sin tocar el de 1440.
+            Expanded(
+              child: Semantics(
+                container: true,
+                explicitChildNodes: true,
+                child: child,
+              ),
+            ),
           ],
         ),
       ),
       WindowClass.large => Scaffold(
         body: Column(
           children: [
+            // La hipotesis original (y la del brief de esta tarea) era que a
+            // `AppTopNavBar` le faltaba un limite semantico explicito.
+            // Verificado con un repro minimo de Flutter puro (sin go_router):
+            // un `Column` con un hijo etiquetado junto a un `Expanded` que
+            // envuelve un `Navigator` sin su propio limite semantico ya
+            // pierde el label del hermano, con o sin ese wrap. La causa real
+            // es que el `Navigator` anidado de la `ShellRoute` (el `child`
+            // de aqui abajo), al no tener su propio limite semantico
+            // explicito, absorbe el arbol de accesibilidad de SU HERMANO —
+            // sin importar cual sea ese hermano. Se probo explicitamente
+            // envolver *solo* este lado (sin tocar `AppTopNavBar`) contra el
+            // test de regresion (`top_nav_semantics_test.dart`) y sigue en
+            // verde: el wrap de la barra es innecesario, por eso no esta.
+            // Sin el wrap de este lado, a 1440 px el arbol de /dashboard
+            // tenia 34 nodos y todos eran de contenido: la navegacion
+            // principal era inalcanzable con teclado y con lector de
+            // pantalla, y los tests E2E tenian que ir por coordenadas.
             const AppTopNavBar(),
-            Expanded(child: child),
+            Expanded(
+              child: Semantics(
+                container: true,
+                explicitChildNodes: true,
+                child: child,
+              ),
+            ),
           ],
         ),
       ),

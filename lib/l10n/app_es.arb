@@ -45,6 +45,7 @@
   "authSentLinkTo": "Enviamos un enlace de verificación a:",
   "authAccountNotVerified": "Tu cuenta aún no está verificada. Revisa el correo enviado a:",
   "authOpenLinkThenVerify": "Abre el enlace del correo y luego pulsa \"Ya verifiqué\" para continuar.",
+  "authOpenLinkOnRegister": "Abre el enlace del correo para activar tu cuenta. Puedes continuar mientras tanto.",
   "authUnderstood": "Entendido",
   "authContinueWithoutVerify": "Continuar sin verificar",
   "authResendEmail": "Reenviar correo",
@@ -301,6 +302,14 @@
   "alertsSave": "Guardar",
   "alertsCancel": "Cancelar",
   "alertsNewMileage": "Nuevo Kilometraje",
+  "alertsInconsistentMileage": "El kilometraje actual es menor al del último servicio registrado ({km} km). Corrige el kilometraje del vehículo.",
+  "@alertsInconsistentMileage": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
   "histTitle": "Historial de Servicios",
   "histTabAll": "Todos",
   "histTabManual": "Manual",
@@ -463,8 +472,12 @@
   "addVehiclePlate": "Número de Placa",
   "addVehiclePlateHint": "e.g. P123-456",
   "addVehicleYear": "Año",
+  "addVehicleYearHint": "Selecciona el año",
+  "addVehicleYearInvalid": "Año inválido",
   "addVehicleColor": "Color",
   "addVehicleColorHint": "Gris",
+  "addVehicleColorRequired": "El color es obligatorio",
+  "addVehicleColorInvalidChars": "Solo letras y espacios",
   "addVehicleMileage": "Kilometraje Actual",
   "addVehicleDocs": "Documentación",
   "addVehicleCardExp": "Vencimiento Tarjeta",
@@ -565,6 +578,14 @@
       }
     }
   },
+  "adminVerificacionTallerId": "ID: {uid}",
+  "@adminVerificacionTallerId": {
+    "placeholders": {
+      "uid": {
+        "type": "String"
+      }
+    }
+  },
   "chatOpeningSection": "Abriendo sección de {label}...",
   "@chatOpeningSection": {
     "placeholders": {
@@ -610,7 +631,7 @@
   "noNotifications": "No tienes notificaciones",
   "markAllRead": "Marcar todo como leído",
   "upLanguage": "Idioma / Language",
-  "upLanguageDesc": "EN (Activado) / ES (Desactivado)",
+  "upLanguageDesc": "Activa el interruptor para usar la app en inglés",
   "upAbout": "Acerca de AutoDoc",
   "upAboutDesc": "Versión, créditos y legal",
   "upDeleteAccountTitle": "Eliminar Cuenta",
@@ -631,5 +652,8 @@
   },
   "upCancel": "Cancelar",
   "upDelete": "Eliminar",
-  "upDeleteAccount": "Eliminar cuenta"
+  "upDeleteAccount": "Eliminar cuenta",
+  "topNavThemeTooltip": "Cambiar tema",
+  "topNavLanguageTooltip": "Cambiar idioma",
+  "topNavAccountTooltip": "Tu cuenta"
 }

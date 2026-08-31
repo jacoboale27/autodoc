@@ -5,6 +5,27 @@ import 'package:autodoc/core/theme/app_theme.dart';
 import 'package:autodoc/features/admin/presentation/widgets/workshops_growth_chart.dart';
 import 'package:autodoc/l10n/app_localizations.dart';
 
+import '../../../../support/responsive_harness.dart';
+
+/// Abreviaturas de mes usadas por el widget en el eje X. Duplicada aquí a
+/// propósito (en vez de importar la constante de producción) para que este
+/// test verifique el comportamiento visible del eje, no un detalle interno
+/// de implementación.
+const _monthAbbreviations = [
+  'Ene',
+  'Feb',
+  'Mar',
+  'Abr',
+  'May',
+  'Jun',
+  'Jul',
+  'Ago',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dic',
+];
+
 Widget _wrap(Widget child) {
   return MaterialApp(
     theme: AppTheme.light,
@@ -69,6 +90,55 @@ void main() {
             'Si la clave del mapa no coincide con la clave zero-padded '
             'generada por el widget (yyyy-MM), el valor real cae a 0 '
             'silenciosamente.',
+      );
+    },
+  );
+
+  // Guardián de caracterización, NO test de regresión: a diferencia de las
+  // otras tres gráficas (LineChart), WorkshopsGrowthChart es un BarChart, y
+  // en fl_chart 1.2.0 las posiciones del eje X de un BarChart se calculan en
+  // `calculateGroupsX`/`barGroups[].x` (side_titles_widget.dart:147-159), no
+  // a través de `interval`/`iterateThroughAxis`. Por eso esta gráfica nunca
+  // exhibió el bug de QA ("Mar Mar Mar Mar Abr Abr") y este test ya pasaba
+  // en rojo, antes de fijar `interval: 1` en month_axis.dart. Se mantiene
+  // como guardián ante una futura regresión en ese cálculo de posiciones,
+  // no como prueba de que aquí se corrigió algo.
+  testWidgets(
+    'WorkshopsGrowthChart (BarChart): las posiciones de sus grupos vienen de '
+    'calculateGroupsX, no de interval, así que nunca repite etiquetas de mes '
+    '— guardián de caracterización, no regresión',
+    (tester) async {
+      final now = DateTime.now();
+      final dataPorMes = <String, int>{};
+      for (var i = 5; i >= 0; i--) {
+        final date = DateTime(now.year, now.month - i, 1);
+        final key = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+        dataPorMes[key] = i + 1;
+      }
+
+      await pumpAtWidth(
+        tester,
+        WorkshopsGrowthChart(dataPorMes: dataPorMes),
+        width: 800,
+      );
+      await tester.pumpAndSettle();
+
+      final monthLabels = tester
+          .widgetList<Text>(
+            find.byWidgetPredicate(
+              (widget) =>
+                  widget is Text && _monthAbbreviations.contains(widget.data),
+            ),
+          )
+          .map((text) => text.data)
+          .toList();
+
+      expect(
+        monthLabels.toSet().length,
+        monthLabels.length,
+        reason:
+            'El eje X dibuja la misma etiqueta de mes más de una vez en '
+            'lugar de una sola vez por mes: $monthLabels',
       );
     },
   );

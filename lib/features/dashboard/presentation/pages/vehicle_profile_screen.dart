@@ -422,6 +422,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     return AppCard(
       padding: EdgeInsets.zero,
       onTap: onTap,
+      semanticLabel: onTap == null ? null : '$label: $value',
       child: Padding(
         padding: EdgeInsets.all(Responsive.padding(context, 12)),
         child: Column(
@@ -897,6 +898,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
         padding: EdgeInsets.zero,
         margin: EdgeInsets.zero,
         onTap: onTap,
+        semanticLabel: onTap == null ? null : label,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: AppSpacing.base),
           child: Column(

@@ -140,6 +140,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Abre el enlace del correo y luego pulsa \"Ya verifiqué\" para continuar.';
 
   @override
+  String get authOpenLinkOnRegister =>
+      'Abre el enlace del correo para activar tu cuenta. Puedes continuar mientras tanto.';
+
+  @override
   String get authUnderstood => 'Entendido';
 
   @override
@@ -597,6 +601,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get alertsNewMileage => 'Nuevo Kilometraje';
 
   @override
+  String alertsInconsistentMileage(String km) {
+    return 'El kilometraje actual es menor al del último servicio registrado ($km km). Corrige el kilometraje del vehículo.';
+  }
+
+  @override
   String get histTitle => 'Historial de Servicios';
 
   @override
@@ -896,10 +905,22 @@ class AppLocalizationsEs extends AppLocalizations {
   String get addVehicleYear => 'Año';
 
   @override
+  String get addVehicleYearHint => 'Selecciona el año';
+
+  @override
+  String get addVehicleYearInvalid => 'Año inválido';
+
+  @override
   String get addVehicleColor => 'Color';
 
   @override
   String get addVehicleColorHint => 'Gris';
+
+  @override
+  String get addVehicleColorRequired => 'El color es obligatorio';
+
+  @override
+  String get addVehicleColorInvalidChars => 'Solo letras y espacios';
 
   @override
   String get addVehicleMileage => 'Kilometraje Actual';
@@ -1043,6 +1064,11 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String adminVerificacionTallerId(String uid) {
+    return 'ID: $uid';
+  }
+
+  @override
   String chatOpeningSection(String label) {
     return 'Abriendo sección de $label...';
   }
@@ -1141,7 +1167,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get upLanguage => 'Idioma / Language';
 
   @override
-  String get upLanguageDesc => 'EN (Activado) / ES (Desactivado)';
+  String get upLanguageDesc =>
+      'Activa el interruptor para usar la app en inglés';
 
   @override
   String get upAbout => 'Acerca de AutoDoc';
@@ -1188,4 +1215,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get upDeleteAccount => 'Eliminar cuenta';
+
+  @override
+  String get topNavThemeTooltip => 'Cambiar tema';
+
+  @override
+  String get topNavLanguageTooltip => 'Cambiar idioma';
+
+  @override
+  String get topNavAccountTooltip => 'Tu cuenta';
 }

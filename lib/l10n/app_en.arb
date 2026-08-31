@@ -45,6 +45,7 @@
   "authSentLinkTo": "We sent a verification link to:",
   "authAccountNotVerified": "Your account is not verified yet. Check the email sent to:",
   "authOpenLinkThenVerify": "Open the link in the email and then press \"I already verified\" to continue.",
+  "authOpenLinkOnRegister": "Open the link in the email to activate your account. You can continue in the meantime.",
   "authUnderstood": "Understood",
   "authContinueWithoutVerify": "Continue without verifying",
   "authResendEmail": "Resend email",
@@ -301,6 +302,14 @@
   "alertsSave": "Save",
   "alertsCancel": "Cancel",
   "alertsNewMileage": "New Mileage",
+  "alertsInconsistentMileage": "Current mileage is lower than the last recorded service ({km} km). Correct the vehicle's mileage.",
+  "@alertsInconsistentMileage": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
   "histTitle": "Service History",
   "histTabAll": "All",
   "histTabManual": "Manual",
@@ -463,8 +472,12 @@
   "addVehiclePlate": "License Plate",
   "addVehiclePlateHint": "e.g. P123-456",
   "addVehicleYear": "Year",
+  "addVehicleYearHint": "Select the year",
+  "addVehicleYearInvalid": "Invalid year",
   "addVehicleColor": "Color",
   "addVehicleColorHint": "Gray",
+  "addVehicleColorRequired": "Color is required",
+  "addVehicleColorInvalidChars": "Only letters and spaces",
   "addVehicleMileage": "Current Mileage",
   "addVehicleDocs": "Documentation",
   "addVehicleCardExp": "Card Expiration",
@@ -565,6 +578,14 @@
       }
     }
   },
+  "adminVerificacionTallerId": "ID: {uid}",
+  "@adminVerificacionTallerId": {
+    "placeholders": {
+      "uid": {
+        "type": "String"
+      }
+    }
+  },
   "chatOpeningSection": "Opening {label} section...",
   "@chatOpeningSection": {
     "placeholders": {
@@ -610,7 +631,7 @@
   "noNotifications": "You have no notifications",
   "markAllRead": "Mark all as read",
   "upLanguage": "Language / Idioma",
-  "upLanguageDesc": "EN (Enabled) / ES (Disabled)",
+  "upLanguageDesc": "Turn the switch on to use the app in English",
   "upAbout": "About AutoDoc",
   "upAboutDesc": "Version, credits and legal",
   "upDeleteAccountTitle": "Delete Account",
@@ -631,5 +652,8 @@
   },
   "upCancel": "Cancel",
   "upDelete": "Delete",
-  "upDeleteAccount": "Delete account"
+  "upDeleteAccount": "Delete account",
+  "topNavThemeTooltip": "Toggle theme",
+  "topNavLanguageTooltip": "Change language",
+  "topNavAccountTooltip": "Your account"
 }

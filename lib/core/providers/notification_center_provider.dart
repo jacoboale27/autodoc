@@ -104,6 +104,19 @@ class NotificationCenterProvider extends ChangeNotifier {
     }
   }
 
+  /// Vacia el estado por usuario y cancela la suscripcion activa. Se llama
+  /// al cerrar sesion: sin cancelarla, sigue escuchando con el uid del
+  /// usuario saliente y repuebla la lista en cuanto llegue el siguiente
+  /// snapshot.
+  void clear() {
+    _subscription?.cancel();
+    _subscription = null;
+    _notifications = [];
+    _error = null;
+    _isLoading = false;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _subscription?.cancel();
