@@ -67,3 +67,28 @@ Cualquier cambio de rol debe ser efectuado desde el panel de administración (`a
   - `avoid_print`: Prohíbe el uso de `print()` en producción (usar `debugPrint` o un logger si es necesario).
   - `require_trailing_commas`: Asegura que el formateador automático (dart format) mantenga el código ordenado y en forma de árbol estructurado.
 - Siempre ejecuta `dart format .` y `dart fix --apply` antes de hacer un commit.
+
+### 4.1 Puerta de formato (hook de pre-commit)
+
+La regla de arriba —«siempre ejecuta `dart format .` antes de commitear»— se
+saltó dos veces seguidas y en ambas tumbó `main`: los commits `8fec781` y
+`b945ad4` no hacen otra cosa que reparar la puerta `Check formatting` del CI
+(`.github/workflows/ci.yml:34`). Cuando esa puerta falla, el job
+`deploy_production` —que declara `needs: [analyze_and_test, ...]`— no llega a
+ejecutarse, así que un error de espacios en blanco bloquea el despliegue
+entero.
+
+Por eso la convención dejó de ser solo documental. `.githooks/pre-commit`
+ejecuta exactamente el mismo comando que el CI. **Actívalo una vez por clon**,
+porque `core.hooksPath` es configuración local y no viaja en el repositorio:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Para saltártelo puntualmente: `git commit --no-verify`.
+
+El hook de Claude Code `.claude/hooks/format-dart.js` no sustituye a este: solo
+reacciona a las herramientas `Edit|Write`, así que un archivo escrito con `sed`
+o un heredoc desde Bash llega sin formatear al commit. El hook de git es
+agnóstico a quién escribió el archivo.

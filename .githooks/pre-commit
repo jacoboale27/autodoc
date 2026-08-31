@@ -1,0 +1,35 @@
+#!/bin/sh
+# Puerta de formato local, espejo exacto de .github/workflows/ci.yml:34
+# ("Check formatting"). Existe porque esa puerta tumbo main dos veces
+# seguidas (8fec781 y el run 33448386711, que murio en 26s y dejo sin
+# ejecutar todo deploy_production): el hook de Claude Code
+# (.claude/hooks/format-dart.js) solo reacciona a las herramientas
+# Edit|Write, asi que un archivo escrito por Bash (sed, heredoc) o por un
+# subagente llega sin formatear al commit y no se descubre hasta el CI.
+#
+# Se activa con:  git config core.hooksPath .githooks
+# Se salta con:   git commit --no-verify
+#
+# Se comprueba el arbol entero, no solo lo indexado, porque eso es lo que
+# hace el CI: un archivo sin formatear que ya estaba en HEAD tambien
+# rompe el pipeline.
+
+if ! command -v dart >/dev/null 2>&1; then
+  echo "pre-commit: 'dart' no esta en el PATH; me salto la comprobacion de formato." >&2
+  echo "            El CI si la hara (.github/workflows/ci.yml:34)." >&2
+  exit 0
+fi
+
+if dart format --output=none --set-exit-if-changed . >/dev/null 2>&1; then
+  exit 0
+fi
+
+echo "" >&2
+echo "  Commit detenido: hay Dart sin formatear." >&2
+echo "" >&2
+dart format --output=none --set-exit-if-changed . 2>&1 | grep '^Changed' >&2
+echo "" >&2
+echo "  Arreglalo con:  dart format ." >&2
+echo "  Saltatelo con:  git commit --no-verify" >&2
+echo "" >&2
+exit 1
