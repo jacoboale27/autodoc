@@ -66,7 +66,13 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
       if (vehicle != null) {
         vehicleProvider.addRecentSearch(vehicle);
         if (mounted) {
-          context.push(
+          // `go` y no `push`: con `push` se abria la pantalla pero la
+          // barra de direcciones seguia diciendo /mechanic_search
+          // (hallazgo §2.14; go_router match.dart:621-632 copia `matches`
+          // y conserva `uri`), asi que un F5 sacaba al taller del servicio
+          // a medias. `extra` sigue viajando igual: precarga el vehiculo
+          // para no re-consultarlo.
+          context.go(
             '/initiate_service/${vehicle.idVehiculo}',
             extra: vehicle,
           );
@@ -92,7 +98,9 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
   }
 
   void _abrirVehiculo(VehicleModel vehicle) {
-    context.push('/initiate_service/${vehicle.idVehiculo}', extra: vehicle);
+    // Mismo motivo que en `_handleSearch`: `go` para que la URL siga a la
+    // pantalla y el servicio se pueda enlazar y recargar.
+    context.go('/initiate_service/${vehicle.idVehiculo}', extra: vehicle);
   }
 
   @override

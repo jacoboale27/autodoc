@@ -467,6 +467,14 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     return Scaffold(
       backgroundColor: colors.surface,
       appBar: AppBar(
+        // `leading` explicito: se llega con `go`, que reemplaza la pila, asi
+        // que no hay nada que desapilar y Flutter no pintaria flecha de
+        // volver. El origen es el buscador de placas.
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: colors.primary),
+          tooltip: 'Volver',
+          onPressed: () => context.go('/mechanic_search'),
+        ),
         title: Text(
           'Iniciar Servicio',
           style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold),

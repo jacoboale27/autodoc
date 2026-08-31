@@ -93,10 +93,29 @@ class _AuthScreenState extends State<AuthScreen> {
     super.dispose();
   }
 
+  /// Cambia entre iniciar sesion y registrarse **navegando**, no mutando
+  /// estado local.
+  ///
+  /// Antes esto era `setState(() => _isLoginMode = !_isLoginMode)`: el
+  /// formulario cambiaba en el sitio y no ocurria ninguna navegacion, asi que
+  /// la barra de direcciones se quedaba en `/login` aunque estuvieras viendo
+  /// el alta (hallazgo §2.14 del QA del 2026-08-28). Consecuencias: un F5 te
+  /// devolvia al login, y `/register` no se podia enlazar ni compartir — pese
+  /// a que la ruta existia y funcionaba escrita a mano. De hecho no habia en
+  /// toda la app ni una sola llamada que navegase a `/register`.
+  ///
+  /// Se usa `go` y no `push` a proposito: `push` apila la pantalla pero
+  /// conserva el `uri` anterior (go_router 17.2.2, `RouteMatchList.push()` en
+  /// match.dart:621-632 hace `copyWith(matches: ...)` sin tocar `uri`), que es
+  /// justo el defecto que esto arregla. Ademas login y alta son dos estados
+  /// alternativos de la misma pantalla, no una encima de la otra: reemplazar
+  /// la ubicacion es lo que describe la relacion real.
+  ///
+  /// `_isLoginMode` se resincroniza solo porque cada ruta construye su propia
+  /// pagina con `key: state.pageKey`, asi que el `State` se recrea y
+  /// `initState` vuelve a leer `widget.isLogin`.
   void _toggleMode() {
-    setState(() {
-      _isLoginMode = !_isLoginMode;
-    });
+    context.go(_isLoginMode ? '/register' : '/login');
   }
 
   @override

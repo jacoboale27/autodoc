@@ -126,6 +126,17 @@ class _WorkshopVerificationScreenState
     return Scaffold(
       backgroundColor: colors.surface,
       appBar: AppBar(
+        // `leading` explicito, no el boton automatico de Flutter: se llega
+        // aqui con `go`, que reemplaza la pila en vez de apilar, asi que no
+        // hay nada que desapilar y Flutter no pintaria ningun boton de
+        // volver — el taller se quedaria atrapado en la pantalla. Navegar al
+        // origen es ademas lo correcto: la verificacion se abre desde
+        // /mechanic_pending y es a donde se vuelve.
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: colors.primary),
+          tooltip: 'Volver',
+          onPressed: () => context.go('/mechanic_pending'),
+        ),
         title: const Text('Verificación del taller'),
         backgroundColor: colors.surface,
       ),

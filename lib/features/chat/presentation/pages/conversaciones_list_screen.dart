@@ -127,7 +127,15 @@ class _ConversacionesListScreenState extends State<ConversacionesListScreen> {
                           userSession.userData?.idUsuario ?? '',
                         );
                       }
-                      context.push('/chat/${conv.id}');
+                      // `go` y no `push`: con `push` se abria la conversacion
+                      // pero la barra de direcciones seguia diciendo
+                      // /chat_list (hallazgo §2.14; go_router
+                      // match.dart:621-632 copia `matches` y conserva `uri`),
+                      // asi que un F5 devolvia a la lista y la conversacion
+                      // no se podia enlazar ni compartir. El boton de volver
+                      // de ChatScreen navega explicitamente a /chat_list,
+                      // porque `go` deja la pila sin nada que desapilar.
+                      context.go('/chat/${conv.id}');
                     },
                     contentPadding: const EdgeInsets.symmetric(
                       vertical: 8,

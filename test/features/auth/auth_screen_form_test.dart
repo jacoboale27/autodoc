@@ -6,6 +6,7 @@ import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/features/auth/presentation/pages/auth_screen.dart';
 
 import '../../support/entry_harness.dart';
+import '../../support/router_harness.dart';
 
 void main() {
   testWidgets('no desborda a 320 px en NINGUNO de los dos idiomas', (
@@ -103,15 +104,26 @@ void main() {
   testWidgets(
     'alternar login/registro a mitad de transicion no revienta con GlobalKey duplicada',
     (tester) async {
-      await pumpEntry(tester, const AuthScreen(isLogin: true), width: 375);
+      // Se monta la app entera con su enrutador, no `AuthScreen` suelta:
+      // desde el arreglo del §2.14 alternar entre login y alta **navega**
+      // (`context.go`) en vez de mutar `_isLoginMode` con `setState`, asi que
+      // sin router no hay nada que pulsar. Ver `url_sigue_a_la_navegacion_test`.
+      //
+      // El guardian sigue teniendo sentido, y ahora vigila una convivencia
+      // distinta: durante el `FadeThroughTransition` entre las dos paginas
+      // coexisten dos `AuthScreen` en el arbol, cada una con su propio
+      // `Form`. Se sostiene porque las dos son States distintos, cada uno con
+      // sus propias instancias de `_loginFormKey`/`_registerFormKey`; este
+      // test es lo que hace que siga siendo cierto.
+      final router = await pumpAppAt(tester, '/login');
 
       await tester.ensureVisible(
         find.byKey(const ValueKey('auth-mode-switch')),
       );
       await tester.tap(find.byKey(const ValueKey('auth-mode-switch')));
-      // Un solo pump corto: a mitad del cross-fade de AnimatedSwitcher el
-      // widget saliente sigue montado mientras el entrante ya se infla, asi
-      // que ambos Form coexisten brevemente en el arbol.
+      // Un solo pump corto: a mitad de la transicion la pagina saliente sigue
+      // montada mientras la entrante ya se infla, asi que ambos Form
+      // coexisten brevemente en el arbol.
       await tester.pump(const Duration(milliseconds: 50));
 
       expect(tester.takeException(), isNull);
@@ -119,6 +131,7 @@ void main() {
       // Agota el resto de la transicion y el timer de AuthBackgroundBlobs
       // para no dejar timers vivos en el teardown.
       await tester.pump(const Duration(seconds: 3));
+      expect(urlDe(router), '/register');
     },
   );
 

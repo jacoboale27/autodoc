@@ -376,6 +376,16 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       backgroundColor: isDark ? colors.surfaceContainer : colors.surface,
       appBar: AppBar(
+        // `leading` explicito, no el boton automatico de Flutter: se llega
+        // aqui con `go`, que reemplaza la pila en vez de apilar, asi que no
+        // hay nada que desapilar y Flutter no pintaria ninguna flecha de
+        // volver — se saldria de la conversacion solo con el boton del
+        // navegador. Volver a la lista es ademas el destino correcto.
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: colors.primary),
+          tooltip: 'Volver',
+          onPressed: () => context.go('/chat_list'),
+        ),
         title: Row(
           children: [
             CircleAvatar(
@@ -384,8 +394,14 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Icon(Icons.person, color: colors.primary, size: 18),
             ),
             const SizedBox(width: 12),
-            FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-              future: _futureNombreReceptor(receptorId),
+            // `Expanded`: el nombre del taller es de longitud arbitraria y
+            // aqui no tenia ninguna restriccion de ancho. Con el boton de
+            // volver explicito quedan 42 px menos y desbordaba en los anchos
+            // estrechos de la auditoria; sin acotarlo, cualquier nombre largo
+            // lo habria desbordado igual.
+            Expanded(
+              child: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                future: _futureNombreReceptor(receptorId),
               builder: (context, snapshot) {
                 String finalName = targetName;
                 if (snapshot.hasData && snapshot.data!.exists) {
@@ -410,6 +426,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     children: [
                       Text(
                         finalName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.titleMedium.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -429,6 +447,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 );
               },
+              ),
             ),
           ],
         ),

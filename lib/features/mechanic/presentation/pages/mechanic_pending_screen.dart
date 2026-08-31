@@ -208,7 +208,15 @@ class _MechanicPendingScreenState extends State<MechanicPendingScreen> {
                     child: AppButton(
                       text: 'Completar verificación',
                       type: AppButtonType.secondary,
-                      onPressed: () => context.push('/workshop_verification'),
+                      // `go` y no `push`: con `push` la pantalla cambiaba
+                      // pero la barra de direcciones se quedaba en
+                      // /mechanic_pending (hallazgo §2.14; go_router
+                      // match.dart:621-632 copia `matches` y conserva `uri`),
+                      // asi que un F5 sacaba al taller de la verificacion a
+                      // medias. El boton de volver de esa pantalla navega
+                      // explicitamente aqui, porque `go` deja la pila sin
+                      // nada que desapilar.
+                      onPressed: () => context.go('/workshop_verification'),
                       icon: const Icon(Icons.assignment_outlined),
                     ),
                   ),
