@@ -1,0 +1,5 @@
+# Los hooks de git los ejecuta un shell, no git: un CRLF dentro del script
+# hace que sh falle con «command not found» por el \r final. Este clon es
+# Windows (core.autocrlf convierte al hacer checkout), asi que hay que
+# fijar LF explicitamente o el hook solo funciona aqui.
+.githooks/* text eol=lf
