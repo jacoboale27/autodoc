@@ -234,6 +234,17 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     final userSession = context.read<UserProfileProvider>();
     final tallerId = userSession.userData?.idTallerEfectivo ?? '';
     if (tallerId.isEmpty) {
+      // Un `return` pelado aqui dejaba el boton "Recibir vehiculo" mudo: ni
+      // ticket, ni mensaje, ni spinner liberado. Se usa el mismo banner de
+      // error (con "Reintentar") que el resto de fallos de esta accion, que
+      // es justo el caso en el que reintentar sirve: basta con que el perfil
+      // del taller termine de cargar.
+      setState(() {
+        _reparacionError =
+            'No se pudo identificar tu taller. Vuelve a intentarlo en unos '
+            'segundos.';
+        _recibiendo = false;
+      });
       return;
     }
 
