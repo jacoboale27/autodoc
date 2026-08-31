@@ -852,6 +852,9 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
     final rating = data['calificacion_promedio']?.toDouble() ?? 0.0;
     final reviewsCount = data['total_resenias'] ?? 0;
     final location = data['ubicacion_municipio'] ?? '';
+    final ratingLabel = reviewsCount > 0
+        ? '${rating.toStringAsFixed(1)} de 5 estrellas'
+        : 'Taller nuevo, sin calificación';
 
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 200, maxWidth: 280),
@@ -864,7 +867,14 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
             _mapController!.animateCamera(update);
           }
         },
-        semanticLabel: '$name, $spec',
+        // La valoracion va en el label de la tarjeta, no en un `Semantics`
+        // hijo: `AppCard` pulsable excluye la semantica de sus hijos, asi
+        // que ese envoltorio era codigo muerto y la valoracion no se
+        // anunciaba en ninguna parte. Aqui no hay ningun control propio que
+        // haga falta activar -es informacion-, asi que plegarla en el label
+        // deja un solo nodo por taller: un swipe por tarjeta en el carrusel
+        // del mapa, en vez de cuatro paradas por tarjeta.
+        semanticLabel: '$name, $spec, $ratingLabel',
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -882,39 +892,32 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Semantics(
-                  label: reviewsCount > 0
-                      ? '${rating.toStringAsFixed(1)} de 5 estrellas'
-                      : 'Taller nuevo, sin calificación',
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: Responsive.padding(context, 5),
-                      vertical: Responsive.padding(context, 1),
-                    ),
-                    decoration: BoxDecoration(
-                      color: colors.warning.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.star,
-                          size: Responsive.iconSize(context, 12),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Responsive.padding(context, 5),
+                    vertical: Responsive.padding(context, 1),
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.warning.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.star,
+                        size: Responsive.iconSize(context, 12),
+                        color: colors.warning,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        reviewsCount > 0 ? rating.toStringAsFixed(1) : 'Nuevo',
+                        style: AppTextStyles.labelSmall.copyWith(
+                          fontWeight: FontWeight.bold,
                           color: colors.warning,
                         ),
-                        const SizedBox(width: 2),
-                        Text(
-                          reviewsCount > 0
-                              ? rating.toStringAsFixed(1)
-                              : 'Nuevo',
-                          style: AppTextStyles.labelSmall.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: colors.warning,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ],

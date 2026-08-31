@@ -162,6 +162,10 @@ class GarageScreen extends StatelessWidget {
       semanticLabel:
           '${vehicle.marca ?? ''} ${vehicle.modelo ?? ''}, placa '
           '${vehicle.placa}',
+      // La tarjeta lleva dentro el IconButton de "Hacer Principal": es una
+      // segunda accion, y una accion no se puede plegar en el semanticLabel
+      // de la tarjeta. Sin esto, excludeSemantics la borraba del arbol.
+      interactiveChildren: true,
       margin: EdgeInsets.zero,
       padding: EdgeInsets.zero,
       child: ClipRRect(

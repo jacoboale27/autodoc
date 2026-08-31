@@ -25,6 +25,23 @@ class AppCard extends StatefulWidget {
   /// [onTap] no es `null`.
   final String? semanticLabel;
 
+  /// Pon `true` cuando la tarjeta pulsable contenga **controles propios**
+  /// (un `IconButton` con su propia acción, p. ej.).
+  ///
+  /// Por defecto una tarjeta pulsable excluye la semántica de sus hijos: es
+  /// lo correcto cuando el contenido es solo información, porque así el
+  /// lector de pantalla anuncia un único botón con [semanticLabel] en vez de
+  /// deletrear cada `Text` de dentro.
+  ///
+  /// Pero eso también borra a los hijos **interactivos**, y una acción no se
+  /// puede plegar en una etiqueta: hay que poder activarla. Con este flag la
+  /// tarjeta conserva su propio nodo (etiquetado) y expone a sus hijos como
+  /// nodos hermanos alcanzables, en vez de tragárselos.
+  ///
+  /// No relaja el `assert`: [semanticLabel] sigue siendo obligatorio siempre
+  /// que haya [onTap], en los dos modos.
+  final bool interactiveChildren;
+
   const AppCard({
     super.key,
     required this.child,
@@ -32,6 +49,7 @@ class AppCard extends StatefulWidget {
     this.margin = const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
     this.onTap,
     this.semanticLabel,
+    this.interactiveChildren = false,
   }) : assert(
          onTap == null || semanticLabel != null,
          'Una AppCard pulsable necesita semanticLabel: excludeSemantics borra '
@@ -92,7 +110,13 @@ class _AppCardState extends State<AppCard> {
       label: widget.semanticLabel,
       // Evita que el Text hijo ("Contenido") se concatene al label propio de
       // la tarjeta; se reexponen tap y foco, que quedarían excluidos también.
-      excludeSemantics: true,
+      //
+      // Con [interactiveChildren] se invierte: los hijos conservan su
+      // semántica y se publican como nodos explícitos, para que un control
+      // propio de la tarjeta (p. ej. el "Hacer Principal" del garaje) siga
+      // teniendo nombre y siga siendo activable con lector de pantalla.
+      excludeSemantics: !widget.interactiveChildren,
+      explicitChildNodes: widget.interactiveChildren,
       onTap: widget.onTap,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
