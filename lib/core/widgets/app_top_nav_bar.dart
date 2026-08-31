@@ -110,9 +110,14 @@ class AppTopNavBar extends StatelessWidget {
                     tooltip: l10n.topNavThemeTooltip,
                   ),
                   SizedBox(width: Responsive.padding(context, 8)),
+                  // Solo `button: true`: el `Tooltip` de dentro ya publica
+                  // el nombre en el campo `tooltip` del nodo, y anadir un
+                  // `label` con la MISMA cadena la hace sonar dos veces
+                  // (etiqueta duplicada del §2.13). Lo que el envoltorio si
+                  // aporta es el rol: `InkWell` no marca `isButton`, a
+                  // diferencia del `IconButton` del tema.
                   Semantics(
                     button: true,
-                    label: l10n.topNavLanguageTooltip,
                     child: InkWell(
                       onTap: () {
                         languageProvider.changeLanguage(
@@ -156,21 +161,21 @@ class AppTopNavBar extends StatelessWidget {
             builder: (context, notifProvider, _) {
               return Stack(
                 children: [
-                  Semantics(
-                    button: true,
-                    label: l10n.notifications,
-                    child: IconButton(
-                      icon: Icon(
-                        notifProvider.hasUnread
-                            ? Icons.notifications_active_rounded
-                            : Icons.notifications_none_rounded,
-                        color: notifProvider.hasUnread
-                            ? colors.primary
-                            : colors.textSecondary,
-                      ),
-                      onPressed: () => context.push('/notifications'),
-                      tooltip: l10n.notifications,
+                  // Sin envoltorio `Semantics`: el `IconButton` ya publica
+                  // isButton, la accion de tap y su nombre (via `tooltip`).
+                  // El envoltorio solo anadia un nodo padre SIN acciones con
+                  // la misma cadena: dos paradas seguidas que dicen lo mismo.
+                  IconButton(
+                    icon: Icon(
+                      notifProvider.hasUnread
+                          ? Icons.notifications_active_rounded
+                          : Icons.notifications_none_rounded,
+                      color: notifProvider.hasUnread
+                          ? colors.primary
+                          : colors.textSecondary,
                     ),
+                    onPressed: () => context.push('/notifications'),
+                    tooltip: l10n.notifications,
                   ),
                   if (notifProvider.hasUnread)
                     Positioned(
@@ -212,9 +217,11 @@ class AppTopNavBar extends StatelessWidget {
           Consumer<UserProfileProvider>(
             builder: (context, userSession, _) {
               final user = userSession.userData;
+              // Mismo caso que el selector de idioma: el `Tooltip` ya
+              // nombra el control y el `InkWell` no aporta el rol de boton,
+              // asi que el envoltorio se queda solo con `button: true`.
               return Semantics(
                 button: true,
-                label: l10n.topNavAccountTooltip,
                 child: Tooltip(
                   message: l10n.topNavAccountTooltip,
                   child: InkWell(
