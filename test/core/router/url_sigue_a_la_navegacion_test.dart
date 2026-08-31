@@ -43,7 +43,6 @@ UserModel _mecanicoPendiente() => UserModel(
   estado: 'pendiente',
 );
 
-
 /// Texto del boton de envio de `AuthScreen`: «Iniciar Sesión» en modo login,
 /// «Registrarse» en modo alta. Es la forma estable de comprobar en que modo
 /// esta el formulario — el enlace de cambio de modo es un `RichText`, que

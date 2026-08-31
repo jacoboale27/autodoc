@@ -72,10 +72,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
           // y conserva `uri`), asi que un F5 sacaba al taller del servicio
           // a medias. `extra` sigue viajando igual: precarga el vehiculo
           // para no re-consultarlo.
-          context.go(
-            '/initiate_service/${vehicle.idVehiculo}',
-            extra: vehicle,
-          );
+          context.go('/initiate_service/${vehicle.idVehiculo}', extra: vehicle);
         }
       } else {
         if (mounted) {

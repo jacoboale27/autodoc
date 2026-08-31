@@ -402,51 +402,52 @@ class _ChatScreenState extends State<ChatScreen> {
             Expanded(
               child: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                 future: _futureNombreReceptor(receptorId),
-              builder: (context, snapshot) {
-                String finalName = targetName;
-                if (snapshot.hasData && snapshot.data!.exists) {
-                  final data = snapshot.data!.data();
-                  final realName = data?['nombre_completo'];
-                  if (realName?.isNotEmpty == true) {
-                    finalName = realName!;
+                builder: (context, snapshot) {
+                  String finalName = targetName;
+                  if (snapshot.hasData && snapshot.data!.exists) {
+                    final data = snapshot.data!.data();
+                    final realName = data?['nombre_completo'];
+                    if (realName?.isNotEmpty == true) {
+                      finalName = realName!;
+                    }
                   }
-                }
-                final estaEscribiendo =
-                    conversacion != null && conversacion.typingId == receptorId;
-                return AnimatedSize(
-                  duration: AppMotion.transformDuration(
-                    context,
-                    AppMotion.tooltip,
-                  ),
-                  curve: AppMotion.easeOut,
-                  alignment: Alignment.centerLeft,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        finalName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.titleMedium.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      if (estaEscribiendo)
-                        Semantics(
-                          liveRegion: true,
-                          child: Text(
-                            'Escribiendo...',
-                            style: AppTextStyles.bodySmall.copyWith(
-                              color: colors.primary,
-                              fontStyle: FontStyle.italic,
-                            ),
+                  final estaEscribiendo =
+                      conversacion != null &&
+                      conversacion.typingId == receptorId;
+                  return AnimatedSize(
+                    duration: AppMotion.transformDuration(
+                      context,
+                      AppMotion.tooltip,
+                    ),
+                    curve: AppMotion.easeOut,
+                    alignment: Alignment.centerLeft,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          finalName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.titleMedium.copyWith(
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                    ],
-                  ),
-                );
-              },
+                        if (estaEscribiendo)
+                          Semantics(
+                            liveRegion: true,
+                            child: Text(
+                              'Escribiendo...',
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: colors.primary,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ),
           ],
