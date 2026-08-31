@@ -122,6 +122,16 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
+      - name: Limpiar artefactos previos
+        # Salvaguarda barata, no el arreglo de un fallo vivo: aqui build/ ya
+        # llega vacio porque cada job corre en un runner nuevo (actions/checkout
+        # clona el repo desde cero) y el cache:true de subosito/flutter-action
+        # cachea el SDK de Flutter, no el build/ del proyecto. El bundle
+        # incompleto que motivo este paso (assets/ vacio, sin manifest.json,
+        # sin favicon, con part.js de builds viejos mezclados) se reprodujo
+        # compilando en local sobre un build/ sucio, no en este pipeline.
+        run: flutter clean
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -167,16 +177,6 @@ jobs:
             web/firebase-messaging-sw.js
           grep -q '\$FIREBASE' web/firebase-messaging-sw.js && { echo "❌ Quedan marcadores sin sustituir"; exit 1; } || true
           echo "✅ configuracion web inyectada"
-
-      - name: Limpiar artefactos previos
-        # Salvaguarda barata, no el arreglo de un fallo vivo: aqui build/ ya
-        # llega vacio porque cada job corre en un runner nuevo (actions/checkout
-        # clona el repo desde cero) y el cache:true de subosito/flutter-action
-        # cachea el SDK de Flutter, no el build/ del proyecto. El bundle
-        # incompleto que motivo este paso (assets/ vacio, sin manifest.json,
-        # sin favicon, con part.js de builds viejos mezclados) se reprodujo
-        # compilando en local sobre un build/ sucio, no en este pipeline.
-        run: flutter clean
 
       - name: Build Flutter Web (release)
         # RECAPTCHA_SITE_KEY es opcional: si el secreto aun no esta configurado en el
@@ -227,6 +227,16 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
+      - name: Limpiar artefactos previos
+        # Salvaguarda barata, no el arreglo de un fallo vivo: aqui build/ ya
+        # llega vacio porque cada job corre en un runner nuevo (actions/checkout
+        # clona el repo desde cero) y el cache:true de subosito/flutter-action
+        # cachea el SDK de Flutter, no el build/ del proyecto. El bundle
+        # incompleto que motivo este paso (assets/ vacio, sin manifest.json,
+        # sin favicon, con part.js de builds viejos mezclados) se reprodujo
+        # compilando en local sobre un build/ sucio, no en este pipeline.
+        run: flutter clean
+
       - name: Install Flutter dependencies
         run: flutter pub get
 
@@ -272,16 +282,6 @@ jobs:
             web/firebase-messaging-sw.js
           grep -q '\$FIREBASE' web/firebase-messaging-sw.js && { echo "❌ Quedan marcadores sin sustituir"; exit 1; } || true
           echo "✅ configuracion web inyectada"
-
-      - name: Limpiar artefactos previos
-        # Salvaguarda barata, no el arreglo de un fallo vivo: aqui build/ ya
-        # llega vacio porque cada job corre en un runner nuevo (actions/checkout
-        # clona el repo desde cero) y el cache:true de subosito/flutter-action
-        # cachea el SDK de Flutter, no el build/ del proyecto. El bundle
-        # incompleto que motivo este paso (assets/ vacio, sin manifest.json,
-        # sin favicon, con part.js de builds viejos mezclados) se reprodujo
-        # compilando en local sobre un build/ sucio, no en este pipeline.
-        run: flutter clean
 
       - name: Build Flutter Web for staging
         # RECAPTCHA_SITE_KEY es opcional: si el secreto aun no esta configurado en el
@@ -379,6 +379,16 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
+      - name: Limpiar artefactos previos
+        # Salvaguarda barata, no el arreglo de un fallo vivo: aqui build/ ya
+        # llega vacio porque cada job corre en un runner nuevo (actions/checkout
+        # clona el repo desde cero) y el cache:true de subosito/flutter-action
+        # cachea el SDK de Flutter, no el build/ del proyecto. El bundle
+        # incompleto que motivo este paso (assets/ vacio, sin manifest.json,
+        # sin favicon, con part.js de builds viejos mezclados) se reprodujo
+        # compilando en local sobre un build/ sucio, no en este pipeline.
+        run: flutter clean
+
       - name: Install Flutter dependencies
         run: flutter pub get
 
@@ -424,16 +434,6 @@ jobs:
             web/firebase-messaging-sw.js
           grep -q '\$FIREBASE' web/firebase-messaging-sw.js && { echo "❌ Quedan marcadores sin sustituir"; exit 1; } || true
           echo "✅ configuracion web inyectada"
-
-      - name: Limpiar artefactos previos
-        # Salvaguarda barata, no el arreglo de un fallo vivo: aqui build/ ya
-        # llega vacio porque cada job corre en un runner nuevo (actions/checkout
-        # clona el repo desde cero) y el cache:true de subosito/flutter-action
-        # cachea el SDK de Flutter, no el build/ del proyecto. El bundle
-        # incompleto que motivo este paso (assets/ vacio, sin manifest.json,
-        # sin favicon, con part.js de builds viejos mezclados) se reprodujo
-        # compilando en local sobre un build/ sucio, no en este pipeline.
-        run: flutter clean
 
       - name: Build Flutter Web for production
         # RECAPTCHA_SITE_KEY es opcional: si el secreto aun no esta configurado en el
