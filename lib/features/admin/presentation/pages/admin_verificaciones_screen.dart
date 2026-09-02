@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:autodoc/core/models/estado_verificacion.dart';
 import 'package:autodoc/core/models/verificacion_taller_model.dart';
@@ -12,6 +13,8 @@ import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_dialog_content.dart';
+import 'package:autodoc/core/widgets/app_image_viewer.dart';
+import 'package:autodoc/core/widgets/app_snackbar.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/features/admin/presentation/providers/admin_verificacion_provider.dart';
 import 'package:autodoc/features/admin/presentation/widgets/admin_sidebar.dart';
@@ -429,51 +432,63 @@ class _Evidencia extends StatelessWidget {
           height: 110,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.md),
-            child: _esPdf
-                ? Container(
+            child: FutureBuilder<String?>(
+              future: context.read<AdminVerificacionProvider>().urlDeEvidencia(
+                tallerId,
+                documento,
+              ),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return Container(color: colors.surface);
+                }
+                final url = snapshot.data;
+                if (_esPdf) {
+                  return InkWell(
+                    onTap: url == null ? null : () => _abrirPdf(context, url),
+                    child: Container(
+                      color: colors.surface,
+                      child: Center(
+                        child: Icon(
+                          Icons.picture_as_pdf_outlined,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                if (url == null) {
+                  return Container(
                     color: colors.surface,
                     child: Center(
                       child: Icon(
-                        Icons.picture_as_pdf_outlined,
+                        Icons.broken_image_outlined,
                         color: colors.textSecondary,
                       ),
                     ),
-                  )
-                : FutureBuilder<String?>(
-                    future: context
-                        .read<AdminVerificacionProvider>()
-                        .urlDeEvidencia(tallerId, documento),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState != ConnectionState.done) {
-                        return Container(color: colors.surface);
-                      }
-                      final url = snapshot.data;
-                      if (url == null) {
-                        return Container(
-                          color: colors.surface,
-                          child: Center(
-                            child: Icon(
-                              Icons.broken_image_outlined,
-                              color: colors.textSecondary,
-                            ),
-                          ),
-                        );
-                      }
-                      return Image.network(
-                        url,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, _, _) => Container(
-                          color: colors.surface,
-                          child: Center(
-                            child: Icon(
-                              Icons.broken_image_outlined,
-                              color: colors.textSecondary,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
+                  );
+                }
+                return InkWell(
+                  onTap: () => AppImageViewer.open(
+                    context,
+                    imageUrl: url,
+                    semanticLabel: documento.slot,
                   ),
+                  child: Image.network(
+                    url,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, _, _) => Container(
+                      color: colors.surface,
+                      child: Center(
+                        child: Icon(
+                          Icons.broken_image_outlined,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.xs),
@@ -483,5 +498,23 @@ class _Evidencia extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  /// Abre el PDF en el navegador. `storage.rules` solo admite PDF en el slot
+  /// `nit`, así que este es el único caso donde `_esPdf` es verdadero; no hay
+  /// visor embebido a propósito (dependencia grande para algo que el
+  /// navegador ya resuelve, y fuera de alcance del plan).
+  Future<void> _abrirPdf(BuildContext context, String url) async {
+    final uri = Uri.parse(url);
+    final abierto =
+        await canLaunchUrl(uri) &&
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!abierto && context.mounted) {
+      AppSnackbar.show(
+        context,
+        context.l10n.adminVerificacionAbrirDocumentoError,
+        type: SnackbarType.error,
+      );
+    }
   }
 }

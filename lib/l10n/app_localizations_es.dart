@@ -1069,6 +1069,10 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get adminVerificacionAbrirDocumentoError =>
+      'No se pudo abrir el documento. Intenta de nuevo.';
+
+  @override
   String chatOpeningSection(String label) {
     return 'Abriendo sección de $label...';
   }

@@ -586,6 +586,10 @@
       }
     }
   },
+  "adminVerificacionAbrirDocumentoError": "Couldn't open the document. Please try again.",
+  "@adminVerificacionAbrirDocumentoError": {
+    "description": "Shown when tapping a PDF evidence document fails to launch the browser."
+  },
   "chatOpeningSection": "Opening {label} section...",
   "@chatOpeningSection": {
     "placeholders": {

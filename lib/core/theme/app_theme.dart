@@ -45,6 +45,8 @@ class AppTheme {
       outline: AppPalette.lightOutline,
       shimmerBase: AppPalette.lightShimmerBase,
       shimmerHighlight: AppPalette.lightShimmerHighlight,
+      scrim: AppPalette.lightScrim,
+      onScrim: AppPalette.lightOnScrim,
     );
     return ThemeData(
       useMaterial3: true,
@@ -115,6 +117,8 @@ class AppTheme {
       outline: AppPalette.darkOutline,
       shimmerBase: AppPalette.darkShimmerBase,
       shimmerHighlight: AppPalette.darkShimmerHighlight,
+      scrim: AppPalette.darkScrim,
+      onScrim: AppPalette.darkOnScrim,
     );
     return ThemeData(
       useMaterial3: true,

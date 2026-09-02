@@ -22,6 +22,8 @@ const _colors = AppColors(
   outline: AppPalette.lightOutline,
   shimmerBase: AppPalette.lightShimmerBase,
   shimmerHighlight: AppPalette.lightShimmerHighlight,
+  scrim: AppPalette.lightScrim,
+  onScrim: AppPalette.lightOnScrim,
 );
 
 AppSeverityStyle styleFor(MaintenanceStatus status) => AppSeverity.forStatus(

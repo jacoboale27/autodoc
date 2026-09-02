@@ -2036,6 +2036,12 @@ abstract class AppLocalizations {
   /// **'ID: {uid}'**
   String adminVerificacionTallerId(String uid);
 
+  /// Shown when tapping a PDF evidence document fails to launch the browser.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the document. Please try again.'**
+  String get adminVerificacionAbrirDocumentoError;
+
   /// No description provided for @chatOpeningSection.
   ///
   /// In en, this message translates to:

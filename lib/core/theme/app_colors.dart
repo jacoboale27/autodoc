@@ -18,6 +18,16 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color shimmerBase;
   final Color shimmerHighlight;
 
+  /// Fondo de superficies modales que deben leerse igual sobre cualquier
+  /// contenido detrás (el visor de evidencia a pantalla completa, por
+  /// ejemplo): un tono oscuro fijo, no derivado de `surface`, porque
+  /// `surface` cambia con el tema y en modo claro no da suficiente contraste
+  /// contra la imagen que tapa.
+  final Color scrim;
+
+  /// Color de texto/iconos que se dibujan sobre [scrim].
+  final Color onScrim;
+
   const AppColors({
     required this.primary,
     required this.secondary,
@@ -35,6 +45,8 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.outline,
     required this.shimmerBase,
     required this.shimmerHighlight,
+    required this.scrim,
+    required this.onScrim,
   });
 
   @override
@@ -55,6 +67,8 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? outline,
     Color? shimmerBase,
     Color? shimmerHighlight,
+    Color? scrim,
+    Color? onScrim,
   }) {
     return AppColors(
       primary: primary ?? this.primary,
@@ -73,6 +87,8 @@ class AppColors extends ThemeExtension<AppColors> {
       outline: outline ?? this.outline,
       shimmerBase: shimmerBase ?? this.shimmerBase,
       shimmerHighlight: shimmerHighlight ?? this.shimmerHighlight,
+      scrim: scrim ?? this.scrim,
+      onScrim: onScrim ?? this.onScrim,
     );
   }
 
@@ -106,6 +122,8 @@ class AppColors extends ThemeExtension<AppColors> {
         other.shimmerHighlight,
         t,
       )!,
+      scrim: Color.lerp(scrim, other.scrim, t)!,
+      onScrim: Color.lerp(onScrim, other.onScrim, t)!,
     );
   }
 
@@ -153,6 +171,11 @@ class AppPalette {
   static const Color lightOutline = Color(0xFFCBD5E1);
   static const Color lightShimmerBase = Color(0xFFE2E8F0);
   static const Color lightShimmerHighlight = Color(0xFFF1F5F9);
+  // El scrim es deliberadamente el mismo tono oscuro en claro y en oscuro:
+  // es el fondo de un visor a pantalla completa que se abre sobre fotos de
+  // contenido arbitrario, no una superficie del tema que deba invertirse.
+  static const Color lightScrim = Color(0xFF0F172A);
+  static const Color lightOnScrim = Colors.white;
 
   // Dark Mode Colors
   static const Color darkPrimary = Color(0xFF81E6D9);
@@ -171,4 +194,6 @@ class AppPalette {
   static const Color darkOutline = Color(0xFF334155);
   static const Color darkShimmerBase = Color(0xFF1E293B);
   static const Color darkShimmerHighlight = Color(0xFF334155);
+  static const Color darkScrim = Color(0xFF0F172A);
+  static const Color darkOnScrim = Colors.white;
 }

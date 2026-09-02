@@ -133,6 +133,8 @@ void main() {
       outline: AppPalette.lightOutline,
       shimmerBase: AppPalette.lightShimmerBase,
       shimmerHighlight: AppPalette.lightShimmerHighlight,
+      scrim: AppPalette.lightScrim,
+      onScrim: AppPalette.lightOnScrim,
     );
 
     test('derivan de primary y el de press es más fuerte que el de hover', () {

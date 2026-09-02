@@ -586,6 +586,7 @@
       }
     }
   },
+  "adminVerificacionAbrirDocumentoError": "No se pudo abrir el documento. Intenta de nuevo.",
   "chatOpeningSection": "Abriendo sección de {label}...",
   "@chatOpeningSection": {
     "placeholders": {
