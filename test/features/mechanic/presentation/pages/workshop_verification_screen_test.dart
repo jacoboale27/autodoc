@@ -10,6 +10,8 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import 'package:autodoc/core/models/estado_verificacion.dart';
+import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/theme/app_theme.dart';
@@ -49,6 +51,7 @@ Future<void> _pumpPantalla(
   WidgetTester tester,
   VerificacionProvider provider, {
   SelectorDeArchivo? selectorDeArchivo,
+  UserModel? perfil,
 }) async {
   final router = GoRouter(
     initialLocation: '/workshop_verification',
@@ -81,7 +84,7 @@ Future<void> _pumpPantalla(
           create: (_) => _FakeAuthSessionProvider(),
         ),
         ChangeNotifierProvider<UserProfileProvider>(
-          create: (_) => FakeUserProfileProvider(user: fakeTaller()),
+          create: (_) => FakeUserProfileProvider(user: perfil ?? fakeTaller()),
         ),
         ChangeNotifierProvider<VerificacionProvider>.value(value: provider),
       ],
@@ -365,6 +368,107 @@ void main() {
 
       expect(find.byType(AppImageViewer), findsOneWidget);
       expect(find.byType(InteractiveViewer), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'una seleccion pendiente en un slot no confirmada antes de enviar a '
+    'revision deja de poder subirse una vez que el expediente queda '
+    'bloqueado',
+    (tester) async {
+      // Perfil con los seis campos que `camposFaltantes` exige, para que
+      // `puedeEnviar` de verdad se habilite al confirmar la fachada: sin
+      // esto el "Enviar a revisión" del test se quedaria deshabilitado por
+      // el perfil y no reproduciria la secuencia real del hallazgo.
+      final tallerBase = fakeTaller();
+      final perfilCompleto = UserModel(
+        idUsuario: tallerBase.idUsuario,
+        nombreCompleto: tallerBase.nombreCompleto,
+        correo: tallerBase.correo,
+        rol: tallerBase.rol,
+        fechaRegistro: tallerBase.fechaRegistro,
+        estado: tallerBase.estado,
+        telefono: '7000-0000',
+        especialidad: 'Frenos',
+        departamento: 'San Salvador',
+        municipio: 'San Salvador',
+        latitud: 13.7,
+        longitud: -89.2,
+      );
+
+      var llamadas = 0;
+      final bytes = _pngDePrueba;
+      await provider.cargar('taller-1');
+
+      await _pumpPantalla(
+        tester,
+        provider,
+        perfil: perfilCompleto,
+        selectorDeArchivo: () async {
+          llamadas++;
+          return llamadas == 1
+              ? _archivoDePrueba('fachada.jpg', bytes)
+              : _archivoDePrueba('rotulo.jpg', bytes);
+        },
+      );
+
+      // 1. El taller confirma la fachada (obligatoria): sube de verdad.
+      await tester.tap(find.text('Subir').first);
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(find.text('Confirmar y subir'));
+      await tester.pump();
+      await tester.pumpAndSettle();
+      expect(rutasSubidas, ['verificaciones/taller-1/fachada.jpg']);
+
+      // 2. El taller elige un archivo para el rótulo (opcional) pero NO lo
+      // confirma. `puedeEnviar` solo exige `tieneEvidenciaMinima` (la
+      // fachada), así que esta selección pendiente no bloquea el envío.
+      await tester.tap(find.text('Subir').first);
+      await tester.pump();
+      await tester.pump();
+      expect(
+        find.text('Confirmar y subir'),
+        findsOneWidget,
+        reason: 'el rótulo queda pendiente de confirmar, sin subir',
+      );
+
+      // 3. El taller envía a revisión. El expediente pasa a
+      // `listoParaRevision` y `bloqueado` se vuelve true.
+      await tester.tap(find.text('Enviar a revisión'));
+      await tester.pump();
+      await tester.pumpAndSettle();
+      expect(
+        provider.expediente?.estado,
+        EstadoVerificacion.listoParaRevision,
+        reason: 'la solicitud debe haber quedado enviada a revision',
+      );
+
+      // 4. La tarjeta del rótulo sigue mostrando la previsualización
+      // pendiente (nunca se confirmó ni se descartó), pero el expediente ya
+      // está bloqueado: confirmar esa selección pendiente no debe subir
+      // nada bajo los pies del administrador que la va a revisar.
+      expect(
+        find.text('Confirmar y subir'),
+        findsOneWidget,
+        reason: 'la previsualizacion pendiente del rotulo sigue visible',
+      );
+      await tester.tap(find.text('Confirmar y subir'));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(
+        rutasSubidas,
+        ['verificaciones/taller-1/fachada.jpg'],
+        reason:
+            'con el expediente en revision, confirmar una seleccion '
+            'pendiente no debe disparar ninguna subida nueva',
+      );
+      expect(
+        provider.expediente?.documentos['rotulo'],
+        isNull,
+        reason: 'el rotulo no debe quedar anotado como subido',
+      );
     },
   );
 }

@@ -1073,6 +1073,9 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo abrir el documento. Intenta de nuevo.';
 
   @override
+  String get tallerVerifCambiar => 'Cambiar';
+
+  @override
   String get tallerVerifConfirmarYSubir => 'Confirmar y subir';
 
   @override

@@ -590,6 +590,7 @@
   "@adminVerificacionAbrirDocumentoError": {
     "description": "Shown when tapping a PDF evidence document fails to launch the browser."
   },
+  "tallerVerifCambiar": "Change",
   "tallerVerifConfirmarYSubir": "Confirm and upload",
   "tallerVerifArchivoPendiente": "Not uploaded yet. Review it and confirm to upload it.",
   "tallerVerifArchivoPendientePdf": "{nombre} · {tamano} MB. Not uploaded yet.",

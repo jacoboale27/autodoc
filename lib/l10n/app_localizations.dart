@@ -2042,6 +2042,12 @@ abstract class AppLocalizations {
   /// **'Couldn\'t open the document. Please try again.'**
   String get adminVerificacionAbrirDocumentoError;
 
+  /// No description provided for @tallerVerifCambiar.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get tallerVerifCambiar;
+
   /// No description provided for @tallerVerifConfirmarYSubir.
   ///
   /// In en, this message translates to:

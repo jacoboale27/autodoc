@@ -587,6 +587,7 @@
     }
   },
   "adminVerificacionAbrirDocumentoError": "No se pudo abrir el documento. Intenta de nuevo.",
+  "tallerVerifCambiar": "Cambiar",
   "tallerVerifConfirmarYSubir": "Confirmar y subir",
   "tallerVerifArchivoPendiente": "Sin subir todavía. Revísala y confirma para subirla.",
   "tallerVerifArchivoPendientePdf": "{nombre} · {tamano} MB. Sin subir todavía.",

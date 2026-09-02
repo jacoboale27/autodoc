@@ -523,7 +523,9 @@ class _WorkshopVerificationScreenState
               else if (pendiente == null)
                 TextButton(
                   onPressed: bloqueado ? null : () => _elegirArchivo(slot),
-                  child: Text(subido != null ? 'Cambiar' : 'Subir'),
+                  child: Text(
+                    subido != null ? context.l10n.tallerVerifCambiar : 'Subir',
+                  ),
                 ),
             ],
           ),
@@ -533,14 +535,14 @@ class _WorkshopVerificationScreenState
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
-                  onPressed: () => _elegirArchivo(slot),
-                  child: const Text('Cambiar'),
+                  onPressed: bloqueado ? null : () => _elegirArchivo(slot),
+                  child: Text(context.l10n.tallerVerifCambiar),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 AppButton(
                   text: context.l10n.tallerVerifConfirmarYSubir,
                   size: AppButtonSize.small,
-                  onPressed: () => _confirmarYSubir(slot),
+                  onPressed: bloqueado ? null : () => _confirmarYSubir(slot),
                 ),
               ],
             ),
