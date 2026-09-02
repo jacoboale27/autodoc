@@ -5,8 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:autodoc/core/models/estado_verificacion.dart';
 import 'package:autodoc/core/models/verificacion_taller_model.dart';
 import 'package:autodoc/features/admin/presentation/providers/admin_verificacion_provider.dart';
-import 'package:autodoc/features/dashboard/data/services/workshop_service.dart';
 import 'package:autodoc/features/mechanic/data/services/verificacion_service.dart';
+import 'package:autodoc/features/profile/data/services/user_service.dart';
 
 void main() {
   late FakeFirebaseFirestore firestore;
@@ -20,13 +20,13 @@ void main() {
       resolutorDeUrl: (ruta) async => 'https://storage.test/$ruta',
       ahora: () => DateTime.utc(2026, 3, 10),
     );
-    // `WorkshopService()` sin argumentos toca `FirebaseFirestore.instance` en
-    // su propio constructor (aunque este test nunca llegue a invocar
-    // `getWorkshopById`), y este archivo no inicializa Firebase: hace falta
-    // la misma instancia fake para que el provider se pueda construir aqui.
+    // `UserService()` sin argumentos toca `FirebaseFirestore.instance` en su
+    // propio constructor (aunque este test nunca llegue a invocar
+    // `getUserData`), y este archivo no inicializa Firebase: hace falta la
+    // misma instancia fake para que el provider se pueda construir aqui.
     provider = AdminVerificacionProvider(
       service: service,
-      workshopService: WorkshopService(firestore: firestore),
+      userService: UserService(firestore: firestore),
     );
   });
 
@@ -133,7 +133,7 @@ void main() {
           firestore: firestore,
           resolutorDeUrl: (_) async => throw Exception('object-not-found'),
         ),
-        workshopService: WorkshopService(firestore: firestore),
+        userService: UserService(firestore: firestore),
       );
 
       expect(

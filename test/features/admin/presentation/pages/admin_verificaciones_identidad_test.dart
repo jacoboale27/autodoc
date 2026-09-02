@@ -12,8 +12,8 @@ import 'package:autodoc/core/theme/app_theme.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_verificaciones_screen.dart';
 import 'package:autodoc/features/admin/presentation/providers/admin_verificacion_provider.dart';
-import 'package:autodoc/features/dashboard/data/services/workshop_service.dart';
 import 'package:autodoc/features/mechanic/data/services/verificacion_service.dart';
+import 'package:autodoc/features/profile/data/services/user_service.dart';
 import 'package:autodoc/l10n/app_localizations.dart';
 
 /// Doble de `AuthSessionProvider`: el real escucha `idTokenChanges()` de
@@ -82,7 +82,7 @@ Future<void> pumpVerificaciones(
 void main() {
   late FakeFirebaseFirestore firestore;
   late VerificacionService service;
-  late WorkshopService workshopService;
+  late UserService userService;
 
   setUp(() {
     firestore = FakeFirebaseFirestore();
@@ -91,7 +91,7 @@ void main() {
       resolutorDeUrl: (ruta) async => 'https://storage.test/$ruta',
       ahora: () => DateTime.utc(2026, 3, 10),
     );
-    workshopService = WorkshopService(firestore: firestore);
+    userService = UserService(firestore: firestore);
   });
 
   Future<void> sembrarExpediente(String uid, String estado) =>
@@ -106,18 +106,27 @@ void main() {
         },
       });
 
-  Future<void> sembrarPerfilPublico(
+  // Siembra `usuarios/{uid}`, no `talleres/{uid}`: desde la tarea A2
+  // (hallazgo #11) `AdminVerificacionProvider` lee la identidad del taller
+  // de `usuarios`, precisamente porque `talleres` es de lectura publica y
+  // anonima y no puede llevar el correo sin publicarlo. Sembrar el doble
+  // publico aqui haria que estos tests pasaran aunque el provider hubiera
+  // vuelto a apuntar a la coleccion equivocada.
+  Future<void> sembrarUsuario(
     String uid,
     String nombre, {
     String? especialidad,
-  }) => firestore.collection('talleres').doc(uid).set({
+    String correo = '',
+  }) => firestore.collection('usuarios').doc(uid).set({
     'nombre_completo': nombre,
     'especialidad': ?especialidad,
+    'correo': correo,
+    'rol': 'Taller',
     // Estado de cuenta valido (`AppEstadoCuenta.aprobados`), no un estado de
-    // verificacion: `talleres/{uid}` es la proyeccion publica del perfil, no
-    // el expediente, y `getWorkshopById` no filtra por esto, pero sembrar un
-    // valor que no es un estado de cuenta real es enganoso igualmente.
-    'estado': 'aprobado',
+    // verificacion: `usuarios/{uid}.estado` es el permiso real de la cuenta,
+    // y `getUserData` no filtra por esto, pero sembrar un valor que no es un
+    // estado de cuenta real es enganoso igualmente.
+    'estado': 'activo',
   });
 
   testWidgets('la tarjeta muestra el nombre del taller, no solo su uid', (
@@ -125,11 +134,11 @@ void main() {
   ) async {
     const uid = 'HT8Hkxr0000000000000000';
     await sembrarExpediente(uid, 'listo_para_revision');
-    await sembrarPerfilPublico(uid, 'Taller Los Pinos', especialidad: 'Frenos');
+    await sembrarUsuario(uid, 'Taller Los Pinos', especialidad: 'Frenos');
 
     final provider = AdminVerificacionProvider(
       service: service,
-      workshopService: workshopService,
+      userService: userService,
     );
     await pumpVerificaciones(tester, provider, uid: uid);
 
@@ -161,16 +170,42 @@ void main() {
     );
   });
 
+  testWidgets('la tarjeta muestra el correo del taller, seleccionable', (
+    tester,
+  ) async {
+    const uid = 'taller-correo';
+    await sembrarExpediente(uid, 'listo_para_revision');
+    await sembrarUsuario(
+      uid,
+      'Taller Los Pinos',
+      correo: 'contacto@lospinos.com',
+    );
+
+    final provider = AdminVerificacionProvider(
+      service: service,
+      userService: userService,
+    );
+    await pumpVerificaciones(tester, provider, uid: uid);
+
+    expect(
+      find.widgetWithText(SelectableText, 'contacto@lospinos.com'),
+      findsOneWidget,
+      reason:
+          'el administrador necesita copiarlo para escribirle al taller '
+          'cuyo expediente va a rechazar',
+    );
+  });
+
   testWidgets(
     'aprobar es la accion principal; rechazar no es la mas prominente',
     (tester) async {
       const uid = 'taller-en-revision';
       await sembrarExpediente(uid, 'en_revision');
-      await sembrarPerfilPublico(uid, 'Taller El Motor');
+      await sembrarUsuario(uid, 'Taller El Motor');
 
       final provider = AdminVerificacionProvider(
         service: service,
-        workshopService: workshopService,
+        userService: userService,
       );
       await pumpVerificaciones(tester, provider, uid: uid);
 

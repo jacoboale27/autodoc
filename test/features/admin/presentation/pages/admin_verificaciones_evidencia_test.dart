@@ -11,8 +11,8 @@ import 'package:autodoc/core/theme/app_theme.dart';
 import 'package:autodoc/core/widgets/app_image_viewer.dart';
 import 'package:autodoc/features/admin/presentation/pages/admin_verificaciones_screen.dart';
 import 'package:autodoc/features/admin/presentation/providers/admin_verificacion_provider.dart';
-import 'package:autodoc/features/dashboard/data/services/workshop_service.dart';
 import 'package:autodoc/features/mechanic/data/services/verificacion_service.dart';
+import 'package:autodoc/features/profile/data/services/user_service.dart';
 import 'package:autodoc/l10n/app_localizations.dart';
 
 /// Mismo doble que en `admin_verificaciones_identidad_test.dart` (tarea A2,
@@ -78,11 +78,11 @@ Future<void> _pumpBandeja(
 
 void main() {
   late FakeFirebaseFirestore firestore;
-  late WorkshopService workshopService;
+  late UserService userService;
 
   setUp(() {
     firestore = FakeFirebaseFirestore();
-    workshopService = WorkshopService(firestore: firestore);
+    userService = UserService(firestore: firestore);
   });
 
   Future<void> sembrarExpediente(String uid) =>
@@ -110,7 +110,7 @@ void main() {
       );
       final provider = AdminVerificacionProvider(
         service: service,
-        workshopService: workshopService,
+        userService: userService,
       );
 
       await _pumpBandeja(tester, provider);
@@ -146,7 +146,7 @@ void main() {
       );
       final provider = AdminVerificacionProvider(
         service: service,
-        workshopService: workshopService,
+        userService: userService,
       );
 
       await _pumpBandeja(tester, provider);

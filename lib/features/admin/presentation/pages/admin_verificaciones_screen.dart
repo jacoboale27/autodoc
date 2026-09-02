@@ -115,16 +115,31 @@ class _ExpedienteCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Mientras no llega el perfil publico de `talleres/{uid}`
-                    // se usa el uid como titulo transitorio: es peor que el
-                    // nombre, pero solo dura hasta la primera hidratacion, y
-                    // es mejor que un hueco en blanco.
+                    // Mientras no llega el perfil de `usuarios/{uid}` se usa
+                    // el uid como titulo transitorio: es peor que el nombre,
+                    // pero solo dura hasta la primera hidratacion, y es mejor
+                    // que un hueco en blanco.
                     Text(
                       identidad?.nombreCompleto ?? expediente.idTaller,
                       style: AppTextStyles.titleSmall.copyWith(
                         color: colors.textPrimary,
                       ),
                     ),
+                    // Seleccionable: el administrador lo copia para escribirle
+                    // al taller cuyo expediente va a rechazar. Sale de
+                    // `usuarios/{uid}`, nunca de `talleres/{uid}` (lectura
+                    // publica y anonima): ver el doc de `_identidades` en
+                    // AdminVerificacionProvider.
+                    if (identidad?.correo.isNotEmpty ?? false) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      SelectableText(
+                        identidad!.correo,
+                        maxLines: 1,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
                     if (identidad?.especialidad != null &&
                         identidad!.especialidad!.isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.xs),
