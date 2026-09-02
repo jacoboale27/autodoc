@@ -1,7 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:autodoc/core/models/estado_verificacion.dart';
 import 'package:autodoc/core/models/user_model.dart';
@@ -13,9 +16,36 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/core/widgets/app_image_viewer.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/verificacion_provider.dart';
+
+/// Firma del selector de archivo, con origen y opciones ya fijadas.
+///
+/// Costura inyectable, mismo motivo que `SubidorDeEvidencia` en
+/// `VerificacionService`: no hay forma barata de simular el canal de
+/// plataforma de `image_picker` en un widget test, así que se saca la
+/// llamada a un campo que un test puede sustituir por un valor fijo.
+typedef SelectorDeArchivo = Future<XFile?> Function();
+
+/// Un archivo recién elegido, todavía sin subir.
+///
+/// Guarda los bytes ya leídos (no el `XFile`) para poder previsualizarlo con
+/// `Image.memory` sin volver a tocar disco/red en cada rebuild, y para poder
+/// mandarlos tal cual a `VerificacionProvider.subirEvidencia` al confirmar.
+class _ArchivoPendiente {
+  const _ArchivoPendiente({required this.bytes, required this.nombre});
+
+  final Uint8List bytes;
+  final String nombre;
+
+  bool get esPdf => nombre.toLowerCase().endsWith('.pdf');
+
+  String get tamanoEnMB =>
+      (bytes.lengthInBytes / (1024 * 1024)).toStringAsFixed(1);
+}
 
 /// Etiquetas de cada slot de evidencia, en el orden en que se piden.
 const _etiquetas = <String, ({String titulo, String ayuda, bool obligatorio})>{
@@ -44,7 +74,11 @@ const _etiquetas = <String, ({String titulo, String ayuda, bool obligatorio})>{
 /// recién registrado solo veía «espera 1-2 días hábiles» sin nada que hacer y
 /// sin que el administrador tuviera con qué verificarlo.
 class WorkshopVerificationScreen extends StatefulWidget {
-  const WorkshopVerificationScreen({super.key});
+  const WorkshopVerificationScreen({super.key, this.selectorDeArchivo});
+
+  /// Sustituye al `ImagePicker()` real. Solo lo usan los tests: en
+  /// producción siempre es `null` y se cae al selector de galería de abajo.
+  final SelectorDeArchivo? selectorDeArchivo;
 
   @override
   State<WorkshopVerificationScreen> createState() =>
@@ -53,6 +87,15 @@ class WorkshopVerificationScreen extends StatefulWidget {
 
 class _WorkshopVerificationScreenState
     extends State<WorkshopVerificationScreen> {
+  /// Archivo elegido pero todavía no confirmado, por slot.
+  ///
+  /// Vive aquí y no en `VerificacionProvider` porque es puramente
+  /// transitorio a esta pantalla: nunca sale de aquí (ni se persiste, ni lo
+  /// necesita nadie más), y desaparece en cuanto se confirma la subida o se
+  /// navega fuera. Mismo criterio que `_imageFile` en
+  /// `ProfileSetupScreen._pickPhoto`.
+  final Map<String, _ArchivoPendiente> _pendientes = {};
+
   @override
   void initState() {
     super.initState();
@@ -62,12 +105,9 @@ class _WorkshopVerificationScreenState
     });
   }
 
-  Future<void> _elegirYSubir(String slot) async {
-    final provider = context.read<VerificacionProvider>();
-    final uid = context.read<AuthSessionProvider>().currentUid;
-    if (uid.isEmpty) return;
-
-    final archivo = await ImagePicker().pickImage(
+  Future<XFile?> _seleccionarArchivo() {
+    if (widget.selectorDeArchivo != null) return widget.selectorDeArchivo!();
+    return ImagePicker().pickImage(
       source: ImageSource.gallery,
       // Un taller no aprobado puede subir 3 archivos de hasta 5 MB (el tope de
       // storage.rules). Reducir aqui evita rebotar contra ese limite con una
@@ -75,21 +115,82 @@ class _WorkshopVerificationScreenState
       maxWidth: 1600,
       imageQuality: 85,
     );
-    if (archivo == null) return;
+  }
+
+  /// Abre el selector y deja el resultado en `_pendientes`, SIN subir nada
+  /// todavía. Cancelar el selector no toca el estado previo del slot: si ya
+  /// había una previsualización o un archivo subido, siguen ahí.
+  Future<void> _elegirArchivo(String slot) async {
+    final archivo = await _seleccionarArchivo();
+    if (archivo == null || !mounted) return;
 
     final bytes = await archivo.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      _pendientes[slot] = _ArchivoPendiente(bytes: bytes, nombre: archivo.name);
+    });
+  }
+
+  /// Sube el archivo previsualizado. Es la única función de esta pantalla
+  /// que escribe en Storage: seleccionar (`_elegirArchivo`) nunca lo hace.
+  Future<void> _confirmarYSubir(String slot) async {
+    final pendiente = _pendientes[slot];
+    if (pendiente == null) return;
+
+    final provider = context.read<VerificacionProvider>();
+    final uid = context.read<AuthSessionProvider>().currentUid;
+    if (uid.isEmpty) return;
+
     final ok = await provider.subirEvidencia(
       tallerId: uid,
       slot: slot,
-      nombreOriginal: archivo.name,
-      bytes: bytes,
+      nombreOriginal: pendiente.nombre,
+      bytes: pendiente.bytes,
     );
 
     if (!mounted) return;
+    // Solo se limpia la previsualización si la subida salió bien: si falló,
+    // el taller no debe tener que volver a elegir el archivo para
+    // reintentar, solo volver a pulsar "Confirmar y subir".
+    if (ok) setState(() => _pendientes.remove(slot));
     _avisar(
       ok ? '${_etiquetas[slot]!.titulo} subida.' : provider.error!,
       error: !ok,
     );
+  }
+
+  /// Abre en grande un documento ya subido: el visor de A1 para imágenes, el
+  /// navegador (vía `url_launcher`) para PDF. La URL se resuelve en el
+  /// momento del tap y no antes, por el mismo motivo que en la bandeja del
+  /// administrador: lleva un token de Storage que no conviene pedir de más.
+  Future<void> _verEvidencia(
+    DocumentoEvidencia documento,
+    String titulo,
+  ) async {
+    final provider = context.read<VerificacionProvider>();
+    final uid = context.read<AuthSessionProvider>().currentUid;
+    if (uid.isEmpty) return;
+
+    final url = await provider.urlDeEvidencia(uid, documento);
+    if (!mounted) return;
+    if (url == null) {
+      _avisar(context.l10n.adminVerificacionAbrirDocumentoError, error: true);
+      return;
+    }
+
+    if (documento.nombreArchivo.endsWith('.pdf')) {
+      final uri = Uri.parse(url);
+      final abierto =
+          await canLaunchUrl(uri) &&
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!abierto && mounted) {
+        _avisar(context.l10n.adminVerificacionAbrirDocumentoError, error: true);
+      }
+      return;
+    }
+
+    if (!mounted) return;
+    await AppImageViewer.open(context, imageUrl: url, semanticLabel: titulo);
   }
 
   Future<void> _enviar(UserModel perfil) async {
@@ -344,6 +445,7 @@ class _WorkshopVerificationScreenState
   ) {
     final etiqueta = _etiquetas[slot]!;
     final subido = expediente?.documentos[slot];
+    final pendiente = _pendientes[slot];
     final enCurso = provider.slotEnCurso == slot;
     // Una vez enviado, el expediente esta en manos del administrador: dejar
     // cambiar la evidencia bajo sus pies significa que revisa una foto y
@@ -351,6 +453,9 @@ class _WorkshopVerificationScreenState
     final bloqueado =
         provider.estado == EstadoVerificacion.listoParaRevision ||
         provider.estado == EstadoVerificacion.enRevision;
+    // Ver ya subido no es "cambiar": no hay razón para bloquearlo aunque el
+    // expediente esté en revisión.
+    final puedeVer = subido != null && pendiente == null && !enCurso;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -359,73 +464,152 @@ class _WorkshopVerificationScreenState
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: colors.outline.withValues(alpha: 0.3)),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            subido != null
-                ? Icons.check_circle
-                : etiqueta.obligatorio
-                ? Icons.error_outline
-                : Icons.add_photo_alternate_outlined,
-            color: subido != null
-                ? colors.success
-                : etiqueta.obligatorio
-                ? colors.warning
-                : colors.textSecondary,
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        etiqueta.titulo,
-                        style: AppTextStyles.titleSmall.copyWith(
-                          color: colors.textPrimary,
-                        ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _miniaturaSlot(colors, etiqueta, subido, pendiente),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: InkWell(
+                  onTap: puedeVer
+                      ? () => _verEvidencia(subido, etiqueta.titulo)
+                      : null,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              etiqueta.titulo,
+                              style: AppTextStyles.titleSmall.copyWith(
+                                color: colors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          if (!etiqueta.obligatorio) ...[
+                            const SizedBox(width: AppSpacing.sm),
+                            Text(
+                              'opcional',
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                    ),
-                    if (!etiqueta.obligatorio) ...[
-                      const SizedBox(width: AppSpacing.sm),
+                      const SizedBox(height: AppSpacing.xs),
                       Text(
-                        'opcional',
+                        _descripcionSlot(context, etiqueta, subido, pendiente),
                         style: AppTextStyles.bodySmall.copyWith(
                           color: colors.textSecondary,
+                          height: 1.4,
                         ),
                       ),
                     ],
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  subido != null ? 'Archivo subido.' : etiqueta.ayuda,
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: colors.textSecondary,
-                    height: 1.4,
                   ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              if (enCurso)
+                const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else if (pendiente == null)
+                TextButton(
+                  onPressed: bloqueado ? null : () => _elegirArchivo(slot),
+                  child: Text(subido != null ? 'Cambiar' : 'Subir'),
+                ),
+            ],
+          ),
+          if (pendiente != null && !enCurso) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => _elegirArchivo(slot),
+                  child: const Text('Cambiar'),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                AppButton(
+                  text: context.l10n.tallerVerifConfirmarYSubir,
+                  size: AppButtonSize.small,
+                  onPressed: () => _confirmarYSubir(slot),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          if (enCurso)
-            const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          else
-            TextButton(
-              onPressed: bloqueado ? null : () => _elegirYSubir(slot),
-              child: Text(subido != null ? 'Cambiar' : 'Subir'),
-            ),
+          ],
         ],
       ),
     );
+  }
+
+  /// Cuadro de la izquierda de la tarjeta: la previsualización local si hay
+  /// un archivo pendiente, si no el icono de estado de siempre.
+  Widget _miniaturaSlot(
+    AppColors colors,
+    ({String titulo, String ayuda, bool obligatorio}) etiqueta,
+    DocumentoEvidencia? subido,
+    _ArchivoPendiente? pendiente,
+  ) {
+    if (pendiente != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: pendiente.esPdf
+              ? Container(
+                  color: colors.surface,
+                  child: Icon(
+                    Icons.picture_as_pdf_outlined,
+                    color: colors.textSecondary,
+                  ),
+                )
+              : Image.memory(pendiente.bytes, fit: BoxFit.cover),
+        ),
+      );
+    }
+
+    return Icon(
+      subido != null
+          ? Icons.check_circle
+          : etiqueta.obligatorio
+          ? Icons.error_outline
+          : Icons.add_photo_alternate_outlined,
+      color: subido != null
+          ? colors.success
+          : etiqueta.obligatorio
+          ? colors.warning
+          : colors.textSecondary,
+    );
+  }
+
+  /// Texto bajo el título: ayuda del slot vacío, aviso de pendiente de
+  /// confirmar (con nombre y peso si es PDF), o confirmación de que ya se
+  /// subió.
+  String _descripcionSlot(
+    BuildContext context,
+    ({String titulo, String ayuda, bool obligatorio}) etiqueta,
+    DocumentoEvidencia? subido,
+    _ArchivoPendiente? pendiente,
+  ) {
+    if (pendiente != null) {
+      return pendiente.esPdf
+          ? context.l10n.tallerVerifArchivoPendientePdf(
+              pendiente.nombre,
+              pendiente.tamanoEnMB,
+            )
+          : context.l10n.tallerVerifArchivoPendiente;
+    }
+    if (subido != null) return context.l10n.tallerVerifArchivoSubido;
+    return etiqueta.ayuda;
   }
 
   Widget _botonEnviar(

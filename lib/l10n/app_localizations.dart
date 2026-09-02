@@ -2042,6 +2042,30 @@ abstract class AppLocalizations {
   /// **'Couldn\'t open the document. Please try again.'**
   String get adminVerificacionAbrirDocumentoError;
 
+  /// No description provided for @tallerVerifConfirmarYSubir.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm and upload'**
+  String get tallerVerifConfirmarYSubir;
+
+  /// No description provided for @tallerVerifArchivoPendiente.
+  ///
+  /// In en, this message translates to:
+  /// **'Not uploaded yet. Review it and confirm to upload it.'**
+  String get tallerVerifArchivoPendiente;
+
+  /// No description provided for @tallerVerifArchivoPendientePdf.
+  ///
+  /// In en, this message translates to:
+  /// **'{nombre} · {tamano} MB. Not uploaded yet.'**
+  String tallerVerifArchivoPendientePdf(String nombre, String tamano);
+
+  /// No description provided for @tallerVerifArchivoSubido.
+  ///
+  /// In en, this message translates to:
+  /// **'File uploaded. Tap to view it.'**
+  String get tallerVerifArchivoSubido;
+
   /// No description provided for @chatOpeningSection.
   ///
   /// In en, this message translates to:

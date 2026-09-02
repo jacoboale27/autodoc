@@ -1066,6 +1066,21 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t open the document. Please try again.';
 
   @override
+  String get tallerVerifConfirmarYSubir => 'Confirm and upload';
+
+  @override
+  String get tallerVerifArchivoPendiente =>
+      'Not uploaded yet. Review it and confirm to upload it.';
+
+  @override
+  String tallerVerifArchivoPendientePdf(String nombre, String tamano) {
+    return '$nombre · $tamano MB. Not uploaded yet.';
+  }
+
+  @override
+  String get tallerVerifArchivoSubido => 'File uploaded. Tap to view it.';
+
+  @override
   String chatOpeningSection(String label) {
     return 'Opening $label section...';
   }

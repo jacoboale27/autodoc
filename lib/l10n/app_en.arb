@@ -590,6 +590,20 @@
   "@adminVerificacionAbrirDocumentoError": {
     "description": "Shown when tapping a PDF evidence document fails to launch the browser."
   },
+  "tallerVerifConfirmarYSubir": "Confirm and upload",
+  "tallerVerifArchivoPendiente": "Not uploaded yet. Review it and confirm to upload it.",
+  "tallerVerifArchivoPendientePdf": "{nombre} · {tamano} MB. Not uploaded yet.",
+  "@tallerVerifArchivoPendientePdf": {
+    "placeholders": {
+      "nombre": {
+        "type": "String"
+      },
+      "tamano": {
+        "type": "String"
+      }
+    }
+  },
+  "tallerVerifArchivoSubido": "File uploaded. Tap to view it.",
   "chatOpeningSection": "Opening {label} section...",
   "@chatOpeningSection": {
     "placeholders": {

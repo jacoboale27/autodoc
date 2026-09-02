@@ -1073,6 +1073,21 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo abrir el documento. Intenta de nuevo.';
 
   @override
+  String get tallerVerifConfirmarYSubir => 'Confirmar y subir';
+
+  @override
+  String get tallerVerifArchivoPendiente =>
+      'Sin subir todavía. Revísala y confirma para subirla.';
+
+  @override
+  String tallerVerifArchivoPendientePdf(String nombre, String tamano) {
+    return '$nombre · $tamano MB. Sin subir todavía.';
+  }
+
+  @override
+  String get tallerVerifArchivoSubido => 'Archivo subido. Toca para verlo.';
+
+  @override
   String chatOpeningSection(String label) {
     return 'Abriendo sección de $label...';
   }

@@ -587,6 +587,20 @@
     }
   },
   "adminVerificacionAbrirDocumentoError": "No se pudo abrir el documento. Intenta de nuevo.",
+  "tallerVerifConfirmarYSubir": "Confirmar y subir",
+  "tallerVerifArchivoPendiente": "Sin subir todavía. Revísala y confirma para subirla.",
+  "tallerVerifArchivoPendientePdf": "{nombre} · {tamano} MB. Sin subir todavía.",
+  "@tallerVerifArchivoPendientePdf": {
+    "placeholders": {
+      "nombre": {
+        "type": "String"
+      },
+      "tamano": {
+        "type": "String"
+      }
+    }
+  },
+  "tallerVerifArchivoSubido": "Archivo subido. Toca para verlo.",
   "chatOpeningSection": "Abriendo sección de {label}...",
   "@chatOpeningSection": {
     "placeholders": {
