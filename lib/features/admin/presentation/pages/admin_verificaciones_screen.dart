@@ -134,7 +134,6 @@ class _ExpedienteCard extends StatelessWidget {
                       const SizedBox(height: AppSpacing.xs),
                       SelectableText(
                         identidad!.correo,
-                        maxLines: 1,
                         style: AppTextStyles.bodySmall.copyWith(
                           color: colors.textSecondary,
                         ),
