@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:autodoc/core/models/alert_model.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 
+import 'package:autodoc/core/constants/maintenance_defaults.dart';
 import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/core/constants/storage_paths.dart';
@@ -302,54 +303,47 @@ class AlertProvider extends ChangeNotifier {
 
   // --- LÓGICA DE CREACIÓN DE TAREAS PREDETERMINADAS ---
 
-  static const List<Map<String, dynamic>> _defaultTasks = [
-    {
-      'nombre': 'Cambio de Aceite',
-      'frecuencia_km': 5000,
-      'frecuencia_meses': 6,
-    },
-    {
-      'nombre': 'Filtro de Aire',
-      'frecuencia_km': 10000,
-      'frecuencia_meses': 12,
-    },
-    {
-      'nombre': 'Filtro de Aceite',
-      'frecuencia_km': 5000,
-      'frecuencia_meses': 6,
-    },
-    {
-      'nombre': 'Pastillas de Freno',
-      'frecuencia_km': 20000,
-      'frecuencia_meses': 24,
-    },
-    {
-      'nombre': 'Rotación de Llantas',
-      'frecuencia_km': 10000,
-      'frecuencia_meses': 12,
-    },
-    {
-      'nombre': 'Revisión de Frenos',
-      'frecuencia_km': 15000,
-      'frecuencia_meses': 18,
-    },
-    {
-      'nombre': 'Cambio de Refrigerante',
-      'frecuencia_km': 40000,
-      'frecuencia_meses': 24,
-    },
-    {'nombre': 'Bujías', 'frecuencia_km': 30000, 'frecuencia_meses': 24},
-  ];
+  /// Ver `kTareasMantenimientoPorDefecto`. La tabla salio de aqui para que
+  /// el script de backfill (`functions/seed_tareas_mantenimiento.js`) pueda
+  /// citarla como fuente unica en vez de reinventar los valores.
+  static const List<Map<String, dynamic>> _defaultTasks =
+      kTareasMantenimientoPorDefecto;
 
+  /// Siembra el plan por defecto en [vehicleId]. Es **idempotente**: se puede
+  /// llamar tantas veces como haga falta sin duplicar nada.
+  ///
+  /// Antes no lo era, y por eso los vehiculos aparecian con el plan repetido
+  /// x2, x3 o x6: cada tarea se escribia con `collection().doc()` (id
+  /// aleatorio), asi que dos llamadas cualesquiera creaban dos juegos
+  /// completos de ocho. Y llamadas repetidas son lo normal, no la excepcion —
+  /// se llama al anadir el vehiculo (dashboard/garage) y otra vez desde
+  /// `fetchAlerts` cada vez que la lista sale vacia, que es justo lo que
+  /// ocurre mientras la escritura anterior todavia no es visible.
+  ///
+  /// Dos defensas, no una:
+  ///  - El id lo fija `idTareaMantenimiento`, asi que dos llamadas a la vez
+  ///    escriben el MISMO documento en lugar de dos.
+  ///  - Se saltan las tareas cuyo nombre ya existe, para no pisar con `set`
+  ///    el `ultimo_km` de una tarea que el propietario ya llevaba al dia.
   Future<void> createDefaultTasks(String vehicleId, int currentKm) async {
     try {
+      final existentes = await _firestore
+          .collection(FirestoreCollections.mantenimientos)
+          .where('id_vehiculo', isEqualTo: vehicleId)
+          .get();
+      final nombresExistentes = existentes.docs
+          .map((doc) => doc.data()['nombre'])
+          .toSet();
+
       final now = DateTime.now();
       final batch = _firestore.batch();
+      var pendientes = 0;
 
       for (var taskData in _defaultTasks) {
+        if (nombresExistentes.contains(taskData['nombre'])) continue;
         final docRef = _firestore
             .collection(FirestoreCollections.mantenimientos)
-            .doc();
+            .doc(idTareaMantenimiento(vehicleId, taskData['nombre'] as String));
         batch.set(docRef, {
           'id_vehiculo': vehicleId,
           'nombre': taskData['nombre'],
@@ -358,8 +352,10 @@ class AlertProvider extends ChangeNotifier {
           'frecuencia_km': taskData['frecuencia_km'],
           'frecuencia_meses': taskData['frecuencia_meses'],
         });
+        pendientes++;
       }
 
+      if (pendientes == 0) return;
       await batch.commit();
     } catch (e) {
       debugPrint('Error al crear tareas predeterminadas: $e');
@@ -648,6 +644,94 @@ class AlertProvider extends ChangeNotifier {
           frecuenciaKm: task.frecuenciaKm,
           frecuenciaMeses: task.frecuenciaMeses,
         );
+      }
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  /// Registra un servicio cerrado por el taller cuando el vehiculo NO tiene
+  /// ninguna tarea de mantenimiento configurada.
+  ///
+  /// `tallerUpdateService` escribe una vez POR TAREA marcada, asi que con la
+  /// lista de tareas vacia no escribia nada en absoluto: la pantalla decia
+  /// "Servicio registrado exitosamente" y no quedaba rastro ni en el
+  /// historial del taller (`servicios` filtrado por `id_taller`) ni en el del
+  /// propietario (`servicios` filtrado por `id_vehiculo`), y el trigger
+  /// `requestReviewOnServiceComplete` — que es quien actualiza el kilometraje
+  /// del vehiculo y pide la resena — nunca llegaba a dispararse.
+  ///
+  /// No toca `mantenimientos` (no hay tarea que poner al dia) ni
+  /// `historial_mantenimientos` (esa coleccion se indexa por `id_tarea` y hoy
+  /// no la lee nadie en la app). El documento de `servicios` lleva los mismos
+  /// campos que el de `tallerUpdateService`, para que las dos rutas produzcan
+  /// registros indistinguibles al leerlos.
+  Future<void> tallerRegistrarServicioSinTarea({
+    required String vehiculoId,
+    required int nuevoKilometraje,
+    required String tallerId,
+    required String descripcion,
+    double? costo,
+    double? manoDeObra,
+    List<Map<String, dynamic>>? materiales,
+    XFile? receiptImage,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final now = DateTime.now();
+
+      Reference? receiptRef;
+      String? receiptUrl;
+      if (receiptImage != null) {
+        final metadataInfo = InvoiceUploadService.getFileMetadata(
+          receiptImage.name,
+        );
+        final extension = metadataInfo['extension']!;
+        final contentType = metadataInfo['contentType']!;
+
+        receiptRef = _storage
+            .ref()
+            .child(StoragePaths.facturas)
+            .child(vehiculoId)
+            .child('${DateTime.now().millisecondsSinceEpoch}$extension');
+        final bytes = await receiptImage.readAsBytes();
+        final metadata = SettableMetadata(contentType: contentType);
+        await receiptRef.putData(bytes, metadata);
+        receiptUrl = await receiptRef.getDownloadURL();
+      }
+
+      try {
+        await _firestore.collection(FirestoreCollections.servicios).add({
+          'id_vehiculo': vehiculoId,
+          'id_taller': tallerId,
+          'tipo_servicio': 'Servicio General',
+          'fecha': Timestamp.fromDate(now),
+          'kilometraje_servicio': nuevoKilometraje,
+          'descripcion': descripcion,
+          'costo': costo,
+          'mano_de_obra': manoDeObra,
+          'materiales': materiales,
+          'foto_factura_url': receiptUrl,
+        });
+      } catch (e) {
+        // Misma limpieza que `userCompleteTask`: la factura ya esta en
+        // Storage pero el documento que la referencia no llego a existir.
+        if (receiptRef != null) {
+          try {
+            await receiptRef.delete();
+          } catch (_) {
+            // Si tampoco se puede borrar, no tapamos el error original.
+          }
+        }
+        rethrow;
       }
 
       _isLoading = false;

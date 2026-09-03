@@ -12,7 +12,7 @@ test.describe('Flujos del Mecánico', () => {
     
     const emailField = page.getByLabel(/Correo|Email/i).first();
     await emailField.click({ timeout: 120000 });
-    await emailField.fill('taller6@taller.com');
+    await emailField.fill('taller1@taller.com');
     
     const passwordField = page.getByLabel(/Contraseña|Password/i).first();
     await passwordField.click({ timeout: 10000 });

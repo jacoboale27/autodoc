@@ -192,7 +192,7 @@ UserModel fakeTaller({
 ///
 /// Fija el ancho con `tester.view` en vez de con `MediaQuery` a mano para
 /// que `AppBreakpoints.of(context)` vea el mismo valor que en producción.
-Future<void> pumpMechanicScreen(
+Future<GoRouter> pumpMechanicScreen(
   WidgetTester tester,
   Widget screen, {
   required double width,
@@ -211,6 +211,12 @@ Future<void> pumpMechanicScreen(
   // encontrarlo. `SingleChildWidget` (la clase base sin genéricos) no fija
   // ninguna cota, así que cada elemento infiere su propio `T` desde `create`.
   List<SingleChildWidget> extraProviders = const [],
+  // Rutas adicionales que la pantalla bajo prueba pueda necesitar como
+  // DESTINO. Sin ellas el enrutador de este harness tiene una sola ruta, y
+  // cualquier navegacion de salida cae en el errorBuilder en vez de poder
+  // comprobarse. Se declaran vacias a proposito: lo que se observa es el
+  // `uri` al que llega el enrutador, no lo que pinta el destino.
+  List<String> rutasExtra = const [],
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = Size(width, height);
@@ -226,9 +232,26 @@ Future<void> pumpMechanicScreen(
   // a la pantalla. Mismo patrón que `pumpAtWidth` en responsive_harness.dart.
   await tester.pumpWidget(const SizedBox.shrink());
 
+  // `pageBuilder` + `MaterialPage`, no `builder`: el enrutador real construye
+  // sus paginas asi (`buildPageWithFadeThrough`), y la diferencia no es
+  // cosmetica. Con `builder`, un `Navigator.pop` sobre esta unica pagina es
+  // un no-op silencioso; con paginas declaradas, go_router vacia su
+  // `RouteMatchList` y deja la pantalla en blanco — que es justo el fallo
+  // que este harness tiene que poder reproducir.
   final router = GoRouter(
     initialLocation: location,
-    routes: [GoRoute(path: location, builder: (context, state) => screen)],
+    routes: [
+      GoRoute(
+        path: location,
+        pageBuilder: (context, state) => MaterialPage(child: screen),
+      ),
+      for (final ruta in rutasExtra)
+        GoRoute(
+          path: ruta,
+          pageBuilder: (context, state) =>
+              const MaterialPage(child: Scaffold(body: SizedBox.shrink())),
+        ),
+    ],
   );
 
   await tester.pumpWidget(
@@ -308,4 +331,6 @@ Future<void> pumpMechanicScreen(
       ),
     ),
   );
+
+  return router;
 }

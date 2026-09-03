@@ -86,7 +86,11 @@ class ServiceRecordModel {
       fotoFacturaUrl: map['foto_factura_url'],
       descripcion: map['descripcion'],
       manoDeObra: map['mano_de_obra']?.toDouble(),
-      materiales: map['materiales'] != null
+      // `is List` (no solo `!= null`): un documento con `materiales` mal
+      // escrito (p.ej. un monto numerico en vez de la lista de repuestos)
+      // hacia que `List.from` reventara con un TypeError de Iterable en
+      // TODA la pantalla "Mis Servicios" a la vez, por un solo documento.
+      materiales: map['materiales'] is List
           ? List<Map<String, dynamic>>.from(map['materiales'])
           : null,
     );

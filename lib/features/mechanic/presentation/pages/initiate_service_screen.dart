@@ -361,19 +361,15 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     try {
       final alertProvider = context.read<AlertProvider>();
       final userSession = context.read<UserProfileProvider>();
-      // NOTA: a diferencia del resto de este archivo, aquí se usa
-      // deliberadamente `idUsuario` (no `idTallerEfectivo`). Este id
-      // alimenta `AlertProvider.tallerUpdateService`, que escribe en la
-      // colección legacy 'servicios' (historial de mantenimiento, previa a
-      // Task 4/Kanban) — su regla en firestore.rules exige
-      // `id_taller == request.auth.uid` sin la ampliación para empleados
-      // que sí se añadió a 'reparaciones'/'catalogo_servicios' (fix #2 de
-      // este pase, deliberadamente acotado a esas dos colecciones). Cambiar
-      // este id sin ampliar también la regla de 'servicios' rompería este
-      // create para toda cuenta de empleado. Queda como gap conocido,
-      // documentado en el reporte de este fix — no se amplía 'servicios'
-      // por estar fuera del alcance explícito de esta tanda de fixes.
-      final tallerId = userSession.userData?.idUsuario ?? 'taller_anonimo';
+      // `idTallerEfectivo` (uid del dueño, no del empleado que opera), igual
+      // que el resto de este archivo (líneas 142 y 235): `servicios`,
+      // `mantenimientos` y `historial_mantenimientos` ya aceptan
+      // `actuaPorTaller()` para sub-cuentas de empleado, así que usar aquí el
+      // uid propio del empleado solo rompía el finalizar-servicio de
+      // cualquier cliente que ya tuviera vínculo (`talleres_vinculados`
+      // guarda el uid del dueño, nunca el del empleado).
+      final tallerId =
+          userSession.userData?.idTallerEfectivo ?? 'taller_anonimo';
 
       final costoDouble = double.tryParse(_costoController.text);
       final manoDeObraDouble = _hasApprovedQuote
@@ -383,9 +379,15 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           ? _approvedQuote?.materiales
           : _materiales;
 
-      for (var taskId in _completedTaskIds) {
-        await alertProvider.tallerUpdateService(
-          taskId: taskId,
+      if (_completedTaskIds.isEmpty) {
+        // Sin tareas de mantenimiento configuradas, el bucle de abajo no daba
+        // ni una vuelta: no se escribia NADA y aun asi la pantalla decia
+        // "Servicio registrado exitosamente". No es un caso raro — es el que
+        // `requiereTareaSeleccionada` deja pasar a proposito, y el que el
+        // texto de la pantalla promete que "quedara registrado en el
+        // historial".
+        await alertProvider.tallerRegistrarServicioSinTarea(
+          vehiculoId: _vehiculo!.idVehiculo,
           nuevoKilometraje: nuevoKm,
           tallerId: tallerId,
           descripcion: _notesController.text,
@@ -394,6 +396,19 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           materiales: materialesList,
           receiptImage: _invoiceImage,
         );
+      } else {
+        for (var taskId in _completedTaskIds) {
+          await alertProvider.tallerUpdateService(
+            taskId: taskId,
+            nuevoKilometraje: nuevoKm,
+            tallerId: tallerId,
+            descripcion: _notesController.text,
+            costo: costoDouble,
+            manoDeObra: manoDeObraDouble,
+            materiales: materialesList,
+            receiptImage: _invoiceImage,
+          );
+        }
       }
 
       await alertProvider.fetchAlerts(_vehiculo!.idVehiculo, _vehiculo!);
@@ -437,7 +452,35 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
             'Servicio registrado exitosamente',
           );
         }
-        Navigator.pop(context);
+        // `Navigator.pop` aqui dejaba la pantalla EN BLANCO. A esta vista se
+        // llega con `context.go` desde el buscador de placas, que reemplaza
+        // la pila: `canPop()` es false y desapilar vacia el `RouteMatchList`
+        // de go_router, que entonces no pinta ninguna pagina y deja la URL
+        // congelada en /initiate_service/<id>. Es el mismo motivo por el que
+        // el `leading` del AppBar es explicito (ver mas abajo).
+        context.go(
+          _idReparacion != null
+              ? '/mechanic_reparaciones'
+              : '/mechanic_dashboard',
+        );
+      }
+    } on FirebaseException catch (e) {
+      // `permission-denied` aqui casi siempre significa una cosa concreta y
+      // accionable: el vehiculo ya esta vinculado a OTRO taller, asi que la
+      // regla de `servicios` (mitigacion del hallazgo C1) no deja crear el
+      // registro. Enseñar el error crudo de Firestore deja al mecanico sin
+      // saber que hacer, y el fallo no es suyo.
+      if (mounted) {
+        HapticFeedback.heavyImpact();
+        UiUtils.showErrorSnackbar(
+          context,
+          e.code == 'permission-denied'
+              ? 'No se pudo registrar el servicio: este vehículo ya está '
+                    'asignado a otro taller, o tu cuenta aún no está '
+                    'aprobada. Pídele al propietario que confirme el '
+                    'vínculo desde su panel.'
+              : 'Error al registrar servicio: ${e.message ?? e.code}',
+        );
       }
     } catch (e) {
       if (mounted) {

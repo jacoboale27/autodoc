@@ -1,0 +1,677 @@
+<title>Puesta a punto AutoDoc</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+
+<style>
+  :root {
+    /* Neutrales con sesgo cian: pantalla de equipo de diagnostico */
+    --ground: #eef1f3;
+    --surface: #ffffff;
+    --surface-2: #f6f8f9;
+    --line: #d3dadd;
+    --line-soft: #e4e9eb;
+    --ink: #10181d;
+    --ink-2: #3d4c55;
+    --ink-3: #6b7c86;
+
+    --accent: #0d6e7d;
+    --accent-soft: #e2f0f2;
+    --accent-ink: #0a5b68;
+
+    --crit: #a9232c;
+    --crit-soft: #fae3e4;
+    --warn: #9c6206;
+    --warn-soft: #fbeed6;
+    --ok: #146b52;
+    --ok-soft: #dcefe7;
+
+    --shadow: 0 1px 2px rgba(16, 24, 29, .05), 0 8px 24px -12px rgba(16, 24, 29, .18);
+
+    --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+    --body: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0d1418;
+      --surface: #141d22;
+      --surface-2: #19242a;
+      --line: #2b3a42;
+      --line-soft: #223038;
+      --ink: #e8eef1;
+      --ink-2: #b0c0c9;
+      --ink-3: #7e919c;
+
+      --accent: #47b9cd;
+      --accent-soft: #14343b;
+      --accent-ink: #7fd3e2;
+
+      --crit: #f0868d;
+      --crit-soft: #3a1c1f;
+      --warn: #e5ab4d;
+      --warn-soft: #38290f;
+      --ok: #57c8a3;
+      --ok-soft: #123128;
+
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -12px rgba(0, 0, 0, .7);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #0d1418;
+    --surface: #141d22;
+    --surface-2: #19242a;
+    --line: #2b3a42;
+    --line-soft: #223038;
+    --ink: #e8eef1;
+    --ink-2: #b0c0c9;
+    --ink-3: #7e919c;
+
+    --accent: #47b9cd;
+    --accent-soft: #14343b;
+    --accent-ink: #7fd3e2;
+
+    --crit: #f0868d;
+    --crit-soft: #3a1c1f;
+    --warn: #e5ab4d;
+    --warn-soft: #38290f;
+    --ok: #57c8a3;
+    --ok-soft: #123128;
+
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -12px rgba(0, 0, 0, .7);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0 20px 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; }
+
+  /* ---------- Cabecera ---------- */
+
+  header.top {
+    padding: 56px 0 34px;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 14px;
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-size: clamp(44px, 8vw, 78px);
+    font-weight: 700;
+    line-height: .95;
+    letter-spacing: -.015em;
+    text-wrap: balance;
+    margin: 0 0 18px;
+    text-transform: uppercase;
+  }
+
+  .thesis {
+    font-size: 19px;
+    line-height: 1.5;
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0 0 30px;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 28px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .meta b { color: var(--ink-2); font-weight: 500; }
+
+  /* ---------- Tiles ---------- */
+
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin: 0 0 56px;
+  }
+  .tile { background: var(--surface); padding: 22px 20px 20px; }
+  .tile .n {
+    font-family: var(--display);
+    font-size: 46px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -.01em;
+    font-variant-numeric: tabular-nums;
+    display: block;
+    margin-bottom: 6px;
+  }
+  .tile .n.alarm { color: var(--crit); }
+  .tile .n.good { color: var(--accent); }
+  .tile .lbl {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    line-height: 1.5;
+  }
+
+  /* ---------- Secciones ---------- */
+
+  section { margin: 0 0 58px; }
+
+  h2 {
+    font-family: var(--display);
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: .005em;
+    text-transform: uppercase;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+  .sub {
+    color: var(--ink-3);
+    font-size: 14.5px;
+    margin: 0 0 22px;
+    max-width: 66ch;
+  }
+
+  /* ---------- Tabla de hallazgos ---------- */
+
+  .scroll { overflow-x: auto; border: 1px solid var(--line); background: var(--surface); }
+
+  table { border-collapse: collapse; width: 100%; min-width: 620px; }
+  th, td { text-align: left; padding: 12px 16px; vertical-align: top; font-size: 14px; }
+  thead th {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 600;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface-2);
+    white-space: nowrap;
+  }
+  tbody tr + tr td { border-top: 1px solid var(--line-soft); }
+  tbody tr:hover td { background: var(--surface-2); }
+  td.ev { font-family: var(--mono); font-size: 12px; color: var(--ink-2); line-height: 1.55; }
+  td.fix { white-space: nowrap; font-family: var(--mono); font-size: 12px; color: var(--accent-ink); }
+
+  .pill {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .p-crit { background: var(--crit-soft); color: var(--crit); }
+  .p-warn { background: var(--warn-soft); color: var(--warn); }
+  .p-ok   { background: var(--ok-soft);   color: var(--ok); }
+  .p-acc  { background: var(--accent-soft); color: var(--accent-ink); }
+
+  /* ---------- Timeline ---------- */
+
+  .phases {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+  }
+  .phase { background: var(--surface); padding: 0; display: flex; flex-direction: column; }
+  .phase .bar { height: 4px; background: var(--accent); }
+  .phase:nth-child(5) .bar, .phase:nth-child(6) .bar { background: var(--ink-3); }
+  .phase .in { padding: 16px 16px 20px; display: flex; flex-direction: column; gap: 8px; height: 100%; }
+  .phase .when {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--ink-3);
+  }
+  .phase h3 {
+    font-family: var(--display); font-size: 21px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .01em; margin: 0; line-height: 1.1;
+  }
+  .phase p { margin: 0; font-size: 13.5px; color: var(--ink-2); line-height: 1.5; }
+  .phase .tasks {
+    margin-top: auto; padding-top: 10px; font-family: var(--mono);
+    font-size: 11px; color: var(--ink-3); border-top: 1px solid var(--line-soft);
+  }
+
+  /* ---------- Lista de tareas ---------- */
+
+  .tasklist { border: 1px solid var(--line); background: var(--surface); }
+  .task {
+    display: grid;
+    grid-template-columns: 44px 1fr auto;
+    gap: 4px 16px;
+    padding: 13px 16px;
+    align-items: baseline;
+  }
+  .task + .task { border-top: 1px solid var(--line-soft); }
+  .task .id {
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+    color: var(--accent); font-variant-numeric: tabular-nums;
+  }
+  .task .name { font-weight: 500; font-size: 14.5px; }
+  .task .note {
+    grid-column: 2 / 3; font-size: 13px; color: var(--ink-3); line-height: 1.5;
+  }
+  .task .tag { justify-self: end; }
+  .grouphead {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--ink-3);
+    padding: 10px 16px; background: var(--surface-2);
+    border-top: 1px solid var(--line-soft);
+  }
+  .tasklist > .grouphead:first-child { border-top: 0; }
+
+  /* ---------- Go / No-Go ---------- */
+
+  .gonogo {
+    border: 2px solid var(--ink);
+    background: var(--surface);
+    padding: 26px 24px;
+  }
+  .gonogo ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  .gonogo li {
+    display: grid; grid-template-columns: 18px 1fr auto; gap: 12px;
+    align-items: baseline; font-size: 14.5px;
+    padding-bottom: 10px; border-bottom: 1px solid var(--line-soft);
+  }
+  .gonogo li:last-child { border-bottom: 0; padding-bottom: 0; }
+  .box {
+    width: 13px; height: 13px; border: 1.5px solid var(--ink-3);
+    border-radius: 2px; display: inline-block; transform: translateY(1px);
+  }
+  .gonogo .thr { font-family: var(--mono); font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+  .veto {
+    margin: 22px 0 0; padding: 14px 16px;
+    background: var(--crit-soft); color: var(--crit);
+    font-size: 14px; line-height: 1.55;
+    border-left: 3px solid var(--crit);
+  }
+  .veto b { font-weight: 600; }
+
+  /* ---------- Skills ---------- */
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .card {
+    border: 1px solid var(--line); background: var(--surface);
+    padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 9px;
+  }
+  .card .hd { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .card code.nm {
+    font-family: var(--mono); font-size: 13.5px; font-weight: 600; color: var(--ink);
+  }
+  .card p { margin: 0; font-size: 13.5px; color: var(--ink-2); line-height: 1.55; }
+  .card .src { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); letter-spacing: .04em; }
+
+  .note-box {
+    border-left: 3px solid var(--warn); background: var(--warn-soft);
+    color: var(--warn); padding: 13px 16px; font-size: 14px; line-height: 1.55;
+    margin: 18px 0 0;
+  }
+  .note-box b { font-weight: 600; }
+  .note-box code { font-family: var(--mono); font-size: 12.5px; }
+
+  /* ---------- Footer ---------- */
+
+  footer {
+    border-top: 2px solid var(--ink); padding-top: 22px; margin-top: 10px;
+    display: flex; flex-wrap: wrap; gap: 14px 30px; align-items: baseline;
+  }
+  footer p { margin: 0; font-size: 13.5px; color: var(--ink-3); }
+  footer code {
+    font-family: var(--mono); font-size: 13px; color: var(--accent-ink);
+    background: var(--accent-soft); padding: 3px 7px;
+  }
+
+  @media (max-width: 560px) {
+    h1 { font-size: 40px; }
+    .task { grid-template-columns: 36px 1fr; }
+    .task .tag { grid-column: 2 / 3; justify-self: start; margin-top: 4px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="top">
+    <p class="eyebrow">Plan de QA y DevOps · 48 horas</p>
+    <h1>Puesta a punto</h1>
+    <p class="thesis">
+      Un plan de dos días para llegar a la demo del 3 de septiembre con evidencia en vez de
+      confianza. El punto de partida incómodo: el arnés de Playwright del repo <b>no puede
+      ejecutarse</b> —arranca la app de una forma que la deja en blanco— y los cuatro
+      bloqueadores que se corrigieron la semana pasada no tienen ninguna prueba que impida
+      que vuelvan.
+    </p>
+    <div class="meta">
+      <span><b>Repo</b> autodoc</span>
+      <span><b>Rama</b> main · 388cad9</span>
+      <span><b>Backend</b> autodoc-6ef5a (producción)</span>
+      <span><b>Escrito</b> 2026-09-01</span>
+      <span><b>Demo</b> 2026-09-03</span>
+    </div>
+  </header>
+
+  <div class="tiles">
+    <div class="tile">
+      <span class="n">20</span>
+      <span class="lbl">Tareas con<br>entregable propio</span>
+    </div>
+    <div class="tile">
+      <span class="n">83</span>
+      <span class="lbl">Pasos con comando<br>y salida esperada</span>
+    </div>
+    <div class="tile">
+      <span class="n alarm">0</span>
+      <span class="lbl">Jobs de E2E<br>en el pipeline hoy</span>
+    </div>
+    <div class="tile">
+      <span class="n alarm">4</span>
+      <span class="lbl">Bloqueadores sin<br>red de seguridad</span>
+    </div>
+    <div class="tile">
+      <span class="n good">3</span>
+      <span class="lbl">Roles cubiertos<br>de punta a punta</span>
+    </div>
+  </div>
+
+  <section>
+    <h2>Lo que encontré al abrir el repo</h2>
+    <p class="sub">
+      Todo verificado hoy contra el árbol de trabajo, no supuesto. Cada fila apunta a la tarea
+      del plan que la cierra.
+    </p>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Sev.</th>
+            <th>Hallazgo</th>
+            <th>Evidencia</th>
+            <th>Cierra en</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="pill p-crit">Bloquea</span></td>
+            <td>El arnés E2E no puede correr: arranca la app con <code>flutter run -d web-server</code>, que deja la página en blanco cuando Playwright se conecta</td>
+            <td class="ev">playwright.config.js:19<br>informe QA 28-ago §1</td>
+            <td class="fix">Tareas 3–4</td>
+          </tr>
+          <tr>
+            <td><span class="pill p-crit">Bloquea</span></td>
+            <td>El pipeline no ejecuta Playwright en ningún punto. Seis jobs, cero E2E</td>
+            <td class="ev">.github/workflows/ci.yml<br>771 líneas, 0 coincidencias</td>
+            <td class="fix">Tarea 12</td>
+          </tr>
+          <tr>
+            <td><span class="pill p-crit">Bloquea</span></td>
+            <td>Los cuatro bloqueadores corregidos del 28-ago no tienen prueba de regresión</td>
+            <td class="ev">§2.1 · §2.2 · §2.3 · §7.2</td>
+            <td class="fix">Tarea 10</td>
+          </tr>
+          <tr>
+            <td><span class="pill p-warn">Alto</span></td>
+            <td><code>deploy_staging</code> falla siempre: el proyecto <code>autodoc-staging</code> no existe todavía. Un rojo permanente entrena a ignorar el rojo</td>
+            <td class="ev">RUNBOOK.md, «Pendiente 1»</td>
+            <td class="fix">Tarea 15</td>
+          </tr>
+          <tr>
+            <td><span class="pill p-warn">Alto</span></td>
+            <td>Rastro de QA vivo en producción: dos tickets de reparación y un mensaje de chat que saldrían en pantalla durante la demo</td>
+            <td class="ev">P376-571 · P859-392<br>«Mensaje de prueba QA 28/08»</td>
+            <td class="fix">Tarea 16</td>
+          </tr>
+          <tr>
+            <td><span class="pill p-warn">Alto</span></td>
+            <td>No hay camino de vuelta atrás ensayado. Si <code>live</code> sale mal, la única salida es la consola de Firebase a mano</td>
+            <td class="ev">ci.yml, deploy_production</td>
+            <td class="fix">Tarea 18</td>
+          </tr>
+          <tr>
+            <td><span class="pill p-warn">Alto</span></td>
+            <td>Los 7 tests existentes esperan con reloj, no con hechos: <code>waitForTimeout(15000)</code> fijo y <code>retries: 0</code></td>
+            <td class="ev">171 líneas en 3 specs</td>
+            <td class="fix">Tareas 5–6</td>
+          </tr>
+          <tr>
+            <td><span class="pill p-ok">Medio</span></td>
+            <td>Cuatro árboles de dependencias JS —<code>functions</code>, <code>e2e</code>, <code>test_rules</code>, <code>landing-web</code>— sin auditar. <code>functions</code> se despliega a producción</td>
+            <td class="ev">analyze_and_test solo mira Dart</td>
+            <td class="fix">Tarea 17</td>
+          </tr>
+          <tr>
+            <td><span class="pill p-ok">Medio</span></td>
+            <td>Trabajo sin commitear en el árbol: 13 ficheros de placas de El Salvador y un test sin trackear</td>
+            <td class="ev">git status</td>
+            <td class="fix">Tarea 1</td>
+          </tr>
+          <tr>
+            <td><span class="pill p-ok">Medio</span></td>
+            <td>App Check no consigue token y la clave de reCAPTCHA está atada a dominio: rompería en un canal de preview y no en <code>live</code></td>
+            <td class="ev">§2.17 · main.dart:147</td>
+            <td class="fix">Tarea 14</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note-box">
+      <b>Los dos servidores MCP de Playwright no conectan</b> en esta sesión (<code>CONNECT_TIMEOUT</code>
+      a 30 s, ambos). El plan es <b>CLI puro</b>, así que no depende de ellos — pero sí depende
+      de arreglarlos la única skill que usa navegación asistida. Causa probable: el plugin está
+      instalado dos veces para este proyecto, con rutas que solo difieren en la mayúscula de la
+      unidad de disco.
+    </div>
+  </section>
+
+  <section>
+    <h2>Las seis fases</h2>
+    <p class="sub">
+      Cada fase se puede abandonar sin perder las anteriores. Si el día 2 se tuerce, lo entregado
+      hasta ahí sigue sirviendo.
+    </p>
+    <div class="phases">
+      <div class="phase">
+        <div class="bar"></div>
+        <div class="in">
+          <span class="when">Día 1 · mañana</span>
+          <h3>0 · Arrancar</h3>
+          <p>Congelar el árbol, medir la línea base de tests y hacer que <code>playwright test</code> cargue la app de verdad.</p>
+          <span class="tasks">Tareas 1–4</span>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="bar"></div>
+        <div class="in">
+          <span class="when">Día 1 · tarde</span>
+          <h3>1 · Fiabilidad</h3>
+          <p>Esperar al árbol de semántica de Flutter en vez de a un reloj. Sesión reutilizable por rol.</p>
+          <span class="tasks">Tareas 5–6</span>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="bar"></div>
+        <div class="in">
+          <span class="when">Día 2 · mañana</span>
+          <h3>2 · Cobertura</h3>
+          <p>Un spec por rol siguiendo el guion literal de la demo, más la regresión de los cuatro bloqueadores.</p>
+          <span class="tasks">Tareas 7–11</span>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="bar"></div>
+        <div class="in">
+          <span class="when">Día 2 · tarde</span>
+          <h3>3 · DevOps</h3>
+          <p>Puerta E2E en el pipeline, guardia en staging, rastro de producción limpio, dependencias auditadas.</p>
+          <span class="tasks">Tareas 12–17</span>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="bar"></div>
+        <div class="in">
+          <span class="when">Día 2 · noche</span>
+          <h3>4 · Ensayo</h3>
+          <p>Canal de preview, vuelta atrás cronometrada de verdad, runbook y la tabla de Go / No-Go firmada.</p>
+          <span class="tasks">Tareas 18–19</span>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="bar"></div>
+        <div class="in">
+          <span class="when">Después del 3-sep</span>
+          <h3>5 · Deuda</h3>
+          <p>Staging real, Sentry, pentest contra staging, rotar credenciales, decidir App Check.</p>
+          <span class="tasks">Tarea 20</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Las veinte tareas</h2>
+    <p class="sub">
+      Cada una termina en algo verificable con un comando. El detalle completo —código incluido—
+      vive en el fichero del repo.
+    </p>
+    <div class="tasklist">
+
+      <div class="grouphead">Fase 0 · Congelar el árbol y hacer que el arnés arranque</div>
+      <div class="task"><span class="id">01</span><span class="name">Cerrar el trabajo en vuelo y fijar la línea base</span><span class="tag pill p-acc">Bloquea el resto</span><span class="note">Activa el hook de formato, mide 689 tests y 175 de reglas, y decide si las placas de El Salvador entran o se apartan.</span></div>
+      <div class="task"><span class="id">02</span><span class="name">Reparar la instalación del arnés E2E</span><span class="tag pill p-acc">Bloquea el resto</span><span class="note"><code>e2e/node_modules</code> no existe. Subir a Playwright ≥ 1.51 por <code>storageState({indexedDB:true})</code>.</span></div>
+      <div class="task"><span class="id">03</span><span class="name">Reescribir playwright.config.js</span><span class="tag pill p-crit">Crítica</span><span class="note">Proyectos desktop y móvil, reintentos, cuatro reporters, y un <code>webServer</code> que se apaga cuando se apunta a una URL desplegada.</span></div>
+      <div class="task"><span class="id">04</span><span class="name">Servidor estático con guardia de bundle</span><span class="tag pill p-crit">Crítica</span><span class="note">Se niega a arrancar sobre un bundle incompleto en vez de dejar que el fallo aparezca como un timeout a los 150 s.</span></div>
+
+      <div class="grouphead">Fase 1 · Quitar las esperas ciegas</div>
+      <div class="task"><span class="id">05</span><span class="name">Helpers de semántica de Flutter</span><span class="tag pill p-crit">Crítica</span><span class="note">En CanvasKit la UI es un canvas: sin forzar el árbol semántico, <code>getByLabel</code> no encuentra nada.</span></div>
+      <div class="task"><span class="id">06</span><span class="name">Sesión reutilizable y migración de los specs</span><span class="tag pill p-warn">Con plan B</span><span class="note">Firebase Auth vive en IndexedDB, que el <code>storageState</code> clásico no captura. Si falla, repliegue a login por test con 30 min de tope.</span></div>
+
+      <div class="grouphead">Fase 2 · Cobertura de lo que se va a enseñar</div>
+      <div class="task"><span class="id">07</span><span class="name">Guion del Propietario</span><span class="tag pill p-crit">Crítica</span><span class="note">Seis pasos con captura adjunta: panel, garaje, vehículo, alertas, talleres, chat. Las capturas son el storyboard de la demo.</span></div>
+      <div class="task"><span class="id">08</span><span class="name">Guion del Taller</span><span class="tag pill p-acc">Alta</span><span class="note">Tablero, búsqueda de placa sin confirmar ticket, kanban, galería, historial y reseñas.</span></div>
+      <div class="task"><span class="id">09</span><span class="name">Guion del Administrador</span><span class="tag pill p-acc">Alta</span><span class="note">Las seis pantallas de admin, con aserción de que Storage no devuelve 403 al superusuario.</span></div>
+      <div class="task"><span class="id">10</span><span class="name">Regresión de los cuatro bloqueadores</span><span class="tag pill p-crit">Puerta dura</span><span class="note">Un rojo aquí es No-Go. Los tres tests abandonan antes de confirmar cualquier escritura sobre datos reales.</span></div>
+      <div class="task"><span class="id">11</span><span class="name">Salud: consola, semántica y arranque</span><span class="tag pill p-acc">Alta</span><span class="note">Presupuesto de arranque en frío, consola sin errores nuevos, y ningún control interactivo sin nombre accesible.</span></div>
+
+      <div class="grouphead">Fase 3 · DevOps</div>
+      <div class="task"><span class="id">12</span><span class="name">Puerta E2E en el pipeline</span><span class="tag pill p-crit">Crítica</span><span class="note">Reutiliza el bundle que <code>build_web_smoke</code> ya compila y hoy tira. Entra sin bloquear; se vuelve obligatoria tras cinco verdes seguidos.</span></div>
+      <div class="task"><span class="id">13</span><span class="name">Informe legible del recorrido</span><span class="tag pill p-ok">Media</span><span class="note">El generador existente lee el formato viejo del reporter JSON.</span></div>
+      <div class="task"><span class="id">14</span><span class="name">Confirmar App Check antes de que rompa la demo</span><span class="tag pill p-acc">Alta</span><span class="note">Una clave de reCAPTCHA Enterprise está atada a dominios: fallaría en el canal de preview y no en producción. El peor momento para descubrirlo.</span></div>
+      <div class="task"><span class="id">15</span><span class="name">Guardia en deploy_staging</span><span class="tag pill p-ok">Media</span><span class="note">Que avise en vez de fallar mientras el proyecto de staging no exista.</span></div>
+      <div class="task"><span class="id">16</span><span class="name">Limpiar el rastro de QA de producción</span><span class="tag pill p-acc">Alta</span><span class="note">Dos tickets y un mensaje de chat que saldrían en pantalla. Abre además un registro donde toda escritura futura se anota en el momento.</span></div>
+      <div class="task"><span class="id">17</span><span class="name">Auditoría de los cuatro árboles JS</span><span class="tag pill p-ok">Media</span><span class="note">Sin <code>audit fix --force</code> esta semana: reescribe el lockfile y puede romper functions de formas que solo se ven en producción.</span></div>
+
+      <div class="grouphead">Fase 4 · Ensayo general</div>
+      <div class="task"><span class="id">18</span><span class="name">Canal de preview y vuelta atrás ensayada</span><span class="tag pill p-crit">Puerta dura</span><span class="note">Desplegar a un canal, verificarlo con el mismo arnés apuntado por URL, y solo entonces clonar a live. La vuelta atrás se ensaya de verdad y se cronometra.</span></div>
+      <div class="task"><span class="id">19</span><span class="name">Ensayo general y Go / No-Go</span><span class="tag pill p-crit">Puerta dura</span><span class="note">Suite dos veces seguidas para cazar inestabilidad, ensayo humano grabado, y la tabla de abajo firmada.</span></div>
+
+      <div class="grouphead">Fase 5 · Después de la demo</div>
+      <div class="task"><span class="id">20</span><span class="name">La deuda, anotada y con su porqué</span><span class="tag pill p-ok">Post-demo</span><span class="note">Staging real, Sentry, pentest contra staging, rotar las credenciales E2E, decidir App Check, y los hallazgos naranjas y amarillos que siguen abiertos.</span></div>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>Go / No-Go</h2>
+    <p class="sub">
+      Se marca pegando la salida del comando. Nada de «creo que pasa».
+    </p>
+    <div class="gonogo">
+      <ul>
+        <li><span class="box"></span><span>Regresión de los cuatro bloqueadores</span><span class="thr">3/3 verde</span></li>
+        <li><span class="box"></span><span>Los tres guiones de demo en desktop</span><span class="thr">3/3 verde</span></li>
+        <li><span class="box"></span><span>Suite contra el canal desplegado, no contra una copia local</span><span class="thr">verde</span></li>
+        <li><span class="box"></span><span>Tests de Flutter</span><span class="thr">≥ línea base</span></li>
+        <li><span class="box"></span><span>Tests de reglas de Firestore y Storage</span><span class="thr">≥ 175 verde</span></li>
+        <li><span class="box"></span><span>Vuelta atrás ejecutada, no solo escrita</span><span class="thr">cronometrada</span></li>
+        <li><span class="box"></span><span>Rastro de producción limpio</span><span class="thr">3/3 casillas</span></li>
+        <li><span class="box"></span><span>Runbook completo, sin marcadores por rellenar</span><span class="thr">sí</span></li>
+        <li><span class="box"></span><span>Vídeo del ensayo humano grabado</span><span class="thr">sí</span></li>
+      </ul>
+      <p class="veto">
+        <b>No-Go</b> si cualquier fila de la regresión sale en rojo, o si la vuelta atrás se
+        quedó escrita sin ensayar. Todo lo demás es degradación aceptable: se saca del guion
+        y se sigue.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Skills que aportan valor</h2>
+    <p class="sub">
+      Resultado de <code>find-skills</code> sobre las cuatro marketplaces configuradas. Solo entran
+      las que tienen una tarea concreta asignada en el plan.
+    </p>
+    <div class="cards">
+      <div class="card">
+        <div class="hd"><code class="nm">site-audit</code><span class="pill p-crit">Alta</span></div>
+        <span class="src">easier-life-skills · Tarea 11</span>
+        <p>Recorre el sitio y lanza en paralelo auditorías de UX, accesibilidad y rendimiento; genera specs de Playwright con selectores reales, que es justo lo que no se adivina en CanvasKit. <b>Depende del MCP caído.</b></p>
+      </div>
+      <div class="card">
+        <div class="hd"><code class="nm">firebase</code><span class="pill p-crit">Alta</span></div>
+        <span class="src">claude-plugins-official · Tarea 16</span>
+        <p>Limpiar el rastro de producción por consola es lento y no deja registro; por la UI es lo que lo generó. Con el MCP queda scriptado y auditable.</p>
+      </div>
+      <div class="card">
+        <div class="hd"><code class="nm">chrome-devtools-mcp</code><span class="pill p-crit">Alta</span></div>
+        <span class="src">claude-plugins-official · Tarea 14</span>
+        <p>Sustituto directo del MCP de Playwright caído, y mejor para lo que el CLI hace peor: el 403 de Storage, el App Check sin token y los cinco segundos de arranque.</p>
+      </div>
+      <div class="card">
+        <div class="hd"><code class="nm">dependency-audit</code><span class="pill p-warn">Media-alta</span></div>
+        <span class="src">easier-life-skills · Tarea 17</span>
+        <p>Cuatro árboles JS sin auditar y uno de ellos se despliega a producción. El CI solo mira Dart.</p>
+      </div>
+      <div class="card">
+        <div class="hd"><code class="nm">mergify</code><span class="pill p-ok">Media</span></div>
+        <span class="src">claude-plugins-official · después de la Tarea 12</span>
+        <p>Un E2E sobre CanvasKit va a ser inestable. Sin datos de inestabilidad, el equipo sube timeouts hasta que deja de fallar: así nació el <code>waitForTimeout(15000)</code> que este plan quita.</p>
+      </div>
+      <div class="card">
+        <div class="hd"><code class="nm">sentry</code><span class="pill p-ok">Post-demo</span></div>
+        <span class="src">claude-plugins-official · Tarea 20</span>
+        <p>La demo va contra producción sin seguimiento de errores. Pero instrumentarlo toca el arranque y exige un build nuevo a 48 horas: riesgo mal pagado.</p>
+      </div>
+    </div>
+    <div class="note-box">
+      <b>Descartadas a propósito:</b> las tres skills de pentest ya instaladas — lanzar un pentest
+      contra producción a 48 horas de la demo crea datos, puede disparar límites de Firebase y
+      bloquear cuentas. Y <code>testsprite</code>, que duplicaría el arnés sin añadir cobertura.
+      Ambas, después del 3 de septiembre y contra staging.
+    </div>
+  </section>
+
+  <footer>
+    <p>Plan ejecutable completo, con el código de cada paso:</p>
+    <code>docs/superpowers/plans/2026-09-01-qa-devops-demo-readiness.md</code>
+    <p>2164 líneas · 20 tareas · 83 pasos</p>
+  </footer>
+
+</div>

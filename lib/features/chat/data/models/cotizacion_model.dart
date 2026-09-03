@@ -98,7 +98,7 @@ class CotizacionModel {
       estado: map['estado'] ?? 'pendiente',
       fecha: (map['fecha'] as Timestamp?)?.toDate() ?? DateTime.now(),
       manoDeObra: map['mano_de_obra']?.toDouble(),
-      materiales: map['materiales'] != null
+      materiales: map['materiales'] is List
           ? List<Map<String, dynamic>>.from(map['materiales'])
           : null,
     );

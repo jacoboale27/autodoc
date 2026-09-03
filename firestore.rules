@@ -61,12 +61,52 @@ service cloud.firestore {
         getVehicleOwner(vehiculoId) == request.auth.uid;
     }
 
+    // Identidad "de taller" del usuario autenticado: su propio uid si opera
+    // como dueño, o el uid del taller dueño si es una sub-cuenta de empleado
+    // (usuarios/{uid}.id_taller_propietario) — mismo criterio que
+    // actuaPorTaller(), pero expresado como valor en vez de predicado para
+    // poder compararlo contra 'talleres_vinculados' (que siempre guarda el
+    // uid del DUEÑO, nunca el del empleado que hizo el servicio).
+    function idTallerActor() {
+      return exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+          .data.get('id_taller_propietario', null) != null
+        ? get(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+            .data.get('id_taller_propietario', null)
+        : request.auth.uid;
+    }
+
     // Verifica que el usuario es un mecanico cuyo taller esta vinculado al vehiculo.
+    //
+    // Usa idTallerActor() (no request.auth.uid directo) para que una
+    // sub-cuenta de empleado tambien cuente como vinculada cuando el DUEÑO
+    // del taller ya lo esta: antes de este fix, cualquier empleado que
+    // finalizaba un servicio de un cliente que regresaba se topaba con
+    // permission-denied en 'mantenimientos'/'historial_mantenimientos' /
+    // 'alertas', porque 'talleres_vinculados' guarda el uid del dueño y esta
+    // funcion comparaba contra el uid del empleado.
     function isVinculadoAlVehiculo(vehiculoId) {
       return isMecanico() &&
         exists(/databases/$(database)/documents/vehiculos/$(vehiculoId)) &&
         get(/databases/$(database)/documents/vehiculos/$(vehiculoId))
-          .data.get('talleres_vinculados', []).hasAny([request.auth.uid]);
+          .data.get('talleres_vinculados', []).hasAny([idTallerActor()]);
+    }
+
+    // Igual que isVinculadoAlVehiculo, pero ademas deja pasar el walk-in:
+    // un cliente que llega sin cita y cuyo vehiculo NUNCA ha tenido ningun
+    // taller vinculado (mismo carve-out que ya usan 'servicios'/
+    // 'reparaciones' create — ver el hallazgo C1). Sin este carve-out,
+    // finalizar el PRIMER servicio de un cliente nuevo fallaba en
+    // 'mantenimientos'.update (paso 1 de AlertProvider.tallerUpdateService)
+    // antes siquiera de llegar a crear el 'servicios' que si lo permitia.
+    function puedeMecanicoAtenderVehiculo(vehiculoId) {
+      return isMecanico() &&
+        exists(/databases/$(database)/documents/vehiculos/$(vehiculoId)) &&
+        (
+          get(/databases/$(database)/documents/vehiculos/$(vehiculoId))
+            .data.get('talleres_vinculados', []).size() == 0
+          || isVinculadoAlVehiculo(vehiculoId)
+        );
     }
 
     // Verifica que un servicio ya finalizado pertenezca al taller indicado
@@ -514,23 +554,32 @@ service cloud.firestore {
       // el trigger requestReviewOnServiceComplete descarta explicitamente los
       // id_taller que contienen 'Manual' (functions/index.js), asi que este
       // create no puede otorgar talleres_vinculados a nadie.
+      // Nota (fix de integracion de empleados, mismo patron ya aplicado a
+      // 'reparaciones'): las 3 comparaciones de abajo usan actuaPorTaller()
+      // en vez de `== request.auth.uid` directo, y el carve-out de walk-in
+      // compara 'talleres_vinculados' contra id_taller (el uid del DUEÑO,
+      // que es lo que InitiateServiceScreen ya resuelve via
+      // UserModel.idTallerEfectivo) en vez de contra request.auth.uid — sin
+      // esto, una sub-cuenta de empleado no podia finalizar el servicio de
+      // NINGUN cliente que ya tuviera vinculo (talleres_vinculados guarda el
+      // uid del dueño, nunca el del empleado que atiende).
       allow create: if isAuthenticated() && (
         isAdmin() ||
         (isVehicleOwner(request.resource.data.id_vehiculo)
           && request.resource.data.id_taller == 'Manual (Propietario)') ||
-        (isMecanico() && request.resource.data.id_taller == request.auth.uid
+        (isMecanico() && actuaPorTaller(request.resource.data.id_taller)
           && exists(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
           && (
             get(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
               .data.get('talleres_vinculados', []).size() == 0
             || get(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
-                 .data.get('talleres_vinculados', []).hasAny([request.auth.uid])
+                 .data.get('talleres_vinculados', []).hasAny([request.resource.data.id_taller])
           ))
       );
       allow read: if isAuthenticated() && (
         isVehicleOwner(resource.data.id_vehiculo)
         || isAdmin()
-        || (isMecanico() && resource.data.id_taller == request.auth.uid)
+        || (isMecanico() && actuaPorTaller(resource.data.id_taller))
       );
       // Un mecanico puede seguir actualizando su propio servicio (costo,
       // descripcion, materiales, etc.) pero NO puede reescribir id_vehiculo
@@ -542,7 +591,7 @@ service cloud.firestore {
       // porque ese trigger es solo onCreate).
       allow update: if isAuthenticated() && (
         isAdmin() ||
-        (isMecanico() && resource.data.id_taller == request.auth.uid
+        (isMecanico() && actuaPorTaller(resource.data.id_taller)
           && !request.resource.data.diff(resource.data)
                .affectedKeys().hasAny(['id_vehiculo', 'id_taller']))
       );
@@ -786,9 +835,15 @@ service cloud.firestore {
         || isAdmin()
       );
 
+      // puedeMecanicoAtenderVehiculo (no isVinculadoAlVehiculo a secas): un
+      // mecanico que cierra el PRIMER servicio de un cliente walk-in todavia
+      // no aparece en 'talleres_vinculados' en este punto — ese vinculo se
+      // otorga recien despues, al crear el 'servicios' correspondiente — asi
+      // que sin el carve-out este update (paso 1 de tallerUpdateService)
+      // fallaba con permission-denied antes de llegar a esa escritura.
       allow update: if isAuthenticated() && (
         isVehicleOwner(resource.data.id_vehiculo)
-        || isVinculadoAlVehiculo(resource.data.id_vehiculo)
+        || puedeMecanicoAtenderVehiculo(resource.data.id_vehiculo)
         || isAdmin()
       );
 
@@ -808,15 +863,24 @@ service cloud.firestore {
         || isAdmin()
       );
 
+      // actuaPorTaller() (no request.auth.uid directo) para aceptar tambien
+      // a un empleado; carve-out de walk-in igual que 'mantenimientos'.update
+      // y 'servicios'.create, porque este create es el paso 4 del mismo
+      // tallerUpdateService que ya necesita esos dos.
       allow create: if isAuthenticated() && (
-        (isVinculadoAlVehiculo(request.resource.data.id_vehiculo)
-          && request.resource.data.id_taller == request.auth.uid)
+        (isMecanico() && actuaPorTaller(request.resource.data.id_taller)
+          && exists(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
+          && (
+            get(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
+              .data.get('talleres_vinculados', []).size() == 0
+            || get(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
+                 .data.get('talleres_vinculados', []).hasAny([request.resource.data.id_taller])
+          ))
         || isAdmin()
       );
 
       allow update: if isAuthenticated() && (
-        (isVinculadoAlVehiculo(resource.data.id_vehiculo)
-          && resource.data.id_taller == request.auth.uid)
+        (isMecanico() && actuaPorTaller(resource.data.id_taller))
         || isAdmin()
       );
 
