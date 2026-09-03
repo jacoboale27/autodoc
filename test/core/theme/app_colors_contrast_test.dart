@@ -57,6 +57,13 @@ void main() {
         greaterThanOrEqualTo(1.3),
       );
     });
+
+    test('onScrim sobre scrim pasa AA', () {
+      expect(
+        contrastRatio(AppPalette.lightOnScrim, AppPalette.lightScrim),
+        greaterThanOrEqualTo(kAaBody),
+      );
+    });
   });
 
   group('dark mode', () {
@@ -91,6 +98,13 @@ void main() {
     test('onPrimary sobre primary pasa AA', () {
       expect(
         contrastRatio(AppPalette.darkOnPrimary, AppPalette.darkPrimary),
+        greaterThanOrEqualTo(kAaBody),
+      );
+    });
+
+    test('onScrim sobre scrim pasa AA', () {
+      expect(
+        contrastRatio(AppPalette.darkOnScrim, AppPalette.darkScrim),
         greaterThanOrEqualTo(kAaBody),
       );
     });

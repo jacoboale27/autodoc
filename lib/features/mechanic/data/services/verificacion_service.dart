@@ -100,6 +100,18 @@ class VerificacionService {
   /// de movil se pasa de 5 MB sin esfuerzo.
   static const int maxBytesEvidencia = 5 * 1024 * 1024;
 
+  /// Mensaje que ve el taller cuando un archivo de evidencia supera
+  /// [maxBytesEvidencia].
+  ///
+  /// Publico y estatico para que `WorkshopVerificationScreen` pueda rechazar
+  /// el mismo archivo ANTES de previsualizarlo, con el mismo texto, en vez de
+  /// una segunda variante que pudiera desincronizarse de esta.
+  static String mensajeArchivoDemasiadoGrande(int bytesLength) {
+    final megas = (bytesLength / (1024 * 1024)).toStringAsFixed(1);
+    return 'Ese archivo pesa $megas MB y el limite es 5 MB. Haz la foto con '
+        'menos resolucion o recortala antes de subirla.';
+  }
+
   final _uuid = const Uuid();
 
   DocumentReference<Map<String, dynamic>> _doc(String tallerId) =>
@@ -176,12 +188,30 @@ class VerificacionService {
   /// guarda siempre como `{slot}.{extension}`, que es lo unico que aceptan las
   /// reglas de Storage. Volver a subir el mismo slot sobrescribe: no hay
   /// huerfanos que limpiar.
+  ///
+  /// Rechaza si el expediente ya esta `listoParaRevision` o `enRevision`,
+  /// igual que `enviarARevision` valida su propia transicion. `firestore.rules`
+  /// gobierna `estado` pero no mira dentro de `documentos` (ver el comentario
+  /// de `VerificacionTallerModel.esNombreValido`), asi que sin este chequeo el
+  /// invariante "no cambiar la evidencia bajo los pies del administrador que
+  /// la esta revisando" vivia solo en un boton deshabilitado de la UI: un
+  /// cliente con script, o un segundo llamador futuro de este servicio, lo
+  /// atraviesa directo.
   Future<void> subirEvidencia({
     required String tallerId,
     required String slot,
     required String nombreOriginal,
     required Uint8List bytes,
   }) async {
+    final expediente = await obtener(tallerId);
+    if (expediente.estado == EstadoVerificacion.listoParaRevision ||
+        expediente.estado == EstadoVerificacion.enRevision) {
+      throw const VerificacionException(
+        'Tu solicitud ya está en revisión. No puedes cambiar la evidencia '
+        'hasta que un administrador la resuelva.',
+      );
+    }
+
     final extension = _extensionDe(nombreOriginal);
     final permitidas = VerificacionTallerModel.extensionesPorSlot[slot];
 
@@ -196,10 +226,8 @@ class VerificacionService {
     }
 
     if (bytes.lengthInBytes >= maxBytesEvidencia) {
-      final megas = (bytes.lengthInBytes / (1024 * 1024)).toStringAsFixed(1);
       throw VerificacionException(
-        'Ese archivo pesa $megas MB y el limite es 5 MB. Haz la foto con '
-        'menos resolucion o recortala antes de subirla.',
+        mensajeArchivoDemasiadoGrande(bytes.lengthInBytes),
       );
     }
 

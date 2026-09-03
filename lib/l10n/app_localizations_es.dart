@@ -1076,11 +1076,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get tallerVerifCambiar => 'Cambiar';
 
   @override
-  String get tallerVerifConfirmarYSubir => 'Confirmar y subir';
+  String get tallerVerifSubir => 'Subir';
 
   @override
-  String get tallerVerifArchivoPendiente =>
-      'Sin subir todavía. Revísala y confirma para subirla.';
+  String get tallerVerifConfirmarYSubir => 'Confirmar y subir';
 
   @override
   String tallerVerifArchivoPendientePdf(String nombre, String tamano) {
@@ -1089,6 +1088,16 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get tallerVerifArchivoSubido => 'Archivo subido. Toca para verlo.';
+
+  @override
+  String get tallerVerifSubiendo => 'Subiendo el archivo…';
+
+  @override
+  String get tallerVerifPendienteBloqueado =>
+      'Tu solicitud ya está en revisión: no puedes subir esta selección ahora. Puedes descartarla.';
+
+  @override
+  String get tallerVerifDescartar => 'Descartar';
 
   @override
   String chatOpeningSection(String label) {

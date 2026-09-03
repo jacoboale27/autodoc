@@ -173,6 +173,63 @@ void main() {
       expect(expediente.documentos['rotulo']!.nombreArchivo, 'rotulo.png');
     });
 
+    test('con el expediente en_revision, subirEvidencia lanza y NO escribe '
+        'nada, ni en Storage ni en documentos', () async {
+      // El commit 8b51e90 deshabilito los botones bajo `bloqueado`, pero
+      // eso vive solo en la UI: `subirEvidencia` en si mismo escribia en
+      // Storage y en `documentos` sin mirar el estado, un hueco que un
+      // cliente con script (o un segundo llamador futuro del servicio)
+      // atraviesa directo.
+      await sembrarExpediente({
+        'estado_verificacion': 'en_revision',
+        'documentos': fachadaSubida(),
+      });
+
+      await expectLater(
+        service.subirEvidencia(
+          tallerId: 'taller-1',
+          slot: 'rotulo',
+          nombreOriginal: 'rotulo.jpg',
+          bytes: Uint8List.fromList([1, 2, 3]),
+        ),
+        throwsA(isA<VerificacionException>()),
+      );
+
+      expect(
+        subidor.subidas,
+        isEmpty,
+        reason: 'no debe llegar a escribir en Storage',
+      );
+      final expediente = await service.obtener('taller-1');
+      expect(
+        expediente.documentos.keys,
+        ['fachada'],
+        reason: 'el rotulo no debe quedar anotado en el expediente',
+      );
+    });
+
+    test('con el expediente listo_para_revision, subirEvidencia lanza y NO '
+        'escribe nada', () async {
+      await sembrarExpediente({
+        'estado_verificacion': 'listo_para_revision',
+        'documentos': fachadaSubida(),
+      });
+
+      await expectLater(
+        service.subirEvidencia(
+          tallerId: 'taller-1',
+          slot: 'rotulo',
+          nombreOriginal: 'rotulo.jpg',
+          bytes: Uint8List.fromList([1, 2, 3]),
+        ),
+        throwsA(isA<VerificacionException>()),
+      );
+
+      expect(subidor.subidas, isEmpty);
+      final expediente = await service.obtener('taller-1');
+      expect(expediente.documentos.keys, ['fachada']);
+    });
+
     test('subir un slot no borra los otros', () async {
       await sembrarExpediente({'documentos': fachadaSubida()});
 

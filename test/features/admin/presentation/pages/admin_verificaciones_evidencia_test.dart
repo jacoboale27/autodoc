@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
+import 'package:autodoc/core/models/user_model.dart';
+import 'package:autodoc/core/models/verificacion_taller_model.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/theme/app_theme.dart';
 import 'package:autodoc/core/widgets/app_image_viewer.dart';
@@ -73,6 +75,48 @@ Future<void> _pumpBandeja(
   // `urlDeEvidencia` resuelva (o falle).
   for (var i = 0; i < 5; i++) {
     await tester.pump();
+  }
+}
+
+/// Cuenta cuantas veces se pide la URL de una miniatura ya resuelta, para
+/// distinguir una memoizacion real de una que se descarta en cada
+/// `notifyListeners()`. Mismo patron que `_UserServiceContador` en
+/// `admin_verificacion_identidad_provider_test.dart`.
+class _VerificacionServiceUrlContador extends VerificacionService {
+  int llamadas = 0;
+
+  _VerificacionServiceUrlContador({required FakeFirebaseFirestore firestore})
+    : super(
+        firestore: firestore,
+        resolutorDeUrl: (ruta) async => 'https://storage.test/$ruta',
+        ahora: () => DateTime.utc(2026, 3, 10),
+      );
+
+  @override
+  Future<String> urlDeEvidencia(String tallerId, DocumentoEvidencia documento) {
+    llamadas++;
+    return super.urlDeEvidencia(tallerId, documento);
+  }
+}
+
+/// Retrasa `getUserData` para que la hidratacion de identidades complete
+/// DESPUES de que la primera pintada (y su `FutureBuilder` de evidencia) ya
+/// se haya asentado, en vez de en el mismo turno de microtareas. Sin este
+/// retraso, en `FakeFirebaseFirestore` las dos resoluciones (bandeja e
+/// identidad) terminan tan rapido que caen en el mismo frame y el bug no se
+/// distingue de la memoizacion correcta.
+class _UserServiceConRetraso extends UserService {
+  final Duration retraso;
+
+  _UserServiceConRetraso({
+    required FakeFirebaseFirestore firestore,
+    required this.retraso,
+  }) : super(firestore: firestore);
+
+  @override
+  Future<UserModel?> getUserData(String userId) async {
+    await Future<void>.delayed(retraso);
+    return super.getUserData(userId);
   }
 }
 
@@ -163,6 +207,58 @@ void main() {
 
       expect(find.byType(AppImageViewer), findsNothing);
       expect(find.byType(InteractiveViewer), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'una reconstruccion provocada por notifyListeners() no vuelve a pedir '
+    'la URL de una miniatura ya resuelta',
+    (tester) async {
+      const uid = 'taller-evidencia-memo';
+      await sembrarExpediente(uid);
+      // Un perfil publico hace que `_hidratarIdentidades` complete y llame a
+      // `notifyListeners()` poco despues del primer pintado: es el disparador
+      // real que describe el hallazgo #1, no un rebuild fabricado a mano.
+      await firestore.collection('usuarios').doc(uid).set({
+        'nombre_completo': 'Taller Memo',
+        'correo': 'memo@example.com',
+        'rol': 'Taller',
+        'fecha_registro': Timestamp.fromDate(DateTime.utc(2026, 1, 1)),
+      });
+      final urlService = _VerificacionServiceUrlContador(firestore: firestore);
+      final userServiceConRetraso = _UserServiceConRetraso(
+        firestore: firestore,
+        retraso: const Duration(milliseconds: 50),
+      );
+      final provider = AdminVerificacionProvider(
+        service: urlService,
+        userService: userServiceConRetraso,
+      );
+
+      await _pumpBandeja(tester, provider);
+      expect(
+        provider.identidadDe(uid),
+        isNull,
+        reason:
+            'con este retraso, la identidad todavia no debe haber llegado '
+            'cuando la miniatura ya pinto su primera URL',
+      );
+
+      // Deja que la hidratacion (retrasada) termine DESPUES de que la
+      // primera pintada ya se asento, y que dispare su propio
+      // `notifyListeners()`.
+      await tester.pump(const Duration(milliseconds: 80));
+      await tester.pump();
+      await tester.pump();
+
+      expect(provider.identidadDe(uid), isNotNull);
+      expect(
+        urlService.llamadas,
+        1,
+        reason:
+            'la hidratacion de identidades reconstruye la tarjeta pero no '
+            'debe volver a pedir la URL de una miniatura ya resuelta',
+      );
     },
   );
 }

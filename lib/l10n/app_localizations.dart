@@ -2048,17 +2048,17 @@ abstract class AppLocalizations {
   /// **'Change'**
   String get tallerVerifCambiar;
 
+  /// No description provided for @tallerVerifSubir.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get tallerVerifSubir;
+
   /// No description provided for @tallerVerifConfirmarYSubir.
   ///
   /// In en, this message translates to:
   /// **'Confirm and upload'**
   String get tallerVerifConfirmarYSubir;
-
-  /// No description provided for @tallerVerifArchivoPendiente.
-  ///
-  /// In en, this message translates to:
-  /// **'Not uploaded yet. Review it and confirm to upload it.'**
-  String get tallerVerifArchivoPendiente;
 
   /// No description provided for @tallerVerifArchivoPendientePdf.
   ///
@@ -2071,6 +2071,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'File uploaded. Tap to view it.'**
   String get tallerVerifArchivoSubido;
+
+  /// No description provided for @tallerVerifSubiendo.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading the file…'**
+  String get tallerVerifSubiendo;
+
+  /// No description provided for @tallerVerifPendienteBloqueado.
+  ///
+  /// In en, this message translates to:
+  /// **'Your request is already under review: you can\'t upload this selection now. You can discard it.'**
+  String get tallerVerifPendienteBloqueado;
+
+  /// No description provided for @tallerVerifDescartar.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get tallerVerifDescartar;
 
   /// No description provided for @chatOpeningSection.
   ///

@@ -1,4 +1,5 @@
 // test/features/mechanic/presentation/pages/workshop_verification_screen_test.dart
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -342,6 +343,111 @@ void main() {
   );
 
   testWidgets(
+    'mientras un archivo esta subiendo, la descripcion del slot deja de '
+    'decir "sin subir todavia"',
+    (tester) async {
+      final bytes = _pngDePrueba;
+      final subidaEnCurso = Completer<void>();
+      final providerConSubidaLenta = VerificacionProvider(
+        service: VerificacionService(
+          firestore: firestore,
+          subidor:
+              ({
+                required String ruta,
+                required Uint8List bytes,
+                required String contentType,
+              }) {
+                rutasSubidas.add(ruta);
+                return subidaEnCurso.future;
+              },
+          ahora: () => DateTime.utc(2026, 3, 10),
+        ),
+      );
+      await providerConSubidaLenta.cargar('taller-1');
+
+      await _pumpPantalla(
+        tester,
+        providerConSubidaLenta,
+        selectorDeArchivo: () async => _archivoDePrueba('fachada.jpg', bytes),
+      );
+
+      await tester.tap(find.text('Subir').first);
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(find.text('Confirmar y subir'));
+      // Un solo pump: la subida queda colgada en `subidaEnCurso`, asi que
+      // `slotEnCurso` ya esta fijado y notificado, pero la subida en si
+      // todavia no termino.
+      await tester.pump();
+
+      expect(
+        find.text('Sin subir todavía. Revísala y confirma para subirla.'),
+        findsNothing,
+        reason:
+            'con la subida en marcha (el spinner lo prueba) el texto no '
+            'debe seguir pidiendo revisar y confirmar, algo que ya paso',
+      );
+      expect(
+        find.text('Subiendo el archivo…'),
+        findsOneWidget,
+        reason: 'la subida en curso necesita su propia copia',
+      );
+
+      subidaEnCurso.complete();
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'un archivo de mas de 5 MB no llega a la previsualizacion ni dispara '
+    'subida',
+    (tester) async {
+      // Bytes reales no importan aqui: el rechazo debe ocurrir por tamano,
+      // ANTES de que nada intente decodificarlos como imagen.
+      final bytesGrandes = Uint8List(6 * 1024 * 1024);
+      await provider.cargar('taller-1');
+
+      await _pumpPantalla(
+        tester,
+        provider,
+        selectorDeArchivo: () async =>
+            _archivoDePrueba('fachada.jpg', bytesGrandes),
+      );
+
+      await tester.tap(find.text('Subir').first);
+      await tester.pump();
+      await tester.pump();
+
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is Image && widget.image is MemoryImage,
+        ),
+        findsNothing,
+        reason: 'un archivo que excede el limite no debe previsualizarse',
+      );
+      expect(
+        find.text('Confirmar y subir'),
+        findsNothing,
+        reason: 'sin previsualizacion pendiente no hay nada que confirmar',
+      );
+      expect(
+        rutasSubidas,
+        isEmpty,
+        reason:
+            'el rechazo por tamano no debe llegar nunca a disparar '
+            'ninguna subida',
+      );
+      expect(
+        find.textContaining('5 MB'),
+        findsOneWidget,
+        reason:
+            'el aviso debe usar el mismo mensaje que ya usa '
+            'VerificacionService, no una segunda variante',
+      );
+    },
+  );
+
+  testWidgets(
     'un documento ya subido, al recibir un tap, abre el AppImageViewer de A1',
     (tester) async {
       await firestore.collection('verificaciones').doc('taller-1').set({
@@ -446,14 +552,37 @@ void main() {
 
       // 4. La tarjeta del rótulo sigue mostrando la previsualización
       // pendiente (nunca se confirmó ni se descartó), pero el expediente ya
-      // está bloqueado: confirmar esa selección pendiente no debe subir
-      // nada bajo los pies del administrador que la va a revisar.
+      // está bloqueado. El hallazgo de UX de esta misma ronda: los botones
+      // de confirmar/cambiar ya NO se ofrecen (dead-end de 8b51e90), y en su
+      // lugar hay copy explicando el bloqueo y una acción "Descartar". La
+      // garantía original —que no se sube nada estando bloqueado— sigue
+      // asertada, solo que ahora no hay ni siquiera un "Confirmar y subir"
+      // que tocar: se prueba con la ausencia del botón y, más abajo,
+      // confirmando que "Descartar" tampoco sube nada.
       expect(
         find.text('Confirmar y subir'),
-        findsOneWidget,
-        reason: 'la previsualizacion pendiente del rotulo sigue visible',
+        findsNothing,
+        reason:
+            'con el expediente bloqueado no debe ofrecerse confirmar la '
+            'seleccion pendiente',
       );
-      await tester.tap(find.text('Confirmar y subir'));
+      expect(
+        find.text(
+          'Tu solicitud ya está en revisión: no puedes subir esta '
+          'selección ahora. Puedes descartarla.',
+        ),
+        findsOneWidget,
+        reason: 'la tarjeta debe explicar por que no se puede subir',
+      );
+      expect(
+        find.text('Descartar'),
+        findsOneWidget,
+        reason:
+            'la unica salida segura bajo bloqueo es descartar la '
+            'previsualizacion pendiente',
+      );
+
+      await tester.tap(find.text('Descartar'));
       await tester.pump();
       await tester.pumpAndSettle();
 
@@ -461,13 +590,20 @@ void main() {
         rutasSubidas,
         ['verificaciones/taller-1/fachada.jpg'],
         reason:
-            'con el expediente en revision, confirmar una seleccion '
+            'con el expediente en revision, descartar la seleccion '
             'pendiente no debe disparar ninguna subida nueva',
       );
       expect(
         provider.expediente?.documentos['rotulo'],
         isNull,
         reason: 'el rotulo no debe quedar anotado como subido',
+      );
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is Image && widget.image is MemoryImage,
+        ),
+        findsNothing,
+        reason: 'tras descartar, la previsualizacion local desaparece',
       );
     },
   );

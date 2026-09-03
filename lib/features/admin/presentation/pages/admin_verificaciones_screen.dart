@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -426,13 +428,56 @@ class _ExpedienteCard extends StatelessWidget {
 }
 
 /// Una pieza de evidencia. El PDF no se previsualiza: se ofrece abrirlo.
-class _Evidencia extends StatelessWidget {
+///
+/// `StatefulWidget` a propósito (Ruling 8): la URL se resuelve UNA vez en
+/// `initState` y se guarda en `_url`, no se reconstruye dentro de `build()`.
+/// El provider dispara `notifyListeners()` seis veces distintas —incluida la
+/// hidratación de identidades, que siempre llega poco después del primer
+/// pintado— y cada una de esas reconstrucciones descartaba el future ya
+/// resuelto y pedía otra URL nueva a Storage: miniaturas parpadeando en
+/// blanco y un token de descarga nuevo por cada acción del administrador. No
+/// se memoiza en el provider (la alternativa "más consistente con
+/// `_identidades`"): esa cache necesitaría política de invalidación, porque
+/// sobrescribir un archivo en Storage cambia el token de descarga y la URL
+/// vieja deja de servir. La cache de este widget se descarta exactamente
+/// cuando la tarjeta sale del árbol, y `didUpdateWidget` cubre el cambio de
+/// documento en sitio.
+class _Evidencia extends StatefulWidget {
   final String tallerId;
   final DocumentoEvidencia documento;
 
   const _Evidencia({required this.tallerId, required this.documento});
 
-  bool get _esPdf => documento.nombreArchivo.endsWith('.pdf');
+  @override
+  State<_Evidencia> createState() => _EvidenciaState();
+}
+
+class _EvidenciaState extends State<_Evidencia> {
+  late Future<String?> _url;
+
+  bool get _esPdf => widget.documento.nombreArchivo.endsWith('.pdf');
+
+  @override
+  void initState() {
+    super.initState();
+    _resolverUrl();
+  }
+
+  @override
+  void didUpdateWidget(_Evidencia oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.tallerId != widget.tallerId ||
+        oldWidget.documento != widget.documento) {
+      _resolverUrl();
+    }
+  }
+
+  void _resolverUrl() {
+    _url = context.read<AdminVerificacionProvider>().urlDeEvidencia(
+      widget.tallerId,
+      widget.documento,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -446,81 +491,119 @@ class _Evidencia extends StatelessWidget {
           height: 110,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.md),
-            child: FutureBuilder<String?>(
-              future: context.read<AdminVerificacionProvider>().urlDeEvidencia(
-                tallerId,
-                documento,
-              ),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) {
-                  return Container(color: colors.surface);
-                }
-                final url = snapshot.data;
-                if (_esPdf) {
-                  return InkWell(
-                    onTap: url == null ? null : () => _abrirPdf(context, url),
-                    child: Container(
-                      color: colors.surface,
-                      child: Center(
-                        child: Icon(
-                          Icons.picture_as_pdf_outlined,
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  );
-                }
-                if (url == null) {
-                  return Container(
-                    color: colors.surface,
-                    child: Center(
-                      child: Icon(
-                        Icons.broken_image_outlined,
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                  );
-                }
-                return InkWell(
-                  onTap: () => AppImageViewer.open(
-                    context,
-                    imageUrl: url,
-                    semanticLabel: documento.slot,
-                  ),
-                  child: Image.network(
-                    url,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, _, _) => Container(
-                      color: colors.surface,
-                      child: Center(
-                        child: Icon(
-                          Icons.broken_image_outlined,
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
+            // `_esPdf` se decide por encima del `FutureBuilder`: es una
+            // propiedad de `widget.documento.nombreArchivo`, no de la URL, así
+            // que el icono de PDF no tiene por qué esperar una resolución que
+            // no necesita para saber qué pintar.
+            child: _esPdf ? _tarjetaPdf(colors) : _tarjetaImagen(colors),
           ),
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          documento.slot,
+          widget.documento.slot,
           style: AppTextStyles.bodySmall.copyWith(color: colors.textSecondary),
         ),
       ],
     );
   }
 
-  /// Abre el PDF en el navegador. `storage.rules` solo admite PDF en el slot
-  /// `nit`, así que este es el único caso donde `_esPdf` es verdadero; no hay
-  /// visor embebido a propósito (dependencia grande para algo que el
-  /// navegador ya resuelve, y fuera de alcance del plan).
+  /// El NIT es el único slot que admite PDF (`storage.rules`); no hay visor
+  /// embebido a propósito (dependencia grande para algo que el navegador ya
+  /// resuelve, y fuera de alcance del plan).
+  ///
+  /// El icono se pinta de inmediato y nunca queda mudo al tocarlo: mientras
+  /// la URL sigue resolviendo, el tap la espera (`await _url`) en vez de no
+  /// tener `onTap`; y si resuelve a `null`, el icono cambia a la misma señal
+  /// de fallo que usa la rama de imagen (`broken_image_outlined`).
+  Widget _tarjetaPdf(AppColors colors) {
+    return FutureBuilder<String?>(
+      future: _url,
+      builder: (context, snapshot) {
+        final resuelta = snapshot.connectionState == ConnectionState.done;
+        final fallo = resuelta && snapshot.data == null;
+        return InkWell(
+          onTap: () => unawaited(_tocarPdf(context)),
+          child: Container(
+            color: colors.surface,
+            child: Center(
+              child: Icon(
+                fallo
+                    ? Icons.broken_image_outlined
+                    : Icons.picture_as_pdf_outlined,
+                color: colors.textSecondary,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _tarjetaImagen(AppColors colors) {
+    return FutureBuilder<String?>(
+      future: _url,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return Container(color: colors.surface);
+        }
+        final url = snapshot.data;
+        if (url == null) {
+          return Container(
+            color: colors.surface,
+            child: Center(
+              child: Icon(
+                Icons.broken_image_outlined,
+                color: colors.textSecondary,
+              ),
+            ),
+          );
+        }
+        return InkWell(
+          onTap: () => AppImageViewer.open(
+            context,
+            imageUrl: url,
+            semanticLabel: widget.documento.slot,
+          ),
+          child: Image.network(
+            url,
+            fit: BoxFit.cover,
+            errorBuilder: (context, _, _) => Container(
+              color: colors.surface,
+              child: Center(
+                child: Icon(
+                  Icons.broken_image_outlined,
+                  color: colors.textSecondary,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Espera la URL (ya en vuelo o ya resuelta gracias a `_url`) y solo
+  /// entonces decide: abrir el PDF, o avisar de que no se pudo cargar. Nunca
+  /// deja el tap sin efecto.
+  Future<void> _tocarPdf(BuildContext context) async {
+    final url = await _url;
+    if (!context.mounted) return;
+    if (url == null) {
+      AppSnackbar.show(
+        context,
+        context.l10n.adminVerificacionAbrirDocumentoError,
+        type: SnackbarType.error,
+      );
+      return;
+    }
+    await _abrirPdf(context, url);
+  }
+
+  /// Abre el PDF en el navegador.
   Future<void> _abrirPdf(BuildContext context, String url) async {
-    final uri = Uri.parse(url);
+    final uri = Uri.tryParse(url);
     final abierto =
+        uri != null &&
         await canLaunchUrl(uri) &&
         await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!abierto && context.mounted) {

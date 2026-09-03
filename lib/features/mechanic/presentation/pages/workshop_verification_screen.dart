@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -20,6 +21,7 @@ import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_image_viewer.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
+import 'package:autodoc/features/mechanic/data/services/verificacion_service.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/verificacion_provider.dart';
 
 /// Firma del selector de archivo, con origen y opciones ya fijadas.
@@ -120,12 +122,27 @@ class _WorkshopVerificationScreenState
   /// Abre el selector y deja el resultado en `_pendientes`, SIN subir nada
   /// todavía. Cancelar el selector no toca el estado previo del slot: si ya
   /// había una previsualización o un archivo subido, siguen ahí.
+  ///
+  /// El tope de tamaño se comprueba AQUÍ, antes de previsualizar: sin esto,
+  /// el taller veía el archivo ya previsualizado como si estuviera aceptado
+  /// y solo al pulsar "Confirmar y subir" se enteraba de que pesaba
+  /// demasiado. Mismo mensaje que ya usa `VerificacionService.subirEvidencia`
+  /// (no una segunda variante), porque es el mismo límite.
   Future<void> _elegirArchivo(String slot) async {
     final archivo = await _seleccionarArchivo();
     if (archivo == null || !mounted) return;
 
     final bytes = await archivo.readAsBytes();
     if (!mounted) return;
+
+    if (bytes.lengthInBytes >= VerificacionService.maxBytesEvidencia) {
+      _avisar(
+        VerificacionService.mensajeArchivoDemasiadoGrande(bytes.lengthInBytes),
+        error: true,
+      );
+      return;
+    }
+
     setState(() {
       _pendientes[slot] = _ArchivoPendiente(bytes: bytes, nombre: archivo.name);
     });
@@ -179,8 +196,9 @@ class _WorkshopVerificationScreenState
     }
 
     if (documento.nombreArchivo.endsWith('.pdf')) {
-      final uri = Uri.parse(url);
+      final uri = Uri.tryParse(url);
       final abierto =
+          uri != null &&
           await canLaunchUrl(uri) &&
           await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!abierto && mounted) {
@@ -475,7 +493,7 @@ class _WorkshopVerificationScreenState
               Expanded(
                 child: InkWell(
                   onTap: puedeVer
-                      ? () => _verEvidencia(subido, etiqueta.titulo)
+                      ? () => unawaited(_verEvidencia(subido, etiqueta.titulo))
                       : null,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -503,7 +521,13 @@ class _WorkshopVerificationScreenState
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       Text(
-                        _descripcionSlot(context, etiqueta, subido, pendiente),
+                        _descripcionSlot(
+                          context,
+                          etiqueta,
+                          subido,
+                          pendiente,
+                          enCurso,
+                        ),
                         style: AppTextStyles.bodySmall.copyWith(
                           color: colors.textSecondary,
                           height: 1.4,
@@ -524,28 +548,55 @@ class _WorkshopVerificationScreenState
                 TextButton(
                   onPressed: bloqueado ? null : () => _elegirArchivo(slot),
                   child: Text(
-                    subido != null ? context.l10n.tallerVerifCambiar : 'Subir',
+                    subido != null
+                        ? context.l10n.tallerVerifCambiar
+                        : context.l10n.tallerVerifSubir,
                   ),
                 ),
             ],
           ),
           if (pendiente != null && !enCurso) ...[
             const SizedBox(height: AppSpacing.sm),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: bloqueado ? null : () => _elegirArchivo(slot),
-                  child: Text(context.l10n.tallerVerifCambiar),
+            // Con el expediente bloqueado no hay forma legal de confirmar
+            // esta previsualizacion: mostrar los botones de siempre
+            // deshabilitados dejaba al taller viendo instrucciones
+            // ("revisala y confirma") que no podia seguir, sin ninguna
+            // salida. Se conserva la previsualizacion (descartarla en
+            // silencio seria peor) y se ofrece la unica accion que SI es
+            // segura bajo bloqueo: descartarla. `_pendientes.remove` es
+            // estado local puro, no toca Firebase.
+            if (bloqueado) ...[
+              Text(
+                context.l10n.tallerVerifPendienteBloqueado,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: colors.textSecondary,
+                  height: 1.4,
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                AppButton(
-                  text: context.l10n.tallerVerifConfirmarYSubir,
-                  size: AppButtonSize.small,
-                  onPressed: bloqueado ? null : () => _confirmarYSubir(slot),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => setState(() => _pendientes.remove(slot)),
+                  child: Text(context.l10n.tallerVerifDescartar),
                 ),
-              ],
-            ),
+              ),
+            ] else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => _elegirArchivo(slot),
+                    child: Text(context.l10n.tallerVerifCambiar),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  AppButton(
+                    text: context.l10n.tallerVerifConfirmarYSubir,
+                    size: AppButtonSize.small,
+                    onPressed: () => _confirmarYSubir(slot),
+                  ),
+                ],
+              ),
           ],
         ],
       ),
@@ -593,22 +644,27 @@ class _WorkshopVerificationScreenState
     );
   }
 
-  /// Texto bajo el título: ayuda del slot vacío, aviso de pendiente de
-  /// confirmar (con nombre y peso si es PDF), o confirmación de que ya se
-  /// subió.
+  /// Texto bajo el título: aviso de subida en curso, ayuda del slot vacío,
+  /// aviso de pendiente de confirmar (con nombre y peso, imagen o PDF por
+  /// igual: verlo hace evidente por sí mismo un archivo demasiado grande), o
+  /// confirmación de que ya se subió.
   String _descripcionSlot(
     BuildContext context,
     ({String titulo, String ayuda, bool obligatorio}) etiqueta,
     DocumentoEvidencia? subido,
     _ArchivoPendiente? pendiente,
+    bool enCurso,
   ) {
+    // Antes de este chequeo, mientras `enCurso` era true la descripcion
+    // seguia diciendo "Sin subir todavia. Revisala y confirma para
+    // subirla.": la subida ya estaba en marcha (el spinner lo prueba) pero
+    // el texto le decia al taller que hiciera algo que ya habia hecho.
+    if (enCurso) return context.l10n.tallerVerifSubiendo;
     if (pendiente != null) {
-      return pendiente.esPdf
-          ? context.l10n.tallerVerifArchivoPendientePdf(
-              pendiente.nombre,
-              pendiente.tamanoEnMB,
-            )
-          : context.l10n.tallerVerifArchivoPendiente;
+      return context.l10n.tallerVerifArchivoPendientePdf(
+        pendiente.nombre,
+        pendiente.tamanoEnMB,
+      );
     }
     if (subido != null) return context.l10n.tallerVerifArchivoSubido;
     return etiqueta.ayuda;

@@ -43,9 +43,15 @@ const List<String> kTokenizedPaths = [
   // - voice_record_button.dart: mismo caso. El overlay de grabación es un
   //   HUD flotante sobre el chat, no una superficie del tema.
   //
-  // Ambos están tokenizados en todo lo demás. Si en el futuro se añade a
-  // AppColors un par explícito tipo `scrim` / `onScrim`, estos dos ficheros
-  // deben migrarse y entrar aquí.
+  // Ambos están tokenizados en todo lo demás. AppColors YA tiene un par
+  // `scrim` / `onScrim` (Bloque A, visor de evidencia a pantalla completa),
+  // pero no sirve para migrar estos dos: `AppPalette.lightScrim` es opaco
+  // (`#0F172A`), y `Colors.black54` / `Colors.black87` aquí son
+  // superposiciones TRANSLÚCIDAS sobre un fondo desconocido (la foto del
+  // usuario, el chat detrás del HUD de grabación). Migrarlos convertiría ese
+  // overlay semitransparente en un bloque sólido. Lo que falta para poder
+  // migrar es un par translúcido aparte (p. ej. `overlayScrim`); cuando
+  // exista, estos dos ficheros deben entrar aquí.
   //
   // ── Fase 6: módulo chat ──
   'lib/features/chat/presentation/pages/chat_screen.dart',
