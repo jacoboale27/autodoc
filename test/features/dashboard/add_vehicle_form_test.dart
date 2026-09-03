@@ -105,7 +105,7 @@ void main() {
       await _advanceToDetailsStep(tester);
 
       // Incomplete plate: formatter yields 'P12', which does not match
-      // placaElSalvadorPattern (needs P + 3 hex + '-' + 3 hex).
+      // placaElSalvadorPattern (needs P + 1-3 digits + '-' + 3 hex).
       await tester.enterText(find.byType(TextFormField).at(0), 'P12');
       await _fillYear(tester, '2026');
       await tester.enterText(find.byType(TextFormField).at(1), 'Rojo');
@@ -117,7 +117,7 @@ void main() {
 
       // The plate validator's error text is shown inline...
       expect(
-        find.text('Formato inválido. Usa P123-456 (particular, El Salvador)'),
+        find.text('Formato inválido. Ej: P123-456 o P12-345'),
         findsOneWidget,
       );
       // ...submission did not proceed past the Details step...
@@ -152,8 +152,8 @@ void main() {
       await _advanceToDetailsStep(tester);
 
       // Raw digits/letters typed by the user; PlateFormatter inserts the
-      // 'P' prefix and '-' separator as-you-type, producing 'P1A2-3B4'.
-      await tester.enterText(find.byType(TextFormField).at(0), 'P1A23B4');
+      // 'P' prefix and '-' separator as-you-type, producing 'P123-00A'.
+      await tester.enterText(find.byType(TextFormField).at(0), 'P12300A');
       await _fillYear(tester, '2026');
       await tester.enterText(find.byType(TextFormField).at(1), 'Rojo');
       await tester.enterText(find.byType(TextFormField).at(2), '15000');
@@ -165,7 +165,7 @@ void main() {
       // No plate validation error, and the wizard advanced to the
       // success step.
       expect(
-        find.text('Formato inválido. Usa P123-456 (particular, El Salvador)'),
+        find.text('Formato inválido. Ej: P123-456 o P12-345'),
         findsNothing,
       );
       expect(find.text('¡Vehículo Registrado!'), findsOneWidget);
@@ -180,7 +180,134 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
 
       expect(finishedVehicle, isNotNull);
-      expect(finishedVehicle!.placa, 'P1A2-3B4');
+      expect(finishedVehicle!.placa, 'P123-00A');
+    }, _emptyResultsClientFactory);
+  });
+
+  testWidgets('una placa de cinco caracteres (P12-345) se registra igual que '
+      'una de seis: hay vehículos cuyo correlativo no llega a 100.000', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    VehicleModel? finishedVehicle;
+
+    await http.runWithClient(() async {
+      await tester.pumpWidget(
+        _wrap(
+          AddVehicleForm(
+            onFinish: (v) async {
+              finishedVehicle = v;
+            },
+            primaryColor: Colors.blue,
+          ),
+        ),
+      );
+
+      await _advanceToDetailsStep(tester);
+
+      await tester.enterText(find.byType(TextFormField).at(0), 'P12345');
+      await _fillYear(tester, '2026');
+      await tester.enterText(find.byType(TextFormField).at(1), 'Rojo');
+      await tester.enterText(find.byType(TextFormField).at(2), '15000');
+      await tester.pump();
+
+      await tester.tap(find.text('Finalizar Registro'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('¡Vehículo Registrado!'), findsOneWidget);
+
+      await tester.tap(find.text('Ir al Dashboard'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      // Se guarda tal cual, sin rellenar con un cero que no está estampado
+      // en la placa real.
+      expect(finishedVehicle, isNotNull);
+      expect(finishedVehicle!.placa, 'P12-345');
+    }, _emptyResultsClientFactory);
+  });
+
+  testWidgets('se puede registrar una moto eligiendo el tipo de placa', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    VehicleModel? finishedVehicle;
+
+    await http.runWithClient(() async {
+      await tester.pumpWidget(
+        _wrap(
+          AddVehicleForm(
+            onFinish: (v) async {
+              finishedVehicle = v;
+            },
+            primaryColor: Colors.blue,
+          ),
+        ),
+      );
+
+      await _advanceToDetailsStep(tester);
+
+      await tester.tap(find.text('Moto'));
+      await tester.pump();
+
+      await tester.enterText(find.byType(TextFormField).at(0), '12345');
+      await _fillYear(tester, '2026');
+      await tester.enterText(find.byType(TextFormField).at(1), 'Rojo');
+      await tester.enterText(find.byType(TextFormField).at(2), '15000');
+      await tester.pump();
+
+      await tester.tap(find.text('Finalizar Registro'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('¡Vehículo Registrado!'), findsOneWidget);
+
+      await tester.tap(find.text('Ir al Dashboard'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(finishedVehicle, isNotNull);
+      expect(finishedVehicle!.placa, 'M12-345');
+    }, _emptyResultsClientFactory);
+  });
+
+  testWidgets('cambiar de tipo reescribe el prefijo sin borrar lo tecleado', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await http.runWithClient(() async {
+      await tester.pumpWidget(
+        _wrap(
+          AddVehicleForm(onFinish: (v) async {}, primaryColor: Colors.blue),
+        ),
+      );
+
+      await _advanceToDetailsStep(tester);
+
+      await tester.enterText(find.byType(TextFormField).at(0), '12345');
+      await tester.pump();
+      expect(find.text('P12-345'), findsOneWidget);
+
+      await tester.tap(find.text('Carga'));
+      await tester.pump();
+      expect(find.text('C12-345'), findsOneWidget);
+      expect(find.text('P12-345'), findsNothing);
+
+      // Y de vuelta, sin perder el correlativo por el camino.
+      await tester.tap(find.text('Alquiler'));
+      await tester.pump();
+      expect(find.text('A12-345'), findsOneWidget);
     }, _emptyResultsClientFactory);
   });
 }

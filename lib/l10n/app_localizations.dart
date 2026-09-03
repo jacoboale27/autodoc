@@ -1724,6 +1724,36 @@ abstract class AppLocalizations {
   /// **'Complete the remaining information'**
   String get addVehicleDetailsSubtitle;
 
+  /// No description provided for @addVehiclePlateType.
+  ///
+  /// In en, this message translates to:
+  /// **'Plate type'**
+  String get addVehiclePlateType;
+
+  /// No description provided for @addVehiclePlateTypeParticular.
+  ///
+  /// In en, this message translates to:
+  /// **'Private'**
+  String get addVehiclePlateTypeParticular;
+
+  /// No description provided for @addVehiclePlateTypeMoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Motorcycle'**
+  String get addVehiclePlateTypeMoto;
+
+  /// No description provided for @addVehiclePlateTypeCarga.
+  ///
+  /// In en, this message translates to:
+  /// **'Cargo'**
+  String get addVehiclePlateTypeCarga;
+
+  /// No description provided for @addVehiclePlateTypeAlquiler.
+  ///
+  /// In en, this message translates to:
+  /// **'Rental'**
+  String get addVehiclePlateTypeAlquiler;
+
   /// No description provided for @addVehiclePlate.
   ///
   /// In en, this message translates to:
@@ -1733,7 +1763,7 @@ abstract class AppLocalizations {
   /// No description provided for @addVehiclePlateHint.
   ///
   /// In en, this message translates to:
-  /// **'e.g. P123-456'**
+  /// **'e.g. P123-456 or P12-345'**
   String get addVehiclePlateHint;
 
   /// No description provided for @addVehicleYear.
@@ -1783,6 +1813,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Current Mileage'**
   String get addVehicleMileage;
+
+  /// No description provided for @addVehicleMileageRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the current mileage (0 if new)'**
+  String get addVehicleMileageRequired;
+
+  /// No description provided for @addVehicleMileageInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Mileage must be a whole number of 0 or more'**
+  String get addVehicleMileageInvalid;
 
   /// No description provided for @addVehicleDocs.
   ///

@@ -896,10 +896,25 @@ class AppLocalizationsEs extends AppLocalizations {
   String get addVehicleDetailsSubtitle => 'Completa la información restante';
 
   @override
+  String get addVehiclePlateType => 'Tipo de placa';
+
+  @override
+  String get addVehiclePlateTypeParticular => 'Particular';
+
+  @override
+  String get addVehiclePlateTypeMoto => 'Moto';
+
+  @override
+  String get addVehiclePlateTypeCarga => 'Carga';
+
+  @override
+  String get addVehiclePlateTypeAlquiler => 'Alquiler';
+
+  @override
   String get addVehiclePlate => 'Número de Placa';
 
   @override
-  String get addVehiclePlateHint => 'e.g. P123-456';
+  String get addVehiclePlateHint => 'Ej: P123-456 o P12-345';
 
   @override
   String get addVehicleYear => 'Año';
@@ -924,6 +939,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get addVehicleMileage => 'Kilometraje Actual';
+
+  @override
+  String get addVehicleMileageRequired =>
+      'Ingresa el kilometraje actual (0 si es nuevo)';
+
+  @override
+  String get addVehicleMileageInvalid =>
+      'El kilometraje debe ser un número entero de 0 o más';
 
   @override
   String get addVehicleDocs => 'Documentación';

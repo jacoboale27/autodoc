@@ -48,28 +48,45 @@ const db = admin.firestore();
 const APPLY = process.argv.includes('--apply');
 const BATCH_SIZE = 400; // límite de Firestore es 500 escrituras/batch
 
-// Misma lógica que PlateFormatter.formatEditUpdate en
-// lib/core/utils/plate_formatter.dart: mayúsculas, solo hex (0-9A-F), prefijo
-// P obligatorio, tope de 7 caracteres útiles, guion tras el 4to.
+// Tipos de placa que cubre AutoDoc, con la letra que usa el VMT.
+const PREFIJOS = ['P', 'M', 'C', 'A'];
+
+// Espejo de normalizarPlaca en lib/core/utils/plate_formatter.dart:
+// mayúsculas, se respeta el prefijo que traiga el texto (P particular,
+// M moto, C carga, A alquiler; si no trae ninguno se asume P), solo hex
+// (0-9A-F) en el correlativo, tope de 6 caracteres y guion siempre delante
+// de los tres últimos.
+//
+// Dos trampas al tocar esto:
+//  1. Con la regla vieja (guion fijo tras el 4to carácter) una placa legítima
+//     de cinco, "P12-345", se reescribía como "P123-45" y quedaba corrupta.
+//  2. `A` y `C` son además dígitos hexadecimales válidos, así que el prefijo
+//     se recorta UNA sola vez en vez de filtrarlo por carácter; si no, una
+//     placa de alquiler "AA12-345" perdería una A.
 function normalizarPlaca(input) {
-  let text = String(input || '').toUpperCase().replace(/-/g, '');
+  const texto = String(input || '').trim().toUpperCase();
+  const prefijo = PREFIJOS.find((pre) => texto.startsWith(pre)) || 'P';
+  let text = texto.startsWith(prefijo) ? texto.slice(1) : texto;
   text = text.replace(/[^0-9A-F]/g, '');
-  if (!text.startsWith('P')) {
-    text = 'P' + text;
+  if (text.length > 6) {
+    text = text.slice(0, 6);
   }
-  if (text.length > 1) {
-    text = 'P' + text.slice(1).replace(/P/g, '');
+  if (text.length <= 3) {
+    return prefijo + text;
   }
-  if (text.length > 7) {
-    text = text.slice(0, 7);
-  }
-  if (text.length > 4) {
-    return text.slice(0, 4) + '-' + text.slice(4);
-  }
-  return text;
+  const corte = text.length - 3;
+  return prefijo + text.slice(0, corte) + '-' + text.slice(corte);
 }
 
-const PLACA_VALIDA = /^P[0-9A-F]{3}-[0-9A-F]{3}$/;
+// Letra de tipo + correlativo de 1-3 hex + guion + 3 hex.
+const PLACA_VALIDA = /^[PMCA][0-9A-F]{1,3}-[0-9A-F]{3}$/;
+
+// Correlativo que empieza por cero. No se puede corregir automáticamente:
+// "P012-345" puede ser una placa legítima del esquema alfanumérico (que sí
+// rellena a tres posiciones, como la primera emitida, "P 001 00A") o el
+// apaño de alguien que metió un cero para colar una placa de cinco
+// caracteres cuando el validador exigía seis. Solo se reportan.
+const CORRELATIVO_CON_CERO = /^[PMCA]0/;
 
 const CAMPOS_VINCULO_DEFAULT = {
   talleres_vinculados: [],
@@ -87,6 +104,7 @@ async function main() {
 
   let placasCorregidas = 0;
   let placasInvalidas = 0;
+  const placasConCeroInicial = [];
   let camposRellenados = 0;
   let sinCambios = 0;
 
@@ -107,7 +125,14 @@ async function main() {
     }
     if (!PLACA_VALIDA.test(placaNormalizada)) {
       placasInvalidas++;
-      console.warn(`  [placa][ADVERTENCIA] ${doc.id}: "${placaNormalizada}" no cumple el patrón P###-### incluso tras normalizar — revisar a mano.`);
+      console.warn(`  [placa][ADVERTENCIA] ${doc.id}: "${placaNormalizada}" no cumple el patrón <tipo>#-### / <tipo>##-### / <tipo>###-### incluso tras normalizar — revisar a mano.`);
+    }
+    if (CORRELATIVO_CON_CERO.test(placaNormalizada)) {
+      placasConCeroInicial.push({
+        id: doc.id,
+        placa: placaNormalizada,
+        propietario: data.id_propietario || '(sin dueño)',
+      });
     }
 
     for (const [campo, valorDefault] of Object.entries(CAMPOS_VINCULO_DEFAULT)) {
@@ -145,6 +170,16 @@ async function main() {
   }
 
   console.log('---');
+  if (placasConCeroInicial.length > 0) {
+    console.log(`Placas cuyo correlativo empieza por 0 (${placasConCeroInicial.length}) — revisar a mano:`);
+    console.log('  Puede ser legítimo (esquema alfanumérico, p.ej. P001-00A) o un cero');
+    console.log('  metido a mano para colar una placa de cinco caracteres cuando el');
+    console.log('  validador exigía seis. El script NO las toca.');
+    for (const v of placasConCeroInicial) {
+      console.log(`  [cero] ${v.id}  placa=${v.placa}  propietario=${v.propietario}`);
+    }
+    console.log('---');
+  }
   console.log(`Placas corregidas: ${placasCorregidas}`);
   console.log(`Placas inválidas incluso tras normalizar (revisar a mano): ${placasInvalidas}`);
   console.log(`Documentos con campos de vínculo rellenados: ${camposRellenados}`);

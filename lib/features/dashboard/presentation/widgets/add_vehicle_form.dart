@@ -116,10 +116,119 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
   DateTime? _vencimientoTarjeta;
   DateTime? _vencimientoSoat;
 
-  // Errores de año/color señalados en el propio campo. Antes se avisaban
-  // con un snackbar, que desaparece solo y no indica qué campo lo causó.
+  // Errores de año/color/kilometraje señalados en el propio campo. Antes se
+  // avisaban con un snackbar, que desaparece solo y no indica qué campo lo
+  // causó; peor aún, el formulario vive dentro de un modal bottom sheet a
+  // pantalla completa (`isScrollControlled: true`), así que el snackbar lo
+  // pinta el Scaffold DEBAJO del sheet y no se ve en absoluto: el botón
+  // "Finalizar Registro" parecía no hacer nada.
   String? _anioError;
   String? _colorError;
+  String? _kilometrajeError;
+
+  // Tipo de placa elegido por el usuario. Decide la letra inicial: el VMT
+  // usa una distinta por clase de vehículo (P particular, M moto, C carga,
+  // A alquiler), así que no se puede dar por hecha la P.
+  TipoPlaca _tipoPlaca = TipoPlaca.particular;
+
+  // El paso de detalles scrollea y el botón queda al final: si el campo
+  // inválido es la placa (arriba del todo), marcarlo no basta, hay que
+  // traerlo a la vista o el usuario tampoco ve el error.
+  final _placaFieldKey = GlobalKey();
+  final _anioFieldKey = GlobalKey();
+  final _colorFieldKey = GlobalKey();
+  final _kilometrajeFieldKey = GlobalKey();
+
+  /// Cambia el tipo de placa conservando el correlativo ya tecleado: solo se
+  /// reescribe la letra inicial. El prefijo anterior se recorta a mano antes
+  /// de recomponer porque `A` y `C` son además dígitos hexadecimales válidos,
+  /// y dejarlos pasar los colaría dentro del correlativo.
+  void _cambiarTipoPlaca(TipoPlaca nuevo) {
+    if (nuevo == _tipoPlaca) return;
+    var correlativo = _placaController.text.trim().toUpperCase();
+    if (correlativo.startsWith(_tipoPlaca.prefijo)) {
+      correlativo = correlativo.substring(1);
+    }
+    setState(() {
+      _tipoPlaca = nuevo;
+      _placaController.text = componerPlaca(nuevo, correlativo);
+    });
+  }
+
+  String _etiquetaTipoPlaca(TipoPlaca tipo) {
+    switch (tipo) {
+      case TipoPlaca.particular:
+        return context.l10n.addVehiclePlateTypeParticular;
+      case TipoPlaca.moto:
+        return context.l10n.addVehiclePlateTypeMoto;
+      case TipoPlaca.carga:
+        return context.l10n.addVehiclePlateTypeCarga;
+      case TipoPlaca.alquiler:
+        return context.l10n.addVehiclePlateTypeAlquiler;
+    }
+  }
+
+  Widget _buildTipoPlacaSelector() {
+    final colors = context.appColors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            context.l10n.addVehiclePlateType,
+            style: AppTextStyles.labelLarge.copyWith(
+              color: colors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final tipo in TipoPlaca.values)
+              ChoiceChip(
+                label: Text(_etiquetaTipoPlaca(tipo)),
+                selected: _tipoPlaca == tipo,
+                onSelected: (_) => _cambiarTipoPlaca(tipo),
+                showCheckmark: false,
+                selectedColor: widget.primaryColor.withValues(alpha: 0.15),
+                backgroundColor: colors.surfaceContainer,
+                labelStyle: AppTextStyles.labelLarge.copyWith(
+                  color: _tipoPlaca == tipo
+                      ? widget.primaryColor
+                      : colors.textSecondary,
+                  fontWeight: _tipoPlaca == tipo
+                      ? FontWeight.w700
+                      : FontWeight.w500,
+                ),
+                side: BorderSide(
+                  color: _tipoPlaca == tipo
+                      ? widget.primaryColor
+                      : colors.outline.withValues(alpha: 0.3),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  /// Trae a la vista el primer campo que bloqueó el envío. Se hace en el
+  /// frame siguiente para que el texto de error ya esté maquetado.
+  void _revelarCampo(GlobalKey key) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = key.currentContext;
+      if (ctx == null || !mounted) return;
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 300),
+        alignment: 0.1,
+      );
+    });
+  }
 
   // Solo letras (con acentos/ñ) y espacios, 3-30 caracteres: "Gris13" pasó
   // a producción porque este campo era texto libre.
@@ -512,18 +621,23 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
               context.l10n.addVehicleDetails,
               context.l10n.addVehicleDetailsSubtitle,
             ),
-            _buildTextField(
-              context.l10n.addVehiclePlate,
-              context.l10n.addVehiclePlateHint,
-              _placaController,
-              Icons.badge,
-              formatters: [PlateFormatter()],
-              validator: validarPlacaElSalvador,
+            _buildTipoPlacaSelector(),
+            KeyedSubtree(
+              key: _placaFieldKey,
+              child: _buildTextField(
+                context.l10n.addVehiclePlate,
+                context.l10n.addVehiclePlateHint,
+                _placaController,
+                Icons.badge,
+                formatters: [PlateFormatter(tipo: _tipoPlaca)],
+                validator: validarPlacaElSalvador,
+              ),
             ),
             const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
+                  key: _anioFieldKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -595,6 +709,7 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
+                  key: _colorFieldKey,
                   child: _buildTextField(
                     context.l10n.addVehicleColor,
                     context.l10n.addVehicleColorHint,
@@ -610,12 +725,17 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
               ],
             ),
             const SizedBox(height: 16),
-            _buildTextField(
-              context.l10n.addVehicleMileage,
-              '0',
-              _kilometrajeController,
-              Icons.speed,
-              keyboardType: TextInputType.number,
+            KeyedSubtree(
+              key: _kilometrajeFieldKey,
+              child: _buildTextField(
+                context.l10n.addVehicleMileage,
+                '0',
+                _kilometrajeController,
+                Icons.speed,
+                keyboardType: TextInputType.number,
+                errorText: _kilometrajeError,
+                isRequired: true,
+              ),
             ),
             const SizedBox(height: 24),
             Text(
@@ -645,7 +765,11 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                 text: context.l10n.addVehicleFinish,
                 size: AppButtonSize.large,
                 onPressed: () {
+                  // La placa es el primer campo del paso y el botón el
+                  // último: sin traerla a la vista, su error queda fuera de
+                  // pantalla y el envío parece fallar sin motivo.
                   if (!(_formKey.currentState?.validate() ?? false)) {
+                    _revelarCampo(_placaFieldKey);
                     return;
                   }
 
@@ -655,6 +779,7 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                     setState(
                       () => _anioError = context.l10n.addVehicleYearInvalid,
                     );
+                    _revelarCampo(_anioFieldKey);
                     return;
                   }
                   setState(() => _anioError = null);
@@ -663,6 +788,7 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                     setState(
                       () => _colorError = context.l10n.addVehicleColorRequired,
                     );
+                    _revelarCampo(_colorFieldKey);
                     return;
                   }
                   // "Gris13" llegó a producción porque el campo era texto
@@ -674,17 +800,35 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                       () => _colorError =
                           context.l10n.addVehicleColorInvalidChars,
                     );
+                    _revelarCampo(_colorFieldKey);
                     return;
                   }
                   setState(() => _colorError = null);
 
-                  final km = int.tryParse(_kilometrajeController.text);
-                  if (km == null || km < 0) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Kilometraje inválido')),
+                  // Mismo mecanismo que año y color: el error va al propio
+                  // campo. El snackbar que había aquí quedaba detrás del
+                  // modal sheet a pantalla completa, y como el kilometraje
+                  // se deja vacío con facilidad (su hint es '0'), este era
+                  // el camino por el que "Finalizar Registro" no hacía nada.
+                  final kmTexto = _kilometrajeController.text.trim();
+                  if (kmTexto.isEmpty) {
+                    setState(
+                      () => _kilometrajeError =
+                          context.l10n.addVehicleMileageRequired,
                     );
+                    _revelarCampo(_kilometrajeFieldKey);
                     return;
                   }
+                  final km = int.tryParse(kmTexto);
+                  if (km == null || km < 0) {
+                    setState(
+                      () => _kilometrajeError =
+                          context.l10n.addVehicleMileageInvalid,
+                    );
+                    _revelarCampo(_kilometrajeFieldKey);
+                    return;
+                  }
+                  setState(() => _kilometrajeError = null);
 
                   _nextStep();
                 },
@@ -799,6 +943,7 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
     List<TextInputFormatter>? formatters,
     String? Function(String?)? validator,
     String? errorText,
+    bool isRequired = false,
   }) {
     return AppTextField(
       label: label,
@@ -808,6 +953,7 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
       inputFormatters: formatters,
       validator: validator,
       errorText: errorText,
+      isRequired: isRequired,
       prefixIcon: Icon(icon, color: widget.primaryColor, size: 20),
     );
   }

@@ -88,7 +88,7 @@ void main() {
 
         await _advanceToDetailsStep(tester);
 
-        await tester.enterText(find.byType(TextFormField).at(0), 'P1A23B4');
+        await tester.enterText(find.byType(TextFormField).at(0), 'P12300A');
         final currentYear = DateTime.now().year.toString();
         await tester.tap(find.text('Año').hitTestable());
         await tester.pumpAndSettle();
@@ -127,7 +127,7 @@ void main() {
 
         await _advanceToDetailsStep(tester);
 
-        await tester.enterText(find.byType(TextFormField).at(0), 'P1A23B4');
+        await tester.enterText(find.byType(TextFormField).at(0), 'P12300A');
         final currentYear = DateTime.now().year.toString();
         await tester.tap(find.text('Año').hitTestable());
         await tester.pumpAndSettle();

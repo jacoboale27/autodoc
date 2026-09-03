@@ -143,7 +143,7 @@ void main() {
 
         await _advanceToDetailsStep(tester);
 
-        await tester.enterText(find.byType(TextFormField).at(0), 'P1A23B4');
+        await tester.enterText(find.byType(TextFormField).at(0), 'P12300A');
         // El año se deja vacío a propósito: int.tryParse('') falla el
         // 1900/currentYear check en el onPressed de "Finalizar Registro".
         await tester.enterText(find.byType(TextFormField).at(1), 'Rojo');

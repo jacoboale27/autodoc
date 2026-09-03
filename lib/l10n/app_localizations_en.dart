@@ -889,10 +889,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addVehicleDetailsSubtitle => 'Complete the remaining information';
 
   @override
+  String get addVehiclePlateType => 'Plate type';
+
+  @override
+  String get addVehiclePlateTypeParticular => 'Private';
+
+  @override
+  String get addVehiclePlateTypeMoto => 'Motorcycle';
+
+  @override
+  String get addVehiclePlateTypeCarga => 'Cargo';
+
+  @override
+  String get addVehiclePlateTypeAlquiler => 'Rental';
+
+  @override
   String get addVehiclePlate => 'License Plate';
 
   @override
-  String get addVehiclePlateHint => 'e.g. P123-456';
+  String get addVehiclePlateHint => 'e.g. P123-456 or P12-345';
 
   @override
   String get addVehicleYear => 'Year';
@@ -917,6 +932,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addVehicleMileage => 'Current Mileage';
+
+  @override
+  String get addVehicleMileageRequired =>
+      'Enter the current mileage (0 if new)';
+
+  @override
+  String get addVehicleMileageInvalid =>
+      'Mileage must be a whole number of 0 or more';
 
   @override
   String get addVehicleDocs => 'Documentation';
