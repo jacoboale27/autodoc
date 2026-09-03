@@ -2078,6 +2078,60 @@ abstract class AppLocalizations {
   /// **'ID: {uid}'**
   String adminVerificacionTallerId(String uid);
 
+  /// Shown when tapping a PDF evidence document fails to launch the browser.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the document. Please try again.'**
+  String get adminVerificacionAbrirDocumentoError;
+
+  /// No description provided for @tallerVerifCambiar.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get tallerVerifCambiar;
+
+  /// No description provided for @tallerVerifSubir.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get tallerVerifSubir;
+
+  /// No description provided for @tallerVerifConfirmarYSubir.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm and upload'**
+  String get tallerVerifConfirmarYSubir;
+
+  /// No description provided for @tallerVerifArchivoPendientePdf.
+  ///
+  /// In en, this message translates to:
+  /// **'{nombre} · {tamano} MB. Not uploaded yet.'**
+  String tallerVerifArchivoPendientePdf(String nombre, String tamano);
+
+  /// No description provided for @tallerVerifArchivoSubido.
+  ///
+  /// In en, this message translates to:
+  /// **'File uploaded. Tap to view it.'**
+  String get tallerVerifArchivoSubido;
+
+  /// No description provided for @tallerVerifSubiendo.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading the file…'**
+  String get tallerVerifSubiendo;
+
+  /// No description provided for @tallerVerifPendienteBloqueado.
+  ///
+  /// In en, this message translates to:
+  /// **'Your request is already under review: you can\'t upload this selection now. You can discard it.'**
+  String get tallerVerifPendienteBloqueado;
+
+  /// No description provided for @tallerVerifDescartar.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get tallerVerifDescartar;
+
   /// No description provided for @chatOpeningSection.
   ///
   /// In en, this message translates to:

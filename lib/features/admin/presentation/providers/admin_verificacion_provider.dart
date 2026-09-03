@@ -4,8 +4,8 @@ import 'package:flutter/foundation.dart';
 
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/models/verificacion_taller_model.dart';
-import 'package:autodoc/features/dashboard/data/services/workshop_service.dart';
 import 'package:autodoc/features/mechanic/data/services/verificacion_service.dart';
+import 'package:autodoc/features/profile/data/services/user_service.dart';
 
 /// Bandeja de expedientes de verificación para el administrador.
 ///
@@ -22,13 +22,13 @@ import 'package:autodoc/features/mechanic/data/services/verificacion_service.dar
 /// retira nada.
 class AdminVerificacionProvider extends ChangeNotifier {
   final VerificacionService _service;
-  final WorkshopService _workshopService;
+  final UserService _userService;
 
   AdminVerificacionProvider({
     VerificacionService? service,
-    WorkshopService? workshopService,
+    UserService? userService,
   }) : _service = service ?? VerificacionService(),
-       _workshopService = workshopService ?? WorkshopService();
+       _userService = userService ?? UserService();
 
   StreamSubscription<List<VerificacionTallerModel>>? _suscripcion;
 
@@ -38,21 +38,27 @@ class AdminVerificacionProvider extends ChangeNotifier {
   bool _cargando = true;
   bool get cargando => _cargando;
 
-  /// Perfil publico (`talleres/{uid}`) de cada taller con expediente en la
-  /// bandeja, cacheado por uid.
+  /// Perfil (`usuarios/{uid}`) de cada taller con expediente en la bandeja,
+  /// cacheado por uid.
   ///
   /// Hasta 2026-08-28 la pantalla identificaba la solicitud unicamente por el
-  /// uid crudo y el administrador aprobaba o rechazaba a ciegas. El nombre y
-  /// la especialidad viven fuera de [VerificacionTallerModel] a proposito
-  /// (ver el doc del propio modelo): por eso se resuelven aqui, en un cache
-  /// aparte, en vez de mutar el expediente.
+  /// uid crudo y el administrador aprobaba o rechazaba a ciegas. El nombre,
+  /// la especialidad y el correo viven fuera de [VerificacionTallerModel] a
+  /// proposito (ver el doc del propio modelo): por eso se resuelven aqui, en
+  /// un cache aparte, en vez de mutar el expediente.
+  ///
+  /// Se lee `usuarios/{uid}` y no `talleres/{uid}` (la proyeccion publica que
+  /// usa el directorio) a proposito: `talleres` es de lectura publica y
+  /// anonima (`firestore.rules`), y el correo del taller que esta pantalla
+  /// necesita mostrar no puede vivir ahi. `usuarios/{uid}` ya es legible por
+  /// el administrador y contiene un superconjunto de los mismos campos.
   final Map<String, UserModel?> _identidades = {};
 
-  /// Perfil publico ya resuelto para `idTaller`, o `null` si todavia no ha
-  /// llegado (o el taller no tiene perfil publico).
+  /// Perfil ya resuelto para `idTaller`, o `null` si todavia no ha llegado
+  /// (o el taller no tiene perfil).
   UserModel? identidadDe(String idTaller) => _identidades[idTaller];
 
-  /// Uids cuya resolucion de perfil publico esta en vuelo ahora mismo.
+  /// Uids cuya resolucion de perfil esta en vuelo ahora mismo.
   ///
   /// `observarBandeja()` es un `.snapshots()` normal, sin `.distinct()`
   /// (Firestore reemite dos veces al suscribirse: cache local y luego
@@ -93,7 +99,8 @@ class AdminVerificacionProvider extends ChangeNotifier {
     );
   }
 
-  /// Resuelve el perfil publico de cada taller nuevo en la bandeja.
+  /// Resuelve el perfil de `usuarios/{uid}` de cada taller nuevo en la
+  /// bandeja.
   ///
   /// Concurrente, no secuencial: un `for`+`await` haria una consulta a
   /// Firestore por expediente, una detras de otra. Con `Future.wait` todas
@@ -118,7 +125,7 @@ class AdminVerificacionProvider extends ChangeNotifier {
       final resueltos = await Future.wait(
         pendientes.map((uid) async {
           try {
-            return MapEntry(uid, await _workshopService.getWorkshopById(uid));
+            return MapEntry(uid, await _userService.getUserData(uid));
           } catch (_) {
             // Un perfil que no se pudo resolver no debe tumbar el resto del
             // lote ni quedar atascado para siempre: al no escribirse en

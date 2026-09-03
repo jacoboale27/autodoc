@@ -7,24 +7,24 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/features/admin/presentation/providers/admin_verificacion_provider.dart';
-import 'package:autodoc/features/dashboard/data/services/workshop_service.dart';
 import 'package:autodoc/features/mechanic/data/services/verificacion_service.dart';
+import 'package:autodoc/features/profile/data/services/user_service.dart';
 
 /// Cuenta cuantas resoluciones estan "en vuelo" a la vez, para poder
 /// distinguir `Future.wait` (paralelo) de un `for`+`await` secuencial (N+1):
 /// secuencial nunca deja que `enVuelo` pase de 1.
-class _WorkshopServiceContador extends WorkshopService {
+class _UserServiceContador extends UserService {
   final Map<String, UserModel> perfiles;
   final Duration retraso;
   int llamadas = 0;
   int enVuelo = 0;
   int maxEnVuelo = 0;
 
-  _WorkshopServiceContador(this.perfiles, {this.retraso = Duration.zero})
+  _UserServiceContador(this.perfiles, {this.retraso = Duration.zero})
     : super(firestore: FakeFirebaseFirestore());
 
   @override
-  Future<UserModel?> getWorkshopById(String id) async {
+  Future<UserModel?> getUserData(String userId) async {
     llamadas++;
     enVuelo++;
     if (enVuelo > maxEnVuelo) maxEnVuelo = enVuelo;
@@ -34,7 +34,7 @@ class _WorkshopServiceContador extends WorkshopService {
       await Future<void>.delayed(Duration.zero);
     }
     enVuelo--;
-    return perfiles[id];
+    return perfiles[userId];
   }
 }
 
@@ -42,17 +42,17 @@ class _WorkshopServiceContador extends WorkshopService {
 /// poder forzar deliberadamente una segunda reemision del stream MIENTRAS la
 /// primera resolucion de un uid sigue en vuelo (el escenario real: Firestore
 /// reemite dos veces al suscribirse, cache local y luego servidor).
-class _WorkshopServiceControlable extends WorkshopService {
+class _UserServiceControlable extends UserService {
   final List<String> llamadas = [];
   final Map<String, Completer<UserModel?>> _pendientes = {};
 
-  _WorkshopServiceControlable() : super(firestore: FakeFirebaseFirestore());
+  _UserServiceControlable() : super(firestore: FakeFirebaseFirestore());
 
   @override
-  Future<UserModel?> getWorkshopById(String id) {
-    llamadas.add(id);
+  Future<UserModel?> getUserData(String userId) {
+    llamadas.add(userId);
     final completer = Completer<UserModel?>();
-    _pendientes[id] = completer;
+    _pendientes[userId] = completer;
     return completer.future;
   }
 
@@ -100,39 +100,37 @@ void main() {
         especialidad: especialidad,
       );
 
-  test(
-    'hidrata el nombre y la especialidad del taller de cada expediente',
-    () async {
-      await sembrar('HT8Hkxr', 'listo_para_revision');
-      final workshopService = _WorkshopServiceContador({
-        'HT8Hkxr': taller(
-          'HT8Hkxr',
-          'Taller Los Pinos',
-          especialidad: 'Frenos',
-        ),
-      });
-      final provider = AdminVerificacionProvider(
-        service: service,
-        workshopService: workshopService,
-      );
+  test('hidrata el nombre, la especialidad y el correo del taller de cada '
+      'expediente', () async {
+    await sembrar('HT8Hkxr', 'listo_para_revision');
+    final userService = _UserServiceContador({
+      'HT8Hkxr': taller('HT8Hkxr', 'Taller Los Pinos', especialidad: 'Frenos'),
+    });
+    final provider = AdminVerificacionProvider(
+      service: service,
+      userService: userService,
+    );
 
-      provider.escuchar();
-      await Future<void>.delayed(Duration.zero);
-      await Future<void>.delayed(Duration.zero);
+    provider.escuchar();
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
 
-      final identidad = provider.identidadDe('HT8Hkxr');
-      expect(identidad, isNotNull);
-      expect(identidad!.nombreCompleto, 'Taller Los Pinos');
-      expect(identidad.especialidad, 'Frenos');
-    },
-  );
+    final identidad = provider.identidadDe('HT8Hkxr');
+    expect(identidad, isNotNull);
+    expect(identidad!.nombreCompleto, 'Taller Los Pinos');
+    expect(identidad.especialidad, 'Frenos');
+    // El hallazgo #11 que cierra esta tarea: el correo debe llegar con la
+    // identidad, no solo el nombre y la especialidad que ya se pintaban.
+    expect(identidad.correo, isNotEmpty);
+    expect(identidad.correo, 'HT8Hkxr@example.com');
+  });
 
   test('un taller sin perfil publico no rompe la hidratacion', () async {
     await sembrar('sin-perfil', 'en_revision');
-    final workshopService = _WorkshopServiceContador({});
+    final userService = _UserServiceContador({});
     final provider = AdminVerificacionProvider(
       service: service,
-      workshopService: workshopService,
+      userService: userService,
     );
 
     provider.escuchar();
@@ -149,14 +147,14 @@ void main() {
       await sembrar('a', 'listo_para_revision');
       await sembrar('b', 'en_revision');
       await sembrar('c', 'listo_para_revision');
-      final workshopService = _WorkshopServiceContador({
+      final userService = _UserServiceContador({
         'a': taller('a', 'Taller A'),
         'b': taller('b', 'Taller B'),
         'c': taller('c', 'Taller C'),
       }, retraso: const Duration(milliseconds: 20));
       final provider = AdminVerificacionProvider(
         service: service,
-        workshopService: workshopService,
+        userService: userService,
       );
 
       provider.escuchar();
@@ -164,9 +162,9 @@ void main() {
       // Deja que las tres resoluciones concurrentes terminen.
       await Future<void>.delayed(const Duration(milliseconds: 100));
 
-      expect(workshopService.llamadas, 3);
+      expect(userService.llamadas, 3);
       expect(
-        workshopService.maxEnVuelo,
+        userService.maxEnVuelo,
         greaterThan(1),
         reason:
             'con un for+await secuencial nunca hay mas de una peticion en '
@@ -182,28 +180,26 @@ void main() {
     'un taller ya resuelto no vuelve a consultarse cuando el stream reemite',
     () async {
       await sembrar('a', 'listo_para_revision');
-      final workshopService = _WorkshopServiceContador({
-        'a': taller('a', 'Taller A'),
-      });
+      final userService = _UserServiceContador({'a': taller('a', 'Taller A')});
       final provider = AdminVerificacionProvider(
         service: service,
-        workshopService: workshopService,
+        userService: userService,
       );
 
       provider.escuchar();
       await Future<void>.delayed(Duration.zero);
       await Future<void>.delayed(Duration.zero);
-      expect(workshopService.llamadas, 1);
+      expect(userService.llamadas, 1);
 
       // Un segundo expediente entra a la cola: el stream de
       // `observarBandeja` reemite con AMBOS documentos, no solo el nuevo.
       await sembrar('b', 'en_revision');
-      workshopService.perfiles['b'] = taller('b', 'Taller B');
+      userService.perfiles['b'] = taller('b', 'Taller B');
       await Future<void>.delayed(Duration.zero);
       await Future<void>.delayed(Duration.zero);
 
       expect(
-        workshopService.llamadas,
+        userService.llamadas,
         2,
         reason: '"a" ya estaba cacheado; solo "b" debia pedirse de nuevo',
       );
@@ -215,10 +211,10 @@ void main() {
   test('un uid en vuelo no se vuelve a pedir si el stream reemite antes de que '
       'la primera resolucion termine', () async {
     await sembrar('a', 'listo_para_revision');
-    final workshopService = _WorkshopServiceControlable();
+    final userService = _UserServiceControlable();
     final provider = AdminVerificacionProvider(
       service: service,
-      workshopService: workshopService,
+      userService: userService,
     );
 
     provider.escuchar();
@@ -228,7 +224,7 @@ void main() {
     // La resolucion de 'a' esta en vuelo (el completer no se ha resuelto
     // todavia): esto es justo la ventana que una segunda emision (cache +
     // servidor, o cualquier reemision no relacionada) puede pisar.
-    expect(workshopService.llamadas, ['a']);
+    expect(userService.llamadas, ['a']);
 
     await firestore.collection('verificaciones').doc('a').update({
       'fecha_envio': Timestamp.fromDate(DateTime.utc(2026, 3, 3)),
@@ -237,14 +233,14 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(
-      workshopService.llamadas,
+      userService.llamadas,
       ['a'],
       reason:
           '"a" seguia en vuelo cuando el stream reemitio; no debia '
           'volver a pedirse una segunda vez',
     );
 
-    workshopService.completar('a', taller('a', 'Taller A'));
+    userService.completar('a', taller('a', 'Taller A'));
     await Future<void>.delayed(Duration.zero);
     await Future<void>.delayed(Duration.zero);
 
@@ -255,18 +251,18 @@ void main() {
     'un fallo al resolver no bloquea reintentos futuros para ese uid',
     () async {
       await sembrar('a', 'listo_para_revision');
-      final workshopService = _WorkshopServiceControlable();
+      final userService = _UserServiceControlable();
       final provider = AdminVerificacionProvider(
         service: service,
-        workshopService: workshopService,
+        userService: userService,
       );
 
       provider.escuchar();
       await Future<void>.delayed(Duration.zero);
       await Future<void>.delayed(Duration.zero);
-      expect(workshopService.llamadas, ['a']);
+      expect(userService.llamadas, ['a']);
 
-      workshopService.fallar('a', Exception('boom'));
+      userService.fallar('a', Exception('boom'));
       await Future<void>.delayed(Duration.zero);
       await Future<void>.delayed(Duration.zero);
 
@@ -284,9 +280,9 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       await Future<void>.delayed(Duration.zero);
 
-      expect(workshopService.llamadas, ['a', 'a']);
+      expect(userService.llamadas, ['a', 'a']);
 
-      workshopService.completar('a', taller('a', 'Taller A'));
+      userService.completar('a', taller('a', 'Taller A'));
       await Future<void>.delayed(Duration.zero);
       await Future<void>.delayed(Duration.zero);
 

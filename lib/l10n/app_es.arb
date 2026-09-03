@@ -593,6 +593,25 @@
       }
     }
   },
+  "adminVerificacionAbrirDocumentoError": "No se pudo abrir el documento. Intenta de nuevo.",
+  "tallerVerifCambiar": "Cambiar",
+  "tallerVerifSubir": "Subir",
+  "tallerVerifConfirmarYSubir": "Confirmar y subir",
+  "tallerVerifArchivoPendientePdf": "{nombre} · {tamano} MB. Sin subir todavía.",
+  "@tallerVerifArchivoPendientePdf": {
+    "placeholders": {
+      "nombre": {
+        "type": "String"
+      },
+      "tamano": {
+        "type": "String"
+      }
+    }
+  },
+  "tallerVerifArchivoSubido": "Archivo subido. Toca para verlo.",
+  "tallerVerifSubiendo": "Subiendo el archivo…",
+  "tallerVerifPendienteBloqueado": "Tu solicitud ya está en revisión: no puedes subir esta selección ahora. Puedes descartarla.",
+  "tallerVerifDescartar": "Descartar",
   "chatOpeningSection": "Abriendo sección de {label}...",
   "@chatOpeningSection": {
     "placeholders": {

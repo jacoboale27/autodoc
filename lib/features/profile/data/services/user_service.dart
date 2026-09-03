@@ -6,8 +6,11 @@ import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/core/constants/storage_paths.dart';
 
 class UserService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore;
   final String _collection = FirestoreCollections.usuarios;
+
+  UserService({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   Future<UserModel?> getUserData(String userId) async {
     try {

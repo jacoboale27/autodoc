@@ -73,6 +73,23 @@ class VerificacionProvider extends ChangeNotifier {
         expediente.tieneEvidenciaMinima;
   }
 
+  /// URL para mostrar en grande un documento ya subido.
+  ///
+  /// `null` ante cualquier fallo (por ejemplo, el archivo está anotado en el
+  /// expediente pero ya no existe en Storage): la pantalla lo trata como "no
+  /// se pudo abrir" en vez de tumbarse. Mismo patrón que
+  /// `AdminVerificacionProvider.urlDeEvidencia`.
+  Future<String?> urlDeEvidencia(
+    String tallerId,
+    DocumentoEvidencia documento,
+  ) async {
+    try {
+      return await _service.urlDeEvidencia(tallerId, documento);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<bool> subirEvidencia({
     required String tallerId,
     required String slot,

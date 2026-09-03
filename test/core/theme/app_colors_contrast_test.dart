@@ -57,6 +57,13 @@ void main() {
         greaterThanOrEqualTo(1.3),
       );
     });
+
+    test('onScrim sobre scrim pasa AA', () {
+      expect(
+        contrastRatio(AppPalette.lightOnScrim, AppPalette.lightScrim),
+        greaterThanOrEqualTo(kAaBody),
+      );
+    });
   });
 
   group('dark mode', () {
@@ -91,6 +98,13 @@ void main() {
     test('onPrimary sobre primary pasa AA', () {
       expect(
         contrastRatio(AppPalette.darkOnPrimary, AppPalette.darkPrimary),
+        greaterThanOrEqualTo(kAaBody),
+      );
+    });
+
+    test('onScrim sobre scrim pasa AA', () {
+      expect(
+        contrastRatio(AppPalette.darkOnScrim, AppPalette.darkScrim),
         greaterThanOrEqualTo(kAaBody),
       );
     });
@@ -133,6 +147,8 @@ void main() {
       outline: AppPalette.lightOutline,
       shimmerBase: AppPalette.lightShimmerBase,
       shimmerHighlight: AppPalette.lightShimmerHighlight,
+      scrim: AppPalette.lightScrim,
+      onScrim: AppPalette.lightOnScrim,
     );
 
     test('derivan de primary y el de press es más fuerte que el de hover', () {

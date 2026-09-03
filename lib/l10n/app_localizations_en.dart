@@ -1085,6 +1085,37 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get adminVerificacionAbrirDocumentoError =>
+      'Couldn\'t open the document. Please try again.';
+
+  @override
+  String get tallerVerifCambiar => 'Change';
+
+  @override
+  String get tallerVerifSubir => 'Upload';
+
+  @override
+  String get tallerVerifConfirmarYSubir => 'Confirm and upload';
+
+  @override
+  String tallerVerifArchivoPendientePdf(String nombre, String tamano) {
+    return '$nombre · $tamano MB. Not uploaded yet.';
+  }
+
+  @override
+  String get tallerVerifArchivoSubido => 'File uploaded. Tap to view it.';
+
+  @override
+  String get tallerVerifSubiendo => 'Uploading the file…';
+
+  @override
+  String get tallerVerifPendienteBloqueado =>
+      'Your request is already under review: you can\'t upload this selection now. You can discard it.';
+
+  @override
+  String get tallerVerifDescartar => 'Discard';
+
+  @override
   String chatOpeningSection(String label) {
     return 'Opening $label section...';
   }

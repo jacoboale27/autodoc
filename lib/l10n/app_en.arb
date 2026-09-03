@@ -593,6 +593,28 @@
       }
     }
   },
+  "adminVerificacionAbrirDocumentoError": "Couldn't open the document. Please try again.",
+  "@adminVerificacionAbrirDocumentoError": {
+    "description": "Shown when tapping a PDF evidence document fails to launch the browser."
+  },
+  "tallerVerifCambiar": "Change",
+  "tallerVerifSubir": "Upload",
+  "tallerVerifConfirmarYSubir": "Confirm and upload",
+  "tallerVerifArchivoPendientePdf": "{nombre} · {tamano} MB. Not uploaded yet.",
+  "@tallerVerifArchivoPendientePdf": {
+    "placeholders": {
+      "nombre": {
+        "type": "String"
+      },
+      "tamano": {
+        "type": "String"
+      }
+    }
+  },
+  "tallerVerifArchivoSubido": "File uploaded. Tap to view it.",
+  "tallerVerifSubiendo": "Uploading the file…",
+  "tallerVerifPendienteBloqueado": "Your request is already under review: you can't upload this selection now. You can discard it.",
+  "tallerVerifDescartar": "Discard",
   "chatOpeningSection": "Opening {label} section...",
   "@chatOpeningSection": {
     "placeholders": {

@@ -1092,6 +1092,37 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get adminVerificacionAbrirDocumentoError =>
+      'No se pudo abrir el documento. Intenta de nuevo.';
+
+  @override
+  String get tallerVerifCambiar => 'Cambiar';
+
+  @override
+  String get tallerVerifSubir => 'Subir';
+
+  @override
+  String get tallerVerifConfirmarYSubir => 'Confirmar y subir';
+
+  @override
+  String tallerVerifArchivoPendientePdf(String nombre, String tamano) {
+    return '$nombre · $tamano MB. Sin subir todavía.';
+  }
+
+  @override
+  String get tallerVerifArchivoSubido => 'Archivo subido. Toca para verlo.';
+
+  @override
+  String get tallerVerifSubiendo => 'Subiendo el archivo…';
+
+  @override
+  String get tallerVerifPendienteBloqueado =>
+      'Tu solicitud ya está en revisión: no puedes subir esta selección ahora. Puedes descartarla.';
+
+  @override
+  String get tallerVerifDescartar => 'Descartar';
+
+  @override
   String chatOpeningSection(String label) {
     return 'Abriendo sección de $label...';
   }

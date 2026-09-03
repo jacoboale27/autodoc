@@ -24,6 +24,8 @@ void main() {
         outline: AppPalette.lightOutline,
         shimmerBase: AppPalette.lightShimmerBase,
         shimmerHighlight: AppPalette.lightShimmerHighlight,
+        scrim: AppPalette.lightScrim,
+        onScrim: AppPalette.lightOnScrim,
       );
 
       await tester.pumpWidget(
