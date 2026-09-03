@@ -17,6 +17,7 @@ import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart'
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/utils/role_utils.dart';
 import 'package:autodoc/core/utils/mechanic_profile_utils.dart';
+import 'package:autodoc/core/utils/reserva_acciones.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cotizacion_picker.dart';
 import 'package:intl/intl.dart';
@@ -83,6 +84,28 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
     }
   }
 
+  Future<void> _cancelar({required bool isMecanico}) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.l10n.chatCancelAppointment),
+        content: Text(context.l10n.chatConfirmCancelAppointment),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(context.l10n.upCancel),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(context.l10n.chatCancelAppointment),
+          ),
+        ],
+      ),
+    );
+    if (confirmar != true || !mounted) return;
+    await _cambiarEstado(estadoCancelacionSegunRol(isMecanico: isMecanico));
+  }
+
   Future<void> _reprogramar(ReservaModel reserva) async {
     final date = await showDatePicker(
       context: context,
@@ -106,10 +129,17 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
       time.minute,
     );
 
+    final currentUserId = context
+        .read<UserProfileProvider>()
+        .userData
+        ?.idUsuario;
+    if (currentUserId == null || !mounted) return;
+
     final reservaProvider = context.read<ReservaProvider>();
     final success = await reservaProvider.reprogramarReserva(
       reserva.id,
       nuevaFecha,
+      idProponente: currentUserId,
     );
     if (!mounted) return;
     if (success) {
@@ -224,9 +254,9 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isMecanico = isMechanicRole(
-      context.watch<UserProfileProvider>().userData?.rol,
-    );
+    final currentUser = context.watch<UserProfileProvider>().userData;
+    final isMecanico = isMechanicRole(currentUser?.rol);
+    final currentUserId = currentUser?.idUsuario;
 
     return Scaffold(
       backgroundColor: isDark ? colors.surfaceContainer : colors.surface,
@@ -267,6 +297,14 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
             confirmadaLabel: 'Confirmada',
             rechazadaLabel: 'Rechazada',
             cotizadaLabel: 'Cotización Enviada',
+            canceladaLabel: context.l10n.chatCancelledStatus,
+          );
+
+          final acciones = calcularAccionesReserva(
+            estado: reserva.estado,
+            idProponente: reserva.idProponente,
+            currentUserId: currentUserId ?? '',
+            isMecanico: isMecanico,
           );
 
           return _isLoading
@@ -407,9 +445,9 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
                             ],
                           ),
                         ),
-                        if (reserva.estado == 'pendiente') ...[
+                        if (acciones.tieneAcciones) ...[
                           const SizedBox(height: 32),
-                          if (isMecanico) ...[
+                          if (acciones.puedeCotizarYAceptar) ...[
                             Text(
                               'Aceptas la cita enviando tu cotización con esta fecha.',
                               style: TextStyle(
@@ -423,26 +461,39 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
                               onPressed: () => _cotizar(reserva),
                               icon: const Icon(Icons.request_quote),
                             ),
-                          ] else ...[
+                            const SizedBox(height: 12),
+                          ] else if (acciones.puedeAceptar) ...[
                             AppButton(
                               text: context.l10n.chatAcceptAppointment,
                               onPressed: () => _cambiarEstado('confirmada'),
                               icon: const Icon(Icons.check),
                             ),
+                            const SizedBox(height: 12),
                           ],
-                          const SizedBox(height: 12),
-                          AppButton(
-                            text: 'Reprogramar',
-                            type: AppButtonType.secondary,
-                            onPressed: () => _reprogramar(reserva),
-                            icon: const Icon(Icons.edit_calendar),
-                          ),
-                          const SizedBox(height: 12),
-                          AppButton(
-                            text: 'Rechazar',
-                            type: AppButtonType.text,
-                            onPressed: () => _cambiarEstado('rechazada'),
-                          ),
+                          if (acciones.puedeReprogramar) ...[
+                            AppButton(
+                              text: 'Reprogramar',
+                              type: AppButtonType.secondary,
+                              onPressed: () => _reprogramar(reserva),
+                              icon: const Icon(Icons.edit_calendar),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          if (acciones.puedeRechazar) ...[
+                            AppButton(
+                              text: 'Rechazar',
+                              type: AppButtonType.text,
+                              onPressed: () => _cambiarEstado('rechazada'),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          if (acciones.puedeCancelar)
+                            AppButton(
+                              text: context.l10n.chatCancelAppointment,
+                              type: AppButtonType.text,
+                              onPressed: () =>
+                                  _cancelar(isMecanico: isMecanico),
+                            ),
                         ],
                       ],
                     ),
@@ -455,7 +506,10 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
 
   AppStatusType _statusTypeDe(String estado) => switch (estado) {
     'confirmada' => AppStatusType.success,
-    'rechazada' => AppStatusType.error,
+    'rechazada' ||
+    'cancelada' ||
+    'cancelada_por_propietario' ||
+    'cancelada_por_taller' => AppStatusType.error,
     'cotizada' => AppStatusType.info,
     _ => AppStatusType.warning,
   };

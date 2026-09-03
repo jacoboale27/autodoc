@@ -694,7 +694,46 @@ service cloud.firestore {
           (resource.data.id_propietario == request.auth.uid ||
            resource.data.id_mecanico == request.auth.uid) &&
           request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['estado', 'fecha_hora_confirmada', 'fecha_hora_propuesta'])
+            .hasOnly(['estado', 'fecha_hora_confirmada', 'fecha_hora_propuesta', 'id_proponente']) &&
+          (
+            (
+              // Reprogramar: mueve fecha_hora_propuesta y vuelve a
+              // 'pendiente'. Se detecta por fecha_hora_propuesta, no por
+              // 'estado' en affectedKeys() — si la reserva ya estaba
+              // 'pendiente', reescribir el mismo valor no cuenta como campo
+              // afectado en diff(), y el chequeo de transición de abajo
+              // quedaría bypaseado por completo (permitía reprogramar sin
+              // id_proponente propio).
+              'fecha_hora_propuesta' in request.resource.data.diff(resource.data).affectedKeys() &&
+              request.resource.data.estado == 'pendiente' &&
+              request.resource.data.id_proponente == request.auth.uid
+            ) ||
+            (
+              !('fecha_hora_propuesta' in request.resource.data.diff(resource.data).affectedKeys()) &&
+              !('id_proponente' in request.resource.data.diff(resource.data).affectedKeys()) &&
+              (
+                !('estado' in request.resource.data.diff(resource.data).affectedKeys()) ||
+                (
+                  request.resource.data.estado in ['confirmada', 'rechazada'] &&
+                  request.auth.uid != resource.data.get('id_proponente', resource.data.id_propietario)
+                ) ||
+                (
+                  request.resource.data.estado == 'cancelada_por_propietario' &&
+                  request.auth.uid == resource.data.id_propietario
+                ) ||
+                (
+                  request.resource.data.estado == 'cancelada_por_taller' &&
+                  request.auth.uid == resource.data.id_mecanico
+                ) ||
+                (
+                  request.resource.data.estado == 'cancelada'
+                ) ||
+                (
+                  request.resource.data.estado in ['completada', 'cotizada']
+                )
+              )
+            )
+          )
         )
       );
     }

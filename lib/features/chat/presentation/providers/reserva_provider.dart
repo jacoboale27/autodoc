@@ -82,9 +82,17 @@ class ReservaProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> reprogramarReserva(String reservaId, DateTime nuevaFecha) async {
+  Future<bool> reprogramarReserva(
+    String reservaId,
+    DateTime nuevaFecha, {
+    required String idProponente,
+  }) async {
     try {
-      await _reservaRepository.reprogramarReserva(reservaId, nuevaFecha);
+      await _reservaRepository.reprogramarReserva(
+        reservaId,
+        nuevaFecha,
+        idProponente: idProponente,
+      );
       return true;
     } catch (e) {
       _error = e.toString();

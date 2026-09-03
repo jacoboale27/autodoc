@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:autodoc/core/constants/divipola_sv.dart';
 import 'package:autodoc/core/constants/especialidades_taller.dart';
+import 'package:autodoc/l10n/app_localizations.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
@@ -43,63 +45,6 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
   bool _isSaving = false;
   bool _isLocating = false;
 
-  static const Map<String, List<String>> _elSalvadorDivipola = {
-    'San Salvador': [
-      'San Salvador',
-      'Soyapango',
-      'Mejicanos',
-      'Ilopango',
-      'Apopa',
-      'Ciudad Delgado',
-      'San Martín',
-      'Tonacatepeque',
-      'Cuscatancingo',
-    ],
-    'La Libertad': [
-      'Santa Tecla',
-      'Antiguo Cuscatlán',
-      'Colón',
-      'San Juan Opico',
-      'La Libertad',
-      'Quezaltepeque',
-      'Zaragoza',
-    ],
-    'Santa Ana': [
-      'Santa Ana',
-      'Chalchuapa',
-      'Metapán',
-      'Coatepeque',
-      'San Sebastián Salitrillo',
-    ],
-    'San Miguel': ['San Miguel', 'El Tránsito', 'Ciudad Barrios', 'Chinameca'],
-    'Sonsonate': [
-      'Sonsonate',
-      'Izalco',
-      'Acajutla',
-      'Nahuizalco',
-      'Juayúa',
-      'Armenia',
-    ],
-    'La Paz': [
-      'Zacatecoluca',
-      'Olocuilta',
-      'San Luis Talpa',
-      'Santiago Nonualco',
-    ],
-    'Ahuachapán': [
-      'Ahuachapán',
-      'Atiquizaya',
-      'San Francisco Menéndez',
-      'Tacuba',
-    ],
-    'Usulután': [
-      'Usulután',
-      'Jiquilisco',
-      'Santiago de María',
-      'Puerto El Triunfo',
-    ],
-  };
-
   String _formatPhoneNumber(String input) {
     String digits = input.replaceAll(RegExp(r'\D'), '');
     if (digits.startsWith('503') && digits.length > 8) {
@@ -133,17 +78,18 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
 
     // Limpieza de datos antiguos e inconsistentes de geografía (como Colombia)
     _selectedDept = user?.departamento;
-    if (_selectedDept != null &&
-        !_elSalvadorDivipola.containsKey(_selectedDept)) {
+    if (_selectedDept != null && !divipolaSv.containsKey(_selectedDept)) {
       _selectedDept = null;
     }
 
     _selectedMuni = user?.municipio ?? user?.ubicacionMunicipio;
-    if (_selectedMuni != null &&
-        (_selectedDept == null ||
-            !_elSalvadorDivipola[_selectedDept]!.contains(_selectedMuni))) {
+    if (_selectedDept == null) {
       _selectedMuni = null;
     }
+    // Nota (Tarea B3): Si el municipio guardado no pertenece a la nueva
+    // división de 44 municipios de la reforma 2023, NO lo forzamos a null.
+    // Dejarlo permite que el taller edite otros campos sin reabrir su
+    // verificación administrativa. La UI mostrará un aviso no bloqueante.
 
     _latitude = user?.latitud;
     _longitude = user?.longitud;
@@ -241,7 +187,7 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                   specialtyController: _specialtyController,
                   selectedDept: _selectedDept,
                   selectedMuni: _selectedMuni,
-                  divipola: _elSalvadorDivipola,
+                  divipola: divipolaSv,
                   colors: colors,
                   onSpecialtyChanged: (val) {
                     setState(() => _specialtyController.text = val ?? '');
@@ -453,9 +399,15 @@ class _InfoPublicaSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final municipios = selectedDept == null
         ? const <String>[]
         : (divipola[selectedDept] ?? const <String>[]);
+
+    final esMuniHuerfano = selectedDept != null &&
+        selectedMuni != null &&
+        selectedMuni!.isNotEmpty &&
+        !municipios.contains(selectedMuni);
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.base),
@@ -525,6 +477,34 @@ class _InfoPublicaSection extends StatelessWidget {
               ),
             ],
           ),
+          if (esMuniHuerfano && l10n != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: colors.warning.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(
+                  color: colors.warning.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline, size: 20, color: colors.warning),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: Text(
+                      l10n.workshopMunicipioHuerfanoAviso(selectedMuni!),
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.sm),
           AppTextField(
             label: 'Teléfono de Contacto (opcional)',
@@ -728,6 +708,7 @@ class _DropdownField extends StatelessWidget {
         const SizedBox(height: AppSpacing.sm),
         DropdownButtonFormField<String>(
           initialValue: items.contains(value) ? value : null,
+          menuMaxHeight: 300,
           isExpanded: true,
           items: items.map((item) {
             return DropdownMenuItem<String>(

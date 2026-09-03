@@ -133,6 +133,7 @@ class AppSeverity {
     required String confirmadaLabel,
     required String rechazadaLabel,
     required String cotizadaLabel,
+    String? canceladaLabel,
   }) => switch (estado) {
     'confirmada' || 'aceptada' => AppSeverityStyle(
       color: colors.success,
@@ -143,6 +144,13 @@ class AppSeverity {
       color: colors.error,
       icon: Icons.cancel_rounded,
       label: rechazadaLabel,
+    ),
+    'cancelada' ||
+    'cancelada_por_propietario' ||
+    'cancelada_por_taller' => AppSeverityStyle(
+      color: colors.error,
+      icon: Icons.event_busy_rounded,
+      label: canceladaLabel ?? rechazadaLabel,
     ),
     'cotizada' || 'finalizada' => AppSeverityStyle(
       color: colors.primary,

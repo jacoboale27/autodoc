@@ -3,6 +3,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:autodoc/l10n/app_localizations.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
@@ -296,6 +297,8 @@ Future<void> pumpMechanicScreen(
       child: MaterialApp.router(
         theme: brightness == Brightness.dark ? AppTheme.dark : AppTheme.light,
         routerConfig: router,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(
             context,

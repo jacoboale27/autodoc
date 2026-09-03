@@ -681,5 +681,17 @@
   "upDeleteAccount": "Eliminar cuenta",
   "topNavThemeTooltip": "Cambiar tema",
   "topNavLanguageTooltip": "Cambiar idioma",
-  "topNavAccountTooltip": "Tu cuenta"
+  "topNavAccountTooltip": "Tu cuenta",
+  "workshopMunicipioHuerfanoAviso": "Tu municipio guardado (\"{municipio}\") no pertenece a la división de 44 municipios de la reforma de 2023. Si decides actualizarlo, tu perfil volverá a revisión administrativa.",
+  "@workshopMunicipioHuerfanoAviso": {
+    "description": "Aviso mostrado cuando el municipio guardado de un taller no pertenece a la división de 44 municipios de la reforma de 2023",
+    "placeholders": {
+      "municipio": {
+        "type": "String"
+      }
+    }
+  },
+  "chatCancelAppointment": "Cancelar Cita",
+  "chatConfirmCancelAppointment": "¿Seguro que quieres cancelar esta cita? Se registrará que la cancelaste tú.",
+  "chatCancelledStatus": "Cancelada"
 }

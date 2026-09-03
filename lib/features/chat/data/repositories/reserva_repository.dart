@@ -45,12 +45,17 @@ class ReservaRepository {
   }
 
   // Reprogramar: propone una nueva fecha/hora y vuelve a dejarla pendiente
-  Future<void> reprogramarReserva(String reservaId, DateTime nuevaFecha) async {
+  Future<void> reprogramarReserva(
+    String reservaId,
+    DateTime nuevaFecha, {
+    required String idProponente,
+  }) async {
     await _firestore
         .collection(FirestoreCollections.reservas)
         .doc(reservaId)
         .update({
           'fecha_hora_propuesta': Timestamp.fromDate(nuevaFecha),
+          'id_proponente': idProponente,
           'estado': 'pendiente',
         });
   }

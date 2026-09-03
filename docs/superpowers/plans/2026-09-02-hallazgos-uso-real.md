@@ -174,37 +174,37 @@ comparten la fuente.
 
 ### Tarea B1 — Extraer y completar la fuente de datos
 
-- [ ] Test puro: `divipolaSv` tiene exactamente 14 claves; la suma de municipios es 44; ningún
+- [x] Test puro: `divipolaSv` tiene exactamente 14 claves; la suma de municipios es 44; ningún
       municipio aparece en dos departamentos.
-- [ ] Crear `lib/core/constants/divipola_sv.dart` con la estructura completa. Documentar en el
+- [x] Crear `lib/core/constants/divipola_sv.dart` con la estructura completa. Documentar en el
       encabezado la fuente y la fecha del esquema (reforma 2023), igual que hace
       `especialidades_taller.dart` con su propio racional.
-- [ ] Borrar `_elSalvadorDivipola` de `workshop_settings_screen.dart` y consumir la constante nueva.
-- [ ] `flutter test` verde.
+- [x] Borrar `_elSalvadorDivipola` de `workshop_settings_screen.dart` y consumir la constante nueva.
+- [x] `flutter test` verde.
 
 ### Tarea B2 — Verificar si además había un problema de altura
 
 Con 14 y 44 en vez de 8 y 9, hay que confirmar que el síntoma reportado no era *también* un
 problema de scroll.
 
-- [ ] Test de widget con la lista completa a 1440×900: los 14 departamentos son alcanzables.
-- [ ] Si el menú se corta, añadir `menuMaxHeight` a `_DropdownField`
+- [x] Test de widget con la lista completa a 1440×900: los 14 departamentos son alcanzables.
+- [x] Si el menú se corta, añadir `menuMaxHeight` a `_DropdownField`
       (`workshop_settings_screen.dart:729`). **Si no se corta, no añadir nada** y anotarlo en el
       registro de ejecución: era solo el dato faltante.
-- [ ] `flutter test` verde.
+- [x] `flutter test` verde.
 
 ### Tarea B3 — Talleres con municipio huérfano
 
 Un taller aprobado guardado con un municipio que no está en la lista nueva verá el dropdown vacío,
 y al re-elegir dispara `reabrirVerificacion` (`municipio` está en `CAMPOS_DE_IDENTIDAD`).
 
-- [ ] Test: `_DropdownField` con un `value` fuera de `items` no revienta y no fuerza `null`.
+- [x] Test: `_DropdownField` con un `value` fuera de `items` no revienta y no fuerza `null`.
       (`initialValue: items.contains(value) ? value : null` ya parece cubrirlo — confirmarlo con un
       test en vez de asumirlo.)
-- [ ] Mostrar un aviso no bloqueante cuando el municipio guardado no está en la lista nueva: "tu
+- [x] Mostrar un aviso no bloqueante cuando el municipio guardado no está en la lista nueva: "tu
       municipio cambió de nombre con la reforma de 2023; al actualizarlo, tu perfil volverá a
       revisión". Explícito, no sorpresa.
-- [ ] Anotar cuántos talleres quedan en este estado (consulta puntual, no automatización).
+- [x] Anotar cuántos talleres quedan en este estado (consulta puntual, no automatización).
 
 **Éxito:** los 14 departamentos y sus 44 municipios están disponibles en móvil y desktop, desde una
 única fuente compartida, y nadie reabre su expediente sin saberlo.
@@ -238,13 +238,13 @@ no-show, que para el taller es peor que una cancelación con aviso. Lo que se a�
 `ReservaModel` no guarda quién propuso. Sin ese dato la invariante no es computable, y
 `reprogramarReserva` (que devuelve el estado a `pendiente`) **invierte** a quién le toca resolver.
 
-- [ ] Test de modelo: `fromMap`/`toMap` conservan `id_proponente`; un documento legado sin el campo
+- [x] Test de modelo: `fromMap`/`toMap` conservan `id_proponente`; un documento legado sin el campo
       cae en `idPropietario` (comportamiento previo, no rompe nada existente).
-- [ ] Añadir `idProponente` a `ReservaModel`.
-- [ ] `ReservaRepository.reprogramarReserva` debe escribir `id_proponente = quien reprograma` junto
+- [x] Añadir `idProponente` a `ReservaModel`.
+- [x] `ReservaRepository.reprogramarReserva` debe escribir `id_proponente = quien reprograma` junto
       a la fecha y el estado. **Este es el punto que hace que la reprogramación funcione:** si el
       mecánico reprograma, pasa a ser el proponente y le toca al propietario aceptar.
-- [ ] `flutter test` verde.
+- [x] `flutter test` verde.
 
 ### Tarea C2 — Regla de Firestore: transiciones, no solo campos
 
@@ -252,29 +252,38 @@ no-show, que para el taller es peor que una cancelación con aviso. Lo que se a�
 de los dos puede escribir `estado: 'confirmada'` desde un cliente modificado. Arreglar solo la UI no
 arregla nada.
 
-- [ ] En `test_rules/`, tests que fallen: (a) el proponente no puede pasar su propia reserva a
+- [x] En `test_rules/`, tests que fallen: (a) el proponente no puede pasar su propia reserva a
       `confirmada`; (b) la contraparte sí; (c) ambos pueden pasar a `cancelada_por_*` **con su
       propio sufijo** y no con el del otro; (d) reprogramar exige reescribir `id_proponente` con el
       uid propio.
-- [ ] Extender el `allow update` de `reservas` con esas condiciones. **Añadir `id_proponente` a la
+- [x] Extender el `allow update` de `reservas` con esas condiciones. **Añadir `id_proponente` a la
       lista de `affectedKeys` permitidos** — si no, la reprogramación queda denegada por la propia
-      regla que la protege.
-- [ ] `cd test_rules && npm test` verde.
+      regla que la protege. **Nota de ejecución:** la primera versión de esta regla gateaba la
+      transición de `estado` mirando si `'estado'` aparecía en `diff().affectedKeys()`, pero
+      `diff()` no cuenta un campo como afectado si el valor nuevo es igual al viejo — y reprogramar
+      reescribe `estado: 'pendiente'` sobre una reserva que **ya estaba** `'pendiente'`. Eso dejaba
+      pasar la reprogramación sin exigir `id_proponente` propio, bypaseando toda la regla. El test
+      "reprogramar exige reescribir id_proponente con el uid propio" lo capturó en rojo antes del
+      fix; la regla ahora detecta el flujo de reprogramar por `'fecha_hora_propuesta' in
+      affectedKeys()` en vez de por `estado`.
+- [x] `cd test_rules && npm test` verde (227/227).
 
 ### Tarea C3 — UI coherente en las dos pantallas
 
-- [ ] Test de widget: `ReservaDetailScreen` en estado `pendiente` con el usuario actual como
+- [x] Test de widget: `ReservaDetailScreen` en estado `pendiente` con el usuario actual como
       proponente **no** muestra "Aceptar". Debe fallar hoy.
-- [ ] Aplicar la condición en `reserva_detail_screen.dart:410`, con la misma forma que el chat card.
-- [ ] "Rechazar" y "Reprogramar" también quedan detrás de la condición.
-- [ ] Sustituir el estado plano `cancelada` por `cancelada_por_propietario` / `cancelada_por_taller`.
-      Mapear ambos en `_statusTypeDe` de **las dos** pantallas (el comentario de
-      `reserva_detail_screen.dart:261` ya advierte de mantenerlas sincronizadas).
-- [ ] **Extraer la decisión** ("¿qué botones ve este uid en este estado?") a una función pura en
-      `lib/core/utils/`, consumida por ambas pantallas. Es la única forma de que no se vuelvan a
-      desincronizar — que es la causa raíz de este hallazgo.
-- [ ] Textos a los `.arb`.
-- [ ] `flutter test` verde.
+- [x] Aplicar la condición en `reserva_detail_screen.dart:410`, con la misma forma que el chat card.
+- [x] "Rechazar" y "Reprogramar" también quedan detrás de la condición.
+- [x] Añadir el estado `cancelada_por_propietario` / `cancelada_por_taller` con rastro de autor (vía
+      `estadoCancelacionSegunRol`), consumido por el nuevo botón "Cancelar" en ambas pantallas.
+      Mapeados en `_statusTypeDe` de **las dos** pantallas junto al `cancelada` plano preexistente,
+      que se conserva por compatibilidad con datos/tests legados en vez de eliminarse (no había
+      necesidad funcional de borrarlo: nada en la app lo vuelve a escribir).
+- [x] **Extraer la decisión** ("¿qué botones ve este uid en este estado?") a una función pura en
+      `lib/core/utils/reserva_acciones.dart`, consumida por ambas pantallas.
+- [x] Textos a los `.arb` (`chatCancelAppointment`, `chatConfirmCancelAppointment`,
+      `chatCancelledStatus`).
+- [x] `flutter test` verde (998/998).
 
 **Éxito:** nadie resuelve su propia propuesta desde ninguna de las dos pantallas **ni desde un
 cliente modificado**, y el motivo de cancelación queda registrado con autor.

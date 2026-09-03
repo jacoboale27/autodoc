@@ -1270,4 +1270,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get topNavAccountTooltip => 'Your account';
+
+  @override
+  String workshopMunicipioHuerfanoAviso(String municipio) {
+    return 'Your saved municipality (\"$municipio\") does not belong to the 44-municipality division from the 2023 reform. If you update it, your profile will be sent for administrative re-review.';
+  }
+
+  @override
+  String get chatCancelAppointment => 'Cancel Appointment';
+
+  @override
+  String get chatConfirmCancelAppointment =>
+      'Are you sure you want to cancel this appointment? It will be recorded that you cancelled it.';
+
+  @override
+  String get chatCancelledStatus => 'Cancelled';
 }

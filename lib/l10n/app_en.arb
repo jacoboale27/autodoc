@@ -684,5 +684,17 @@
   "upDeleteAccount": "Delete account",
   "topNavThemeTooltip": "Toggle theme",
   "topNavLanguageTooltip": "Change language",
-  "topNavAccountTooltip": "Your account"
+  "topNavAccountTooltip": "Your account",
+  "workshopMunicipioHuerfanoAviso": "Your saved municipality (\"{municipio}\") does not belong to the 44-municipality division from the 2023 reform. If you update it, your profile will be sent for administrative re-review.",
+  "@workshopMunicipioHuerfanoAviso": {
+    "description": "Notice shown when a workshop's saved municipality does not belong to the 44-municipality division under the 2023 reform",
+    "placeholders": {
+      "municipio": {
+        "type": "String"
+      }
+    }
+  },
+  "chatCancelAppointment": "Cancel Appointment",
+  "chatConfirmCancelAppointment": "Are you sure you want to cancel this appointment? It will be recorded that you cancelled it.",
+  "chatCancelledStatus": "Cancelled"
 }

@@ -2425,6 +2425,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your account'**
   String get topNavAccountTooltip;
+
+  /// Notice shown when a workshop's saved municipality does not belong to the 44-municipality division under the 2023 reform
+  ///
+  /// In en, this message translates to:
+  /// **'Your saved municipality (\"{municipio}\") does not belong to the 44-municipality division from the 2023 reform. If you update it, your profile will be sent for administrative re-review.'**
+  String workshopMunicipioHuerfanoAviso(String municipio);
+
+  /// No description provided for @chatCancelAppointment.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel Appointment'**
+  String get chatCancelAppointment;
+
+  /// No description provided for @chatConfirmCancelAppointment.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to cancel this appointment? It will be recorded that you cancelled it.'**
+  String get chatConfirmCancelAppointment;
+
+  /// No description provided for @chatCancelledStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get chatCancelledStatus;
 }
 
 class _AppLocalizationsDelegate

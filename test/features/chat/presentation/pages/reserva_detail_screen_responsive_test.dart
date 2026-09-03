@@ -16,6 +16,10 @@ Future<FakeFirebaseFirestore> _conReserva({String estado = 'pendiente'}) async {
     'id_mecanico': 'm1',
     'id_vehiculo': 'v1',
     'id_taller': 'm1',
+    // Propuesta por el mecánico: el usuario de prueba (propietario 'u1') no
+    // es el proponente, así que sí ve los botones de acción (invariante del
+    // hallazgo #4: quien propone no resuelve).
+    'id_proponente': 'm1',
     'fecha_hora_propuesta': DateTime(2026, 8, 20, 10, 30),
     'tipo_servicio': 'Cambio de aceite y filtros',
     'estado': estado,
@@ -74,7 +78,7 @@ void main() {
     }
   });
 
-  testWidgets('los tres botones de acción son AppButton', (tester) async {
+  testWidgets('los cuatro botones de acción son AppButton', (tester) async {
     final db = await _conReserva();
     await pumpChatWidget(
       tester,
@@ -83,8 +87,8 @@ void main() {
       user: fakeChatUser(),
     );
     await tester.pumpAndSettle();
-    // Aceptar cita / Reprogramar / Rechazar
-    expect(find.byType(AppButton), findsNWidgets(3));
+    // Aceptar cita / Reprogramar / Rechazar / Cancelar
+    expect(find.byType(AppButton), findsNWidgets(4));
     expect(find.byType(ElevatedButton), findsNothing);
     expect(find.byType(OutlinedButton), findsNothing);
   });

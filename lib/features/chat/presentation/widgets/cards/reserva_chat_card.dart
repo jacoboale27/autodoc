@@ -11,6 +11,7 @@ import 'package:autodoc/features/chat/presentation/widgets/chat_card_shell.dart'
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/utils/role_utils.dart';
 import 'package:autodoc/core/utils/mechanic_profile_utils.dart';
+import 'package:autodoc/core/utils/reserva_acciones.dart';
 import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cotizacion_picker.dart';
 import 'package:go_router/go_router.dart';
@@ -164,9 +165,9 @@ class ReservaChatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final isMecanico = isMechanicRole(
-      context.watch<UserProfileProvider>().userData?.rol,
-    );
+    final currentUser = context.watch<UserProfileProvider>().userData;
+    final isMecanico = isMechanicRole(currentUser?.rol);
+    final currentUserId = currentUser?.idUsuario ?? '';
 
     final String? reservaId = metadata['id_reserva'] as String?;
     final String fechaRaw = metadata['fecha'] ?? '';
@@ -187,6 +188,18 @@ class ReservaChatCard extends StatelessWidget {
       confirmadaLabel: 'Confirmada',
       rechazadaLabel: 'Rechazada',
       cotizadaLabel: 'Cotización Enviada',
+      canceladaLabel: context.l10n.chatCancelledStatus,
+    );
+
+    // `isMe` es quien envió este mensaje de reserva, que es exactamente
+    // quien propuso esta fecha: se traduce al mismo invariante que usa
+    // ReservaDetailScreen (quien propone no resuelve) sin necesitar el uid
+    // real de la contraparte, que este widget no recibe.
+    final acciones = calcularAccionesReserva(
+      estado: estado,
+      idProponente: isMe ? currentUserId : '__contraparte__',
+      currentUserId: currentUserId,
+      isMecanico: isMecanico,
     );
 
     return ChatCardShell(
@@ -231,9 +244,9 @@ class ReservaChatCard extends StatelessWidget {
               ),
             ],
           ),
-          if (estado == 'pendiente' && !isMe) ...[
+          if (acciones.tieneAcciones) ...[
             const SizedBox(height: 12),
-            if (isMecanico) ...[
+            if (acciones.puedeCotizarYAceptar) ...[
               // El mecánico solo puede "aceptar" enviando una cotización
               // para la misma fecha propuesta por el cliente: se deniega a
               // propósito un "aceptar sin precio" para que el cliente nunca
@@ -310,7 +323,10 @@ class ReservaChatCard extends StatelessWidget {
 
   AppStatusType _statusTypeDe(String estado) => switch (estado) {
     'confirmada' || 'aceptada' => AppStatusType.success,
-    'rechazada' => AppStatusType.error,
+    'rechazada' ||
+    'cancelada' ||
+    'cancelada_por_propietario' ||
+    'cancelada_por_taller' => AppStatusType.error,
     'cotizada' || 'finalizada' => AppStatusType.info,
     _ => AppStatusType.warning,
   };

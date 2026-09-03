@@ -1278,4 +1278,19 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get topNavAccountTooltip => 'Tu cuenta';
+
+  @override
+  String workshopMunicipioHuerfanoAviso(String municipio) {
+    return 'Tu municipio guardado (\"$municipio\") no pertenece a la división de 44 municipios de la reforma de 2023. Si decides actualizarlo, tu perfil volverá a revisión administrativa.';
+  }
+
+  @override
+  String get chatCancelAppointment => 'Cancelar Cita';
+
+  @override
+  String get chatConfirmCancelAppointment =>
+      '¿Seguro que quieres cancelar esta cita? Se registrará que la cancelaste tú.';
+
+  @override
+  String get chatCancelledStatus => 'Cancelada';
 }
