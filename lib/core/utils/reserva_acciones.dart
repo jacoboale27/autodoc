@@ -47,16 +47,12 @@ ReservaAccionesDisponibles calcularAccionesReserva({
     } else {
       // El proponente no puede resolver su propia propuesta, pero sí puede
       // cancelar con aviso si ya no puede asistir o cometió un error.
-      return const ReservaAccionesDisponibles(
-        puedeCancelar: true,
-      );
+      return const ReservaAccionesDisponibles(puedeCancelar: true);
     }
   }
 
   if (estado == 'confirmada') {
-    return const ReservaAccionesDisponibles(
-      puedeCancelar: true,
-    );
+    return const ReservaAccionesDisponibles(puedeCancelar: true);
   }
 
   // Estados terminales ('rechazada', 'completada', 'cancelada', 'cancelada_por_*')

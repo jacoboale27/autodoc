@@ -7,11 +7,7 @@
 /// agrupan a los 262 distritos históricos. Se utiliza de manera transversal
 /// en el perfil del taller, búsqueda y filtros.
 const Map<String, List<String>> divipolaSv = {
-  'Ahuachapán': [
-    'Ahuachapán Norte',
-    'Ahuachapán Centro',
-    'Ahuachapán Sur',
-  ],
+  'Ahuachapán': ['Ahuachapán Norte', 'Ahuachapán Centro', 'Ahuachapán Sur'],
   'Santa Ana': [
     'Santa Ana Norte',
     'Santa Ana Centro',
@@ -44,39 +40,12 @@ const Map<String, List<String>> divipolaSv = {
     'San Salvador Centro',
     'San Salvador Sur',
   ],
-  'Cuscatlán': [
-    'Cuscatlán Norte',
-    'Cuscatlán Sur',
-  ],
-  'La Paz': [
-    'La Paz Oeste',
-    'La Paz Centro',
-    'La Paz Este',
-  ],
-  'Cabañas': [
-    'Cabañas Este',
-    'Cabañas Oeste',
-  ],
-  'San Vicente': [
-    'San Vicente Norte',
-    'San Vicente Sur',
-  ],
-  'Usulután': [
-    'Usulután Norte',
-    'Usulután Este',
-    'Usulután Oeste',
-  ],
-  'San Miguel': [
-    'San Miguel Norte',
-    'San Miguel Centro',
-    'San Miguel Oeste',
-  ],
-  'Morazán': [
-    'Morazán Norte',
-    'Morazán Sur',
-  ],
-  'La Unión': [
-    'La Unión Norte',
-    'La Unión Sur',
-  ],
+  'Cuscatlán': ['Cuscatlán Norte', 'Cuscatlán Sur'],
+  'La Paz': ['La Paz Oeste', 'La Paz Centro', 'La Paz Este'],
+  'Cabañas': ['Cabañas Este', 'Cabañas Oeste'],
+  'San Vicente': ['San Vicente Norte', 'San Vicente Sur'],
+  'Usulután': ['Usulután Norte', 'Usulután Este', 'Usulután Oeste'],
+  'San Miguel': ['San Miguel Norte', 'San Miguel Centro', 'San Miguel Oeste'],
+  'Morazán': ['Morazán Norte', 'Morazán Sur'],
+  'La Unión': ['La Unión Norte', 'La Unión Sur'],
 };

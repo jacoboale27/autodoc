@@ -404,7 +404,8 @@ class _InfoPublicaSection extends StatelessWidget {
         ? const <String>[]
         : (divipola[selectedDept] ?? const <String>[]);
 
-    final esMuniHuerfano = selectedDept != null &&
+    final esMuniHuerfano =
+        selectedDept != null &&
         selectedMuni != null &&
         selectedMuni!.isNotEmpty &&
         !municipios.contains(selectedMuni);

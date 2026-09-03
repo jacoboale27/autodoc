@@ -22,7 +22,8 @@ void main() {
           expect(
             vistos.contains(municipio),
             isFalse,
-            reason: 'El municipio "$municipio" está repetido en el departamento "${entry.key}"',
+            reason:
+                'El municipio "$municipio" está repetido en el departamento "${entry.key}"',
           );
           vistos.add(municipio);
         }

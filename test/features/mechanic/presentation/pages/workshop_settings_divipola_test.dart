@@ -46,86 +46,89 @@ void main() {
       }
     });
 
-    testWidgets('seleccionar un departamento actualiza los municipios correspondientes', (
-      tester,
-    ) async {
-      await pumpMechanicScreen(
-        tester,
-        const WorkshopSettingsScreen(),
-        width: 1440,
-        location: '/workshop_settings',
-        disableAnimations: true,
-      );
-      await tester.pumpAndSettle();
-
-      // Seleccionar San Salvador
-      final deptDropdown = find.byType(DropdownButtonFormField<String>).at(1);
-      await tester.tap(deptDropdown);
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('San Salvador').last);
-      await tester.pumpAndSettle();
-
-      // Abrir el dropdown de Municipio (el tercer dropdown)
-      final muniDropdown = find.byType(DropdownButtonFormField<String>).at(2);
-      await tester.tap(muniDropdown);
-      await tester.pumpAndSettle();
-
-      // Verificar los 5 municipios de San Salvador según reforma 2023
-      final expectedMunis = divipolaSv['San Salvador']!;
-      for (final muni in expectedMunis) {
-        expect(
-          find.text(muni).hitTestable(),
-          findsWidgets,
-          reason: 'Municipio $muni de San Salvador debe estar disponible',
+    testWidgets(
+      'seleccionar un departamento actualiza los municipios correspondientes',
+      (tester) async {
+        await pumpMechanicScreen(
+          tester,
+          const WorkshopSettingsScreen(),
+          width: 1440,
+          location: '/workshop_settings',
+          disableAnimations: true,
         );
-      }
-    });
+        await tester.pumpAndSettle();
 
-    testWidgets('municipio huérfano (pre-reforma) no rompe el dropdown y muestra aviso no bloqueante', (
-      tester,
-    ) async {
-      // Usuario con San Salvador y "Soyapango" (distrito pre-reforma 2023)
-      final userConMuniAntiguo = UserModel(
-        idUsuario: 'taller-123',
-        nombreCompleto: 'Taller San Salvador',
-        correo: 'taller@ejemplo.com',
-        rol: 'Mecanico',
-        departamento: 'San Salvador',
-        municipio: 'Soyapango',
-        ubicacionMunicipio: 'Soyapango',
-        especialidad: 'Mecánica General',
-        telefono: '7788-9900',
-        latitud: 13.69,
-        longitud: -89.19,
-        fechaRegistro: DateTime(2026, 1, 1),
-      );
+        // Seleccionar San Salvador
+        final deptDropdown = find.byType(DropdownButtonFormField<String>).at(1);
+        await tester.tap(deptDropdown);
+        await tester.pumpAndSettle();
 
-      await pumpMechanicScreen(
-        tester,
-        const WorkshopSettingsScreen(),
-        user: userConMuniAntiguo,
-        width: 1440,
-        location: '/workshop_settings',
-        disableAnimations: true,
-      );
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('San Salvador').last);
+        await tester.pumpAndSettle();
 
-      // Debe mostrar el aviso no bloqueante sobre la reforma de 2023
-      expect(
-        find.textContaining('Soyapango'),
-        findsOneWidget,
-        reason: 'El aviso debe mencionar el municipio huérfano guardado',
-      );
-      expect(
-        find.textContaining('2023'),
-        findsOneWidget,
-        reason: 'El aviso debe explicar que se debe a la reforma territorial de 2023',
-      );
+        // Abrir el dropdown de Municipio (el tercer dropdown)
+        final muniDropdown = find.byType(DropdownButtonFormField<String>).at(2);
+        await tester.tap(muniDropdown);
+        await tester.pumpAndSettle();
 
-      // El dropdown de municipio no debe crashear
-      final muniDropdown = find.byType(DropdownButtonFormField<String>).at(2);
-      expect(muniDropdown, findsOneWidget);
-    });
+        // Verificar los 5 municipios de San Salvador según reforma 2023
+        final expectedMunis = divipolaSv['San Salvador']!;
+        for (final muni in expectedMunis) {
+          expect(
+            find.text(muni).hitTestable(),
+            findsWidgets,
+            reason: 'Municipio $muni de San Salvador debe estar disponible',
+          );
+        }
+      },
+    );
+
+    testWidgets(
+      'municipio huérfano (pre-reforma) no rompe el dropdown y muestra aviso no bloqueante',
+      (tester) async {
+        // Usuario con San Salvador y "Soyapango" (distrito pre-reforma 2023)
+        final userConMuniAntiguo = UserModel(
+          idUsuario: 'taller-123',
+          nombreCompleto: 'Taller San Salvador',
+          correo: 'taller@ejemplo.com',
+          rol: 'Mecanico',
+          departamento: 'San Salvador',
+          municipio: 'Soyapango',
+          ubicacionMunicipio: 'Soyapango',
+          especialidad: 'Mecánica General',
+          telefono: '7788-9900',
+          latitud: 13.69,
+          longitud: -89.19,
+          fechaRegistro: DateTime(2026, 1, 1),
+        );
+
+        await pumpMechanicScreen(
+          tester,
+          const WorkshopSettingsScreen(),
+          user: userConMuniAntiguo,
+          width: 1440,
+          location: '/workshop_settings',
+          disableAnimations: true,
+        );
+        await tester.pumpAndSettle();
+
+        // Debe mostrar el aviso no bloqueante sobre la reforma de 2023
+        expect(
+          find.textContaining('Soyapango'),
+          findsOneWidget,
+          reason: 'El aviso debe mencionar el municipio huérfano guardado',
+        );
+        expect(
+          find.textContaining('2023'),
+          findsOneWidget,
+          reason:
+              'El aviso debe explicar que se debe a la reforma territorial de 2023',
+        );
+
+        // El dropdown de municipio no debe crashear
+        final muniDropdown = find.byType(DropdownButtonFormField<String>).at(2);
+        expect(muniDropdown, findsOneWidget);
+      },
+    );
   });
 }
