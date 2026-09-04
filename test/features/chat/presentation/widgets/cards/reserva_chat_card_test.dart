@@ -244,6 +244,67 @@ void main() {
     );
   });
 
+  testWidgets(
+    'la tarjeta dice "te propusieron" cuando la reserva pendiente la propuso la contraparte',
+    (tester) async {
+      await pumpChatWidget(
+        tester,
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: ChatBubble(
+            isMe: false,
+            child: ReservaChatCard(
+              metadata: {
+                'id_reserva': 'r1',
+                'estado': 'pendiente',
+                'fecha': '2026-08-20T10:00:00.000',
+                'hora': '10:00 AM',
+              },
+              isMe: false,
+              mensajeId: 'm1',
+              conversacionId: 'c1',
+            ),
+          ),
+        ),
+        width: 375,
+      );
+      expect(find.text('Te propusieron esta fecha'), findsOneWidget);
+      expect(find.text('Aceptar'), findsOneWidget); // correcto, no es un bug
+    },
+  );
+
+  testWidgets(
+    'la tarjeta dice "propusiste" y no ofrece Aceptar cuando la reserva pendiente la propuso el propio usuario',
+    (tester) async {
+      await pumpChatWidget(
+        tester,
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: ChatBubble(
+            isMe: true,
+            child: ReservaChatCard(
+              metadata: {
+                'id_reserva': 'r1',
+                'estado': 'pendiente',
+                'fecha': '2026-08-20T10:00:00.000',
+                'hora': '10:00 AM',
+              },
+              isMe: true,
+              mensajeId: 'm1',
+              conversacionId: 'c1',
+            ),
+          ),
+        ),
+        width: 375,
+      );
+      expect(
+        find.text('Propusiste esta fecha — espera respuesta'),
+        findsOneWidget,
+      );
+      expect(find.text('Aceptar'), findsNothing);
+    },
+  );
+
   testWidgets('el estado se pinta con AppStatusBadge', (tester) async {
     await pumpChatWidget(
       tester,

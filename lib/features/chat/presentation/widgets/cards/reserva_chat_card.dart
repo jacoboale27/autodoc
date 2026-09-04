@@ -244,6 +244,19 @@ class ReservaChatCard extends StatelessWidget {
               ),
             ],
           ),
+          // QA reportó como bug de permisos (A1) el ver los botones
+          // aceptar/rechazar siendo cliente. No lo es: el mecánico también
+          // propone fechas y entonces resuelve el cliente. Se hace explícito
+          // para que no vuelva a leerse mal.
+          if (estado == 'pendiente') ...[
+            const SizedBox(height: 8),
+            Text(
+              isMe
+                  ? 'Propusiste esta fecha — espera respuesta'
+                  : 'Te propusieron esta fecha',
+              style: TextStyle(fontSize: 11, color: colors.textSecondary),
+            ),
+          ],
           if (acciones.tieneAcciones) ...[
             const SizedBox(height: 12),
             if (acciones.puedeCotizarYAceptar) ...[
@@ -277,28 +290,37 @@ class ReservaChatCard extends StatelessWidget {
                   ),
                 ],
               ),
-            ] else ...[
+            ] else if (acciones.puedeAceptar || acciones.puedeRechazar) ...[
+              // `tieneAcciones` también es true cuando lo único disponible
+              // es `puedeCancelar` (p.ej. el propio proponente, o el estado
+              // 'confirmada'), y esta tarjeta no tiene un botón de cancelar:
+              // sin este guard se mostraban Aceptar/Rechazar igual, aunque
+              // `calcularAccionesReserva` ya los hubiera negado — justo el
+              // tipo de contradicción con el invariante que A1 casi generó.
               Row(
                 children: [
-                  Expanded(
-                    child: AppButton(
-                      text: context.l10n.chatAccept,
-                      type: AppButtonType.secondary,
-                      onPressed: () => _actualizar(
-                        context,
-                        'confirmada',
-                        fechaConfirmada: DateTime.now(),
+                  if (acciones.puedeAceptar)
+                    Expanded(
+                      child: AppButton(
+                        text: context.l10n.chatAccept,
+                        type: AppButtonType.secondary,
+                        onPressed: () => _actualizar(
+                          context,
+                          'confirmada',
+                          fechaConfirmada: DateTime.now(),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: AppButton(
-                      text: context.l10n.chatReject,
-                      type: AppButtonType.secondary,
-                      onPressed: () => _actualizar(context, 'rechazada'),
+                  if (acciones.puedeAceptar && acciones.puedeRechazar)
+                    const SizedBox(width: 8),
+                  if (acciones.puedeRechazar)
+                    Expanded(
+                      child: AppButton(
+                        text: context.l10n.chatReject,
+                        type: AppButtonType.secondary,
+                        onPressed: () => _actualizar(context, 'rechazada'),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ],
