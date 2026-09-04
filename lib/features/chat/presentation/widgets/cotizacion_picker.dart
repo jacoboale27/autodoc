@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/utils/input_formatters.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
@@ -363,6 +364,7 @@ class _CotizacionPickerState extends State<CotizacionPicker> {
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
+                  inputFormatters: montoInputFormatters,
                   validator: (v) => double.tryParse(v?.trim() ?? '') == null
                       ? 'Inválido'
                       : null,
@@ -384,6 +386,7 @@ class _CotizacionPickerState extends State<CotizacionPicker> {
               ),
             ),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: montoInputFormatters,
             validator: (v) =>
                 double.tryParse(v?.trim() ?? '0') == null ? 'Inválido' : null,
           ),

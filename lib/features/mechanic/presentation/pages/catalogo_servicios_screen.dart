@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/models/catalogo_item_model.dart';
+import 'package:autodoc/core/utils/input_formatters.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
@@ -18,26 +18,6 @@ import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold
 /// agregar y eliminar ítems reutilizables que luego se pueden añadir con un
 /// clic a la lista de materiales de una factura desde
 /// `InitiateServiceScreen` (Task 10).
-/// Formateador de precio que, a diferencia de
-/// `FilteringTextInputFormatter.allow` con un patrón anclado, no borra todo
-/// el campo cuando el candidato completo no matchea (p.ej. al escribir una
-/// letra en medio de un número ya válido): simplemente rechaza el cambio y
-/// conserva el valor anterior.
-class _PrecioInputFormatter extends TextInputFormatter {
-  static final RegExp _valido = RegExp(r'^\d*\.?\d{0,2}$');
-
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    if (_valido.hasMatch(newValue.text)) {
-      return newValue;
-    }
-    return oldValue;
-  }
-}
-
 /// Diálogo "Nuevo ítem del catálogo" como StatefulWidget propio (no un
 /// StatefulBuilder inline): sus TextEditingController deben liberarse en
 /// `State.dispose()`, que el framework llama recién cuando el Element del
@@ -122,7 +102,7 @@ class _NuevoItemDialogState extends State<_NuevoItemDialog> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                inputFormatters: [_PrecioInputFormatter()],
+                inputFormatters: montoInputFormatters,
                 decoration: const InputDecoration(labelText: 'Precio unitario'),
                 validator: (v) {
                   final precio = double.tryParse(v?.trim() ?? '');

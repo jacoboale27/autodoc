@@ -26,6 +26,7 @@ import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_section_header.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/widgets/missing_argument_screen.dart';
+import 'package:autodoc/core/utils/input_formatters.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/service_finalized_screen.dart';
@@ -594,6 +595,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
+                  inputFormatters: montoInputFormatters,
                 ),
                 const SizedBox(height: AppSpacing.xl),
               ],
@@ -608,6 +610,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                 controller: _costoController,
                 readOnly: true,
                 helperText: 'Se calcula sumando materiales y mano de obra',
+                inputFormatters: montoInputFormatters,
               ),
               const SizedBox(height: AppSpacing.xl),
               const AppSectionHeader(
@@ -1146,6 +1149,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
+                inputFormatters: montoInputFormatters,
               ),
             ],
           ),
@@ -1457,6 +1461,7 @@ class _BoxedField extends StatelessWidget {
   final String? suffix;
   final bool readOnly;
   final String? helperText;
+  final List<TextInputFormatter>? inputFormatters;
 
   const _BoxedField({
     required this.icon,
@@ -1466,6 +1471,7 @@ class _BoxedField extends StatelessWidget {
     this.suffix,
     this.readOnly = false,
     this.helperText,
+    this.inputFormatters,
   });
 
   @override
@@ -1477,6 +1483,7 @@ class _BoxedField extends StatelessWidget {
       readOnly: readOnly,
       suffixText: suffix,
       helperText: helperText,
+      inputFormatters: inputFormatters,
       prefixIcon: Icon(icon, color: context.appColors.primary),
     );
   }
