@@ -93,40 +93,53 @@ class FakeUserProfileProvider extends ChangeNotifier
   void clearUserData() {}
 }
 
-/// Doble de `ReparacionProvider` para comprobar que crear el ticket Kanban
-/// de "Reparaciones" (y con él, el push al propietario) es una acción
-/// explícita del taller — el botón "Recibir vehículo" en
-/// `InitiateServiceScreen` — y no un efecto secundario de simplemente cargar
-/// esa pantalla al buscar una placa.
+/// Doble de `ReparacionProvider` para comprobar que marcar el vehículo como
+/// recibido es una acción explícita del taller — el botón "Recibir vehículo"
+/// en `InitiateServiceScreen` — y no un efecto secundario de cargar esa
+/// pantalla al buscar una placa.
 ///
 /// **Implementa** en vez de extender por el mismo motivo que
 /// `FakeUserProfileProvider`: `ReparacionProvider()` real instancia
 /// `ReparacionRepository()`, que a su vez cae en `FirebaseFirestore.instance`
 /// y `FirebaseFunctions.instance` en los inicializadores de sus campos.
 ///
-/// [llamadasIniciar] cuenta las tres vías que escriben el ticket
-/// (`iniciar`/`iniciarOReutilizar`/`iniciarOReutilizarPorVehiculo`) en un
-/// solo contador: cuál de las tres usa la pantalla depende de si el
-/// vehículo trae `id_propietario` (ver
-/// `InitiateServiceScreen._iniciarTicketReparacion`), y a los tests de este
-/// doble solo les importa si se llamó a alguna, no a cuál.
+/// [llamadasIniciar] sigue contando en un solo contador las tres vías que
+/// CREAN el ticket desde el cliente (`iniciar`/`iniciarOReutilizar`/
+/// `iniciarOReutilizarPorVehiculo`). Desde A4b el ticket lo abre la Cloud
+/// Function `onCotizacionAceptada` y ninguna de las tres debe volver a
+/// llamarse desde la pantalla: el contador se queda como red de seguridad de
+/// esa regresión. [llamadasRecibir] cuenta la transición que sí ocurre ahora.
+///
+/// [errorAlRecibir], si se fija, simula el caso que A3/B2 quiere impedir: no
+/// hay ninguna cotización aceptada, así que no hay ticket que recibir.
 class FakeReparacionProvider extends ChangeNotifier
     implements ReparacionProvider {
-  FakeReparacionProvider({this.idReparacion = 'r1'});
+  FakeReparacionProvider({this.idReparacion = 'r1', this.errorAlRecibir});
 
   final String idReparacion;
+  final String? errorAlRecibir;
 
   int llamadasIniciar = 0;
+  int llamadasRecibir = 0;
 
   @override
   List<ReparacionModel> get reparaciones => const [];
   @override
   bool get isLoading => false;
   @override
-  String? get error => null;
+  String? get error => errorAlRecibir;
 
   @override
   void watchTaller(String idTaller) {}
+
+  @override
+  Future<String?> recibirVehiculo({
+    required String idVehiculo,
+    required String idTaller,
+  }) async {
+    llamadasRecibir++;
+    return errorAlRecibir == null ? idReparacion : null;
+  }
 
   @override
   Future<String?> iniciar({

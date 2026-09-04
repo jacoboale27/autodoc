@@ -62,19 +62,20 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   bool _hasApprovedQuote = false;
   CotizacionModel? _approvedQuote;
 
-  /// Id del ticket Kanban de reparación creado al recibir el vehículo
-  /// (Task 4).
+  /// Id del ticket Kanban de reparación una vez que el vehículo se marcó
+  /// como recibido en esta pantalla. El ticket lo crea la Cloud Function
+  /// `onCotizacionAceptada`; aquí solo se resuelve y se transiciona.
   String? _idReparacion;
 
-  /// Si el ticket de reparación no se pudo guardar (red, permisos), se
-  /// muestra un banner con reintento en vez de fallar en silencio: sin esto
-  /// el mecánico podía salir de la pantalla creyendo que el vehículo quedó
-  /// registrado en "Reparaciones" cuando en realidad nunca se guardó nada.
+  /// Si la recepción no se pudo registrar (no hay cotización aceptada, red,
+  /// permisos), se muestra un banner con reintento en vez de fallar en
+  /// silencio: sin esto el mecánico podía salir de la pantalla creyendo que
+  /// el vehículo quedó registrado en "Reparaciones".
   String? _reparacionError;
 
   /// Controla el estado de carga del botón "Recibir vehículo" (independiente
   /// de `_cargando`, que solo cubre la carga inicial del vehículo). Evita
-  /// dobles envíos mientras `_iniciarTicketReparacion` está en vuelo.
+  /// dobles envíos mientras `_recibirVehiculo` está en vuelo.
   bool _recibiendo = false;
 
   bool get _isInvoicePdf =>
@@ -216,23 +217,28 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           }
         });
 
-    // NO se crea el ticket aquí. Hasta 2026-08-28 se creaba al montar la
+    // Aquí no se toca el ticket. Hasta 2026-08-28 se creaba al montar la
     // pantalla, así que teclear una placa en "Buscar Vehículo" ya metía el
     // coche en el kanban Y mandaba un push al propietario ("Tu vehículo ya
-    // está en seguimiento") antes de que el taller confirmara nada. Un error
-    // de tecleo era además irreversible: el tablero solo ofrece "Avanzar".
-    // Ahora lo dispara el botón "Recibir vehículo".
+    // está en seguimiento") antes de que el taller confirmara nada. Desde
+    // A4b ya no lo crea nadie desde el cliente: nace al aceptarse la
+    // cotización, y el botón "Recibir vehículo" solo lo mueve a 'recibido'.
     if (mounted) {
       setState(() => _cargando = false);
     }
   }
 
-  /// Crea (o reutiliza) el ticket Kanban de reparación. A diferencia de
-  /// antes, ya no se dispara solo con cargar la pantalla: la llama el botón
-  /// "Recibir vehículo" (o "Reintentar" si la escritura falló), así que el
-  /// taller decide explícitamente cuándo el vehículo entra al tablero y se
-  /// notifica al propietario.
-  Future<void> _iniciarTicketReparacion(VehicleModel vehiculo) async {
+  /// Marca la llegada del vehículo al taller. Ya **no** crea el ticket: desde
+  /// A4b el ticket nace cuando el cliente acepta la cotización (Cloud
+  /// Function `onCotizacionAceptada`), en `pendiente_recepcion`, y este botón
+  /// solo lo mueve a `recibido`. Si no hay ticket, no hay cotización aceptada
+  /// y no se recibe nada (A3/B2).
+  ///
+  /// El ticket se resuelve aquí por vehículo+taller como medida provisional:
+  /// la ruta `/initiate_service/:vehiculoId` todavía no lleva el id de la
+  /// reparación. La tarea 5 mueve esa decisión al helper de navegación
+  /// compartido y esta búsqueda desaparece.
+  Future<void> _recibirVehiculo(VehicleModel vehiculo) async {
     final userSession = context.read<UserProfileProvider>();
     final tallerId = userSession.userData?.idTallerEfectivo ?? '';
     if (tallerId.isEmpty) {
@@ -257,27 +263,20 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
 
     try {
       final reparacionProvider = context.read<ReparacionProvider>();
-      // `buscarVehiculoPorPlaca` (usado por "Buscar Vehículo") no devuelve
-      // id_propietario a propósito, así que ese caso pasa por el callable
-      // que resuelve el dueño del lado servidor; el resto de las vías (auto
-      // creación al aceptar cotización, vehículo ya vinculado) sí traen ese
-      // dato y pueden escribir directo.
-      final idReparacion = vehiculo.idPropietario.isEmpty
-          ? await reparacionProvider.iniciarOReutilizarPorVehiculo(
-              idVehiculo: vehiculo.idVehiculo,
-              idTaller: tallerId,
-            )
-          : await reparacionProvider.iniciarOReutilizar(
-              idVehiculo: vehiculo.idVehiculo,
-              idTaller: tallerId,
-              idPropietario: vehiculo.idPropietario,
-              placa: vehiculo.placa,
-            );
+      // Da igual por dónde llegara el vehículo (búsqueda por placa o vínculo
+      // previo): ya no hace falta el `id_propietario` que
+      // `buscarVehiculoPorPlaca` oculta a propósito, porque no se crea nada
+      // — solo se mueve un ticket que ya existe.
+      final idReparacion = await reparacionProvider.recibirVehiculo(
+        idVehiculo: vehiculo.idVehiculo,
+        idTaller: tallerId,
+      );
       if (!mounted) return;
       if (idReparacion == null) {
         setState(() {
           _reparacionError =
-              'No se pudo guardar el ticket de reparación de este vehículo.';
+              reparacionProvider.error ??
+              'No se pudo marcar este vehículo como recibido.';
           _recibiendo = false;
         });
         return;
@@ -290,7 +289,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _reparacionError = 'No se pudo guardar el ticket de reparación: $e';
+        _reparacionError = 'No se pudo marcar el vehículo como recibido: $e';
         _recibiendo = false;
       });
     }
@@ -864,7 +863,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
               type: AppButtonType.text,
               size: AppButtonSize.small,
               text: 'Reintentar',
-              onPressed: () => _iniciarTicketReparacion(_vehiculo!),
+              onPressed: () => _recibirVehiculo(_vehiculo!),
             ),
           ],
         ),
@@ -912,9 +911,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       type: AppButtonType.secondary,
       icon: const Icon(Icons.garage_outlined),
       isLoading: _recibiendo,
-      onPressed: _recibiendo
-          ? null
-          : () => _iniciarTicketReparacion(_vehiculo!),
+      onPressed: _recibiendo ? null : () => _recibirVehiculo(_vehiculo!),
     );
   }
 

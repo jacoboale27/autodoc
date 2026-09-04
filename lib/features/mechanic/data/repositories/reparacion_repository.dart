@@ -21,6 +21,7 @@ class ReparacionRepository {
   /// mecánico que busque una placa, ver ese callable), así que el cliente no
   /// tiene ese dato para satisfacer la regla de creación de `reparaciones` —
   /// el callable lo resuelve del lado servidor.
+  @Deprecated('El ticket lo crea onCotizacionAceptada')
   Future<String> iniciarOReutilizarPorVehiculo({
     required String idVehiculo,
     required String idTaller,
@@ -55,6 +56,12 @@ class ReparacionRepository {
     return snap.docs.first.id;
   }
 
+  /// Crea un ticket desde el cliente. **Ya no es alcanzable en producción**:
+  /// desde A4b `firestore.rules` cierra `allow create` en `reparaciones` y el
+  /// único creador es la Cloud Function `onCotizacionAceptada`. Se conserva
+  /// porque hay tickets en producción abiertos por esta vía y porque los
+  /// tests la siguen usando para sembrar datos.
+  @Deprecated('El ticket lo crea onCotizacionAceptada')
   Future<String> iniciarReparacion({
     required String idVehiculo,
     required String idTaller,
@@ -80,6 +87,40 @@ class ReparacionRepository {
     );
     await docRef.set(model.toMap());
     return docRef.id;
+  }
+
+  /// Marca que el vehículo llegó físicamente al taller: transición
+  /// `pendiente_recepcion` -> `recibido`.
+  ///
+  /// El ticket ya existe cuando el cliente acepta la cotización (trigger
+  /// `onCotizacionAceptada`), así que "Recibir vehículo" ya no crea nada.
+  /// Sin esto el mecánico podía abrir un ticket sin que nadie hubiera
+  /// aceptado ninguna cotización (A3/B2).
+  ///
+  /// Recibir dos veces no es un error: si el ticket ya está en `recibido` o
+  /// más adelante en el pipeline no hace nada, en vez de reventar con el
+  /// "no se puede retroceder" de [cambiarEstado]. Un ticket `cancelado` sí
+  /// se rechaza: hace falta una cotización nueva.
+  Future<void> recibirVehiculo({required String idReparacion}) async {
+    final snap = await _firestore
+        .collection(FirestoreCollections.reparaciones)
+        .doc(idReparacion)
+        .get();
+    if (!snap.exists || snap.data() == null) {
+      throw ArgumentError('Reparación no encontrada: $idReparacion');
+    }
+    // Los tickets anteriores a A4b no traen `estado` explícito en algunos
+    // documentos antiguos; se leen como 'recibido', que es donde nacían.
+    final estadoActual = (snap.data()!['estado'] ?? 'recibido').toString();
+    if (estadoActual == 'cancelado') {
+      throw ArgumentError(
+        'El ticket de este vehículo está cancelado: hace falta una '
+        'cotización aceptada nueva.',
+      );
+    }
+    final indiceActual = estadosReparacion.indexOf(estadoActual);
+    if (indiceActual >= estadosReparacion.indexOf('recibido')) return;
+    await cambiarEstado(idReparacion: idReparacion, nuevoEstado: 'recibido');
   }
 
   Future<void> cambiarEstado({

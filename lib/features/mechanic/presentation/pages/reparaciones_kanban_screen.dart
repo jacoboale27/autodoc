@@ -15,6 +15,7 @@ import 'package:autodoc/features/mechanic/presentation/widgets/reparacion_card.d
 /// `estadosReparacion`. Pública porque los tests y `ReparacionCard`
 /// necesitan el nombre del estado siguiente.
 const Map<String, String> etiquetasEstado = {
+  'pendiente_recepcion': 'Por recibir',
   'recibido': 'Recibido',
   'en_revision': 'En Revisión',
   'esperando_repuestos': 'Esperando Repuestos',

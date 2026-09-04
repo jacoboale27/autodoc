@@ -29,7 +29,11 @@ void main() {
   });
 
   test('estadosReparacion define el orden fijo del Kanban', () {
+    // 'pendiente_recepcion' abre la lista desde A4b: el ticket nace ahí
+    // cuando el cliente acepta la cotización, con el vehículo todavía fuera
+    // del taller, y "Recibir vehículo" es la transición a 'recibido'.
     expect(estadosReparacion, [
+      'pendiente_recepcion',
       'recibido',
       'en_revision',
       'esperando_repuestos',

@@ -954,19 +954,14 @@ service cloud.firestore {
         (resource.data.id_propietario == request.auth.uid ||
          actuaPorTaller(resource.data.id_taller) || isAdmin());
 
-      allow create: if isAuthenticated() && (
-        isAdmin() ||
-        (isMecanico() && actuaPorTaller(request.resource.data.id_taller)
-          && exists(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
-          && (
-            get(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
-              .data.get('talleres_vinculados', []).size() == 0
-            || get(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo))
-                 .data.get('talleres_vinculados', []).hasAny([request.resource.data.id_taller])
-          )
-          && request.resource.data.id_propietario ==
-               getVehicleOwner(request.resource.data.id_vehiculo))
-      );
+      // A4b: ya nadie crea reparaciones desde el cliente. El unico creador es
+      // el trigger `onCotizacionAceptada` (Admin SDK, que se salta las
+      // reglas), que abre el ticket en 'pendiente_recepcion' cuando el cliente
+      // acepta la cotizacion. Que el mecanico pudiera crearlo a mano era
+      // justamente lo que dejaba recibir un vehiculo sin cotizacion aceptada
+      // (A3/B2). El callable `iniciarReparacionPorVehiculo`, que tambien corre
+      // con Admin SDK, sigue funcionando por la misma razon.
+      allow create: if false;
 
       allow update: if isAuthenticated() && (
         isAdmin() ||

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:provider/provider.dart';
 
+import 'package:autodoc/core/models/reparacion_model.dart';
 import 'package:autodoc/features/mechanic/data/repositories/reparacion_repository.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/reparaciones_kanban_screen.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/reparacion_provider.dart';
@@ -71,9 +72,7 @@ void main() {
     expectNoOverflow(tester);
   });
 
-  testWidgets('a 375 px los cuatro estados son tabs, no columnas', (
-    tester,
-  ) async {
+  testWidgets('a 375 px cada estado es un tab, no una columna', (tester) async {
     final firestore = await seedReparaciones(count: 2);
     await pumpKanban(tester, width: 375, firestore: firestore);
 
@@ -85,16 +84,20 @@ void main() {
     expect(find.byType(ListView), findsOneWidget);
   });
 
-  testWidgets('a 1440 px las cuatro columnas caben sin scroll horizontal', (
+  testWidgets('a 1440 px todas las columnas caben sin scroll horizontal', (
     tester,
   ) async {
     final firestore = await seedReparaciones(count: 2);
     await pumpKanban(tester, width: 1440, firestore: firestore);
 
     expect(find.byType(TabBar), findsNothing);
+    // Una columna por estado del pipeline: el kanban itera
+    // `estadosReparacion`, asi que 'pendiente_recepcion' (A4b) estrena
+    // columna sin tocar esta pantalla. Se cuenta contra la lista y no contra
+    // un numero fijo justamente para que el proximo estado tampoco lo toque.
     expect(
       find.byType(ListView),
-      findsNWidgets(4),
+      findsNWidgets(estadosReparacion.length),
       reason: 'cada estado debe tener su propia lista con scroll vertical',
     );
 
@@ -102,7 +105,29 @@ void main() {
         .widgetList<Text>(find.byType(Text))
         .where((t) => etiquetasEstado.values.contains(t.data))
         .length;
-    expect(xs, 4, reason: 'los cuatro encabezados de columna deben estar');
+    expect(
+      xs,
+      estadosReparacion.length,
+      reason: 'cada estado debe tener su encabezado de columna',
+    );
+  });
+
+  testWidgets('un ticket recien aceptado aparece en la columna "Por recibir"', (
+    tester,
+  ) async {
+    // A4b: el ticket nace en 'pendiente_recepcion' (lo abre
+    // `onCotizacionAceptada`), que es la PRIMERA columna del tablero. A 375
+    // px solo esta montada la lista del tab activo, que es esa primera, asi
+    // que encontrar la placa aqui prueba que la tarjeta cae en esa columna y
+    // no en otra.
+    final firestore = await seedReparaciones(
+      count: 1,
+      estado: 'pendiente_recepcion',
+    );
+    await pumpKanban(tester, width: 375, firestore: firestore);
+
+    expect(find.text('Por recibir'), findsOneWidget);
+    expect(find.text('ABC100'), findsOneWidget);
   });
 
   testWidgets('no desborda en ninguno de los anchos de auditoría', (

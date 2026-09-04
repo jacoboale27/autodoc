@@ -3,6 +3,8 @@ const admin = require('firebase-admin');
 const firestore = require('@google-cloud/firestore');
 admin.initializeApp();
 
+const { abrirTicketDeReparacion } = require('./src/aceptarCotizacion');
+
 const db = admin.firestore();
 const messaging = admin.messaging();
 const storage = admin.storage();
@@ -685,12 +687,15 @@ async function actuaPorTaller(callerUid, tallerId) {
 
 /**
  * 5a2. Trigger fired when a 'cotizaciones' document's estado changes and it
- * is linked to a reserva (id_reserva). Es el punto único donde una cita con
- * cotización aceptada se traduce en (a) la reserva pasando a
- * 'confirmada'/'rechazada' y (b) — solo en el caso de aceptación — la
- * apertura automática del ticket en el tablero de Reparaciones, para que el
- * taller lo vea ahí desde que se confirma la cita y no solo cuando alguien
- * lo busca manualmente por placa.
+ * is linked to a reserva (id_reserva): traduce la cotización aceptada o
+ * rechazada al estado de la cita.
+ *
+ * Ya NO abre el ticket de Reparaciones: eso lo hace `onCotizacionAceptada`
+ * (A4b) para TODA cotización aceptada, tenga o no reserva detrás, y en el
+ * estado `pendiente_recepcion`. Si esta función siguiera llamando a
+ * `crearOReutilizarTicketReparacion`, cada aceptación con cita abriría dos
+ * tickets para el mismo vehículo (uno aquí en 'recibido' y otro allí), que es
+ * exactamente el "vehículo recibido sin que nadie lo reciba" que A3 prohíbe.
  */
 exports.sincronizarReservaYReparacionAlCotizar = functions.firestore
   .document('cotizaciones/{cotizacionId}')
@@ -711,18 +716,36 @@ exports.sincronizarReservaYReparacionAlCotizar = functions.firestore
         reservaUpdate.fecha_hora_confirmada = after.fecha_propuesta;
       }
       await reservaRef.update(reservaUpdate);
-
-      if (after.estado !== 'aceptada') return null;
-
-      const vehiculoId = after.id_vehiculo;
-      const tallerId = after.id_taller;
-      if (!vehiculoId || !tallerId) return null;
-
-      await crearOReutilizarTicketReparacion({ idVehiculo: vehiculoId, idTaller: tallerId });
     } catch (error) {
-      console.error('Error syncing reserva/reparacion on cotizacion accept:', error);
+      console.error('Error syncing reserva on cotizacion accept:', error);
     }
 
+    return null;
+  });
+
+/**
+ * 5a2b. A4b — la aceptación de la cotización abre el ticket de `reparaciones`
+ * en `pendiente_recepcion`. Es el ÚNICO creador de esa colección: el cliente
+ * ya no puede crearla (`allow create: if false` en firestore.rules), y
+ * "Recibir vehículo" pasó a ser la transición `pendiente_recepcion` ->
+ * `recibido`.
+ *
+ * Toda la lógica vive en ./src/aceptarCotizacion para poder testearla sin
+ * montar el SDK de Admin; aquí solo queda el enganche del trigger.
+ */
+exports.onCotizacionAceptada = functions.firestore
+  .document('cotizaciones/{cotizacionId}')
+  .onUpdate(async (change, context) => {
+    try {
+      await abrirTicketDeReparacion(db, {
+        cotizacionId: context.params.cotizacionId,
+        antes: change.before.data() || {},
+        despues: change.after.data() || {},
+        ahora: new Date(),
+      });
+    } catch (error) {
+      console.error('Error abriendo el ticket de reparacion al aceptar la cotizacion:', error);
+    }
     return null;
   });
 

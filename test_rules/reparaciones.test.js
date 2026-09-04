@@ -20,7 +20,11 @@ const seedVehiculo = async () => {
   });
 };
 
-const seedReparacion = async () => {
+// Ticket ya existente. Se siembra con las reglas desactivadas porque desde
+// A4b NADIE puede crearlo desde el cliente: lo abre el trigger
+// `onCotizacionAceptada` con el Admin SDK, que es exactamente lo que
+// `withSecurityRulesDisabled` simula aqui.
+const seedReparacion = async (extra = {}) => {
   await seedVehiculo();
   await seed(env, async (s) => {
     await s.collection('reparaciones').doc('rep1').set({
@@ -29,6 +33,7 @@ const seedReparacion = async () => {
       id_vehiculo: 'v1',
       placa: 'ABC123',
       estado: 'recibido',
+      ...extra,
     });
   });
 };
@@ -52,35 +57,45 @@ describe('reparaciones (Tarea 5 — kanban de estado, panel mecanico)', () => {
     await assertFails(db.collection('reparaciones').doc('rep1').get());
   });
 
-  test('el taller vinculado al vehiculo puede crear una reparacion asignada a si mismo', async () => {
+  // --- A4b: el ticket lo abre el trigger onCotizacionAceptada, nadie mas ---
+  // Hasta A4b el mecanico vinculado al vehiculo SI podia crear el ticket a
+  // mano (y ese era el test que vivia aqui). Esa puerta es la que permitia
+  // recibir un vehiculo sin ninguna cotizacion aceptada (A3/B2), asi que la
+  // regla pasa a `allow create: if false` y estos tests invierten el
+  // veredicto a proposito.
+  const ticketAMano = {
+    id_propietario: UIDS.owner1,
+    id_taller: UIDS.taller1,
+    id_vehiculo: 'v1',
+    placa: 'ABC123',
+    estado: 'pendiente_recepcion',
+  };
+
+  test('ni el mecanico ni el cliente pueden crear un ticket a mano', async () => {
     await seedVehiculo();
-    const db = await withRole(env, UIDS.taller1, 'Taller');
-    await assertSucceeds(
-      db.collection('reparaciones').doc('rep2').set({
-        id_propietario: UIDS.owner1,
-        id_taller: UIDS.taller1,
-        id_vehiculo: 'v1',
-        placa: 'ABC123',
-        estado: 'recibido',
-      }),
+    const dbMecanico = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      dbMecanico.collection('reparaciones').doc('rep2').set(ticketAMano),
+    );
+
+    const dbCliente = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      dbCliente.collection('reparaciones').doc('rep4').set(ticketAMano),
     );
   });
 
-  test('un taller NO vinculado al vehiculo NO puede crear la reparacion (evita inyectar en vehiculo ajeno)', async () => {
+  test('un taller NO vinculado al vehiculo tampoco puede crear la reparacion', async () => {
     await seedVehiculo();
     const db = await withRole(env, UIDS.taller2, 'Taller');
     await assertFails(
       db.collection('reparaciones').doc('rep3').set({
-        id_propietario: UIDS.owner1,
+        ...ticketAMano,
         id_taller: UIDS.taller2,
-        id_vehiculo: 'v1',
-        placa: 'ABC123',
-        estado: 'recibido',
       }),
     );
   });
 
-  test('un mecanico puede crear la reparacion de un vehiculo walk-in (talleres_vinculados vacio, sin cita previa)', async () => {
+  test('el walk-in sin cotizacion aceptada ya no puede abrir ticket (A3/B2)', async () => {
     await seed(env, async (s) => {
       await s.collection('vehiculos').doc('v2').set({
         id_vehiculo: 'v2',
@@ -90,42 +105,30 @@ describe('reparaciones (Tarea 5 — kanban de estado, panel mecanico)', () => {
       });
     });
     const db = await withRole(env, UIDS.taller1, 'Taller');
-    await assertSucceeds(
+    await assertFails(
       db.collection('reparaciones').doc('rep-walkin').set({
-        id_propietario: UIDS.owner1,
-        id_taller: UIDS.taller1,
+        ...ticketAMano,
         id_vehiculo: 'v2',
         placa: 'XYZ999',
-        estado: 'recibido',
       }),
     );
   });
 
-  test('un taller vinculado NO puede crear con id_propietario distinto del dueño real del vehiculo', async () => {
+  test('ni siquiera el admin crea tickets a mano: el unico creador es el trigger', async () => {
     await seedVehiculo();
+    const db = await withRole(env, UIDS.admin, 'Administrador');
+    await assertFails(
+      db.collection('reparaciones').doc('rep-admin').set(ticketAMano),
+    );
+  });
+
+  test('el mecanico del taller si puede mover el ticket de pendiente_recepcion a recibido', async () => {
+    // La contraparte de cerrar el create: "recibir el vehiculo" pasa a ser
+    // esta transicion, asi que tiene que seguir permitida.
+    await seedReparacion({ estado: 'pendiente_recepcion', id_cotizacion: 'c1' });
     const db = await withRole(env, UIDS.taller1, 'Taller');
-    await assertFails(
-      db.collection('reparaciones').doc('rep3b').set({
-        id_propietario: UIDS.owner2, // suplantacion del propietario real (owner1)
-        id_taller: UIDS.taller1,
-        id_vehiculo: 'v1',
-        placa: 'ABC123',
-        estado: 'recibido',
-      }),
-    );
-  });
-
-  test('el propietario NO puede crear una reparacion (solo el taller crea)', async () => {
-    await seedVehiculo();
-    const db = await withRole(env, UIDS.owner1, 'Propietario');
-    await assertFails(
-      db.collection('reparaciones').doc('rep4').set({
-        id_propietario: UIDS.owner1,
-        id_taller: UIDS.taller1,
-        id_vehiculo: 'v1',
-        placa: 'ABC123',
-        estado: 'recibido',
-      }),
+    await assertSucceeds(
+      db.collection('reparaciones').doc('rep1').update({ estado: 'recibido' }),
     );
   });
 
@@ -182,19 +185,16 @@ describe('reparaciones (Tarea 5 — kanban de estado, panel mecanico)', () => {
   // estas pruebas simulan exactamente eso: id_taller/request.auth.uid
   // distintos, con el empleado autenticado bajo su propio uid pero
   // escribiendo/leyendo con id_taller == taller1 (el dueño).
-  test('un empleado de taller1 (id_taller_propietario == taller1) puede crear una reparacion con id_taller == taller1', async () => {
-    await seedVehiculo();
+  test('un empleado de taller1 tampoco crea tickets a mano, pero si opera los que existen', async () => {
+    await seedReparacion({ estado: 'pendiente_recepcion' });
     const db = await withRole(env, UIDS.empleado1, 'Taller', {
       id_taller_propietario: UIDS.taller1,
     });
+    await assertFails(
+      db.collection('reparaciones').doc('rep-emp1').set(ticketAMano),
+    );
     await assertSucceeds(
-      db.collection('reparaciones').doc('rep-emp1').set({
-        id_propietario: UIDS.owner1,
-        id_taller: UIDS.taller1,
-        id_vehiculo: 'v1',
-        placa: 'ABC123',
-        estado: 'recibido',
-      }),
+      db.collection('reparaciones').doc('rep1').update({ estado: 'recibido' }),
     );
   });
 

@@ -39,6 +39,7 @@ class ReparacionProvider extends ChangeNotifier {
         );
   }
 
+  @Deprecated('El ticket lo crea onCotizacionAceptada; usa recibirVehiculo')
   Future<String?> iniciar({
     required String idVehiculo,
     required String idTaller,
@@ -72,6 +73,7 @@ class ReparacionProvider extends ChangeNotifier {
   /// vehículo — sin esta comprobación, cada reentrada (recarga, volver
   /// atrás y reabrir) creaba un ticket Kanban duplicado para la misma
   /// visita.
+  @Deprecated('El ticket lo crea onCotizacionAceptada; usa recibirVehiculo')
   Future<String?> iniciarOReutilizar({
     required String idVehiculo,
     required String idTaller,
@@ -110,6 +112,7 @@ class ReparacionProvider extends ChangeNotifier {
   /// "Buscar Vehículo" (búsqueda por placa), donde el cliente no conoce el
   /// `id_propietario` del vehículo (ver
   /// [ReparacionRepository.iniciarOReutilizarPorVehiculo]).
+  @Deprecated('El ticket lo crea onCotizacionAceptada; usa recibirVehiculo')
   Future<String?> iniciarOReutilizarPorVehiculo({
     required String idVehiculo,
     required String idTaller,
@@ -123,6 +126,44 @@ class ReparacionProvider extends ChangeNotifier {
       );
       _error = null;
       return id;
+    } catch (e) {
+      _error = e.toString();
+      return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Marca la llegada física del vehículo al taller y devuelve el id del
+  /// ticket, o `null` si no hay ninguno que recibir.
+  ///
+  /// El ticket ya no se crea aquí: nace cuando el cliente acepta la
+  /// cotización (Cloud Function `onCotizacionAceptada`), en
+  /// `pendiente_recepcion`. Si no aparece ninguno para este vehículo+taller es
+  /// justamente el caso que A3/B2 quiere impedir —recibir un vehículo sin
+  /// cotización aceptada— y se responde con un error accionable en vez de
+  /// abrir un ticket por la puerta de atrás.
+  Future<String?> recibirVehiculo({
+    required String idVehiculo,
+    required String idTaller,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final idReparacion = await _repository.buscarReparacionActiva(
+        idVehiculo: idVehiculo,
+        idTaller: idTaller,
+      );
+      if (idReparacion == null) {
+        _error =
+            'Este vehículo no tiene una cotización aceptada en tu taller, '
+            'así que todavía no hay nada que recibir.';
+        return null;
+      }
+      await _repository.recibirVehiculo(idReparacion: idReparacion);
+      _error = null;
+      return idReparacion;
     } catch (e) {
       _error = e.toString();
       return null;

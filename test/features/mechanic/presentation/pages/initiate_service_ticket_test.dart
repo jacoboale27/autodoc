@@ -11,12 +11,10 @@ import 'package:autodoc/features/mechanic/presentation/providers/reparacion_prov
 import '../../../../support/mechanic_harness.dart';
 
 /// Vehículo con `id_propietario` no vacío, igual que
-/// `initiate_service_responsive_test.dart`: así
-/// `_iniciarTicketReparacion` toma la rama `iniciarOReutilizar` (escribe
-/// directo) en vez de `iniciarOReutilizarPorVehiculo` (pasa por un
-/// `httpsCallable` que este harness no mockea). Cuál de las dos ramas se usa
-/// no es lo que este test verifica; lo que importa es cuándo se llama, no
-/// asociada a un `id_propietario` en particular.
+/// `initiate_service_responsive_test.dart`. Desde A4b la pantalla ya no se
+/// bifurca por ese campo (no crea nada, solo transiciona un ticket que ya
+/// existe), pero se mantiene el vehículo completo para no cambiar más de una
+/// cosa a la vez respecto del resto de tests de esta pantalla.
 VehicleModel _vehiculoFake() => VehicleModel(
   idVehiculo: 'v1',
   idPropietario: 'p1',
@@ -36,12 +34,13 @@ void main() {
   setupFirebaseCoreMocks();
 
   Future<FakeReparacionProvider> pumpInitiateService(
-    WidgetTester tester,
-  ) async {
+    WidgetTester tester, {
+    String? errorAlRecibir,
+  }) async {
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp();
     }
-    final repo = FakeReparacionProvider();
+    final repo = FakeReparacionProvider(errorAlRecibir: errorAlRecibir);
     await pumpMechanicScreen(
       tester,
       InitiateServiceScreen(
@@ -66,16 +65,17 @@ void main() {
     return repo;
   }
 
-  testWidgets('abrir la pantalla de servicio NO crea el ticket de reparación; '
-      'el botón "Recibir vehículo" sí', (tester) async {
+  testWidgets('"Recibir vehículo" transiciona el ticket, no lo crea', (
+    tester,
+  ) async {
     final repo = await pumpInitiateService(tester);
 
     expect(
-      repo.llamadasIniciar,
+      repo.llamadasRecibir,
       0,
       reason:
-          'buscar una placa es una consulta: no puede escribir un '
-          'ticket ni notificar al propietario sin que el taller confirme',
+          'buscar una placa es una consulta: no puede mover el ticket ni '
+          'notificar al propietario sin que el taller confirme',
     );
     expect(
       find.text('Recibir vehículo'),
@@ -89,10 +89,40 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(repo.llamadasIniciar, 1);
+    expect(repo.llamadasRecibir, 1);
+    expect(
+      repo.llamadasIniciar,
+      0,
+      reason:
+          'desde A4b el ticket lo abre onCotizacionAceptada: la pantalla no '
+          'puede crear ninguno (firestore.rules ya lo prohíbe, así que '
+          'hacerlo sería un permission-denied en producción)',
+    );
     expect(
       find.text('Vehículo recibido: ya aparece en Reparaciones.'),
       findsOneWidget,
+    );
+  });
+
+  testWidgets('sin cotización aceptada no se recibe nada: se explica por qué', (
+    tester,
+  ) async {
+    // El caso que A3/B2 quiere impedir. El ticket solo existe si el cliente
+    // aceptó una cotización, así que aquí el provider no encuentra ninguno.
+    const mensaje =
+        'Este vehículo no tiene una cotización aceptada en tu taller, '
+        'así que todavía no hay nada que recibir.';
+    final repo = await pumpInitiateService(tester, errorAlRecibir: mensaje);
+
+    await tester.tap(find.text('Recibir vehículo'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(repo.llamadasIniciar, 0);
+    expect(find.text(mensaje), findsOneWidget);
+    expect(
+      find.text('Vehículo recibido: ya aparece en Reparaciones.'),
+      findsNothing,
     );
   });
 }

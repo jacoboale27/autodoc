@@ -301,4 +301,184 @@ void main() {
     expect(lista.length, 1);
     expect(lista.first.idTaller, 't1');
   });
+
+  // --- A4b: "Recibir vehiculo" ya no crea el ticket, lo transiciona ---
+  //
+  // Los tickets los abre ahora la Cloud Function `onCotizacionAceptada` en
+  // 'pendiente_recepcion'; aqui se siembran directamente en Firestore porque
+  // esa via no existe en el cliente (y `firestore.rules` la prohibe).
+
+  /// Siembra un ticket tal como lo escribe `onCotizacionAceptada`.
+  Future<String> sembrarTicket(
+    FakeFirebaseFirestore firestore, {
+    String id = 'cot_c1',
+    Map<String, dynamic> extra = const {},
+  }) async {
+    await firestore.collection(FirestoreCollections.reparaciones).doc(id).set({
+      'id_cotizacion': 'c1',
+      'id_vehiculo': 'v1',
+      'id_taller': 't1',
+      'id_propietario': 'p1',
+      'placa': 'P123-456',
+      'estado': 'pendiente_recepcion',
+      'historial_estados': [
+        {'estado': 'pendiente_recepcion', 'timestamp': DateTime.now()},
+      ],
+      ...extra,
+    });
+    return id;
+  }
+
+  test(
+    'recibirVehiculo mueve el ticket de pendiente_recepcion a recibido',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = ReparacionRepository(
+        firestore: firestore,
+        functions: MockFirebaseFunctions(),
+      );
+      final id = await sembrarTicket(firestore);
+
+      await repo.recibirVehiculo(idReparacion: id);
+
+      final doc = await firestore
+          .collection(FirestoreCollections.reparaciones)
+          .doc(id)
+          .get();
+      expect(doc.data()!['estado'], 'recibido');
+      expect((doc.data()!['historial_estados'] as List).length, 2);
+    },
+  );
+
+  test('recibir dos veces el mismo vehiculo no es un error', () async {
+    final firestore = FakeFirebaseFirestore();
+    final repo = ReparacionRepository(
+      firestore: firestore,
+      functions: MockFirebaseFunctions(),
+    );
+    final id = await sembrarTicket(firestore);
+
+    await repo.recibirVehiculo(idReparacion: id);
+    await repo.recibirVehiculo(idReparacion: id);
+
+    final doc = await firestore
+        .collection(FirestoreCollections.reparaciones)
+        .doc(id)
+        .get();
+    expect(doc.data()!['estado'], 'recibido');
+    expect(
+      (doc.data()!['historial_estados'] as List).length,
+      2,
+      reason: 'la segunda recepcion no debe anotar nada nuevo',
+    );
+  });
+
+  test(
+    'recibirVehiculo no arrastra hacia atras un ticket ya avanzado',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = ReparacionRepository(
+        firestore: firestore,
+        functions: MockFirebaseFunctions(),
+      );
+      final id = await sembrarTicket(
+        firestore,
+        extra: const {'estado': 'esperando_repuestos'},
+      );
+
+      await repo.recibirVehiculo(idReparacion: id);
+
+      final doc = await firestore
+          .collection(FirestoreCollections.reparaciones)
+          .doc(id)
+          .get();
+      expect(doc.data()!['estado'], 'esperando_repuestos');
+    },
+  );
+
+  test('recibirVehiculo rechaza un ticket cancelado', () async {
+    final firestore = FakeFirebaseFirestore();
+    final repo = ReparacionRepository(
+      firestore: firestore,
+      functions: MockFirebaseFunctions(),
+    );
+    final id = await sembrarTicket(
+      firestore,
+      extra: const {'estado': 'cancelado'},
+    );
+
+    expect(
+      () => repo.recibirVehiculo(idReparacion: id),
+      throwsArgumentError,
+      reason: 'un ticket retirado necesita una cotizacion aceptada nueva',
+    );
+  });
+
+  test('recibirVehiculo falla si no hay ticket que recibir', () async {
+    final firestore = FakeFirebaseFirestore();
+    final repo = ReparacionRepository(
+      firestore: firestore,
+      functions: MockFirebaseFunctions(),
+    );
+
+    expect(
+      () => repo.recibirVehiculo(idReparacion: 'inexistente'),
+      throwsArgumentError,
+    );
+  });
+
+  test(
+    'un ticket anterior a A4b (sin id_cotizacion y ya recibido) no se toca',
+    () async {
+      // Compatibilidad con produccion: los tickets abiertos por la via antigua
+      // nacieron en 'recibido' y no tienen 'id_cotizacion'. Ni recibirVehiculo
+      // ni el pipeline pueden romperse con ellos.
+      final firestore = FakeFirebaseFirestore();
+      final repo = ReparacionRepository(
+        firestore: firestore,
+        functions: MockFirebaseFunctions(),
+      );
+      final id = await repo.iniciarReparacion(
+        idVehiculo: 'v1',
+        idTaller: 't1',
+        idPropietario: 'p1',
+        placa: 'P123-456',
+      );
+
+      await repo.recibirVehiculo(idReparacion: id);
+      await repo.cambiarEstado(idReparacion: id, nuevoEstado: 'en_revision');
+
+      final doc = await firestore
+          .collection(FirestoreCollections.reparaciones)
+          .doc(id)
+          .get();
+      expect(doc.data()!['estado'], 'en_revision');
+      expect(doc.data()!.containsKey('id_cotizacion'), isFalse);
+    },
+  );
+
+  test(
+    'cambiarEstado sigue prohibiendo el retroceso con el indice desplazado',
+    () async {
+      // Insertar 'pendiente_recepcion' al principio de estadosReparacion
+      // desplazo todos los indices; la comprobacion es relativa, asi que
+      // volver a 'pendiente_recepcion' desde 'recibido' debe seguir siendo un
+      // retroceso.
+      final firestore = FakeFirebaseFirestore();
+      final repo = ReparacionRepository(
+        firestore: firestore,
+        functions: MockFirebaseFunctions(),
+      );
+      final id = await sembrarTicket(firestore);
+      await repo.recibirVehiculo(idReparacion: id);
+
+      expect(
+        () => repo.cambiarEstado(
+          idReparacion: id,
+          nuevoEstado: 'pendiente_recepcion',
+        ),
+        throwsArgumentError,
+      );
+    },
+  );
 }

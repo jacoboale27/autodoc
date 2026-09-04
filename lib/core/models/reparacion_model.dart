@@ -1,6 +1,21 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// Pipeline secuencial del ticket de reparación, en orden: el índice de cada
+/// estado en esta lista es lo que decide qué es "avanzar" y qué "retroceder"
+/// (ver [ReparacionRepository.cambiarEstado]) y en qué orden se pintan las
+/// columnas del kanban (ver ReparacionesKanbanScreen).
+///
+/// `pendiente_recepcion` es el estado inicial desde A4b: el ticket lo abre la
+/// Cloud Function `onCotizacionAceptada` en cuanto el cliente acepta la
+/// cotización, con el vehículo todavía fuera del taller. "Recibir vehículo"
+/// dejó de crear el ticket y es solo la transición a `recibido`.
+///
+/// Los tickets anteriores a A4b están ya en `recibido` o más adelante, así que
+/// insertar el estado al principio no los mueve: solo desplaza los índices, y
+/// la comprobación de "no retroceder" es relativa (compara dos índices de esta
+/// misma lista), no absoluta.
 const List<String> estadosReparacion = [
+  'pendiente_recepcion',
   'recibido',
   'en_revision',
   'esperando_repuestos',
