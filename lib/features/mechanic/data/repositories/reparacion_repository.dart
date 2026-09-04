@@ -56,6 +56,24 @@ class ReparacionRepository {
     return snap.docs.first.id;
   }
 
+  /// Lee un ticket por id. Devuelve `null` si no existe.
+  ///
+  /// Lo usa `ReparacionProvider.buscarReparacionActiva` (la gating de
+  /// A3/B2) para distinguir un ticket vigente de uno `cancelado`:
+  /// [buscarReparacionActiva] deliberadamente no filtra por estado (ver su
+  /// propio comentario), así que esa distinción se resuelve con una
+  /// segunda lectura en vez de complicar esa consulta para todos sus
+  /// llamadores (incluidos los deprecados, que sí quieren "cualquier
+  /// estado").
+  Future<ReparacionModel?> obtenerReparacion(String idReparacion) async {
+    final snap = await _firestore
+        .collection(FirestoreCollections.reparaciones)
+        .doc(idReparacion)
+        .get();
+    if (!snap.exists || snap.data() == null) return null;
+    return ReparacionModel.fromMap(snap.data()!, snap.id);
+  }
+
   /// Crea un ticket desde el cliente. **Ya no es alcanzable en producción**:
   /// desde A4b `firestore.rules` cierra `allow create` en `reparaciones` y el
   /// único creador es la Cloud Function `onCotizacionAceptada`. Se conserva

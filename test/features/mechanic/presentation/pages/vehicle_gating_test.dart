@@ -14,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:autodoc/core/models/reparacion_model.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/core/providers/language_provider.dart';
 import 'package:autodoc/core/providers/notification_center_provider.dart';
@@ -27,6 +28,7 @@ import 'package:autodoc/features/chat/presentation/widgets/cards/vehiculo_chat_c
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
 import 'package:autodoc/features/mechanic/data/repositories/catalogo_repository.dart';
+import 'package:autodoc/features/mechanic/data/repositories/reparacion_repository.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/initiate_service_screen.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/vehicle_public_view_screen.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/vehicle_search_screen.dart';
@@ -117,15 +119,17 @@ GoRouter _router({Widget? chatHome}) => GoRouter(
 );
 
 /// Árbol de providers común: el mecánico opera bajo el taller 't1'
-/// (`fakeTaller`), y `ReparacionProvider` es el doble cuyo
-/// `buscarReparacionActiva` devuelve [reparacionActivaId] — `null` simula
-/// que no hay ticket para v1+t1 (A3/B2), cualquier otro valor simula uno ya
-/// existente. Cubre tanto `VehicleSearchScreen` como lo que
-/// `InitiateServiceScreen`/`VehiclePublicViewScreen` necesitan una vez que
-/// `abrirVehiculoComoMecanico` navega ahí.
+/// (`fakeTaller`). [reparacionProvider] decide qué ve `abrirVehiculoComoMecanico`
+/// al resolver v1+t1 — normalmente el doble [FakeReparacionProvider] (control
+/// directo del id devuelto), pero los tests del filtro `cancelado` pasan el
+/// `ReparacionProvider` **real** (respaldado por un `FakeFirebaseFirestore`
+/// sembrado) para ejercitar de verdad la lógica de "vigente" que vive en esa
+/// clase, no en un doble que la saltaría. Cubre tanto `VehicleSearchScreen`
+/// como lo que `InitiateServiceScreen`/`VehiclePublicViewScreen` necesitan
+/// una vez que `abrirVehiculoComoMecanico` navega ahí.
 Widget _appDeGating({
   required GoRouter router,
-  required String? reparacionActivaId,
+  required ReparacionProvider reparacionProvider,
 }) {
   return MultiProvider(
     providers: [
@@ -138,9 +142,8 @@ Widget _appDeGating({
       ChangeNotifierProvider<VehicleProvider>(
         create: (_) => _FakeVehicleProviderConPlaca(_vehiculoFake()),
       ),
-      ChangeNotifierProvider<ReparacionProvider>(
-        create: (_) =>
-            FakeReparacionProvider(reparacionActivaId: reparacionActivaId),
+      ChangeNotifierProvider<ReparacionProvider>.value(
+        value: reparacionProvider,
       ),
       ChangeNotifierProvider<NotificationCenterProvider>(
         create: (_) => FakeNotificationCenterProvider(),
@@ -175,7 +178,61 @@ Future<GoRouter> _pumpBuscarVehiculo(
   }
   final router = _router();
   await tester.pumpWidget(
-    _appDeGating(router: router, reparacionActivaId: reparacionActivaId),
+    _appDeGating(
+      router: router,
+      reparacionProvider: FakeReparacionProvider(
+        reparacionActivaId: reparacionActivaId,
+      ),
+    ),
+  );
+  await tester.pump();
+  return router;
+}
+
+/// Igual que [_pumpBuscarVehiculo], pero con el `ReparacionProvider` **real**
+/// (no el doble), respaldado por un `FakeFirebaseFirestore` con un ticket
+/// 'r1' de v1+t1 ya sembrado en [estadoReparacion]. Sirve para probar el
+/// filtro de "vigente" (`cancelado` cuenta como "no hay ticket") de
+/// verdad, no contra un doble que lo saltearía.
+Future<GoRouter> _pumpBuscarVehiculoConTicketReal(
+  WidgetTester tester, {
+  required String estadoReparacion,
+}) async {
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp();
+  }
+  final firestore = FakeFirebaseFirestore();
+  final ahora = DateTime.now();
+  await firestore
+      .collection('reparaciones')
+      .doc('r1')
+      .set(
+        ReparacionModel(
+          idReparacion: 'r1',
+          idVehiculo: 'v1',
+          idTaller: 't1',
+          idPropietario: 'p1',
+          placa: 'P123456',
+          estado: estadoReparacion,
+          historialEstados: [
+            {'estado': estadoReparacion, 'timestamp': ahora},
+          ],
+          fechaCreacion: ahora,
+          fechaActualizacion: ahora,
+        ).toMap(),
+      );
+
+  final router = _router();
+  await tester.pumpWidget(
+    _appDeGating(
+      router: router,
+      reparacionProvider: ReparacionProvider(
+        repository: ReparacionRepository(
+          firestore: firestore,
+          functions: MockFirebaseFunctions(),
+        ),
+      ),
+    ),
   );
   await tester.pump();
   return router;
@@ -214,7 +271,12 @@ Future<GoRouter> _pumpChatConTarjetaVehiculo(
     ),
   );
   await tester.pumpWidget(
-    _appDeGating(router: router, reparacionActivaId: reparacionActivaId),
+    _appDeGating(
+      router: router,
+      reparacionProvider: FakeReparacionProvider(
+        reparacionActivaId: reparacionActivaId,
+      ),
+    ),
   );
   await tester.pump();
   return router;
@@ -274,4 +336,48 @@ void main() {
     expect(find.byType(VehiclePublicViewScreen), findsOneWidget);
     expect(router.state.uri.toString(), '/vehiculo_publico/v1');
   });
+
+  testWidgets(
+    'un ticket cancelado cuenta como si no hubiera ticket: vista publica, no el servicio',
+    (tester) async {
+      // Antes de la Tarea 5 esta consulta era un insumo mas dentro de
+      // InitiateServiceScreen (solo para "Recibir vehiculo"); ahora es la
+      // UNICA puerta a toda la pantalla. Sin excluir 'cancelado' aqui, un
+      // ticket cancelado abria igual el formulario completo de
+      // materiales/cotizacion/finalizar — justo lo que A3/B2 prohibe.
+      final router = await _pumpBuscarVehiculoConTicketReal(
+        tester,
+        estadoReparacion: 'cancelado',
+      );
+
+      await tester.enterText(find.byType(TextField), 'P123456');
+      await tester.tap(find.text('BUSCAR AUTO'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(VehiclePublicViewScreen), findsOneWidget);
+      expect(find.byType(InitiateServiceScreen), findsNothing);
+      expect(router.state.uri.toString(), '/vehiculo_publico/v1');
+    },
+  );
+
+  testWidgets(
+    'un ticket legado ya recibido (previo a A4b) sigue desbloqueando el servicio',
+    (tester) async {
+      // El filtro de 'cancelado' no debe volverse una regresion para el
+      // caso que ya funcionaba: un ticket 'recibido' (incluido uno legado,
+      // anterior a A4b, que nunca paso por 'pendiente_recepcion') sigue
+      // contando como vigente.
+      final router = await _pumpBuscarVehiculoConTicketReal(
+        tester,
+        estadoReparacion: 'recibido',
+      );
+
+      await tester.enterText(find.byType(TextField), 'P123456');
+      await tester.tap(find.text('BUSCAR AUTO'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(InitiateServiceScreen), findsOneWidget);
+      expect(router.state.uri.toString(), '/initiate_service/r1');
+    },
+  );
 }

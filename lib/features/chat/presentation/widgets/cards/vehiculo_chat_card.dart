@@ -35,10 +35,24 @@ class VehiculoChatCard extends StatelessWidget {
   Future<void> _verVehiculo(BuildContext context, String idVehiculo) async {
     final tallerId =
         context.read<UserProfileProvider>().userData?.idTallerEfectivo ?? '';
-    final doc = await (firestore ?? FirebaseFirestore.instance)
-        .collection(FirestoreCollections.vehiculos)
-        .doc(idVehiculo)
-        .get();
+    final DocumentSnapshot<Map<String, dynamic>> doc;
+    try {
+      doc = await (firestore ?? FirebaseFirestore.instance)
+          .collection(FirestoreCollections.vehiculos)
+          .doc(idVehiculo)
+          .get();
+    } catch (e) {
+      // Sin este catch, un fallo de red/permisos al leer el vehículo dejaba
+      // el tap en "Ver vehículo" sin ningún efecto — ni snackbar, ni
+      // navegación — que se lee como un botón roto.
+      if (!context.mounted) return;
+      UiUtils.showErrorSnackbar(
+        context,
+        'No se pudo cargar este vehículo. Revisa tu conexión e intenta de '
+        'nuevo.',
+      );
+      return;
+    }
     if (!context.mounted) return;
     if (!doc.exists) {
       UiUtils.showErrorSnackbar(context, 'No se encontró este vehículo.');
