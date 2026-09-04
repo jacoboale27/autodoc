@@ -355,6 +355,28 @@ class VehicleProvider with ChangeNotifier {
     }
   }
 
+  /// Busca un vehículo por id — a diferencia de [findVehicleByPlate], que
+  /// puede resolver a un vehículo distinto si la placa está duplicada o
+  /// desactualizada en datos legados, el id es la clave exacta que ya trae
+  /// el ticket (`ReparacionModel.idVehiculo`). `VehicleSearchScreen`
+  /// (A4a, "Mis servicios") la usa por eso en vez de buscar por placa.
+  Future<VehicleModel?> findVehicleById(String idVehiculo) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final vehicle = await _vehicleService.getVehicleById(idVehiculo);
+      if (vehicle == null) {
+        _setError("No se encontró el vehículo con id $idVehiculo");
+      }
+      _setLoading(false);
+      return vehicle;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return null;
+    }
+  }
+
   void clearVehicles() {
     _vehicles = [];
     _selectedVehicle = null;

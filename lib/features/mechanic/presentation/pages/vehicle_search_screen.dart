@@ -129,14 +129,20 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
     await abrirVehiculoComoMecanico(context, vehicle, tallerId);
   }
 
-  /// `_MisServicios` solo tiene la placa y el id de vehículo del ticket
-  /// (`ReparacionModel`), no un `VehicleModel` completo (marca/modelo/año),
-  /// así que primero se resuelve por placa — la misma llamada que ya hace
-  /// `_handleSearch` — y luego se reutiliza `_abrirVehiculo` para no abrir un
+  /// `_MisServicios` solo tiene el `ReparacionModel` del ticket, no un
+  /// `VehicleModel` completo (marca/modelo/año), así que primero se resuelve
+  /// por `idVehiculo` — **no por placa**: una placa duplicada o desactualizada
+  /// en datos legados podría resolver a un vehículo distinto del que abrió
+  /// este ticket, y `abrirVehiculoComoMecanico` navegaría en silencio al
+  /// ticket (o ficha pública) de ESE otro vehículo, sin ningún error visible
+  /// — `idVehiculo` es la clave exacta que ya trae el ticket, sin esa
+  /// ambigüedad. Se reutiliza `_abrirVehiculo` después para no abrir un
   /// segundo camino de navegación.
   Future<void> _abrirVehiculoDesdeReparacion(ReparacionModel reparacion) async {
     final vehicleProvider = context.read<VehicleProvider>();
-    final vehicle = await vehicleProvider.findVehicleByPlate(reparacion.placa);
+    final vehicle = await vehicleProvider.findVehicleById(
+      reparacion.idVehiculo,
+    );
     if (!mounted) return;
     if (vehicle == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -431,11 +437,50 @@ class _MisServicios extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final reparaciones = context
-        .watch<ReparacionProvider>()
-        .reparaciones
+    final provider = context.watch<ReparacionProvider>();
+    final reparaciones = provider.reparaciones
         .where((r) => r.estado != 'cancelado')
         .toList();
+
+    // El error se comprueba ANTES que la lista vacía: sin esta distinción,
+    // un stream que falla (p. ej. permission-denied — ver el commit
+    // inmediato anterior a esta rama, "fix(taller): permission-denied al
+    // finalizar servicio") pinta "No hay servicios activos" con la misma
+    // cara que un taller sin trabajo de verdad. Para una sección cuya única
+    // razón de ser es que el mecánico confíe en que todo lo que tiene
+    // aparece aquí, ese silencio es el peor resultado posible.
+    final Widget content;
+    if (provider.error != null) {
+      content = const AppEmptyState(
+        title: 'No se pudieron cargar tus servicios',
+        description: 'Revisa tu conexión e inténtalo de nuevo.',
+        icon: Icons.cloud_off_outlined,
+      );
+    } else if (provider.isLoading && reparaciones.isEmpty) {
+      // Mismo umbral que `ReparacionesKanbanScreen`: solo bloquea con un
+      // spinner mientras no hay NADA que mostrar todavía; una recarga con
+      // datos previos en pantalla no debe hacer parpadear la lista.
+      content = const Padding(
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    } else if (reparaciones.isEmpty) {
+      content = const AppEmptyState(
+        title: 'No hay servicios activos',
+        description:
+            'Los vehículos que reciba el taller aparecerán aquí, sin '
+            'importar desde dónde se haya iniciado el servicio.',
+        icon: Icons.build_outlined,
+      );
+    } else {
+      content = Column(
+        children: reparaciones
+            .map(
+              (r) => _MisServiciosItem(reparacion: r, onTap: () => onSelect(r)),
+            )
+            .toList(),
+      );
+    }
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.xl),
@@ -459,18 +504,7 @@ class _MisServicios extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.base),
-          if (reparaciones.isEmpty)
-            const AppEmptyState(
-              title: 'No hay servicios activos',
-              description:
-                  'Los vehículos que reciba el taller aparecerán aquí, sin '
-                  'importar desde dónde se haya iniciado el servicio.',
-              icon: Icons.build_outlined,
-            )
-          else
-            ...reparaciones.map(
-              (r) => _MisServiciosItem(reparacion: r, onTap: () => onSelect(r)),
-            ),
+          content,
         ],
       ),
     );

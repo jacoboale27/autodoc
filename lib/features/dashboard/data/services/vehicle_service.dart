@@ -152,6 +152,29 @@ class VehicleService {
     }
   }
 
+  /// Lee el vehículo completo por id. A diferencia de [getVehicleByPlate]
+  /// (que pasa por la Cloud Function callable porque busca un vehículo
+  /// TODAVÍA no vinculado a este taller), este lee `/vehiculos/{id}`
+  /// directamente: es el mismo patrón que ya usa
+  /// `InitiateServiceScreen._cargarVehiculo` para el caso de F5 sobre
+  /// `/initiate_service/:reparacionId` (la ruta ya trae el id del vehículo
+  /// resuelto por un ticket propio; `firestore.rules:452` permite la
+  /// lectura porque el taller de este mecánico ya está en
+  /// `talleres_vinculados` para cualquier vehículo con un ticket).
+  /// Devuelve `null` si el documento no existe.
+  Future<VehicleModel?> getVehicleById(String vehiculoId) async {
+    try {
+      final doc = await _firestore
+          .collection(_collection)
+          .doc(vehiculoId)
+          .get();
+      if (!doc.exists) return null;
+      return VehicleModel.fromMap(doc.data()!, doc.id);
+    } catch (e) {
+      throw 'Error al obtener vehículo: $e';
+    }
+  }
+
   Future<List<VehicleModel>> getSharedVehicles(String userId) async {
     try {
       final snapshot = await _firestore
