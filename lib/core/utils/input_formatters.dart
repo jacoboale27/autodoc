@@ -20,7 +20,11 @@ class _MontoInputFormatter extends TextInputFormatter {
   }
 }
 
-/// Formatters para campos de dinero (mano de obra, materiales, total).
+/// Formatters para campos de dinero editables por el usuario (mano de obra,
+/// precio unitario de materiales/repuestos, costo y beneficio de una
+/// cotización). No se usa en campos de solo lectura (p.ej. un total
+/// calculado): Flutter nunca invoca `formatEditUpdate` en un campo
+/// `readOnly`, así que ponerlo ahí sería código inalcanzable.
 ///
 /// `keyboardType` NO basta: en Flutter Web es decorativo (no hay teclado
 /// virtual que restringir) y en movil no impide pegar del portapapeles.

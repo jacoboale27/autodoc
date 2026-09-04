@@ -610,7 +610,6 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                 controller: _costoController,
                 readOnly: true,
                 helperText: 'Se calcula sumando materiales y mano de obra',
-                inputFormatters: montoInputFormatters,
               ),
               const SizedBox(height: AppSpacing.xl),
               const AppSectionHeader(

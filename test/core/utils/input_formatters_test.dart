@@ -38,4 +38,12 @@ void main() {
   test('rechaza un segundo punto decimal', () {
     expect(_aplicar('12.5', '12.5.3').text, '12.5');
   });
+
+  test('acepta un punto decimal inicial sin digitos enteros', () {
+    expect(_aplicar('', '.5').text, '.5');
+  });
+
+  test('rechaza mas de dos decimales', () {
+    expect(_aplicar('12.5', '12.567').text, '12.5');
+  });
 }
