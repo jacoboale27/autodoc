@@ -118,17 +118,27 @@ class FakeReparacionProvider extends ChangeNotifier
     this.idReparacion = 'r1',
     this.errorAlRecibir,
     this.recibidoAhora = true,
+    this.reparacionActivaId = 'r1',
   });
 
   final String idReparacion;
   final String? errorAlRecibir;
 
-  /// Qué debe devolver [recibirVehiculo] en `recibidoAhora`: `true` simula
-  /// una recepción real (el caso por defecto de casi todos los tests
-  /// existentes), `false` simula el hallazgo 2 de la revisión de la Tarea 4
-  /// — el ticket resuelto ya estaba recibido de antes, así que la pantalla
-  /// no debe anunciar una recepción que no ocurrió.
+  /// Qué debe devolver [recibirVehiculoPorId] (y el [recibirVehiculo]
+  /// heredado, deprecado): `true` simula una recepción real (el caso por
+  /// defecto de casi todos los tests existentes), `false` simula el
+  /// hallazgo 2 de la revisión de la Tarea 4 — el ticket resuelto ya estaba
+  /// recibido de antes, así que la pantalla no debe anunciar una recepción
+  /// que no ocurrió.
   final bool recibidoAhora;
+
+  /// Qué debe devolver [buscarReparacionActiva]: `null` simula que no hay
+  /// ningún ticket para este vehículo+taller — el caso que A3/B2 gatea, ver
+  /// `vehicle_gating_test.dart` —, cualquier otro valor simula uno ya
+  /// existente. Independiente de [idReparacion] (que solo alimenta
+  /// [recibirVehiculoPorId]/[recibirVehiculo]): un test que fija uno no
+  /// cambia el otro sin querer.
+  final String? reparacionActivaId;
 
   int llamadasIniciar = 0;
   int llamadasRecibir = 0;
@@ -144,6 +154,23 @@ class FakeReparacionProvider extends ChangeNotifier
   void watchTaller(String idTaller) {}
 
   @override
+  Future<String?> buscarReparacionActiva({
+    required String idVehiculo,
+    required String idTaller,
+  }) async => reparacionActivaId;
+
+  @override
+  Future<bool?> recibirVehiculoPorId(String idReparacion) async {
+    llamadasRecibir++;
+    if (errorAlRecibir != null) return null;
+    return recibidoAhora;
+  }
+
+  @override
+  @Deprecated(
+    'La Tarea 5 mueve esta busqueda a abrirVehiculoComoMecanico; usa '
+    'recibirVehiculoPorId',
+  )
   Future<({String idReparacion, bool recibidoAhora})?> recibirVehiculo({
     required String idVehiculo,
     required String idTaller,

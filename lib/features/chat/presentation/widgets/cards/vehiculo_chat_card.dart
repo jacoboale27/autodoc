@@ -1,16 +1,53 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:autodoc/core/constants/firestore_collections.dart';
+import 'package:autodoc/core/models/vehicle_model.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/utils/role_utils.dart';
+import 'package:autodoc/core/utils/ui_utils.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/features/mechanic/presentation/navegacion_vehiculo.dart';
 
 class VehiculoChatCard extends StatelessWidget {
   final Map<String, dynamic> metadata;
   final bool isMe;
 
+  /// Inyectable para pruebas de widget (`FakeFirebaseFirestore`); por
+  /// defecto usa la instancia real. Mismo patrón que `CotizacionChatCard`.
+  final FirebaseFirestore? firestore;
+
   const VehiculoChatCard({
     super.key,
     required this.metadata,
     required this.isMe,
+    this.firestore,
   });
+
+  /// El mecánico (quien recibe la tarjeta, nunca quien la envía: es el
+  /// propietario compartiendo SU vehículo) es el único que puede tocar "Ver
+  /// vehículo": es el mismo gating de A3/B2 que "Buscar vehículo"
+  /// (`abrirVehiculoComoMecanico`), y esta tarjeta es la otra entrada — sin
+  /// pasar por ahí, esta ruta se quedaría atrás igual que le pasó a
+  /// `vehicle_search_screen.dart` antes de la Tarea 5.
+  Future<void> _verVehiculo(BuildContext context, String idVehiculo) async {
+    final tallerId =
+        context.read<UserProfileProvider>().userData?.idTallerEfectivo ?? '';
+    final doc = await (firestore ?? FirebaseFirestore.instance)
+        .collection(FirestoreCollections.vehiculos)
+        .doc(idVehiculo)
+        .get();
+    if (!context.mounted) return;
+    if (!doc.exists) {
+      UiUtils.showErrorSnackbar(context, 'No se encontró este vehículo.');
+      return;
+    }
+    final vehiculo = VehicleModel.fromMap(doc.data()!, doc.id);
+    if (!context.mounted) return;
+    await abrirVehiculoComoMecanico(context, vehiculo, tallerId);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,11 +57,17 @@ class VehiculoChatCard extends StatelessWidget {
     final String modelo = metadata['modelo'] ?? 'Modelo desconocido';
     final String anio = metadata['anio']?.toString() ?? 'N/A';
     final String placa = metadata['placa'] ?? 'Sin placa';
+    final String? idVehiculo = metadata['id_vehiculo'] as String?;
+    final isMecanico = isMechanicRole(
+      context.watch<UserProfileProvider>().userData?.rol,
+    );
+    final mostrarVerVehiculo =
+        !isMe && isMecanico && idVehiculo != null && idVehiculo.isNotEmpty;
 
     final descripcion =
         'Vehículo compartido: $marca $modelo, año $anio, placa $placa';
 
-    return Semantics(
+    final tarjeta = Semantics(
       label: descripcion,
       container: true,
       child: ExcludeSemantics(
@@ -136,6 +179,30 @@ class VehiculoChatCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+
+    if (!mostrarVerVehiculo) return tarjeta;
+
+    // Fuera de `ExcludeSemantics`: la tarjeta en sí sigue siendo un solo
+    // nodo informativo para el lector de pantalla, pero un botón que hace
+    // algo no se puede plegar dentro de esa etiqueta — necesita su propio
+    // nodo activable, igual que el resto de tarjetas de chat con acciones
+    // (`CotizacionChatCard`, `ReservaChatCard`).
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        tarjeta,
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: AppButton(
+            text: 'Ver vehículo',
+            type: AppButtonType.text,
+            onPressed: () => _verVehiculo(context, idVehiculo),
+          ),
+        ),
+      ],
     );
   }
 }

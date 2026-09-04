@@ -24,6 +24,7 @@ import 'package:autodoc/features/mechanic/presentation/pages/workshop_verificati
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/initiate_service_screen.dart';
+import 'package:autodoc/features/mechanic/presentation/pages/vehicle_public_view_screen.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/service_finalized_screen.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/mechanic_reviews_screen.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/mechanic_pending_screen.dart';
@@ -101,6 +102,7 @@ const _mechanicRoutes = <String>{
   '/workshop_settings',
   '/mechanic_reviews',
   '/initiate_service',
+  '/vehiculo_publico',
   '/service_finalized',
   '/mechanic_pending',
   '/mechanic_reparaciones',
@@ -206,7 +208,14 @@ bool _matchesRouteSet(String path, Set<String> routes) {
 /// Route expectations:
 /// - /vehicle_profile/:vehiculoId   — extra opcional: VehicleModel (precarga)
 /// - /service_history/:vehiculoId   — extra opcional: VehicleModel (precarga)
-/// - /initiate_service/:vehiculoId  — extra opcional: VehicleModel (precarga)
+/// - /initiate_service/:reparacionId — extra opcional: VehicleModel (precarga).
+///   Tarea 5 (A3/B2): la ruta ya no lleva el id del vehículo, sino el del
+///   ticket de reparación — `InitiateServiceScreen` solo es alcanzable
+///   cuando ese ticket ya existe (`abrirVehiculoComoMecanico` decide esto
+///   antes de navegar).
+/// - /vehiculo_publico/:vehiculoId  — extra opcional: VehicleModel (precarga).
+///   Destino de `abrirVehiculoComoMecanico` cuando NO hay ticket: solo
+///   información pública del vehículo (A3/B2).
 /// - /reserva_detail/:reservaId     — extra opcional: ReservaModel (precarga)
 /// Ninguna pantalla depende de `extra`: todas resuelven el argumento desde su id.
 /// - /task_config: expects `MaintenanceTask`
@@ -595,15 +604,33 @@ GoRouter createAppRouter(
         ),
       ),
       GoRoute(
-        path: '/initiate_service/:vehiculoId',
+        path: '/initiate_service/:reparacionId',
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: resolveRouteChild(
+            id: state.pathParameters['reparacionId'],
+            mensajeFaltante: 'No se indicó ningún servicio.',
+            rutaVuelta: '/mechanic_dashboard',
+            buildScreen: (id) => InitiateServiceScreen(
+              reparacionId: id,
+              vehiculoPrecargado: state.extra is VehicleModel
+                  ? state.extra as VehicleModel
+                  : null,
+            ),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/vehiculo_publico/:vehiculoId',
         pageBuilder: (context, state) => buildPageWithFadeThrough(
           context: context,
           state: state,
           child: resolveRouteChild(
             id: state.pathParameters['vehiculoId'],
             mensajeFaltante: 'No se indicó ningún vehículo.',
-            rutaVuelta: '/mechanic_dashboard',
-            buildScreen: (id) => InitiateServiceScreen(
+            rutaVuelta: '/mechanic_search',
+            buildScreen: (id) => VehiclePublicViewScreen(
               vehiculoId: id,
               vehiculoPrecargado: state.extra is VehicleModel
                   ? state.extra as VehicleModel

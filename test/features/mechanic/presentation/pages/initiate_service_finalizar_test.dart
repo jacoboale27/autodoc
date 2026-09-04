@@ -21,6 +21,7 @@ import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/initiate_service_screen.dart';
+import 'package:autodoc/features/mechanic/presentation/providers/reparacion_provider.dart';
 
 import '../../../../helpers/test_helpers.mocks.dart';
 import '../../../../support/mechanic_harness.dart';
@@ -76,11 +77,11 @@ void main() {
     final router = await pumpMechanicScreen(
       tester,
       InitiateServiceScreen(
-        vehiculoId: 'v1',
+        reparacionId: 'r1',
         vehiculoPrecargado: _vehiculoFake(),
       ),
       width: 1024,
-      location: '/initiate_service/v1',
+      location: '/initiate_service/r1',
       disableAnimations: true,
       rutasExtra: const [
         '/mechanic_dashboard',
@@ -93,6 +94,16 @@ void main() {
             firestore: db,
             storage: MockFirebaseStorage(),
           ),
+        ),
+        // Desde la Tarea 5, `_handleFinalizeService` ya intenta actualizar el
+        // ticket Kanban incondicionalmente (`widget.reparacionId` siempre
+        // existe). El `ReparacionProvider` real de `pumpMechanicScreen` usa
+        // su propio `FakeFirebaseFirestore` sin ningún documento 'r1'
+        // sembrado, así que sin este doble la transacción fallaría con
+        // `ArgumentError` (capturado, pero con un `debugPrint` de ruido) en
+        // un escenario que a estos dos tests no les importa verificar.
+        ChangeNotifierProvider<ReparacionProvider>.value(
+          value: FakeReparacionProvider(),
         ),
       ],
     );
@@ -146,10 +157,10 @@ void main() {
       );
       expect(
         router.state.uri.toString(),
-        isNot('/initiate_service/v1'),
+        isNot('/initiate_service/r1'),
         reason:
             'quedarse en esta URL es exactamente el sintoma: pantalla en '
-            'blanco con el id del vehiculo todavia en la barra',
+            'blanco con el id del ticket todavia en la barra',
       );
       expect(
         find.byType(InitiateServiceScreen),

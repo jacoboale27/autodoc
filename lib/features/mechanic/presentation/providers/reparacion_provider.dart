@@ -152,6 +152,14 @@ class ReparacionProvider extends ChangeNotifier {
   /// "vehículo recibido" cuando [ReparacionRepository.buscarReparacionActiva]
   /// —sin orden ni filtro de estado— resolvió un ticket legado ya recibido en
   /// vez del ticket nuevo que de verdad está esperando en el tablero.
+  @Deprecated(
+    'La Tarea 5 mueve esta busqueda a abrirVehiculoComoMecanico, antes de '
+    'entrar a InitiateServiceScreen: la ruta /initiate_service/:reparacionId '
+    'ya conoce el id del ticket, asi que la pantalla no necesita volver a '
+    'buscarlo por vehiculo+taller. Usa buscarReparacionActiva (para decidir '
+    'a donde navegar) y recibirVehiculoPorId (para la transicion) por '
+    'separado.',
+  )
   Future<({String idReparacion, bool recibidoAhora})?> recibirVehiculo({
     required String idVehiculo,
     required String idTaller,
@@ -174,6 +182,49 @@ class ReparacionProvider extends ChangeNotifier {
       );
       _error = null;
       return (idReparacion: idReparacion, recibidoAhora: recibidoAhora);
+    } catch (e) {
+      _error = e.toString();
+      return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Busca si ya existe un ticket de reparación para este vehículo en este
+  /// taller (cualquier estado). Es el único método que
+  /// `abrirVehiculoComoMecanico` (`navegacion_vehiculo.dart`, Tarea 5) usa
+  /// para decidir entre la vista pública del vehículo (A3/B2, sin ticket) y
+  /// `InitiateServiceScreen` (ticket ya abierto).
+  Future<String?> buscarReparacionActiva({
+    required String idVehiculo,
+    required String idTaller,
+  }) {
+    return _repository.buscarReparacionActiva(
+      idVehiculo: idVehiculo,
+      idTaller: idTaller,
+    );
+  }
+
+  /// Marca la llegada física del vehículo para un ticket ya conocido. Desde
+  /// la Tarea 5 la ruta `/initiate_service/:reparacionId` siempre trae el id
+  /// del ticket (lo resolvió `abrirVehiculoComoMecanico` antes de navegar
+  /// aquí), así que a diferencia de [recibirVehiculo] no hace falta volver a
+  /// buscarlo por vehículo+taller.
+  ///
+  /// Devuelve lo mismo que [ReparacionRepository.recibirVehiculo]: `true` si
+  /// esta llamada transicionó el ticket a `recibido`, `false` si ya estaba
+  /// ahí o más adelante (no-op), o `null` si falló (p. ej. el ticket está
+  /// `cancelado`, o no existe).
+  Future<bool?> recibirVehiculoPorId(String idReparacion) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final recibidoAhora = await _repository.recibirVehiculo(
+        idReparacion: idReparacion,
+      );
+      _error = null;
+      return recibidoAhora;
     } catch (e) {
       _error = e.toString();
       return null;

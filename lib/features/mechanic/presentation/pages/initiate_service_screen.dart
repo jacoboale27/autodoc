@@ -32,12 +32,17 @@ import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/service_finalized_screen.dart';
 
 class InitiateServiceScreen extends StatefulWidget {
-  final String vehiculoId;
+  /// Id del ticket de `reparaciones`. Desde la Tarea 5 (A3/B2) es lo que
+  /// lleva la ruta (`/initiate_service/:reparacionId`), no el vehículo: esta
+  /// pantalla solo es alcanzable cuando el ticket ya existe —
+  /// `abrirVehiculoComoMecanico` lo resolvió antes de navegar aquí—, así que
+  /// ya no necesita buscarlo por vehículo+taller.
+  final String reparacionId;
   final VehicleModel? vehiculoPrecargado;
 
   const InitiateServiceScreen({
     super.key,
-    required this.vehiculoId,
+    required this.reparacionId,
     this.vehiculoPrecargado,
   });
 
@@ -62,10 +67,13 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   bool _hasApprovedQuote = false;
   CotizacionModel? _approvedQuote;
 
-  /// Id del ticket Kanban de reparación una vez que el vehículo se marcó
-  /// como recibido en esta pantalla. El ticket lo crea la Cloud Function
-  /// `onCotizacionAceptada`; aquí solo se resuelve y se transiciona.
-  String? _idReparacion;
+  /// `true` una vez que "Recibir vehículo" confirmó la transición en esta
+  /// sesión de pantalla (con éxito, sea recepción nueva o no-op). Deliberado
+  /// que sea independiente de `widget.reparacionId` (que la pantalla conoce
+  /// desde el principio, vía la ruta, desde la Tarea 5): el banner de
+  /// "recibido"/"ya estaba recibido" debe aparecer solo tras una
+  /// confirmación explícita, no en cuanto se conoce el id del ticket.
+  bool _recepcionConfirmada = false;
 
   /// `true` si esta pulsación fue la que movió el ticket a `recibido`;
   /// `false` si el ticket ya estaba recibido de antes (hallazgo 2 de la
@@ -156,15 +164,33 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     });
   }
 
+  /// Solo se llama cuando `vehiculoPrecargado` viene vacío (p. ej. un F5
+  /// sobre esta URL, que pierde `extra`): la ruta ya no lleva el id del
+  /// vehículo (Tarea 5), así que primero hay que leer el ticket por
+  /// `widget.reparacionId` para saber a qué vehículo pertenece.
   Future<void> _cargarVehiculo() async {
     setState(() {
       _cargando = true;
       _errorCarga = null;
     });
     try {
+      final reparacionDoc = await FirebaseFirestore.instance
+          .collection(FirestoreCollections.reparaciones)
+          .doc(widget.reparacionId)
+          .get();
+      if (!mounted) return;
+      final idVehiculo = (reparacionDoc.data()?['id_vehiculo'] ?? '')
+          .toString();
+      if (!reparacionDoc.exists || idVehiculo.isEmpty) {
+        setState(() {
+          _cargando = false;
+          _errorCarga = 'notFound';
+        });
+        return;
+      }
       final doc = await FirebaseFirestore.instance
           .collection(FirestoreCollections.vehiculos)
-          .doc(widget.vehiculoId)
+          .doc(idVehiculo)
           .get();
       if (!mounted) return;
       if (!doc.exists) {
@@ -241,28 +267,11 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   /// solo lo mueve a `recibido`. Si no hay ticket, no hay cotización aceptada
   /// y no se recibe nada (A3/B2).
   ///
-  /// El ticket se resuelve aquí por vehículo+taller como medida provisional:
-  /// la ruta `/initiate_service/:vehiculoId` todavía no lleva el id de la
-  /// reparación. La tarea 5 mueve esa decisión al helper de navegación
-  /// compartido y esta búsqueda desaparece.
-  Future<void> _recibirVehiculo(VehicleModel vehiculo) async {
-    final userSession = context.read<UserProfileProvider>();
-    final tallerId = userSession.userData?.idTallerEfectivo ?? '';
-    if (tallerId.isEmpty) {
-      // Un `return` pelado aqui dejaba el boton "Recibir vehiculo" mudo: ni
-      // ticket, ni mensaje, ni spinner liberado. Se usa el mismo banner de
-      // error (con "Reintentar") que el resto de fallos de esta accion, que
-      // es justo el caso en el que reintentar sirve: basta con que el perfil
-      // del taller termine de cargar.
-      setState(() {
-        _reparacionError =
-            'No se pudo identificar tu taller. Vuelve a intentarlo en unos '
-            'segundos.';
-        _recibiendo = false;
-      });
-      return;
-    }
-
+  /// Desde la Tarea 5, `widget.reparacionId` ya es el id del ticket (lo trae
+  /// la ruta): a diferencia de la versión provisional de la Tarea 4, ya no
+  /// hace falta buscarlo por vehículo+taller ni conocer el taller efectivo
+  /// del mecánico para eso.
+  Future<void> _recibirVehiculo() async {
     setState(() {
       _recibiendo = true;
       _reparacionError = null;
@@ -270,16 +279,11 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
 
     try {
       final reparacionProvider = context.read<ReparacionProvider>();
-      // Da igual por dónde llegara el vehículo (búsqueda por placa o vínculo
-      // previo): ya no hace falta el `id_propietario` que
-      // `buscarVehiculoPorPlaca` oculta a propósito, porque no se crea nada
-      // — solo se mueve un ticket que ya existe.
-      final resultado = await reparacionProvider.recibirVehiculo(
-        idVehiculo: vehiculo.idVehiculo,
-        idTaller: tallerId,
+      final recibidoAhora = await reparacionProvider.recibirVehiculoPorId(
+        widget.reparacionId,
       );
       if (!mounted) return;
-      if (resultado == null) {
+      if (recibidoAhora == null) {
         setState(() {
           _reparacionError =
               reparacionProvider.error ??
@@ -289,8 +293,8 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
         return;
       }
       setState(() {
-        _idReparacion = resultado.idReparacion;
-        _recibidoAhora = resultado.recibidoAhora;
+        _recepcionConfirmada = true;
+        _recibidoAhora = recibidoAhora;
         _reparacionError = null;
         _recibiendo = false;
       });
@@ -430,10 +434,15 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       }
 
       bool kanbanUpdateFailed = false;
-      if (_idReparacion != null && mounted) {
+      // `widget.reparacionId` siempre existe desde la Tarea 5 (la ruta ya no
+      // llega a esta pantalla sin un ticket): a diferencia de la versión
+      // anterior, esto ya no depende de que el mecánico haya pulsado
+      // "Recibir vehículo" en esta sesión (p. ej. un ticket legado que ya
+      // nació en `recibido`, ver el comentario de `_recepcionConfirmada`).
+      if (mounted) {
         try {
           await context.read<ReparacionProvider>().cambiarEstado(
-            _idReparacion!,
+            widget.reparacionId,
             'listo_para_entrega',
           );
         } catch (e) {
@@ -471,9 +480,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
             idVehiculo: _vehiculo!.idVehiculo,
             tallerId: tallerId,
             tallerNombre: nombreTaller,
-            rutaContinuar: _idReparacion != null
-                ? '/mechanic_reparaciones'
-                : '/mechanic_dashboard',
+            rutaContinuar: '/mechanic_reparaciones',
           ),
         );
       }
@@ -871,14 +878,14 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
               type: AppButtonType.text,
               size: AppButtonSize.small,
               text: 'Reintentar',
-              onPressed: () => _recibirVehiculo(_vehiculo!),
+              onPressed: _recibirVehiculo,
             ),
           ],
         ),
       );
     }
 
-    if (_idReparacion != null) {
+    if (_recepcionConfirmada) {
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(AppSpacing.md),
@@ -913,16 +920,16 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       );
     }
 
-    // El taller todavía no confirmó nada: el ticket no existe y no hay error
-    // que reintentar. Antes de este fix, llegar aquí ya implicaba que el
-    // ticket estaba creado y el propietario notificado — ahora hace falta
+    // El taller todavía no confirmó la recepción en esta pantalla y no hay
+    // error que reintentar. Antes de este fix, llegar aquí ya implicaba que
+    // el ticket estaba creado y el propietario notificado — ahora hace falta
     // este botón explícito.
     return AppButton(
       text: 'Recibir vehículo',
       type: AppButtonType.secondary,
       icon: const Icon(Icons.garage_outlined),
       isLoading: _recibiendo,
-      onPressed: _recibiendo ? null : () => _recibirVehiculo(_vehiculo!),
+      onPressed: _recibiendo ? null : _recibirVehiculo,
     );
   }
 

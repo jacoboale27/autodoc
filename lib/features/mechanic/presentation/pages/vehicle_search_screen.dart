@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
-import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_empty_state.dart';
@@ -15,6 +15,7 @@ import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
+import 'package:autodoc/features/mechanic/presentation/navegacion_vehiculo.dart';
 import 'package:autodoc/core/utils/plate_formatter.dart';
 
 class VehicleSearchScreen extends StatefulWidget {
@@ -66,13 +67,12 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
       if (vehicle != null) {
         vehicleProvider.addRecentSearch(vehicle);
         if (mounted) {
-          // `go` y no `push`: con `push` se abria la pantalla pero la
-          // barra de direcciones seguia diciendo /mechanic_search
-          // (hallazgo §2.14; go_router match.dart:621-632 copia `matches`
-          // y conserva `uri`), asi que un F5 sacaba al taller del servicio
-          // a medias. `extra` sigue viajando igual: precarga el vehiculo
-          // para no re-consultarlo.
-          context.go('/initiate_service/${vehicle.idVehiculo}', extra: vehicle);
+          // A3/B2: buscar una placa es una consulta, no autoriza nada.
+          // `abrirVehiculoComoMecanico` decide si hay un ticket aceptado
+          // (va a `InitiateServiceScreen`) o no (va a la ficha pública) —
+          // mismo punto de decisión que `_abrirVehiculo`, para que las dos
+          // entradas de esta pantalla nunca diverjan.
+          await _abrirVehiculo(vehicle);
         }
       } else {
         if (mounted) {
@@ -94,10 +94,16 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
     }
   }
 
-  void _abrirVehiculo(VehicleModel vehicle) {
-    // Mismo motivo que en `_handleSearch`: `go` para que la URL siga a la
-    // pantalla y el servicio se pueda enlazar y recargar.
-    context.go('/initiate_service/${vehicle.idVehiculo}', extra: vehicle);
+  Future<void> _abrirVehiculo(VehicleModel vehicle) async {
+    final tallerId =
+        context.read<UserProfileProvider>().userData?.idTallerEfectivo ?? '';
+    if (!mounted) return;
+    // `abrirVehiculoComoMecanico` es el único punto de decisión (Tarea 5,
+    // A3/B2): sin ticket aceptado para este vehículo+taller, lleva a la
+    // ficha pública; con uno, a `InitiateServiceScreen`. Ya usa `go` por
+    // dentro (mismo motivo de siempre: la URL debe seguir a la pantalla para
+    // que un F5 no deje al taller a medias).
+    await abrirVehiculoComoMecanico(context, vehicle, tallerId);
   }
 
   @override

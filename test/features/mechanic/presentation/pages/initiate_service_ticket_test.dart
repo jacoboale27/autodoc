@@ -48,11 +48,11 @@ void main() {
     await pumpMechanicScreen(
       tester,
       InitiateServiceScreen(
-        vehiculoId: 'v1',
+        reparacionId: 'r1',
         vehiculoPrecargado: _vehiculoFake(),
       ),
       width: 1024,
-      location: '/initiate_service/v1',
+      location: '/initiate_service/r1',
       disableAnimations: true,
       extraProviders: [
         // Va después del `ReparacionProvider` real que ya registra
@@ -133,11 +133,12 @@ void main() {
   testWidgets(
     'un ticket que ya estaba recibido no se anuncia como recepcion nueva (hallazgo 2)',
     (tester) async {
-      // `ReparacionRepository.buscarReparacionActiva` (sin orden ni filtro
-      // de estado) puede resolver un ticket que ya estaba en 'recibido' —
-      // legado o de una visita anterior. Si la pantalla mostrara el mismo
-      // texto que para una recepcion real, el mecanico creeria que acaba de
-      // recibir un vehiculo que en realidad no transiciono nada.
+      // `ReparacionRepository.recibirVehiculo` es un no-op si el ticket ya
+      // esta en 'recibido' o mas adelante — legado (creado directo en
+      // 'recibido', antes de A4b) o de una visita anterior. Si la pantalla
+      // mostrara el mismo texto que para una recepcion real, el mecanico
+      // creeria que acaba de recibir un vehiculo que en realidad no
+      // transiciono nada.
       final repo = await pumpInitiateService(tester, recibidoAhora: false);
 
       await tester.tap(find.text('Recibir vehículo'));

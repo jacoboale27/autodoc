@@ -41,11 +41,11 @@ void main() {
     await pumpMechanicScreen(
       tester,
       InitiateServiceScreen(
-        vehiculoId: 'v1',
+        reparacionId: 'r1',
         vehiculoPrecargado: vehiculoFake(),
       ),
       width: width,
-      location: '/initiate_service/v1',
+      location: '/initiate_service/r1',
       disableAnimations: true,
     );
     await tester.pump();
