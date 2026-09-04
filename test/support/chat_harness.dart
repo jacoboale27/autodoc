@@ -129,6 +129,25 @@ class FakeChatProvider extends ChangeNotifier implements ChatProvider {
   Future<void> setTypingStatus(String conversacionId, String? userId) async =>
       llamadas.add('setTypingStatus:$conversacionId:$userId');
 
+  /// Sin este `@override`, `_ChatScreenState._enviarMensaje` caía en el
+  /// `noSuchMethod` genérico de abajo (que solo reenvía a `Object`, no
+  /// intercepta) y lanzaba `NoSuchMethodError` en cualquier test que
+  /// ejercitara el envío real de un mensaje.
+  @override
+  Future<void> enviarMensaje({
+    required String conversacionId,
+    required String contenido,
+    required String remitenteId,
+    required String receptorId,
+    required bool isMecanicoRemitente,
+    String tipo = 'texto',
+    Map<String, dynamic>? metadata,
+    String? urlArchivo,
+    int? duracionSegundos,
+  }) async {
+    llamadas.add('enviarMensaje:$conversacionId:$contenido');
+  }
+
   /// Sin beneficios por defecto: `CotizacionChatCard._cargarBeneficios()`
   /// (Task 10) lo llama en `initState()` cuando `isMe` es verdadero, y sin
   /// este `@override` caía en el `noSuchMethod` genérico, que lanza

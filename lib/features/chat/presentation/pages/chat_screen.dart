@@ -49,6 +49,7 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
+  final FocusNode _inputFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
 
   Timer? _typingTimer;
@@ -160,6 +161,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _typingTimer?.cancel();
     _chatProvider.setTypingStatus(widget.conversacionId, null);
     _controller.dispose();
+    _inputFocusNode.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -176,6 +178,9 @@ class _ChatScreenState extends State<ChatScreen> {
       tipo: 'texto',
     );
     _controller.clear();
+    // Limpiar el texto no debe costar el foco: sin esto el teclado se cierra en
+    // movil y hay que volver a tocar la barra entre mensaje y mensaje.
+    _inputFocusNode.requestFocus();
   }
 
   void _iniciarNuevaReserva({
@@ -587,7 +592,10 @@ class _ChatScreenState extends State<ChatScreen> {
                         borderRadius: BorderRadius.circular(24),
                       ),
                       child: TextField(
+                        key: const Key('chat_input_field'),
                         controller: _controller,
+                        focusNode: _inputFocusNode,
+                        textInputAction: TextInputAction.send,
                         decoration: const InputDecoration(
                           hintText: 'Escribe un mensaje...',
                           border: InputBorder.none,
