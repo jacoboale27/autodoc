@@ -120,12 +120,27 @@ class _AppCardState extends State<AppCard> {
       onTap: widget.onTap,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => _isHovered = true),
-        onExit: (_) => setState(() => _isHovered = false),
+        // `mounted` antes de cada setState: MouseRegion puede disparar
+        // onExit (y el Listener onPointerUp/Cancel) despues de que la
+        // tarjeta ya se desmonto -p. ej. al navegar mientras el puntero
+        // seguia encima- lo que tumbaba la pantalla con "setState() called
+        // after dispose()".
+        onEnter: (_) {
+          if (mounted) setState(() => _isHovered = true);
+        },
+        onExit: (_) {
+          if (mounted) setState(() => _isHovered = false);
+        },
         child: Listener(
-          onPointerDown: (_) => setState(() => _isPressed = true),
-          onPointerUp: (_) => setState(() => _isPressed = false),
-          onPointerCancel: (_) => setState(() => _isPressed = false),
+          onPointerDown: (_) {
+            if (mounted) setState(() => _isPressed = true);
+          },
+          onPointerUp: (_) {
+            if (mounted) setState(() => _isPressed = false);
+          },
+          onPointerCancel: (_) {
+            if (mounted) setState(() => _isPressed = false);
+          },
           child: AnimatedScale(
             scale: _isPressed ? AppMotion.pressScaleFor(context) : 1.0,
             duration: AppMotion.transformDuration(context, AppMotion.press),

@@ -24,6 +24,7 @@ import 'package:autodoc/features/mechanic/presentation/pages/workshop_verificati
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/initiate_service_screen.dart';
+import 'package:autodoc/features/mechanic/presentation/pages/service_finalized_screen.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/mechanic_reviews_screen.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/mechanic_pending_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/task_config_screen.dart';
@@ -100,6 +101,7 @@ const _mechanicRoutes = <String>{
   '/workshop_settings',
   '/mechanic_reviews',
   '/initiate_service',
+  '/service_finalized',
   '/mechanic_pending',
   '/mechanic_reparaciones',
   '/mechanic/empleados',
@@ -609,6 +611,24 @@ GoRouter createAppRouter(
             ),
           ),
         ),
+      ),
+      GoRoute(
+        path: '/service_finalized',
+        pageBuilder: (context, state) {
+          final args = state.extra is ServiceFinalizedArgs
+              ? state.extra as ServiceFinalizedArgs
+              : null;
+          return buildPageWithFadeThrough(
+            context: context,
+            state: state,
+            child: args == null
+                ? const MissingArgumentScreen(
+                    mensaje: 'No se encontró información del servicio.',
+                    rutaVuelta: '/mechanic_dashboard',
+                  )
+                : ServiceFinalizedScreen(args: args),
+          );
+        },
       ),
       GoRoute(
         path: '/chat/:id',

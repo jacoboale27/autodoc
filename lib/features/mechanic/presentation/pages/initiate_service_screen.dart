@@ -28,6 +28,7 @@ import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/widgets/missing_argument_screen.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
+import 'package:autodoc/features/mechanic/presentation/pages/service_finalized_screen.dart';
 
 class InitiateServiceScreen extends StatefulWidget {
   final String vehiculoId;
@@ -446,22 +447,26 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
             'Servicio registrado, pero no se pudo actualizar el ticket en '
             'Reparaciones. Avánzalo manualmente desde el tablero.',
           );
-        } else {
-          UiUtils.showSuccessSnackbar(
-            context,
-            'Servicio registrado exitosamente',
-          );
         }
-        // `Navigator.pop` aqui dejaba la pantalla EN BLANCO. A esta vista se
-        // llega con `context.go` desde el buscador de placas, que reemplaza
-        // la pila: `canPop()` es false y desapilar vacia el `RouteMatchList`
-        // de go_router, que entonces no pinta ninguna pagina y deja la URL
-        // congelada en /initiate_service/<id>. Es el mismo motivo por el que
-        // el `leading` del AppBar es explicito (ver mas abajo).
+        // Antes, un `context.go` inmediato a /mechanic_dashboard o
+        // /mechanic_reparaciones era todo lo que veía el mecánico: solo un
+        // snackbar de paso, sin ninguna confirmación propia. Se llega aquí
+        // con `context.go` desde el buscador de placas (reemplaza la pila:
+        // `canPop()` es false), así que esta pantalla también navega con
+        // `go`, nunca con `pop` — desapilar sobre una pila vacía deja el
+        // `RouteMatchList` de go_router sin nada que pintar.
+        final nombreTaller = userSession.userData?.nombreCompleto ?? 'Taller';
         context.go(
-          _idReparacion != null
-              ? '/mechanic_reparaciones'
-              : '/mechanic_dashboard',
+          '/service_finalized',
+          extra: ServiceFinalizedArgs(
+            idPropietario: _vehiculo!.idPropietario,
+            idVehiculo: _vehiculo!.idVehiculo,
+            tallerId: tallerId,
+            tallerNombre: nombreTaller,
+            rutaContinuar: _idReparacion != null
+                ? '/mechanic_reparaciones'
+                : '/mechanic_dashboard',
+          ),
         );
       }
     } on FirebaseException catch (e) {

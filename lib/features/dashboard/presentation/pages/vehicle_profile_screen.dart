@@ -1126,7 +1126,18 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                     setState(() => isVerifying = false);
                     if (success) {
                       context.pop(); // Close dialog
-                      context.pop(); // Go back to previous screen
+                      // El segundo pop asume que esta pantalla se llego con
+                      // `push` (hay algo debajo que desapilar). No es asi si
+                      // se entro con la pila de un solo elemento -recarga en
+                      // web sobre /vehicle_profile/:id, o un deep link-, y
+                      // ahi revienta con "GoError: There is nothing to pop".
+                      if (context.mounted) {
+                        if (context.canPop()) {
+                          context.pop(); // Go back to previous screen
+                        } else {
+                          context.go('/garage');
+                        }
+                      }
                       UiUtils.showSuccessSnackbar(
                         context,
                         context.l10n.vpDeleteSuccess,

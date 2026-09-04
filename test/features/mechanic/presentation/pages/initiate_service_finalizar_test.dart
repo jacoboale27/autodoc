@@ -82,7 +82,11 @@ void main() {
       width: 1024,
       location: '/initiate_service/v1',
       disableAnimations: true,
-      rutasExtra: const ['/mechanic_dashboard', '/mechanic_reparaciones'],
+      rutasExtra: const [
+        '/mechanic_dashboard',
+        '/mechanic_reparaciones',
+        '/service_finalized',
+      ],
       extraProviders: [
         ChangeNotifierProvider<AlertProvider>.value(
           value: AlertProviderSinTareas(
