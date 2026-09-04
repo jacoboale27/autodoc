@@ -339,8 +339,15 @@ void main() {
       );
       final id = await sembrarTicket(firestore);
 
-      await repo.recibirVehiculo(idReparacion: id);
+      final recibidoAhora = await repo.recibirVehiculo(idReparacion: id);
 
+      expect(
+        recibidoAhora,
+        true,
+        reason:
+            'hallazgo 2: el provider necesita distinguir esta transicion '
+            'real de un no-op',
+      );
       final doc = await firestore
           .collection(FirestoreCollections.reparaciones)
           .doc(id)
@@ -358,9 +365,17 @@ void main() {
     );
     final id = await sembrarTicket(firestore);
 
-    await repo.recibirVehiculo(idReparacion: id);
-    await repo.recibirVehiculo(idReparacion: id);
+    final primera = await repo.recibirVehiculo(idReparacion: id);
+    final segunda = await repo.recibirVehiculo(idReparacion: id);
 
+    expect(primera, true);
+    expect(
+      segunda,
+      false,
+      reason:
+          'hallazgo 2: la segunda llamada es un no-op y debe reportarlo, '
+          'no fingir que volvio a recibir el vehiculo',
+    );
     final doc = await firestore
         .collection(FirestoreCollections.reparaciones)
         .doc(id)
@@ -386,8 +401,13 @@ void main() {
         extra: const {'estado': 'esperando_repuestos'},
       );
 
-      await repo.recibirVehiculo(idReparacion: id);
+      final recibidoAhora = await repo.recibirVehiculo(idReparacion: id);
 
+      expect(
+        recibidoAhora,
+        false,
+        reason: 'no transiciono nada: el ticket ya iba mas adelante',
+      );
       final doc = await firestore
           .collection(FirestoreCollections.reparaciones)
           .doc(id)
@@ -445,9 +465,14 @@ void main() {
         placa: 'P123-456',
       );
 
-      await repo.recibirVehiculo(idReparacion: id);
+      final recibidoAhora = await repo.recibirVehiculo(idReparacion: id);
       await repo.cambiarEstado(idReparacion: id, nuevoEstado: 'en_revision');
 
+      expect(
+        recibidoAhora,
+        false,
+        reason: 'ya nacio en recibido; esta llamada no transiciono nada',
+      );
       final doc = await firestore
           .collection(FirestoreCollections.reparaciones)
           .doc(id)

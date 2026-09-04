@@ -101,7 +101,15 @@ class ReparacionRepository {
   /// más adelante en el pipeline no hace nada, en vez de reventar con el
   /// "no se puede retroceder" de [cambiarEstado]. Un ticket `cancelado` sí
   /// se rechaza: hace falta una cotización nueva.
-  Future<void> recibirVehiculo({required String idReparacion}) async {
+  ///
+  /// Devuelve `true` si esta llamada movió el ticket a `recibido`, o `false`
+  /// si ya estaba ahí o más adelante (no-op). Hallazgo 2 de la revisión de
+  /// la Tarea 4: sin distinguir estos dos casos, `ReparacionProvider` no
+  /// podía distinguir "acabo de recibir el vehículo" de "este ticket ya
+  /// estaba recibido de antes" (p. ej. porque [ReparacionRepository.
+  /// buscarReparacionActiva] resolvió un ticket legado en vez del nuevo), y
+  /// la pantalla terminaba anunciando una recepción que no ocurrió.
+  Future<bool> recibirVehiculo({required String idReparacion}) async {
     final snap = await _firestore
         .collection(FirestoreCollections.reparaciones)
         .doc(idReparacion)
@@ -119,8 +127,9 @@ class ReparacionRepository {
       );
     }
     final indiceActual = estadosReparacion.indexOf(estadoActual);
-    if (indiceActual >= estadosReparacion.indexOf('recibido')) return;
+    if (indiceActual >= estadosReparacion.indexOf('recibido')) return false;
     await cambiarEstado(idReparacion: idReparacion, nuevoEstado: 'recibido');
+    return true;
   }
 
   Future<void> cambiarEstado({

@@ -26,6 +26,15 @@
 const PREFIJO_TICKET = 'cot_';
 
 /**
+ * Estados de `reparaciones` que cuentan como "cerrados": un vehiculo+taller
+ * en uno de estos ya no tiene una visita en curso, asi que una cotizacion
+ * aceptada nueva SI debe abrir un ticket propio. Cualquier otro estado
+ * (incluido 'recibido' de un ticket anterior a A4b, sin `id_cotizacion') se
+ * trata como abierto.
+ */
+const ESTADOS_TICKET_CERRADO = ['cancelado', 'listo_para_entrega'];
+
+/**
  * Id del ticket que corresponde a una cotizacion. Derivarlo del id de la
  * cotizacion (en vez de usar un id automatico) es lo que hace idempotente al
  * trigger: `onUpdate` no garantiza exactly-once, y un reintento escribe
@@ -89,11 +98,42 @@ function construirTicketReparacion({ cotizacionId, cotizacion, vehiculo, ahora }
 }
 
 /**
+ * ¿Ya hay un ticket ABIERTO para este vehiculo+taller? (cualquier estado
+ * fuera de `ESTADOS_TICKET_CERRADO`).
+ *
+ * Hallazgo 2 de la revision de la Tarea 4: antes de esto, el unico chequeo
+ * de reuso era el id derivado `cot_<cotizacionId>` (ver
+ * `idTicketDeCotizacion`), que solo detecta un REINTENTO de la MISMA
+ * cotizacion. Un cliente que regresa (ticket antiguo sin `id_cotizacion`,
+ * o simplemente una segunda cotizacion aceptada del mismo vehiculo en el
+ * mismo taller) se colaba y terminaba con DOS tickets — uno de los cuales
+ * `ReparacionRepository.buscarReparacionActiva` (sin orden ni filtro de
+ * estado) podia devolver en vez del nuevo, dejando el ticket real sin tocar
+ * en "Por recibir" mientras la pantalla reportaba éxito.
+ *
+ * @param {FirebaseFirestore.Firestore} db
+ * @param {{idVehiculo: string, idTaller: string}} args
+ * @returns {Promise<boolean>}
+ */
+async function existeTicketAbiertoParaVehiculo(db, { idVehiculo, idTaller }) {
+  const snap = await db
+    .collection('reparaciones')
+    .where('id_vehiculo', '==', idVehiculo)
+    .where('id_taller', '==', idTaller)
+    .get();
+  return snap.docs.some((doc) => {
+    const estado = (doc.data().estado || 'recibido').toString();
+    return !ESTADOS_TICKET_CERRADO.includes(estado);
+  });
+}
+
+/**
  * Abre el ticket de reparacion para una cotizacion recien aceptada.
  *
  * Devuelve el id del ticket creado, o `null` si no habia nada que crear
  * (el cambio no era una aceptacion, el vehiculo ya no existe, la cotizacion
- * no ancla a taller/propietario, o el ticket ya estaba abierto).
+ * no ancla a taller/propietario, el ticket ya estaba abierto para esta
+ * cotizacion, o ya hay otro ticket abierto para el mismo vehiculo+taller).
  *
  * @param {FirebaseFirestore.Firestore} db
  * @param {{cotizacionId: string, antes: object, despues: object, ahora: Date}} evento
@@ -109,12 +149,30 @@ async function abrirTicketDeReparacion(db, { cotizacionId, antes, despues, ahora
   const existente = await ref.get();
   if (existente.exists) return null;
 
+  // Hallazgo 2: dedup por vehiculo+taller, no solo por cotizacion. Si ya hay
+  // una visita en curso para este vehiculo en este taller, esta aceptacion
+  // no abre un segundo ticket paralelo.
+  if (despues.id_vehiculo && despues.id_taller) {
+    const yaAbierto = await existeTicketAbiertoParaVehiculo(db, {
+      idVehiculo: despues.id_vehiculo,
+      idTaller: despues.id_taller,
+    });
+    if (yaAbierto) return null;
+  }
+
   let vehiculo = null;
   if (despues.id_vehiculo) {
     const snap = await db.collection('vehiculos').doc(despues.id_vehiculo).get();
     if (snap.exists) vehiculo = snap.data();
   }
-  if (!vehiculo) return null;
+  if (!vehiculo) {
+    console.warn(
+      `onCotizacionAceptada: cotizacion ${cotizacionId} aceptada pero su ` +
+        `vehiculo (${despues.id_vehiculo || 'sin id_vehiculo'}) no existe; ` +
+        'no se abrio ningun ticket.'
+    );
+    return null;
+  }
 
   const ticket = construirTicketReparacion({
     cotizacionId,
@@ -122,7 +180,14 @@ async function abrirTicketDeReparacion(db, { cotizacionId, antes, despues, ahora
     vehiculo,
     ahora,
   });
-  if (!ticket) return null;
+  if (!ticket) {
+    console.warn(
+      `onCotizacionAceptada: cotizacion ${cotizacionId} aceptada pero no ` +
+        'ancla a vehiculo, taller y propietario a la vez; no se abrio ' +
+        'ningun ticket.'
+    );
+    return null;
+  }
 
   await ref.set(ticket);
   return ref.id;
@@ -130,8 +195,10 @@ async function abrirTicketDeReparacion(db, { cotizacionId, antes, despues, ahora
 
 module.exports = {
   PREFIJO_TICKET,
+  ESTADOS_TICKET_CERRADO,
   idTicketDeCotizacion,
   debeAbrirTicket,
   construirTicketReparacion,
+  existeTicketAbiertoParaVehiculo,
   abrirTicketDeReparacion,
 };

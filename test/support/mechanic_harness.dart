@@ -114,10 +114,21 @@ class FakeUserProfileProvider extends ChangeNotifier
 /// hay ninguna cotización aceptada, así que no hay ticket que recibir.
 class FakeReparacionProvider extends ChangeNotifier
     implements ReparacionProvider {
-  FakeReparacionProvider({this.idReparacion = 'r1', this.errorAlRecibir});
+  FakeReparacionProvider({
+    this.idReparacion = 'r1',
+    this.errorAlRecibir,
+    this.recibidoAhora = true,
+  });
 
   final String idReparacion;
   final String? errorAlRecibir;
+
+  /// Qué debe devolver [recibirVehiculo] en `recibidoAhora`: `true` simula
+  /// una recepción real (el caso por defecto de casi todos los tests
+  /// existentes), `false` simula el hallazgo 2 de la revisión de la Tarea 4
+  /// — el ticket resuelto ya estaba recibido de antes, así que la pantalla
+  /// no debe anunciar una recepción que no ocurrió.
+  final bool recibidoAhora;
 
   int llamadasIniciar = 0;
   int llamadasRecibir = 0;
@@ -133,12 +144,13 @@ class FakeReparacionProvider extends ChangeNotifier
   void watchTaller(String idTaller) {}
 
   @override
-  Future<String?> recibirVehiculo({
+  Future<({String idReparacion, bool recibidoAhora})?> recibirVehiculo({
     required String idVehiculo,
     required String idTaller,
   }) async {
     llamadasRecibir++;
-    return errorAlRecibir == null ? idReparacion : null;
+    if (errorAlRecibir != null) return null;
+    return (idReparacion: idReparacion, recibidoAhora: recibidoAhora);
   }
 
   @override

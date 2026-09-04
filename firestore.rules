@@ -959,8 +959,19 @@ service cloud.firestore {
       // reglas), que abre el ticket en 'pendiente_recepcion' cuando el cliente
       // acepta la cotizacion. Que el mecanico pudiera crearlo a mano era
       // justamente lo que dejaba recibir un vehiculo sin cotizacion aceptada
-      // (A3/B2). El callable `iniciarReparacionPorVehiculo`, que tambien corre
-      // con Admin SDK, sigue funcionando por la misma razon.
+      // (A3/B2).
+      //
+      // El callable `iniciarReparacionPorVehiculo` tambien corre con Admin
+      // SDK y por tanto tampoco pasa por esta regla: sigue pudiendo escribir
+      // en esta coleccion pese al `if false` de abajo. NO es una via
+      // deliberadamente permisiva por diseno: es un hueco que este `if false`
+      // no cierra. Se mitiga del lado del propio callable, que replica a mano
+      // las comprobaciones que esta regla haria (vinculo del taller al
+      // vehiculo y, ahora tambien, cotizacion aceptada) — ver
+      // `functions/src/iniciarReparacionPorVehiculo.js` y el hallazgo 1 de la
+      // revision de la Tarea 4. Cualquier otro callable o trigger que se
+      // añada sobre /reparaciones tiene que hacer lo mismo: este `if false`
+      // no lo protege.
       allow create: if false;
 
       allow update: if isAuthenticated() && (

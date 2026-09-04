@@ -67,6 +67,13 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   /// `onCotizacionAceptada`; aquí solo se resuelve y se transiciona.
   String? _idReparacion;
 
+  /// `true` si esta pulsación fue la que movió el ticket a `recibido`;
+  /// `false` si el ticket ya estaba recibido de antes (hallazgo 2 de la
+  /// revisión de la Tarea 4). Decide qué texto muestra el banner de éxito:
+  /// sin esta distinción la pantalla podía anunciar "vehículo recibido"
+  /// cuando en realidad no transicionó nada.
+  bool _recibidoAhora = true;
+
   /// Si la recepción no se pudo registrar (no hay cotización aceptada, red,
   /// permisos), se muestra un banner con reintento en vez de fallar en
   /// silencio: sin esto el mecánico podía salir de la pantalla creyendo que
@@ -267,12 +274,12 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       // previo): ya no hace falta el `id_propietario` que
       // `buscarVehiculoPorPlaca` oculta a propósito, porque no se crea nada
       // — solo se mueve un ticket que ya existe.
-      final idReparacion = await reparacionProvider.recibirVehiculo(
+      final resultado = await reparacionProvider.recibirVehiculo(
         idVehiculo: vehiculo.idVehiculo,
         idTaller: tallerId,
       );
       if (!mounted) return;
-      if (idReparacion == null) {
+      if (resultado == null) {
         setState(() {
           _reparacionError =
               reparacionProvider.error ??
@@ -282,7 +289,8 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
         return;
       }
       setState(() {
-        _idReparacion = idReparacion;
+        _idReparacion = resultado.idReparacion;
+        _recibidoAhora = resultado.recibidoAhora;
         _reparacionError = null;
         _recibiendo = false;
       });
@@ -885,7 +893,10 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Text(
-                'Vehículo recibido: ya aparece en Reparaciones.',
+                _recibidoAhora
+                    ? 'Vehículo recibido: ya aparece en Reparaciones.'
+                    : 'Este vehículo ya estaba recibido: revisa su ticket '
+                          'en Reparaciones.',
                 style: AppTextStyles.bodySmall.copyWith(
                   color: colors.textPrimary,
                 ),

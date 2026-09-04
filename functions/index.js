@@ -4,6 +4,7 @@ const firestore = require('@google-cloud/firestore');
 admin.initializeApp();
 
 const { abrirTicketDeReparacion } = require('./src/aceptarCotizacion');
+const { verificarAperturaManual } = require('./src/iniciarReparacionPorVehiculo');
 
 const db = admin.firestore();
 const messaging = admin.messaging();
@@ -758,6 +759,13 @@ exports.onCotizacionAceptada = functions.firestore
  * que busque una placa — pero `reparaciones` sí necesita ese campo para
  * crearse. En vez de relajar esa protección, la creación del ticket se hace
  * aquí, del lado servidor, donde sí se puede leer el vehículo completo.
+ *
+ * Corre con Admin SDK, así que `firestore.rules` (que en /reparaciones tiene
+ * `allow create: if false` desde A4b) no lo alcanza. Hallazgo 1 de la
+ * revisión de la Tarea 4: antes de `verificarAperturaManual` este callable
+ * era la única puerta server-side que quedaba abierta para abrir un ticket
+ * sin vínculo con el vehículo y sin cotización aceptada — justo lo que A3
+ * prohíbe. Ver `./src/iniciarReparacionPorVehiculo.js`.
  */
 exports.iniciarReparacionPorVehiculo = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -785,6 +793,11 @@ exports.iniciarReparacionPorVehiculo = functions.https.onCall(async (data, conte
       'permission-denied',
       'No puedes abrir tickets en nombre de ese taller.'
     );
+  }
+
+  const verificacion = await verificarAperturaManual(db, { idVehiculo, idTaller });
+  if (!verificacion.ok) {
+    throw new functions.https.HttpsError(verificacion.code, verificacion.message);
   }
 
   const resultado = await crearOReutilizarTicketReparacion({ idVehiculo, idTaller });

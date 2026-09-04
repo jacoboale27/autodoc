@@ -36,11 +36,15 @@ void main() {
   Future<FakeReparacionProvider> pumpInitiateService(
     WidgetTester tester, {
     String? errorAlRecibir,
+    bool recibidoAhora = true,
   }) async {
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp();
     }
-    final repo = FakeReparacionProvider(errorAlRecibir: errorAlRecibir);
+    final repo = FakeReparacionProvider(
+      errorAlRecibir: errorAlRecibir,
+      recibidoAhora: recibidoAhora,
+    );
     await pumpMechanicScreen(
       tester,
       InitiateServiceScreen(
@@ -125,4 +129,33 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets(
+    'un ticket que ya estaba recibido no se anuncia como recepcion nueva (hallazgo 2)',
+    (tester) async {
+      // `ReparacionRepository.buscarReparacionActiva` (sin orden ni filtro
+      // de estado) puede resolver un ticket que ya estaba en 'recibido' —
+      // legado o de una visita anterior. Si la pantalla mostrara el mismo
+      // texto que para una recepcion real, el mecanico creeria que acaba de
+      // recibir un vehiculo que en realidad no transiciono nada.
+      final repo = await pumpInitiateService(tester, recibidoAhora: false);
+
+      await tester.tap(find.text('Recibir vehículo'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(repo.llamadasRecibir, 1);
+      expect(
+        find.text('Vehículo recibido: ya aparece en Reparaciones.'),
+        findsNothing,
+        reason: 'ese texto afirma una recepcion que no ocurrio ahora',
+      );
+      expect(
+        find.text(
+          'Este vehículo ya estaba recibido: revisa su ticket en Reparaciones.',
+        ),
+        findsOneWidget,
+      );
+    },
+  );
 }

@@ -136,7 +136,8 @@ class ReparacionProvider extends ChangeNotifier {
   }
 
   /// Marca la llegada física del vehículo al taller y devuelve el id del
-  /// ticket, o `null` si no hay ninguno que recibir.
+  /// ticket junto con si esta llamada lo movió a `recibido` recién ahora, o
+  /// `null` si no hay ninguno que recibir.
   ///
   /// El ticket ya no se crea aquí: nace cuando el cliente acepta la
   /// cotización (Cloud Function `onCotizacionAceptada`), en
@@ -144,7 +145,14 @@ class ReparacionProvider extends ChangeNotifier {
   /// justamente el caso que A3/B2 quiere impedir —recibir un vehículo sin
   /// cotización aceptada— y se responde con un error accionable en vez de
   /// abrir un ticket por la puerta de atrás.
-  Future<String?> recibirVehiculo({
+  ///
+  /// `recibidoAhora` en el resultado distingue "acabo de recibirlo" de "ya
+  /// estaba recibido" (hallazgo 2 de la revisión de la Tarea 4): sin esto la
+  /// pantalla no puede saber si de verdad transicionó algo, y podía anunciar
+  /// "vehículo recibido" cuando [ReparacionRepository.buscarReparacionActiva]
+  /// —sin orden ni filtro de estado— resolvió un ticket legado ya recibido en
+  /// vez del ticket nuevo que de verdad está esperando en el tablero.
+  Future<({String idReparacion, bool recibidoAhora})?> recibirVehiculo({
     required String idVehiculo,
     required String idTaller,
   }) async {
@@ -161,9 +169,11 @@ class ReparacionProvider extends ChangeNotifier {
             'así que todavía no hay nada que recibir.';
         return null;
       }
-      await _repository.recibirVehiculo(idReparacion: idReparacion);
+      final recibidoAhora = await _repository.recibirVehiculo(
+        idReparacion: idReparacion,
+      );
       _error = null;
-      return idReparacion;
+      return (idReparacion: idReparacion, recibidoAhora: recibidoAhora);
     } catch (e) {
       _error = e.toString();
       return null;
