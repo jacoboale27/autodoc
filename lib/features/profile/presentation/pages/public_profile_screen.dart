@@ -439,11 +439,36 @@ class _GaleriaSection extends StatelessWidget {
                 const SizedBox(width: AppSpacing.sm),
             itemBuilder: (context, i) => ClipRRect(
               borderRadius: BorderRadius.circular(12),
+              // Mismo contrato que la tarjeta del directorio
+              // (`workshop_directory_screen.dart`): esqueleto mientras carga
+              // y un icono de reemplazo si falla. Un taller cuyo `galeria`
+              // sigue listando un archivo que ya no esta en Storage pintaba
+              // un hueco de 96x96 sin nada, ni durante la carga ni tras el
+              // fallo.
               child: CachedNetworkImage(
                 imageUrl: urls[i],
                 width: 96,
                 height: 96,
                 fit: BoxFit.cover,
+                // Placeholder estatico y no `AppSkeleton`: el esqueleto usa
+                // `Shimmer`, que anima sin fin, y una animacion perpetua deja
+                // el arbol sin asentar — cualquier test que llegue aqui con
+                // `pumpAndSettle` se cuelga hasta el timeout. Para una
+                // miniatura de 96 no aporta nada frente a un bloque de color.
+                placeholder: (ctx, url) => Container(
+                  width: 96,
+                  height: 96,
+                  color: colors.surfaceContainer,
+                ),
+                errorWidget: (ctx, url, err) => Container(
+                  width: 96,
+                  height: 96,
+                  color: colors.surfaceContainer,
+                  child: Icon(
+                    Icons.broken_image_outlined,
+                    color: colors.textSecondary,
+                  ),
+                ),
               ),
             ),
           ),
@@ -472,7 +497,11 @@ class _CatalogoSection extends StatelessWidget {
         Text('Catálogo', style: AppTextStyles.titleMedium),
         const SizedBox(height: AppSpacing.sm),
         ...items.map((item) {
-          final nombre = (item['nombre'] as String?) ?? '';
+          // `.toString()` y no un cast duro: `CatalogoItemModel.fromMap`
+          // ya tolera un `nombre` numerico (escrito por el Admin SDK o por
+          // una importacion), y un cast aqui reventaria dentro de `build`,
+          // tumbando la pantalla entera del perfil.
+          final nombre = (item['nombre'] ?? '').toString();
           final precio = (item['precio'] as num?)?.toDouble() ?? 0.0;
           return AppCard(
             margin: const EdgeInsets.only(bottom: AppSpacing.sm),
