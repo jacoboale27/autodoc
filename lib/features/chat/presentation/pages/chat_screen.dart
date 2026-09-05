@@ -360,6 +360,16 @@ class _ChatScreenState extends State<ChatScreen> {
   /// borrado — Editar (solo texto) y Borrar. Reply/reenviar quedan fuera de
   /// esta ronda (11c, explícitamente pospuesto en el plan).
   void _abrirMenuMensaje(MensajeModel msg, bool isMe) {
+    // R10 (revision C4b): antes se ofrecia Copiar sobre cualquier tipo de
+    // mensaje. `msg.contenido` en 'imagen'/'audio' es un placeholder interno
+    // ('📷 Imagen adjunta', '🎤 Nota de voz'), no texto que el usuario haya
+    // escrito ni vea como tal en la burbuja (VER ImagenChatCard/AudioChatCard,
+    // que ignoran `contenido`); en tarjetas (reserva/cotizacion/reseña/
+    // vehiculo/historial) `contenido` tampoco se renderiza. Solo 'texto'
+    // muestra `msg.contenido` como el propio texto visible de la burbuja
+    // (incluido el tombstone de un mensaje borrado, que sigue siendo
+    // 'texto' y sigue siendo lo que se ve en pantalla).
+    final puedeCopiar = msg.tipo == 'texto';
     final puedeEditar = isMe && !msg.isDeleted && msg.tipo == 'texto';
     final puedeBorrar = isMe && !msg.isDeleted;
     showModalBottomSheet(
@@ -368,15 +378,16 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              key: const Key('menu_mensaje_copiar'),
-              leading: const Icon(Icons.copy),
-              title: Text(context.l10n.chatCopyMessage),
-              onTap: () {
-                Navigator.pop(ctx);
-                _copiarMensaje(msg);
-              },
-            ),
+            if (puedeCopiar)
+              ListTile(
+                key: const Key('menu_mensaje_copiar'),
+                leading: const Icon(Icons.copy),
+                title: Text(context.l10n.chatCopyMessage),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _copiarMensaje(msg);
+                },
+              ),
             if (puedeEditar)
               ListTile(
                 key: const Key('menu_mensaje_editar'),
@@ -415,47 +426,12 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _abrirEdicionMensaje(MensajeModel msg) {
-    final controller = TextEditingController(text: msg.contenido);
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.l10n.chatEditMessage),
-        content: TextField(
-          key: const Key('campo_editar_mensaje'),
-          controller: controller,
-          autofocus: true,
-          maxLines: null,
-          decoration: InputDecoration(
-            hintText: context.l10n.chatEditMessageHint,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(context.l10n.adminCancel),
-          ),
-          TextButton(
-            onPressed: () async {
-              final nuevoTexto = controller.text.trim();
-              final chatProvider = context.read<ChatProvider>();
-              final messenger = ScaffoldMessenger.of(context);
-              Navigator.pop(ctx);
-              if (nuevoTexto.isEmpty || nuevoTexto == msg.contenido) return;
-
-              final editado = await chatProvider.editarMensaje(
-                widget.conversacionId,
-                msg.id,
-                nuevoTexto,
-              );
-              if (!editado && mounted) {
-                messenger.showSnackBar(
-                  SnackBar(content: Text(context.l10n.chatEditFailed)),
-                );
-              }
-            },
-            child: Text(context.l10n.chatSaveEdit),
-          ),
-        ],
+      builder: (ctx) => _EditarMensajeDialog(
+        conversacionId: widget.conversacionId,
+        mensajeId: msg.id,
+        contenidoOriginal: msg.contenido,
       ),
     );
   }
@@ -1115,6 +1091,88 @@ class _ChatScreenState extends State<ChatScreen> {
         const SnackBar(content: Text('No se pudo enviar la nota de voz')),
       );
     }
+  }
+}
+
+/// Diálogo "Editar mensaje" como StatefulWidget propio (no un controller
+/// creado inline en el método que abre el diálogo): su TextEditingController
+/// debe liberarse en `State.dispose()`, que el framework llama recién
+/// cuando el Element del diálogo se desmonta de verdad (tras terminar la
+/// animación de salida). Mismo patrón y mismo motivo documentados en
+/// `catalogo_servicios_screen.dart` (`_NuevoItemDialog`): llamar
+/// `.dispose()` en un `.then((_) => ...)` tras `showDialog(...)` dispara "A
+/// TextEditingController was used after being disposed", porque ese Future
+/// se completa apenas se invoca `Navigator.pop()`, ANTES de que termine la
+/// animación de salida del diálogo (revisión C4b, hallazgo R9).
+class _EditarMensajeDialog extends StatefulWidget {
+  final String conversacionId;
+  final String mensajeId;
+  final String contenidoOriginal;
+
+  const _EditarMensajeDialog({
+    required this.conversacionId,
+    required this.mensajeId,
+    required this.contenidoOriginal,
+  });
+
+  @override
+  State<_EditarMensajeDialog> createState() => _EditarMensajeDialogState();
+}
+
+class _EditarMensajeDialogState extends State<_EditarMensajeDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.contenidoOriginal);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _guardar() async {
+    final nuevoTexto = _controller.text.trim();
+    final chatProvider = context.read<ChatProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    final errorText = context.l10n.chatEditFailed;
+    Navigator.pop(context);
+    if (nuevoTexto.isEmpty || nuevoTexto == widget.contenidoOriginal) return;
+
+    final editado = await chatProvider.editarMensaje(
+      widget.conversacionId,
+      widget.mensajeId,
+      nuevoTexto,
+    );
+    // `messenger` es una referencia al ScaffoldMessengerState del árbol,
+    // no depende de que este diálogo (ya cerrado) siga montado.
+    if (!editado) {
+      messenger.showSnackBar(SnackBar(content: Text(errorText)));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(context.l10n.chatEditMessage),
+      content: TextField(
+        key: const Key('campo_editar_mensaje'),
+        controller: _controller,
+        autofocus: true,
+        maxLines: null,
+        decoration: InputDecoration(hintText: context.l10n.chatEditMessageHint),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(context.l10n.adminCancel),
+        ),
+        TextButton(onPressed: _guardar, child: Text(context.l10n.chatSaveEdit)),
+      ],
+    );
   }
 }
 

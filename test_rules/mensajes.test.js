@@ -66,6 +66,42 @@ const seedMensajeCotizacion = async () => {
   });
 };
 
+describe('mensajes: create no permite forjar id_remitente (R1, revision C4b)', () => {
+  test('un participante NO puede crear un mensaje con el id_remitente de otro participante', async () => {
+    await seedConversacion();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db
+        .collection('conversaciones')
+        .doc('c1')
+        .collection('mensajes')
+        .add({
+          id_remitente: UIDS.owner1,
+          contenido: 'Acepto pagar 2.000.000',
+          tipo: 'texto',
+          estado: 'enviado',
+        }),
+    );
+  });
+
+  test('un participante SI puede crear un mensaje con su propio id_remitente', async () => {
+    await seedConversacion();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertSucceeds(
+      db
+        .collection('conversaciones')
+        .doc('c1')
+        .collection('mensajes')
+        .add({
+          id_remitente: UIDS.taller1,
+          contenido: 'Hola, tengo un cupo manana',
+          tipo: 'texto',
+          estado: 'enviado',
+        }),
+    );
+  });
+});
+
 describe('mensajes: edicion acotada al autor (Tarea 11b, C4)', () => {
   test('el emisor puede editar solo el contenido y la marca de editado', async () => {
     await seedConversacion();
@@ -165,6 +201,34 @@ describe('mensajes: edicion acotada al autor (Tarea 11b, C4)', () => {
     );
   });
 
+  test('R3: update de solo contenido, sin editado, queda DENEGADO (reescritura silenciosa)', async () => {
+    await seedConversacion();
+    await seedMensajeTexto();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db
+        .collection('conversaciones')
+        .doc('c1')
+        .collection('mensajes')
+        .doc('m1')
+        .update({ contenido: 'otro precio' }),
+    );
+  });
+
+  test('R3: update de contenido + editado:false queda DENEGADO (la marca no es real)', async () => {
+    await seedConversacion();
+    await seedMensajeTexto();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db
+        .collection('conversaciones')
+        .doc('c1')
+        .collection('mensajes')
+        .doc('m1')
+        .update({ contenido: 'otro precio', editado: false }),
+    );
+  });
+
   test('no se puede editar el texto de una cotizacion ya enviada, ni el propio autor', async () => {
     await seedConversacion();
     await seedMensajeCotizacion();
@@ -235,6 +299,45 @@ describe('mensajes: politica de borrado (Tarea 11a, C4) — solo el autor borra 
         .doc('m1')
         .update({ is_deleted: true, contenido: 'Este mensaje ha sido eliminado' }),
     );
+  });
+
+  test('R2: el borrado logico NO puede reescribir contenido a un texto distinto del tombstone', async () => {
+    await seedConversacion();
+    await seedMensajeCotizacion();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db
+        .collection('conversaciones')
+        .doc('c1')
+        .collection('mensajes')
+        .doc('cot1')
+        .update({ is_deleted: true, contenido: 'te cobro 500k' }),
+    );
+  });
+
+  test('R2: la secuencia de dos escrituras para "des-borrar" una cotizacion queda DENEGADA en el segundo paso', async () => {
+    await seedConversacion();
+    await seedMensajeCotizacion();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    const ref = db
+      .collection('conversaciones')
+      .doc('c1')
+      .collection('mensajes')
+      .doc('cot1');
+
+    // Escritura 1: borrado logico legitimo, con el tombstone exacto.
+    await assertSucceeds(
+      ref.update({
+        is_deleted: true,
+        contenido: 'Este mensaje ha sido eliminado',
+      }),
+    );
+
+    // Escritura 2: intentar "revivir" el mensaje volviendo is_deleted a
+    // false — dejaria una cotizacion viva con el contenido que el autor
+    // reescribio en la escritura 1, sin marca de editado. Debe fallar: el
+    // tombstone es de una sola direccion.
+    await assertFails(ref.update({ is_deleted: false }));
   });
 });
 

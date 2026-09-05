@@ -706,18 +706,41 @@ service cloud.firestore {
               .id_mecanico == request.auth.uid;
         }
 
-        allow read, create: if isAuthenticated() && esParticipante();
+        allow read: if isAuthenticated() && esParticipante();
 
-        // Tarea 11b (C4): la regla original permitía reescribir CUALQUIER
-        // campo de un mensaje ajeno — el emisor, el tipo, el precio de una
-        // cotización ya aceptada — sin verificar autoría ni acotar los
-        // campos tocados. Se cierra a cuatro escrituras concretas, cada una
-        // ya usada por la app hoy (la 1 se añade en esta tarea; 2-4 ya se
-        // acotaron en 11a):
+        // Revisión de Tarea 11 (C4b), hallazgo R1: la regla original de
+        // `create` no comprobaba `request.resource.data` en absoluto — solo
+        // exigía ser participante. Cualquier participante podía forjar
+        // `id_remitente` con el uid del OTRO participante; como
+        // `chat_screen.dart` calcula `isMe = msg.idRemitente == userId`, el
+        // mensaje forjado se renderizaba como si el otro lo hubiera escrito
+        // (p.ej. el taller hace que aparezca "Acepto pagar 2.000.000" en
+        // boca del propietario). Se auditó cada `create` real
+        // (`ChatRepository.enviarMensaje`, único punto de escritura, y su
+        // único llamador `ChatProvider.enviarMensaje`/`enviarCotizacion`):
+        // todos pasan `remitenteId: userId` (el uid autenticado de quien
+        // envía) — ninguna escritura legítima, de cliente ni de Cloud
+        // Functions (el trigger `notifyOnNewChatMessage` solo lee, no
+        // escribe mensajes), depende de poder fijar un `id_remitente`
+        // distinto al propio.
+        allow create: if isAuthenticated() && esParticipante() &&
+          request.resource.data.id_remitente == request.auth.uid;
+
+        // Tarea 11b (C4), revisada en la ronda C4b: la regla original
+        // permitía reescribir CUALQUIER campo de un mensaje ajeno — el
+        // emisor, el tipo, el precio de una cotización ya aceptada — sin
+        // verificar autoría ni acotar los campos tocados. Se cierra a
+        // cuatro escrituras concretas, cada una ya usada por la app hoy:
         //   1. Editar el propio texto: solo el autor, solo mensajes de tipo
         //      'texto' (una cotización o reserva editada cambiaría lo que
         //      la otra parte ya aceptó/leyó), solo puede tocar `contenido`
         //      y `editado`. `hasOnly` impide colar `id_remitente` o `tipo`.
+        //      Hallazgo R3 (revisión C4b): la rama original no exigía
+        //      `editado == true` — `update({contenido: 'x'})` a secas, o
+        //      con `editado: false`, pasaba el `hasOnly` igual, permitiendo
+        //      reescribir el texto sin dejar la marca "(editado)" que es la
+        //      única señal visible del cambio. Ahora se exige
+        //      `request.resource.data.editado == true` explícitamente.
         //   2. Marcar como visto (`ChatRepository.marcarComoLeidos`): el
         //      receptor actualiza el `estado` de un mensaje que NO escribió
         //      — sigue siendo cualquier participante, solo ese campo.
@@ -728,27 +751,47 @@ service cloud.firestore {
         //      ese campo.
         //   4. Borrado lógico (`ChatRepository.deleteMensaje`, is_deleted +
         //      contenido): usa `update`, no `delete` — se acota aquí al
-        //      autor, igual que el `delete` físico de abajo (ver política en
-        //      el informe de Tarea 11).
+        //      autor, igual que el `delete` físico de abajo. Hallazgo R2
+        //      (revisión C4b): la rama original no fijaba el valor de
+        //      `contenido` ni exigía que `is_deleted` pasara de false→true,
+        //      así que servía como reescritura de `contenido` disfrazada de
+        //      borrado — dos escrituras (borrar con un `contenido`
+        //      inventado, luego "revivir" con `is_deleted: false`) dejaban
+        //      un mensaje vivo con el texto reescrito y sin marca de
+        //      editado, incluso en una `cotizacion_card`. Ahora es un
+        //      tombstone de una sola dirección: exige
+        //      `resource.data.is_deleted != true` (no se puede volver a
+        //      "borrar" ni, más importante, revertir desde `true`),
+        //      `request.resource.data.is_deleted == true`, y fija
+        //      `contenido` al valor EXACTO que escribe
+        //      `ChatRepository.deleteMensaje` — no es localizable ni
+        //      configurable, es un literal en el repositorio.
         allow update: if isAuthenticated() && esParticipante() && (
           (resource.data.id_remitente == request.auth.uid &&
             resource.data.tipo == 'texto' &&
             request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['contenido', 'editado']))
+              .hasOnly(['contenido', 'editado']) &&
+            request.resource.data.editado == true)
           || request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly(['estado'])
           || request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly(['metadata'])
           || (resource.data.id_remitente == request.auth.uid &&
+            resource.data.get('is_deleted', false) != true &&
             request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['is_deleted', 'contenido']))
+              .hasOnly(['is_deleted', 'contenido']) &&
+            request.resource.data.is_deleted == true &&
+            request.resource.data.contenido == 'Este mensaje ha sido eliminado')
         );
 
-        // Borrado: solo el autor del mensaje, nunca la contraparte. La
-        // regla original permitía a cualquier participante borrar el
-        // mensaje del otro — un permiso heredado sin que nadie lo
-        // decidiera, no una elección de diseño (ver informe de Tarea 11).
-        allow delete: if isAuthenticated() &&
+        // Borrado: solo el autor del mensaje, y solo si sigue siendo
+        // participante de la conversación (defensa en profundidad,
+        // hallazgo R4 — el resto de reglas de esta subcolección ya exige
+        // `esParticipante()`, esta no lo hacía). La regla original permitía
+        // a cualquier participante borrar el mensaje del otro — un permiso
+        // heredado sin que nadie lo decidiera, no una elección de diseño
+        // (ver informe de Tarea 11).
+        allow delete: if isAuthenticated() && esParticipante() &&
           resource.data.id_remitente == request.auth.uid;
       }
     }

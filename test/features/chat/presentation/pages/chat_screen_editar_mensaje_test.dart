@@ -1,7 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_core_platform_interface/test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:autodoc/features/chat/data/models/mensaje_model.dart';
 import 'package:autodoc/features/chat/presentation/pages/chat_screen.dart';
 
 import '../../../../support/chat_harness.dart';
@@ -112,7 +114,34 @@ void main() {
   testWidgets(
     'un mensaje sin el campo editado (produccion anterior) no muestra la marca',
     (tester) async {
-      await montar(tester, tipo: 'texto', editado: false);
+      // A diferencia de `montar()` (que construye el MensajeModel directo
+      // con `editado: false`, sin pasar por Firestore), este test construye
+      // el mapa CRUDO tal como vendria de un documento real anterior a la
+      // Tarea 11b: sin la clave 'editado' en absoluto. Ejercita
+      // `MensajeModel.fromMap` de verdad, para probar la lectura tolerante
+      // (`map['editado'] ?? false`) — no simplemente que el widget respete
+      // un valor que ya le dimos como `false`.
+      await Firebase.initializeApp();
+      final mensajeProduccionAnterior = MensajeModel.fromMap({
+        'id_remitente': 'u1',
+        'contenido': 'hola',
+        'tipo': 'texto',
+        'estado': 'enviado',
+        'timestamp': Timestamp.fromDate(DateTime(2026, 1, 1, 10)),
+        // Sin 'editado': asi son los documentos ya existentes en produccion.
+      }, 'm1');
+      final chatProvider = FakeChatProvider(
+        conversaciones: [fakeConversacion()],
+        mensajes: [mensajeProduccionAnterior],
+      );
+      await pumpChatWidget(
+        tester,
+        const ChatScreen(conversacionId: 'c1'),
+        width: 375,
+        user: fakeChatUser(),
+        chatProvider: chatProvider,
+      );
+
       expect(find.text('(editado)'), findsNothing);
     },
   );

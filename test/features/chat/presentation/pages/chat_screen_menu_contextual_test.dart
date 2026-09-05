@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:autodoc/features/chat/presentation/pages/chat_screen.dart';
+import 'package:autodoc/features/chat/presentation/widgets/cards/audio_chat_card.dart';
 
 import '../../../../support/chat_harness.dart';
 
@@ -150,4 +151,73 @@ void main() {
 
     expect(chatProvider.llamadas, contains('deleteMensaje:c1:m1'));
   });
+
+  // R10 (revision C4b): `msg.contenido` en un mensaje de audio o imagen es
+  // un placeholder interno ('🎤 Nota de voz', '📷 Imagen adjunta') que la
+  // burbuja ni siquiera muestra (AudioChatCard/ImagenChatCard ignoran
+  // `contenido`) — ofrecer "Copiar" ahi copiaba ese placeholder, no nada
+  // que el usuario hubiera visto como texto.
+  testWidgets(
+    'sobre un mensaje de audio no se ofrece Copiar (no hay texto visible que copiar)',
+    (tester) async {
+      await Firebase.initializeApp();
+      final chatProvider = FakeChatProvider(
+        conversaciones: [fakeConversacion()],
+        mensajes: [
+          fakeMensaje(
+            id: 'm1',
+            idRemitente: 'u1',
+            contenido: '🎤 Nota de voz',
+            tipo: 'audio',
+            urlArchivo: 'https://example.com/audio.m4a',
+          ),
+        ],
+      );
+      await pumpChatWidget(
+        tester,
+        const ChatScreen(conversacionId: 'c1'),
+        width: 375,
+        user: fakeChatUser(),
+        chatProvider: chatProvider,
+      );
+
+      await tester.longPress(find.byType(AudioChatCard));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('menu_mensaje_copiar')), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'sobre una tarjeta de reserva no se ofrece Copiar (no es texto libre)',
+    (tester) async {
+      await Firebase.initializeApp();
+      final chatProvider = FakeChatProvider(
+        conversaciones: [fakeConversacion()],
+        mensajes: [
+          fakeMensaje(
+            id: 'm1',
+            idRemitente: 'u1',
+            contenido: 'Reserva propuesta',
+            tipo: 'reserva_card',
+            // Sin `id_reserva`: evita la rama con `StreamBuilder` sobre
+            // Firestore real de `ReservaChatCard` (no hay emulador en este
+            // test), igual que el resto de la suite ejercita esta tarjeta.
+          ),
+        ],
+      );
+      await pumpChatWidget(
+        tester,
+        const ChatScreen(conversacionId: 'c1'),
+        width: 375,
+        user: fakeChatUser(),
+        chatProvider: chatProvider,
+      );
+
+      await tester.longPress(find.text('Reserva de Cita'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('menu_mensaje_copiar')), findsNothing);
+    },
+  );
 }
