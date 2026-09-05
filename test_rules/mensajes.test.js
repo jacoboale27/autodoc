@@ -229,6 +229,27 @@ describe('mensajes: edicion acotada al autor (Tarea 11b, C4)', () => {
     );
   });
 
+  test('Blocker 4: el autor NO puede "editar" un mensaje ya tombstoneado (is_deleted:true)', async () => {
+    // Sin el guard, esto resucitaba texto arbitrario ENCIMA del tombstone:
+    // el mensaje sigue siendo tipo 'texto' tras el borrado logico, asi que
+    // sin comprobar is_deleted la rama de edicion lo trataba como cualquier
+    // otro mensaje de texto propio.
+    await seedConversacion();
+    await seedMensajeTexto({
+      is_deleted: true,
+      contenido: 'Este mensaje ha sido eliminado',
+    });
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db
+        .collection('conversaciones')
+        .doc('c1')
+        .collection('mensajes')
+        .doc('m1')
+        .update({ contenido: 'resucitado', editado: true }),
+    );
+  });
+
   test('no se puede editar el texto de una cotizacion ya enviada, ni el propio autor', async () => {
     await seedConversacion();
     await seedMensajeCotizacion();

@@ -769,6 +769,13 @@ service cloud.firestore {
         //      reescribir el texto sin dejar la marca "(editado)" que es la
         //      única señal visible del cambio. Ahora se exige
         //      `request.resource.data.editado == true` explícitamente.
+        //      Revisión de rama completa (Blocker 4): tampoco comprobaba
+        //      `is_deleted`, así que un mensaje ya tombstoneado (que sigue
+        //      teniendo `tipo: 'texto'`) podía "editarse" — el autor escribía
+        //      contenido arbitrario ENCIMA del tombstone, marcado `(editado)`,
+        //      derrotando el borrado de una sola dirección que la rama 4 de
+        //      abajo paga por construir. Se exige además
+        //      `resource.data.get('is_deleted', false) != true`.
         //   2. Marcar como visto (`ChatRepository.marcarComoLeidos`): el
         //      receptor actualiza el `estado` de un mensaje que NO escribió
         //      — sigue siendo cualquier participante, solo ese campo.
@@ -794,9 +801,22 @@ service cloud.firestore {
         //      `contenido` al valor EXACTO que escribe
         //      `ChatRepository.deleteMensaje` — no es localizable ni
         //      configurable, es un literal en el repositorio.
+        //      Blocker 6 (revisión de rama completa): ese literal vive en
+        //      `lib/features/chat/data/repositories/chat_repository.dart`
+        //      como la constante `kTombstoneMensajeEliminado`. ESTA regla
+        //      compara carácter a carácter contra el string de abajo; si el
+        //      literal de la constante cambia (p. ej. una pasada de
+        //      localización futura) sin cambiar también el de aquí, el
+        //      borrado lógico empieza a fallar en producción para todos los
+        //      usuarios, en silencio, porque los tests de widget corren
+        //      contra `FakeFirebaseFirestore` (no evalúa reglas). Cambia
+        //      ambos EN EL MISMO commit; hay un test de guardia que lee
+        //      ambos archivos y compara
+        //      (`test/features/chat/tombstone_literal_test.dart`).
         allow update: if isAuthenticated() && esParticipante() && (
           (resource.data.id_remitente == request.auth.uid &&
             resource.data.tipo == 'texto' &&
+            resource.data.get('is_deleted', false) != true &&
             request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['contenido', 'editado']) &&
             request.resource.data.editado == true)
