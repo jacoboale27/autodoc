@@ -1181,6 +1181,12 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                             runSpacing: 4,
                             children: [
                               TextButton(
+                                key: const Key('wd_ver_perfil'),
+                                onPressed: () =>
+                                    context.push('/perfil_publico/$tallerId'),
+                                child: const Text('Ver perfil'),
+                              ),
+                              TextButton(
                                 onPressed: () => showWorkshopReviewsSheet(
                                   context,
                                   tallerId: tallerId,

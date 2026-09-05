@@ -1,4 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:autodoc/core/widgets/app_user_avatar.dart';
@@ -159,6 +161,178 @@ void main() {
 
         expect(find.text('Cliente Viejo'), findsWidgets);
         expect(tester.takeException(), isNull);
+      },
+    );
+  });
+
+  group('PublicProfileScreen — perfil público del taller (Tarea 13, D1)', () {
+    testWidgets(
+      'un taller completo muestra ubicación, galería, catálogo y empleados',
+      (tester) async {
+        final firestore = FakeFirebaseFirestore();
+        await firestore.collection('talleres').doc('mec2').set({
+          'nombre': 'Taller Completo',
+          'especialidad': 'Motores',
+          'calificacion_promedio': 4.0,
+          'total_resenias': 0,
+          'direccion': 'Calle Principal #123',
+          'departamento': 'San Salvador',
+          'ubicacion': const GeoPoint(13.6929, -89.2182),
+          'galeria': ['logo.webp', 'local-1.jpg'],
+        });
+        await firestore
+            .collection('talleres')
+            .doc('mec2')
+            .collection('catalogo_servicios')
+            .doc('item1')
+            .set({'nombre': 'Cambio de aceite', 'precio': 25.0});
+
+        final empleadosSolicitados = <String>[];
+        final service = PublicProfileService(
+          firestore: firestore,
+          obtenerEmpleadosPublicos: (idTaller) async {
+            empleadosSolicitados.add(idTaller);
+            return [
+              {
+                'nombre_completo': 'Juan Pérez',
+                'rol': 'Mecanico',
+                'activo': true,
+              },
+            ];
+          },
+        );
+
+        await pumpEntry(
+          tester,
+          PublicProfileScreen(
+            userId: 'mec2',
+            firestore: firestore,
+            publicProfileService: service,
+            storageBucket: 'bucket-de-prueba.appspot.com',
+          ),
+          profile: FakeUserProfileProvider(
+            userData: testUser(rol: 'Propietario'),
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        expect(empleadosSolicitados, ['mec2']);
+
+        // Ubicación: dirección + departamento, y el botón para abrir Maps
+        // porque el documento sí trae `ubicacion` (GeoPoint).
+        expect(
+          find.byKey(const Key('perfil_publico_ubicacion')),
+          findsOneWidget,
+        );
+        expect(find.text('Calle Principal #123, San Salvador'), findsOneWidget);
+        expect(
+          find.byKey(const Key('perfil_publico_abrir_mapa')),
+          findsOneWidget,
+        );
+
+        // Galería: dos archivos válidos -> dos imágenes.
+        expect(find.byKey(const Key('perfil_publico_galeria')), findsOneWidget);
+
+        // Catálogo: el item sembrado en la subcolección pública.
+        expect(
+          find.byKey(const Key('perfil_publico_catalogo')),
+          findsOneWidget,
+        );
+        expect(find.text('Cambio de aceite'), findsOneWidget);
+        expect(find.text('\$25.00'), findsOneWidget);
+
+        // Empleados: exactamente lo que devolvió el callable (allowlist),
+        // nunca correo/teléfono (que ni siquiera llegan a este mapa).
+        expect(
+          find.byKey(const Key('perfil_publico_empleados')),
+          findsOneWidget,
+        );
+        expect(find.text('Juan Pérez'), findsOneWidget);
+        expect(find.text('Mecanico'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'un taller anterior a esta tarea (sin galería/ubicación/catálogo/empleados) no rompe el layout',
+      (tester) async {
+        final firestore = FakeFirebaseFirestore();
+        await firestore.collection('talleres').doc('mec3').set({
+          'nombre': 'Taller Viejo',
+          'especialidad': 'General',
+        });
+
+        final service = PublicProfileService(
+          firestore: firestore,
+          obtenerEmpleadosPublicos: (idTaller) async => const [],
+        );
+
+        await pumpEntry(
+          tester,
+          PublicProfileScreen(
+            userId: 'mec3',
+            firestore: firestore,
+            publicProfileService: service,
+          ),
+          profile: FakeUserProfileProvider(
+            userData: testUser(rol: 'Propietario'),
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text('Taller Viejo'), findsWidgets);
+        expect(find.byKey(const Key('perfil_publico_ubicacion')), findsNothing);
+        expect(find.byKey(const Key('perfil_publico_galeria')), findsNothing);
+        expect(find.byKey(const Key('perfil_publico_catalogo')), findsNothing);
+        expect(find.byKey(const Key('perfil_publico_empleados')), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'la sección Empleados nunca pinta correo ni teléfono aunque el fetcher los devuelva',
+      (tester) async {
+        // El fetcher inyectado sustituye al callable real
+        // (`obtenerEmpleadosPublicos`), que es la frontera de seguridad
+        // real (ver functions/test/obtener_empleados_publicos.test.js). Si
+        // por error algún día ese fetcher trajera de más, esta pantalla no
+        // tiene ningún widget que busque ni pinte esos campos.
+        final firestore = FakeFirebaseFirestore();
+        await firestore.collection('talleres').doc('mec4').set({
+          'nombre': 'Taller Con Empleado',
+        });
+
+        final service = PublicProfileService(
+          firestore: firestore,
+          obtenerEmpleadosPublicos: (idTaller) async => [
+            {
+              'nombre_completo': 'Empleado Filtrado',
+              'rol': 'Mecanico',
+              'activo': true,
+              'correo': 'empleado@test.com',
+              'telefono': '7000-0000',
+            },
+          ],
+        );
+
+        await pumpEntry(
+          tester,
+          PublicProfileScreen(
+            userId: 'mec4',
+            firestore: firestore,
+            publicProfileService: service,
+          ),
+          profile: FakeUserProfileProvider(
+            userData: testUser(rol: 'Propietario'),
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text('Empleado Filtrado'), findsOneWidget);
+        expect(find.textContaining('empleado@test.com'), findsNothing);
+        expect(find.textContaining('7000-0000'), findsNothing);
       },
     );
   });

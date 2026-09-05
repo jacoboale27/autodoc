@@ -154,6 +154,34 @@ describe('talleres/{tallerId}/empleados', () => {
     );
   });
 
+  test('un cliente (Propietario) NO puede leer la subcoleccion de empleados de un taller, ni siquiera un doc suelto', async () => {
+    // D1 (Tarea 13): la seccion "Empleados" del perfil publico del taller
+    // lee estos datos por el callable `obtenerEmpleadosPublicos`, nunca
+    // directo -- porque el doc real trae correo/telefono del empleado, y
+    // una regla de Firestore no puede proyectar solo nombre/rol/activo (un
+    // get()/list() permitido siempre trae el documento completo). Este test
+    // prueba que ese atajo sigue cerrado para un cliente cualquiera,
+    // sobre los campos realmente sensibles (correo, telefono), no sobre
+    // campos que EmpleadoModel ni siquiera tiene.
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await seed(env, async (s) => {
+      await s.collection('talleres').doc(UIDS.taller1).collection('empleados').doc('emp1').set({
+        id_taller_propietario: UIDS.taller1,
+        nombre_completo: 'Empleado Uno',
+        correo: 'emp1@x.com',
+        telefono: '7000-0000',
+        rol: 'Mecanico',
+        activo: true,
+      });
+    });
+    await assertFails(
+      db.collection('talleres').doc(UIDS.taller1).collection('empleados').get(),
+    );
+    await assertFails(
+      db.collection('talleres').doc(UIDS.taller1).collection('empleados').doc('emp1').get(),
+    );
+  });
+
   test('un cliente (no admin, Admin SDK bypass excluido) NO puede crear un empleado directamente', async () => {
     // crearRegistroEmpleado() (Tarea 6) nunca se llama desde la app: el
     // unico create real pasa por crearEmpleadoTaller (Cloud Function,

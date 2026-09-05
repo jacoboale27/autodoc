@@ -47,12 +47,24 @@ class PublicProfileService {
   final Future<Map<String, dynamic>?> Function(String clienteId)
   _obtenerPerfilCliente;
 
+  /// Inyectable para pruebas de widget, mismo motivo que
+  /// [_obtenerPerfilCliente]: la frontera de seguridad real (que el
+  /// documento fuente de cada empleado nunca filtre correo/teléfono) ya
+  /// está probada del lado servidor
+  /// (`functions/test/obtener_empleados_publicos.test.js`), no aquí.
+  final Future<List<Map<String, dynamic>>> Function(String idTaller)
+  _obtenerEmpleadosPublicosFn;
+
   PublicProfileService({
     FirebaseFirestore? firestore,
     Future<Map<String, dynamic>?> Function(String clienteId)?
     obtenerPerfilCliente,
+    Future<List<Map<String, dynamic>>> Function(String idTaller)?
+    obtenerEmpleadosPublicos,
   }) : _firestoreInyectado = firestore,
-       _obtenerPerfilCliente = obtenerPerfilCliente ?? _llamarCallable;
+       _obtenerPerfilCliente = obtenerPerfilCliente ?? _llamarCallable,
+       _obtenerEmpleadosPublicosFn =
+           obtenerEmpleadosPublicos ?? _llamarCallableEmpleados;
 
   static Future<Map<String, dynamic>?> _llamarCallable(String clienteId) async {
     try {
@@ -67,6 +79,33 @@ class PublicProfileService {
       // cualquier otro fallo del callable: sin perfil que mostrar, no un
       // crash de la pantalla.
       return null;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> _llamarCallableEmpleados(
+    String idTaller,
+  ) async {
+    try {
+      final result = await FirebaseFunctions.instance
+          .httpsCallable('obtenerEmpleadosPublicos')
+          .call({'idTaller': idTaller});
+      final data = result.data;
+      if (data is Map && data['empleados'] is List) {
+        return (data['empleados'] as List)
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+      }
+      return const [];
+    } catch (_) {
+      // Sin taller (idTaller vacío/inválido), sin Firebase inicializado (un
+      // widget test que no inyecta este fetcher, p. ej.), o cualquier otro
+      // fallo del callable: la sección Empleados degrada a "sin
+      // empleados", nunca a un crash de toda la pantalla. Catch amplio
+      // deliberado (no solo `FirebaseFunctionsException`, a diferencia de
+      // `_llamarCallable` arriba): a diferencia del perfil del cliente
+      // -que sin datos muestra "no se pudo cargar"-, un taller sin
+      // empleados es un estado normal y frecuente, no un error.
+      return const [];
     }
   }
 
@@ -87,4 +126,14 @@ class PublicProfileService {
   /// si el usuario no existe.
   Future<Map<String, dynamic>?> perfilCliente(String uid) =>
       _obtenerPerfilCliente(uid);
+
+  /// Empleados públicos (activos) del taller `idTaller` — Tarea 13, D1.
+  ///
+  /// Subconjunto acotado desde el servidor (`obtenerEmpleadosPublicos`
+  /// callable): `{nombre_completo, rol, activo}`. Nunca `correo` ni
+  /// `telefono` — ver `functions/src/obtenerEmpleadosPublicos.js`. Lista
+  /// vacía si el taller no tiene empleados publicados o si el callable
+  /// falla; nunca lanza.
+  Future<List<Map<String, dynamic>>> empleadosPublicos(String idTaller) =>
+      _obtenerEmpleadosPublicosFn(idTaller);
 }

@@ -9,6 +9,7 @@ const {
   subconjuntoPublicoCliente,
   compartenConversacion,
 } = require('./src/obtenerPerfilPublico');
+const { listarEmpleadosPublicos } = require('./src/obtenerEmpleadosPublicos');
 
 const db = admin.firestore();
 const messaging = admin.messaging();
@@ -1278,6 +1279,51 @@ exports.obtenerPerfilPublico = functions.https.onCall(async (data, context) => {
   }
 
   return subconjuntoPublicoCliente(clienteDoc.data());
+});
+
+/**
+ * 11c. Callable: empleados publicos de un taller (Tarea 13, D1 — "perfil
+ * publico del taller").
+ *
+ * `talleres/{tallerId}/empleados` esta cerrado en `firestore.rules` a
+ * `request.auth.uid == tallerId || isAdmin()` (ni el propio empleado puede
+ * leer la subcoleccion completa) porque cada documento trae correo y
+ * telefono del empleado. Abrir esa lectura a "cualquiera que mire el perfil
+ * publico del taller" expondria esos dos campos de forma anonima — una
+ * regla de Firestore no puede proyectar SOLO nombre/rol/activo, un
+ * `get()`/`list()` permitido siempre trae el documento completo (mismo
+ * principio que `obtenerPerfilPublico` arriba).
+ *
+ * Este callable corre con Admin SDK, fuera del alcance de esas reglas, y
+ * proyecta explicitamente el ALLOWLIST {nombre_completo, rol, activo} via
+ * `listarEmpleadosPublicos` (que ademas ya filtra a solo los activos).
+ *
+ * SI requiere `context.auth` (correccion de controller sobre la primera
+ * version de esta tarea, que lo dejaba anonimo igual que `talleres/{uid}`).
+ * Esa comparacion aplicaba el consentimiento del DUEÑO al EMPLEADO: el
+ * dueño eligio operar un negocio publico y aparecer en el directorio; su
+ * mecanico contratado no eligio nada de eso — solo le dio su nombre a un
+ * patron para conseguir trabajo. Esa distincion es la razon completa por la
+ * que esto es un callable en vez de un cambio de reglas; dejarlo sin
+ * autenticacion devuelve gran parte de lo que el diseño protegia: un
+ * endpoint abierto que cualquiera, sin cuenta, puede invocar con cualquier
+ * idTaller para enumerar personal a escala. Ni el directorio de talleres ni
+ * el perfil publico son rutas anonimas en la app (`app_router.dart`,
+ * `_publicRoutes`), asi que exigir sesion no le cuesta nada a quien ya
+ * llega hasta aqui.
+ */
+exports.obtenerEmpleadosPublicos = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  }
+
+  const idTaller = data && data.idTaller ? String(data.idTaller) : '';
+  if (!idTaller) {
+    throw new functions.https.HttpsError('invalid-argument', 'Debes indicar el taller.');
+  }
+
+  const empleados = await listarEmpleadosPublicos(db, idTaller);
+  return { empleados };
 });
 
 /**

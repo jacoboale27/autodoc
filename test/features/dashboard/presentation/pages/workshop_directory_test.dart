@@ -143,4 +143,34 @@ void main() {
       reason: 'y el texto de la valoracion no puede haberse perdido',
     );
   });
+
+  test(
+    'la tarjeta del taller tiene un boton "Ver perfil" que navega a /perfil_publico/{uid} (Tarea 13, D1)',
+    () {
+      // El perfil publico completo (galeria, ubicacion, catalogo, empleados)
+      // vive en la ruta ya existente `/perfil_publico/:userId`
+      // (PublicProfileScreen, Tarea 10) -- RULING A de la Tarea 13 prohibe
+      // crear una segunda pantalla/ruta para el mismo taller.
+      final start = source.indexOf('Widget _buildWorkshopCard(');
+      expect(
+        start,
+        greaterThan(-1),
+        reason: 'no se encontró _buildWorkshopCard',
+      );
+
+      final body = source.substring(start);
+      expect(
+        body.contains("Key('wd_ver_perfil')"),
+        isTrue,
+        reason: 'falta el boton "Ver perfil" en la tarjeta del directorio',
+      );
+      expect(
+        body.contains(r"context.push('/perfil_publico/$tallerId')"),
+        isTrue,
+        reason:
+            'el boton "Ver perfil" debe navegar a la ruta ya existente de '
+            'PublicProfileScreen, no a una nueva',
+      );
+    },
+  );
 }
