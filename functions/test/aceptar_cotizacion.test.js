@@ -164,6 +164,24 @@ describe('onCotizacionAceptada / construirTicketReparacion', () => {
     assert.strictEqual(ticket.id_propietario, 'cli-real');
   });
 
+  it('IGNORA el id_propietario de la cotizacion aunque nombre a otra persona (hallazgo C1)', () => {
+    // La cotizacion es dato que el mecanico que la crea controla (firestore.rules
+    // solo exige id_mecanico == auth.uid para crearla). Si esta funcion confiara
+    // en cotizacion.id_propietario, un mecanico podria fabricar un ticket que
+    // aparente pertenecer a la victima que el eligiera, aunque el vehiculo real
+    // sea de otra persona.
+    const conPropietarioFalso = cotizacion({ id_propietario: 'victima-elegida-por-el-atacante' });
+
+    const ticket = construirTicketReparacion({
+      cotizacionId: 'c1',
+      cotizacion: conPropietarioFalso,
+      vehiculo: { placa: 'ABC123', id_propietario: 'dueno-real' },
+      ahora: AHORA,
+    });
+
+    assert.strictEqual(ticket.id_propietario, 'dueno-real');
+  });
+
   it('devuelve null si no hay vehiculo, taller o propietario que anclar', () => {
     const sinTaller = cotizacion();
     delete sinTaller.id_taller;
@@ -308,6 +326,73 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion', () => {
     } finally {
       warn.restore();
     }
+  });
+});
+
+describe('onCotizacionAceptada / abrirTicketDeReparacion, vinculo taller-vehiculo (hallazgo C1)', () => {
+  it('NO crea ticket si el taller de la cotizacion no esta vinculado al vehiculo', async () => {
+    // Este es el ataque central del hallazgo C1: un mecanico redacta una
+    // cotizacion sobre un vehiculo ajeno (vinculado a OTRO taller) y se la
+    // auto-acepta. Sin esta comprobacion, el trigger le abria el ticket igual.
+    const db = fakeDb({
+      'vehiculos/v1': {
+        placa: 'ABC123',
+        id_propietario: 'cli1',
+        talleres_vinculados: ['taller-legitimo'],
+      },
+    });
+    const error = sinon.stub(console, 'error');
+    try {
+      await assert.rejects(
+        abrirTicketDeReparacion(db, {
+          cotizacionId: 'c1',
+          antes: { estado: 'pendiente' },
+          despues: cotizacion({ id_taller: 'taller-atacante' }),
+          ahora: AHORA,
+        })
+      );
+      assert.deepStrictEqual(db.escrituras, []);
+      const tickets = Object.keys(db.docs).filter((k) => k.startsWith('reparaciones/'));
+      assert.deepStrictEqual(tickets, []);
+    } finally {
+      error.restore();
+    }
+  });
+
+  it('SI crea el ticket si el vehiculo es walk-in (sin ningun taller vinculado todavia)', async () => {
+    const db = fakeDb({
+      'vehiculos/v1': { placa: 'ABC123', id_propietario: 'cli1', talleres_vinculados: [] },
+    });
+
+    const id = await abrirTicketDeReparacion(db, {
+      cotizacionId: 'c1',
+      antes: { estado: 'pendiente' },
+      despues: cotizacion(),
+      ahora: AHORA,
+    });
+
+    assert.strictEqual(id, idTicketDeCotizacion('c1'));
+  });
+
+  it('SI crea el ticket si el taller de la cotizacion SI esta entre los vinculados (caso legitimo)', async () => {
+    const db = fakeDb({
+      'vehiculos/v1': {
+        placa: 'ABC123',
+        id_propietario: 'cli1',
+        talleres_vinculados: ['t1', 'otro-taller'],
+      },
+    });
+
+    const id = await abrirTicketDeReparacion(db, {
+      cotizacionId: 'c1',
+      antes: { estado: 'pendiente' },
+      despues: cotizacion(), // id_taller: 't1'
+      ahora: AHORA,
+    });
+
+    assert.strictEqual(id, idTicketDeCotizacion('c1'));
+    const escrito = db.docs[`reparaciones/${id}`];
+    assert.strictEqual(escrito.id_propietario, 'cli1');
   });
 });
 

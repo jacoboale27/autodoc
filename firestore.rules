@@ -878,16 +878,27 @@ service cloud.firestore {
          isAdmin());
       allow create: if isAuthenticated() &&
         request.resource.data.id_mecanico == request.auth.uid;
-      // Solo el campo 'estado' es escribible tras la creacion: el
-      // propietario acepta/rechaza (actualizarEstadoCotizacion) y el
-      // mecanico la marca 'finalizada' (finalizarServicioDesdeCotizacion);
-      // ninguno de los dos flujos reales toca otro campo. Sin este acotado,
-      // cualquiera de los dos podia reescribir 'items' (precio) o
-      // reasignar id_propietario/id_mecanico despues de creada (hallazgo H1).
+      // Solo el campo 'estado' es escribible tras la creacion, y cada parte
+      // solo puede escribir el valor que su propio flujo real produce: el
+      // propietario acepta/rechaza (cotizacion_chat_card.dart, via
+      // actualizarEstadoCotizacion) y el mecanico la marca 'finalizada'
+      // (initiate_service_screen.dart). Verificado por grep que ningun otro
+      // sitio escribe 'estado' sobre esta coleccion.
+      //
+      // Revision de rama completa (hallazgo C1): antes de esto, CUALQUIERA
+      // de las dos partes podia escribir CUALQUIER valor de 'estado'. Eso
+      // dejaba que el mecanico se auto-aceptara su propia cotizacion sobre
+      // un vehiculo ajeno, cumpliendo asi por su cuenta la unica condicion
+      // que el trigger `onCotizacionAceptada` (5. reparaciones) exige para
+      // abrir un ticket. Separar por rol Y por valor cierra esa via.
       allow update: if isAuthenticated() &&
-        (resource.data.id_propietario == request.auth.uid ||
-         resource.data.id_mecanico == request.auth.uid) &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado']);
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado']) &&
+        (
+          (resource.data.id_propietario == request.auth.uid
+            && request.resource.data.estado in ['aceptada', 'rechazada'])
+          || (resource.data.id_mecanico == request.auth.uid
+            && request.resource.data.estado == 'finalizada')
+        );
 
       // Beneficio por renglon (ver CotizacionItem.beneficio en el cliente):
       // documento privado fuera del doc principal porque 'cotizaciones' es

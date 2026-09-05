@@ -1,5 +1,7 @@
 'use strict';
 
+const { vehiculoVinculadoOWalkIn } = require('./iniciarReparacionPorVehiculo');
+
 /**
  * A4b — la aceptacion de la cotizacion es lo que abre el ticket de
  * `reparaciones`.
@@ -71,6 +73,14 @@ function debeAbrirTicket(antes, despues) {
  * propietario concretos: sin esos tres campos el ticket no seria legible ni
  * por el taller ni por el dueño (ver firestore.rules, match /reparaciones).
  *
+ * Revision de rama completa (hallazgo C1): `id_propietario` sale SIEMPRE del
+ * vehiculo ya leido de Firestore, nunca de la cotizacion. La cotizacion es
+ * dato que el mecanico que la crea controla (`cotizaciones` allow create
+ * solo exige `id_mecanico == auth.uid`); tomar `id_propietario` de ahi
+ * dejaba a cualquier mecanico abrir un ticket contra la victima de su
+ * eleccion, con su propio uid como mecanico y el uid de un tercero como
+ * "propietario" del ticket.
+ *
  * @param {{cotizacionId: string, cotizacion: object, vehiculo: ?object, ahora: Date}} args
  * @returns {?object}
  */
@@ -78,9 +88,7 @@ function construirTicketReparacion({ cotizacionId, cotizacion, vehiculo, ahora }
   const datosVehiculo = vehiculo || {};
   const idVehiculo = cotizacion.id_vehiculo || '';
   const idTaller = cotizacion.id_taller || '';
-  // Las cotizaciones creadas desde el chat traen `id_propietario`; se cae al
-  // dueño real del vehiculo por si alguna via no lo hubiera escrito.
-  const idPropietario = cotizacion.id_propietario || datosVehiculo.id_propietario || '';
+  const idPropietario = datosVehiculo.id_propietario || '';
   if (!idVehiculo || !idTaller || !idPropietario) return null;
 
   return {
@@ -172,6 +180,34 @@ async function abrirTicketDeReparacion(db, { cotizacionId, antes, despues, ahora
         'no se abrio ningun ticket.'
     );
     return null;
+  }
+
+  // Revision de rama completa (hallazgo C1): este trigger es el UNICO
+  // creador de `reparaciones` (allow create: if false), pero corria sin
+  // ninguna de las comprobaciones que la vieja regla `allow create` hacia.
+  // `cotizaciones` solo exige `id_mecanico == auth.uid` para crear (ver
+  // firestore.rules, match /cotizaciones), asi que sin esto cualquier
+  // mecanico podia redactar una cotizacion sobre el vehiculo de un
+  // desconocido, aceptarsela a si mismo (antes de la Tarea de reglas 1a) y
+  // que este trigger le abriera el ticket igual. Se reutiliza
+  // `vehiculoVinculadoOWalkIn`, el mismo predicado que ya protege el
+  // callable manual `iniciarReparacionPorVehiculo`, para no mantener dos
+  // copias de la misma regla de autorizacion.
+  if (!vehiculoVinculadoOWalkIn(vehiculo.talleres_vinculados, despues.id_taller)) {
+    // No silenciar: esta NO es una cotizacion malformada, es un intento de
+    // abrir un ticket sobre un vehiculo vinculado a OTRO taller. `console.error`
+    // (en vez del `console.warn` de arriba) para que quede visible como fallo,
+    // y el trigger relanza el error para que quede registrado como invocacion
+    // fallida (ver el `catch` de `onCotizacionAceptada` en functions/index.js).
+    console.error(
+      `onCotizacionAceptada: cotizacion ${cotizacionId} aceptada por el ` +
+        `taller ${despues.id_taller}, pero ese taller no esta vinculado al ` +
+        `vehiculo ${despues.id_vehiculo}; no se abrio ningun ticket.`
+    );
+    throw new Error(
+      `Taller ${despues.id_taller} no vinculado al vehiculo ${despues.id_vehiculo}; ` +
+        `no se abre ticket para la cotizacion ${cotizacionId}.`
+    );
   }
 
   const ticket = construirTicketReparacion({

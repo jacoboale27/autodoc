@@ -65,6 +65,52 @@ describe('cotizaciones update (hallazgo H1: campo abierto permitia alterar preci
   });
 });
 
+describe('cotizaciones update (revision de rama completa, hallazgo C1: el mecanico se auto-emitia el gate del trigger)', () => {
+  // Antes de esta ronda, `update` solo comprobaba QUIEN escribia, nunca QUE
+  // valor de `estado` escribia cada uno. Un mecanico podia aceptar su propia
+  // cotizacion sobre un vehiculo ajeno y con eso disparar el unico requisito
+  // que `onCotizacionAceptada` exige para abrir un ticket de `reparaciones`.
+  test('el mecanico NO puede auto-aceptar su propia cotizacion', async () => {
+    await seedCotizacion();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db.collection('cotizaciones').doc('c1').update({ estado: 'aceptada' }),
+    );
+  });
+
+  test('el mecanico NO puede auto-rechazar la cotizacion tampoco (solo el propietario resuelve pendiente/aceptada/rechazada)', async () => {
+    await seedCotizacion();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db.collection('cotizaciones').doc('c1').update({ estado: 'rechazada' }),
+    );
+  });
+
+  test('el propietario SI puede aceptar la cotizacion (camino legitimo)', async () => {
+    await seedCotizacion();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertSucceeds(
+      db.collection('cotizaciones').doc('c1').update({ estado: 'aceptada' }),
+    );
+  });
+
+  test('el mecanico SI puede marcar finalizada (camino legitimo)', async () => {
+    await seedCotizacion();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertSucceeds(
+      db.collection('cotizaciones').doc('c1').update({ estado: 'finalizada' }),
+    );
+  });
+
+  test('el propietario NO puede marcar finalizada', async () => {
+    await seedCotizacion();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('cotizaciones').doc('c1').update({ estado: 'finalizada' }),
+    );
+  });
+});
+
 describe('cotizaciones/privado/margen (hallazgo H2: el beneficio no debe ser legible por el propietario)', () => {
   const seedMargen = async () => {
     await seed(env, async (s) => {
