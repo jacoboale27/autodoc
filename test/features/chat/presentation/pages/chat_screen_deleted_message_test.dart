@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_core_platform_interface/test.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:autodoc/features/chat/data/repositories/chat_repository.dart';
 import 'package:autodoc/features/chat/presentation/pages/chat_screen.dart';
 import 'package:autodoc/features/chat/presentation/widgets/chat_bubble.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/audio_chat_card.dart';
@@ -17,7 +18,11 @@ import '../../../../support/chat_harness.dart';
 /// una imagen borrada seguia pintando la foto y un audio borrado seguia
 /// ofreciendo el reproductor. Lo unico que cambiaba era el fondo de la
 /// burbuja. El contenido "borrado" seguia entero delante del usuario.
-const _textoBorrado = 'Este mensaje ha sido eliminado';
+///
+/// Blocker 6: se referencia la constante compartida
+/// (`kTombstoneMensajeEliminado`) en vez de repetir el literal — es la misma
+/// que `firestore.rules` compara carácter a carácter.
+const _textoBorrado = kTombstoneMensajeEliminado;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

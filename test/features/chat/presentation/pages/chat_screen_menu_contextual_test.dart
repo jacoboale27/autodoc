@@ -3,6 +3,7 @@ import 'package:firebase_core_platform_interface/test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:autodoc/features/chat/data/repositories/chat_repository.dart';
 import 'package:autodoc/features/chat/presentation/pages/chat_screen.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/audio_chat_card.dart';
 
@@ -75,7 +76,7 @@ void main() {
           id: 'm1',
           idRemitente: 'u1',
           // Lo que deja el borrado suave en Firestore.
-          contenido: 'Este mensaje ha sido eliminado',
+          contenido: kTombstoneMensajeEliminado,
           isDeleted: true,
         ),
       ],
@@ -87,7 +88,7 @@ void main() {
       user: fakeChatUser(),
       chatProvider: chatProvider,
     );
-    await tester.longPress(find.text('Este mensaje ha sido eliminado'));
+    await tester.longPress(find.text(kTombstoneMensajeEliminado));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('menu_mensaje_copiar')), findsOneWidget);

@@ -4,6 +4,29 @@ import '../models/mensaje_model.dart';
 import '../models/cotizacion_model.dart';
 import '../../../../core/constants/firestore_collections.dart';
 
+/// Contenido con el que [ChatRepository.deleteMensaje] tumba (borrado
+/// lógico) un mensaje de texto.
+///
+/// Revisión de rama completa (Blocker 6/hallazgo R22): `firestore.rules`
+/// (match /mensajes, rama de borrado lógico) compara el `contenido` escrito
+/// contra este mismo literal CARÁCTER A CARÁCTER
+/// (`request.resource.data.contenido == 'Este mensaje ha sido eliminado'`) —
+/// es la única forma en que la regla puede verificar que el borrado lógico
+/// no se use como tapadera para reescribir el texto a otra cosa (ver el
+/// comentario de esa rama de la regla). Antes de esta constante, el literal
+/// vivía repetido y sin vínculo alguno en `chat_repository.dart`,
+/// `firestore.rules` y dos archivos de test: una futura pasada de
+/// localización que tocara "todo string visible del chat" (Tareas 11/12 ya
+/// localizaron cada string vecino) habría cambiado este SIN romper ningún
+/// test — `FakeFirebaseFirestore` no evalúa reglas — y el borrado lógico
+/// habría empezado a fallar en producción para todos los usuarios.
+///
+/// NO LOCALIZAR. Si el copy debe cambiar, cambia este valor Y el literal de
+/// `firestore.rules` (match /mensajes) EN EL MISMO commit; el test de guardia
+/// `test/features/chat/tombstone_literal_test.dart` falla si alguno de los
+/// dos se toca sin el otro.
+const String kTombstoneMensajeEliminado = 'Este mensaje ha sido eliminado';
+
 class ChatRepository {
   ChatRepository({FirebaseFirestore? firestore})
     : _firestore = firestore ?? FirebaseFirestore.instance;
@@ -237,10 +260,7 @@ class ChatRepository {
         .doc(conversacionId)
         .collection(FirestoreCollections.mensajes)
         .doc(mensajeId)
-        .update({
-          'is_deleted': true,
-          'contenido': 'Este mensaje ha sido eliminado',
-        });
+        .update({'is_deleted': true, 'contenido': kTombstoneMensajeEliminado});
   }
 
   // Set typing status
