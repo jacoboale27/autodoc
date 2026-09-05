@@ -15,6 +15,15 @@ class ConversacionModel {
   final String estado;
   final String? typingId;
 
+  /// Fotos de perfil denormalizadas al crear la conversación (ver C1,
+  /// `.superpowers/sdd/2026-09-04-observaciones-colaboradores/task-9-brief.md`).
+  /// Nulas en cualquier conversación creada antes de este cambio — la lista
+  /// las lee con `data['foto_mecanico'] as String?` y `AppUserAvatar` cae a
+  /// la inicial del nombre cuando no hay URL, así que un documento viejo
+  /// sigue renderizando sin romperse.
+  final String? fotoPropietario;
+  final String? fotoMecanico;
+
   ConversacionModel({
     required this.id,
     required this.idPropietario,
@@ -29,6 +38,8 @@ class ConversacionModel {
     this.noLeidosMecanico = 0,
     this.estado = 'activo',
     this.typingId,
+    this.fotoPropietario,
+    this.fotoMecanico,
   });
 
   factory ConversacionModel.fromMap(Map<String, dynamic> map, String id) {
@@ -47,6 +58,8 @@ class ConversacionModel {
       noLeidosMecanico: map['no_leidos_mecanico'] ?? 0,
       estado: map['estado'] ?? 'activo',
       typingId: map['typing_id'],
+      fotoPropietario: map['foto_propietario'] as String?,
+      fotoMecanico: map['foto_mecanico'] as String?,
     );
   }
 
@@ -64,6 +77,8 @@ class ConversacionModel {
       'no_leidos_mecanico': noLeidosMecanico,
       'estado': estado,
       'typing_id': typingId,
+      if (fotoPropietario != null) 'foto_propietario': fotoPropietario,
+      if (fotoMecanico != null) 'foto_mecanico': fotoMecanico,
     };
   }
 }

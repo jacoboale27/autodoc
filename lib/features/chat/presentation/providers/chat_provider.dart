@@ -141,6 +141,8 @@ class ChatProvider extends ChangeNotifier {
     required String nombreMecanico,
     String? idVehiculo,
     String? idTaller,
+    String? fotoPropietario,
+    String? fotoMecanico,
   }) async {
     _isLoading = true;
     _error = null;
@@ -169,6 +171,8 @@ class ChatProvider extends ChangeNotifier {
         idTaller: idTaller,
         ultimoMensaje: 'Chat iniciado',
         ultimoMensajeTs: DateTime.now(),
+        fotoPropietario: fotoPropietario,
+        fotoMecanico: fotoMecanico,
       );
 
       final id = await _chatRepository.crearConversacion(nuevaConversacion);

@@ -1211,6 +1211,9 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                                             'Propietario',
                                         nombreMecanico: name,
                                         idTaller: tallerId,
+                                        fotoPropietario:
+                                            userSession.userData?.fotoPerfilUrl,
+                                        fotoMecanico: imageUrl?.toString(),
                                       );
 
                                   if (chatId.isNotEmpty && mounted) {

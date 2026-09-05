@@ -14,6 +14,7 @@ import 'package:autodoc/features/chat/presentation/widgets/chat_background.dart'
 import 'package:autodoc/features/chat/presentation/widgets/chat_bubble.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
+import 'package:autodoc/core/widgets/app_user_avatar.dart';
 import 'package:autodoc/core/theme/app_motion.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/vehiculo_chat_card.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/reserva_chat_card.dart';
@@ -75,28 +76,32 @@ class _ChatScreenState extends State<ChatScreen> {
   // nunca los mensajes ni marcarlos como leídos.
   UserProfileProvider? _userSessionPendiente;
 
-  /// Consulta del nombre real del receptor, cacheada.
+  /// Consulta del perfil real del receptor (nombre + foto), cacheada.
   ///
   /// Estaba construida dentro de `build()`, y como la pantalla hace
   /// `context.watch<ChatProvider>()`, cada notificación —incluido el estado
   /// "escribiendo", que cambia cada 2 s— lanzaba un `get()` nuevo a
   /// `usuarios/{receptorId}`.
+  ///
+  /// Ampliada en C1 (fotos de perfil en el chat) para devolver también la
+  /// foto en la misma lectura, en vez de abrir una segunda consulta: el
+  /// nombre ya pagaba este `get()`, así que la foto sale gratis.
   @visibleForTesting
-  Future<DocumentSnapshot<Map<String, dynamic>>>? nombreReceptorFuture;
+  Future<DocumentSnapshot<Map<String, dynamic>>>? perfilReceptorFuture;
   String? _receptorIdCacheado;
 
   /// Devuelve el future, creándolo solo si el receptor cambió.
-  Future<DocumentSnapshot<Map<String, dynamic>>>? _futureNombreReceptor(
+  Future<DocumentSnapshot<Map<String, dynamic>>>? _futurePerfilReceptor(
     String receptorId,
   ) {
     if (receptorId.isEmpty) return null;
-    if (_receptorIdCacheado == receptorId) return nombreReceptorFuture;
+    if (_receptorIdCacheado == receptorId) return perfilReceptorFuture;
     _receptorIdCacheado = receptorId;
-    nombreReceptorFuture = FirebaseFirestore.instance
+    perfilReceptorFuture = (widget.firestore ?? FirebaseFirestore.instance)
         .collection(FirestoreCollections.usuarios)
         .doc(receptorId)
         .get();
-    return nombreReceptorFuture;
+    return perfilReceptorFuture;
   }
 
   @override
@@ -398,35 +403,33 @@ class _ChatScreenState extends State<ChatScreen> {
           tooltip: 'Volver',
           onPressed: () => context.go('/chat_list'),
         ),
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: colors.primary.withValues(alpha: 0.2),
-              child: Icon(Icons.person, color: colors.primary, size: 18),
-            ),
-            const SizedBox(width: 12),
-            // `Expanded`: el nombre del taller es de longitud arbitraria y
-            // aqui no tenia ninguna restriccion de ancho. Con el boton de
-            // volver explicito quedan 42 px menos y desbordaba en los anchos
-            // estrechos de la auditoria; sin acotarlo, cualquier nombre largo
-            // lo habria desbordado igual.
-            Expanded(
-              child: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                future: _futureNombreReceptor(receptorId),
-                builder: (context, snapshot) {
-                  String finalName = targetName;
-                  if (snapshot.hasData && snapshot.data!.exists) {
-                    final data = snapshot.data!.data();
-                    final realName = data?['nombre_completo'];
-                    if (realName?.isNotEmpty == true) {
-                      finalName = realName!;
-                    }
-                  }
-                  final estaEscribiendo =
-                      conversacion != null &&
-                      conversacion.typingId == receptorId;
-                  return AnimatedSize(
+        title: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          future: _futurePerfilReceptor(receptorId),
+          builder: (context, snapshot) {
+            String finalName = targetName;
+            String? fotoUrl;
+            if (snapshot.hasData && snapshot.data!.exists) {
+              final data = snapshot.data!.data();
+              final realName = data?['nombre_completo'];
+              if (realName?.isNotEmpty == true) {
+                finalName = realName!;
+              }
+              fotoUrl =
+                  (data?['foto_perfil_url'] ?? data?['foto_url']) as String?;
+            }
+            final estaEscribiendo =
+                conversacion != null && conversacion.typingId == receptorId;
+            return Row(
+              children: [
+                AppUserAvatar(urlFoto: fotoUrl, nombre: finalName, radius: 18),
+                const SizedBox(width: 12),
+                // `Expanded`: el nombre del taller es de longitud arbitraria y
+                // aqui no tenia ninguna restriccion de ancho. Con el boton de
+                // volver explicito quedan 42 px menos y desbordaba en los
+                // anchos estrechos de la auditoria; sin acotarlo, cualquier
+                // nombre largo lo habria desbordado igual.
+                Expanded(
+                  child: AnimatedSize(
                     duration: AppMotion.transformDuration(
                       context,
                       AppMotion.tooltip,
@@ -458,11 +461,11 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                       ],
                     ),
-                  );
-                },
-              ),
-            ),
-          ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         backgroundColor: isDark ? colors.surfaceContainer : colors.surface,
         elevation: 1,

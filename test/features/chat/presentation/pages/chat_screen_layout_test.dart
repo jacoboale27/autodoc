@@ -195,11 +195,11 @@ void main() {
     // "escribiendo", que cambia cada 2 s) dispararía un get() nuevo a
     // Firestore, y el future dejaría de ser `identical()` entre builds.
     final state = tester.state(find.byType(ChatScreen));
-    final futureInicial = (state as dynamic).nombreReceptorFuture;
+    final futureInicial = (state as dynamic).perfilReceptorFuture;
     provider.notifyListeners();
     await tester.pump();
     expect(
-      identical((state as dynamic).nombreReceptorFuture, futureInicial),
+      identical((state as dynamic).perfilReceptorFuture, futureInicial),
       isTrue,
     );
   });

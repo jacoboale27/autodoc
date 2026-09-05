@@ -83,6 +83,8 @@ class _ServiceFinalizedScreenState extends State<ServiceFinalizedScreen> {
         nombreMecanico: args.tallerNombre,
         idVehiculo: args.idVehiculo,
         idTaller: args.tallerId,
+        fotoPropietario: propietario?.fotoPerfilUrl,
+        fotoMecanico: userSession.userData?.fotoPerfilUrl,
       );
       if (conversacionId.isEmpty) {
         throw StateError('No se pudo abrir la conversación.');

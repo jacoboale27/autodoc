@@ -10,6 +10,7 @@ import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_empty_state.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
+import 'package:autodoc/core/widgets/app_user_avatar.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:autodoc/core/utils/l10n_extension.dart';
@@ -117,6 +118,15 @@ class _ConversacionesListScreenState extends State<ConversacionesListScreen> {
                   final targetName = isMecanico
                       ? conv.nombrePropietario
                       : conv.nombreMecanico;
+                  // Denormalizada en el documento al crear la conversación
+                  // (ChatProvider.iniciarOCrearConversacion): una lectura
+                  // por fila en cada rebuild de esta lista sería un costo
+                  // por conversación que no existe hoy. Nula en cualquier
+                  // conversación anterior a este cambio; AppUserAvatar cae
+                  // a la inicial en ese caso.
+                  final targetFoto = isMecanico
+                      ? conv.fotoPropietario
+                      : conv.fotoMecanico;
 
                   return ListTile(
                     onTap: () {
@@ -141,10 +151,10 @@ class _ConversacionesListScreenState extends State<ConversacionesListScreen> {
                       vertical: 8,
                       horizontal: 8,
                     ),
-                    leading: CircleAvatar(
+                    leading: AppUserAvatar(
+                      urlFoto: targetFoto,
+                      nombre: targetName,
                       radius: 28,
-                      backgroundColor: colors.primary.withValues(alpha: 0.2),
-                      child: Icon(Icons.person, color: colors.primary),
                     ),
                     title: Text(
                       targetName,
