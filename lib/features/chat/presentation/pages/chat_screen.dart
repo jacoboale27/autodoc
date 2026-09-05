@@ -372,6 +372,9 @@ class _ChatScreenState extends State<ChatScreen> {
     final puedeCopiar = msg.tipo == 'texto';
     final puedeEditar = isMe && !msg.isDeleted && msg.tipo == 'texto';
     final puedeBorrar = isMe && !msg.isDeleted;
+    // Sin ninguna accion disponible (p.ej. un audio o una tarjeta de la
+    // contraparte) no se abre nada: un sheet vacio solo obliga a cerrarlo.
+    if (!puedeCopiar && !puedeEditar && !puedeBorrar) return;
     showModalBottomSheet(
       context: context,
       builder: (ctx) => SafeArea(

@@ -142,6 +142,9 @@ void main() {
         chatProvider: chatProvider,
       );
 
+      // Afirmar la ausencia de la marca no basta: tambien pasaria si la
+      // burbuja hubiera dejado de renderizar. Anclamos el texto visible.
+      expect(find.text('hola'), findsOneWidget);
       expect(find.text('(editado)'), findsNothing);
     },
   );
