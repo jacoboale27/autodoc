@@ -49,6 +49,137 @@ const seedMensajeReserva = async () => {
   });
 };
 
+const seedMensajeCotizacion = async () => {
+  await seed(env, async (s) => {
+    await s
+      .collection('conversaciones')
+      .doc('c1')
+      .collection('mensajes')
+      .doc('cot1')
+      .set({
+        id_remitente: UIDS.taller1,
+        contenido: 'He enviado una cotizacion',
+        tipo: 'cotizacion_card',
+        estado: 'enviado',
+        metadata: { id_cotizacion: 'q1', estado: 'pendiente' },
+      });
+  });
+};
+
+describe('mensajes: edicion acotada al autor (Tarea 11b, C4)', () => {
+  test('el emisor puede editar solo el contenido y la marca de editado', async () => {
+    await seedConversacion();
+    await seedMensajeTexto();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertSucceeds(
+      db
+        .collection('conversaciones')
+        .doc('c1')
+        .collection('mensajes')
+        .doc('m1')
+        .update({ contenido: 'corregido', editado: true }),
+    );
+  });
+
+  test('quien NO es el emisor no puede editar el contenido, aunque sea participante', async () => {
+    await seedConversacion();
+    await seedMensajeTexto();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db
+        .collection('conversaciones')
+        .doc('c1')
+        .collection('mensajes')
+        .doc('m1')
+        .update({ contenido: 'lo cambio yo', editado: true }),
+    );
+  });
+
+  test('un tercero ajeno a la conversacion no puede editar', async () => {
+    await seedConversacion();
+    await seedMensajeTexto();
+    const db = await withRole(env, UIDS.taller2, 'Taller');
+    await assertFails(
+      db
+        .collection('conversaciones')
+        .doc('c1')
+        .collection('mensajes')
+        .doc('m1')
+        .update({ contenido: 'intruso', editado: true }),
+    );
+  });
+
+  test('nadie puede reescribir el emisor del mensaje', async () => {
+    await seedConversacion();
+    await seedMensajeTexto();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db
+        .collection('conversaciones')
+        .doc('c1')
+        .collection('mensajes')
+        .doc('m1')
+        .update({ id_remitente: UIDS.taller1 }),
+    );
+  });
+
+  test('nadie puede reescribir el tipo del mensaje', async () => {
+    await seedConversacion();
+    await seedMensajeTexto();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db
+        .collection('conversaciones')
+        .doc('c1')
+        .collection('mensajes')
+        .doc('m1')
+        .update({ tipo: 'cotizacion_card' }),
+    );
+  });
+
+  test('el emisor no puede colar otros campos junto a contenido/editado', async () => {
+    await seedConversacion();
+    await seedMensajeTexto();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db
+        .collection('conversaciones')
+        .doc('c1')
+        .collection('mensajes')
+        .doc('m1')
+        .update({ contenido: 'corregido', editado: true, estado: 'visto' }),
+    );
+  });
+
+  test('no se puede editar el texto de un mensaje de reserva, ni el propio autor', async () => {
+    await seedConversacion();
+    await seedMensajeReserva();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db
+        .collection('conversaciones')
+        .doc('c1')
+        .collection('mensajes')
+        .doc('res1')
+        .update({ contenido: 'otro texto', editado: true }),
+    );
+  });
+
+  test('no se puede editar el texto de una cotizacion ya enviada, ni el propio autor', async () => {
+    await seedConversacion();
+    await seedMensajeCotizacion();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db
+        .collection('conversaciones')
+        .doc('c1')
+        .collection('mensajes')
+        .doc('cot1')
+        .update({ contenido: 'otro precio', editado: true }),
+    );
+  });
+});
+
 describe('mensajes: politica de borrado (Tarea 11a, C4) — solo el autor borra su mensaje', () => {
   test('el autor SI puede borrar (hard delete) su propio mensaje', async () => {
     await seedConversacion();

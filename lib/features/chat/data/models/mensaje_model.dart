@@ -35,6 +35,12 @@ class MensajeModel {
   @HiveField(9)
   final int? duracionSegundos;
 
+  /// Marca "editado" (Tarea 11b, C4): true si el autor cambió `contenido`
+  /// tras enviarlo. Los mensajes ya existentes en producción no traen este
+  /// campo — `fromMap` lo lee tolerante (`?? false`), igual que `isDeleted`.
+  @HiveField(10)
+  final bool editado;
+
   MensajeModel({
     required this.id,
     required this.idRemitente,
@@ -46,6 +52,7 @@ class MensajeModel {
     this.urlArchivo,
     this.isDeleted = false,
     this.duracionSegundos,
+    this.editado = false,
   });
 
   factory MensajeModel.fromMap(Map<String, dynamic> map, String id) {
@@ -62,6 +69,7 @@ class MensajeModel {
       urlArchivo: map['url_archivo'],
       isDeleted: map['is_deleted'] ?? false,
       duracionSegundos: (map['duracion_segundos'] as num?)?.toInt(),
+      editado: map['editado'] ?? false,
     );
   }
 
@@ -76,6 +84,7 @@ class MensajeModel {
       if (urlArchivo != null) 'url_archivo': urlArchivo,
       'is_deleted': isDeleted,
       if (duracionSegundos != null) 'duracion_segundos': duracionSegundos,
+      'editado': editado,
     };
   }
 }

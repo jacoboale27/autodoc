@@ -355,11 +355,12 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  /// Menú contextual de mensaje (Tarea 11a, C4): mantener presionado un
+  /// Menú contextual de mensaje (Tarea 11, C4): mantener presionado un
   /// mensaje ofrece Copiar siempre, y — solo para el mensaje propio, no
-  /// borrado — Borrar. Editar llega en 11b; reply/reenviar quedan fuera de
+  /// borrado — Editar (solo texto) y Borrar. Reply/reenviar quedan fuera de
   /// esta ronda (11c, explícitamente pospuesto en el plan).
   void _abrirMenuMensaje(MensajeModel msg, bool isMe) {
+    final puedeEditar = isMe && !msg.isDeleted && msg.tipo == 'texto';
     final puedeBorrar = isMe && !msg.isDeleted;
     showModalBottomSheet(
       context: context,
@@ -376,6 +377,16 @@ class _ChatScreenState extends State<ChatScreen> {
                 _copiarMensaje(msg);
               },
             ),
+            if (puedeEditar)
+              ListTile(
+                key: const Key('menu_mensaje_editar'),
+                leading: const Icon(Icons.edit),
+                title: Text(context.l10n.chatEditMessage),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _abrirEdicionMensaje(msg);
+                },
+              ),
             if (puedeBorrar)
               ListTile(
                 key: const Key('menu_mensaje_borrar'),
@@ -401,6 +412,52 @@ class _ChatScreenState extends State<ChatScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(context.l10n.chatMessageCopied)));
+  }
+
+  void _abrirEdicionMensaje(MensajeModel msg) {
+    final controller = TextEditingController(text: msg.contenido);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.l10n.chatEditMessage),
+        content: TextField(
+          key: const Key('campo_editar_mensaje'),
+          controller: controller,
+          autofocus: true,
+          maxLines: null,
+          decoration: InputDecoration(
+            hintText: context.l10n.chatEditMessageHint,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(context.l10n.adminCancel),
+          ),
+          TextButton(
+            onPressed: () async {
+              final nuevoTexto = controller.text.trim();
+              final chatProvider = context.read<ChatProvider>();
+              final messenger = ScaffoldMessenger.of(context);
+              Navigator.pop(ctx);
+              if (nuevoTexto.isEmpty || nuevoTexto == msg.contenido) return;
+
+              final editado = await chatProvider.editarMensaje(
+                widget.conversacionId,
+                msg.id,
+                nuevoTexto,
+              );
+              if (!editado && mounted) {
+                messenger.showSnackBar(
+                  SnackBar(content: Text(context.l10n.chatEditFailed)),
+                );
+              }
+            },
+            child: Text(context.l10n.chatSaveEdit),
+          ),
+        ],
+      ),
+    );
   }
 
   void _confirmarBorrado(MensajeModel msg, bool isMe) {
@@ -628,9 +685,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                   (msg.tipo == 'texto' || msg.isDeleted)
                                   ? '$nombreAutor: ${msg.contenido}'
                                   : null,
-                              footer: isMe
-                                  ? _AcuseDeRecibo(estado: msg.estado)
-                                  : null,
+                              footer: _footerDe(msg, isMe),
                               child: _buildMessageContent(
                                 msg,
                                 isMe,
@@ -745,6 +800,39 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  /// Footer de la burbuja: acuse de recibo (solo propio) y/o marca
+  /// "(editado)" (Tarea 11b, C4) cuando `msg.editado` es true. Mensajes ya
+  /// existentes en producción no traen ese campo (`MensajeModel.fromMap` lo
+  /// lee `?? false`), así que renderizan igual que antes de esta tarea.
+  Widget? _footerDe(MensajeModel msg, bool isMe) {
+    final colors = context.appColors;
+    final editadoLabel = msg.editado
+        ? Text(
+            context.l10n.chatMessageEditedMark,
+            style: TextStyle(
+              fontSize: 11,
+              fontStyle: FontStyle.italic,
+              color: isMe
+                  ? colors.onPrimary.withValues(alpha: 0.7)
+                  : colors.textSecondary,
+            ),
+          )
+        : null;
+
+    if (!isMe) return editadoLabel;
+
+    if (editadoLabel == null) return _AcuseDeRecibo(estado: msg.estado);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        editadoLabel,
+        const SizedBox(width: 4),
+        _AcuseDeRecibo(estado: msg.estado),
+      ],
     );
   }
 

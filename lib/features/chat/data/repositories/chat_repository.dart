@@ -214,6 +214,22 @@ class ChatRepository {
     });
   }
 
+  // Editar el texto de un mensaje propio (Tarea 11b, C4). Las reglas
+  // (`firestore.rules`, subcolección `mensajes`) acotan esta escritura al
+  // autor y solo a `contenido`/`editado` — ver informe de Tarea 11.
+  Future<void> editarMensaje(
+    String conversacionId,
+    String mensajeId,
+    String nuevoContenido,
+  ) async {
+    await _firestore
+        .collection(FirestoreCollections.conversaciones)
+        .doc(conversacionId)
+        .collection(FirestoreCollections.mensajes)
+        .doc(mensajeId)
+        .update({'contenido': nuevoContenido, 'editado': true});
+  }
+
   // Delete message
   Future<void> deleteMensaje(String conversacionId, String mensajeId) async {
     await _firestore

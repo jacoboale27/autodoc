@@ -2306,6 +2306,36 @@ abstract class AppLocalizations {
   /// **'Message copied'**
   String get chatMessageCopied;
 
+  /// No description provided for @chatEditMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit message'**
+  String get chatEditMessage;
+
+  /// No description provided for @chatEditMessageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type the new text'**
+  String get chatEditMessageHint;
+
+  /// No description provided for @chatSaveEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get chatSaveEdit;
+
+  /// No description provided for @chatMessageEditedMark.
+  ///
+  /// In en, this message translates to:
+  /// **'(edited)'**
+  String get chatMessageEditedMark;
+
+  /// No description provided for @chatEditFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not edit the message.'**
+  String get chatEditFailed;
+
   /// No description provided for @notifications.
   ///
   /// In en, this message translates to:

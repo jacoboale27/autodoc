@@ -708,26 +708,34 @@ service cloud.firestore {
 
         allow read, create: if isAuthenticated() && esParticipante();
 
-        // Tarea 11a (C4): la regla original permitía reescribir CUALQUIER
-        // campo de un mensaje ajeno sin verificar autoría ni acotar los
-        // campos tocados. Se cierra a las escrituras concretas que la app ya
-        // hace hoy:
-        //   1. Marcar como visto (`ChatRepository.marcarComoLeidos`): el
+        // Tarea 11b (C4): la regla original permitía reescribir CUALQUIER
+        // campo de un mensaje ajeno — el emisor, el tipo, el precio de una
+        // cotización ya aceptada — sin verificar autoría ni acotar los
+        // campos tocados. Se cierra a cuatro escrituras concretas, cada una
+        // ya usada por la app hoy (la 1 se añade en esta tarea; 2-4 ya se
+        // acotaron en 11a):
+        //   1. Editar el propio texto: solo el autor, solo mensajes de tipo
+        //      'texto' (una cotización o reserva editada cambiaría lo que
+        //      la otra parte ya aceptó/leyó), solo puede tocar `contenido`
+        //      y `editado`. `hasOnly` impide colar `id_remitente` o `tipo`.
+        //   2. Marcar como visto (`ChatRepository.marcarComoLeidos`): el
         //      receptor actualiza el `estado` de un mensaje que NO escribió
-        //      — cualquier participante, solo ese campo.
-        //   2. Metadata de tarjetas interactivas (reserva/cotización/reseña,
+        //      — sigue siendo cualquier participante, solo ese campo.
+        //   3. Metadata de tarjetas interactivas (reserva/cotización/reseña,
         //      `actualizarMetadatosMensaje`): la acción (aceptar, rechazar,
         //      calificar) la dispara la contraparte del emisor, así que
         //      también se mantiene abierto a cualquier participante, solo
         //      ese campo.
-        //   3. Borrado lógico (`ChatRepository.deleteMensaje`, is_deleted +
+        //   4. Borrado lógico (`ChatRepository.deleteMensaje`, is_deleted +
         //      contenido): usa `update`, no `delete` — se acota aquí al
         //      autor, igual que el `delete` físico de abajo (ver política en
         //      el informe de Tarea 11).
-        // La edición de texto propio (Tarea 11b) añade una cuarta rama en la
-        // siguiente tarea.
         allow update: if isAuthenticated() && esParticipante() && (
-          request.resource.data.diff(resource.data).affectedKeys()
+          (resource.data.id_remitente == request.auth.uid &&
+            resource.data.tipo == 'texto' &&
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['contenido', 'editado']))
+          || request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly(['estado'])
           || request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly(['metadata'])

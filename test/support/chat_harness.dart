@@ -113,14 +113,24 @@ class FakeChatProvider extends ChangeNotifier implements ChatProvider {
   /// trabajo de red de más (ver Task 11, el `FutureBuilder` en `build`).
   final List<String> llamadas = [];
 
-  /// Resultado devuelto por [deleteMensaje] en este doble; por defecto
-  /// éxito. Los tests que necesitan cubrir el camino de error (rules lo
-  /// rechazan, red falla) lo ponen en `false`.
+  /// Resultado devuelto por [deleteMensaje] y [editarMensaje] en este doble;
+  /// por defecto éxito. Los tests que necesitan cubrir el camino de error
+  /// (rules lo rechazan, red falla) lo ponen en `false`.
   bool resultadoAccionMensaje = true;
 
   @override
   Future<bool> deleteMensaje(String conversacionId, String mensajeId) async {
     llamadas.add('deleteMensaje:$conversacionId:$mensajeId');
+    return resultadoAccionMensaje;
+  }
+
+  @override
+  Future<bool> editarMensaje(
+    String conversacionId,
+    String mensajeId,
+    String nuevoContenido,
+  ) async {
+    llamadas.add('editarMensaje:$conversacionId:$mensajeId:$nuevoContenido');
     return resultadoAccionMensaje;
   }
 
@@ -249,6 +259,7 @@ MensajeModel fakeMensaje({
   String? urlArchivo,
   bool isDeleted = false,
   int? duracionSegundos,
+  bool editado = false,
 }) => MensajeModel(
   id: id,
   idRemitente: idRemitente,
@@ -260,6 +271,7 @@ MensajeModel fakeMensaje({
   urlArchivo: urlArchivo,
   isDeleted: isDeleted,
   duracionSegundos: duracionSegundos,
+  editado: editado,
 );
 
 /// Monta [widget] con el tema de AutoDoc, l10n en español y los tres

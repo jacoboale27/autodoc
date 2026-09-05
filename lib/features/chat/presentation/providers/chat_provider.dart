@@ -371,6 +371,28 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
+  /// Edita el texto de un mensaje propio. Devuelve `false` si no se pudo
+  /// (p.ej. las reglas lo rechazan porque no es el autor, o el mensaje no
+  /// es de tipo texto — ver `firestore.rules`).
+  Future<bool> editarMensaje(
+    String conversacionId,
+    String mensajeId,
+    String nuevoContenido,
+  ) async {
+    try {
+      await _chatRepository.editarMensaje(
+        conversacionId,
+        mensajeId,
+        nuevoContenido,
+      );
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Borra un mensaje. Devuelve `false` si no se pudo.
   ///
   /// Devuelve resultado en vez de `void` porque el unico rastro del fallo era
