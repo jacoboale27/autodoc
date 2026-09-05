@@ -118,6 +118,24 @@ class FakeChatProvider extends ChangeNotifier implements ChatProvider {
   /// (rules lo rechazan, red falla) lo ponen en `false`.
   bool resultadoAccionMensaje = true;
 
+  /// URL devuelta por [subirImagenChat]. Por defecto una URL fija (éxito);
+  /// los tests que cubren el camino de fallo de subida lo ponen en `null`.
+  String? urlSubirImagenChat = 'https://example.com/imagen.jpg';
+
+  /// Sin este `@override`, cualquier llamada a `subirImagenChat` caía en el
+  /// `noSuchMethod` genérico de abajo y lanzaba `NoSuchMethodError` (Tarea
+  /// 12, C6): el flujo de previsualización necesita poder afirmar que la
+  /// subida NO se dispara al cancelar, lo que exige registrar la llamada
+  /// aquí en vez de dejarla sin cubrir.
+  @override
+  Future<String?> subirImagenChat(
+    String conversacionId,
+    XFile imageFile,
+  ) async {
+    llamadas.add('subirImagenChat:$conversacionId:${imageFile.name}');
+    return urlSubirImagenChat;
+  }
+
   @override
   Future<bool> deleteMensaje(String conversacionId, String mensajeId) async {
     llamadas.add('deleteMensaje:$conversacionId:$mensajeId');

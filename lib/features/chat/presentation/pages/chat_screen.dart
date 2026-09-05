@@ -38,7 +38,18 @@ import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/utils/mechanic_profile_utils.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/features/profile/data/services/public_profile_service.dart';
+import 'package:autodoc/features/chat/presentation/widgets/adjunto_preview_sheet.dart';
 import 'package:go_router/go_router.dart';
+
+/// Firma del selector de imagen, con el origen (`gallery`/`camera`) ya
+/// resuelto por quien llama. Misma costura que `SelectorDeArchivo` en
+/// `WorkshopVerificationScreen`: no hay forma barata de simular el canal de
+/// plataforma de `image_picker` en un widget test, así que se saca la
+/// llamada a un campo que un test puede sustituir por un valor fijo. Aquí
+/// toma `ImageSource` porque, a diferencia de aquella pantalla, este flujo
+/// tiene dos entradas reales (cámara y galería) que un mismo test puede
+/// necesitar distinguir.
+typedef SelectorDeImagen = Future<XFile?> Function(ImageSource source);
 
 class ChatScreen extends StatefulWidget {
   final String conversacionId;
@@ -57,11 +68,17 @@ class ChatScreen extends StatefulWidget {
   /// partir de [firestore], igual que el resto de la pantalla.
   final PublicProfileService? publicProfileService;
 
+  /// Sustituye al `ImagePicker()` real (Tarea 12, C6). Solo lo usan los
+  /// tests: en producción siempre es `null` y se cae al picker real en
+  /// `_seleccionarImagen`.
+  final SelectorDeImagen? selectorDeImagen;
+
   const ChatScreen({
     super.key,
     required this.conversacionId,
     this.firestore,
     this.publicProfileService,
+    this.selectorDeImagen,
   });
 
   @override
@@ -1031,18 +1048,55 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  /// Delega en [ChatScreen.selectorDeImagen] si un test lo inyectó; en
+  /// producción siempre es `null` y cae en el `ImagePicker()` real.
+  Future<XFile?> _seleccionarImagen(ImageSource source) {
+    if (widget.selectorDeImagen != null) {
+      return widget.selectorDeImagen!(source);
+    }
+    return ImagePicker().pickImage(source: source);
+  }
+
+  /// Elige una imagen y, ANTES de subirla, la interpone en
+  /// `AdjuntoPreviewSheet` para que el usuario confirme, cambie o cancele.
+  ///
+  /// El orden importa: `subirImagenChat` (que sí escribe en Storage, y es
+  /// billable) solo se llama después de que el usuario elige "Enviar" en la
+  /// hoja. Antes de esta tarea la subida ocurría inmediatamente al elegir la
+  /// imagen, sin paso de confirmación — cancelar en ese punto anterior no
+  /// existía, pero de haberse añadido la previsualización DESPUÉS de la
+  /// subida en vez de antes, cancelar habría dejado un archivo huérfano ya
+  /// escrito en Storage, facturado y legible por la contraparte aunque el
+  /// envío se cancelara.
   Future<void> _pickAndSendImage(
     String userId,
     bool isMecanico,
     String receptorId,
     ImageSource source,
   ) async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: source);
+    XFile? image = await _seleccionarImagen(source);
 
-    if (image != null) {
+    while (image != null) {
       if (!mounted) return;
 
+      final bytes = await image.readAsBytes();
+      if (!mounted) return;
+
+      final accion = await AdjuntoPreviewSheet.mostrar(
+        context,
+        bytes: bytes,
+        nombre: image.name,
+      );
+
+      if (accion == null || accion == AdjuntoPreviewAccion.cancelar) return;
+
+      if (accion == AdjuntoPreviewAccion.cambiar) {
+        image = await _seleccionarImagen(source);
+        continue;
+      }
+
+      // accion == AdjuntoPreviewAccion.enviar
+      if (!mounted) return;
       final provider = context.read<ChatProvider>();
       final url = await provider.subirImagenChat(widget.conversacionId, image);
 
@@ -1063,6 +1117,7 @@ class _ChatScreenState extends State<ChatScreen> {
           SnackBar(content: Text(context.l10n.chatUploadImageError)),
         );
       }
+      return;
     }
   }
 

@@ -628,6 +628,21 @@
   "chatSendQuote": "Enviar Cotización",
   "chatRequestRating": "Solicitar Calificación",
   "chatUploadImageError": "Error al subir imagen",
+  "chatAdjuntoPreviewTitulo": "Enviar imagen",
+  "chatAdjuntoPreviewInfo": "{nombre} · {tamano} MB",
+  "@chatAdjuntoPreviewInfo": {
+    "placeholders": {
+      "nombre": {
+        "type": "String"
+      },
+      "tamano": {
+        "type": "String"
+      }
+    }
+  },
+  "chatAdjuntoPreviewCancelar": "Cancelar",
+  "chatAdjuntoPreviewCambiar": "Cambiar",
+  "chatAdjuntoPreviewEnviar": "Enviar",
   "chatReservationSuccess": "Reserva {status} exitosamente",
   "@chatReservationSuccess": {
     "placeholders": {

@@ -631,6 +631,21 @@
   "chatSendQuote": "Send Quote",
   "chatRequestRating": "Request Rating",
   "chatUploadImageError": "Error uploading image",
+  "chatAdjuntoPreviewTitulo": "Send image",
+  "chatAdjuntoPreviewInfo": "{nombre} · {tamano} MB",
+  "@chatAdjuntoPreviewInfo": {
+    "placeholders": {
+      "nombre": {
+        "type": "String"
+      },
+      "tamano": {
+        "type": "String"
+      }
+    }
+  },
+  "chatAdjuntoPreviewCancelar": "Cancel",
+  "chatAdjuntoPreviewCambiar": "Change",
+  "chatAdjuntoPreviewEnviar": "Send",
   "chatReservationSuccess": "Reservation {status} successfully",
   "@chatReservationSuccess": {
     "placeholders": {

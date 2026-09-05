@@ -1145,6 +1145,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatUploadImageError => 'Error uploading image';
 
   @override
+  String get chatAdjuntoPreviewTitulo => 'Send image';
+
+  @override
+  String chatAdjuntoPreviewInfo(String nombre, String tamano) {
+    return '$nombre · $tamano MB';
+  }
+
+  @override
+  String get chatAdjuntoPreviewCancelar => 'Cancel';
+
+  @override
+  String get chatAdjuntoPreviewCambiar => 'Change';
+
+  @override
+  String get chatAdjuntoPreviewEnviar => 'Send';
+
+  @override
   String chatReservationSuccess(String status) {
     return 'Reservation $status successfully';
   }

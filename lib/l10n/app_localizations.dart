@@ -2186,6 +2186,36 @@ abstract class AppLocalizations {
   /// **'Error uploading image'**
   String get chatUploadImageError;
 
+  /// No description provided for @chatAdjuntoPreviewTitulo.
+  ///
+  /// In en, this message translates to:
+  /// **'Send image'**
+  String get chatAdjuntoPreviewTitulo;
+
+  /// No description provided for @chatAdjuntoPreviewInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'{nombre} · {tamano} MB'**
+  String chatAdjuntoPreviewInfo(String nombre, String tamano);
+
+  /// No description provided for @chatAdjuntoPreviewCancelar.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get chatAdjuntoPreviewCancelar;
+
+  /// No description provided for @chatAdjuntoPreviewCambiar.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get chatAdjuntoPreviewCambiar;
+
+  /// No description provided for @chatAdjuntoPreviewEnviar.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get chatAdjuntoPreviewEnviar;
+
   /// No description provided for @chatReservationSuccess.
   ///
   /// In en, this message translates to:
