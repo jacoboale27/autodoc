@@ -8,9 +8,18 @@ import 'package:autodoc/features/chat/presentation/pages/chat_screen.dart';
 import '../../../../support/chat_harness.dart';
 
 /// C1: el encabezado del chat pinta la foto del receptor obtenida en la
-/// misma lectura de `usuarios/{receptorId}` que ya resolvía el nombre real
-/// (`_futurePerfilReceptor`, antes `_futureNombreReceptor`) — ninguna
-/// lectura adicional.
+/// misma lectura que ya resolvía el nombre real (`_futurePerfilReceptor`,
+/// antes `_futureNombreReceptor`) — ninguna lectura adicional.
+///
+/// Actualizado en la Tarea 10 (R18): estos tests montan un receptor
+/// mecánico ('m1', visto por un usuario `Propietario`), así que la lectura
+/// real ya no es `usuarios/{receptorId}` — esa siempre daba
+/// permission-denied en producción para cualquiera que no fuera el propio
+/// dueño (ver el hallazgo documentado en `_futurePerfilReceptor`) — sino
+/// `talleres/{receptorId}`, la proyección pública y de lectura anónima que
+/// alimenta `publishTallerProfile.js`. De ahí que aquí se siembre
+/// `talleres/m1` con la clave `nombre` (no `nombre_completo`, que es la
+/// clave de `usuarios`).
 ConversacionModel _conv() => ConversacionModel(
   id: 'c1',
   idPropietario: 'u1',
@@ -26,8 +35,8 @@ void main() {
     'pinta la foto del receptor que trae la misma lectura del nombre',
     (tester) async {
       final firestore = FakeFirebaseFirestore();
-      await firestore.collection('usuarios').doc('m1').set({
-        'nombre_completo': 'Taller Escobar Real',
+      await firestore.collection('talleres').doc('m1').set({
+        'nombre': 'Taller Escobar Real',
         'foto_perfil_url': 'https://x/taller.jpg',
       });
 
@@ -51,8 +60,8 @@ void main() {
     'sin foto en el documento de usuario, el encabezado cae a la inicial',
     (tester) async {
       final firestore = FakeFirebaseFirestore();
-      await firestore.collection('usuarios').doc('m1').set({
-        'nombre_completo': 'Taller Escobar Real',
+      await firestore.collection('talleres').doc('m1').set({
+        'nombre': 'Taller Escobar Real',
       });
 
       await pumpChatWidget(

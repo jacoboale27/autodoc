@@ -5,6 +5,10 @@ admin.initializeApp();
 
 const { abrirTicketDeReparacion } = require('./src/aceptarCotizacion');
 const { verificarAperturaManual } = require('./src/iniciarReparacionPorVehiculo');
+const {
+  subconjuntoPublicoCliente,
+  compartenConversacion,
+} = require('./src/obtenerPerfilPublico');
 
 const db = admin.firestore();
 const messaging = admin.messaging();
@@ -1224,6 +1228,56 @@ exports.obtenerUsuariosCompartidos = functions.https.onCall(async (data, context
   );
 
   return usuarios.filter(Boolean);
+});
+
+/**
+ * 11b. Callable: perfil publico del CLIENTE que el mecanico ve desde el
+ * chat (Tarea 10, C3 — "ver el perfil del otro desde el chat").
+ *
+ * `usuarios/{userId}` esta cerrado a `isOwner(userId) || isAdmin()`
+ * (firestore.rules), asi que un mecanico no puede leerlo directamente —
+ * correcto, porque ese documento trae telefono/dui/correo/vehiculos. Este
+ * callable corre con Admin SDK (fuera del alcance de firestore.rules) y
+ * hace EXPLICITAMENTE, del lado servidor, lo que una regla no puede
+ * expresar: proyectar solo {nombre, foto_perfil_url, municipio}
+ * (subconjuntoPublicoCliente) Y solo si el llamante comparte una
+ * conversacion real con el objetivo (compartenConversacion) — sin eso,
+ * cualquier mecanico podria consultar a cualquier cliente por uid.
+ *
+ * El caso simetrico (mecanico visto por un cliente) NO pasa por aqui: ese
+ * ya tiene una proyeccion publica de lectura anonima en `talleres/{uid}`
+ * (publishTallerProfile.js), que el cliente de Flutter lee directamente sin
+ * ningun round-trip a Cloud Functions.
+ */
+exports.obtenerPerfilPublico = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  }
+
+  const clienteId = data && data.userId ? String(data.userId) : '';
+  if (!clienteId) {
+    throw new functions.https.HttpsError('invalid-argument', 'Debes indicar el usuario.');
+  }
+
+  const mecanicoId = context.auth.uid;
+  if (mecanicoId === clienteId) {
+    throw new functions.https.HttpsError('invalid-argument', 'No aplica a tu propio perfil.');
+  }
+
+  const compartida = await compartenConversacion(db, { mecanicoId, clienteId });
+  if (!compartida) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'No tienes ninguna conversación con este usuario.'
+    );
+  }
+
+  const clienteDoc = await db.collection('usuarios').doc(clienteId).get();
+  if (!clienteDoc.exists) {
+    throw new functions.https.HttpsError('not-found', 'Usuario no encontrado.');
+  }
+
+  return subconjuntoPublicoCliente(clienteDoc.data());
 });
 
 /**

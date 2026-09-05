@@ -20,7 +20,6 @@ import 'package:autodoc/features/chat/presentation/widgets/cards/vehiculo_chat_c
 import 'package:autodoc/features/chat/presentation/widgets/cards/reserva_chat_card.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/historial_chat_card.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:autodoc/core/constants/firestore_collections.dart';
 
 import 'package:image_picker/image_picker.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/cotizacion_chat_card.dart';
@@ -37,6 +36,7 @@ import 'package:autodoc/features/chat/presentation/providers/reserva_provider.da
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/utils/mechanic_profile_utils.dart';
 import 'package:autodoc/core/models/user_model.dart';
+import 'package:autodoc/features/profile/data/services/public_profile_service.dart';
 import 'package:go_router/go_router.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -49,7 +49,19 @@ class ChatScreen extends StatefulWidget {
   /// real de Firestore.
   final FirebaseFirestore? firestore;
 
-  const ChatScreen({super.key, required this.conversacionId, this.firestore});
+  /// Inyectable para pruebas de widget (Tarea 10, C3): resuelve el perfil
+  /// público del receptor por el mecanismo correcto según su rol —
+  /// `talleres/{uid}` (lectura anónima) si es mecánico, el callable
+  /// `obtenerPerfilPublico` si es cliente. Por defecto se construye a
+  /// partir de [firestore], igual que el resto de la pantalla.
+  final PublicProfileService? publicProfileService;
+
+  const ChatScreen({
+    super.key,
+    required this.conversacionId,
+    this.firestore,
+    this.publicProfileService,
+  });
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -76,31 +88,51 @@ class _ChatScreenState extends State<ChatScreen> {
   // nunca los mensajes ni marcarlos como leídos.
   UserProfileProvider? _userSessionPendiente;
 
-  /// Consulta del perfil real del receptor (nombre + foto), cacheada.
+  /// Consulta del perfil público real del receptor (nombre + foto), cacheada.
   ///
   /// Estaba construida dentro de `build()`, y como la pantalla hace
   /// `context.watch<ChatProvider>()`, cada notificación —incluido el estado
-  /// "escribiendo", que cambia cada 2 s— lanzaba un `get()` nuevo a
-  /// `usuarios/{receptorId}`.
+  /// "escribiendo", que cambia cada 2 s— lanzaba un `get()` nuevo.
   ///
   /// Ampliada en C1 (fotos de perfil en el chat) para devolver también la
   /// foto en la misma lectura, en vez de abrir una segunda consulta: el
   /// nombre ya pagaba este `get()`, así que la foto sale gratis.
+  ///
+  /// HALLAZGO DE LA TAREA 9, cerrado aquí (R18): esto leía directamente
+  /// `usuarios/{receptorId}`, que `firestore.rules` niega a cualquiera que
+  /// no sea el propio dueño o un admin — `receptorId` es SIEMPRE la
+  /// contraparte, nunca el uid de quien mira. El `get()` fallaba con
+  /// permission-denied, el `FutureBuilder` caía en silencio al nombre
+  /// denormalizado de la conversación, y nadie lo notó porque los tests de
+  /// este archivo usan `FakeFirebaseFirestore`, que no aplica reglas. El
+  /// nombre real del contacto **nunca llegó a renderizar en producción**.
+  ///
+  /// Se reemplaza por [PublicProfileService] (Tarea 10, C3), que resuelve el
+  /// perfil por el mecanismo correcto según el rol del receptor: lectura
+  /// anónima de `talleres/{uid}` si es mecánico, o el callable
+  /// `obtenerPerfilPublico` (Admin SDK, verifica que exista una conversación
+  /// real) si es cliente — el mismo mecanismo que usa `PublicProfileScreen`.
   @visibleForTesting
-  Future<DocumentSnapshot<Map<String, dynamic>>>? perfilReceptorFuture;
+  Future<Map<String, dynamic>?>? perfilReceptorFuture;
   String? _receptorIdCacheado;
 
+  PublicProfileService get _publicProfileService =>
+      widget.publicProfileService ??
+      PublicProfileService(firestore: widget.firestore);
+
   /// Devuelve el future, creándolo solo si el receptor cambió.
-  Future<DocumentSnapshot<Map<String, dynamic>>>? _futurePerfilReceptor(
+  Future<Map<String, dynamic>?>? _futurePerfilReceptor(
     String receptorId,
+    bool isMecanico,
   ) {
     if (receptorId.isEmpty) return null;
     if (_receptorIdCacheado == receptorId) return perfilReceptorFuture;
     _receptorIdCacheado = receptorId;
-    perfilReceptorFuture = (widget.firestore ?? FirebaseFirestore.instance)
-        .collection(FirestoreCollections.usuarios)
-        .doc(receptorId)
-        .get();
+    // El receptor es SIEMPRE del rol contrario al de quien mira: si YO soy
+    // mecánico, el receptor es el cliente de esta conversación (y viceversa).
+    perfilReceptorFuture = isMecanico
+        ? _publicProfileService.perfilCliente(receptorId)
+        : _publicProfileService.perfilMecanico(receptorId);
     return perfilReceptorFuture;
   }
 
@@ -403,14 +435,14 @@ class _ChatScreenState extends State<ChatScreen> {
           tooltip: 'Volver',
           onPressed: () => context.go('/chat_list'),
         ),
-        title: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          future: _futurePerfilReceptor(receptorId),
+        title: FutureBuilder<Map<String, dynamic>?>(
+          future: _futurePerfilReceptor(receptorId, isMecanico),
           builder: (context, snapshot) {
             String finalName = targetName;
             String? fotoUrl;
-            if (snapshot.hasData && snapshot.data!.exists) {
-              final data = snapshot.data!.data();
-              final realName = data?['nombre_completo'];
+            if (snapshot.hasData && snapshot.data != null) {
+              final data = snapshot.data;
+              final realName = data?['nombre'] as String?;
               if (realName?.isNotEmpty == true) {
                 finalName = realName!;
               }
@@ -419,7 +451,7 @@ class _ChatScreenState extends State<ChatScreen> {
             }
             final estaEscribiendo =
                 conversacion != null && conversacion.typingId == receptorId;
-            return Row(
+            final header = Row(
               children: [
                 AppUserAvatar(urlFoto: fotoUrl, nombre: finalName, radius: 18),
                 const SizedBox(width: 12),
@@ -464,6 +496,20 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ),
               ],
+            );
+
+            // Tocable solo cuando hay a dónde ir: sin receptorId (conversación
+            // aún sin resolver) no hay perfil que abrir.
+            if (receptorId.isEmpty) return header;
+            return InkWell(
+              key: const Key('chat_header_perfil_publico'),
+              onTap: () => context.push('/perfil_publico/$receptorId'),
+              child: Semantics(
+                button: true,
+                label: 'Ver perfil de $finalName',
+                excludeSemantics: true,
+                child: header,
+              ),
             );
           },
         ),

@@ -44,9 +44,11 @@ FakeChatProvider _provider() => FakeChatProvider(
 );
 
 void main() {
-  // ChatScreen consulta FirebaseFirestore.instance.collection('usuarios')
-  // en el FutureBuilder del AppBar cuando hay un receptorId no vacío (ver
-  // _futureNombreReceptor). setupFirebaseCoreMocks() + Firebase.initializeApp()
+  // ChatScreen resuelve el perfil público del receptor (PublicProfileService,
+  // Tarea 10) en el FutureBuilder del AppBar cuando hay un receptorId no
+  // vacío (ver _futurePerfilReceptor). Eso lee `talleres/{uid}` con
+  // FirebaseFirestore.instance por defecto aquí (el receptor 'm1' es
+  // mecánico). setupFirebaseCoreMocks() + Firebase.initializeApp()
   // registran una app Firebase "[DEFAULT]" falsa por canal de método para que
   // ese getter no lance síncronamente en build(); la llamada real a `.get()`
   // que dispara después solo genera un error async capturado por el propio

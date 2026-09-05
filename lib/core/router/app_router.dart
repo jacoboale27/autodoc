@@ -11,6 +11,7 @@ import 'package:autodoc/features/auth/presentation/pages/auth_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/dashboard_screen.dart';
 import 'package:autodoc/features/profile/presentation/pages/profile_setup_screen.dart';
 import 'package:autodoc/features/profile/presentation/pages/user_profile_screen.dart';
+import 'package:autodoc/features/profile/presentation/pages/public_profile_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/garage_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/service_history_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/alerts_screen.dart';
@@ -667,6 +668,19 @@ GoRouter createAppRouter(
             child: ChatScreen(conversacionId: id),
           );
         },
+      ),
+      GoRoute(
+        path: '/perfil_publico/:userId',
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: resolveRouteChild(
+            id: state.pathParameters['userId'],
+            mensajeFaltante: 'No se indicó ningún usuario.',
+            rutaVuelta: '/chat_list',
+            buildScreen: (id) => PublicProfileScreen(userId: id),
+          ),
+        ),
       ),
       GoRoute(
         path: '/reserva_detail/:reservaId',
