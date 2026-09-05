@@ -1,3 +1,4 @@
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -78,8 +79,16 @@ void main() {
             builder: (context, state) => Scaffold(
               body: ChangeNotifierProvider<UserProfileProvider>.value(
                 value: _FakeUserProfileProvider(),
-                child: const ReservaChatCard(
-                  metadata: {
+                // Tarea 8: ReservaChatCard ahora lee `reservas/{id}` vía
+                // `StreamBuilder`; sin un `FakeFirebaseFirestore` explícito
+                // llamaría a `FirebaseFirestore.instance` y lanzaría
+                // `FirebaseException('[core/no-app]')` en este widget test
+                // sin `Firebase.initializeApp()`. El documento no se siembra
+                // a propósito: este test solo ejercita el botón "Ver
+                // detalle", que lee `metadata['id_reserva']` directamente,
+                // así que cae al respaldo de metadata sin que importe.
+                child: ReservaChatCard(
+                  metadata: const {
                     'id_reserva': 'r1',
                     'estado': 'confirmada',
                     'fecha': '2026-08-03T10:00:00.000',
@@ -88,6 +97,7 @@ void main() {
                   isMe: false,
                   mensajeId: 'm1',
                   conversacionId: 'c1',
+                  firestore: FakeFirebaseFirestore(),
                 ),
               ),
             ),
@@ -146,12 +156,12 @@ void main() {
     // 'Cotización Enviada' es la etiqueta más larga de los cuatro estados.
     await pumpChatWidget(
       tester,
-      const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         child: ChatBubble(
           isMe: false,
           child: ReservaChatCard(
-            metadata: {
+            metadata: const {
               'id_reserva': 'r1',
               'estado': 'cotizada',
               'fecha': '2026-08-20T10:00:00.000',
@@ -160,11 +170,15 @@ void main() {
             isMe: false,
             mensajeId: 'm1',
             conversacionId: 'c1',
+            // Documento no sembrado: cae al respaldo de `metadata`, igual
+            // que se comportaba esta tarjeta antes de la Tarea 8.
+            firestore: FakeFirebaseFirestore(),
           ),
         ),
       ),
       width: 320,
     );
+    await tester.pumpAndSettle();
     expectNoOverflow(tester);
   });
 
@@ -176,12 +190,12 @@ void main() {
         for (final rol in ['Propietario', 'Mecanico']) {
           await pumpChatWidget(
             tester,
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: ChatBubble(
                 isMe: false,
                 child: ReservaChatCard(
-                  metadata: {
+                  metadata: const {
                     'id_reserva': 'r1',
                     'estado': 'pendiente',
                     'fecha': '2026-08-20T10:00:00.000',
@@ -190,6 +204,7 @@ void main() {
                   isMe: false,
                   mensajeId: 'm1',
                   conversacionId: 'c1',
+                  firestore: FakeFirebaseFirestore(),
                 ),
               ),
             ),
@@ -197,6 +212,7 @@ void main() {
             brightness: brightness,
             user: fakeChatUser(rol: rol),
           );
+          await tester.pumpAndSettle();
           expectNoOverflow(tester);
         }
       }
@@ -208,12 +224,12 @@ void main() {
   ) async {
     await pumpChatWidget(
       tester,
-      const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         child: ChatBubble(
           isMe: true,
           child: ReservaChatCard(
-            metadata: {
+            metadata: const {
               'id_reserva': 'r1',
               'estado': 'confirmada',
               'fecha': '2026-08-20T10:00:00.000',
@@ -222,11 +238,13 @@ void main() {
             isMe: true,
             mensajeId: 'm1',
             conversacionId: 'c1',
+            firestore: FakeFirebaseFirestore(),
           ),
         ),
       ),
       width: 375,
     );
+    await tester.pumpAndSettle();
     final context = tester.element(find.byType(ChatCardShell));
     final colors = context.appColors;
     final fecha = tester.widget<Text>(find.text('20 ago 2026'));
@@ -249,12 +267,12 @@ void main() {
     (tester) async {
       await pumpChatWidget(
         tester,
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: ChatBubble(
             isMe: false,
             child: ReservaChatCard(
-              metadata: {
+              metadata: const {
                 'id_reserva': 'r1',
                 'estado': 'pendiente',
                 'fecha': '2026-08-20T10:00:00.000',
@@ -263,11 +281,17 @@ void main() {
               isMe: false,
               mensajeId: 'm1',
               conversacionId: 'c1',
+              // Documento no sembrado: sin `id_proponente` real, la
+              // tarjeta cae al respaldo por `isMe` (ver comentario en
+              // reserva_chat_card.dart), que es exactamente el escenario
+              // que este test ejercita.
+              firestore: FakeFirebaseFirestore(),
             ),
           ),
         ),
         width: 375,
       );
+      await tester.pumpAndSettle();
       expect(find.text('Te propusieron esta fecha'), findsOneWidget);
       expect(find.text('Aceptar'), findsOneWidget); // correcto, no es un bug
     },
@@ -278,12 +302,12 @@ void main() {
     (tester) async {
       await pumpChatWidget(
         tester,
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: ChatBubble(
             isMe: true,
             child: ReservaChatCard(
-              metadata: {
+              metadata: const {
                 'id_reserva': 'r1',
                 'estado': 'pendiente',
                 'fecha': '2026-08-20T10:00:00.000',
@@ -292,11 +316,13 @@ void main() {
               isMe: true,
               mensajeId: 'm1',
               conversacionId: 'c1',
+              firestore: FakeFirebaseFirestore(),
             ),
           ),
         ),
         width: 375,
       );
+      await tester.pumpAndSettle();
       expect(
         find.text('Propusiste esta fecha — espera respuesta'),
         findsOneWidget,
@@ -308,20 +334,22 @@ void main() {
   testWidgets('el estado se pinta con AppStatusBadge', (tester) async {
     await pumpChatWidget(
       tester,
-      const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         child: ChatBubble(
           isMe: false,
           child: ReservaChatCard(
-            metadata: {'id_reserva': 'r1', 'estado': 'rechazada'},
+            metadata: const {'id_reserva': 'r1', 'estado': 'rechazada'},
             isMe: false,
             mensajeId: 'm1',
             conversacionId: 'c1',
+            firestore: FakeFirebaseFirestore(),
           ),
         ),
       ),
       width: 375,
     );
+    await tester.pumpAndSettle();
     final badge = tester.widget<AppStatusBadge>(find.byType(AppStatusBadge));
     expect(badge.type, AppStatusType.error);
   });

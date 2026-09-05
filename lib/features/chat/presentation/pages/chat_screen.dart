@@ -41,7 +41,14 @@ import 'package:go_router/go_router.dart';
 class ChatScreen extends StatefulWidget {
   final String conversacionId;
 
-  const ChatScreen({super.key, required this.conversacionId});
+  /// Inyectable para pruebas de widget (`FakeFirebaseFirestore`); por
+  /// defecto usa la instancia real. Solo se propaga a `ReservaChatCard`
+  /// (Tarea 8: lee `reservas/{id}` en vivo vía `StreamBuilder`), que sin
+  /// esto no puede resolver su documento en un widget test sin un backend
+  /// real de Firestore.
+  final FirebaseFirestore? firestore;
+
+  const ChatScreen({super.key, required this.conversacionId, this.firestore});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -689,6 +696,7 @@ class _ChatScreenState extends State<ChatScreen> {
           isMe: isMe,
           mensajeId: msg.id,
           conversacionId: widget.conversacionId,
+          firestore: widget.firestore,
         );
       case 'cotizacion_card':
         return CotizacionChatCard(

@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_severity.dart';
@@ -18,10 +19,24 @@ import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 
 class ReservaChatCard extends StatelessWidget {
+  /// Sentinel usado solo cuando no hay documento vivo del que leer el
+  /// `id_proponente` real (mensaje sin `id_reserva`, o documento
+  /// borrado/no legible) y el remitente no es el usuario actual: garantiza
+  /// que la comparación de proponente en `calcularAccionesReserva` no
+  /// coincida por accidente con ningún uid real.
+  static const String _sinProponenteEnVivo = '__sin_datos_de_reserva__';
+
   final Map<String, dynamic> metadata;
   final bool isMe;
   final String mensajeId;
   final String conversacionId;
+
+  /// Inyectable para pruebas de widget (`FakeFirebaseFirestore`); por
+  /// defecto usa la instancia real. Mismo precedente que
+  /// `CotizacionChatCard`/`ReservaDetailScreen`: sin esto, el
+  /// `StreamBuilder` de `build()` lanzaría `FirebaseException('[core/no-app]')`
+  /// en un widget test sin `Firebase.initializeApp()`.
+  final FirebaseFirestore? firestore;
 
   const ReservaChatCard({
     super.key,
@@ -29,6 +44,7 @@ class ReservaChatCard extends StatelessWidget {
     required this.isMe,
     required this.mensajeId,
     required this.conversacionId,
+    this.firestore,
   });
 
   Future<void> _actualizar(
@@ -164,6 +180,58 @@ class ReservaChatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String? reservaId = metadata['id_reserva'] as String?;
+
+    // Los mensajes de reserva ya existentes en producción pueden no traer
+    // `id_reserva` en su metadata: sin documento que leer, se renderiza
+    // directamente desde la copia congelada del mensaje, igual que antes
+    // de esta tarea.
+    if (reservaId == null) {
+      return _buildBody(context, estadoVivo: null, idProponenteVivo: null);
+    }
+
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: (firestore ?? FirebaseFirestore.instance)
+          .collection('reservas')
+          .doc(reservaId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        // Mientras no llega la primera respuesta del documento vivo, no se
+        // pinta el estado congelado de `metadata`: mostrarlo y corregirlo
+        // luego sería una versión peor del bug A2 (parpadeo
+        // "Pendiente" -> "Confirmada"). Se muestra un loader en su lugar.
+        if (!snapshot.hasData && !snapshot.hasError) {
+          return const ChatCardShell(
+            icon: Icons.event,
+            title: 'Reserva de Cita',
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          );
+        }
+
+        // Documento borrado o sin permiso de lectura: se cae al respaldo de
+        // `metadata` en vez de dejar la tarjeta atascada en el loader
+        // (lectura tolerante, requerida por el proyecto para producción).
+        final data = (!snapshot.hasError && snapshot.data?.exists == true)
+            ? snapshot.data!.data()
+            : null;
+
+        return _buildBody(
+          context,
+          estadoVivo: data?['estado'] as String?,
+          idProponenteVivo: data?['id_proponente'] as String?,
+        );
+      },
+    );
+  }
+
+  Widget _buildBody(
+    BuildContext context, {
+    required String? estadoVivo,
+    required String? idProponenteVivo,
+  }) {
     final colors = context.appColors;
     final currentUser = context.watch<UserProfileProvider>().userData;
     final isMecanico = isMechanicRole(currentUser?.rol);
@@ -172,7 +240,14 @@ class ReservaChatCard extends StatelessWidget {
     final String? reservaId = metadata['id_reserva'] as String?;
     final String fechaRaw = metadata['fecha'] ?? '';
     final String hora = metadata['hora'] ?? '';
+    // `metadata['estado']` es una copia congelada al enviarse el mensaje:
+    // la reserva cambia de estado (aceptada/rechazada) pero el mensaje
+    // nunca se reescribe (bug A2). `estadoVivo` viene de `reservas/{id}` y
+    // es la fuente de verdad; `metadata` queda solo como respaldo para
+    // mensajes sin `id_reserva`, o si el documento fue borrado / no se
+    // pudo leer.
     final String estado =
+        estadoVivo ??
         metadata['estado'] ??
         'pendiente'; // pendiente, confirmada, rechazada, cotizada
 
@@ -191,13 +266,21 @@ class ReservaChatCard extends StatelessWidget {
       canceladaLabel: context.l10n.chatCancelledStatus,
     );
 
-    // `isMe` es quien envió este mensaje de reserva, que es exactamente
-    // quien propuso esta fecha: se traduce al mismo invariante que usa
-    // ReservaDetailScreen (quien propone no resuelve) sin necesitar el uid
-    // real de la contraparte, que este widget no recibe.
+    // R4: el `id_proponente` real vive en `reservas/{id}`. Antes de leer el
+    // documento vivo se aproximaba con `isMe` (quien envía el mensaje es
+    // quien propuso la fecha en ese momento) — pero tras una
+    // reprogramación la contraparte puede pasar a proponer mientras el
+    // mensaje sigue perteneciendo al remitente original, y ahí `isMe`
+    // miente. Con el documento vivo ya no hace falta adivinar; el respaldo
+    // por `isMe` solo se usa cuando no hay documento que leer (mensaje sin
+    // `id_reserva`, o documento borrado/no legible), igual que `estado`
+    // arriba.
+    final String idProponente =
+        idProponenteVivo ?? (isMe ? currentUserId : _sinProponenteEnVivo);
+
     final acciones = calcularAccionesReserva(
       estado: estado,
-      idProponente: isMe ? currentUserId : '__contraparte__',
+      idProponente: idProponente,
       currentUserId: currentUserId,
       isMecanico: isMecanico,
     );
@@ -251,7 +334,10 @@ class ReservaChatCard extends StatelessWidget {
           if (estado == 'pendiente') ...[
             const SizedBox(height: 8),
             Text(
-              isMe
+              // R4: se compara contra el `id_proponente` real (o su
+              // respaldo), no contra `isMe` — ver el comentario junto a
+              // `idProponente` más arriba.
+              idProponente == currentUserId
                   ? 'Propusiste esta fecha — espera respuesta'
                   : 'Te propusieron esta fecha',
               style: TextStyle(fontSize: 11, color: colors.textSecondary),

@@ -1,3 +1,4 @@
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -142,13 +143,21 @@ void main() {
           ),
         ],
       );
+      // Tarea 8: ReservaChatCard ahora envuelve su cuerpo en un
+      // StreamBuilder sobre `reservas/{id}`. Sin un FakeFirebaseFirestore
+      // inyectado, la suscripción real nunca emite en este widget test (ni
+      // dato ni error), y el `CircularProgressIndicator` del loader agenda
+      // frames indefinidamente: `pumpAndSettle()` haría timeout. Se le da a
+      // ChatScreen un firestore falso (documento no sembrado a propósito;
+      // el test solo necesita el respaldo de `metadata`, no datos en vivo).
       await pumpChatWidget(
         tester,
-        const ChatScreen(conversacionId: 'c1'),
+        ChatScreen(conversacionId: 'c1', firestore: FakeFirebaseFirestore()),
         width: 375,
         chatProvider: provider,
         user: fakeChatUser(),
       );
+      await tester.pumpAndSettle();
 
       // El bubble entero NO debe llevar un semanticLabel propio para este
       // tipo de mensaje (si lo llevara, `excludeSemantics: true` en
