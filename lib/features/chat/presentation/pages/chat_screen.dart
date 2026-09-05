@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:autodoc/core/utils/role_utils.dart';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
@@ -39,6 +40,7 @@ import 'package:autodoc/core/utils/mechanic_profile_utils.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/features/profile/data/services/public_profile_service.dart';
 import 'package:autodoc/features/chat/presentation/widgets/adjunto_preview_sheet.dart';
+import 'package:autodoc/features/mechanic/data/services/verificacion_service.dart';
 import 'package:go_router/go_router.dart';
 
 /// Firma del selector de imagen, con el origen (`gallery`/`camera`) ya
@@ -1079,8 +1081,48 @@ class _ChatScreenState extends State<ChatScreen> {
     while (image != null) {
       if (!mounted) return;
 
-      final bytes = await image.readAsBytes();
+      // F1 (revisión C6): antes de esta tarea, la lectura vivía dentro de
+      // `ChatProvider.subirImagenChat`, que tiene try/catch y devuelve
+      // `null` en fallo — esta pantalla mostraba `chatUploadImageError`. Al
+      // adelantar la lectura aquí para poder previsualizar, quedó sin
+      // protección: un `content://` de un proveedor en la nube que ya no
+      // resuelve, o un archivo borrado por otra app entre el picker y la
+      // lectura, lanzaba una excepción no capturada (los tres puntos que
+      // llaman a este método lo hacen sin `await`) y no pasaba nada visible
+      // en pantalla.
+      Uint8List bytes;
+      try {
+        bytes = await image.readAsBytes();
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.chatUploadImageError)),
+        );
+        return;
+      }
       if (!mounted) return;
+
+      // F3 (revisión C6): mismo tope y mismo mensaje que
+      // `WorkshopVerificationScreen._elegirArchivo` (que a su vez usa
+      // `VerificacionService.maxBytesEvidencia` /
+      // `mensajeArchivoDemasiadoGrande`), porque es el mismo límite que
+      // aplica `storage.rules` a `chat_images/` vía `esImagenValida()`
+      // (`request.resource.size < 5 * 1024 * 1024`). Se comprueba ANTES de
+      // previsualizar: sin esto, la hoja mostraba como aceptable un archivo
+      // que el servidor iba a rechazar de todas formas.
+      if (bytes.lengthInBytes >= VerificacionService.maxBytesEvidencia) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              VerificacionService.mensajeArchivoDemasiadoGrande(
+                bytes.lengthInBytes,
+              ),
+            ),
+          ),
+        );
+        return;
+      }
 
       final accion = await AdjuntoPreviewSheet.mostrar(
         context,
@@ -1091,7 +1133,16 @@ class _ChatScreenState extends State<ChatScreen> {
       if (accion == null || accion == AdjuntoPreviewAccion.cancelar) return;
 
       if (accion == AdjuntoPreviewAccion.cambiar) {
-        image = await _seleccionarImagen(source);
+        // F4 (revisión C6): si el selector se cancela aquí, `image` conserva
+        // el archivo elegido antes y el bucle vuelve a mostrar la misma
+        // previsualización, en vez de dejar al usuario de vuelta en el chat
+        // sin sheet, sin imagen y sin explicación. Mismo contrato que
+        // documenta `WorkshopVerificationScreen._elegirArchivo`: "Cancelar
+        // el selector no toca el estado previo del slot".
+        final elegido = await _seleccionarImagen(source);
+        if (elegido != null) {
+          image = elegido;
+        }
         continue;
       }
 

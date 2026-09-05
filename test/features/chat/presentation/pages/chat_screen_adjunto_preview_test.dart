@@ -35,8 +35,42 @@ final Uint8List _pngDePrueba = Uint8List.fromList(const <int>[
 
 /// `XFile` fake: bytes en memoria, sin tocar disco/red — como el resto del
 /// harness de este módulo.
-XFile _xfileFake({String nombre = 'foto.jpg'}) =>
-    XFile.fromData(_pngDePrueba, name: nombre, mimeType: 'image/png');
+///
+/// `path:` va explícito (no solo `name:`): la variante `dart:io` de `XFile`
+/// (la que resuelve este import en `flutter test`, que corre en la VM, no en
+/// web) IGNORA el parámetro `name` de `fromData` — su getter `name` deriva
+/// siempre de `_file.path`. Sin `path:` aquí, `image.name` en producción
+/// devolvía `''` en cualquier test, y como ningún test anterior a la Tarea
+/// 12/F5 afirmaba sobre el nombre mostrado en la hoja, pasó inadvertido.
+XFile _xfileFake({String nombre = 'foto.jpg'}) => XFile.fromData(
+  _pngDePrueba,
+  name: nombre,
+  mimeType: 'image/png',
+  path: nombre,
+);
+
+/// `XFile` cuyo `readAsBytes()` lanza, para F1: simula un `content://` que
+/// ya no resuelve (proveedor en la nube) o un archivo borrado por otra app
+/// entre el picker y la lectura. `XFile` (la variante `dart:io` que resuelve
+/// este import fuera de web) no es `final` ni `sealed`, así que se puede
+/// extender y sobrescribir `readAsBytes()` sin tocar disco real.
+class _XFileQueLanzaAlLeer extends XFile {
+  _XFileQueLanzaAlLeer() : super.fromData(Uint8List(0), name: 'foto.jpg');
+
+  @override
+  Future<Uint8List> readAsBytes() {
+    throw Exception('no se pudo leer el archivo');
+  }
+}
+
+/// `XFile` que supera el tope de 5 MB de `storage.rules`/`VerificacionService
+/// .maxBytesEvidencia` (F3). Los bytes no necesitan ser un PNG válido: el
+/// tope se comprueba ANTES de intentar decodificar nada.
+XFile _xfileGrande({String nombre = 'grande.jpg'}) => XFile.fromData(
+  Uint8List(6 * 1024 * 1024),
+  name: nombre,
+  mimeType: 'image/jpeg',
+);
 
 void main() {
   Future<void> pumpChat(
@@ -161,4 +195,139 @@ void main() {
     expect(chat.llamadas.any((l) => l.startsWith('enviarMensaje')), isFalse);
     expect(chat.llamadas.any((l) => l.startsWith('subirImagenChat')), isFalse);
   });
+
+  testWidgets(
+    'Cambiar reemplaza el archivo mostrado por el nuevo, no el anterior '
+    '(F5)',
+    (tester) async {
+      final chat = FakeChatProvider(
+        conversaciones: [fakeConversacion()],
+        mensajes: const <MensajeModel>[],
+      );
+      var llamadasAlSelector = 0;
+      await pumpChat(
+        tester,
+        chat,
+        selectorDeImagen: (_) {
+          llamadasAlSelector++;
+          return _xfileFake(nombre: 'foto$llamadasAlSelector.jpg');
+        },
+      );
+
+      await tester.tap(find.byIcon(Icons.camera_alt));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('foto1.jpg'), findsOneWidget);
+
+      await tester.tap(find.text('Cambiar'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('foto2.jpg'),
+        findsOneWidget,
+        reason: 'la hoja debe mostrar el archivo nuevo tras "Cambiar"',
+      );
+      expect(
+        find.textContaining('foto1.jpg'),
+        findsNothing,
+        reason: 'no debe quedar rastro del archivo anterior',
+      );
+    },
+  );
+
+  testWidgets(
+    'F1: un fallo al leer el adjunto muestra el aviso de error y no sube '
+    'ni envia nada',
+    (tester) async {
+      final chat = FakeChatProvider(
+        conversaciones: [fakeConversacion()],
+        mensajes: const <MensajeModel>[],
+      );
+      await pumpChat(
+        tester,
+        chat,
+        selectorDeImagen: (_) => _XFileQueLanzaAlLeer(),
+      );
+
+      await tester.tap(find.byIcon(Icons.camera_alt));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AdjuntoPreviewSheet), findsNothing);
+      expect(find.text('Error al subir imagen'), findsOneWidget);
+      expect(
+        chat.llamadas.any((l) => l.startsWith('subirImagenChat')),
+        isFalse,
+      );
+      expect(chat.llamadas.any((l) => l.startsWith('enviarMensaje')), isFalse);
+    },
+  );
+
+  testWidgets(
+    'F3: un archivo de 6 MB no llega a previsualizarse y avisa del limite '
+    'de 5 MB',
+    (tester) async {
+      final chat = FakeChatProvider(
+        conversaciones: [fakeConversacion()],
+        mensajes: const <MensajeModel>[],
+      );
+      await pumpChat(tester, chat, selectorDeImagen: (_) => _xfileGrande());
+
+      await tester.tap(find.byIcon(Icons.camera_alt));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AdjuntoPreviewSheet), findsNothing);
+      expect(find.textContaining('6.0 MB'), findsOneWidget);
+      expect(find.textContaining('5 MB'), findsOneWidget);
+      expect(
+        chat.llamadas.any((l) => l.startsWith('subirImagenChat')),
+        isFalse,
+      );
+      expect(chat.llamadas.any((l) => l.startsWith('enviarMensaje')), isFalse);
+    },
+  );
+
+  testWidgets(
+    'F4: cancelar el selector durante Cambiar conserva la imagen previa y '
+    'vuelve a mostrar la hoja',
+    (tester) async {
+      final chat = FakeChatProvider(
+        conversaciones: [fakeConversacion()],
+        mensajes: const <MensajeModel>[],
+      );
+      var llamadas = 0;
+      await pumpChat(
+        tester,
+        chat,
+        selectorDeImagen: (_) {
+          llamadas++;
+          // Primera llamada: imagen real. Segunda (dentro de "Cambiar"):
+          // simula que el usuario cancela el selector nativo.
+          return llamadas == 1 ? _xfileFake(nombre: 'foto1.jpg') : null;
+        },
+      );
+
+      await tester.tap(find.byIcon(Icons.camera_alt));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('foto1.jpg'), findsOneWidget);
+
+      await tester.tap(find.text('Cambiar'));
+      await tester.pumpAndSettle();
+
+      expect(llamadas, 2);
+      expect(
+        find.byType(AdjuntoPreviewSheet),
+        findsOneWidget,
+        reason: 'cancelar el selector no debe cerrar la hoja sin más',
+      );
+      expect(
+        find.textContaining('foto1.jpg'),
+        findsOneWidget,
+        reason: 'debe seguir mostrando la imagen elegida antes',
+      );
+      expect(
+        chat.llamadas.any((l) => l.startsWith('subirImagenChat')),
+        isFalse,
+      );
+      expect(chat.llamadas.any((l) => l.startsWith('enviarMensaje')), isFalse);
+    },
+  );
 }

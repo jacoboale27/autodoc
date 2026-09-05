@@ -62,70 +62,107 @@ class AdjuntoPreviewSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.appColors;
 
+    // F2 (revisión C6): la altura de la miniatura era un fijo de 220dp que,
+    // sumado al resto del contenido (~384dp), desbordaba en un viewport bajo
+    // (móvil en horizontal, ~330-360dp de alto útil). Se acota a una
+    // fracción de la altura disponible en vez de un valor fijo, con un piso
+    // razonable para que no se vuelva un timbre postal en pantallas altas.
+    final alturaImagen = (MediaQuery.of(context).size.height * 0.3).clamp(
+      120.0,
+      220.0,
+    );
+
     return SafeArea(
+      // F2: `SafeArea` ya añade el padding inferior del inset del sistema a
+      // su hijo — sumarlo también aquí (como hacía antes) lo contaba dos
+      // veces en dispositivos con barra de gestos.
       child: Padding(
-        padding: EdgeInsets.only(
+        padding: const EdgeInsets.only(
           left: AppSpacing.xl,
           right: AppSpacing.xl,
           top: AppSpacing.lg,
-          bottom: MediaQuery.of(context).padding.bottom + AppSpacing.lg,
+          bottom: AppSpacing.lg,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.l10n.chatAdjuntoPreviewTitulo,
-              style: AppTextStyles.titleSmall.copyWith(
-                color: colors.textPrimary,
+        // F2: el contenido puede seguir superando la altura disponible
+        // incluso con la imagen acotada (nombres largos, dos líneas de
+        // info); envolver en scroll evita el `RenderFlex` overflow y le da
+        // al usuario una forma de llegar a los botones que no sea arrastrar
+        // la propia hoja hacia abajo (lo que un `showModalBottomSheet`
+        // interpreta como cancelar).
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.l10n.chatAdjuntoPreviewTitulo,
+                style: AppTextStyles.titleSmall.copyWith(
+                  color: colors.textPrimary,
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              child: Image.memory(
-                bytes,
-                height: 220,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              context.l10n.chatAdjuntoPreviewInfo(nombre, _tamanoEnMB),
-              style: AppTextStyles.bodySmall.copyWith(
-                color: colors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () =>
-                        Navigator.pop(context, AdjuntoPreviewAccion.cancelar),
-                    child: Text(context.l10n.chatAdjuntoPreviewCancelar),
+              const SizedBox(height: AppSpacing.md),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                child: Image.memory(
+                  bytes,
+                  height: alturaImagen,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  // Bytes indecodificables (archivo de 0 bytes, HEIC no
+                  // soportado) lanzaban durante el decode y dejaban un
+                  // rectángulo en blanco con "Enviar" igual de habilitado.
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    height: alturaImagen,
+                    width: double.infinity,
+                    color: colors.surfaceContainer,
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.broken_image_outlined,
+                      color: colors.textSecondary,
+                    ),
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: TextButton(
-                    onPressed: () =>
-                        Navigator.pop(context, AdjuntoPreviewAccion.cambiar),
-                    child: Text(context.l10n.chatAdjuntoPreviewCambiar),
-                  ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                context.l10n.chatAdjuntoPreviewInfo(nombre, _tamanoEnMB),
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: colors.textSecondary,
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () =>
-                        Navigator.pop(context, AdjuntoPreviewAccion.enviar),
-                    child: Text(context.l10n.chatAdjuntoPreviewEnviar),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      key: const Key('adjunto_preview_cancelar'),
+                      onPressed: () =>
+                          Navigator.pop(context, AdjuntoPreviewAccion.cancelar),
+                      child: Text(context.l10n.chatAdjuntoPreviewCancelar),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: TextButton(
+                      key: const Key('adjunto_preview_cambiar'),
+                      onPressed: () =>
+                          Navigator.pop(context, AdjuntoPreviewAccion.cambiar),
+                      child: Text(context.l10n.chatAdjuntoPreviewCambiar),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: FilledButton(
+                      key: const Key('adjunto_preview_enviar'),
+                      onPressed: () =>
+                          Navigator.pop(context, AdjuntoPreviewAccion.enviar),
+                      child: Text(context.l10n.chatAdjuntoPreviewEnviar),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
