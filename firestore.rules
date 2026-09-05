@@ -686,9 +686,37 @@ service cloud.firestore {
         isAdmin()
       );
 
+      // Revision de rama completa (hallazgo C2): antes, cualquier cuenta
+      // autenticada podia crear una conversacion nombrandose a si misma
+      // como id_mecanico y a CUALQUIER victima como id_propietario, sin
+      // relacion previa ni comprobacion de rol. `obtenerPerfilPublico`
+      // confia en que "existe una conversacion" implica una relacion
+      // legitima (ver functions/src/obtenerPerfilPublico.js,
+      // compartenConversacion); esa confianza era auto-emitible por quien
+      // llama. Ahora: el propietario siempre puede crear una conversacion
+      // sobre si mismo (inicia el chat desde el directorio, workshop_
+      // directory_screen.dart), y el mecanico solo puede crear una
+      // conversacion en nombre de SU PROPIO taller (actuaPorTaller,
+      // service_finalized_screen.dart) — nunca en nombre de un taller
+      // ajeno ni sin ese vinculo. Verificado que ChatProvider.
+      // iniciarOCrearConversacion es el UNICO sitio de 'lib/' que crea
+      // conversaciones (grep de crearConversacion/collection('conversaciones')
+      // .add|.doc) y que sus dos call sites (workshop_directory_screen.dart,
+      // service_finalized_screen.dart) siempre pasan id_taller.
+      //
+      // `&& isMecanico()` es la mitigacion residual del propio hallazgo C2:
+      // sin ella, un cliente cualquiera podia nombrarse id_mecanico == su
+      // propio uid Y id_taller == su propio uid, y `actuaPorTaller` deja
+      // pasar ese caso (su primera rama es `request.auth.uid == tallerId`,
+      // que no comprueba rol). Eso seguia fabricando la conversacion que
+      // `compartenConversacion` exige; el callable lo bloquea aparte con
+      // `llamanteEsMecanico` (segunda barrera independiente), pero la regla
+      // debe cerrar tambien su propio hueco en vez de depender solo de eso.
       allow create: if isAuthenticated() && (
         request.resource.data.id_propietario == request.auth.uid ||
-        request.resource.data.id_mecanico == request.auth.uid
+        (request.resource.data.id_mecanico == request.auth.uid
+          && isMecanico()
+          && actuaPorTaller(request.resource.data.id_taller))
       );
 
       allow update: if isAuthenticated() && (

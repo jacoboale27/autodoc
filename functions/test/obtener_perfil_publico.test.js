@@ -28,6 +28,7 @@ const assert = require('assert');
 const {
   subconjuntoPublicoCliente,
   compartenConversacion,
+  llamanteEsMecanico,
 } = require('../src/obtenerPerfilPublico');
 
 /**
@@ -146,5 +147,53 @@ describe('obtenerPerfilPublico / compartenConversacion', () => {
       await compartenConversacion(db, { mecanicoId: 'mec1', clienteId: 'cli1' }),
       false
     );
+  });
+});
+
+/**
+ * Doble en memoria de `usuarios/{uid}` para `llamanteEsMecanico`.
+ */
+function fakeDbUsuarios(docs = {}) {
+  return {
+    collection(nombre) {
+      assert.strictEqual(nombre, 'usuarios');
+      return {
+        doc(uid) {
+          return {
+            async get() {
+              return {
+                exists: Object.prototype.hasOwnProperty.call(docs, uid),
+                data: () => docs[uid],
+              };
+            },
+          };
+        },
+      };
+    },
+  };
+}
+
+describe('obtenerPerfilPublico / llamanteEsMecanico (hallazgo C2)', () => {
+  // Antes de este chequeo, obtenerPerfilPublico nunca comprobaba `rol`: una
+  // cuenta de CLIENTE que fabricara (o consiguiera de cualquier otra forma)
+  // una conversacion con la victima podia leer su perfil publico igual.
+  it('rechaza a una cuenta de rol Propietario (cliente)', async () => {
+    const db = fakeDbUsuarios({ cli1: { rol: 'Propietario' } });
+    assert.strictEqual(await llamanteEsMecanico(db, 'cli1'), false);
+  });
+
+  it('deja pasar a un Mecanico', async () => {
+    const db = fakeDbUsuarios({ mec1: { rol: 'Mecanico' } });
+    assert.strictEqual(await llamanteEsMecanico(db, 'mec1'), true);
+  });
+
+  it('deja pasar a un Taller', async () => {
+    const db = fakeDbUsuarios({ t1: { rol: 'Taller' } });
+    assert.strictEqual(await llamanteEsMecanico(db, 't1'), true);
+  });
+
+  it('rechaza si el documento de usuario no existe', async () => {
+    const db = fakeDbUsuarios({});
+    assert.strictEqual(await llamanteEsMecanico(db, 'fantasma'), false);
   });
 });

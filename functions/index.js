@@ -8,6 +8,7 @@ const { verificarAperturaManual } = require('./src/iniciarReparacionPorVehiculo'
 const {
   subconjuntoPublicoCliente,
   compartenConversacion,
+  llamanteEsMecanico,
 } = require('./src/obtenerPerfilPublico');
 const { listarEmpleadosPublicos } = require('./src/obtenerEmpleadosPublicos');
 
@@ -1263,6 +1264,19 @@ exports.obtenerPerfilPublico = functions.https.onCall(async (data, context) => {
   const mecanicoId = context.auth.uid;
   if (mecanicoId === clienteId) {
     throw new functions.https.HttpsError('invalid-argument', 'No aplica a tu propio perfil.');
+  }
+
+  // Hallazgo C2 (revision de rama completa): segunda barrera independiente
+  // del arreglo en firestore.rules — una cuenta de CLIENTE no puede usar
+  // este callable en absoluto, ni siquiera si consiguiera una conversacion
+  // real. Antes de esto la unica puerta era `compartenConversacion`, y
+  // `conversaciones.create` no comprobaba rol.
+  const puedeUsarlo = await llamanteEsMecanico(db, mecanicoId);
+  if (!puedeUsarlo) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'Solo mecánicos pueden consultar este perfil.'
+    );
   }
 
   const compartida = await compartenConversacion(db, { mecanicoId, clienteId });

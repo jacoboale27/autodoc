@@ -136,3 +136,4 @@ exports.publishTallerProfile = functions.firestore
 
 exports.construirPerfilPublico = construirPerfilPublico;
 exports.CAMPOS_PUBLICOS = CAMPOS_PUBLICOS;
+exports.esMecanico = esMecanico;

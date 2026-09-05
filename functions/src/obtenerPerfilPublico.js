@@ -1,5 +1,7 @@
 'use strict';
 
+const { esMecanico } = require('./publishTallerProfile');
+
 /**
  * Compuerta y proyeccion para el callable `obtenerPerfilPublico` (Tarea 10,
  * C3 — "ver el perfil del otro desde el chat").
@@ -66,4 +68,29 @@ async function compartenConversacion(db, { mecanicoId, clienteId }) {
   return !snap.empty;
 }
 
-module.exports = { subconjuntoPublicoCliente, compartenConversacion };
+/**
+ * ¿El llamante tiene un rol que puede usar este callable en absoluto?
+ *
+ * Revision de rama completa (hallazgo C2): este callable nunca comprobaba
+ * `rol`. Combinado con que `conversaciones` (antes del arreglo de
+ * firestore.rules a esta misma revision) dejaba crear una conversacion
+ * nombrandose a si mismo `id_mecanico` sin ninguna relacion previa, CUALQUIER
+ * cuenta autenticada —incluida una cuenta de CLIENTE— podia fabricar la
+ * conversacion que `compartenConversacion` exige y luego leer el subconjunto
+ * publico de cualquier cliente por uid, iterando una lista para enumeracion
+ * masiva. El arreglo de `firestore.rules` ya cierra la fabricacion de la
+ * conversacion; este chequeo de rol es una segunda barrera independiente:
+ * aunque alguna otra via llegara a crear una conversacion valida, una cuenta
+ * de cliente sigue sin poder invocar este callable en absoluto.
+ *
+ * @param {FirebaseFirestore.Firestore} db
+ * @param {string} uid
+ * @returns {Promise<boolean>}
+ */
+async function llamanteEsMecanico(db, uid) {
+  const doc = await db.collection('usuarios').doc(uid).get();
+  if (!doc.exists) return false;
+  return esMecanico(doc.data().rol);
+}
+
+module.exports = { subconjuntoPublicoCliente, compartenConversacion, llamanteEsMecanico };
