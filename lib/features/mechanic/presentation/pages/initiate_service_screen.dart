@@ -60,6 +60,14 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   final TextEditingController _costoController = TextEditingController();
   final TextEditingController _manoDeObraController = TextEditingController();
   final List<CotizacionItemRowControllers> _materialRows = [];
+  // Gatea Finalizar cuando no hay cotización aprobada: sin esto, una fila
+  // agregada pero sin completar (nombre puesto, cantidad/costo vacíos o
+  // inválidos) coercionaba en silencio a `cantidad: 1, costo: 0` en
+  // `_materialesDesdeFilas()` y llegaba así al `servicios` del taller. El
+  // viejo diálogo "Agregar Material" nunca dejaba agregar una fila así de
+  // entrada; con las filas editables en línea (Task 7/B1) hace falta este
+  // `Form` para reproducir esa misma garantía.
+  final _materialesFormKey = GlobalKey<FormState>();
   final Set<String> _completedTaskIds = {};
   bool _isSaving = false;
   XFile? _invoiceImage;
@@ -323,11 +331,12 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
 
   /// Convierte las filas editables de `_materialRows` al `List<Map>` que
   /// espera `AlertProvider.tallerRegistrarServicioSinTarea`/`tallerUpdateService`
-  /// — la misma forma que antes producía `_showAddMaterialDialog`. Descarta
-  /// filas sin nombre: a diferencia de `CotizacionPicker` (que exige llenar
-  /// cada renglón antes de poder enviar), aquí una fila vacía es un estado
-  /// intermedio válido, no un error — el mecánico puede tocar "Agregar
-  /// renglón" y dejarla sin completar.
+  /// — la misma forma que antes producía `_showAddMaterialDialog`. Solo se
+  /// llama tras `_materialesFormKey.currentState.validate()` en
+  /// `_handleFinalizeService`, así que cada fila que llega aquí ya tiene
+  /// nombre no vacío y cantidad/costo parseables — el filtro por nombre de
+  /// abajo es una defensa adicional, no la única barrera (a diferencia de
+  /// antes de la Fix 1 de la revisión, donde era la única).
   List<Map<String, dynamic>> _materialesDesdeFilas() {
     return _materialRows
         .where((r) => r.nombreController.text.trim().isNotEmpty)
@@ -385,6 +394,22 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       UiUtils.showErrorSnackbar(
         context,
         'Selecciona al menos una tarea realizada',
+      );
+      return;
+    }
+
+    // Sin cotización aprobada, los materiales son filas editables en línea
+    // (Task 7/B1): validar aquí es lo que impide que una fila con nombre
+    // pero cantidad/costo vacíos o ilegibles llegue a `servicios` coercionada
+    // en silencio a `cantidad: 1, costo: 0` — la misma garantía que antes
+    // daba el diálogo "Agregar Material" al no dejar agregar una fila así de
+    // entrada.
+    if (!_hasApprovedQuote &&
+        !(_materialesFormKey.currentState?.validate() ?? true)) {
+      HapticFeedback.heavyImpact();
+      UiUtils.showErrorSnackbar(
+        context,
+        'Revisa los materiales: hay renglones incompletos o inválidos.',
       );
       return;
     }
@@ -618,7 +643,10 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                   uppercase: true,
                 ),
                 const SizedBox(height: AppSpacing.md),
-                _buildMaterialesList(colors),
+                Form(
+                  key: _materialesFormKey,
+                  child: _buildMaterialesList(colors),
+                ),
                 const SizedBox(height: AppSpacing.xl),
                 const AppSectionHeader(title: 'Mano de obra', uppercase: true),
                 const SizedBox(height: AppSpacing.md),
