@@ -51,6 +51,8 @@ class NotificationsScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           l10n.notifications,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: AppTextStyles.titleLarge.copyWith(color: colors.textPrimary),
         ),
         backgroundColor: colors.surface,
@@ -60,13 +62,21 @@ class NotificationsScreen extends StatelessWidget {
           onPressed: () => context.pop(),
         ),
         actions: [
+          // Blocker 5 (revision de rama completa): con el harness de test
+          // montando en español (como el resto de la app), `l10n.markAllRead`
+          // ("Marcar todo como leído", 22 caracteres) desbordaba el AppBar a
+          // 320dp — el `TextButton` nunca cabía junto al título en un
+          // teléfono angosto. Era un bug de producción real que el harness
+          // en inglés ("Mark all as read", 16 caracteres) ocultaba. Un
+          // `IconButton` con `tooltip` no tiene ancho variable por idioma:
+          // cabe siempre, y el texto completo sigue accesible (tooltip al
+          // mantener presionado, y como label semántico para lectores de
+          // pantalla).
           if (notifProvider.hasUnread)
-            TextButton(
+            IconButton(
+              icon: Icon(Icons.done_all_rounded, color: colors.primary),
+              tooltip: l10n.markAllRead,
               onPressed: () => notifProvider.markAllAsRead(userId),
-              child: Text(
-                l10n.markAllRead,
-                style: TextStyle(color: colors.primary),
-              ),
             ),
         ],
       ),

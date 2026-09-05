@@ -24,6 +24,7 @@ Future<void> pumpAtWidth(
   double height = 900,
   Brightness brightness = Brightness.light,
   bool disableAnimations = false,
+  Locale locale = const Locale('es'),
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = Size(width, height);
@@ -45,6 +46,7 @@ Future<void> pumpAtWidth(
     MaterialApp(
       theme: resolvedTheme,
       debugShowCheckedModeBanner: false,
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, inner) => MediaQuery(
