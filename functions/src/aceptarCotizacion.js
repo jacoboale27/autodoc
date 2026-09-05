@@ -123,11 +123,20 @@ function construirTicketReparacion({ cotizacionId, cotizacion, vehiculo, ahora }
  * @param {{idVehiculo: string, idTaller: string}} args
  * @returns {Promise<boolean>}
  */
+/**
+ * Tope de la query de dedup. Un vehiculo+taller legitimo nunca deberia
+ * acumular mas de un puñado de tickets no cerrados (Blocker 3: la query no
+ * tenia limite, asi que un vehiculo con muchos tickets historicos habria
+ * escaneado la coleccion entera en cada aceptacion).
+ */
+const LIMITE_DEDUP_TICKETS_ABIERTOS = 20;
+
 async function existeTicketAbiertoParaVehiculo(db, { idVehiculo, idTaller }) {
   const snap = await db
     .collection('reparaciones')
     .where('id_vehiculo', '==', idVehiculo)
     .where('id_taller', '==', idTaller)
+    .limit(LIMITE_DEDUP_TICKETS_ABIERTOS)
     .get();
   return snap.docs.some((doc) => {
     const estado = (doc.data().estado || 'recibido').toString();

@@ -105,6 +105,23 @@
         { "fieldPath": "estado", "order": "ASCENDING" },
         { "fieldPath": "calificacion_promedio", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "reparaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "id_vehiculo", "order": "ASCENDING" },
+        { "fieldPath": "id_taller", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "cotizaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "id_vehiculo", "order": "ASCENDING" },
+        { "fieldPath": "id_taller", "order": "ASCENDING" },
+        { "fieldPath": "estado", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

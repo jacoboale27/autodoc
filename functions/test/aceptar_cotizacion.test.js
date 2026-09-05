@@ -64,6 +64,9 @@ function fakeDb(docs = {}) {
               filtros.push([campo2, valor2]);
               return query;
             },
+            limit() {
+              return query;
+            },
             async get() {
               const prefijo = `${coleccion}/`;
               const coincidencias = Object.keys(docs)

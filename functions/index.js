@@ -751,7 +751,18 @@ exports.onCotizacionAceptada = functions.firestore
         ahora: new Date(),
       });
     } catch (error) {
+      // Revision de rama completa (hallazgo C1/Blocker 3): este es el UNICO
+      // creador de `reparaciones`. Devolver `null` tras un fallo le decia a
+      // Firestore que la invocacion habia tenido exito, asi que no habia
+      // reintento: el cliente veia "cotizacion aceptada" y ningun ticket
+      // existia, sin que nadie se enterara. Se relanza para que la
+      // invocacion quede marcada como fallida (visible en los logs/metricas
+      // de Cloud Functions). La guarda de idempotencia de
+      // `abrirTicketDeReparacion` (el id derivado `cot_<cotizacionId>` y el
+      // `existente.exists` de arriba) sigue intacta, asi que un reintento no
+      // puede duplicar el ticket.
       console.error('Error abriendo el ticket de reparacion al aceptar la cotizacion:', error);
+      throw error;
     }
     return null;
   });
