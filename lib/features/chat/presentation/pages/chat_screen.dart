@@ -3,6 +3,7 @@ import 'package:autodoc/core/utils/role_utils.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import '../widgets/vehiculo_picker.dart';
 
 import 'package:provider/provider.dart';
@@ -354,6 +355,54 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  /// Menú contextual de mensaje (Tarea 11a, C4): mantener presionado un
+  /// mensaje ofrece Copiar siempre, y — solo para el mensaje propio, no
+  /// borrado — Borrar. Editar llega en 11b; reply/reenviar quedan fuera de
+  /// esta ronda (11c, explícitamente pospuesto en el plan).
+  void _abrirMenuMensaje(MensajeModel msg, bool isMe) {
+    final puedeBorrar = isMe && !msg.isDeleted;
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              key: const Key('menu_mensaje_copiar'),
+              leading: const Icon(Icons.copy),
+              title: Text(context.l10n.chatCopyMessage),
+              onTap: () {
+                Navigator.pop(ctx);
+                _copiarMensaje(msg);
+              },
+            ),
+            if (puedeBorrar)
+              ListTile(
+                key: const Key('menu_mensaje_borrar'),
+                leading: Icon(Icons.delete, color: context.appColors.error),
+                title: Text(
+                  context.l10n.chatDeleteMessage,
+                  style: TextStyle(color: context.appColors.error),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _confirmarBorrado(msg, isMe);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _copiarMensaje(MensajeModel msg) {
+    Clipboard.setData(ClipboardData(text: msg.contenido));
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.l10n.chatMessageCopied)));
+  }
+
   void _confirmarBorrado(MensajeModel msg, bool isMe) {
     if (!isMe || msg.isDeleted) return;
     final colors = context.appColors;
@@ -558,7 +607,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               ? Alignment.centerRight
                               : Alignment.centerLeft,
                           child: GestureDetector(
-                            onLongPress: () => _confirmarBorrado(msg, isMe),
+                            onLongPress: () => _abrirMenuMensaje(msg, isMe),
                             child: ChatBubble(
                               isMe: isMe,
                               isDeleted: msg.isDeleted,

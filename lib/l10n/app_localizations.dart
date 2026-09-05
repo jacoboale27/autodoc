@@ -2294,6 +2294,18 @@ abstract class AppLocalizations {
   /// **'Are you sure you want to delete this message for everyone?'**
   String get chatConfirmDelete;
 
+  /// No description provided for @chatCopyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get chatCopyMessage;
+
+  /// No description provided for @chatMessageCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Message copied'**
+  String get chatMessageCopied;
+
   /// No description provided for @notifications.
   ///
   /// In en, this message translates to:

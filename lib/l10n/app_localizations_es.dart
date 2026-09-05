@@ -1209,6 +1209,12 @@ class AppLocalizationsEs extends AppLocalizations {
       '¿Estás seguro de que quieres eliminar este mensaje para todos?';
 
   @override
+  String get chatCopyMessage => 'Copiar';
+
+  @override
+  String get chatMessageCopied => 'Mensaje copiado';
+
+  @override
   String get notifications => 'Notificaciones';
 
   @override

@@ -656,6 +656,8 @@
   "chatAcceptAppointment": "Accept Appointment",
   "chatRejectReschedule": "Reject / Reschedule",
   "chatConfirmDelete": "Are you sure you want to delete this message for everyone?",
+  "chatCopyMessage": "Copy",
+  "chatMessageCopied": "Message copied",
   "notifications": "Notifications",
   "noNotifications": "You have no notifications",
   "markAllRead": "Mark all as read",

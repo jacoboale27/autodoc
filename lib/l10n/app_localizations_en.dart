@@ -1202,6 +1202,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'Are you sure you want to delete this message for everyone?';
 
   @override
+  String get chatCopyMessage => 'Copy';
+
+  @override
+  String get chatMessageCopied => 'Message copied';
+
+  @override
   String get notifications => 'Notifications';
 
   @override

@@ -113,6 +113,17 @@ class FakeChatProvider extends ChangeNotifier implements ChatProvider {
   /// trabajo de red de más (ver Task 11, el `FutureBuilder` en `build`).
   final List<String> llamadas = [];
 
+  /// Resultado devuelto por [deleteMensaje] en este doble; por defecto
+  /// éxito. Los tests que necesitan cubrir el camino de error (rules lo
+  /// rechazan, red falla) lo ponen en `false`.
+  bool resultadoAccionMensaje = true;
+
+  @override
+  Future<bool> deleteMensaje(String conversacionId, String mensajeId) async {
+    llamadas.add('deleteMensaje:$conversacionId:$mensajeId');
+    return resultadoAccionMensaje;
+  }
+
   @override
   void inicializarMensajes(String conversacionId) =>
       llamadas.add('inicializarMensajes:$conversacionId');

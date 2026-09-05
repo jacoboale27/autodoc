@@ -653,6 +653,8 @@
   "chatAcceptAppointment": "Aceptar Cita",
   "chatRejectReschedule": "Rechazar / Reprogramar",
   "chatConfirmDelete": "¿Estás seguro de que quieres eliminar este mensaje para todos?",
+  "chatCopyMessage": "Copiar",
+  "chatMessageCopied": "Mensaje copiado",
   "notifications": "Notificaciones",
   "noNotifications": "No tienes notificaciones",
   "markAllRead": "Marcar todo como leído",

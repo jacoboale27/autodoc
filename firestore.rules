@@ -699,17 +699,49 @@ service cloud.firestore {
 
       // Subcolección de mensajes — solo participantes de la conversación padre
       match /mensajes/{msgId} {
-        allow read, create, update: if isAuthenticated() &&
-          (get(/databases/$(database)/documents/conversaciones/$(convId)).data
-            .id_propietario == request.auth.uid ||
-          get(/databases/$(database)/documents/conversaciones/$(convId)).data
-            .id_mecanico == request.auth.uid);
+        function esParticipante() {
+          return get(/databases/$(database)/documents/conversaciones/$(convId)).data
+              .id_propietario == request.auth.uid ||
+            get(/databases/$(database)/documents/conversaciones/$(convId)).data
+              .id_mecanico == request.auth.uid;
+        }
 
+        allow read, create: if isAuthenticated() && esParticipante();
+
+        // Tarea 11a (C4): la regla original permitía reescribir CUALQUIER
+        // campo de un mensaje ajeno sin verificar autoría ni acotar los
+        // campos tocados. Se cierra a las escrituras concretas que la app ya
+        // hace hoy:
+        //   1. Marcar como visto (`ChatRepository.marcarComoLeidos`): el
+        //      receptor actualiza el `estado` de un mensaje que NO escribió
+        //      — cualquier participante, solo ese campo.
+        //   2. Metadata de tarjetas interactivas (reserva/cotización/reseña,
+        //      `actualizarMetadatosMensaje`): la acción (aceptar, rechazar,
+        //      calificar) la dispara la contraparte del emisor, así que
+        //      también se mantiene abierto a cualquier participante, solo
+        //      ese campo.
+        //   3. Borrado lógico (`ChatRepository.deleteMensaje`, is_deleted +
+        //      contenido): usa `update`, no `delete` — se acota aquí al
+        //      autor, igual que el `delete` físico de abajo (ver política en
+        //      el informe de Tarea 11).
+        // La edición de texto propio (Tarea 11b) añade una cuarta rama en la
+        // siguiente tarea.
+        allow update: if isAuthenticated() && esParticipante() && (
+          request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['estado'])
+          || request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['metadata'])
+          || (resource.data.id_remitente == request.auth.uid &&
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['is_deleted', 'contenido']))
+        );
+
+        // Borrado: solo el autor del mensaje, nunca la contraparte. La
+        // regla original permitía a cualquier participante borrar el
+        // mensaje del otro — un permiso heredado sin que nadie lo
+        // decidiera, no una elección de diseño (ver informe de Tarea 11).
         allow delete: if isAuthenticated() &&
-          (get(/databases/$(database)/documents/conversaciones/$(convId)).data
-            .id_propietario == request.auth.uid ||
-          get(/databases/$(database)/documents/conversaciones/$(convId)).data
-            .id_mecanico == request.auth.uid);
+          resource.data.id_remitente == request.auth.uid;
       }
     }
 
