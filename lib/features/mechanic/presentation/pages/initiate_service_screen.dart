@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
+import 'package:autodoc/features/chat/presentation/widgets/cotizacion_form.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/reparacion_provider.dart';
@@ -21,7 +22,6 @@ import 'package:autodoc/core/theme/app_severity.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
-import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_section_header.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
@@ -59,7 +59,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _costoController = TextEditingController();
   final TextEditingController _manoDeObraController = TextEditingController();
-  final List<Map<String, dynamic>> _materiales = [];
+  final List<CotizacionItemRowControllers> _materialRows = [];
   final Set<String> _completedTaskIds = {};
   bool _isSaving = false;
   XFile? _invoiceImage;
@@ -308,13 +308,10 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   }
 
   void _updateTotalCost() {
-    double totalMateriales = 0;
-    for (var m in _materiales) {
-      double subtotal =
-          (m['cantidad'] as num).toDouble() *
-          (m['precioUnitario'] as num).toDouble();
-      totalMateriales += subtotal;
-    }
+    double totalMateriales = _materialRows.fold(
+      0.0,
+      (acc, r) => acc + r.subtotal,
+    );
     double manoDeObra = double.tryParse(_manoDeObraController.text) ?? 0;
     double total = totalMateriales + manoDeObra;
     if (total > 0) {
@@ -324,12 +321,35 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     }
   }
 
+  /// Convierte las filas editables de `_materialRows` al `List<Map>` que
+  /// espera `AlertProvider.tallerRegistrarServicioSinTarea`/`tallerUpdateService`
+  /// — la misma forma que antes producía `_showAddMaterialDialog`. Descarta
+  /// filas sin nombre: a diferencia de `CotizacionPicker` (que exige llenar
+  /// cada renglón antes de poder enviar), aquí una fila vacía es un estado
+  /// intermedio válido, no un error — el mecánico puede tocar "Agregar
+  /// renglón" y dejarla sin completar.
+  List<Map<String, dynamic>> _materialesDesdeFilas() {
+    return _materialRows
+        .where((r) => r.nombreController.text.trim().isNotEmpty)
+        .map(
+          (r) => {
+            'nombre': r.nombreController.text.trim(),
+            'cantidad': r.cantidad,
+            'precioUnitario': r.costo,
+          },
+        )
+        .toList();
+  }
+
   @override
   void dispose() {
     _kmController.dispose();
     _notesController.dispose();
     _costoController.dispose();
     _manoDeObraController.dispose();
+    for (final row in _materialRows) {
+      row.dispose();
+    }
     super.dispose();
   }
 
@@ -390,7 +410,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           : double.tryParse(_manoDeObraController.text);
       final materialesList = _hasApprovedQuote
           ? _approvedQuote?.materiales
-          : _materiales;
+          : _materialesDesdeFilas();
 
       if (_completedTaskIds.isEmpty) {
         // Sin tareas de mantenimiento configuradas, el bucle de abajo no daba
@@ -937,89 +957,35 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_materiales.isEmpty)
-          Text(
+        CotizacionItemsForm(
+          rows: _materialRows,
+          minRows: 0,
+          showTotal: false,
+          nombreLabel: 'Nombre o descripción',
+          costoLabel: 'Precio unitario (\$)',
+          emptyPlaceholder: Text(
             'No hay materiales agregados.',
             style: AppTextStyles.bodyMedium.copyWith(
               color: colors.textSecondary,
             ),
-          )
-        else
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _materiales.length,
-            itemBuilder: (context, index) {
-              final item = _materiales[index];
-              final subtotal =
-                  (item['cantidad'] as num).toDouble() *
-                  (item['precioUnitario'] as num).toDouble();
-              return AppCard(
-                margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                padding: const EdgeInsets.all(AppSpacing.base),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item['nombre'],
-                            style: AppTextStyles.titleSmall.copyWith(
-                              color: colors.textPrimary,
-                            ),
-                          ),
-                          Text(
-                            'Cant: ${item['cantidad']} | P.U: '
-                            '\$${(item['precioUnitario'] as num).toStringAsFixed(2)}',
-                            style: AppTextStyles.bodySmall.copyWith(
-                              color: colors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Text(
-                      '\$${subtotal.toStringAsFixed(2)}',
-                      style: AppTextStyles.titleSmall.copyWith(
-                        color: colors.primary,
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.delete, color: colors.error),
-                      onPressed: () {
-                        setState(() {
-                          _materiales.removeAt(index);
-                          _updateTotalCost();
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              );
-            },
           ),
+          onAddRow: () =>
+              setState(() => _materialRows.add(CotizacionItemRowControllers())),
+          onRemoveRow: (index) {
+            setState(() {
+              _materialRows[index].dispose();
+              _materialRows.removeAt(index);
+              _updateTotalCost();
+            });
+          },
+          onChanged: () => setState(_updateTotalCost),
+        ),
         const SizedBox(height: AppSpacing.md),
-        Row(
-          children: [
-            Expanded(
-              child: AppButton(
-                type: AppButtonType.secondary,
-                text: 'Agregar Material/Repuesto',
-                icon: const Icon(Icons.add),
-                onPressed: () => _showAddMaterialDialog(colors),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: AppButton(
-                type: AppButtonType.secondary,
-                text: 'Desde catálogo',
-                icon: const Icon(Icons.inventory_2_outlined),
-                onPressed: () => _showCatalogoBottomSheet(colors),
-              ),
-            ),
-          ],
+        AppButton(
+          type: AppButtonType.secondary,
+          text: 'Desde catálogo',
+          icon: const Icon(Icons.inventory_2_outlined),
+          onPressed: () => _showCatalogoBottomSheet(colors),
         ),
       ],
     );
@@ -1117,86 +1083,13 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     BuildContext sheetContext,
   ) {
     setState(() {
-      _materiales.add({
-        'nombre': item.nombre,
-        'cantidad': 1,
-        'precioUnitario': item.precio,
-      });
+      final row = CotizacionItemRowControllers();
+      row.nombreController.text = item.nombre;
+      row.costoController.text = item.precio.toStringAsFixed(2);
+      _materialRows.add(row);
       _updateTotalCost();
     });
     Navigator.pop(sheetContext);
-  }
-
-  Future<void> _showAddMaterialDialog(AppColors colors) async {
-    final nombreController = TextEditingController();
-    final cantidadController = TextEditingController();
-    final precioController = TextEditingController();
-
-    await showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: colors.surface,
-          title: Text(
-            'Agregar Material',
-            style: AppTextStyles.titleMedium.copyWith(
-              color: colors.textPrimary,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AppTextField(
-                label: 'Nombre o descripción',
-                controller: nombreController,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              AppTextField(
-                label: 'Cantidad',
-                controller: cantidadController,
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              AppTextField(
-                label: 'Precio unitario',
-                controller: precioController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                inputFormatters: montoInputFormatters,
-              ),
-            ],
-          ),
-          actions: [
-            AppButton(
-              type: AppButtonType.text,
-              text: 'Cancelar',
-              onPressed: () => Navigator.pop(dialogContext),
-            ),
-            AppButton(
-              text: 'Agregar',
-              onPressed: () {
-                final nombre = nombreController.text.trim();
-                final cantidad = double.tryParse(cantidadController.text);
-                final precio = double.tryParse(precioController.text);
-
-                if (nombre.isNotEmpty && cantidad != null && precio != null) {
-                  setState(() {
-                    _materiales.add({
-                      'nombre': nombre,
-                      'cantidad': cantidad,
-                      'precioUnitario': precio,
-                    });
-                    _updateTotalCost();
-                  });
-                  Navigator.pop(dialogContext);
-                }
-              },
-            ),
-          ],
-        );
-      },
-    );
   }
 
   Widget _buildAlertsList(AlertProvider provider, AppColors colors) {

@@ -8,25 +8,22 @@ import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_dialog_content.dart';
 import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
+import 'package:autodoc/features/chat/presentation/widgets/cotizacion_form.dart';
 
 class _ItemFormRow {
-  final materialController = TextEditingController();
-  final cantidadController = TextEditingController(text: '1');
-  final costoController = TextEditingController();
+  final item = CotizacionItemRowControllers();
   final beneficioController = TextEditingController(text: '0');
 
   void dispose() {
-    materialController.dispose();
-    cantidadController.dispose();
-    costoController.dispose();
+    item.dispose();
     beneficioController.dispose();
   }
 
   CotizacionItem toItem() {
     return CotizacionItem(
-      material: materialController.text.trim(),
-      cantidad: double.tryParse(cantidadController.text.trim()) ?? 1,
-      costo: double.tryParse(costoController.text.trim()) ?? 0,
+      material: item.nombreController.text.trim(),
+      cantidad: item.cantidad,
+      costo: item.costo,
       beneficio: double.tryParse(beneficioController.text.trim()) ?? 0,
     );
   }
@@ -83,8 +80,6 @@ class _CotizacionPickerState extends State<CotizacionPicker> {
       _rows.removeAt(index);
     });
   }
-
-  double get _total => _rows.fold(0.0, (acc, r) => acc + r.toItem().subtotal);
 
   Future<void> _pickFecha() async {
     final date = await showDatePicker(
@@ -249,41 +244,30 @@ class _CotizacionPickerState extends State<CotizacionPicker> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                for (var i = 0; i < _rows.length; i++)
-                  _buildItemRow(context, i, colors),
-                const SizedBox(height: 4),
-                OutlinedButton.icon(
-                  onPressed: _isSubmitting ? null : _addRow,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Agregar renglón'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: colors.primary,
-                    side: BorderSide(
-                      color: colors.primary.withValues(alpha: 0.4),
+                CotizacionItemsForm(
+                  rows: _rows.map((r) => r.item).toList(),
+                  onAddRow: _isSubmitting ? null : _addRow,
+                  onRemoveRow: _removeRow,
+                  onChanged: () => setState(() {}),
+                  trailingBuilder: (context, i) => TextFormField(
+                    controller: _rows[i].beneficioController,
+                    decoration: InputDecoration(
+                      labelText: 'Beneficio (\$) — solo tú lo ves',
+                      isDense: true,
+                      prefixIcon: Icon(
+                        Icons.visibility_off_outlined,
+                        size: 18,
+                        color: colors.textSecondary,
+                      ),
                     ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: montoInputFormatters,
+                    validator: (v) => double.tryParse(v?.trim() ?? '0') == null
+                        ? 'Inválido'
+                        : null,
                   ),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Total a cobrar:',
-                        style: AppTextStyles.titleMedium.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Text(
-                      '\$${_total.toStringAsFixed(2)}',
-                      style: AppTextStyles.titleLarge.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: colors.secondary,
-                      ),
-                    ),
-                  ],
                 ),
                 const SizedBox(height: 24),
                 SizedBox(
@@ -298,99 +282,6 @@ class _CotizacionPickerState extends State<CotizacionPicker> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildItemRow(BuildContext context, int index, AppColors colors) {
-    final row = _rows[index];
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainer,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.primary.withValues(alpha: 0.15)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: row.materialController,
-                  decoration: const InputDecoration(
-                    labelText: 'Material / Repuesto',
-                    isDense: true,
-                  ),
-                  validator: (v) =>
-                      v == null || v.trim().isEmpty ? 'Requerido' : null,
-                  onChanged: (_) => setState(() {}),
-                ),
-              ),
-              if (_rows.length > 1)
-                IconButton(
-                  icon: Icon(Icons.close, color: colors.error, size: 20),
-                  onPressed: () => _removeRow(index),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: row.cantidadController,
-                  decoration: const InputDecoration(
-                    labelText: 'Cantidad',
-                    isDense: true,
-                  ),
-                  keyboardType: TextInputType.number,
-                  validator: (v) => double.tryParse(v?.trim() ?? '') == null
-                      ? 'Inválido'
-                      : null,
-                  onChanged: (_) => setState(() {}),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextFormField(
-                  controller: row.costoController,
-                  decoration: const InputDecoration(
-                    labelText: 'Costo (\$)',
-                    isDense: true,
-                  ),
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  inputFormatters: montoInputFormatters,
-                  validator: (v) => double.tryParse(v?.trim() ?? '') == null
-                      ? 'Inválido'
-                      : null,
-                  onChanged: (_) => setState(() {}),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: row.beneficioController,
-            decoration: InputDecoration(
-              labelText: 'Beneficio (\$) — solo tú lo ves',
-              isDense: true,
-              prefixIcon: Icon(
-                Icons.visibility_off_outlined,
-                size: 18,
-                color: colors.textSecondary,
-              ),
-            ),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: montoInputFormatters,
-            validator: (v) =>
-                double.tryParse(v?.trim() ?? '0') == null ? 'Inválido' : null,
-          ),
-        ],
       ),
     );
   }
