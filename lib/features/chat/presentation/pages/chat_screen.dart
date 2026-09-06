@@ -1008,10 +1008,21 @@ class _ChatScreenState extends State<ChatScreen> {
                             id: '',
                             idPropietario: receptorId,
                             idMecanico: userId,
-                            idVehiculo: provider.conversaciones
-                                .where((c) => c.id == widget.conversacionId)
-                                .firstOrNull
-                                ?.idVehiculo,
+                            // Cadena vacia -> null, igual que ya hace
+                            // reserva_detail_screen.dart:205. `toMap()` omite
+                            // la clave cuando es null, pero la EMITE cuando es
+                            // '', y entonces la regla de `create` entra en la
+                            // rama del vehiculo y evalua
+                            // exists(/vehiculos/$('')), que es una ruta
+                            // invalida: vuelve el `permission-denied` pelado
+                            // que el guarda con exists() venia a quitar.
+                            idVehiculo: () {
+                              final id = provider.conversaciones
+                                  .where((c) => c.id == widget.conversacionId)
+                                  .firstOrNull
+                                  ?.idVehiculo;
+                              return (id == null || id.isEmpty) ? null : id;
+                            }(),
                             // Ronda 2 (FIX 2): idTallerEfectivo, no userId. Un
                             // empleado que envia la cotizacion tiene su propio
                             // uid en userId, pero `vehiculos.talleres_vinculados`

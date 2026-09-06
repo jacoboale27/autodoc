@@ -221,6 +221,14 @@ describe('cotizaciones/privado/margen (hallazgo H2: el beneficio no debe ser leg
     );
   });
 
+  // NOTA DE HONESTIDAD (senalada al re-revisar): este test es de
+  // DOCUMENTACION, no un detector de regresion. Un error de evaluacion
+  // tambien llega al cliente como `permission-denied`, asi que este caso
+  // pasaba igual ANTES del guarda con exists() y seguiria pasando si se
+  // revirtiera. La API de rules-unit-testing no distingue "denegado" de
+  // "reventado". Se conserva porque fija la intencion; no se conserva como
+  // prueba de que el guarda sigue ahi.
+  //
   // El dueño puede borrar su vehiculo y la conversacion conserva el
   // id_vehiculo. Denegar esta bien; denegar POR ERROR DE EVALUACION no: el
   // mensaje no explica nada y la regla deja de poder razonarse.
