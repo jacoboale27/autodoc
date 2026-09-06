@@ -1,5 +1,7 @@
 'use strict';
 
+const { resolverIdTallerPropietario } = require('./aceptarCotizacion');
+
 /**
  * Compuerta para `sincronizarReservaYReparacionAlCotizar` (Ronda 2, FIX 4).
  *
@@ -27,17 +29,35 @@
  * @param {{id_propietario: string, id_taller: string}} cotizacion
  * @returns {boolean}
  */
-function reservaPerteneceACotizacion(reserva, cotizacion) {
+/**
+ * ¿La reserva pertenece de verdad a esta cotizacion?
+ *
+ * Los dos `id_taller` se comparan YA RESUELTOS al uid del DUEÑO del taller,
+ * nunca en crudo. Motivo (regresion encontrada al re-revisar la Ronda 2):
+ * FIX 2 movio el `id_taller` de la COTIZACION al uid efectivo del taller
+ * (`idTallerEfectivo`), pero el de la RESERVA sigue siendo el uid de la
+ * sesion (`chat_screen.dart:322`, `idTaller: isMecanico ? userId : receptorId`).
+ * En un taller operado por su dueño ambos coinciden y no se nota; en uno
+ * operado por un EMPLEADO, la cotizacion trae el uid del dueño y la reserva
+ * el del empleado, la igualdad cruda falla, y la cita del cliente se queda
+ * en 'cotizada' sin `fecha_hora_confirmada` para siempre, sin ningun error
+ * visible.
+ *
+ * Se resuelve del lado servidor y no normalizando `ReservaModel` en el
+ * cliente porque las reservas YA ESCRITAS en produccion llevan el uid de
+ * sesion: normalizar solo el cliente exigiria un backfill; resolver aqui
+ * arregla tambien las que ya existen.
+ */
+async function reservaPerteneceACotizacion(db, reserva, cotizacion) {
   if (!reserva) return false;
   const cot = cotizacion || {};
-  return (
-    !!reserva.id_propietario &&
-    !!cot.id_propietario &&
-    reserva.id_propietario === cot.id_propietario &&
-    !!reserva.id_taller &&
-    !!cot.id_taller &&
-    reserva.id_taller === cot.id_taller
-  );
+  if (!reserva.id_propietario || !cot.id_propietario) return false;
+  if (reserva.id_propietario !== cot.id_propietario) return false;
+  if (!reserva.id_taller || !cot.id_taller) return false;
+
+  const tallerReserva = await resolverIdTallerPropietario(db, reserva.id_taller);
+  const tallerCotizacion = await resolverIdTallerPropietario(db, cot.id_taller);
+  return tallerReserva === tallerCotizacion;
 }
 
 /**
@@ -64,7 +84,7 @@ async function sincronizarReservaAlCotizar(
   const reservaSnap = await db.collection('reservas').doc(reservaId).get();
   const reserva = reservaSnap.exists ? reservaSnap.data() : null;
 
-  if (!reservaPerteneceACotizacion(reserva, cotizacion)) {
+  if (!(await reservaPerteneceACotizacion(db, reserva, cotizacion))) {
     console.error(
       `sincronizarReservaYReparacionAlCotizar: la cotizacion ${cotizacionId} ` +
         `apunta a reservas/${reservaId}, pero esa reserva no pertenece al ` +

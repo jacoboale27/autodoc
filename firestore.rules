@@ -983,7 +983,17 @@ service cloud.firestore {
         // que la linea de arriba prohibe que sea el propio mecanico.
         (
           !('id_vehiculo' in request.resource.data) ||
-          getVehicleOwner(request.resource.data.id_vehiculo) == request.resource.data.id_propietario
+          // `exists()` antes de `getVehicleOwner()`: el dueño puede borrar su
+          // vehiculo (allow delete mas arriba en /vehiculos) y la conversacion
+          // conserva el `id_vehiculo`. Sin este guarda, el get() sobre el
+          // documento ausente no deniega limpio — revienta con un error de
+          // evaluacion, y el mecanico recibe un `permission-denied` pelado sin
+          // forma de entender por que ni de cotizar en ese chat. Mismo criterio
+          // que ya aplica el `create` de /usuarios con sus accesos guardados.
+          (
+            exists(/databases/$(database)/documents/vehiculos/$(request.resource.data.id_vehiculo)) &&
+            getVehicleOwner(request.resource.data.id_vehiculo) == request.resource.data.id_propietario
+          )
         );
       // Solo el campo 'estado' es escribible tras la creacion, y cada parte
       // solo puede escribir el valor que su propio flujo real produce: el

@@ -221,6 +221,23 @@ describe('cotizaciones/privado/margen (hallazgo H2: el beneficio no debe ser leg
     );
   });
 
+  // El dueño puede borrar su vehiculo y la conversacion conserva el
+  // id_vehiculo. Denegar esta bien; denegar POR ERROR DE EVALUACION no: el
+  // mensaje no explica nada y la regla deja de poder razonarse.
+  test('cotizar sobre un vehiculo que ya no existe deniega limpiamente', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db.collection('cotizaciones').doc('c6').set({
+        id_propietario: UIDS.owner1,
+        id_mecanico: UIDS.taller1,
+        id_taller: UIDS.taller1,
+        id_vehiculo: 'vehiculo-borrado',
+        items: [],
+        estado: 'pendiente',
+      }),
+    );
+  });
+
   test('el mecanico NO puede crear la cotizacion ya en estado finalizada', async () => {
     const db = await withRole(env, UIDS.taller1, 'Taller');
     await assertFails(

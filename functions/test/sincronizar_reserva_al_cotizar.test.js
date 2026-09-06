@@ -51,9 +51,10 @@ function fakeDb(docs = {}) {
 }
 
 describe('sincronizarReservaAlCotizar / reservaPerteneceACotizacion', () => {
-  it('coincide si mismo id_propietario y mismo id_taller', () => {
+  it('coincide si mismo id_propietario y mismo id_taller', async () => {
     assert.strictEqual(
-      reservaPerteneceACotizacion(
+      await reservaPerteneceACotizacion(
+        fakeDb(),
         { id_propietario: 'cli1', id_taller: 't1' },
         { id_propietario: 'cli1', id_taller: 't1' }
       ),
@@ -61,9 +62,10 @@ describe('sincronizarReservaAlCotizar / reservaPerteneceACotizacion', () => {
     );
   });
 
-  it('NO coincide si el propietario difiere (ataque: reserva de otro cliente)', () => {
+  it('NO coincide si el propietario difiere (ataque: reserva de otro cliente)', async () => {
     assert.strictEqual(
-      reservaPerteneceACotizacion(
+      await reservaPerteneceACotizacion(
+        fakeDb(),
         { id_propietario: 'victima', id_taller: 't1' },
         { id_propietario: 'cli1', id_taller: 't1' }
       ),
@@ -71,9 +73,10 @@ describe('sincronizarReservaAlCotizar / reservaPerteneceACotizacion', () => {
     );
   });
 
-  it('NO coincide si el taller difiere', () => {
+  it('NO coincide si el taller difiere', async () => {
     assert.strictEqual(
-      reservaPerteneceACotizacion(
+      await reservaPerteneceACotizacion(
+        fakeDb(),
         { id_propietario: 'cli1', id_taller: 't-otro' },
         { id_propietario: 'cli1', id_taller: 't1' }
       ),
@@ -81,9 +84,44 @@ describe('sincronizarReservaAlCotizar / reservaPerteneceACotizacion', () => {
     );
   });
 
-  it('NO coincide si la reserva es null (no existe)', () => {
+  it('NO coincide si la reserva es null (no existe)', async () => {
     assert.strictEqual(
-      reservaPerteneceACotizacion(null, { id_propietario: 'cli1', id_taller: 't1' }),
+      await reservaPerteneceACotizacion(fakeDb(), null, {
+        id_propietario: 'cli1',
+        id_taller: 't1',
+      }),
+      false
+    );
+  });
+
+  // Regresion encontrada al re-revisar la Ronda 2: FIX 2 movio el id_taller
+  // de la COTIZACION al uid del dueño, pero el de la RESERVA sigue siendo el
+  // uid de sesion. En un taller operado por un EMPLEADO los dos lados dejaron
+  // de coincidir y la cita del cliente se quedaba sin confirmar, en silencio.
+  it('EMPLEADO: coincide aunque la reserva traiga el uid del empleado y la cotizacion el del dueño', async () => {
+    const db = fakeDb({
+      'usuarios/emp1': { id_taller_propietario: 't1' },
+    });
+    assert.strictEqual(
+      await reservaPerteneceACotizacion(
+        db,
+        { id_propietario: 'cli1', id_taller: 'emp1' },
+        { id_propietario: 'cli1', id_taller: 't1' }
+      ),
+      true
+    );
+  });
+
+  it('EMPLEADO DE OTRO TALLER: sigue sin coincidir', async () => {
+    const db = fakeDb({
+      'usuarios/emp2': { id_taller_propietario: 't-otro' },
+    });
+    assert.strictEqual(
+      await reservaPerteneceACotizacion(
+        db,
+        { id_propietario: 'cli1', id_taller: 'emp2' },
+        { id_propietario: 'cli1', id_taller: 't1' }
+      ),
       false
     );
   });
