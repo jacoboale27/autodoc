@@ -168,4 +168,37 @@ describe('cotizaciones/privado/margen (hallazgo H2: el beneficio no debe ser leg
       }),
     );
   });
+
+  // Residual encontrado en la re-revision de la revision de rama: acotar el
+  // `update` por rol y valor no sirve de nada si el `create` deja elegir el
+  // estado inicial. Crear ya en 'aceptada' no dispara `onCotizacionAceptada`
+  // (es un onUpdate), pero SI satisface la mitad "cotizacion aceptada" del
+  // gate de `verificarAperturaManual`, que es el predicado que R14 anadio
+  // para proteger `iniciarReparacionPorVehiculo`.
+  test('el mecanico NO puede crear la cotizacion ya en estado aceptada', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db.collection('cotizaciones').doc('c3').set({
+        id_propietario: UIDS.owner1,
+        id_mecanico: UIDS.taller1,
+        id_taller: UIDS.taller1,
+        id_vehiculo: 'v-ajeno',
+        items: [{ material: 'Aceite', cantidad: 1, costo: 20 }],
+        estado: 'aceptada',
+      }),
+    );
+  });
+
+  test('el mecanico NO puede crear la cotizacion ya en estado finalizada', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db.collection('cotizaciones').doc('c4').set({
+        id_propietario: UIDS.owner1,
+        id_mecanico: UIDS.taller1,
+        id_taller: UIDS.taller1,
+        items: [],
+        estado: 'finalizada',
+      }),
+    );
+  });
 });

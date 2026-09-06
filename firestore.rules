@@ -924,8 +924,21 @@ service cloud.firestore {
         (resource.data.id_propietario == request.auth.uid ||
          resource.data.id_mecanico == request.auth.uid ||
          isAdmin());
+      // El estado inicial esta fijado a 'pendiente' a proposito. Sin esto,
+      // acotar el `update` por rol y valor no sirve de nada: el mecanico se
+      // saltaba la regla de update entera CREANDO la cotizacion ya en
+      // 'aceptada'. No dispara `onCotizacionAceptada` (es un onUpdate), pero
+      // si satisface la mitad "cotizacion aceptada" del gate de
+      // `verificarAperturaManual` (functions/src/iniciarReparacionPorVehiculo.js:53),
+      // que es justo el predicado que la revision de la Tarea 4 (R14) anadio
+      // para proteger ese callable. Es decir: la parte a la que el gate
+      // restringe podia emitirse medio gate ella sola.
+      // Verificado que los tres creadores reales (chat_screen.dart:1007,
+      // reserva_detail_screen.dart:200, reserva_chat_card.dart:137) usan el
+      // valor por defecto de CotizacionModel, que ya es 'pendiente'.
       allow create: if isAuthenticated() &&
-        request.resource.data.id_mecanico == request.auth.uid;
+        request.resource.data.id_mecanico == request.auth.uid &&
+        request.resource.data.estado == 'pendiente';
       // Solo el campo 'estado' es escribible tras la creacion, y cada parte
       // solo puede escribir el valor que su propio flujo real produce: el
       // propietario acepta/rechaza (cotizacion_chat_card.dart, via
