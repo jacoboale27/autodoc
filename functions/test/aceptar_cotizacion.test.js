@@ -24,6 +24,7 @@ const {
   idTicketDeCotizacion,
   construirTicketReparacion,
   existeTicketAbiertoParaVehiculo,
+  resolverIdTallerPropietario,
   abrirTicketDeReparacion,
 } = require('../src/aceptarCotizacion');
 
@@ -516,5 +517,87 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion, dedup por vehiculo+tal
     assert.strictEqual(id, idTicketDeCotizacion('c1'));
     const tickets = Object.keys(db.docs).filter((k) => k.startsWith('reparaciones/'));
     assert.deepStrictEqual(tickets.sort(), ['reparaciones/cot_c1', 'reparaciones/legado1']);
+  });
+});
+
+describe('onCotizacionAceptada / resolverIdTallerPropietario (FIX 2, Ronda 2)', () => {
+  it('resuelve el uid de un empleado al uid de su taller dueño', async () => {
+    const db = fakeDb({ 'usuarios/emp1': { id_taller_propietario: 't1' } });
+    assert.strictEqual(await resolverIdTallerPropietario(db, 'emp1'), 't1');
+  });
+
+  it('devuelve el mismo uid si el documento no tiene id_taller_propietario (es el dueño)', async () => {
+    const db = fakeDb({ 'usuarios/t1': { rol: 'Taller' } });
+    assert.strictEqual(await resolverIdTallerPropietario(db, 't1'), 't1');
+  });
+
+  it('devuelve el mismo uid si el documento de usuario no existe (dato legacy)', async () => {
+    const db = fakeDb({});
+    assert.strictEqual(await resolverIdTallerPropietario(db, 'fantasma'), 'fantasma');
+  });
+
+  it('devuelve el mismo valor si idTaller viene vacio', async () => {
+    const db = fakeDb({});
+    assert.strictEqual(await resolverIdTallerPropietario(db, ''), '');
+  });
+});
+
+describe('onCotizacionAceptada / abrirTicketDeReparacion, empleado vs dueño (FIX 2, regresion de la revision de rama anterior)', () => {
+  it('SI crea el ticket cuando la cotizacion la mando un EMPLEADO y el vehiculo esta vinculado al DUEÑO', async () => {
+    // Regresion que este fix cierra: los tres creadores de cliente escriben
+    // `idTaller: userId` (el uid de sesion). Para un empleado eso es SU
+    // PROPIO uid, nunca el del dueño — pero `talleres_vinculados` solo
+    // guarda uids de dueño. Antes de este fix, esta cotizacion fallaba
+    // `vehiculoVinculadoOWalkIn` y no se abria ningun ticket pese a que el
+    // taller SI estaba legitimamente vinculado al vehiculo.
+    const db = fakeDb({
+      'usuarios/emp1': { id_taller_propietario: 't1' },
+      'vehiculos/v1': {
+        placa: 'ABC123',
+        id_propietario: 'cli1',
+        talleres_vinculados: ['t1'],
+      },
+    });
+
+    const id = await abrirTicketDeReparacion(db, {
+      cotizacionId: 'c1',
+      antes: { estado: 'pendiente' },
+      despues: cotizacion({ id_mecanico: 'emp1', id_taller: 'emp1' }),
+      ahora: AHORA,
+    });
+
+    assert.strictEqual(id, idTicketDeCotizacion('c1'));
+    const escrito = db.docs[`reparaciones/${id}`];
+    assert.strictEqual(escrito.id_propietario, 'cli1');
+  });
+
+  it('DENEGACION LEGITIMA: NO crea el ticket si, tras resolver al dueño, el taller sigue sin estar vinculado', async () => {
+    // Contraste con el test de arriba: aqui la resolucion SI ocurre, pero el
+    // taller resuelto (t-otro, dueño de emp2) de verdad no tiene nada que
+    // ver con este vehiculo. La resolucion no debe convertirse en un
+    // "siempre pasa".
+    const db = fakeDb({
+      'usuarios/emp2': { id_taller_propietario: 't-otro' },
+      'vehiculos/v1': {
+        placa: 'ABC123',
+        id_propietario: 'cli1',
+        talleres_vinculados: ['t-legitimo'],
+      },
+    });
+    const error = sinon.stub(console, 'error');
+    try {
+      await assert.rejects(
+        abrirTicketDeReparacion(db, {
+          cotizacionId: 'c1',
+          antes: { estado: 'pendiente' },
+          despues: cotizacion({ id_mecanico: 'emp2', id_taller: 'emp2' }),
+          ahora: AHORA,
+        })
+      );
+      const tickets = Object.keys(db.docs).filter((k) => k.startsWith('reparaciones/'));
+      assert.deepStrictEqual(tickets, []);
+    } finally {
+      error.restore();
+    }
   });
 });

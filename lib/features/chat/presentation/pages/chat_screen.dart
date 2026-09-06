@@ -1012,7 +1012,13 @@ class _ChatScreenState extends State<ChatScreen> {
                                 .where((c) => c.id == widget.conversacionId)
                                 .firstOrNull
                                 ?.idVehiculo,
-                            idTaller: userId,
+                            // Ronda 2 (FIX 2): idTallerEfectivo, no userId. Un
+                            // empleado que envia la cotizacion tiene su propio
+                            // uid en userId, pero `vehiculos.talleres_vinculados`
+                            // guarda siempre el uid del DUEÑO — escribir userId
+                            // aqui hacia que `onCotizacionAceptada` no
+                            // encontrara vinculo y no abriera ticket al aceptar.
+                            idTaller: mechanicUser?.idTallerEfectivo ?? userId,
                             items: items,
                             fechaPropuesta: fechaPropuesta,
                             fecha: DateTime.now(),

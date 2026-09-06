@@ -204,7 +204,9 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
             idVehiculo: reserva.idVehiculo.isNotEmpty
                 ? reserva.idVehiculo
                 : null,
-            idTaller: userId,
+            // Ronda 2 (FIX 2): idTallerEfectivo, no userId — ver el mismo
+            // comentario en chat_screen.dart.
+            idTaller: mechanicUser?.idTallerEfectivo ?? userId,
             idReserva: reserva.id,
             items: items,
             fechaPropuesta: fechaPropuesta,

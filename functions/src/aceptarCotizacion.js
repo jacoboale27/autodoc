@@ -131,6 +131,47 @@ function construirTicketReparacion({ cotizacionId, cotizacion, vehiculo, ahora }
  */
 const LIMITE_DEDUP_TICKETS_ABIERTOS = 20;
 
+/**
+ * Resuelve el `id_taller` de una cotizacion al uid del DUEÑO del taller.
+ *
+ * Ronda 2 (FIX 2, regresion introducida en la revision de rama anterior):
+ * los tres creadores de `cotizaciones` en el cliente escriben
+ * `idTaller: userId` — el uid de la SESION, que para un empleado es su
+ * propio uid, nunca el del dueño — mientras que `vehiculos.talleres_vinculados`
+ * guarda SIEMPRE el uid del dueño (ver `firestore.rules:64-69`,
+ * `idTallerActor()`). Sin esta resolucion, una cotizacion enviada por un
+ * EMPLEADO de un taller vinculado al vehiculo fallaba
+ * `vehiculoVinculadoOWalkIn` (comparaba el uid del empleado contra la lista
+ * de uids de dueños) y el trigger relanzaba sin abrir ticket: el cliente
+ * veia "aceptada", el Kanban se quedaba vacio, y nada lo recuperaba.
+ *
+ * Se lee `usuarios/{idTaller}.id_taller_propietario`: si existe, ese es el
+ * dueño real; si el documento no existe o el campo esta ausente (dueño
+ * operando con su propio uid, o dato legacy), se devuelve `idTaller` tal
+ * cual — mismo criterio de fallback que `actuaPorTaller()`/`idTallerActor()`
+ * en las reglas.
+ *
+ * NOTA (companion bug, reportado y NO arreglado a proposito, ver el informe
+ * de esta ronda): esta resolucion se usa solo para la comprobacion de
+ * vinculo. El documento de `reparaciones` que se escribe sigue guardando el
+ * `id_taller` CRUDO de la cotizacion (ver `construirTicketReparacion`), asi
+ * que un ticket abierto a partir de una cotizacion legacy con uid de
+ * empleado en `id_taller` seguira siendo invisible para
+ * `ReparacionRepository` (que consulta por `idTallerEfectivo`, el uid del
+ * dueño) hasta que exista un backfill.
+ *
+ * @param {FirebaseFirestore.Firestore} db
+ * @param {string} idTaller
+ * @returns {Promise<string>}
+ */
+async function resolverIdTallerPropietario(db, idTaller) {
+  if (!idTaller) return idTaller;
+  const snap = await db.collection('usuarios').doc(idTaller).get();
+  if (!snap.exists) return idTaller;
+  const propietario = snap.data().id_taller_propietario;
+  return propietario || idTaller;
+}
+
 async function existeTicketAbiertoParaVehiculo(db, { idVehiculo, idTaller }) {
   const snap = await db
     .collection('reparaciones')
@@ -202,7 +243,11 @@ async function abrirTicketDeReparacion(db, { cotizacionId, antes, despues, ahora
   // `vehiculoVinculadoOWalkIn`, el mismo predicado que ya protege el
   // callable manual `iniciarReparacionPorVehiculo`, para no mantener dos
   // copias de la misma regla de autorizacion.
-  if (!vehiculoVinculadoOWalkIn(vehiculo.talleres_vinculados, despues.id_taller)) {
+  // FIX 2 (Ronda 2): resolver id_taller al uid del DUEÑO antes de comparar
+  // contra `talleres_vinculados` (que siempre guarda uids de dueño, nunca de
+  // empleado). Ver el comentario de `resolverIdTallerPropietario`.
+  const idTallerResuelto = await resolverIdTallerPropietario(db, despues.id_taller);
+  if (!vehiculoVinculadoOWalkIn(vehiculo.talleres_vinculados, idTallerResuelto)) {
     // No silenciar: esta NO es una cotizacion malformada, es un intento de
     // abrir un ticket sobre un vehiculo vinculado a OTRO taller. `console.error`
     // (en vez del `console.warn` de arriba) para que quede visible como fallo,
@@ -210,8 +255,9 @@ async function abrirTicketDeReparacion(db, { cotizacionId, antes, despues, ahora
     // fallida (ver el `catch` de `onCotizacionAceptada` en functions/index.js).
     console.error(
       `onCotizacionAceptada: cotizacion ${cotizacionId} aceptada por el ` +
-        `taller ${despues.id_taller}, pero ese taller no esta vinculado al ` +
-        `vehiculo ${despues.id_vehiculo}; no se abrio ningun ticket.`
+        `taller ${despues.id_taller} (resuelto: ${idTallerResuelto}), pero ese ` +
+        `taller no esta vinculado al vehiculo ${despues.id_vehiculo}; no se ` +
+        'abrio ningun ticket.'
     );
     throw new Error(
       `Taller ${despues.id_taller} no vinculado al vehiculo ${despues.id_vehiculo}; ` +
@@ -245,5 +291,6 @@ module.exports = {
   debeAbrirTicket,
   construirTicketReparacion,
   existeTicketAbiertoParaVehiculo,
+  resolverIdTallerPropietario,
   abrirTicketDeReparacion,
 };
