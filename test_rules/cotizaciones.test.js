@@ -152,11 +152,21 @@ describe('cotizaciones/privado/margen (hallazgo H2: el beneficio no debe ser leg
   });
 
   test('el mecanico SI puede crear la cotizacion y su margen privado en dos pasos (flujo real de ChatRepository.crearCotizacion)', async () => {
+    // FIX 1 (Ronda 2): `create` ahora exige que id_propietario sea el dueño
+    // REAL de id_vehiculo (getVehicleOwner), asi que este fixture necesita
+    // un vehiculo de verdad en vez de solo los ids sueltos que bastaban antes.
+    await seed(env, async (s) => {
+      await s.collection('vehiculos').doc('v-c2').set({
+        id_propietario: UIDS.owner1,
+        placa: 'DEF456',
+      });
+    });
     const db = await withRole(env, UIDS.taller1, 'Taller');
     await assertSucceeds(
       db.collection('cotizaciones').doc('c2').set({
         id_propietario: UIDS.owner1,
         id_mecanico: UIDS.taller1,
+        id_vehiculo: 'v-c2',
         id_taller: UIDS.taller1,
         items: [{ material: 'Aceite', cantidad: 1, costo: 20 }],
         estado: 'pendiente',
@@ -198,6 +208,140 @@ describe('cotizaciones/privado/margen (hallazgo H2: el beneficio no debe ser leg
         id_taller: UIDS.taller1,
         items: [],
         estado: 'finalizada',
+      }),
+    );
+  });
+});
+
+// Ronda 2 (FIX 1): hasta aqui, `create` solo comprobaba `id_mecanico ==
+// auth.uid` y `estado == 'pendiente'`. NADA ataba `id_propietario`,
+// `id_vehiculo` o `id_taller` a la realidad. Un reviewer PROBO contra el
+// emulador que un mecanico podia crear
+// {id_mecanico: self, id_propietario: SELF, id_vehiculo: <vehiculo ajeno>,
+// estado: 'pendiente'} y luego, con la rama DEL PROPIETARIO de `update` (ya
+// blindada por rol+valor), aceptarsela el mismo — dos escrituras hasta
+// 'aceptada'. Eso es justo lo que `existeCotizacionAceptada`
+// (iniciarReparacionPorVehiculo.js:47-56) busca.
+describe('cotizaciones create (FIX 1: ataque de auto-aceptacion en dos escrituras)', () => {
+  const seedVehiculoAjeno = async () =>
+    seed(env, async (s) => {
+      await s.collection('vehiculos').doc('v-victima').set({
+        id_propietario: UIDS.owner1,
+        placa: 'XYZ999',
+        talleres_vinculados: [],
+      });
+    });
+
+  test('ATAQUE: el mecanico NO puede crear una cotizacion nombrandose a si mismo id_propietario sobre el vehiculo de otro', async () => {
+    await seedVehiculoAjeno();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db.collection('cotizaciones').doc('ataque1').set({
+        id_mecanico: UIDS.taller1,
+        id_propietario: UIDS.taller1, // se nombra a si mismo, no al dueño real
+        id_vehiculo: 'v-victima',
+        id_taller: UIDS.taller1,
+        items: [],
+        estado: 'pendiente',
+      }),
+    );
+  });
+
+  test('ATAQUE (variante): id_propietario apunta a un tercero cualquiera, no al dueño real del vehiculo', async () => {
+    await seedVehiculoAjeno();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db.collection('cotizaciones').doc('ataque2').set({
+        id_mecanico: UIDS.taller1,
+        id_propietario: UIDS.owner2, // no es el dueño real (owner1)
+        id_vehiculo: 'v-victima',
+        id_taller: UIDS.taller1,
+        items: [],
+        estado: 'pendiente',
+      }),
+    );
+  });
+
+  test('ATAQUE: un mecanico NO puede crear en nombre de un taller ajeno (actuaPorTaller falla)', async () => {
+    await seedVehiculoAjeno();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db.collection('cotizaciones').doc('ataque3').set({
+        id_mecanico: UIDS.taller1,
+        id_propietario: UIDS.owner1, // dueño real, para aislar el chequeo de taller
+        id_vehiculo: 'v-victima',
+        id_taller: UIDS.taller2, // taller ajeno
+        items: [],
+        estado: 'pendiente',
+      }),
+    );
+  });
+
+  test('LEGITIMO: el mecanico crea la cotizacion sobre su propio vehiculo del dueño real', async () => {
+    await seedVehiculoAjeno();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertSucceeds(
+      db.collection('cotizaciones').doc('legitimo1').set({
+        id_mecanico: UIDS.taller1,
+        id_propietario: UIDS.owner1,
+        id_vehiculo: 'v-victima',
+        id_taller: UIDS.taller1,
+        items: [],
+        estado: 'pendiente',
+      }),
+    );
+  });
+
+  test('LEGITIMO: un EMPLEADO del taller crea la cotizacion en nombre del taller dueño (actuaPorTaller)', async () => {
+    await seedVehiculoAjeno();
+    const db = await withRole(env, UIDS.empleado1, 'Mecanico', {
+      id_taller_propietario: UIDS.taller1,
+    });
+    await assertSucceeds(
+      db.collection('cotizaciones').doc('legitimo2').set({
+        id_mecanico: UIDS.empleado1,
+        id_propietario: UIDS.owner1,
+        id_vehiculo: 'v-victima',
+        id_taller: UIDS.taller1, // uid del DUEÑO, no del empleado
+        items: [],
+        estado: 'pendiente',
+      }),
+    );
+  });
+
+  test('LEGITIMO: cotizacion con reserva asociada (reserva_chat_card/reserva_detail_screen), mismo dueño real', async () => {
+    await seedVehiculoAjeno();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertSucceeds(
+      db.collection('cotizaciones').doc('legitimo3').set({
+        id_mecanico: UIDS.taller1,
+        id_propietario: UIDS.owner1,
+        id_vehiculo: 'v-victima',
+        id_taller: UIDS.taller1,
+        id_reserva: 'r1',
+        items: [],
+        estado: 'pendiente',
+      }),
+    );
+  });
+
+  test('ATAQUE: el mecanico no puede ser su propio propietario aunque de casualidad sea dueño de su propio vehiculo', async () => {
+    await seed(env, async (s) => {
+      await s.collection('vehiculos').doc('v-propio').set({
+        id_propietario: UIDS.taller1,
+        placa: 'ABC111',
+        talleres_vinculados: [],
+      });
+    });
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db.collection('cotizaciones').doc('ataque4').set({
+        id_mecanico: UIDS.taller1,
+        id_propietario: UIDS.taller1,
+        id_vehiculo: 'v-propio',
+        id_taller: UIDS.taller1,
+        items: [],
+        estado: 'pendiente',
       }),
     );
   });

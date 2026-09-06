@@ -936,9 +936,41 @@ service cloud.firestore {
       // Verificado que los tres creadores reales (chat_screen.dart:1007,
       // reserva_detail_screen.dart:200, reserva_chat_card.dart:137) usan el
       // valor por defecto de CotizacionModel, que ya es 'pendiente'.
+      //
+      // Ronda 2 (FIX 1) — hasta aqui, `create` solo comprobaba que el
+      // mecanico se nombrara a si mismo y que el estado naciera 'pendiente'.
+      // NADA ataba `id_propietario`, `id_vehiculo` ni `id_taller` a la
+      // realidad: un mecanico creaba
+      // {id_mecanico: self, id_propietario: self, id_vehiculo: <vehiculo
+      // ajeno>, estado: 'pendiente'} y luego satisfacia el, la rama DEL
+      // PROPIETARIO de `update` (arriba) para aceptarsela el mismo — dos
+      // escrituras, cotizacion 'aceptada' sin que el dueño real participara.
+      // Eso es exactamente lo que `existeCotizacionAceptada`
+      // (iniciarReparacionPorVehiculo.js:47-56) busca para dejar recibir el
+      // vehiculo. Se reutilizan getVehicleOwner() y actuaPorTaller() (mismas
+      // funciones que ya usaba el viejo `allow create` de /reparaciones) en
+      // vez de escribir un lookup nuevo:
+      //   - getVehicleOwner(id_vehiculo) == id_propietario: ata el
+      //     propietario declarado al dueño REAL del vehiculo (get() sobre
+      //     /vehiculos; si el vehiculo no existe, get() lanza y la regla
+      //     deniega).
+      //   - actuaPorTaller(id_taller): el llamante debe poder actuar en
+      //     nombre de ESE taller (el mismo, o un empleado del dueño), igual
+      //     que ya exige `update` mas abajo del lado del mecanico.
+      //   - id_propietario != id_mecanico: cierra el caso degenerado en el
+      //     que alguien fuera dueño de su propio vehiculo Y mecanico a la
+      //     vez — no hay flujo legitimo en el que el mecanico se cotice a si
+      //     mismo.
+      // Coste de get(): actuaPorTaller hace como mucho 1 get() (0 si
+      // auth.uid == id_taller, el caso mas comun); getVehicleOwner hace 1
+      // get() mas. Maximo 2 get() en esta regla, muy por debajo del limite
+      // de 10 por solicitud de documento unico.
       allow create: if isAuthenticated() &&
         request.resource.data.id_mecanico == request.auth.uid &&
-        request.resource.data.estado == 'pendiente';
+        request.resource.data.estado == 'pendiente' &&
+        request.resource.data.id_propietario != request.auth.uid &&
+        actuaPorTaller(request.resource.data.id_taller) &&
+        getVehicleOwner(request.resource.data.id_vehiculo) == request.resource.data.id_propietario;
       // Solo el campo 'estado' es escribible tras la creacion, y cada parte
       // solo puede escribir el valor que su propio flujo real produce: el
       // propietario acepta/rechaza (cotizacion_chat_card.dart, via
