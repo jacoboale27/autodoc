@@ -3,7 +3,7 @@ const admin = require('firebase-admin');
 const firestore = require('@google-cloud/firestore');
 admin.initializeApp();
 
-const { abrirTicketDeReparacion } = require('./src/aceptarCotizacion');
+const { abrirTicketDeReparacion, ErrorAutorizacionPermanente } = require('./src/aceptarCotizacion');
 const { verificarAperturaManual } = require('./src/iniciarReparacionPorVehiculo');
 const { sincronizarReservaAlCotizar } = require('./src/sincronizarReservaAlCotizar');
 const {
@@ -748,8 +748,21 @@ exports.sincronizarReservaYReparacionAlCotizar = functions.firestore
  * Toda la lógica vive en ./src/aceptarCotizacion para poder testearla sin
  * montar el SDK de Admin; aquí solo queda el enganche del trigger.
  */
-exports.onCotizacionAceptada = functions.firestore
-  .document('cotizaciones/{cotizacionId}')
+// Ronda 2 (FIX 5): `failurePolicy: true` habilita el reintento automatico de
+// v1 (hasta 7 dias). Sin esto, relanzar el error (mas abajo) solo marcaba la
+// invocacion como fallida en metricas — Firestore nunca reintentaba, asi que
+// una cotizacion aceptada sin ticket seguia sin recuperarse sola. Es seguro
+// activarlo AQUI porque el `catch` de abajo separa fallos TRANSITORIOS (los
+// unicos que relanzan, y por tanto los unicos que se reintentan) de fallos
+// PERMANENTES (`ErrorAutorizacionPermanente`, que nunca relanzan): sin esa
+// separacion, un rechazo de autorizacion legitimo — nunca lo va a arreglar
+// un reintento— se habria reintentado durante 7 dias facturando en cada
+// intento. La guarda de idempotencia de `abrirTicketDeReparacion` (id
+// derivado `cot_<cotizacionId>` + `existente.exists`) sigue intacta, asi que
+// ningun reintento puede duplicar el ticket.
+exports.onCotizacionAceptada = functions
+  .runWith({ failurePolicy: true })
+  .firestore.document('cotizaciones/{cotizacionId}')
   .onUpdate(async (change, context) => {
     try {
       await abrirTicketDeReparacion(db, {
@@ -759,17 +772,41 @@ exports.onCotizacionAceptada = functions.firestore
         ahora: new Date(),
       });
     } catch (error) {
+      if (error instanceof ErrorAutorizacionPermanente) {
+        // Fallo PERMANENTE: el taller de la cotizacion no esta vinculado al
+        // vehiculo. Ningun reintento lo va a arreglar. Se registra en el
+        // propio documento de la cotizacion (campo nuevo, tolerante con
+        // documentos existentes que nunca lo tendran) para que la pantalla
+        // del mecanico pueda mostrar el fallo real en vez del generico "no
+        // hay cotizacion aceptada", y se devuelve exito para que Cloud
+        // Functions NO reintente esta invocacion.
+        console.error(
+          'Fallo permanente abriendo el ticket de reparacion (no se reintenta):',
+          error
+        );
+        try {
+          await change.after.ref.set(
+            {
+              error_apertura_ticket: {
+                mensaje: error.message,
+                fecha: admin.firestore.FieldValue.serverTimestamp(),
+              },
+            },
+            { merge: true }
+          );
+        } catch (writeError) {
+          console.error('No se pudo registrar el fallo permanente en la cotizacion:', writeError);
+        }
+        return null;
+      }
+
       // Revision de rama completa (hallazgo C1/Blocker 3): este es el UNICO
-      // creador de `reparaciones`. Devolver `null` tras un fallo le decia a
-      // Firestore que la invocacion habia tenido exito, asi que no habia
-      // reintento: el cliente veia "cotizacion aceptada" y ningun ticket
-      // existia, sin que nadie se enterara. Se relanza para que la
-      // invocacion quede marcada como fallida (visible en los logs/metricas
-      // de Cloud Functions). La guarda de idempotencia de
-      // `abrirTicketDeReparacion` (el id derivado `cot_<cotizacionId>` y el
-      // `existente.exists` de arriba) sigue intacta, asi que un reintento no
-      // puede duplicar el ticket.
-      console.error('Error abriendo el ticket de reparacion al aceptar la cotizacion:', error);
+      // creador de `reparaciones`. Devolver `null` tras un fallo TRANSITORIO
+      // le decia a Firestore que la invocacion habia tenido exito, asi que
+      // no habia reintento: el cliente veia "cotizacion aceptada" y ningun
+      // ticket existia, sin que nadie se enterara. Se relanza para que, con
+      // `failurePolicy` activo, la invocacion se reintente de verdad.
+      console.error('Error transitorio abriendo el ticket de reparacion:', error);
       throw error;
     }
     return null;

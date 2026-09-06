@@ -28,6 +28,24 @@ const { vehiculoVinculadoOWalkIn } = require('./iniciarReparacionPorVehiculo');
 const PREFIJO_TICKET = 'cot_';
 
 /**
+ * Fallo PERMANENTE de autorizacion: el taller de la cotizacion no esta
+ * vinculado al vehiculo. Reintentar esta invocacion nunca la va a arreglar —
+ * los datos no cambian solos — asi que se distingue de un error transitorio
+ * (indice faltante, servicio no disponible) con una clase propia.
+ *
+ * FIX 5 (Ronda 2): antes de esto, `onCotizacionAceptada` relanzaba TODOS los
+ * errores por igual. Eso resolvia el problema original (la invocacion fallida
+ * quedaba visible) pero, en cuanto se activara `failurePolicy` para que ese
+ * relanzamiento sirviera para algo (v1 no reintenta sin el), un rechazo
+ * PERMANENTE se habria reintentado durante 7 dias facturando en cada intento
+ * sin que ningun reintento pudiera tener exito. El handler del trigger
+ * (`functions/index.js`) usa `instanceof` para no reintentar esto: registra
+ * el fallo en el propio documento de la cotizacion (para que la pantalla del
+ * mecanico lo muestre) y devuelve exito a Cloud Functions.
+ */
+class ErrorAutorizacionPermanente extends Error {}
+
+/**
  * Estados de `reparaciones` que cuentan como "cerrados": un vehiculo+taller
  * en uno de estos ya no tiene una visita en curso, asi que una cotizacion
  * aceptada nueva SI debe abrir un ticket propio. Cualquier otro estado
@@ -259,7 +277,7 @@ async function abrirTicketDeReparacion(db, { cotizacionId, antes, despues, ahora
         `taller no esta vinculado al vehiculo ${despues.id_vehiculo}; no se ` +
         'abrio ningun ticket.'
     );
-    throw new Error(
+    throw new ErrorAutorizacionPermanente(
       `Taller ${despues.id_taller} no vinculado al vehiculo ${despues.id_vehiculo}; ` +
         `no se abre ticket para la cotizacion ${cotizacionId}.`
     );
@@ -287,6 +305,7 @@ async function abrirTicketDeReparacion(db, { cotizacionId, antes, despues, ahora
 module.exports = {
   PREFIJO_TICKET,
   ESTADOS_TICKET_CERRADO,
+  ErrorAutorizacionPermanente,
   idTicketDeCotizacion,
   debeAbrirTicket,
   construirTicketReparacion,

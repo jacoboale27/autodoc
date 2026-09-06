@@ -26,6 +26,7 @@ const {
   existeTicketAbiertoParaVehiculo,
   resolverIdTallerPropietario,
   abrirTicketDeReparacion,
+  ErrorAutorizacionPermanente,
 } = require('../src/aceptarCotizacion');
 
 /**
@@ -592,7 +593,8 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion, empleado vs dueño (FI
           antes: { estado: 'pendiente' },
           despues: cotizacion({ id_mecanico: 'emp2', id_taller: 'emp2' }),
           ahora: AHORA,
-        })
+        }),
+        ErrorAutorizacionPermanente
       );
       const tickets = Object.keys(db.docs).filter((k) => k.startsWith('reparaciones/'));
       assert.deepStrictEqual(tickets, []);
