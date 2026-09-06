@@ -970,7 +970,21 @@ service cloud.firestore {
         request.resource.data.estado == 'pendiente' &&
         request.resource.data.id_propietario != request.auth.uid &&
         actuaPorTaller(request.resource.data.id_taller) &&
-        getVehicleOwner(request.resource.data.id_vehiculo) == request.resource.data.id_propietario;
+        // El vehiculo es OPCIONAL: un cliente que contacta al taller desde el
+        // directorio (workshop_directory_screen.dart:1209) abre una
+        // conversacion SIN vehiculo, y CotizacionModel.toMap()
+        // (cotizacion_model.dart:111) omite la clave entera cuando es null.
+        // Sin este guarda, getVehicleOwner() sobre el campo ausente no
+        // deniega limpio: revienta con "property is undefined", y se llevaba
+        // por delante la via mas comun de cotizar.
+        // Es seguro dejarla pasar: sin id_vehiculo no se puede encadenar el
+        // ataque (existeCotizacionAceptada busca por vehiculo+taller), y
+        // llegar a 'aceptada' sigue exigiendo ser el id_propietario nombrado,
+        // que la linea de arriba prohibe que sea el propio mecanico.
+        (
+          !('id_vehiculo' in request.resource.data) ||
+          getVehicleOwner(request.resource.data.id_vehiculo) == request.resource.data.id_propietario
+        );
       // Solo el campo 'estado' es escribible tras la creacion, y cada parte
       // solo puede escribir el valor que su propio flujo real produce: el
       // propietario acepta/rechaza (cotizacion_chat_card.dart, via

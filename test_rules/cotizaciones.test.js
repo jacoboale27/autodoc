@@ -199,6 +199,28 @@ describe('cotizaciones/privado/margen (hallazgo H2: el beneficio no debe ser leg
     );
   });
 
+  // Flujo real: un cliente contacta a un taller desde el DIRECTORIO
+  // (workshop_directory_screen.dart:1209), que NO pasa idVehiculo. Esa
+  // conversacion no tiene vehiculo, asi que CotizacionModel.toMap() omite
+  // la clave 'id_vehiculo' por completo (cotizacion_model.dart:111). Si la
+  // regla hace getVehicleOwner() sobre un campo inexistente, revienta con
+  // "property is undefined" y DENIEGA — rompiendo la via mas comun de
+  // cotizar. No hay riesgo en permitirlo: sin id_vehiculo no se puede
+  // encadenar el ataque (existeCotizacionAceptada busca por vehiculo), y
+  // aceptar sigue exigiendo ser el id_propietario nombrado.
+  test('el mecanico SI puede cotizar en un chat SIN vehiculo (contacto desde el directorio)', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertSucceeds(
+      db.collection('cotizaciones').doc('c5').set({
+        id_propietario: UIDS.owner1,
+        id_mecanico: UIDS.taller1,
+        id_taller: UIDS.taller1,
+        items: [{ material: 'Diagnostico', cantidad: 1, costo: 15 }],
+        estado: 'pendiente',
+      }),
+    );
+  });
+
   test('el mecanico NO puede crear la cotizacion ya en estado finalizada', async () => {
     const db = await withRole(env, UIDS.taller1, 'Taller');
     await assertFails(
