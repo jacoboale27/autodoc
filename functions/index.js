@@ -5,6 +5,7 @@ admin.initializeApp();
 
 const { abrirTicketDeReparacion } = require('./src/aceptarCotizacion');
 const { verificarAperturaManual } = require('./src/iniciarReparacionPorVehiculo');
+const { sincronizarReservaAlCotizar } = require('./src/sincronizarReservaAlCotizar');
 const {
   subconjuntoPublicoCliente,
   compartenConversacion,
@@ -713,16 +714,23 @@ exports.sincronizarReservaYReparacionAlCotizar = functions.firestore
     if (before.estado === after.estado) return null;
     if (after.estado !== 'aceptada' && after.estado !== 'rechazada') return null;
 
-    const reservaId = after.id_reserva;
-    if (!reservaId) return null;
+    if (!after.id_reserva) return null;
 
     try {
-      const reservaRef = db.collection('reservas').doc(reservaId);
-      const reservaUpdate = { estado: after.estado === 'aceptada' ? 'confirmada' : 'rechazada' };
-      if (after.estado === 'aceptada' && after.fecha_propuesta) {
-        reservaUpdate.fecha_hora_confirmada = after.fecha_propuesta;
-      }
-      await reservaRef.update(reservaUpdate);
+      // Ronda 2 (FIX 4): antes de esto, `after.id_reserva` — dato que
+      // escribe quien crea la cotizacion, nunca validado — se usaba para
+      // forzar `estado` sobre ESA reserva con Admin SDK sin comprobar que
+      // perteneciera a los mismos participantes. Encadenado a la
+      // auto-aceptacion de FIX 1, un mecanico podia voltear cualquier
+      // reserva de la base de datos. `sincronizarReservaAlCotizar` carga la
+      // reserva y exige mismo id_propietario + mismo id_taller antes de
+      // escribir; si no coincide, registra y no escribe nada.
+      await sincronizarReservaAlCotizar(db, {
+        cotizacionId: context.params.cotizacionId,
+        cotizacion: after,
+        nuevoEstadoReserva: after.estado === 'aceptada' ? 'confirmada' : 'rechazada',
+        fechaHoraConfirmada: after.estado === 'aceptada' ? after.fecha_propuesta : null,
+      });
     } catch (error) {
       console.error('Error syncing reserva on cotizacion accept:', error);
     }
