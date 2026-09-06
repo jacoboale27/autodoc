@@ -34,11 +34,37 @@ const {
 /**
  * Doble en memoria de Firestore con lo justo que usa este modulo:
  * `collection('conversaciones').where(...).where(...).limit(n).get()` con
- * igualdad exacta en cada `where`.
+ * igualdad exacta en cada `where`, y ademas
+ * `collection('conversaciones').doc(id).collection('mensajes').where(...).limit(n).get()`
+ * (FIX 3, Ronda 2: `compartenConversacion` ahora exige al menos un mensaje
+ * del cliente en esa conversacion).
  *
- * @param {{conversaciones?: Array<object>}} datos
+ * @param {{conversaciones?: Array<object>}} datos cada conversacion puede
+ *   traer `id` (para direccionar su subcoleccion) y `mensajes` (array de
+ *   `{id_remitente}`).
  */
 function fakeDb({ conversaciones = [] } = {}) {
+  function coleccionMensajes(mensajes) {
+    const filtros = [];
+    const query = {
+      where(campo, op, valor) {
+        assert.strictEqual(op, '==', 'este doble solo soporta igualdad');
+        filtros.push([campo, valor]);
+        return query;
+      },
+      limit() {
+        return query;
+      },
+      async get() {
+        const docs = mensajes.filter((m) =>
+          filtros.every(([campo, valor]) => m[campo] === valor)
+        );
+        return { empty: docs.length === 0, docs };
+      },
+    };
+    return query;
+  }
+
   return {
     collection(nombre) {
       if (nombre !== 'conversaciones') {
@@ -55,10 +81,19 @@ function fakeDb({ conversaciones = [] } = {}) {
           return query;
         },
         async get() {
-          const docs = conversaciones.filter((c) =>
-            filtros.every(([campo, valor]) => c[campo] === valor)
-          );
+          const docs = conversaciones
+            .filter((c) => filtros.every(([campo, valor]) => c[campo] === valor))
+            .map((c) => ({ ...c, id: c.id || 'conv-sin-id' }));
           return { empty: docs.length === 0, docs };
+        },
+        doc(id) {
+          const conv = conversaciones.find((c) => (c.id || 'conv-sin-id') === id);
+          return {
+            collection(sub) {
+              assert.strictEqual(sub, 'mensajes');
+              return coleccionMensajes((conv && conv.mensajes) || []);
+            },
+          };
         },
       };
       return query;
@@ -118,9 +153,16 @@ describe('obtenerPerfilPublico / subconjuntoPublicoCliente', () => {
 });
 
 describe('obtenerPerfilPublico / compartenConversacion', () => {
-  it('encuentra la conversacion real entre ese mecanico y ese cliente', async () => {
+  it('encuentra la conversacion real Y el cliente ya escribio un mensaje', async () => {
     const db = fakeDb({
-      conversaciones: [{ id_mecanico: 'mec1', id_propietario: 'cli1' }],
+      conversaciones: [
+        {
+          id: 'conv1',
+          id_mecanico: 'mec1',
+          id_propietario: 'cli1',
+          mensajes: [{ id_remitente: 'cli1' }],
+        },
+      ],
     });
     assert.strictEqual(
       await compartenConversacion(db, { mecanicoId: 'mec1', clienteId: 'cli1' }),
@@ -146,6 +188,64 @@ describe('obtenerPerfilPublico / compartenConversacion', () => {
     assert.strictEqual(
       await compartenConversacion(db, { mecanicoId: 'mec1', clienteId: 'cli1' }),
       false
+    );
+  });
+
+  // FIX 3 (Ronda 2): el hallazgo C2 de la revision de rama completa. Subir
+  // la barra de `conversaciones.create` a "solo un taller aprobado" no
+  // cerraba el hueco: un mecanico se nombra `id_mecanico == id_taller ==
+  // su propio uid` sobre CUALQUIER `id_propietario` (victima), sin que la
+  // victima haya participado nunca. `compartenConversacion` confiaba en que
+  // "existe la conversacion" implicara una relacion real; el mecanico podia
+  // fabricar esa "relacion" el solo.
+  it('conversacion existe pero el cliente NUNCA ha escrito nada: NO pasa (hallazgo C2)', async () => {
+    const db = fakeDb({
+      conversaciones: [
+        {
+          id: 'conv1',
+          id_mecanico: 'mec1',
+          id_propietario: 'cli1',
+          mensajes: [],
+        },
+      ],
+    });
+    assert.strictEqual(
+      await compartenConversacion(db, { mecanicoId: 'mec1', clienteId: 'cli1' }),
+      false
+    );
+  });
+
+  it('conversacion existe con solo mensajes DEL MECANICO: NO pasa (el mecanico no puede fabricar la relacion escribiendose a si mismo)', async () => {
+    const db = fakeDb({
+      conversaciones: [
+        {
+          id: 'conv1',
+          id_mecanico: 'mec1',
+          id_propietario: 'cli1',
+          mensajes: [{ id_remitente: 'mec1' }, { id_remitente: 'mec1' }],
+        },
+      ],
+    });
+    assert.strictEqual(
+      await compartenConversacion(db, { mecanicoId: 'mec1', clienteId: 'cli1' }),
+      false
+    );
+  });
+
+  it('el cliente SI ha escrito (entre mensajes del mecanico tambien): pasa', async () => {
+    const db = fakeDb({
+      conversaciones: [
+        {
+          id: 'conv1',
+          id_mecanico: 'mec1',
+          id_propietario: 'cli1',
+          mensajes: [{ id_remitente: 'mec1' }, { id_remitente: 'cli1' }],
+        },
+      ],
+    });
+    assert.strictEqual(
+      await compartenConversacion(db, { mecanicoId: 'mec1', clienteId: 'cli1' }),
+      true
     );
   });
 });

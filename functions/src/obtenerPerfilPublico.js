@@ -48,24 +48,48 @@ function subconjuntoPublicoCliente(data) {
 }
 
 /**
- * ¿Existe una conversacion real entre este mecanico y este cliente? Es la
- * UNICA relacion que habilita a un mecanico a ver el subconjunto publico de
- * un cliente — sin ella, cualquier mecanico podria consultar a cualquier
- * cliente por uid (el hallazgo que el brief pedia cerrar con "un usuario
- * cualquiera sin conversacion no lee el perfil ajeno").
+ * ¿Existe una conversacion real entre este mecanico y este cliente, en la
+ * que el CLIENTE ya haya escrito al menos un mensaje?
+ *
+ * Ronda 2 (FIX 3): antes, esta funcion solo comprobaba que existiera un
+ * documento en `conversaciones` con esos dos uids. Eso era auto-emitible por
+ * el propio mecanico: `conversaciones.create` (firestore.rules) le permite
+ * crear una conversacion nombrandose a si mismo `id_mecanico` y a
+ * CUALQUIER uid como `id_propietario` — no hay relacion previa que probar,
+ * la fabrica el mismo. Subir la barra de esa regla (isMecanico(), un taller
+ * aprobado en vez de cualquier cuenta) no cierra el hueco: sigue siendo el
+ * mecanico quien decide unilateralmente que la relacion "existe".
+ *
+ * El predicado correcto no es "existe una conversacion" sino "el cliente ha
+ * hablado de verdad": se exige al menos un mensaje en esa conversacion cuyo
+ * `id_remitente` sea el propio cliente. Esto el mecanico NO lo puede
+ * falsificar — `firestore.rules`, match /mensajes, `allow create` exige
+ * `request.resource.data.id_remitente == request.auth.uid` (Tarea 11, R1),
+ * asi que solo el cliente autenticado puede escribir un mensaje con su
+ * propio uid como remitente.
  *
  * @param {FirebaseFirestore.Firestore} db
  * @param {{mecanicoId: string, clienteId: string}} args
  * @returns {Promise<boolean>}
  */
 async function compartenConversacion(db, { mecanicoId, clienteId }) {
-  const snap = await db
+  const convSnap = await db
     .collection('conversaciones')
     .where('id_mecanico', '==', mecanicoId)
     .where('id_propietario', '==', clienteId)
     .limit(1)
     .get();
-  return !snap.empty;
+  if (convSnap.empty) return false;
+
+  const convId = convSnap.docs[0].id;
+  const mensajeSnap = await db
+    .collection('conversaciones')
+    .doc(convId)
+    .collection('mensajes')
+    .where('id_remitente', '==', clienteId)
+    .limit(1)
+    .get();
+  return !mensajeSnap.empty;
 }
 
 /**
