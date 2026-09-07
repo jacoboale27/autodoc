@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/models/user_model.dart';
 import '../../../../core/constants/firestore_collections.dart';
+import '../../../../core/utils/role_utils.dart';
 
 /// Service that handles admin authentication through Firebase Auth.
 /// Admin credentials are stored in Firebase Auth as real users, and their
@@ -51,9 +52,14 @@ class AdminAuthService {
       }
 
       final data = userDoc.data()!;
-      final rol = (data['rol'] as String? ?? '').trim().toLowerCase();
 
-      if (rol != 'administrador' && rol != 'admin' && rol != 'superusuario') {
+      // ROLE-01: mismo criterio EXACTO que isAdmin() en firestore.rules, vía
+      // role_utils.dart. Antes esta comprobación hacía su propio
+      // `rol.trim().toLowerCase()` y aceptaba 'administrador'/'superusuario'
+      // en minúscula, valores que firestore.rules rechaza por comparar
+      // literales exactos: dejaba "iniciar sesión como admin" a una cuenta
+      // que luego no podía leer ni escribir nada como tal.
+      if (!isAdminRole(data['rol'] as String?)) {
         // No es administrador: cerrar la sesion que acabamos de abrir.
         await _auth.signOut();
         return null;
@@ -86,8 +92,7 @@ class AdminAuthService {
           .doc(uid)
           .get();
       if (!doc.exists) return false;
-      final rol = (doc.data()?['rol'] as String? ?? '').trim().toLowerCase();
-      return rol == 'administrador' || rol == 'admin' || rol == 'superusuario';
+      return isAdminRole(doc.data()?['rol'] as String?);
     } catch (_) {
       return false;
     }
@@ -103,8 +108,7 @@ class AdminAuthService {
       if (!doc.exists) return null;
 
       final data = doc.data()!;
-      final rol = (data['rol'] as String? ?? '').trim().toLowerCase();
-      if (rol != 'administrador' && rol != 'admin' && rol != 'superusuario') {
+      if (!isAdminRole(data['rol'] as String?)) {
         return null;
       }
 

@@ -22,39 +22,43 @@ library;
 /// distinción de superusuario vive en `UserModel.isSuperUser`, no aquí).
 enum AppRole { owner, mechanic, admin }
 
-const Map<String, String> _sinAcentos = {
-  'á': 'a',
-  'é': 'e',
-  'í': 'i',
-  'ó': 'o',
-  'ú': 'u',
-  'ü': 'u',
-};
-
-/// Minúsculas, sin espacios sobrantes y sin acentos.
-///
-/// Lo de los acentos no es cosmético: `'Mecánico'` escrito con tilde (que es
-/// como lo teclea cualquiera, y como puede haber quedado en cuentas creadas
-/// desde el panel de administración) no casaba con `'mecanico'` y la cuenta
-/// caía al rol por defecto, que es propietario.
-String _normalizar(String? rol) {
-  var r = (rol ?? '').trim().toLowerCase();
-  _sinAcentos.forEach((acentuada, plana) => r = r.replaceAll(acentuada, plana));
-  return r;
-}
-
 /// Rol funcional de un valor crudo de `usuarios/{uid}.rol`.
 ///
-/// Cualquier valor desconocido (incluido vacío o nulo) es [AppRole.owner]: es
-/// el rol sin privilegios, y por tanto el default seguro.
+/// ROLE-01: esta función es la puerta de autorización de la UI (router,
+/// `MainScaffold`, filtros de mecánico), así que compara **exactamente** los
+/// mismos literales que `firestore.rules`, carácter por carácter — ni
+/// mayúsculas/minúsculas, ni acentos, ni espacios:
+///
+/// - `AppRole.admin`: `'admin'`, `'Administrador'`, `'Superusuario'` — el
+///   mismo conjunto de `isAdmin()`.
+/// - `AppRole.mechanic`: `'Mecanico'`, `'Taller'` — el componente de rol de
+///   `isMecanico()` (el `estado in ['aprobado','activo']` que exige esa
+///   función se valida aparte, en `app_router.dart` vía
+///   `estadosMecanicoAprobado`, no aquí).
+///
+/// Antes esta función normalizaba a minúsculas y sin acentos antes de
+/// comparar, así que aceptaba variantes como `'mecanico'` o `'Mecánico'`.
+/// Eso hacía que la UI mostrara capacidades de mecánico/admin a una cuenta
+/// cuyo `rol` persistido NO es uno de los literales que
+/// `firestore.rules` acepta — la UI concedía algo que el backend niega en
+/// cada lectura/escritura real. Es una divergencia de contrato, no una
+/// escalada de privilegios (el backend sigue negando), pero rompe la
+/// experiencia: la cuenta ve un dashboard que no puede usar.
+///
+/// La tolerancia a variantes históricas (acentos, mayúsculas, sinónimos como
+/// `'Usuario'`) existe SOLO para migración de datos —
+/// `functions/migrate_rol_usuario.js` — nunca aquí. Cualquier valor que no
+/// sea un literal canónico exacto (incluidos vacío o nulo) cae a
+/// [AppRole.owner]: es el rol sin privilegios, y por tanto el default
+/// seguro que además "falla cerrado" igual que lo haría el backend.
 AppRole appRoleOf(String? rol) {
-  switch (_normalizar(rol)) {
+  switch (rol) {
     case 'admin':
-    case 'administrador':
-    case 'superusuario':
+    case 'Administrador':
+    case 'Superusuario':
       return AppRole.admin;
-    case 'mecanico':
-    case 'taller':
+    case 'Mecanico':
+    case 'Taller':
       return AppRole.mechanic;
     default:
       return AppRole.owner;

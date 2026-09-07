@@ -1,41 +1,65 @@
-// Script de mantenimiento único (no es una Cloud Function desplegada) para el
-// hallazgo §2.15 del recorrido QA del 2026-08-28: en /admin/usuarios hay
-// cuentas con la insignia USUARIO, pero los chips de filtro son
-// Propietario / Mecanico / Administrador / Superusuario, así que esas cuentas
-// no aparecen bajo ningún filtro por rol.
+// Script de mantenimiento único (no es una Cloud Function desplegada).
 //
-// `'Usuario'` es vocabulario viejo, sinónimo de `'Propietario'`. Esto no es
-// una suposición del script: `appRoleOf()` en lib/core/utils/role_utils.dart
-// manda cualquier valor desconocido —y `'Usuario'` lo es— a `AppRole.owner`,
-// así que esas cuentas YA se comportan como propietarias en toda la app. Y en
-// firestore.rules la única comparación exacta con `'Propietario'` está en el
-// create de auto-registro (línea ~210), no en lecturas ni escrituras, así que
-// nadie está bloqueado hoy. O sea: la migración es cosmética y de coherencia
-// de datos, no desbloquea permisos.
+// ROLE-01 (plan de remediacion): unifica `usuarios/{uid}.rol` al vocabulario
+// canonico UNICO que exigen tanto `firestore.rules` (isAdmin(), isMecanico(),
+// isSuperUser() — comparan literales EXACTOS) como
+// `lib/core/utils/role_utils.dart` (appRoleOf, tras ROLE-01 — ya NO tolera
+// variantes de caja/acento para autorizar). Los 5 valores canonicos son:
+// 'Propietario', 'Mecanico', 'Taller', 'Administrador', 'Superusuario'.
 //
-// Qué hace, sobre la colección `usuarios`:
+// Absorbe y reemplaza la migracion anterior (hallazgo §2.15, solo
+// 'Usuario' -> 'Propietario'): ahora cubre las cinco familias de rol, porque
+// cualquier variante de caja/acento en CUALQUIER rol (no solo Propietario) es
+// exactamente la divergencia que describe ROLE-01 — la UI puede clasificar
+// una cuenta como mecanico/admin (appRoleOf, antes de ROLE-01, era tolerante)
+// mientras firestore.rules la trata como sin rol reconocido por comparar
+// literales exactos.
 //
-//   1. Cambia `rol` a 'Propietario' en los documentos cuyo valor actual es un
-//      sinónimo viejo de propietario ('Usuario' y sus variantes de caja,
-//      espacios y acentos).
-//   2. NO toca ningún otro valor. Los documentos cuyo `rol` cae en owner por
-//      ser desconocido pero que no son un sinónimo reconocido (incluidos los
-//      que tienen el campo vacío o ausente) se REPORTAN para revisión a mano
-//      y se dejan intactos: adivinar el rol de una cuenta en producción es
-//      exactamente lo que no debe hacer un script de migración.
+// Toda la clasificacion (que es canonico, que es una variante migrable y a
+// que destino, que es desconocido) vive en `src/rolMigracion.js`, pura y con
+// su propio test (`test/rolMigracion.test.js`) — este archivo solo hace I/O.
 //
-// Es idempotente: una segunda pasada no encuentra nada que cambiar.
+// Que hace, sobre la coleccion `usuarios`:
 //
-// Uso (contra producción, con las credenciales del proyecto):
-//   node migrate_rol_usuario.js            # dry-run, solo imprime qué cambiaría
-//   node migrate_rol_usuario.js --apply    # aplica los cambios en batches
+//   1. Migra `rol` a su forma canonica en los documentos cuyo valor actual es
+//      una variante reconocida (caja/acento, o un sinonimo historico como
+//      'Usuario' -> 'Propietario', o el alias 'admin' -> 'Administrador' que
+//      firestore.rules SI tolera pero que no es uno de los 5 valores del
+//      vocabulario unico).
+//   2. NO toca ningun documento cuyo `rol` ya es un literal canonico exacto.
+//   3. NO adivina: un `rol` que no coincide con ningun sinonimo conocido
+//      (incluidos vacio, ausente o un valor sin relacion) se REPORTA para
+//      revision manual y se deja intacto.
+//   4. Antes de escribir NADA (solo con --apply), guarda un respaldo JSON con
+//      el valor anterior de cada documento que va a tocar. Es el mecanismo de
+//      rollback: `node migrate_rol_usuario.js --rollback <archivo>` restaura
+//      exactamente esos valores, documento por documento.
 //
-// Uso (contra el emulador):
+// Es idempotente: una segunda pasada no encuentra nada que cambiar (todo ya
+// es canonico), y el rollback tambien lo es (restaura el valor exacto que
+// habia).
+//
+// Por que esto NO eleva privilegios: migrar 'mecanico' -> 'Mecanico' (o
+// 'admin' -> 'Administrador') no le da a la cuenta ninguna capacidad que hoy
+// no tuviera segun `firestore.rules` — al contrario, hoy esa cuenta con
+// 'mecanico' en minuscula YA es rechazada por isMecanico() en cualquier
+// lectura/escritura real (falla cerrado). La migracion simplemente hace que
+// la UI y el backend por fin esten de acuerdo. Es puramente cosmetica desde
+// el punto de vista de autorizacion: el conjunto de literales que
+// `firestore.rules` acepta no cambia con este script.
+//
+// Uso (dry-run, contra produccion, con las credenciales del proyecto):
+//   node migrate_rol_usuario.js                     # solo imprime que migraria
+//   node migrate_rol_usuario.js --apply             # aplica y escribe el respaldo
+//   node migrate_rol_usuario.js --rollback <backup.json>   # restaura el respaldo
+//
+// Uso (contra el emulador, sin credenciales reales):
 //   FIRESTORE_EMULATOR_HOST=localhost:8080 node migrate_rol_usuario.js --apply
 
 const admin = require('firebase-admin');
 const path = require('path');
 const fs = require('fs');
+const { ROLES_CANONICOS, resumenMigracion } = require('./src/rolMigracion');
 
 // Contra producción hace falta una service account key (ADC no está
 // configurado en esta máquina): Firebase Console > Configuración del
@@ -57,105 +81,71 @@ if (!process.env.FIRESTORE_EMULATOR_HOST && fs.existsSync(keyPath)) {
 const db = admin.firestore();
 
 const APPLY = process.argv.includes('--apply');
+const ROLLBACK_IDX = process.argv.indexOf('--rollback');
+const ROLLBACK_FILE = ROLLBACK_IDX >= 0 ? process.argv[ROLLBACK_IDX + 1] : null;
 const BATCH_SIZE = 400; // límite de Firestore es 500 escrituras/batch
 
-const ROL_CANONICO = 'Propietario';
-
-// Misma lógica que `_normalizar` en lib/core/utils/role_utils.dart:
-// minúsculas, sin espacios sobrantes y sin acentos. Lo de los acentos no es
-// cosmético: 'Mecánico' con tilde no casaba con 'mecanico' y la cuenta caía al
-// rol por defecto. Aquí se replica en JS por el mismo motivo que
-// migrate_vehiculos.js replica PlateFormatter: el script corre fuera de Dart.
-const SIN_ACENTOS = {
-  'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ü': 'u',
-};
-
-function normalizar(rol) {
-  let r = String(rol == null ? '' : rol).trim().toLowerCase();
-  for (const [acentuada, plana] of Object.entries(SIN_ACENTOS)) {
-    r = r.split(acentuada).join(plana);
-  }
-  return r;
+function backupPath() {
+  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  return path.join(__dirname, `rol_migracion_backup_${ts}.json`);
 }
 
-// Sinónimos viejos de propietario que este script SÍ migra. Deliberadamente
-// corto: solo lo que sabemos que significa "propietario" por historia del
-// producto. Todo lo demás se reporta, no se adivina.
-const SINONIMOS_PROPIETARIO = ['usuario', 'propietario'];
-
-// Valores que `appRoleOf` reconoce explícitamente y que por tanto NO son
-// candidatos a migración: tienen dueño conocido en otro rol funcional.
-const ROLES_RECONOCIDOS = [
-  'admin', 'administrador', 'superusuario', 'mecanico', 'taller', 'propietario',
-];
-
-async function main() {
+async function migrar() {
   console.log(APPLY ? 'Modo: APLICAR cambios' : 'Modo: DRY-RUN (usa --apply para escribir)');
 
   const snap = await db.collection('usuarios').get();
-  console.log(`Usuarios encontrados: ${snap.size}`);
+  const docs = snap.docs.map((d) => ({ id: d.id, rol: d.data().rol, ref: d.ref }));
+  console.log(`Usuarios encontrados: ${docs.length}`);
 
-  let migrados = 0;
-  let yaCanonicos = 0;
-  let otrosRoles = 0;
-  const paraRevisar = [];
-
-  let batch = db.batch();
-  let opsEnBatch = 0;
-  const flushes = [];
-
-  for (const doc of snap.docs) {
-    const data = doc.data();
-    const rolActual = data.rol;
-    const norm = normalizar(rolActual);
-
-    if (rolActual === ROL_CANONICO) {
-      yaCanonicos++;
-      continue;
-    }
-
-    if (SINONIMOS_PROPIETARIO.includes(norm)) {
-      migrados++;
-      console.log(`  [rol] ${doc.id}: "${rolActual}" -> "${ROL_CANONICO}"`);
-      if (APPLY) {
-        batch.update(doc.ref, { rol: ROL_CANONICO });
-        opsEnBatch++;
-        if (opsEnBatch >= BATCH_SIZE) {
-          flushes.push(batch.commit());
-          batch = db.batch();
-          opsEnBatch = 0;
-        }
-      }
-      continue;
-    }
-
-    if (ROLES_RECONOCIDOS.includes(norm)) {
-      otrosRoles++;
-      continue;
-    }
-
-    // Desconocido: la app lo trata como propietario por el default de
-    // `appRoleOf`, pero no lo migramos a ciegas.
-    paraRevisar.push({ id: doc.id, rol: rolActual });
-  }
-
-  if (APPLY && opsEnBatch > 0) {
-    flushes.push(batch.commit());
-  }
-  if (flushes.length > 0) {
-    await Promise.all(flushes);
-  }
+  const resumen = resumenMigracion(docs);
 
   console.log('---');
-  console.log(`Migrados a "${ROL_CANONICO}": ${migrados}`);
-  console.log(`Ya estaban en "${ROL_CANONICO}": ${yaCanonicos}`);
-  console.log(`Con otro rol reconocido (intactos): ${otrosRoles}`);
+  console.log(`Ya canonicos (sin tocar): ${resumen.yaCanonicos.length}`);
+  console.log(`Migrables: ${resumen.migrables.length}`);
+  if (Object.keys(resumen.conteoPorVariante).length > 0) {
+    console.log('Conteo por variante -> destino:');
+    for (const [variante, n] of Object.entries(resumen.conteoPorVariante)) {
+      console.log(`  ${variante}: ${n}`);
+    }
+  }
 
-  if (paraRevisar.length > 0) {
-    console.warn(`\n[ADVERTENCIA] ${paraRevisar.length} documento(s) con un 'rol' que no se reconoce y que NO se han tocado.`);
-    console.warn('La app los trata como Propietario (default de appRoleOf), pero seguirán sin aparecer');
-    console.warn('en los filtros por rol del panel de admin. Revísalos a mano y decide qué rol les toca:');
-    for (const u of paraRevisar) {
+  if (APPLY && resumen.migrables.length > 0) {
+    // Respaldo ANTES de escribir nada: es el mecanismo de rollback.
+    const respaldo = resumen.migrables.map((m) => ({ id: m.id, rolAnterior: m.rolActual }));
+    const archivo = backupPath();
+    fs.writeFileSync(archivo, JSON.stringify(respaldo, null, 2));
+    console.log(`Respaldo escrito en: ${archivo}`);
+    console.log(`Para revertir: node migrate_rol_usuario.js --rollback ${archivo}`);
+
+    const docsPorId = new Map(docs.map((d) => [d.id, d]));
+    let batch = db.batch();
+    let opsEnBatch = 0;
+    const flushes = [];
+    for (const m of resumen.migrables) {
+      const ref = docsPorId.get(m.id).ref;
+      console.log(`  [rol] ${m.id}: "${m.rolActual}" -> "${m.rolCanonico}"`);
+      batch.update(ref, { rol: m.rolCanonico });
+      opsEnBatch++;
+      if (opsEnBatch >= BATCH_SIZE) {
+        flushes.push(batch.commit());
+        batch = db.batch();
+        opsEnBatch = 0;
+      }
+    }
+    if (opsEnBatch > 0) flushes.push(batch.commit());
+    await Promise.all(flushes);
+  } else {
+    for (const m of resumen.migrables) {
+      console.log(`  [rol] ${m.id}: "${m.rolActual}" -> "${m.rolCanonico}"`);
+    }
+  }
+
+  if (resumen.desconocidos.length > 0) {
+    console.warn(`\n[ADVERTENCIA] ${resumen.desconocidos.length} documento(s) con un 'rol' que no se reconoce y que NO se han tocado.`);
+    console.warn(`La app los trata como Propietario (default de appRoleOf en lib/core/utils/role_utils.dart),`);
+    console.warn('pero seguiran sin aparecer en los filtros por rol del panel de admin.');
+    console.warn('Revisalos a mano y decide que rol canonico les toca:');
+    for (const u of resumen.desconocidos) {
       console.warn(`  - ${u.id}: rol = ${JSON.stringify(u.rol)}`);
     }
   } else {
@@ -165,6 +155,46 @@ async function main() {
   if (!APPLY) {
     console.log('\nNada se escribió (dry-run). Vuelve a correr con --apply para aplicar.');
   }
+}
+
+async function rollback(archivo) {
+  if (!fs.existsSync(archivo)) {
+    console.error(`No existe el archivo de respaldo: ${archivo}`);
+    process.exit(1);
+  }
+  const respaldo = JSON.parse(fs.readFileSync(archivo, 'utf8'));
+  console.log(`Restaurando ${respaldo.length} documento(s) desde ${archivo}...`);
+
+  let batch = db.batch();
+  let opsEnBatch = 0;
+  const flushes = [];
+  for (const { id, rolAnterior } of respaldo) {
+    console.log(`  [rollback] ${id}: -> "${rolAnterior}"`);
+    batch.update(db.collection('usuarios').doc(id), { rol: rolAnterior });
+    opsEnBatch++;
+    if (opsEnBatch >= BATCH_SIZE) {
+      flushes.push(batch.commit());
+      batch = db.batch();
+      opsEnBatch = 0;
+    }
+  }
+  if (opsEnBatch > 0) flushes.push(batch.commit());
+  await Promise.all(flushes);
+  console.log('Rollback completo.');
+}
+
+async function main() {
+  if (ROLLBACK_FILE) {
+    await rollback(ROLLBACK_FILE);
+    return;
+  }
+  await migrar();
+}
+
+// Sanidad del propio vocabulario canonico: si esto cambia sin querer, mejor
+// reventar aqui que migrar datos a un valor equivocado.
+if (ROLES_CANONICOS.length !== 5) {
+  throw new Error('ROLES_CANONICOS debe tener exactamente 5 valores; revisa src/rolMigracion.js');
 }
 
 main()
