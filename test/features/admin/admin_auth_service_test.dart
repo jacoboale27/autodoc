@@ -33,6 +33,35 @@ void main() {
       },
     );
 
+    test('ROLE-01: rechaza rol guardado como "administrador" en minuscula — '
+        'firestore.rules isAdmin() compara literales EXACTOS '
+        "([Administrador, admin, Superusuario]); 'administrador' en minuscula "
+        'NO esta en esa lista, asi que aunque el cliente lo dejara pasar aqui '
+        'todo intento real de leer/escribir como admin lo rechazaria el '
+        'backend. Antes este servicio hacia su propio '
+        "`rol.trim().toLowerCase()` y aceptaba 'administrador'/'superusuario' "
+        'en minuscula, una divergencia de contrato con las reglas.', () async {
+      final auth = MockFirebaseAuth(
+        mockUser: MockUser(uid: 'uid-casi-admin', email: 'c@x.com'),
+      );
+      final firestore = FakeFirebaseFirestore();
+      await firestore.collection('usuarios').doc('uid-casi-admin').set({
+        'id_usuario': 'uid-casi-admin',
+        'correo': 'c@x.com',
+        'rol': 'administrador',
+      });
+
+      final service = AdminAuthService(auth: auth, firestore: firestore);
+      final result = await service.loginAsAdmin('c@x.com', 'password123');
+
+      expect(
+        result,
+        isNull,
+        reason: "'administrador' en minuscula no es un rol canonico",
+      );
+      expect(auth.currentUser, isNull);
+    });
+
     test(
       'devuelve el UserModel y mantiene la sesion si SI es administrador',
       () async {

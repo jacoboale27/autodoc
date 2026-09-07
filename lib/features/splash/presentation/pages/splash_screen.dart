@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
+import 'package:autodoc/core/utils/role_utils.dart';
 import 'package:autodoc/features/auth/data/services/auth_preferences_service.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_motion.dart';
@@ -117,11 +118,17 @@ class _SplashScreenState extends State<SplashScreen>
         if (redirectParam != null && redirectParam.isNotEmpty) {
           destination = Uri.decodeComponent(redirectParam);
         } else {
-          final role = userData.rol.trim().toLowerCase();
-          destination = switch (role) {
-            'taller' || 'mecanico' => '/mechanic_dashboard',
-            'admin' || 'administrador' || 'superusuario' => '/admin/dashboard',
-            _ => '/dashboard',
+          // ROLE-01: mismo criterio EXACTO que el router y `MainScaffold`
+          // (role_utils.dart), no una comparación propia. Antes este switch
+          // hacía su propio `.trim().toLowerCase()` y aceptaba variantes
+          // ('administrador', 'taller' en minúscula) que firestore.rules
+          // rechaza por comparar literales exactos; el guard del router
+          // corrige cualquier destino inválido en la siguiente evaluación,
+          // pero esta primera resolución debe partir del mismo vocabulario.
+          destination = switch (appRoleOf(userData.rol)) {
+            AppRole.mechanic => '/mechanic_dashboard',
+            AppRole.admin => '/admin/dashboard',
+            AppRole.owner => '/dashboard',
           };
         }
       }
