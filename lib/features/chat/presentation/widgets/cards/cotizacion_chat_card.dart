@@ -166,6 +166,9 @@ class _CotizacionChatCardState extends State<CotizacionChatCard> {
           snapshot.data!.data()!,
           snapshot.data!.id,
         );
+        if (cotizacion.estado == 'draft') {
+          return const SizedBox.shrink();
+        }
         if (widget.isMe && _beneficios != null) {
           cotizacion = cotizacion.copyWithBeneficios(_beneficios!);
         }

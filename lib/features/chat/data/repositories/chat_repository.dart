@@ -195,22 +195,34 @@ class ChatRepository {
     final docRef = _firestore.collection('cotizaciones').doc();
     final data = cotizacion.toMap();
     data['id_cotizacion'] = docRef.id; // o id, dependiendo de la convención
+    data['estado'] = 'draft';
 
-    // Dos escrituras secuenciales, no un batch atomico: la regla de
+    // Escrituras secuenciales, no un batch atomico: la regla de
     // cotizaciones/{id}/privado/{docId} usa get() sobre el documento padre
     // para verificar id_mecanico, y get() dentro de un batch/transaccion NO
     // ve otras escrituras del mismo batch — el padre debe existir ANTES de
-    // que la regla del hijo pueda leerlo. Riesgo residual aceptado: si la
-    // segunda escritura falla, queda una cotizacion publica sin su margen
-    // privado; obtenerBeneficiosCotizacion ya devuelve [] con seguridad en
-    // ese caso (sin excepcion, sin fuga de datos).
+    // que la regla del hijo pueda leerlo. El padre nace como draft: ni la
+    // UI ni las reglas permiten consumirlo antes de confirmar el privado.
     await docRef.set(data);
     // Beneficio por renglon: subcoleccion privada, ver firestore.rules
     // cotizaciones/{id}/privado/{docId} (hallazgo H2).
-    await docRef
-        .collection('privado')
-        .doc('margen')
-        .set(cotizacion.toPrivateMap());
+    try {
+      await docRef
+          .collection('privado')
+          .doc('margen')
+          .set(cotizacion.toPrivateMap());
+    } catch (_) {
+      try {
+        await docRef.delete();
+      } catch (_) {
+        // Si la limpieza falla, el draft sigue oculto y no se puede aceptar.
+        // Conservamos el error original de la escritura privada.
+      }
+      rethrow;
+    }
+    // La publicacion tambien exige el contrato privado en firestore.rules.
+    // Si falla, permanece un draft no consumible con su margen intacto.
+    await docRef.update({'estado': 'pendiente'});
 
     return docRef.id;
   }

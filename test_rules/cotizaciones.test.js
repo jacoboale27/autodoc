@@ -15,8 +15,79 @@ const seedCotizacion = async () => {
       items: [{ material: 'Aceite', cantidad: 1, costo: 20 }],
       estado: 'pendiente',
     });
+    await s.collection('cotizaciones').doc('c1').collection('privado').doc('margen').set({ beneficios: [8] });
   });
 };
+
+describe('DATA-01: publicacion solo con contrato privado confirmado', () => {
+  const draft = {
+    id_propietario: UIDS.owner1,
+    id_mecanico: UIDS.taller1,
+    id_taller: UIDS.taller1,
+    items: [{ material: 'Filtro', cantidad: 1, costo: 20 }],
+    estado: 'draft',
+  };
+
+  test('no permite crear directamente ningun estado publicado', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    for (const estado of ['pendiente', 'aceptada', 'rechazada', 'finalizada']) {
+      await assertFails(db.collection('cotizaciones').doc(estado).set({ ...draft, estado }));
+    }
+  });
+
+  test('draft no se publica sin margen ni se acepta o finaliza aun con margen', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    const owner = await withRole(env, UIDS.owner1, 'Propietario');
+    const ref = db.collection('cotizaciones').doc('draft');
+    await assertSucceeds(ref.set(draft));
+    await assertFails(ref.update({ estado: 'pendiente' }));
+    await assertSucceeds(ref.collection('privado').doc('margen').set({ beneficios: [8] }));
+    for (const estado of ['aceptada', 'rechazada', 'pendiente']) {
+      await assertFails(owner.collection('cotizaciones').doc('draft').update({ estado }));
+    }
+    await assertFails(ref.update({ estado: 'finalizada' }));
+    await assertSucceeds(ref.update({ estado: 'pendiente' }));
+    await assertSucceeds(owner.collection('cotizaciones').doc('draft').update({ estado: 'aceptada' }));
+  });
+
+  test('rechaza margen invalido y permite limpiar el draft tras fallo privado', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    const ref = db.collection('cotizaciones').doc('draft');
+    await assertSucceeds(ref.set(draft));
+    for (const data of [{}, { beneficios: [] }, { beneficios: '8' }, { beneficios: [8], extra: true }]) {
+      await assertFails(ref.collection('privado').doc('margen').set(data));
+    }
+    await assertFails(ref.update({ estado: 'pendiente' }));
+    await assertSucceeds(ref.delete());
+  });
+
+  test('no permite borrar el contrato al publicar ni despues de publicar', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    const ref = db.collection('cotizaciones').doc('draft');
+    const margen = ref.collection('privado').doc('margen');
+    await assertSucceeds(ref.set(draft));
+    await assertSucceeds(margen.set({ beneficios: [8] }));
+    const batch = db.batch();
+    batch.update(ref, { estado: 'pendiente' });
+    batch.delete(margen);
+    await assertFails(batch.commit());
+    await assertSucceeds(ref.update({ estado: 'pendiente' }));
+    await assertFails(margen.delete());
+    await assertFails(margen.set({ beneficios: [] }));
+    await assertFails(ref.delete());
+    await assertFails(ref.update({ estado: 'draft' }));
+  });
+
+  test('no publica el margen y el padre juntos sin confirmacion previa', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    const ref = db.collection('cotizaciones').doc('draft');
+    await assertSucceeds(ref.set(draft));
+    const batch = db.batch();
+    batch.set(ref.collection('privado').doc('margen'), { beneficios: [8] });
+    batch.update(ref, { estado: 'pendiente' });
+    await assertFails(batch.commit());
+  });
+});
 
 describe('cotizaciones update (hallazgo H1: campo abierto permitia alterar precio/partes)', () => {
   test('el propietario SI puede aceptar (solo estado)', async () => {
@@ -151,7 +222,7 @@ describe('cotizaciones/privado/margen (hallazgo H2: el beneficio no debe ser leg
     );
   });
 
-  test('el mecanico SI puede crear la cotizacion y su margen privado en dos pasos (flujo real de ChatRepository.crearCotizacion)', async () => {
+  test('el mecanico SI puede crear la cotizacion y su margen privado en tres pasos (flujo real de ChatRepository.crearCotizacion)', async () => {
     // FIX 1 (Ronda 2): `create` ahora exige que id_propietario sea el dueño
     // REAL de id_vehiculo (getVehicleOwner), asi que este fixture necesita
     // un vehiculo de verdad en vez de solo los ids sueltos que bastaban antes.
@@ -169,13 +240,16 @@ describe('cotizaciones/privado/margen (hallazgo H2: el beneficio no debe ser leg
         id_vehiculo: 'v-c2',
         id_taller: UIDS.taller1,
         items: [{ material: 'Aceite', cantidad: 1, costo: 20 }],
-        estado: 'pendiente',
+        estado: 'draft',
       }),
     );
     await assertSucceeds(
       db.collection('cotizaciones').doc('c2').collection('privado').doc('margen').set({
         beneficios: [8],
       }),
+    );
+    await assertSucceeds(
+      db.collection('cotizaciones').doc('c2').update({ estado: 'pendiente' }),
     );
   });
 
@@ -216,7 +290,7 @@ describe('cotizaciones/privado/margen (hallazgo H2: el beneficio no debe ser leg
         id_mecanico: UIDS.taller1,
         id_taller: UIDS.taller1,
         items: [{ material: 'Diagnostico', cantidad: 1, costo: 15 }],
-        estado: 'pendiente',
+        estado: 'draft',
       }),
     );
   });
@@ -241,7 +315,7 @@ describe('cotizaciones/privado/margen (hallazgo H2: el beneficio no debe ser leg
         id_taller: UIDS.taller1,
         id_vehiculo: 'vehiculo-borrado',
         items: [],
-        estado: 'pendiente',
+        estado: 'draft',
       }),
     );
   });
@@ -289,7 +363,7 @@ describe('cotizaciones create (FIX 1: ataque de auto-aceptacion en dos escritura
         id_vehiculo: 'v-victima',
         id_taller: UIDS.taller1,
         items: [],
-        estado: 'pendiente',
+        estado: 'draft',
       }),
     );
   });
@@ -304,7 +378,7 @@ describe('cotizaciones create (FIX 1: ataque de auto-aceptacion en dos escritura
         id_vehiculo: 'v-victima',
         id_taller: UIDS.taller1,
         items: [],
-        estado: 'pendiente',
+        estado: 'draft',
       }),
     );
   });
@@ -319,7 +393,7 @@ describe('cotizaciones create (FIX 1: ataque de auto-aceptacion en dos escritura
         id_vehiculo: 'v-victima',
         id_taller: UIDS.taller2, // taller ajeno
         items: [],
-        estado: 'pendiente',
+        estado: 'draft',
       }),
     );
   });
@@ -334,7 +408,7 @@ describe('cotizaciones create (FIX 1: ataque de auto-aceptacion en dos escritura
         id_vehiculo: 'v-victima',
         id_taller: UIDS.taller1,
         items: [],
-        estado: 'pendiente',
+        estado: 'draft',
       }),
     );
   });
@@ -351,7 +425,7 @@ describe('cotizaciones create (FIX 1: ataque de auto-aceptacion en dos escritura
         id_vehiculo: 'v-victima',
         id_taller: UIDS.taller1, // uid del DUEÑO, no del empleado
         items: [],
-        estado: 'pendiente',
+        estado: 'draft',
       }),
     );
   });
@@ -367,7 +441,7 @@ describe('cotizaciones create (FIX 1: ataque de auto-aceptacion en dos escritura
         id_taller: UIDS.taller1,
         id_reserva: 'r1',
         items: [],
-        estado: 'pendiente',
+        estado: 'draft',
       }),
     );
   });
@@ -388,7 +462,7 @@ describe('cotizaciones create (FIX 1: ataque de auto-aceptacion en dos escritura
         id_vehiculo: 'v-propio',
         id_taller: UIDS.taller1,
         items: [],
-        estado: 'pendiente',
+        estado: 'draft',
       }),
     );
   });
@@ -432,6 +506,7 @@ describe('cotizaciones: la cotizacion es del TALLER, no del operario (ronda 4)',
         items: [{ material: 'Aceite', cantidad: 1, costo: 20 }],
         estado: 'aceptada',
       });
+      await s.collection('cotizaciones').doc('c2').collection('privado').doc('margen').set({ beneficios: [8] });
     });
     const db = await withRole(env, UIDS.taller1, 'Taller');
     await assertSucceeds(
