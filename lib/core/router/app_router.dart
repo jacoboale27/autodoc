@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:autodoc/features/splash/presentation/pages/splash_screen.dart';
 import 'package:autodoc/features/onboarding/presentation/pages/onboarding_screen.dart';
 import 'package:autodoc/features/auth/presentation/pages/auth_screen.dart';
+import 'package:autodoc/features/auth/presentation/pages/email_verification_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/dashboard_screen.dart';
 import 'package:autodoc/features/profile/presentation/pages/profile_setup_screen.dart';
 import 'package:autodoc/features/profile/presentation/pages/user_profile_screen.dart';
@@ -72,7 +73,9 @@ CustomTransitionPage<T> buildPageWithFadeThrough<T>({
 }
 
 /// Routes that don't require authentication
+// Recovery is a dialog on /login; terms open an external public URL.
 const _publicRoutes = <String>{'/', '/login', '/register', '/onboarding'};
+const _unverifiedRoutes = <String>{'/verify_email'};
 
 /// Routes exclusively for Propietario role
 const _ownerRoutes = <String>{
@@ -226,6 +229,7 @@ bool _matchesRouteSet(String path, Set<String> routes) {
 /// directamente.
 String? resolveRedirect({
   required bool isLoggedIn,
+  required bool emailVerified,
   required UserModel? userData,
   required bool isLoading,
   required bool hasAttemptedFetch,
@@ -237,6 +241,12 @@ String? resolveRedirect({
   final isProfileLoading = isLoading || (isLoggedIn && !hasAttemptedFetch);
 
   if (!isLoggedIn && !isPublicRoute) return '/login';
+
+  // This check precedes profile loading and every role/onboarding guard.
+  // Never trust a provider name or a profile field as proof of ownership.
+  if (isLoggedIn && !emailVerified) {
+    return _unverifiedRoutes.contains(currentPath) ? null : '/verify_email';
+  }
 
   // Mientras el perfil se carga no se puede decidir el rol, asi que no se
   // permite montar ninguna ruta protegida: se retiene en el splash. Devolver
@@ -256,7 +266,10 @@ String? resolveRedirect({
     return '/?redirect=${Uri.encodeComponent(currentPath)}';
   }
 
-  if (isLoggedIn && (currentPath == '/login' || currentPath == '/register')) {
+  if (isLoggedIn &&
+      (currentPath == '/login' ||
+          currentPath == '/register' ||
+          currentPath == '/verify_email')) {
     if (userData == null) {
       if (profileError != null) return null;
       return '/profile_setup';
@@ -348,6 +361,7 @@ String? appRouterRedirect(
 
   return resolveRedirect(
     isLoggedIn: authProvider.isLoggedIn,
+    emailVerified: authProvider.user?.emailVerified ?? false,
     userData: userData,
     isLoading: profileProvider.isLoading,
     hasAttemptedFetch: profileProvider.hasAttemptedFetchFor(currentUid),
@@ -371,6 +385,10 @@ GoRouter createAppRouter(
     errorBuilder: (context, state) =>
         const Scaffold(body: Center(child: Text('Página no encontrada (404)'))),
     routes: [
+      GoRoute(
+        path: '/verify_email',
+        builder: (context, state) => const EmailVerificationScreen(),
+      ),
       GoRoute(
         path: '/',
         pageBuilder: (context, state) => buildPageWithFadeThrough(
