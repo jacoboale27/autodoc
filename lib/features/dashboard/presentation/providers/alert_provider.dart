@@ -158,11 +158,16 @@ class AlertProvider extends ChangeNotifier {
             idAlerta: 'soat_${vehicle.idVehiculo}',
             idVehiculo: vehicle.idVehiculo,
             tipoAlerta: 'SOAT',
-            titulo: 'Seguro por vencer',
+            // El título tiene que concordar con el cuerpo: "Seguro por
+            // vencer" encabezando "Tu SOAT venció hace 38 días" se lee como
+            // un dato equivocado, y es justo la alerta en la que el usuario
+            // necesita creerle a la app.
+            titulo: daysToExpire < 0 ? 'Seguro vencido' : 'Seguro por vencer',
             descripcion: daysToExpire < 0
                 ? 'Tu SOAT venció hace ${daysToExpire.abs()} días.'
                 : 'Tu SOAT vence en $daysToExpire días.',
             fechaLimite: vehicle.vencimientoSoat,
+            metadata: {'placa': vehicle.placa},
             prioridad: daysToExpire < 0
                 ? AlertPriority.high
                 : AlertPriority.medium,
@@ -184,7 +189,13 @@ class AlertProvider extends ChangeNotifier {
         descripcion:
             'Revisión semanal recomendada para mantener el consumo óptimo.',
         prioridad: AlertPriority.low,
-        metadata: {'psi_recomendado': 32},
+        // La placa viaja en la metadata de TODAS las alertas generadas por
+        // vehículo. Estas tres (llantas, fluidos, luces) son recordatorios
+        // fijos que se emiten una vez por coche, así que en un garaje con
+        // varios vehículos el panel repetía la misma terna, palabra por
+        // palabra, tantas veces como coches — sin nada que dijera a cuál
+        // pertenecía cada tarjeta.
+        metadata: {'psi_recomendado': 32, 'placa': vehicle.placa},
       ),
     );
 
@@ -198,6 +209,7 @@ class AlertProvider extends ChangeNotifier {
         descripcion:
             'Revisa refrigerante, líquido de frenos y limpiaparabrisas.',
         prioridad: AlertPriority.low,
+        metadata: {'placa': vehicle.placa},
       ),
     );
     _addOrUpdateLocalAlert(
@@ -209,6 +221,7 @@ class AlertProvider extends ChangeNotifier {
         descripcion:
             'Asegúrate de que todas las luces externas funcionen correctamente.',
         prioridad: AlertPriority.low,
+        metadata: {'placa': vehicle.placa},
       ),
     );
 

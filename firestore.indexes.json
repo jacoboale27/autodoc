@@ -115,6 +115,14 @@
       ]
     },
     {
+      "collectionGroup": "reparaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "id_taller", "order": "ASCENDING" },
+        { "fieldPath": "estado", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "cotizaciones",
       "queryScope": "COLLECTION",
       "fields": [

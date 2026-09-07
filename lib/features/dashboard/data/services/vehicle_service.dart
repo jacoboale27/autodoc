@@ -84,9 +84,45 @@ class VehicleService {
         'taller_pendiente_nombre': FieldValue.delete(),
         'taller_pendiente_servicio_id': FieldValue.delete(),
         'talleres_rechazados': FieldValue.arrayUnion([tallerId]),
+        // Ronda 5: además de registrar el rechazo, RETIRA el vínculo si ya
+        // existía. Antes solo hacía lo primero, y daba igual porque el taller
+        // nunca estaba en la lista al pulsar "Rechazar" — el vínculo se
+        // otorgaba después, al confirmar. Desde que el vínculo se otorga al
+        // recibir el vehículo, un taller que pide confirmación puede estar ya
+        // en la lista, y el botón decía "rechazado" mientras el acceso seguía
+        // intacto. Un botón que miente sobre un permiso es peor que no
+        // tenerlo.
+        'talleres_vinculados': FieldValue.arrayRemove([tallerId]),
       });
     } catch (e) {
       throw 'Error al rechazar el vínculo con el taller: $e';
+    }
+  }
+
+  /// El propietario retira el acceso de un taller a la ficha de su vehículo.
+  ///
+  /// `talleres_vinculados` es la primitiva de consentimiento de todo el
+  /// sistema: decide quién puede leer la ficha, la galería, las alertas, los
+  /// mantenimientos y el historial. Hasta la ronda 6 el titular de ese
+  /// consentimiento no podía ni verlo ni retirarlo — solo concederlo, desde el
+  /// banner de `taller_pendiente_confirmacion`. Un permiso que el sujeto no
+  /// puede inspeccionar ni revocar no es consentimiento.
+  ///
+  /// Es un update parcial y no `vehicle.toMap()` por el mismo motivo que
+  /// [confirmarVinculoTaller]: `toMap()` excluye a propósito los campos de
+  /// vínculo para que una edición de formulario no los pise.
+  ///
+  /// **No** toca `talleres_conocidos`: ese array significa "ha atendido este
+  /// coche alguna vez" y es lo que le deja al taller completar o corregir su
+  /// propio registro de servicio. Retirar el acceso a la ficha no borra la
+  /// historia de que la visita ocurrió.
+  Future<void> revocarAccesoTaller(String vehiculoId, String tallerId) async {
+    try {
+      await _firestore.collection(_collection).doc(vehiculoId).update({
+        'talleres_vinculados': FieldValue.arrayRemove([tallerId]),
+      });
+    } catch (e) {
+      throw 'Error al retirar el acceso del taller: $e';
     }
   }
 

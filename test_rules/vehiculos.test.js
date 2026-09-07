@@ -226,6 +226,34 @@ describe('vehiculos/{id}/fotos (galeria)', () => {
     );
   });
 
+  test('un EMPLEADO del taller vinculado tambien ve las fotos (ronda 4)', async () => {
+    // `talleres_vinculados` guarda el uid del DUEÑO, nunca el del empleado.
+    // La regla del vehiculo padre ya comparaba contra `idTallerActor()`, pero
+    // esta copia anidada se quedo comparando contra `request.auth.uid`: el
+    // empleado abria la ficha del coche que su propio taller esta atendiendo
+    // y la galeria le salia vacia, con permission-denied en consola.
+    const db = await withRole(env, UIDS.empleado1, 'Mecanico', {
+      id_taller_propietario: UIDS.taller1,
+    });
+    await seed(env, seedVehiculo('v-vinculado', UIDS.owner1, [UIDS.taller1]));
+    await seed(env, async (s) => {
+      await s.collection('vehiculos').doc('v-vinculado').collection('fotos').doc('f1').set(foto);
+    });
+    await assertSucceeds(
+      db.collection('vehiculos').doc('v-vinculado').collection('fotos').get(),
+    );
+  });
+
+  test('un EMPLEADO de OTRO taller sigue sin ver las fotos', async () => {
+    const db = await withRole(env, UIDS.empleado2, 'Mecanico', {
+      id_taller_propietario: UIDS.taller2,
+    });
+    await seed(env, seedVehiculo('v-vinculado', UIDS.owner1, [UIDS.taller1]));
+    await assertFails(
+      db.collection('vehiculos').doc('v-vinculado').collection('fotos').get(),
+    );
+  });
+
   test('un taller vinculado SI puede ver las fotos pero NO añadir ni borrar', async () => {
     const db = await withRole(env, UIDS.taller1, 'Taller');
     await seed(env, seedVehiculo('v-vinculado', UIDS.owner1, [UIDS.taller1]));

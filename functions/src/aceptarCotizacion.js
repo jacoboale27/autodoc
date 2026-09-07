@@ -1,7 +1,5 @@
 'use strict';
 
-const { vehiculoVinculadoOWalkIn } = require('./iniciarReparacionPorVehiculo');
-
 /**
  * A4b — la aceptacion de la cotizacion es lo que abre el ticket de
  * `reparaciones`.
@@ -46,13 +44,61 @@ const PREFIJO_TICKET = 'cot_';
 class ErrorAutorizacionPermanente extends Error {}
 
 /**
+ * La cotizacion aceptada NUNCA va a poder abrir un ticket: no ancla a un
+ * vehiculo (la via comun del cliente que contacta al taller desde el
+ * directorio, sin coche seleccionado), o el vehiculo al que ancla ya no
+ * existe. No es un ataque —a diferencia de `ErrorAutorizacionPermanente`— y
+ * tampoco es transitorio.
+ *
+ * Antes estos dos casos hacian `console.warn` y devolvian `null`: el cliente
+ * veia su cotizacion en "aceptada", la tarjeta le pedia al taller que
+ * recibiera el vehiculo, y no habia ticket ni forma de que lo hubiera. La
+ * revision adversarial lo encontro asi, sin nadie avisando. Ahora se lanza,
+ * el handler lo registra en `error_apertura_ticket` igual que el permanente,
+ * y la tarjeta de la cotizacion lo muestra.
+ */
+class ErrorTicketNoAplicable extends Error {}
+
+/**
  * Estados de `reparaciones` que cuentan como "cerrados": un vehiculo+taller
  * en uno de estos ya no tiene una visita en curso, asi que una cotizacion
  * aceptada nueva SI debe abrir un ticket propio. Cualquier otro estado
  * (incluido 'recibido' de un ticket anterior a A4b, sin `id_cotizacion') se
  * trata como abierto.
+ *
+ * RONDA 6: `listo_para_entrega` SALE de esta lista y entra 'entregado'.
+ * `listo_para_entrega` cerraba la visita solo porque era el ultimo estado del
+ * pipeline, pero ahi el coche sigue fisicamente en el taller esperando a que
+ * lo recojan. Tratarlo como cerrado tenia dos consecuencias, las dos malas:
+ * una cotizacion aceptada con el coche todavia en el patio abria un SEGUNDO
+ * ticket para la misma visita, y `revocarVinculoAlCerrarTicket` le quitaba al
+ * taller el acceso a la ficha del coche que aun tenia dentro. La visita se
+ * cierra cuando el coche SALE, y para eso existe 'entregado'.
+ *
+ * Espejo en el cliente: `estadosReparacionCerrados`
+ * (`lib/core/models/reparacion_model.dart`). Las dos listas tienen que decir
+ * lo mismo.
+ *
+ * OJO al desplegar: los tickets que ya estan en `listo_para_entrega` en
+ * produccion pasan a contar como ABIERTOS con este cambio. Hay que correr
+ * `functions/backfill_entregado.js` para moverlos a 'entregado'.
  */
-const ESTADOS_TICKET_CERRADO = ['cancelado', 'listo_para_entrega'];
+const ESTADOS_TICKET_CERRADO = ['cancelado', 'entregado'];
+
+/**
+ * Estados en los que el coche esta FISICAMENTE en el taller: los unicos en
+ * los que el vinculo `vehiculos.talleres_vinculados` esta justificado.
+ *
+ * No es el complemento de `ESTADOS_TICKET_CERRADO`: 'pendiente_recepcion'
+ * no esta cerrado (la visita esta en curso) pero el coche todavia no ha
+ * llegado. Espejo de `estadosVehiculoEnTaller` en el cliente.
+ */
+const ESTADOS_VEHICULO_EN_TALLER = [
+  'recibido',
+  'en_revision',
+  'esperando_repuestos',
+  'listo_para_entrega',
+];
 
 /**
  * Id del ticket que corresponde a una cotizacion. Derivarlo del id de la
@@ -99,13 +145,23 @@ function debeAbrirTicket(antes, despues) {
  * eleccion, con su propio uid como mecanico y el uid de un tercero como
  * "propietario" del ticket.
  *
- * @param {{cotizacionId: string, cotizacion: object, vehiculo: ?object, ahora: Date}} args
+ * RONDA 4: `idTaller` llega YA RESUELTO al uid del dueño del taller y ya no se
+ * lee de `cotizacion.id_taller`. La ronda anterior resolvia el id solo para
+ * comprobar el vinculo y escribia el CRUDO en el ticket, con lo que una
+ * cotizacion legacy creada por un EMPLEADO (uid de sesion en `id_taller`,
+ * antes del FIX 2 de la Ronda 2) abria un ticket con el uid del empleado. Todo
+ * el cliente consulta `reparaciones` por `idTallerEfectivo` — el uid del DUEÑO
+ * — (`watchReparacionesActivas`, `buscarReparacionActiva`,
+ * `ReparacionesKanbanScreen`), asi que ese ticket no aparecia en ninguna
+ * pantalla, y `firestore.rules` (`actuaPorTaller(resource.data.id_taller)`) se
+ * lo negaba al dueño del taller. Un ticket que nadie ve ni puede leer.
+ *
+ * @param {{cotizacionId: string, cotizacion: object, vehiculo: ?object, idTaller: string, ahora: Date}} args
  * @returns {?object}
  */
-function construirTicketReparacion({ cotizacionId, cotizacion, vehiculo, ahora }) {
+function construirTicketReparacion({ cotizacionId, cotizacion, vehiculo, idTaller, ahora }) {
   const datosVehiculo = vehiculo || {};
   const idVehiculo = cotizacion.id_vehiculo || '';
-  const idTaller = cotizacion.id_taller || '';
   const idPropietario = datosVehiculo.id_propietario || '';
   if (!idVehiculo || !idTaller || !idPropietario) return null;
 
@@ -169,14 +225,12 @@ const LIMITE_DEDUP_TICKETS_ABIERTOS = 20;
  * cual — mismo criterio de fallback que `actuaPorTaller()`/`idTallerActor()`
  * en las reglas.
  *
- * NOTA (companion bug, reportado y NO arreglado a proposito, ver el informe
- * de esta ronda): esta resolucion se usa solo para la comprobacion de
- * vinculo. El documento de `reparaciones` que se escribe sigue guardando el
- * `id_taller` CRUDO de la cotizacion (ver `construirTicketReparacion`), asi
- * que un ticket abierto a partir de una cotizacion legacy con uid de
- * empleado en `id_taller` seguira siendo invisible para
- * `ReparacionRepository` (que consulta por `idTallerEfectivo`, el uid del
- * dueño) hasta que exista un backfill.
+ * RONDA 4: el valor resuelto es ahora el que se usa en TODO el flujo de
+ * apertura — el dedup por vehiculo+taller, el `id_taller` del ticket y el
+ * `talleres_vinculados` del vehiculo. Antes solo se usaba para la
+ * comprobacion de vinculo y el ticket guardaba el crudo, lo que dejaba
+ * tickets invisibles para el cliente entero (ver
+ * `construirTicketReparacion`).
  *
  * @param {FirebaseFirestore.Firestore} db
  * @param {string} idTaller
@@ -204,6 +258,28 @@ async function existeTicketAbiertoParaVehiculo(db, { idVehiculo, idTaller }) {
 }
 
 /**
+ * ¿El vehiculo de la cotizacion es del cliente al que la cotizacion va
+ * dirigida?
+ *
+ * Es la unica autorizacion que hace falta para abrir el ticket, porque el
+ * trigger ya solo corre cuando `estado` paso a 'aceptada' y `firestore.rules`
+ * reserva ese cambio al propio `id_propietario`: si esto es cierto, el dueño
+ * del coche acepto en persona una cotizacion de este taller.
+ *
+ * Sustituye a `vehiculoVinculadoOWalkIn`, que era circular (ver el comentario
+ * en `abrirTicketDeReparacion`).
+ *
+ * @param {?object} vehiculo
+ * @param {object} cotizacion
+ * @returns {boolean}
+ */
+function vehiculoDelClienteDeLaCotizacion(vehiculo, cotizacion) {
+  const duenoVehiculo = (vehiculo && vehiculo.id_propietario) || '';
+  const clienteCotizacion = cotizacion.id_propietario || '';
+  return duenoVehiculo !== '' && duenoVehiculo === clienteCotizacion;
+}
+
+/**
  * Abre el ticket de reparacion para una cotizacion recien aceptada.
  *
  * Devuelve el id del ticket creado, o `null` si no habia nada que crear
@@ -225,13 +301,26 @@ async function abrirTicketDeReparacion(db, { cotizacionId, antes, despues, ahora
   const existente = await ref.get();
   if (existente.exists) return null;
 
+  // FIX 2 (Ronda 2): resolver id_taller al uid del DUEÑO. Los creadores de
+  // `cotizaciones` anteriores a ese fix escribian el uid de la SESION, que
+  // para un empleado es el suyo propio, mientras que todo lo demas
+  // (`talleres_vinculados`, las consultas de `reparaciones`, `actuaPorTaller`)
+  // habla en uids de dueño.
+  //
+  // RONDA 4: se resuelve AQUI, antes del dedup, y no justo antes de construir
+  // el ticket. El dedup preguntaba por el id crudo, asi que una cotizacion
+  // legacy con uid de empleado no veia el ticket que el taller ya tenia
+  // abierto para ese mismo coche y abria un segundo ticket paralelo — el caso
+  // exacto que `existeTicketAbiertoParaVehiculo` existe para impedir.
+  const idTallerResuelto = await resolverIdTallerPropietario(db, despues.id_taller);
+
   // Hallazgo 2: dedup por vehiculo+taller, no solo por cotizacion. Si ya hay
   // una visita en curso para este vehiculo en este taller, esta aceptacion
   // no abre un segundo ticket paralelo.
-  if (despues.id_vehiculo && despues.id_taller) {
+  if (despues.id_vehiculo && idTallerResuelto) {
     const yaAbierto = await existeTicketAbiertoParaVehiculo(db, {
       idVehiculo: despues.id_vehiculo,
-      idTaller: despues.id_taller,
+      idTaller: idTallerResuelto,
     });
     if (yaAbierto) return null;
   }
@@ -247,7 +336,14 @@ async function abrirTicketDeReparacion(db, { cotizacionId, antes, despues, ahora
         `vehiculo (${despues.id_vehiculo || 'sin id_vehiculo'}) no existe; ` +
         'no se abrio ningun ticket.'
     );
-    return null;
+    throw new ErrorTicketNoAplicable(
+      despues.id_vehiculo
+        ? 'El vehículo de esta cotización ya no existe, así que no se pudo ' +
+          'abrir el ticket de servicio.'
+        : 'Esta cotización no está asociada a ningún vehículo, así que no ' +
+          'puede abrir un ticket de servicio. Pídele al cliente una ' +
+          'cotización nueva desde su vehículo.'
+    );
   }
 
   // Revision de rama completa (hallazgo C1): este trigger es el UNICO
@@ -257,29 +353,38 @@ async function abrirTicketDeReparacion(db, { cotizacionId, antes, despues, ahora
   // firestore.rules, match /cotizaciones), asi que sin esto cualquier
   // mecanico podia redactar una cotizacion sobre el vehiculo de un
   // desconocido, aceptarsela a si mismo (antes de la Tarea de reglas 1a) y
-  // que este trigger le abriera el ticket igual. Se reutiliza
-  // `vehiculoVinculadoOWalkIn`, el mismo predicado que ya protege el
-  // callable manual `iniciarReparacionPorVehiculo`, para no mantener dos
-  // copias de la misma regla de autorizacion.
-  // FIX 2 (Ronda 2): resolver id_taller al uid del DUEÑO antes de comparar
-  // contra `talleres_vinculados` (que siempre guarda uids de dueño, nunca de
-  // empleado). Ver el comentario de `resolverIdTallerPropietario`.
-  const idTallerResuelto = await resolverIdTallerPropietario(db, despues.id_taller);
-  if (!vehiculoVinculadoOWalkIn(vehiculo.talleres_vinculados, idTallerResuelto)) {
+  // que este trigger le abriera el ticket igual.
+  //
+  // RONDA 3 — lo que autoriza es el CONSENTIMIENTO DEL DUEÑO, no
+  // `talleres_vinculados`. Este bloque exigia `vehiculoVinculadoOWalkIn`, y
+  // esa lista solo la escribe `requestReviewOnServiceComplete`, es decir al
+  // TERMINAR un servicio. La condicion era circular: para poder trabajar
+  // habia que haber trabajado ya. Solo pasaba el caso walk-in (lista vacia,
+  // el primer taller de la vida del coche); cualquier segundo taller lanzaba
+  // ErrorAutorizacionPermanente y no abria ticket JAMAS, mientras el cliente
+  // veia su cotizacion en "aceptada" y la tarjeta le decia al mecanico que
+  // recibiera el vehiculo. El flujo central del negocio quedaba cerrado.
+  //
+  // El chequeo que lo sustituye cubre el mismo ataque sin la circularidad: el
+  // vehiculo tiene que pertenecer al cliente al que va dirigida la cotizacion,
+  // y solo ese cliente puede moverla a 'aceptada' (firestore.rules,
+  // /cotizaciones update — invariante A1 quien-propone-no-resuelve). Se abre
+  // ticket si y solo si el dueño del coche acepto una cotizacion de este
+  // taller, que es una autorizacion mas fuerte que haber sido atendido antes.
+  if (!vehiculoDelClienteDeLaCotizacion(vehiculo, despues)) {
     // No silenciar: esta NO es una cotizacion malformada, es un intento de
-    // abrir un ticket sobre un vehiculo vinculado a OTRO taller. `console.error`
-    // (en vez del `console.warn` de arriba) para que quede visible como fallo,
-    // y el trigger relanza el error para que quede registrado como invocacion
-    // fallida (ver el `catch` de `onCotizacionAceptada` en functions/index.js).
+    // abrir un ticket sobre el vehiculo de un tercero. `console.error` (en vez
+    // del `console.warn` de arriba) para que quede visible como fallo, y el
+    // trigger no reintenta (ver ErrorAutorizacionPermanente).
     console.error(
-      `onCotizacionAceptada: cotizacion ${cotizacionId} aceptada por el ` +
-        `taller ${despues.id_taller} (resuelto: ${idTallerResuelto}), pero ese ` +
-        `taller no esta vinculado al vehiculo ${despues.id_vehiculo}; no se ` +
-        'abrio ningun ticket.'
+      `onCotizacionAceptada: la cotizacion ${cotizacionId} dice ser del ` +
+        `cliente ${despues.id_propietario || 'sin id_propietario'}, pero el ` +
+        `vehiculo ${despues.id_vehiculo} es de ${vehiculo.id_propietario || 'nadie'}; ` +
+        'no se abrio ningun ticket.'
     );
     throw new ErrorAutorizacionPermanente(
-      `Taller ${despues.id_taller} no vinculado al vehiculo ${despues.id_vehiculo}; ` +
-        `no se abre ticket para la cotizacion ${cotizacionId}.`
+      `La cotizacion ${cotizacionId} no corresponde al dueño del vehiculo ` +
+        `${despues.id_vehiculo}; no se abre ticket.`
     );
   }
 
@@ -287,6 +392,7 @@ async function abrirTicketDeReparacion(db, { cotizacionId, antes, despues, ahora
     cotizacionId,
     cotizacion: despues,
     vehiculo,
+    idTaller: idTallerResuelto,
     ahora,
   });
   if (!ticket) {
@@ -295,9 +401,26 @@ async function abrirTicketDeReparacion(db, { cotizacionId, antes, despues, ahora
         'ancla a vehiculo, taller y propietario a la vez; no se abrio ' +
         'ningun ticket.'
     );
-    return null;
+    throw new ErrorTicketNoAplicable(
+      'A esta cotización le faltan datos para abrir el ticket de servicio ' +
+        '(vehículo, taller o propietario). Pídele al cliente una cotización ' +
+        'nueva desde su vehículo.'
+    );
   }
 
+  // RONDA 5: aceptar la cotizacion abre el ticket y NADA MAS. Hasta aqui
+  // tambien escribia `vehiculos.talleres_vinculados`, es decir le daba al
+  // taller acceso permanente e irrevocable a la ficha del coche, su galeria,
+  // sus alertas y su historial de mantenimientos — desde antes de que el coche
+  // llegara y para siempre despues de que se fuera. El vinculo pasa a seguir a
+  // la POSESION del vehiculo: se otorga al recibirlo y se revoca al cerrar el
+  // ticket (ver `src/vinculoTaller.js`).
+  //
+  // El ticket nace por tanto SIN que el taller pueda leer todavia el vehiculo.
+  // Es intencionado y esta cubierto: la tarjeta del Kanban se pinta solo con
+  // datos del propio ticket (la placa va denormalizada aqui abajo), y recibir
+  // el vehiculo es un callable server-side que otorga el vinculo en la misma
+  // escritura atomica.
   await ref.set(ticket);
   return ref.id;
 }
@@ -305,10 +428,13 @@ async function abrirTicketDeReparacion(db, { cotizacionId, antes, despues, ahora
 module.exports = {
   PREFIJO_TICKET,
   ESTADOS_TICKET_CERRADO,
+  ESTADOS_VEHICULO_EN_TALLER,
   ErrorAutorizacionPermanente,
+  ErrorTicketNoAplicable,
   idTicketDeCotizacion,
   debeAbrirTicket,
   construirTicketReparacion,
+  vehiculoDelClienteDeLaCotizacion,
   existeTicketAbiertoParaVehiculo,
   resolverIdTallerPropietario,
   abrirTicketDeReparacion,

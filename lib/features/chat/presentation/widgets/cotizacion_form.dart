@@ -188,7 +188,10 @@ class CotizacionItemsForm extends StatelessWidget {
                     labelText: 'Cantidad',
                     isDense: true,
                   ),
-                  keyboardType: TextInputType.number,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: cantidadInputFormatters,
                   validator: (v) => double.tryParse(v?.trim() ?? '') == null
                       ? 'Inválido'
                       : null,

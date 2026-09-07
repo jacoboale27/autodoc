@@ -1156,7 +1156,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String chatAdjuntoPreviewInfo(String nombre, String tamano) {
-    return '$nombre · $tamano MB';
+    return '$nombre · $tamano';
   }
 
   @override

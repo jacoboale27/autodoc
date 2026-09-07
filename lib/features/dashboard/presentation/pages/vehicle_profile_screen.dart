@@ -33,6 +33,7 @@ import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
+import 'package:autodoc/features/dashboard/presentation/widgets/talleres_con_acceso_card.dart';
 
 class VehicleProfileScreen extends StatefulWidget {
   final String vehiculoId;
@@ -145,6 +146,12 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                     ),
                     const SizedBox(height: AppSpacing.xxl),
                     _buildDocumentationStatus(vehicle, colors),
+                    const SizedBox(height: AppSpacing.xxl),
+                    // Quién puede ver esta ficha, y el botón para retirarlo.
+                    // Va aquí, junto a la documentación y antes de las
+                    // acciones rápidas, porque es información sobre el
+                    // vehículo y no una acción sobre él.
+                    TalleresConAccesoCard(vehicle: vehicle),
                     const SizedBox(height: AppSpacing.xxl),
                     _buildQuickActions(vehicle, colors),
                   ],

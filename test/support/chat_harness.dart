@@ -85,6 +85,7 @@ class FakeChatProvider extends ChangeNotifier implements ChatProvider {
     List<double>? beneficios,
     this.isLoading = false,
     this.error,
+    this.conversacionesCargadas = true,
   }) : _conversaciones = conversaciones ?? const [],
        _mensajes = mensajes ?? const [],
        _beneficios = beneficios ?? const [];
@@ -106,6 +107,12 @@ class FakeChatProvider extends ChangeNotifier implements ChatProvider {
 
   @override
   List<ConversacionModel> get conversaciones => _conversaciones;
+
+  /// Por defecto `true`: los tests que montan la bandeja afirman sobre su
+  /// contenido ya cargado. `conversacionesCargadas: false` cubre el caso de
+  /// la carga inicial, que antes se confundía con "no hay nada".
+  @override
+  final bool conversacionesCargadas;
   @override
   List<MensajeModel> get mensajesActuales => _mensajes;
 

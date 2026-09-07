@@ -393,3 +393,67 @@ describe('cotizaciones create (FIX 1: ataque de auto-aceptacion en dos escritura
     );
   });
 });
+
+describe('cotizaciones: la cotizacion es del TALLER, no del operario (ronda 4)', () => {
+  // En un taller con empleados, quien redacta la cotizacion y quien cierra el
+  // servicio casi nunca son la misma persona. Las reglas trataban la
+  // cotizacion como propiedad del uid que la escribio, y eso rompia los dos
+  // extremos del flujo: el resto del taller no podia LEERLA (la ficha publica
+  // del vehiculo les decia que no habia cotizacion aceptada) ni marcarla
+  // 'finalizada' al cerrar el servicio.
+
+  test('un EMPLEADO del taller puede leer la cotizacion que escribio el dueño', async () => {
+    await seedCotizacion();
+    const db = await withRole(env, UIDS.empleado1, 'Mecanico', {
+      id_taller_propietario: UIDS.taller1,
+    });
+    await assertSucceeds(db.collection('cotizaciones').doc('c1').get());
+  });
+
+  test('un mecanico de OTRO taller sigue sin poder leerla', async () => {
+    await seedCotizacion();
+    const db = await withRole(env, UIDS.empleado2, 'Mecanico', {
+      id_taller_propietario: UIDS.taller2,
+    });
+    await assertFails(db.collection('cotizaciones').doc('c1').get());
+  });
+
+  test('el DUEÑO puede finalizar la cotizacion que redacto su empleado', async () => {
+    // Espejo del caso real: InitiateServiceScreen marca 'finalizada' con el
+    // uid de quien cierra el servicio. Con la regla vieja
+    // (`id_mecanico == auth.uid`) esto moria en permission-denied DESPUES de
+    // haber registrado ya el servicio, y el ticket nunca llegaba a
+    // 'listo_para_entrega'.
+    await seed(env, async (s) => {
+      await s.collection('cotizaciones').doc('c2').set({
+        id_propietario: UIDS.owner1,
+        id_mecanico: UIDS.empleado1,
+        id_taller: UIDS.taller1,
+        items: [{ material: 'Aceite', cantidad: 1, costo: 20 }],
+        estado: 'aceptada',
+      });
+    });
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertSucceeds(
+      db.collection('cotizaciones').doc('c2').update({ estado: 'finalizada' }),
+    );
+  });
+
+  test('un mecanico de otro taller NO puede finalizarla', async () => {
+    await seedCotizacion();
+    const db = await withRole(env, UIDS.taller2, 'Taller');
+    await assertFails(
+      db.collection('cotizaciones').doc('c1').update({ estado: 'finalizada' }),
+    );
+  });
+
+  test('el taller sigue sin poder ACEPTAR su propia cotizacion (invariante A1)', async () => {
+    // El ensanche de arriba no puede abrir la puerta que la Ronda 2 cerro:
+    // quien propone no resuelve.
+    await seedCotizacion();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db.collection('cotizaciones').doc('c1').update({ estado: 'aceptada' }),
+    );
+  });
+});

@@ -338,6 +338,34 @@ class VehicleProvider with ChangeNotifier {
     }
   }
 
+  /// El propietario retira el acceso de un taller a la ficha del vehículo.
+  ///
+  /// Contraparte de [confirmarVinculoTaller]: aquella concede, esta retira.
+  /// Ver `VehicleService.revocarAccesoTaller` para por qué el consentimiento
+  /// tiene que ser revocable por su titular.
+  Future<bool> revocarAccesoTaller(String vehiculoId, String tallerId) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _vehicleService.revocarAccesoTaller(vehiculoId, tallerId);
+      // Se refresca por `id_propietario` del vehículo tocado y no del
+      // seleccionado: esta acción se puede lanzar desde la ficha de cualquier
+      // vehículo de la lista, no solo del que esté "seleccionado".
+      final tocado = _vehicles
+          .where((v) => v.idVehiculo == vehiculoId)
+          .firstOrNull;
+      if (tocado != null) {
+        await fetchVehicles(tocado.idPropietario);
+      }
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      return false;
+    }
+  }
+
   Future<VehicleModel?> findVehicleByPlate(String plate) async {
     _setLoading(true);
     _setError(null);
@@ -360,6 +388,14 @@ class VehicleProvider with ChangeNotifier {
   /// desactualizada en datos legados, el id es la clave exacta que ya trae
   /// el ticket (`ReparacionModel.idVehiculo`). `VehicleSearchScreen`
   /// (A4a, "Mis servicios") la usa por eso en vez de buscar por placa.
+  ///
+  /// Devuelve `null` SOLO cuando el vehículo no existe, y **relanza** si la
+  /// lectura falla. Antes devolvía `null` en los dos casos, y quien llamaba
+  /// no podía decir si el propietario había borrado el coche o si las reglas
+  /// le estaban negando la ficha — dos situaciones con salidas distintas
+  /// para el taller. La revisión adversarial encontró las dos filas de "Mis
+  /// Servicios" reales cayendo cada una por un motivo diferente y las dos
+  /// con el mismo mensaje genérico (o con ninguno).
   Future<VehicleModel?> findVehicleById(String idVehiculo) async {
     _setLoading(true);
     _setError(null);
@@ -373,7 +409,7 @@ class VehicleProvider with ChangeNotifier {
     } catch (e) {
       _setError(e.toString());
       _setLoading(false);
-      return null;
+      rethrow;
     }
   }
 

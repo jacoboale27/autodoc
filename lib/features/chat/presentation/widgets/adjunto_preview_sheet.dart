@@ -35,8 +35,20 @@ class AdjuntoPreviewSheet extends StatelessWidget {
   final Uint8List bytes;
   final String nombre;
 
-  String get _tamanoEnMB =>
-      (bytes.lengthInBytes / (1024 * 1024)).toStringAsFixed(1);
+  /// Tamano con la unidad que le corresponde al archivo, no siempre en MB.
+  ///
+  /// Antes se formateaba en MB con un decimal fijo, asi que todo lo que
+  /// pesara menos de ~50 KB —la mayoria de las fotos ya comprimidas que pasan
+  /// por aqui— se anunciaba como "0.0 MB", que se lee como un archivo vacio
+  /// justo en la pantalla cuyo trabajo es dar confianza antes de enviar.
+  String get _tamanoLegible {
+    final bytesTotales = bytes.lengthInBytes;
+    if (bytesTotales < 1024) return '$bytesTotales B';
+    if (bytesTotales < 1024 * 1024) {
+      return '${(bytesTotales / 1024).round()} KB';
+    }
+    return '${(bytesTotales / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
 
   /// Abre la hoja y devuelve la acción elegida, o `null` si se cerró sin
   /// elegir ninguna (p. ej. tocando fuera).
@@ -125,7 +137,7 @@ class AdjuntoPreviewSheet extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                context.l10n.chatAdjuntoPreviewInfo(nombre, _tamanoEnMB),
+                context.l10n.chatAdjuntoPreviewInfo(nombre, _tamanoLegible),
                 style: AppTextStyles.bodySmall.copyWith(
                   color: colors.textSecondary,
                 ),

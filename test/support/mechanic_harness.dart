@@ -217,6 +217,16 @@ class FakeReparacionProvider extends ChangeNotifier
   @override
   Future<bool> cancelar(String idReparacion) async => true;
 
+  /// Cuenta las entregas para que un test pueda comprobar que el botón
+  /// "Entregar vehículo" del tablero llega hasta el provider.
+  int llamadasEntregar = 0;
+
+  @override
+  Future<bool> entregar(String idReparacion) async {
+    llamadasEntregar++;
+    return errorAlRecibir == null;
+  }
+
   @override
   void clear() {}
 }

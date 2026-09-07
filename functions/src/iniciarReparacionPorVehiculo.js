@@ -11,32 +11,23 @@
  * quedaba abierta para recibir un vehiculo sin que nadie hubiera aceptado
  * nada, justo lo que A3 prohibe.
  *
- * `verificarAperturaManual` replica, del lado servidor, las dos
- * comprobaciones que tenia la vieja regla `allow create` de /reparaciones
- * (ver el diff que la sustituyo por `if false`): vinculo del taller al
- * vehiculo (o walk-in si el vehiculo todavia no tiene ninguno vinculado) —
- * y ademas exige lo mismo que `ReparacionProvider.recibirVehiculo` exige del
- * lado cliente: una cotizacion aceptada para ese vehiculo+taller.
+ * `verificarAperturaManual` exige, del lado servidor, lo mismo que
+ * `ReparacionProvider.recibirVehiculo` exige del lado cliente: una cotizacion
+ * en estado 'aceptada' para ese vehiculo+taller.
+ *
+ * RONDA 3: antes exigia ADEMAS que el taller ya estuviera en
+ * `talleres_vinculados` del vehiculo (o que la lista estuviera vacia). Esa
+ * condicion era circular — la lista solo se escribe al TERMINAR un servicio,
+ * asi que un segundo taller no podia recibir el coche jamas — y era ademas
+ * redundante: `estado == 'aceptada'` solo lo puede poner el propio dueño del
+ * vehiculo (firestore.rules, /cotizaciones update, invariante A1), y ese es
+ * un consentimiento mas fuerte que haber sido atendido antes. Se retira aqui
+ * por el mismo motivo que en `aceptarCotizacion.js`.
  *
  * `db` se inyecta por el mismo motivo que en aceptarCotizacion.js: leer
  * `admin.firestore` dispara `ensureApp()`, lo que hace hostil stubbearlo
  * desde los tests.
  */
-
-/**
- * ¿El taller puede operar este vehiculo? Mismo criterio que la vieja regla
- * `allow create` de /reparaciones: o el vehiculo no tiene ningun taller
- * vinculado todavia (walk-in), o el taller que llama YA es uno de los
- * vinculados.
- *
- * @param {string[]} talleresVinculados
- * @param {string} idTaller
- * @returns {boolean}
- */
-function vehiculoVinculadoOWalkIn(talleresVinculados, idTaller) {
-  const lista = talleresVinculados || [];
-  return lista.length === 0 || lista.includes(idTaller);
-}
 
 /**
  * ¿Existe una cotizacion en estado 'aceptada' para este vehiculo+taller?
@@ -71,15 +62,6 @@ async function verificarAperturaManual(db, { idVehiculo, idTaller }) {
     return { ok: false, code: 'not-found', message: 'Vehículo no encontrado.' };
   }
 
-  const talleresVinculados = vehiculoDoc.data().talleres_vinculados || [];
-  if (!vehiculoVinculadoOWalkIn(talleresVinculados, idTaller)) {
-    return {
-      ok: false,
-      code: 'permission-denied',
-      message: 'Este vehículo está vinculado a otro taller.',
-    };
-  }
-
   const hayAceptada = await existeCotizacionAceptada(db, { idVehiculo, idTaller });
   if (!hayAceptada) {
     return {
@@ -95,7 +77,6 @@ async function verificarAperturaManual(db, { idVehiculo, idTaller }) {
 }
 
 module.exports = {
-  vehiculoVinculadoOWalkIn,
   existeCotizacionAceptada,
   verificarAperturaManual,
 };

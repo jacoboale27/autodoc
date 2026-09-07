@@ -171,6 +171,19 @@ class _CotizacionChatCardState extends State<CotizacionChatCard> {
         }
         return _CotizacionCardBody(
           cotizacion: cotizacion,
+          // `error_apertura_ticket` lo escribe `onCotizacionAceptada` cuando
+          // la aceptación no puede abrir ningún ticket (la cotización no
+          // ancla a un vehículo, el vehículo ya no existe, o el taller no
+          // está autorizado). El campo existía desde la ronda anterior y no
+          // lo leía nadie: el taller veía «Recibe el vehículo desde "Buscar
+          // Vehículo"» sobre una cotización que jamás iba a producir un
+          // ticket, y Buscar Vehículo le respondía que necesitaba una
+          // cotización aceptada. No va en `CotizacionModel` porque no es
+          // dato de la cotización, es el resultado de un trigger.
+          errorAperturaTicket:
+              (snapshot.data!.data()!['error_apertura_ticket']
+                      as Map<String, dynamic>?)?['mensaje']
+                  as String?,
           isMe: widget.isMe,
           isCheckingReview: _isCheckingReview,
           onAceptar: () => _actualizarEstado('aceptada'),
@@ -182,8 +195,64 @@ class _CotizacionChatCardState extends State<CotizacionChatCard> {
   }
 }
 
+/// Lo que ve el taller justo después de que el cliente acepta.
+///
+/// Tiene tres textos porque hay tres finales distintos, y antes solo había
+/// uno —«Recibe el vehículo desde "Buscar Vehículo"»— que se mostraba
+/// incluso cuando recibir el vehículo era imposible.
+class _AvisoTrasAceptar extends StatelessWidget {
+  final String? errorAperturaTicket;
+  final bool sinVehiculo;
+  final AppColors colors;
+
+  const _AvisoTrasAceptar({
+    required this.errorAperturaTicket,
+    required this.sinVehiculo,
+    required this.colors,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final error = errorAperturaTicket;
+    final esProblema = error != null || sinVehiculo;
+    final color = esProblema ? colors.error : colors.primary;
+    final texto =
+        error ??
+        (sinVehiculo
+            ? 'Esta cotización no está asociada a ningún vehículo, así que '
+                  'no abrirá un ticket de servicio. Pídele al cliente que la '
+                  'vuelva a solicitar desde su vehículo.'
+            : 'El ticket ya está abierto en Reparaciones, en "Por recibir". '
+                  'Recibe el vehículo desde ahí para continuar el servicio.');
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            esProblema ? Icons.error_outline : Icons.directions_car_outlined,
+            size: 16,
+            color: color,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(texto, style: TextStyle(fontSize: 12, color: color)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _CotizacionCardBody extends StatelessWidget {
   final CotizacionModel cotizacion;
+  final String? errorAperturaTicket;
   final bool isMe;
   final bool isCheckingReview;
   final VoidCallback onAceptar;
@@ -192,6 +261,7 @@ class _CotizacionCardBody extends StatelessWidget {
 
   const _CotizacionCardBody({
     required this.cotizacion,
+    required this.errorAperturaTicket,
     required this.isMe,
     required this.isCheckingReview,
     required this.onAceptar,
@@ -391,29 +461,10 @@ class _CotizacionCardBody extends StatelessWidget {
           ],
           if (estado == 'aceptada' && isMe) ...[
             const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: colors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.directions_car_outlined,
-                    size: 16,
-                    color: colors.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Recibe el vehículo desde "Buscar Vehículo" para finalizar este servicio.',
-                      style: TextStyle(fontSize: 12, color: colors.primary),
-                    ),
-                  ),
-                ],
-              ),
+            _AvisoTrasAceptar(
+              errorAperturaTicket: errorAperturaTicket,
+              sinVehiculo: (cotizacion.idVehiculo ?? '').isEmpty,
+              colors: colors,
             ),
           ],
           if (estado == 'finalizada' && !isMe) ...[

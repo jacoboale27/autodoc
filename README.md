@@ -219,9 +219,37 @@ flutter build appbundle --release
 
 ### Flutter Web
 
+Las claves de Firebase llegan al bundle por `--dart-define`
+(`String.fromEnvironment` en `lib/config/secrets.dart`), así que hay que
+pasarlas **una a una**:
+
 ```bash
-flutter build web --release
+flutter build web --release \
+  --dart-define=FIREBASE_WEB_API_KEY=... \
+  --dart-define=FIREBASE_APP_ID_WEB=... \
+  --dart-define=FIREBASE_PROJECT_ID=... \
+  # ...el resto de claves de .env (ver .github/workflows/ci.yml)
 ```
+
+> ⚠️ **`--dart-define-from-file=.env` no sirve aquí.** Compila **sin ningún
+> error** y produce un bundle con las claves vacías; la app arranca y muere en
+> `FirebaseError: auth/invalid-api-key` con la pantalla "No pudimos iniciar
+> AutoDoc". Si ves ese error tras un build que pasó, es esto.
+
+Para levantarla en local:
+
+```bash
+cd build/web && python -m http.server 8087
+```
+
+> ⚠️ Ábrela en **`http://localhost:8087`**, nunca en `http://127.0.0.1:8087`.
+> El App Check de la app usa reCAPTCHA Enterprise, y esa clave no admite la IP
+> como dominio: el token nunca resuelve, y Firebase Auth se queda colgado **sin
+> emitir una sola petición de red** — el login simplemente no hace nada, sin
+> error en consola. Está avisado en `lib/main.dart` (bloque de App Check).
+>
+> El servidor estático tampoco reescribe rutas, así que los enlaces profundos
+> (`/mechanic_reparaciones`) dan 404 al recargar: navega desde la raíz.
 
 ### Cloud Functions
 
@@ -234,6 +262,23 @@ firebase deploy --only functions
 ```bash
 firebase deploy --only firestore:rules,storage
 ```
+
+### ⚠️ Orden de despliegue de la ronda 6 (`entregado`)
+
+El orden **no es negociable** y el sentido único es este:
+
+1. **Functions y reglas primero.** Hasta que aterricen, el servidor no
+   reconoce `entregado` como estado cerrado: no revoca el vínculo al vehículo
+   y `recibirVehiculoDelTicket` **acepta** un ticket ya entregado, devolviendo
+   el acceso a la ficha de un coche que ya salió del taller. Verificado contra
+   producción.
+2. `node functions/backfill_tickets_cotizaciones_aceptadas.js` — dry-run,
+   luego `--apply`.
+3. `node functions/backfill_entregado.js` — dry-run, luego `--apply`. Siembra
+   `talleres_conocidos`, sin el cual el carve-out nuevo de `firestore.rules`
+   deja a los talleres con relación real sin poder registrar más servicios.
+4. **La app web al final.** `watchReparacionesActivas` filtra con `whereIn`, y
+   antes del paso 3 eso esconde del tablero todo ticket sin campo `estado`.
 
 ### Landing Web (Vercel)
 

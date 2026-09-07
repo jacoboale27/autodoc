@@ -242,9 +242,31 @@ class _ChatScreenState extends State<ChatScreen> {
       tipo: 'texto',
     );
     _controller.clear();
-    // Limpiar el texto no debe costar el foco: sin esto el teclado se cierra en
-    // movil y hay que volver a tocar la barra entre mensaje y mensaje.
-    _inputFocusNode.requestFocus();
+    _reengancharCompositor();
+  }
+
+  /// Limpiar el texto no debe costar el foco: sin esto el teclado se cierra en
+  /// movil y hay que volver a tocar la barra entre mensaje y mensaje.
+  ///
+  /// Pero pedir el foco de forma sincrona no basta, y ese fue el fallo de la
+  /// primera version: `TextInputAction.send` hace que `EditableText` cierre la
+  /// conexion de edicion de texto dentro del mismo frame. `FocusManager` agrupa
+  /// los cambios de foco al final del frame, ve que el nodo seguia siendo el
+  /// foco primario y no notifica nada, asi que `EditableText` nunca vuelve a
+  /// abrir la conexion: el campo queda con aspecto de enfocado pero sordo — en
+  /// web lo que se teclea despues se queda en el `<input>` del DOM, el
+  /// controller sigue vacio y ni Enter ni el boton Enviar hacen nada.
+  ///
+  /// Forzamos una transicion de foco de verdad: soltarlo ahora y volver a
+  /// pedirlo en el frame siguiente, que es cuando `EditableText` reabre la
+  /// conexion. El coste es un frame sin cursor; el beneficio es poder enviar
+  /// varios mensajes seguidos.
+  void _reengancharCompositor() {
+    _inputFocusNode.unfocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _inputFocusNode.requestFocus();
+    });
   }
 
   void _iniciarNuevaReserva({
@@ -605,13 +627,26 @@ class _ChatScreenState extends State<ChatScreen> {
             // Tocable solo cuando hay a dónde ir: sin receptorId (conversación
             // aún sin resolver) no hay perfil que abrir.
             if (receptorId.isEmpty) return header;
-            return InkWell(
-              key: const Key('chat_header_perfil_publico'),
-              onTap: () => context.push('/perfil_publico/$receptorId'),
-              child: Semantics(
-                button: true,
-                label: 'Ver perfil de $finalName',
-                excludeSemantics: true,
+            void abrirPerfil() => context.push('/perfil_publico/$receptorId');
+            // El `Semantics` va FUERA del `InkWell`, y con `header: false`
+            // explícito: dentro, el nodo que llegaba al lector de pantalla era
+            // el del título del `AppBar` —que `AppBar` marca como `header`— y
+            // la entrada a C3 se anunciaba como encabezado, no como control.
+            // La revisión adversarial lo encontró así: no enfocable ni
+            // activable por teclado pese a ser la única puerta al perfil
+            // público. `onTap` se declara también aquí para que la acción
+            // exista en el nodo de accesibilidad, ya que `excludeSemantics`
+            // oculta la del `InkWell` (que sigue dando el foco de teclado).
+            return Semantics(
+              container: true,
+              button: true,
+              header: false,
+              label: 'Ver perfil de $finalName',
+              onTap: abrirPerfil,
+              excludeSemantics: true,
+              child: InkWell(
+                key: const Key('chat_header_perfil_publico'),
+                onTap: abrirPerfil,
                 child: header,
               ),
             );

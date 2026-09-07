@@ -19,7 +19,6 @@
 const assert = require('assert');
 
 const {
-  vehiculoVinculadoOWalkIn,
   existeCotizacionAceptada,
   verificarAperturaManual,
 } = require('../src/iniciarReparacionPorVehiculo');
@@ -75,24 +74,6 @@ function fakeDb({ vehiculos = {}, cotizaciones = [] } = {}) {
   };
 }
 
-describe('iniciarReparacionPorVehiculo / vehiculoVinculadoOWalkIn', () => {
-  it('deja pasar el walk-in: vehiculo sin ningun taller vinculado', () => {
-    assert.strictEqual(vehiculoVinculadoOWalkIn([], 't1'), true);
-  });
-
-  it('deja pasar al taller que ya esta vinculado', () => {
-    assert.strictEqual(vehiculoVinculadoOWalkIn(['t1', 't2'], 't1'), true);
-  });
-
-  it('bloquea a un taller distinto del vinculado', () => {
-    assert.strictEqual(vehiculoVinculadoOWalkIn(['t2'], 't1'), false);
-  });
-
-  it('trata el campo ausente igual que una lista vacia', () => {
-    assert.strictEqual(vehiculoVinculadoOWalkIn(undefined, 't1'), true);
-  });
-});
-
 describe('iniciarReparacionPorVehiculo / existeCotizacionAceptada', () => {
   it('encuentra la cotizacion aceptada de ese vehiculo+taller', async () => {
     const db = fakeDb({
@@ -135,10 +116,12 @@ describe('iniciarReparacionPorVehiculo / verificarAperturaManual', () => {
     assert.strictEqual(resultado.code, 'not-found');
   });
 
-  it('falla con permission-denied si el vehiculo esta vinculado a OTRO taller', async () => {
-    // Hallazgo 1: esta es exactamente la comprobacion que la vieja regla
-    // `allow create` de /reparaciones hacia y que el callable, corriendo con
-    // Admin SDK, se saltaba por completo.
+  it('RONDA 3: un vehiculo vinculado a OTRO taller ya no bloquea la recepcion', async () => {
+    // Antes exigia ademas que el taller estuviera en `talleres_vinculados`,
+    // que solo se escribe al TERMINAR un servicio: para poder trabajar habia
+    // que haber trabajado ya, y ningun segundo taller podia recibir el coche.
+    // Lo que autoriza es la cotizacion aceptada, que solo el dueño del
+    // vehiculo puede poner en ese estado.
     const db = fakeDb({
       vehiculos: { v1: { talleres_vinculados: ['t2'] } },
       cotizaciones: [
@@ -151,8 +134,7 @@ describe('iniciarReparacionPorVehiculo / verificarAperturaManual', () => {
       idTaller: 't1',
     });
 
-    assert.strictEqual(resultado.ok, false);
-    assert.strictEqual(resultado.code, 'permission-denied');
+    assert.deepStrictEqual(resultado, { ok: true });
   });
 
   it('falla con failed-precondition si no hay cotizacion aceptada (A3)', async () => {

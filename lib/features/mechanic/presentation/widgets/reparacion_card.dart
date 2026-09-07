@@ -22,6 +22,10 @@ class ReparacionCard extends StatelessWidget {
   /// cancelar no depende de la posición en `estadosReparacion`.
   final VoidCallback? onCancelar;
 
+  /// Entrega el vehículo: lo saca del taller y el ticket del tablero. Null
+  /// oculta la acción, que es lo normal salvo en la última columna.
+  final VoidCallback? onEntregar;
+
   const ReparacionCard({
     super.key,
     required this.reparacion,
@@ -29,6 +33,7 @@ class ReparacionCard extends StatelessWidget {
     this.esUltimoEstado = false,
     this.siguienteEstadoLabel,
     this.onCancelar,
+    this.onEntregar,
   });
 
   /// Confirma antes de cancelar: es una acción destructiva e irreversible
@@ -63,6 +68,43 @@ class ReparacionCard extends StatelessWidget {
       ),
     );
     if (confirmado == true) onCancelar?.call();
+  }
+
+  /// Confirma antes de entregar, por el mismo motivo que
+  /// [_confirmarCancelar] y con más razón: entregar es lo que retira el
+  /// acceso del taller a la ficha del vehículo (`talleres_vinculados`) y saca
+  /// el ticket del tablero, y no hay ninguna acción en la interfaz que lo
+  /// deshaga — el repositorio rechaza volver a un estado del pipeline desde
+  /// uno terminal. El texto nombra el hecho físico ("se lo llevó"), no el
+  /// estado, porque es lo único que el mecánico puede comprobar mirando.
+  Future<void> _confirmarEntregar(BuildContext context) async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Entregar vehículo'),
+        content: AppDialogContent(
+          child: Text(
+            '¿El cliente ya se llevó "${reparacion.placa}"? El ticket saldrá '
+            'del tablero y tu taller dejará de tener acceso a la ficha del '
+            'vehículo.',
+          ),
+        ),
+        actions: [
+          AppButton(
+            text: 'Todavía no',
+            type: AppButtonType.text,
+            size: AppButtonSize.small,
+            onPressed: () => Navigator.pop(dialogContext, false),
+          ),
+          AppButton(
+            text: 'Entregar',
+            size: AppButtonSize.small,
+            onPressed: () => Navigator.pop(dialogContext, true),
+          ),
+        ],
+      ),
+    );
+    if (confirmado == true) onEntregar?.call();
   }
 
   @override
@@ -104,6 +146,19 @@ class ReparacionCard extends StatelessWidget {
                 size: AppButtonSize.small,
                 icon: const Icon(Icons.arrow_forward),
                 onPressed: onAvanzar,
+              ),
+            ),
+          ],
+          if (onEntregar != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: AppButton(
+                text: 'Entregar vehículo',
+                type: AppButtonType.text,
+                size: AppButtonSize.small,
+                icon: const Icon(Icons.check_circle_outline),
+                onPressed: () => _confirmarEntregar(context),
               ),
             ),
           ],

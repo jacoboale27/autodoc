@@ -55,6 +55,13 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   bool _cargando = false;
   String? _errorCarga;
 
+  /// Placa leída del propio ticket, para poder pintar algo útil cuando el
+  /// vehículo todavía NO es legible. Desde la Ronda 5 el taller no obtiene
+  /// acceso a la ficha del coche hasta que lo recibe, así que un ticket en
+  /// `pendiente_recepcion` llega aquí sin vehículo — y la placa va
+  /// denormalizada en `reparaciones`, igual que la usa la tarjeta del Kanban.
+  String? _placaTicket;
+
   final TextEditingController _kmController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _costoController = TextEditingController();
@@ -196,10 +203,35 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
         });
         return;
       }
-      final doc = await FirebaseFirestore.instance
-          .collection(FirestoreCollections.vehiculos)
-          .doc(idVehiculo)
-          .get();
+      _placaTicket = (reparacionDoc.data()?['placa'] ?? '').toString();
+      final estadoTicket = (reparacionDoc.data()?['estado'] ?? 'recibido')
+          .toString();
+
+      DocumentSnapshot<Map<String, dynamic>> doc;
+      try {
+        doc = await FirebaseFirestore.instance
+            .collection(FirestoreCollections.vehiculos)
+            .doc(idVehiculo)
+            .get();
+      } on FirebaseException catch (e) {
+        if (!mounted) return;
+        // Ronda 5: el vínculo con el vehículo se otorga al RECIBIRLO, no al
+        // aceptarse la cotización, así que un ticket que todavía espera el
+        // coche no puede leer su ficha. No es un error: es el estado normal
+        // de "Por recibir", y la salida es recibir el vehículo — que el
+        // callable hace junto con el vínculo, en una sola escritura.
+        // Sin esta rama la pantalla moría en "No se pudo cargar el vehículo
+        // del servicio" y el botón de recibir quedaba inalcanzable.
+        setState(() {
+          _cargando = false;
+          _errorCarga =
+              e.code == 'permission-denied' &&
+                  estadoTicket == 'pendiente_recepcion'
+              ? 'porRecibir'
+              : 'error';
+        });
+        return;
+      }
       if (!mounted) return;
       if (!doc.exists) {
         setState(() {
@@ -279,6 +311,37 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   /// la ruta): a diferencia de la versión provisional de la Tarea 4, ya no
   /// hace falta buscarlo por vehículo+taller ni conocer el taller efectivo
   /// del mecánico para eso.
+  /// Recibe el vehículo cuando la ficha todavía no era legible, y a
+  /// continuación la vuelve a cargar. El callable escribe la recepción y el
+  /// vínculo juntos, así que en cuanto devuelve, la lectura ya está
+  /// autorizada: no hay que esperar a ningún trigger ni recargar a mano.
+  Future<void> _recibirYCargar() async {
+    setState(() {
+      _recibiendo = true;
+      _reparacionError = null;
+    });
+    final reparacionProvider = context.read<ReparacionProvider>();
+    final recibido = await reparacionProvider.recibirVehiculoPorId(
+      widget.reparacionId,
+    );
+    if (!mounted) return;
+    if (recibido == null) {
+      setState(() {
+        _reparacionError =
+            reparacionProvider.error ??
+            'No se pudo marcar este vehículo como recibido.';
+        _recibiendo = false;
+      });
+      return;
+    }
+    setState(() {
+      _recibiendo = false;
+      _recepcionConfirmada = true;
+      _errorCarga = null;
+    });
+    await _cargarVehiculo();
+  }
+
   Future<void> _recibirVehiculo() async {
     setState(() {
       _recibiendo = true;
@@ -486,7 +549,18 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       // nació en `recibido`, ver el comentario de `_recepcionConfirmada`).
       if (mounted) {
         try {
-          await context.read<ReparacionProvider>().cambiarEstado(
+          final reparacionProvider = context.read<ReparacionProvider>();
+          // Si el ticket sigue en `pendiente_recepcion`, la recepción no ha
+          // pasado por el servidor y el taller NO tiene el vínculo al
+          // vehículo: saltar directo a `listo_para_entrega` dejaría el ticket
+          // avanzado y la ficha del coche cerrada para todo el taller, sin
+          // ningún error a la vista. Es la misma clase de fallo que tenía el
+          // botón «Avanzar» del tablero. Recibir es idempotente, así que
+          // llamarlo aquí no cuesta nada cuando ya se recibió.
+          if (!_recepcionConfirmada) {
+            await reparacionProvider.recibirVehiculoPorId(widget.reparacionId);
+          }
+          await reparacionProvider.cambiarEstado(
             widget.reparacionId,
             'listo_para_entrega',
           );
@@ -561,6 +635,14 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   Widget build(BuildContext context) {
     if (_cargando) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_errorCarga == 'porRecibir') {
+      return _PantallaPorRecibir(
+        placa: _placaTicket ?? '',
+        recibiendo: _recibiendo,
+        error: _reparacionError,
+        onRecibir: _recibirYCargar,
+      );
     }
     if (_errorCarga != null || _vehiculo == null) {
       return const MissingArgumentScreen(
@@ -1438,4 +1520,94 @@ bool requiereTareaSeleccionada({
 }) {
   if (tareasDisponibles == 0) return false;
   return tareasMarcadas == 0;
+}
+
+/// Lo que ve el mecánico cuando el ticket todavía espera el coche.
+///
+/// Existe porque desde la Ronda 5 el taller no puede leer la ficha del
+/// vehículo hasta que lo recibe: el vínculo sigue a la posesión del coche, no
+/// a la aceptación de la cotización. Sin esta pantalla, un ticket en "Por
+/// recibir" abría `MissingArgumentScreen` ("No se pudo cargar el vehículo del
+/// servicio") y el botón que precisamente resuelve la situación quedaba
+/// detrás del dato que aún no se puede leer.
+///
+/// Se pinta solo con la placa del ticket, que va denormalizada en
+/// `reparaciones` — el mismo dato con el que la tarjeta del Kanban se pinta
+/// sin leer el vehículo.
+class _PantallaPorRecibir extends StatelessWidget {
+  final String placa;
+  final bool recibiendo;
+  final String? error;
+  final Future<void> Function() onRecibir;
+
+  const _PantallaPorRecibir({
+    required this.placa,
+    required this.recibiendo,
+    required this.error,
+    required this.onRecibir,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+
+    return Scaffold(
+      backgroundColor: colors.surface,
+      appBar: AppBar(
+        backgroundColor: colors.surface,
+        title: Text(placa.isEmpty ? 'Servicio' : placa),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/mechanic_reparaciones'),
+        ),
+      ),
+      body: AppPageBody(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Icon(
+              Icons.directions_car_outlined,
+              size: 56,
+              color: colors.primary,
+            ),
+            const SizedBox(height: AppSpacing.base),
+            Text(
+              'Este vehículo todavía no ha llegado',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.titleMedium.copyWith(
+                color: colors.textPrimary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'El cliente aceptó la cotización y el ticket está abierto, pero '
+              'la ficha del coche no se abre hasta que lo recibas en el '
+              'taller. Márcalo como recibido cuando lo tengas.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+            if (error != null) ...[
+              const SizedBox(height: AppSpacing.base),
+              Text(
+                error!,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.bodySmall.copyWith(color: colors.error),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.xl),
+            AppButton(
+              text: 'Recibir vehículo',
+              icon: const Icon(Icons.login),
+              isLoading: recibiendo,
+              onPressed: recibiendo ? null : () => onRecibir(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

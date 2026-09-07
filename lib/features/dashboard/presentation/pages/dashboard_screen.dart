@@ -904,6 +904,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 color,
                 isDark,
                 subTextColor,
+                placa: alert.metadata?['placa'] as String?,
               );
             }).toList(),
           ),
@@ -911,14 +912,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  /// [placa] identifica a qué vehículo pertenece la alerta.
+  ///
+  /// Sin ella, las tres alertas genéricas (llantas, fluidos, luces) —que se
+  /// emiten una por coche— se repetían idénticas tantas veces como vehículos
+  /// tuviera el garaje, y el panel parecía estar duplicando tarjetas.
   Widget _buildAlertCard(
     IconData icon,
     String title,
     String status,
     Color statusColor,
     bool isDark,
-    Color subTextColor,
-  ) {
+    Color subTextColor, {
+    String? placa,
+  }) {
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.base),
       margin: EdgeInsets.zero,
@@ -955,6 +962,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 color: statusColor,
               ),
             ),
+            if (placa != null && placa.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.xs / 2),
+              Text(
+                placa,
+                style: AppTextStyles.labelSmall.copyWith(color: subTextColor),
+              ),
+            ],
           ],
         ),
       ),

@@ -21,6 +21,7 @@ import 'package:autodoc/features/mechanic/presentation/providers/reparacion_prov
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 import 'package:autodoc/features/mechanic/presentation/navegacion_vehiculo.dart';
 import 'package:autodoc/core/utils/plate_formatter.dart';
+import 'package:autodoc/core/utils/ui_utils.dart';
 
 class VehicleSearchScreen extends StatefulWidget {
   const VehicleSearchScreen({super.key});
@@ -140,21 +141,107 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
   /// segundo camino de navegación.
   Future<void> _abrirVehiculoDesdeReparacion(ReparacionModel reparacion) async {
     final vehicleProvider = context.read<VehicleProvider>();
-    final vehicle = await vehicleProvider.findVehicleById(
-      reparacion.idVehiculo,
-    );
-    if (!mounted) return;
-    if (vehicle == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'No se encontró el vehículo con placa ${reparacion.placa}',
-          ),
+    VehicleModel? vehicle;
+    try {
+      vehicle = await vehicleProvider.findVehicleById(reparacion.idVehiculo);
+    } catch (_) {
+      if (!mounted) return;
+      // La lectura del vehículo la denegaron las reglas. Pasa con tickets
+      // abiertos antes de que la aceptación de la cotización empezara a
+      // escribir `talleres_vinculados` (ver `abrirTicketDeReparacion`): el
+      // ticket existe y es del taller, pero la ficha del coche no es legible.
+      await _explicarTicketQueNoAbre(
+        reparacion,
+        'El ticket es tuyo, pero tu taller todavía no tiene acceso a la '
+        'ficha de este vehículo. Suele pasar con tickets abiertos antes de '
+        'que el vehículo quedara vinculado al taller. Puedes reintentar el '
+        'acceso: si el ticket sigue abierto, el servidor vuelve a otorgarlo.',
+        // Solo tiene sentido en un ticket ABIERTO: el callable rechaza los
+        // cerrados a propósito, porque volver a otorgar el vínculo sobre una
+        // visita terminada es justo el acceso permanente que este diseño
+        // elimina.
+        ofrecerReintento: !estadosReparacionCerrados.contains(
+          reparacion.estado,
         ),
       );
       return;
     }
+    if (!mounted) return;
+    if (vehicle == null) {
+      await _explicarTicketQueNoAbre(
+        reparacion,
+        'El vehículo de este ticket ya no existe: el propietario lo eliminó '
+        'de su garaje. No hay ficha que abrir; cierra el ticket desde '
+        'Reparaciones.',
+      );
+      return;
+    }
     await _abrirVehiculo(vehicle);
+  }
+
+  /// Explica por qué una fila de "Mis Servicios" no lleva a ninguna parte.
+  ///
+  /// Es un diálogo y no un `SnackBar` a propósito: la revisión adversarial
+  /// encontró las dos filas reales de esta sección sin navegación, sin aviso
+  /// y sin error en consola — un aviso flotante en una pantalla con barra
+  /// inferior se puede quedar tapado, y para una lista cuyo 100 % de filas
+  /// son callejones sin salida el silencio es el peor resultado posible: el
+  /// mecánico repite el toque creyendo que la app no responde. El diálogo es
+  /// modal, así que o se lee o no se sigue.
+  Future<void> _explicarTicketQueNoAbre(
+    ReparacionModel reparacion,
+    String motivo, {
+    bool ofrecerReintento = false,
+  }) async {
+    final reintentar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('No se puede abrir ${reparacion.placa}'),
+        content: Text(motivo),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Entendido'),
+          ),
+          if (ofrecerReintento)
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Reintentar acceso'),
+            ),
+        ],
+      ),
+    );
+    if (reintentar == true) await _reintentarAcceso(reparacion);
+  }
+
+  /// Vuelve a pedirle al servidor el vínculo al vehículo de un ticket abierto.
+  ///
+  /// `recibirVehiculoDelTicket` ya estaba escrito para esto: es idempotente y
+  /// **reasegura el vínculo aunque el ticket ya haya pasado de
+  /// `pendiente_recepcion`**, precisamente para que un ticket legado recupere
+  /// el acceso en vez de quedarse sin ficha para siempre. La capacidad existía
+  /// y no la llamaba nadie: el arreglo del botón «Avanzar» del tablero solo
+  /// enruta la PRIMERA columna, así que un ticket ya en `recibido` sin vínculo
+  /// —la revisión adversarial encontró uno así en producción— no tenía ninguna
+  /// salida desde la interfaz. El diálogo decía "sigue el servicio desde
+  /// Reparaciones", donde no hay nada que sirva.
+  Future<void> _reintentarAcceso(ReparacionModel reparacion) async {
+    final provider = context.read<ReparacionProvider>();
+    final resultado = await provider.recibirVehiculoPorId(
+      reparacion.idReparacion,
+    );
+    if (!mounted) return;
+    if (resultado == null) {
+      UiUtils.showErrorSnackbar(
+        context,
+        provider.error ?? 'No se pudo recuperar el acceso a este vehículo.',
+      );
+      return;
+    }
+    // El callable escribe recepción y vínculo en un solo lote atómico, así que
+    // en cuanto vuelve la lectura ya está autorizada: se puede abrir directo,
+    // sin esperar a ningún trigger.
+    await _abrirVehiculoDesdeReparacion(reparacion);
   }
 
   @override

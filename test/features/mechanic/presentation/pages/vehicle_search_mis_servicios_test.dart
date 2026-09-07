@@ -61,6 +61,8 @@ class _FakeReparacionProviderConLista extends FakeReparacionProvider {
     this._lista, {
     String? error,
     bool isLoading = false,
+    this.recibirDevuelve = true,
+    this.alRecibir,
   }) : _error = error,
        _isLoading = isLoading;
 
@@ -68,12 +70,29 @@ class _FakeReparacionProviderConLista extends FakeReparacionProvider {
   final String? _error;
   final bool _isLoading;
 
+  /// Que devuelve [recibirVehiculoPorId] en el reintento de acceso: `null`
+  /// simula un fallo (el callable rechaza), cualquier otra cosa un exito.
+  final bool? recibirDevuelve;
+
+  /// Efecto lateral del reintento: en produccion el callable escribe el
+  /// vinculo, asi que la siguiente lectura del vehiculo ya esta autorizada.
+  final void Function()? alRecibir;
+
+  final List<String> reintentos = [];
+
   @override
   List<ReparacionModel> get reparaciones => _lista;
   @override
   String? get error => _error;
   @override
   bool get isLoading => _isLoading;
+
+  @override
+  Future<bool?> recibirVehiculoPorId(String idReparacion) async {
+    reintentos.add(idReparacion);
+    alRecibir?.call();
+    return recibirDevuelve;
+  }
 }
 
 /// Doble de `VehicleProvider` que resuelve por `idVehiculo` desde un mapa
@@ -93,6 +112,32 @@ class _FakeVehicleProviderParaMisServicios extends FakeVehicleProvider {
   Future<VehicleModel?> findVehicleByPlate(String plate) async {
     llamadasPorPlaca++;
     return null;
+  }
+}
+
+/// Doble que reproduce la OTRA causa real: la lectura del vehiculo la
+/// deniegan las reglas. `VehicleProvider.findVehicleById` relanza en ese
+/// caso (antes devolvia `null`, indistinguible de "no existe").
+class _FakeVehicleProviderQueDeniega extends FakeVehicleProvider {
+  _FakeVehicleProviderQueDeniega() : super(const []);
+
+  /// Mutable para simular el reintento de acceso: el callable escribe el
+  /// vínculo, así que la lectura siguiente ya está autorizada.
+  bool deniega = true;
+
+  @override
+  Future<VehicleModel?> findVehicleById(String idVehiculo) async {
+    if (deniega) throw 'Error al obtener vehículo: permission-denied';
+    return VehicleModel(
+      idVehiculo: idVehiculo,
+      idPropietario: 'u1',
+      placa: 'P777777',
+      marca: 'Toyota',
+      modelo: 'Corolla',
+      anio: 2020,
+      color: 'Blanco',
+      kilometrajeActual: 1000,
+    );
   }
 }
 
@@ -320,11 +365,195 @@ void main() {
       await tester.tap(find.text('P555555'));
       await tester.pumpAndSettle();
 
+      expect(find.text('No se puede abrir P555555'), findsOneWidget);
       expect(
-        find.text('No se encontró el vehículo con placa P555555'),
+        find.textContaining('el propietario lo eliminó'),
         findsOneWidget,
+        reason: 'y dice CUAL de las dos causas es',
       );
       expect(router.state.uri.toString(), '/mechanic_search');
     },
   );
+
+  testWidgets(
+    'si las reglas niegan la ficha del vehiculo, lo explica distinto y no navega',
+    (tester) async {
+      // La otra causa real que encontro la revision adversarial, y que antes
+      // era indistinguible de la de arriba: el ticket es del taller pero
+      // `vehiculos/{id}` no es legible porque el coche nunca quedo vinculado.
+      final vehicleProvider = _FakeVehicleProviderQueDeniega();
+      final reparacionProvider = _FakeReparacionProviderConLista([
+        _reparacionFake(
+          idReparacion: 'r6',
+          idVehiculo: 'v-denegado',
+          placa: 'P676767',
+          estado: 'recibido',
+        ),
+      ]);
+
+      final router = await pumpMechanicScreen(
+        tester,
+        const VehicleSearchScreen(),
+        width: 400,
+        location: '/mechanic_search',
+        disableAnimations: true,
+        rutasExtra: const [
+          '/initiate_service/:reparacionId',
+          '/vehiculo_publico/:vehiculoId',
+        ],
+        extraProviders: [
+          ChangeNotifierProvider<ReparacionProvider>.value(
+            value: reparacionProvider,
+          ),
+          ChangeNotifierProvider<VehicleProvider>.value(value: vehicleProvider),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('P676767'));
+      await tester.tap(find.text('P676767'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('No se puede abrir P676767'), findsOneWidget);
+      expect(find.textContaining('todavía no tiene acceso'), findsOneWidget);
+      expect(router.state.uri.toString(), '/mechanic_search');
+    },
+  );
+
+  testWidgets(
+    'el ticket sin vinculo ofrece REINTENTAR ACCESO, y el reintento abre la '
+    'ficha',
+    (tester) async {
+      // `recibirVehiculoDelTicket` ya estaba escrito para esto: es idempotente
+      // y reasegura el vinculo aunque el ticket haya pasado de
+      // `pendiente_recepcion`. La capacidad existia y no la llamaba nadie, asi
+      // que un ticket ya en `recibido` sin vinculo — la revision adversarial
+      // encontro uno asi en produccion — no tenia ninguna salida: el dialogo
+      // solo decia "Entendido" y aconsejaba ir a Reparaciones, donde no hay
+      // nada que sirva.
+      final vehicleProvider = _FakeVehicleProviderQueDeniega();
+      final reparacionProvider = _FakeReparacionProviderConLista([
+        _reparacionFake(
+          idReparacion: 'r7',
+          idVehiculo: 'v-denegado',
+          placa: 'P777777',
+          estado: 'recibido',
+        ),
+      ], alRecibir: () => vehicleProvider.deniega = false);
+
+      final router = await pumpMechanicScreen(
+        tester,
+        const VehicleSearchScreen(),
+        width: 400,
+        location: '/mechanic_search',
+        disableAnimations: true,
+        rutasExtra: const [
+          '/initiate_service/:reparacionId',
+          '/vehiculo_publico/:vehiculoId',
+        ],
+        extraProviders: [
+          ChangeNotifierProvider<ReparacionProvider>.value(
+            value: reparacionProvider,
+          ),
+          ChangeNotifierProvider<VehicleProvider>.value(value: vehicleProvider),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('P777777'));
+      await tester.tap(find.text('P777777'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Reintentar acceso'));
+      await tester.pumpAndSettle();
+
+      expect(reparacionProvider.reintentos, ['r7']);
+      // Y no se queda en el dialogo: el callable escribe recepcion y vinculo
+      // en un solo lote, asi que al volver la ficha ya es legible.
+      expect(router.state.uri.toString(), isNot('/mechanic_search'));
+    },
+  );
+
+  testWidgets('un ticket CERRADO no ofrece reintentar acceso', (tester) async {
+    // El callable rechaza los tickets cerrados a proposito: volver a otorgar
+    // el vinculo sobre una visita terminada es justo el acceso permanente que
+    // este diseno elimina. Ofrecer el boton seria prometer algo que el
+    // servidor va a negar.
+    final vehicleProvider = _FakeVehicleProviderQueDeniega();
+    final reparacionProvider = _FakeReparacionProviderConLista([
+      _reparacionFake(
+        idReparacion: 'r8',
+        idVehiculo: 'v-denegado',
+        placa: 'P888888',
+        estado: 'entregado',
+      ),
+    ]);
+
+    await pumpMechanicScreen(
+      tester,
+      const VehicleSearchScreen(),
+      width: 400,
+      location: '/mechanic_search',
+      disableAnimations: true,
+      rutasExtra: const [
+        '/initiate_service/:reparacionId',
+        '/vehiculo_publico/:vehiculoId',
+      ],
+      extraProviders: [
+        ChangeNotifierProvider<ReparacionProvider>.value(
+          value: reparacionProvider,
+        ),
+        ChangeNotifierProvider<VehicleProvider>.value(value: vehicleProvider),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('P888888'));
+    await tester.tap(find.text('P888888'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No se puede abrir P888888'), findsOneWidget);
+    expect(find.text('Reintentar acceso'), findsNothing);
+    expect(reparacionProvider.reintentos, isEmpty);
+  });
+
+  testWidgets('si el reintento falla, lo dice y no navega', (tester) async {
+    final vehicleProvider = _FakeVehicleProviderQueDeniega();
+    final reparacionProvider = _FakeReparacionProviderConLista([
+      _reparacionFake(
+        idReparacion: 'r9',
+        idVehiculo: 'v-denegado',
+        placa: 'P999999',
+        estado: 'recibido',
+      ),
+    ], recibirDevuelve: null);
+
+    final router = await pumpMechanicScreen(
+      tester,
+      const VehicleSearchScreen(),
+      width: 400,
+      location: '/mechanic_search',
+      disableAnimations: true,
+      rutasExtra: const [
+        '/initiate_service/:reparacionId',
+        '/vehiculo_publico/:vehiculoId',
+      ],
+      extraProviders: [
+        ChangeNotifierProvider<ReparacionProvider>.value(
+          value: reparacionProvider,
+        ),
+        ChangeNotifierProvider<VehicleProvider>.value(value: vehicleProvider),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('P999999'));
+    await tester.tap(find.text('P999999'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Reintentar acceso'));
+    await tester.pump();
+
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(router.state.uri.toString(), '/mechanic_search');
+  });
 }

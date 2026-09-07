@@ -12,6 +12,9 @@ import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/missing_argument_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 
 /// Ficha pública de un vehículo para un mecánico **sin** ticket de reparación
 /// aceptado (A3/B2): solo nombre, placa, kilometraje e imagen. Ninguna
@@ -42,11 +45,68 @@ class _VehiclePublicViewScreenState extends State<VehiclePublicViewScreen> {
   bool _cargando = false;
   bool _errorCarga = false;
 
+  /// ¿Hay ya una cotización aceptada de este taller para este vehículo?
+  /// `null` mientras se comprueba.
+  ///
+  /// Sin esta distinción, el aviso de bloqueo tenía un solo texto para dos
+  /// situaciones opuestas, y eso cerraba un bucle sin salida que la revisión
+  /// adversarial reprodujo entero: la tarjeta de la cotización aceptada le
+  /// dice al mecánico «Recibe el vehículo desde "Buscar Vehículo"», y Buscar
+  /// Vehículo le respondía «Necesitas una cotización aceptada» cuando SÍ
+  /// existía una. Ni diagnóstico ni salida. Aquí se separan: "todavía no hay
+  /// cotización aceptada" (y se ofrece contactar al propietario) frente a
+  /// "hay una, pero el ticket aún no se ha abierto" (y se ofrece ir al
+  /// tablero, donde aparecerá).
+  bool? _hayCotizacionAceptada;
+
   @override
   void initState() {
     super.initState();
     _vehiculo = widget.vehiculoPrecargado;
-    if (_vehiculo == null) _cargarVehiculo();
+    if (_vehiculo == null) {
+      _cargarVehiculo();
+    } else {
+      _comprobarCotizacionAceptada();
+    }
+  }
+
+  /// Se filtra por `id_taller`, no por `id_mecanico == uid`.
+  ///
+  /// La pregunta que esta pantalla hace es «¿tiene MI TALLER una cotización
+  /// aceptada de este vehículo?», y una cotización pertenece al taller, no al
+  /// operario que la redactó. Filtrar por el uid de la sesión respondía otra
+  /// pregunta: en un taller con empleados, el aviso decía «este vehículo no
+  /// tiene una cotización aceptada en tu taller» a cualquiera que no fuera
+  /// quien la escribió — al dueño incluida. Se filtraba así porque
+  /// `firestore.rules` no admitía otra consulta de lista; la Ronda 4 añadió
+  /// `actuaPorTaller(id_taller)` al `allow read` de /cotizaciones justo para
+  /// esto.
+  ///
+  /// Un fallo aquí no rompe la pantalla: se queda en el aviso genérico, que
+  /// es lo que había antes.
+  Future<void> _comprobarCotizacionAceptada() async {
+    final vehiculo = _vehiculo;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (vehiculo == null || uid == null) return;
+    if (!mounted) return;
+    // `idTallerEfectivo`: el uid del DUEÑO del taller, igual que el resto del
+    // módulo (`vehicle_search_screen.dart`, `initiate_service_screen.dart`).
+    final idTaller =
+        context.read<UserProfileProvider>().userData?.idTallerEfectivo ?? uid;
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('cotizaciones')
+          .where('id_vehiculo', isEqualTo: vehiculo.idVehiculo)
+          .where('id_taller', isEqualTo: idTaller)
+          .where('estado', isEqualTo: 'aceptada')
+          .limit(1)
+          .get();
+      if (!mounted) return;
+      setState(() => _hayCotizacionAceptada = snap.docs.isNotEmpty);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _hayCotizacionAceptada = null);
+    }
   }
 
   /// Igual que `VehicleProfileScreen`/`InitiateServiceScreen`: `extra` es
@@ -75,6 +135,7 @@ class _VehiclePublicViewScreenState extends State<VehiclePublicViewScreen> {
         _vehiculo = VehicleModel.fromMap(doc.data()!, doc.id);
         _cargando = false;
       });
+      _comprobarCotizacionAceptada();
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -161,37 +222,87 @@ class _VehiclePublicViewScreenState extends State<VehiclePublicViewScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xl),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(AppSpacing.base),
-                  decoration: BoxDecoration(
-                    color: colors.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(
-                      color: colors.primary.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.info_outline, color: colors.primary),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Text(
-                          'Necesitas una cotización aceptada por el '
-                          'propietario para trabajar en este vehículo.',
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: colors.primary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                _AvisoDeBloqueo(
+                  colors: colors,
+                  hayCotizacionAceptada: _hayCotizacionAceptada,
                 ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// El aviso que explica POR QUÉ esta pantalla no ofrece ninguna acción.
+///
+/// Tiene dos textos y dos salidas porque hay dos causas distintas (ver
+/// `_hayCotizacionAceptada`). Mientras la comprobación está en vuelo —o si
+/// falló— se mantiene el texto genérico anterior: es el peor caso, no el
+/// caso por defecto.
+class _AvisoDeBloqueo extends StatelessWidget {
+  final AppColors colors;
+  final bool? hayCotizacionAceptada;
+
+  const _AvisoDeBloqueo({
+    required this.colors,
+    required this.hayCotizacionAceptada,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final conCotizacion = hayCotizacionAceptada == true;
+    final texto = conCotizacion
+        ? 'Este vehículo ya tiene una cotización aceptada en tu taller, pero '
+              'el ticket todavía no se ha abierto. El ticket se abre solo al '
+              'aceptarse la cotización y aparece en Reparaciones, en '
+              '"Por recibir". Si no aparece ahí, no lo recibas desde aquí: '
+              'avisa al soporte con la placa.'
+        : 'Necesitas una cotización aceptada por el propietario para '
+              'trabajar en este vehículo.';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.base),
+      decoration: BoxDecoration(
+        color: colors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: colors.primary.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                conCotizacion ? Icons.hourglass_empty : Icons.info_outline,
+                color: colors.primary,
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  texto,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: colors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (conCotizacion) ...[
+            const SizedBox(height: AppSpacing.md),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () => context.go('/mechanic_reparaciones'),
+                icon: const Icon(Icons.dashboard_customize_outlined, size: 18),
+                label: const Text('Ir a Reparaciones'),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

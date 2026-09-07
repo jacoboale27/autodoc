@@ -629,7 +629,7 @@
   "chatRequestRating": "Solicitar Calificación",
   "chatUploadImageError": "Error al subir imagen",
   "chatAdjuntoPreviewTitulo": "Enviar imagen",
-  "chatAdjuntoPreviewInfo": "{nombre} · {tamano} MB",
+  "chatAdjuntoPreviewInfo": "{nombre} · {tamano}",
   "@chatAdjuntoPreviewInfo": {
     "placeholders": {
       "nombre": {

@@ -284,6 +284,27 @@ class ReparacionProvider extends ChangeNotifier {
     }
   }
 
+  /// Marca que el coche salió del taller: transición a
+  /// [estadoReparacionEntregado], el estado terminal.
+  ///
+  /// Es la contraparte de [recibirVehiculoPorId]: aquella marca la llegada
+  /// física del coche y otorga el vínculo al vehículo, esta marca la salida y
+  /// lo revoca (trigger `revocarVinculoAlCerrarTicket`). Entre las dos está
+  /// todo lo que el taller puede hacer con el coche.
+  ///
+  /// Devuelve `true` si se entregó. Un `false` deja el motivo en [error]: el
+  /// repositorio rechaza entregar un coche que no está en el taller (ver
+  /// [ReparacionRepository.cambiarEstado]), que es lo que pasa si se toca dos
+  /// veces el botón antes de que el tablero se refresque.
+  Future<bool> entregar(String idReparacion) async {
+    try {
+      await cambiarEstado(idReparacion, estadoReparacionEntregado);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Vacia el estado por usuario y **cancela la suscripcion viva por
   /// taller**. Se llama al cerrar sesion (`clearUserScopedProviders`): sin
   /// esto, el stream del taller saliente sigue emitiendo y el siguiente

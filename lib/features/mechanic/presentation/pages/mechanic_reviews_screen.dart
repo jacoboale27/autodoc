@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/constants/firestore_collections.dart';
 import 'package:autodoc/core/models/review_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
@@ -34,8 +33,6 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
   ReviewSortOrder _orden = ReviewSortOrder.recientes;
   late final ReviewService _reviewService;
 
-  FirebaseFirestore get _db => widget.firestore ?? FirebaseFirestore.instance;
-
   @override
   void initState() {
     super.initState();
@@ -56,16 +53,25 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
 
     return MechanicScaffold(
       title: 'Mis Reseñas',
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: _db
-            .collection(FirestoreCollections.usuarios)
-            .doc(tallerId)
-            .snapshots(),
-        builder: (context, userSnap) {
-          final tallerData = userSnap.data?.data() as Map<String, dynamic>?;
-          final promedio =
-              tallerData?['calificacion_promedio']?.toDouble() ?? 0.0;
-          final total = tallerData?['total_resenias'] ?? 0;
+      // Un unico stream para toda la pantalla, y a proposito.
+      //
+      // La cabecera leia el contador denormalizado
+      // `usuarios/{id}.total_resenias` mientras el histograma contaba la lista
+      // real, asi que los dos numeros se contradecian en la misma pantalla —
+      // la revision adversarial vio «9 reseñas de clientes» sobre un
+      // histograma que sumaba 5. Uno de los dos mentia, y el que manda es la
+      // lista: es la que el taller puede abrir, ordenar y responder. El
+      // promedio se calcula de la misma lista por el mismo motivo.
+      body: StreamBuilder<List<ReviewModel>>(
+        stream: _reviewService.watchReviewsForTaller(tallerId),
+        builder: (context, snapshot) {
+          final reviewsSinOrdenar = snapshot.data ?? [];
+          final cargando = snapshot.connectionState == ConnectionState.waiting;
+          final total = reviewsSinOrdenar.length;
+          final promedio = total == 0
+              ? 0.0
+              : reviewsSinOrdenar.fold<int>(0, (a, r) => a + r.estrellas) /
+                    total;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
@@ -117,10 +123,9 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  StreamBuilder<List<ReviewModel>>(
-                    stream: _reviewService.watchReviewsForTaller(tallerId),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                  Builder(
+                    builder: (context) {
+                      if (cargando) {
                         return Padding(
                           padding: const EdgeInsets.symmetric(
                             vertical: AppSpacing.xxl,
@@ -133,7 +138,6 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
                         );
                       }
 
-                      final reviewsSinOrdenar = snapshot.data ?? [];
                       final reviews = ordenarResenias(
                         reviewsSinOrdenar,
                         _orden,

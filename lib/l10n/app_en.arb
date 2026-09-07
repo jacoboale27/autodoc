@@ -632,7 +632,7 @@
   "chatRequestRating": "Request Rating",
   "chatUploadImageError": "Error uploading image",
   "chatAdjuntoPreviewTitulo": "Send image",
-  "chatAdjuntoPreviewInfo": "{nombre} · {tamano} MB",
+  "chatAdjuntoPreviewInfo": "{nombre} · {tamano}",
   "@chatAdjuntoPreviewInfo": {
     "placeholders": {
       "nombre": {

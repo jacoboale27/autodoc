@@ -87,6 +87,11 @@ class _ConversacionesListScreenState extends State<ConversacionesListScreen> {
                   style: TextStyle(color: colors.error),
                 ),
               )
+            : (!chatProvider.conversacionesCargadas &&
+                  chatProvider.conversaciones.isEmpty)
+            // Mientras no haya llegado el primer snapshot no se puede afirmar
+            // que la bandeja esté vacía; ver `conversacionesCargadas`.
+            ? const Center(child: CircularProgressIndicator())
             : chatProvider.conversaciones.isEmpty
             ? AppEmptyState(
                 icon: Icons.chat_bubble_outline_rounded,

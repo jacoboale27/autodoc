@@ -18,6 +18,7 @@
 
 const assert = require('assert');
 const sinon = require('sinon');
+const { FieldValue } = require('firebase-admin/firestore');
 
 const {
   debeAbrirTicket,
@@ -27,6 +28,7 @@ const {
   resolverIdTallerPropietario,
   abrirTicketDeReparacion,
   ErrorAutorizacionPermanente,
+  ErrorTicketNoAplicable,
 } = require('../src/aceptarCotizacion');
 
 /**
@@ -57,6 +59,10 @@ function fakeDb(docs = {}) {
               escrituras.push({ clave, data, opciones });
               docs[clave] = Object.assign({}, docs[clave], data);
             },
+            async update(data) {
+              escrituras.push({ clave, data, update: true });
+              docs[clave] = Object.assign({}, docs[clave], data);
+            },
           };
         },
         where(campo, op, valor) {
@@ -84,6 +90,22 @@ function fakeDb(docs = {}) {
             },
           };
           return query;
+        },
+      };
+    },
+    // El ticket y el vinculo `talleres_vinculados` se escriben juntos en un
+    // batch (Ronda 3), asi que el doble tiene que saber acumular y aplicar.
+    batch() {
+      const operaciones = [];
+      return {
+        set(ref, data) {
+          operaciones.push(() => ref.set(data));
+        },
+        update(ref, data) {
+          operaciones.push(() => ref.update(data));
+        },
+        async commit() {
+          for (const operacion of operaciones) await operacion();
         },
       };
     },
@@ -141,6 +163,7 @@ describe('onCotizacionAceptada / construirTicketReparacion', () => {
       cotizacionId: 'c1',
       cotizacion: cotizacion(),
       vehiculo: { placa: 'ABC123', id_propietario: 'cli1' },
+      idTaller: 't1',
       ahora: AHORA,
     });
 
@@ -163,6 +186,7 @@ describe('onCotizacionAceptada / construirTicketReparacion', () => {
       cotizacionId: 'c1',
       cotizacion: sinPropietario,
       vehiculo: { placa: 'ABC123', id_propietario: 'cli-real' },
+      idTaller: 't1',
       ahora: AHORA,
     });
 
@@ -181,6 +205,7 @@ describe('onCotizacionAceptada / construirTicketReparacion', () => {
       cotizacionId: 'c1',
       cotizacion: conPropietarioFalso,
       vehiculo: { placa: 'ABC123', id_propietario: 'dueno-real' },
+      idTaller: 't1',
       ahora: AHORA,
     });
 
@@ -196,10 +221,31 @@ describe('onCotizacionAceptada / construirTicketReparacion', () => {
         cotizacionId: 'c1',
         cotizacion: sinTaller,
         vehiculo: { placa: 'ABC123' },
+        idTaller: '',
         ahora: AHORA,
       }),
       null
     );
+  });
+
+  it('el id_taller del ticket es el RESUELTO, no el crudo de la cotizacion', () => {
+    // Ronda 4. La ronda anterior resolvia el uid del dueño solo para
+    // comprobar el vinculo y escribia el crudo en el ticket. Una cotizacion
+    // legacy creada por un EMPLEADO (uid de sesion en id_taller, antes del
+    // FIX 2 de la Ronda 2) abria asi un ticket con el uid del empleado, y
+    // TODO el cliente consulta `reparaciones` por el uid del DUEÑO
+    // (idTallerEfectivo): el ticket no aparecia en ninguna pantalla.
+    const deEmpleado = cotizacion({ id_taller: 'empleado1' });
+
+    const ticket = construirTicketReparacion({
+      cotizacionId: 'c1',
+      cotizacion: deEmpleado,
+      vehiculo: { placa: 'ABC123', id_propietario: 'cli1' },
+      idTaller: 'dueno-del-taller',
+      ahora: AHORA,
+    });
+
+    assert.strictEqual(ticket.id_taller, 'dueno-del-taller');
   });
 });
 
@@ -215,11 +261,22 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion', () => {
     });
 
     assert.strictEqual(id, idTicketDeCotizacion('c1'));
+    // RONDA 5: UNA sola escritura. Aceptar la cotizacion abre el ticket y
+    // nada mas. La Ronda 3 escribia aqui tambien
+    // `vehiculos.talleres_vinculados`, es decir daba al taller acceso
+    // permanente e irrevocable a la ficha del coche antes incluso de que el
+    // coche llegara. El vinculo pasa a otorgarse al RECIBIR el vehiculo (ver
+    // src/vinculoTaller.js) y a revocarse al cerrar el ticket.
     assert.strictEqual(db.escrituras.length, 1);
     const escrito = db.docs[`reparaciones/${id}`];
     assert.strictEqual(escrito.estado, 'pendiente_recepcion');
     assert.strictEqual(escrito.id_cotizacion, 'c1');
     assert.strictEqual(escrito.placa, 'ABC123');
+    assert.strictEqual(
+      db.escrituras.find((e) => e.clave === 'vehiculos/v1'),
+      undefined,
+      'aceptar la cotizacion NO puede dar acceso a la ficha del vehiculo'
+    );
   });
 
   it('no duplica el ticket si la cotizacion se reescribe a aceptada', async () => {
@@ -264,21 +321,26 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion', () => {
     assert.deepStrictEqual(db.escrituras, []);
   });
 
-  it('no crea nada si el vehiculo de la cotizacion no existe, y lo avisa por consola', async () => {
+  it('si el vehiculo de la cotizacion no existe, lo AVISA al taller (no lo descarta en silencio)', async () => {
+    // Ronda 3: antes devolvia null con un console.warn. El cliente veia su
+    // cotizacion "aceptada", la tarjeta le pedia al taller que recibiera el
+    // vehiculo, y no habia ticket ni forma de que lo hubiera. Ahora lanza
+    // ErrorTicketNoAplicable, que el handler registra en
+    // `error_apertura_ticket` y la tarjeta muestra.
     const db = fakeDb();
     const warn = sinon.stub(console, 'warn');
     try {
-      const id = await abrirTicketDeReparacion(db, {
-        cotizacionId: 'c3',
-        antes: { estado: 'pendiente' },
-        despues: cotizacion({ id_vehiculo: 'fantasma' }),
-        ahora: AHORA,
-      });
+      await assert.rejects(
+        abrirTicketDeReparacion(db, {
+          cotizacionId: 'c3',
+          antes: { estado: 'pendiente' },
+          despues: cotizacion({ id_vehiculo: 'fantasma' }),
+          ahora: AHORA,
+        }),
+        ErrorTicketNoAplicable
+      );
 
-      assert.strictEqual(id, null);
       assert.deepStrictEqual(db.escrituras, []);
-      // Sin esto, una cotizacion que el cliente cree aceptada no deja rastro
-      // servidor de por que no abrio ticket.
       assert.strictEqual(warn.calledOnce, true);
       assert.match(warn.firstCall.args[0], /c3/);
     } finally {
@@ -286,21 +348,49 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion', () => {
     }
   });
 
+  it('una cotizacion SIN id_vehiculo (contacto desde el directorio) explica por que no habra ticket', async () => {
+    // La via comun del cliente que escribe al taller desde el directorio sin
+    // haber elegido coche: se podia aceptar, mostraba "EN PROCESO" y pedia
+    // recibir el vehiculo. El mensaje tiene que decir que hacer.
+    const db = fakeDb();
+    const warn = sinon.stub(console, 'warn');
+    try {
+      const sinVehiculo = cotizacion();
+      delete sinVehiculo.id_vehiculo;
+
+      await assert.rejects(
+        abrirTicketDeReparacion(db, {
+          cotizacionId: 'c9',
+          antes: { estado: 'pendiente' },
+          despues: sinVehiculo,
+          ahora: AHORA,
+        }),
+        (error) =>
+          error instanceof ErrorTicketNoAplicable &&
+          /no está asociada a ningún vehículo/.test(error.message)
+      );
+    } finally {
+      warn.restore();
+    }
+  });
+
   it('no crea nada si la cotizacion no ancla a taller/propietario, y lo avisa por consola', async () => {
-    const db = fakeDb({ 'vehiculos/v1': { placa: 'ABC123' } }); // sin id_propietario
+    const db = fakeDb({ 'vehiculos/v1': { placa: 'ABC123', id_propietario: 'cli1' } });
     const warn = sinon.stub(console, 'warn');
     try {
       const sinTaller = cotizacion();
       delete sinTaller.id_taller;
 
-      const id = await abrirTicketDeReparacion(db, {
-        cotizacionId: 'c4',
-        antes: { estado: 'pendiente' },
-        despues: sinTaller,
-        ahora: AHORA,
-      });
+      await assert.rejects(
+        abrirTicketDeReparacion(db, {
+          cotizacionId: 'c4',
+          antes: { estado: 'pendiente' },
+          despues: sinTaller,
+          ahora: AHORA,
+        }),
+        ErrorTicketNoAplicable
+      );
 
-      assert.strictEqual(id, null);
       assert.deepStrictEqual(db.escrituras, []);
       assert.strictEqual(warn.calledOnce, true);
       assert.match(warn.firstCall.args[0], /c4/);
@@ -335,15 +425,20 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion', () => {
 });
 
 describe('onCotizacionAceptada / abrirTicketDeReparacion, vinculo taller-vehiculo (hallazgo C1)', () => {
-  it('NO crea ticket si el taller de la cotizacion no esta vinculado al vehiculo', async () => {
+  it('NO crea ticket si el vehiculo no es del cliente al que va la cotizacion', async () => {
     // Este es el ataque central del hallazgo C1: un mecanico redacta una
-    // cotizacion sobre un vehiculo ajeno (vinculado a OTRO taller) y se la
-    // auto-acepta. Sin esta comprobacion, el trigger le abria el ticket igual.
+    // cotizacion sobre el vehiculo de un desconocido y se la auto-acepta.
+    // Sin esta comprobacion, el trigger le abria el ticket igual.
+    //
+    // Ronda 3: lo que lo bloquea ya no es `talleres_vinculados` (que era
+    // circular, ver el comentario de `abrirTicketDeReparacion`) sino que el
+    // vehiculo pertenezca al cliente nombrado en la cotizacion — y solo ese
+    // cliente puede moverla a 'aceptada'.
     const db = fakeDb({
       'vehiculos/v1': {
         placa: 'ABC123',
-        id_propietario: 'cli1',
-        talleres_vinculados: ['taller-legitimo'],
+        id_propietario: 'victima',
+        talleres_vinculados: [],
       },
     });
     const error = sinon.stub(console, 'error');
@@ -354,7 +449,8 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion, vinculo taller-vehicul
           antes: { estado: 'pendiente' },
           despues: cotizacion({ id_taller: 'taller-atacante' }),
           ahora: AHORA,
-        })
+        }),
+        ErrorAutorizacionPermanente
       );
       assert.deepStrictEqual(db.escrituras, []);
       const tickets = Object.keys(db.docs).filter((k) => k.startsWith('reparaciones/'));
@@ -427,12 +523,31 @@ describe('onCotizacionAceptada / existeTicketAbiertoParaVehiculo (hallazgo 2)', 
   it('no cuenta un ticket cancelado ni uno ya entregado', async () => {
     const db = fakeDb({
       'reparaciones/r1': { id_vehiculo: 'v1', id_taller: 't1', estado: 'cancelado' },
-      'reparaciones/r2': { id_vehiculo: 'v1', id_taller: 't1', estado: 'listo_para_entrega' },
+      'reparaciones/r2': { id_vehiculo: 'v1', id_taller: 't1', estado: 'entregado' },
     });
 
     assert.strictEqual(
       await existeTicketAbiertoParaVehiculo(db, { idVehiculo: 'v1', idTaller: 't1' }),
       false
+    );
+  });
+
+  it('RONDA 6: `listo_para_entrega` SI cuenta como abierto', async () => {
+    // El coche esta terminado pero sigue en el taller esperando a que lo
+    // recojan: la visita no ha acabado. Antes contaba como cerrada, asi que
+    // una cotizacion aceptada en ese momento abria un SEGUNDO ticket para la
+    // misma visita y el mecanico se encontraba dos tarjetas del mismo coche.
+    const db = fakeDb({
+      'reparaciones/r1': {
+        id_vehiculo: 'v1',
+        id_taller: 't1',
+        estado: 'listo_para_entrega',
+      },
+    });
+
+    assert.strictEqual(
+      await existeTicketAbiertoParaVehiculo(db, { idVehiculo: 'v1', idTaller: 't1' }),
+      true
     );
   });
 
@@ -496,7 +611,7 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion, dedup por vehiculo+tal
     assert.deepStrictEqual(tickets, ['reparaciones/cot_c1']);
   });
 
-  it('si el ticket abierto ya se cerro (listo_para_entrega), una cotizacion nueva SI abre uno propio', async () => {
+  it('si el ticket abierto ya se cerro (entregado), una cotizacion nueva SI abre uno propio', async () => {
     // Cierra el ciclo: un vehiculo que vuelve DESPUES de que su visita
     // anterior termino no debe quedar bloqueado para siempre.
     const db = fakeDb({
@@ -504,7 +619,7 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion, dedup por vehiculo+tal
       'reparaciones/legado1': {
         id_vehiculo: 'v1',
         id_taller: 't1',
-        estado: 'listo_para_entrega',
+        estado: 'entregado',
       },
     });
 
@@ -572,34 +687,84 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion, empleado vs dueño (FI
     assert.strictEqual(escrito.id_propietario, 'cli1');
   });
 
-  it('DENEGACION LEGITIMA: NO crea el ticket si, tras resolver al dueño, el taller sigue sin estar vinculado', async () => {
-    // Contraste con el test de arriba: aqui la resolucion SI ocurre, pero el
-    // taller resuelto (t-otro, dueño de emp2) de verdad no tiene nada que
-    // ver con este vehiculo. La resolucion no debe convertirse en un
-    // "siempre pasa".
+  it('aceptar la cotizacion NO otorga ningun acceso al vehiculo (ronda 5)', async () => {
     const db = fakeDb({
-      'usuarios/emp2': { id_taller_propietario: 't-otro' },
+      'usuarios/emp1': { id_taller_propietario: 't1' },
+      'vehiculos/v1': { placa: 'ABC123', id_propietario: 'cli1' },
+    });
+
+    await abrirTicketDeReparacion(db, {
+      cotizacionId: 'c1',
+      antes: { estado: 'pendiente' },
+      despues: cotizacion({ id_mecanico: 'emp1', id_taller: 'emp1' }),
+      ahora: AHORA,
+    });
+
+    assert.strictEqual(
+      db.escrituras.find((e) => e.clave === 'vehiculos/v1'),
+      undefined,
+      'el acceso a la ficha llega al recibir el coche, no al aceptar'
+    );
+
+    // Ronda 4: y el TICKET tambien. Antes se escribia el crudo ('emp1'), asi
+    // que el ticket quedaba fuera de `watchReparacionesActivas`,
+    // `buscarReparacionActiva` y del Kanban — todos consultan por el uid del
+    // dueño — y `actuaPorTaller(resource.data.id_taller)` se lo negaba al
+    // propio dueño del taller. Un ticket que no aparecia en ninguna parte.
+    const escrituraTicket = db.escrituras.find((e) =>
+      e.clave.startsWith('reparaciones/')
+    );
+    assert.strictEqual(escrituraTicket.data.id_taller, 't1');
+  });
+
+  it('el dedup por vehiculo+taller pregunta por el uid RESUELTO', async () => {
+    // Corolario del anterior: si el dedup consulta con el uid del empleado no
+    // ve el ticket que el taller ya tiene abierto para ese mismo coche y abre
+    // un segundo ticket paralelo, que es justo lo que ese dedup existe para
+    // impedir.
+    const db = fakeDb({
+      'usuarios/emp1': { id_taller_propietario: 't1' },
+      'vehiculos/v1': { placa: 'ABC123', id_propietario: 'cli1' },
+      'reparaciones/ticket-viejo': {
+        id_vehiculo: 'v1',
+        id_taller: 't1',
+        estado: 'recibido',
+      },
+    });
+
+    const id = await abrirTicketDeReparacion(db, {
+      cotizacionId: 'c1',
+      antes: { estado: 'pendiente' },
+      despues: cotizacion({ id_mecanico: 'emp1', id_taller: 'emp1' }),
+      ahora: AHORA,
+    });
+
+    assert.strictEqual(id, null);
+    assert.deepStrictEqual(db.escrituras, []);
+  });
+
+  it('EL BLOQUEANTE DE LA RONDA 3: un SEGUNDO taller si puede abrir ticket', async () => {
+    // Antes de este fix, `vehiculoVinculadoOWalkIn` solo dejaba pasar el caso
+    // walk-in (lista vacia). Un vehiculo ya atendido por el taller A dejaba a
+    // cualquier otro taller sin poder abrir ticket JAMAS, aunque el dueño
+    // hubiera aceptado su cotizacion: el cliente veia "aceptada" y el taller
+    // no recibia nada. Este test es esa situacion exacta.
+    const db = fakeDb({
       'vehiculos/v1': {
         placa: 'ABC123',
         id_propietario: 'cli1',
-        talleres_vinculados: ['t-legitimo'],
+        talleres_vinculados: ['taller-anterior'],
       },
     });
-    const error = sinon.stub(console, 'error');
-    try {
-      await assert.rejects(
-        abrirTicketDeReparacion(db, {
-          cotizacionId: 'c1',
-          antes: { estado: 'pendiente' },
-          despues: cotizacion({ id_mecanico: 'emp2', id_taller: 'emp2' }),
-          ahora: AHORA,
-        }),
-        ErrorAutorizacionPermanente
-      );
-      const tickets = Object.keys(db.docs).filter((k) => k.startsWith('reparaciones/'));
-      assert.deepStrictEqual(tickets, []);
-    } finally {
-      error.restore();
-    }
+
+    const id = await abrirTicketDeReparacion(db, {
+      cotizacionId: 'c1',
+      antes: { estado: 'pendiente' },
+      despues: cotizacion(), // id_taller: 't1', un taller nuevo para este coche
+      ahora: AHORA,
+    });
+
+    assert.strictEqual(id, idTicketDeCotizacion('c1'));
+    assert.strictEqual(db.docs[`reparaciones/${id}`].estado, 'pendiente_recepcion');
   });
 });

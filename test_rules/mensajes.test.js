@@ -391,3 +391,90 @@ describe('mensajes: el resto de escrituras que la app ya hace siguen funcionando
     );
   });
 });
+
+/**
+ * Revision adversarial (Ronda 3): de las cuatro ramas de `mensajes.update`
+ * que acoto C4b, dos —`estado` y `metadata`— quedaron sin ninguna
+ * comprobacion de autoria ni de valor, y las dos pasaban el banco de ataques
+ * sobre mensajes AJENOS. Los dos tests de arriba las cubrian solo por el lado
+ * legitimo, asi que la brecha no se veia.
+ */
+describe('mensajes update: las dos ramas que quedaron sin acotar (ronda 3)', () => {
+  test('ATAQUE: el AUTOR no puede marcar su propio mensaje como visto', async () => {
+    // 'visto' significa "el receptor lo leyo". Si el autor puede escribirlo,
+    // el acuse de lectura no vale nada.
+    await seedConversacion();
+    await seedMensajeTexto();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db
+        .collection('conversaciones')
+        .doc('c1')
+        .collection('mensajes')
+        .doc('m1')
+        .update({ estado: 'visto' }),
+    );
+  });
+
+  test('ATAQUE: `estado` no es un campo de texto libre', async () => {
+    await seedConversacion();
+    await seedMensajeTexto();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db
+        .collection('conversaciones')
+        .doc('c1')
+        .collection('mensajes')
+        .doc('m1')
+        .update({ estado: 'cualquier-cosa' }),
+    );
+  });
+
+  test('ATAQUE CENTRAL: repuntar `id_cotizacion` en la metadata de una tarjeta ajena', async () => {
+    // `id_cotizacion` es el puntero al documento que la tarjeta abre y que su
+    // boton "Aceptar" acepta: moverlo cambia QUE cotizacion se acepta. Que
+    // hoy el cliente lea el documento vivo (Tarea 8) contiene el daño por
+    // accidente, no por frontera.
+    await seedConversacion();
+    await seedMensajeCotizacion();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db
+        .collection('conversaciones')
+        .doc('c1')
+        .collection('mensajes')
+        .doc('cot1')
+        .update({ metadata: { id_cotizacion: 'q-del-atacante', estado: 'pendiente' } }),
+    );
+  });
+
+  test('ATAQUE: tampoco se puede AÑADIR una clave nueva a la metadata', async () => {
+    await seedConversacion();
+    await seedMensajeCotizacion();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db
+        .collection('conversaciones')
+        .doc('c1')
+        .collection('mensajes')
+        .doc('cot1')
+        .update({
+          metadata: { id_cotizacion: 'q1', estado: 'pendiente', total: 1 },
+        }),
+    );
+  });
+
+  test('LEGITIMO: mover solo `estado` dentro de la metadata sigue funcionando', async () => {
+    await seedConversacion();
+    await seedMensajeCotizacion();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertSucceeds(
+      db
+        .collection('conversaciones')
+        .doc('c1')
+        .collection('mensajes')
+        .doc('cot1')
+        .update({ metadata: { id_cotizacion: 'q1', estado: 'aceptada' } }),
+    );
+  });
+});

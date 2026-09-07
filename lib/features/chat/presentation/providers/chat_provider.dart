@@ -31,6 +31,18 @@ class ChatProvider extends ChangeNotifier {
   String? _error;
   String? get error => _error;
 
+  /// ¿Ha llegado ya el primer snapshot del stream de conversaciones?
+  ///
+  /// `isLoading` no sirve para esto: lo comparten los flujos de envío, subida
+  /// y cotización, y `inicializarConversaciones` nunca llegaba a tocarlo. El
+  /// resultado era que la bandeja pintaba el estado vacío —«No tienes
+  /// mensajes aún — Contacta a un taller para iniciar un chat»— durante la
+  /// carga, incluso con ocho conversaciones existentes y siendo el usuario un
+  /// taller (al que ese consejo ni siquiera le corresponde). Se pobló segundos
+  /// después. Un estado vacío que miente es peor que un spinner.
+  bool _conversacionesCargadas = false;
+  bool get conversacionesCargadas => _conversacionesCargadas;
+
   int get totalNoLeidosPropietario =>
       _conversaciones.fold(0, (sum, item) => sum + item.noLeidosPropietario);
   int get totalNoLeidosMecanico =>
@@ -56,22 +68,26 @@ class ChatProvider extends ChangeNotifier {
     _mensajesActuales = [];
     _error = null;
     _isLoading = false;
+    _conversacionesCargadas = false;
     notifyListeners();
   }
 
   void inicializarConversaciones(String userId, bool isMecanico) {
     _conversacionesSub?.cancel();
     _error = null;
+    _conversacionesCargadas = false;
     _conversacionesSub = _chatRepository
         .streamConversaciones(userId, isMecanico)
         .listen(
           (data) {
             _error = null;
             _conversaciones = data;
+            _conversacionesCargadas = true;
             notifyListeners();
           },
           onError: (e) {
             _error = e.toString();
+            _conversacionesCargadas = true;
             notifyListeners();
           },
         );

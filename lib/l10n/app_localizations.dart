@@ -2195,7 +2195,7 @@ abstract class AppLocalizations {
   /// No description provided for @chatAdjuntoPreviewInfo.
   ///
   /// In en, this message translates to:
-  /// **'{nombre} · {tamano} MB'**
+  /// **'{nombre} · {tamano}'**
   String chatAdjuntoPreviewInfo(String nombre, String tamano);
 
   /// No description provided for @chatAdjuntoPreviewCancelar.

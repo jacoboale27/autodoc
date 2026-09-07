@@ -3,7 +3,10 @@ const admin = require('firebase-admin');
 const firestore = require('@google-cloud/firestore');
 admin.initializeApp();
 
-const { abrirTicketDeReparacion, ErrorAutorizacionPermanente } = require('./src/aceptarCotizacion');
+const { abrirTicketDeReparacion, ErrorAutorizacionPermanente,
+  ErrorTicketNoAplicable, ESTADOS_TICKET_CERRADO } = require('./src/aceptarCotizacion');
+const { ErrorRecepcion, debeRevocarVinculo, revocarVinculo,
+  recibirTicketYVincular } = require('./src/vinculoTaller');
 const { verificarAperturaManual } = require('./src/iniciarReparacionPorVehiculo');
 const { sincronizarReservaAlCotizar } = require('./src/sincronizarReservaAlCotizar');
 const {
@@ -12,6 +15,7 @@ const {
   llamanteEsMecanico,
 } = require('./src/obtenerPerfilPublico');
 const { listarEmpleadosPublicos } = require('./src/obtenerEmpleadosPublicos');
+const { CAMPO_MIGRACION, esMigracion } = require('./src/migracion');
 
 const db = admin.firestore();
 const messaging = admin.messaging();
@@ -315,11 +319,20 @@ exports.requestReviewOnServiceComplete = functions.firestore
 
       const vehicleUpdate = {};
       if (yaVinculado) {
-        // Vincula el taller al vehículo para que las reglas de seguridad le
-        // permitan leer/actualizar ese vehículo (tenant isolation, ver
-        // firestore.rules match /vehiculos). Se hace vía Admin SDK porque el
-        // cliente no tiene permiso de escribir este campo directamente.
-        vehicleUpdate.talleres_vinculados = admin.firestore.FieldValue.arrayUnion(tallerId);
+        // RONDA 5: aqui ya NO se escribe `talleres_vinculados`.
+        //
+        // Este `arrayUnion` era un no-op aparente (el taller ya estaba en la
+        // lista, por eso `yaVinculado`), pero con el vinculo atado a la
+        // posesion del vehiculo se volvia una CARRERA que anulaba el cambio
+        // entero: este trigger (`servicios` onCreate) y el que revoca al
+        // cerrar el ticket (`reparaciones` onUpdate) son asincronos y se
+        // disparan con segundos de diferencia al finalizar un servicio. Si
+        // este corria despues, volvia a escribir el vinculo DESPUES de la
+        // revocacion y el acceso quedaba permanente otra vez, en silencio.
+        //
+        // Nada se pierde: el vinculo lo otorga la recepcion del vehiculo
+        // (`recibirVehiculoDelTicket`), que ocurre mucho antes de que exista
+        // ningun `servicios`.
       } else if (debeMarcarPendiente) {
         vehicleUpdate.taller_pendiente_confirmacion = tallerId;
         // Denormalizado para que el banner de confirmación pueda mostrar
@@ -631,10 +644,20 @@ async function crearOReutilizarTicketReparacion({ idVehiculo, idTaller }) {
   const existente = await db.collection('reparaciones')
     .where('id_vehiculo', '==', idVehiculo)
     .where('id_taller', '==', idTaller)
-    .limit(1)
+    .limit(20)
     .get();
-  if (!existente.empty) {
-    return { idReparacion: existente.docs[0].id, creado: false };
+  // RONDA 4: solo se reutiliza un ticket ABIERTO. Con `limit(1)` sin filtro,
+  // este helper devolvia cualquiera — incluido uno `cancelado`, que
+  // `recibirVehiculo` rechaza por diseño ("hace falta una cotizacion nueva"):
+  // el callable respondia con exito, la pantalla de servicio abria ese ticket
+  // muerto y recibir el vehiculo fallaba sin explicacion. Misma definicion de
+  // "cerrado" que `ESTADOS_TICKET_CERRADO` en src/aceptarCotizacion.js y que
+  // `estadosReparacionCerrados` en el cliente, para que las tres coincidan.
+  const abierto = existente.docs.find(
+    (doc) => !ESTADOS_TICKET_CERRADO.includes((doc.data().estado || 'recibido').toString())
+  );
+  if (abierto) {
+    return { idReparacion: abierto.id, creado: false };
   }
 
   const vehiculoDoc = await db.collection('vehiculos').doc(idVehiculo).get();
@@ -645,7 +668,14 @@ async function crearOReutilizarTicketReparacion({ idVehiculo, idTaller }) {
 
   const ahora = admin.firestore.FieldValue.serverTimestamp();
   const reparacionRef = db.collection('reparaciones').doc();
-  await reparacionRef.set({
+  // Ronda 3: el ticket y el vinculo se escriben juntos, igual que en
+  // `abrirTicketDeReparacion`. `talleres_vinculados` ya no es una
+  // precondicion para abrir el ticket (era circular), pero sigue siendo lo
+  // que hace legible `vehiculos/{id}` para el taller en firestore.rules: sin
+  // esta escritura el ticket nace y la pantalla que lo abre no puede cargar
+  // el vehiculo.
+  const lote = db.batch();
+  lote.set(reparacionRef, {
     id_vehiculo: idVehiculo,
     id_taller: idTaller,
     id_propietario: propietarioId,
@@ -655,6 +685,10 @@ async function crearOReutilizarTicketReparacion({ idVehiculo, idTaller }) {
     fecha_creacion: ahora,
     fecha_actualizacion: ahora,
   });
+  lote.update(vehiculoDoc.ref, {
+    talleres_vinculados: admin.firestore.FieldValue.arrayUnion(idTaller),
+  });
+  await lote.commit();
 
   const userDoc = await db.collection('usuarios').doc(propietarioId).get();
   const fcmToken = userDoc.exists ? userDoc.data().fcmToken : null;
@@ -765,14 +799,29 @@ exports.onCotizacionAceptada = functions
   .firestore.document('cotizaciones/{cotizacionId}')
   .onUpdate(async (change, context) => {
     try {
-      await abrirTicketDeReparacion(db, {
+      const idTicket = await abrirTicketDeReparacion(db, {
         cotizacionId: context.params.cotizacionId,
         antes: change.before.data() || {},
         despues: change.after.data() || {},
         ahora: new Date(),
       });
+      // RONDA 4: avisar al cliente. El camino gemelo
+      // (`crearOReutilizarTicketReparacion`, usado por el callable de "Buscar
+      // Vehiculo") si notificaba al abrir el ticket, pero ESTE — que desde
+      // A4b abre practicamente todos — no notificaba nada, y
+      // `notifyOnReparacionStatusChange` es un onUpdate, asi que la creacion
+      // tampoco lo despertaba. El cliente aceptaba la cotizacion y no volvia
+      // a saber nada del servicio hasta que el taller moviera el ticket a
+      // mano. Va aqui y no dentro de `abrirTicketDeReparacion` para que esa
+      // funcion siga siendo pura y testeable sin messaging.
+      if (idTicket) {
+        await notificarTicketAbierto(idTicket);
+      }
     } catch (error) {
-      if (error instanceof ErrorAutorizacionPermanente) {
+      if (
+        error instanceof ErrorAutorizacionPermanente ||
+        error instanceof ErrorTicketNoAplicable
+      ) {
         // Fallo PERMANENTE: el taller de la cotizacion no esta vinculado al
         // vehiculo. Ningun reintento lo va a arreglar. Se registra en el
         // propio documento de la cotizacion (campo nuevo, tolerante con
@@ -811,6 +860,50 @@ exports.onCotizacionAceptada = functions
     }
     return null;
   });
+
+/**
+ * Avisa al propietario de que su aceptacion abrio el ticket de servicio.
+ *
+ * Nunca lanza: un fallo de push o de notificacion no puede tumbar la apertura
+ * del ticket, que ya esta escrita cuando se llega aqui (y si lanzara, con
+ * `failurePolicy` activo el trigger se reintentaria en bucle por un fallo de
+ * FCM, sin que ningun reintento pudiera crear nada nuevo).
+ */
+async function notificarTicketAbierto(idReparacion) {
+  try {
+    const snap = await db.collection('reparaciones').doc(idReparacion).get();
+    if (!snap.exists) return;
+    const { id_propietario: propietarioId, id_vehiculo: idVehiculo, placa } = snap.data();
+    if (!propietarioId) return;
+
+    const title = 'Tu servicio ya está agendado';
+    const body = `${placa || 'Tu vehículo'}: el taller abrió el ticket. ` +
+      'Llévalo cuando quedaron para que lo reciban.';
+
+    const userDoc = await db.collection('usuarios').doc(propietarioId).get();
+    const fcmToken = userDoc.exists ? userDoc.data().fcmToken : null;
+    if (fcmToken) {
+      try {
+        await messaging.send({
+          token: fcmToken,
+          notification: { title, body },
+          data: { type: 'reparacion', reparacionId: idReparacion },
+        });
+      } catch (fcmError) {
+        console.error('Error sending FCM ticket-abierto push:', fcmError);
+      }
+    }
+    await writeNotification(propietarioId, {
+      tipo: 'reparacion',
+      titulo: title,
+      body,
+      deepLink: idVehiculo ? `/vehicle_profile/${idVehiculo}` : null,
+      metadata: { reparacionId: idReparacion, estado: 'pendiente_recepcion' },
+    });
+  } catch (error) {
+    console.error('No se pudo notificar la apertura del ticket:', error);
+  }
+}
 
 /**
  * 5a3. Callable: abre (o reutiliza) el ticket Kanban de reparación para un
@@ -870,6 +963,113 @@ exports.iniciarReparacionPorVehiculo = functions.https.onCall(async (data, conte
 });
 
 /**
+ * 5a4. Callable: recibe el vehiculo de un ticket.
+ *
+ * Mueve el ticket de `pendiente_recepcion` a `recibido` Y otorga el vinculo
+ * `vehiculos.talleres_vinculados`, en una sola escritura atomica.
+ *
+ * RONDA 5 — antes esto lo hacia el cliente escribiendo directo sobre
+ * `reparaciones`, porque el vinculo ya existia desde que el cliente aceptaba
+ * la cotizacion. Al atar el vinculo a la posesion del coche, las dos mitades
+ * tienen que pasar juntas y el cliente no puede escribir la segunda
+ * (firestore.rules solo le deja tocar `kilometraje_actual` del vehiculo).
+ * Tampoco vale partirlo en "el cliente mueve el ticket, un trigger otorga el
+ * vinculo": el trigger es asincrono y la pantalla necesita leer la ficha
+ * inmediatamente despues para seguir trabajando.
+ *
+ * Corre con Admin SDK, asi que `firestore.rules` no lo alcanza: la
+ * autorizacion se replica a mano aqui con `actuaPorTaller`, igual que en
+ * `iniciarReparacionPorVehiculo` (ver el hallazgo 1 de la revision de la
+ * Tarea 4). Sin ese chequeo, cualquier mecanico podria recibir el ticket de
+ * otro taller y otorgarse acceso al coche de un desconocido.
+ */
+exports.recibirVehiculoDelTicket = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  }
+
+  const idReparacion = data && data.id_reparacion ? String(data.id_reparacion) : '';
+  if (!idReparacion) {
+    throw new functions.https.HttpsError('invalid-argument', 'Falta id_reparacion.');
+  }
+
+  const ticketSnap = await db.collection('reparaciones').doc(idReparacion).get();
+  if (!ticketSnap.exists) {
+    throw new functions.https.HttpsError('not-found', 'Este ticket de servicio ya no existe.');
+  }
+
+  const puedeActuar = await actuaPorTaller(
+    context.auth.uid,
+    (ticketSnap.data().id_taller || '').toString()
+  );
+  if (!puedeActuar) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'Este ticket no es de tu taller.'
+    );
+  }
+
+  try {
+    const resultado = await recibirTicketYVincular(db, {
+      idReparacion,
+      ahora: new Date(),
+    });
+    return { recibido_ahora: resultado.recibidoAhora };
+  } catch (error) {
+    if (error instanceof ErrorRecepcion) {
+      throw new functions.https.HttpsError(error.code, error.message);
+    }
+    throw error;
+  }
+});
+
+/**
+ * 5a5. Trigger: al CERRARSE el ticket, el taller devuelve el coche y pierde
+ * el acceso a su ficha.
+ *
+ * Es la mitad simetrica de `recibirVehiculoDelTicket`. Va en un trigger y no
+ * en el propio cierre porque el cierre llega por varias vias (finalizar el
+ * servicio, "Avanzar" en el tablero, cancelar el ticket) y todas escriben lo
+ * mismo: el `estado` del ticket. Aqui la latencia no importa — a diferencia de
+ * la recepcion, nadie espera el resultado.
+ *
+ * No revoca en cualquier escritura sobre un ticket ya cerrado, solo en la
+ * TRANSICION de abierto a cerrado (ver `debeRevocarVinculo`): si no, una
+ * correccion tardia sobre un ticket viejo revocaria el vinculo VIVO de una
+ * visita posterior del mismo coche al mismo taller.
+ */
+exports.revocarVinculoAlCerrarTicket = functions.firestore
+  .document('reparaciones/{reparacionId}')
+  .onUpdate(async (change, context) => {
+    const antes = change.before.data() || {};
+    const despues = change.after.data() || {};
+    // Escritura de migracion: ver `esMigracion`. La pasada 3 de
+    // `backfill_entregado.js` ya hace esta misma revocacion de forma
+    // determinista y con `arrayRemove`; dejar que ademas dispare este trigger
+    // solo anade una carrera sobre los mismos documentos de `vehiculos`.
+    if (esMigracion(despues)) return null;
+    if (!debeRevocarVinculo(antes, despues)) return null;
+
+    try {
+      await revocarVinculo(db, {
+        idVehiculo: (despues.id_vehiculo || '').toString(),
+        idTaller: (despues.id_taller || '').toString(),
+      });
+    } catch (error) {
+      // No relanzar: el ticket ya esta cerrado y el servicio registrado. Un
+      // fallo aqui deja un vinculo de mas, que es el estado que habia ANTES
+      // de la Ronda 5 — molesto, no peligroso — mientras que relanzar sin
+      // `failurePolicy` no reintenta nada y solo ensucia las metricas.
+      console.error(
+        `revocarVinculoAlCerrarTicket: no se pudo revocar el vinculo del ` +
+          `ticket ${context.params.reparacionId}:`,
+        error
+      );
+    }
+    return null;
+  });
+
+/**
  * 5b. Trigger fired when a 'reparaciones' document's estado field changes.
  * Notifies the vehicle owner (push + in-app notification center).
  */
@@ -882,13 +1082,28 @@ exports.notifyOnReparacionStatusChange = functions.firestore
     if (before.estado === after.estado) {
       return null;
     }
+    // Una migracion de datos NO es una novedad para el propietario. Sin esta
+    // guarda, `backfill_entregado.js` le manda un push y le deja una fila
+    // permanente en el centro de notificaciones por cada ticket historico que
+    // reescribe: "PLACA: Entregado" sobre un coche que se llevo hace meses, o
+    // "PLACA: Recibido" sobre uno que nunca volvio. Verificado en produccion
+    // (una entrega de prueba subio el contador del propietario de 7 a 10).
+    if (esMigracion(after)) {
+      return null;
+    }
 
     try {
       const etiquetas = {
+        // `pendiente_recepcion` no puede llegar por un onUpdate hoy (el ticket
+        // NACE en ese estado), pero esta aqui para que la tabla no mienta si
+        // algun dia se puede retroceder a el.
+        pendiente_recepcion: 'Por recibir',
         recibido: 'Recibido',
         en_revision: 'En Revisión',
         esperando_repuestos: 'Esperando Repuestos',
         listo_para_entrega: 'Listo para Entregar',
+        entregado: 'Entregado',
+        cancelado: 'Cancelado',
       };
 
       const targetId = after.id_propietario;
@@ -1092,6 +1307,51 @@ exports.onVehicleDelete = functions.firestore.document('vehiculos/{vehicleId}').
     await new Promise((resolve, reject) => {
       deleteQueryBatch(db, db.collection('historial_mantenimientos').where('id_vehiculo', '==', vehicleId).limit(500), resolve, reject);
     });
+
+    // 4b. Cerrar los tickets de `reparaciones` que sigan abiertos sobre este
+    // vehiculo. NO se borran: son el registro del trabajo del taller y su
+    // `id_taller` autoriza su propio historial. Pero dejarlos abiertos los
+    // clava para siempre en el tablero apuntando a una ficha que ya no existe:
+    // el mecanico toca la tarjeta y no pasa nada, porque
+    // `_abrirVehiculoDesdeReparacion` no encuentra el vehiculo. La revision
+    // adversarial encontro uno asi en produccion, semanas en 'en_revision'.
+    //
+    // Se cierran como 'cancelado' y no como 'entregado' porque no consta que
+    // el coche saliera del taller; lo que consta es que la visita ya no puede
+    // continuar. Lleva el centinela de migracion: es una limpieza automatica,
+    // no una novedad que notificarle a un propietario que acaba de borrar el
+    // vehiculo a proposito.
+    try {
+      const abiertos = await db
+        .collection('reparaciones')
+        .where('id_vehiculo', '==', vehicleId)
+        .get();
+      const cerrables = abiertos.docs.filter(
+        (d) => !ESTADOS_TICKET_CERRADO.includes((d.data().estado || 'recibido').toString())
+      );
+      for (let i = 0; i < cerrables.length; i += 400) {
+        const lote = db.batch();
+        for (const d of cerrables.slice(i, i + 400)) {
+          lote.update(d.ref, {
+            estado: 'cancelado',
+            [CAMPO_MIGRACION]: true,
+            historial_estados: admin.firestore.FieldValue.arrayUnion({
+              estado: 'cancelado',
+              timestamp: new Date(),
+            }),
+            fecha_actualizacion: new Date(),
+          });
+        }
+        await lote.commit();
+      }
+      if (cerrables.length > 0) {
+        console.log(
+          `Closed ${cerrables.length} open reparaciones for deleted vehicle ${vehicleId}.`
+        );
+      }
+    } catch (e) {
+      console.error(`Error closing reparaciones for vehicle ${vehicleId}:`, e);
+    }
 
     console.log(`Firestore data for vehicle ${vehicleId} deleted.`);
 

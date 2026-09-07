@@ -20,6 +20,7 @@ TextEditingValue _aplicar(String viejo, String nuevo) {
 }
 
 void main() {
+  _cantidad();
   test('acepta enteros y decimales', () {
     expect(_aplicar('12', '12.5').text, '12.5');
     expect(_aplicar('', '80').text, '80');
@@ -45,5 +46,40 @@ void main() {
 
   test('rechaza mas de dos decimales', () {
     expect(_aplicar('12.5', '12.567').text, '12.5');
+  });
+}
+
+/// Revisión adversarial (Ronda 3): el campo "Cantidad" de un renglón de
+/// cotización tenía `keyboardType` y ningún formatter — el antipatrón que
+/// B3 declaró insuficiente — así que aceptaba «abc» y el total se seguía
+/// calculando con ese renglón dentro.
+void _cantidad() {
+  group('cantidadInputFormatters', () {
+    TextEditingValue aplicar(String anterior, String nuevo) {
+      var valor = TextEditingValue(text: anterior);
+      for (final f in cantidadInputFormatters) {
+        valor = f.formatEditUpdate(valor, TextEditingValue(text: nuevo));
+      }
+      return valor;
+    }
+
+    test('rechaza letras y conserva lo que ya había', () {
+      expect(aplicar('', 'abc').text, '');
+      expect(aplicar('2', '2a').text, '2');
+    });
+
+    test('acepta cantidades decimales reales (medio litro, hora y media)', () {
+      expect(aplicar('', '0.5').text, '0.5');
+      expect(aplicar('1', '1.5').text, '1.5');
+    });
+
+    test('no admite dos puntos ni mas de dos decimales', () {
+      expect(aplicar('1.5', '1.5.2').text, '1.5');
+      expect(aplicar('1.55', '1.555').text, '1.55');
+    });
+
+    test('no admite signo negativo', () {
+      expect(aplicar('', '-1').text, '');
+    });
   });
 }

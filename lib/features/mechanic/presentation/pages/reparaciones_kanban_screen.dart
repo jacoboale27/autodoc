@@ -6,6 +6,7 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/utils/ui_utils.dart';
 import 'package:autodoc/core/widgets/app_empty_state.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/reparacion_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
@@ -199,12 +200,84 @@ class _EstadoColumn extends StatelessWidget {
     this.mostrarEncabezado = true,
   });
 
+  /// Avanza el ticket una columna. [siguienteEstado] a null significa "la
+  /// primera columna": esa transición es la recepción del vehículo y va por el
+  /// callable, no por una escritura directa (ver el comentario en [build]).
+  static Future<void> _avanzar(
+    BuildContext context,
+    ReparacionProvider provider,
+    String idReparacion,
+    String? siguienteEstado,
+  ) async {
+    if (siguienteEstado == null) {
+      final recibido = await provider.recibirVehiculoPorId(idReparacion);
+      if (recibido == null && context.mounted) {
+        UiUtils.showErrorSnackbar(
+          context,
+          provider.error ?? 'No se pudo recibir el vehículo.',
+        );
+      }
+      return;
+    }
+    try {
+      await provider.cambiarEstado(idReparacion, siguienteEstado);
+    } catch (e) {
+      if (context.mounted) {
+        UiUtils.showErrorSnackbar(context, 'No se pudo avanzar el ticket: $e');
+      }
+    }
+  }
+
+  /// Entrega el vehículo. El error se enseña porque el rechazo tiene un
+  /// motivo que el mecánico puede entender y corregir ("ya se entregó"),
+  /// a diferencia de un fallo de red genérico.
+  static Future<void> _entregar(
+    BuildContext context,
+    ReparacionProvider provider,
+    String idReparacion,
+  ) async {
+    final ok = await provider.entregar(idReparacion);
+    if (!ok && context.mounted) {
+      UiUtils.showErrorSnackbar(
+        context,
+        provider.error ?? 'No se pudo entregar el vehículo.',
+      );
+    }
+  }
+
+  /// Cancela el ticket y **enseña el fallo si lo hay**.
+  ///
+  /// Antes esto era `() => provider.cancelar(id)` a secas: `cancelar` devuelve
+  /// un booleano que nadie miraba, así que un cancelar denegado por las reglas
+  /// (o por la guarda de ticket cerrado que se acaba de añadir) dejaba la
+  /// tarjeta donde estaba sin decir nada, y el mecánico volvía a tocar.
+  static Future<void> _cancelar(
+    BuildContext context,
+    ReparacionProvider provider,
+    String idReparacion,
+  ) async {
+    final ok = await provider.cancelar(idReparacion);
+    if (!ok && context.mounted) {
+      UiUtils.showErrorSnackbar(
+        context,
+        provider.error ?? 'No se pudo cancelar el ticket.',
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final estado = estadosReparacion[index];
     final esUltimo = index == estadosReparacion.length - 1;
     final siguienteEstado = esUltimo ? null : estadosReparacion[index + 1];
+    // "Avanzar a Recibido" NO es un cambio de estado más: recibir el vehículo
+    // es también lo que otorga el vínculo al coche, y las dos mitades tienen
+    // que pasar juntas en el servidor (`recibirVehiculoDelTicket`). Este botón
+    // llamaba directo a `cambiarEstado`, así que un ticket avanzado desde el
+    // tablero quedaba en `recibido` SIN vínculo: el ticket parecía recibido y
+    // la ficha del coche no abría para nadie del taller, sin ningún error.
+    final esPorRecibir = estado == 'pendiente_recepcion';
     final items = provider.reparaciones
         .where((r) => r.estado == estado)
         .toList();
@@ -213,9 +286,14 @@ class _EstadoColumn extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (mostrarEncabezado) ...[
+          // El contador va PEGADO a su título, no empujado al borde derecho
+          // de la columna. Con `Expanded` en el título, el badge quedaba a
+          // ocho píxeles del título de la columna SIGUIENTE y se leía como
+          // suyo: en escritorio el «0» de "Por recibir" parecía el de
+          // "Recibido". En móvil, con pestañas, no se notaba.
           Row(
             children: [
-              Expanded(
+              Flexible(
                 child: Semantics(
                   header: true,
                   child: Text(
@@ -228,7 +306,9 @@ class _EstadoColumn extends StatelessWidget {
                   ),
                 ),
               ),
+              const SizedBox(width: AppSpacing.sm),
               _ContadorBadge(count: items.length),
+              const Spacer(),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -263,11 +343,29 @@ class _EstadoColumn extends StatelessWidget {
                         : etiquetasEstado[siguienteEstado],
                     onAvanzar: siguienteEstado == null
                         ? null
-                        : () => provider.cambiarEstado(
+                        : () => _avanzar(
+                            context,
+                            provider,
                             items[i].idReparacion,
-                            siguienteEstado,
+                            esPorRecibir ? null : siguienteEstado,
                           ),
-                    onCancelar: () => provider.cancelar(items[i].idReparacion),
+                    // Entregar se ofrece en TODA columna en la que el coche
+                    // esté físicamente en el taller, no solo en la última.
+                    // El repositorio ya lo permitía; la interfaz no, y eso
+                    // dejaba sin registrar el caso real del cliente que se
+                    // lleva el coche a medias (rechaza el presupuesto, se lo
+                    // lleva a otro taller). La única salida era «Cancelar»,
+                    // que cierra igual pero le notifica al propietario
+                    // "Cancelado" sobre una visita que sí ocurrió.
+                    onEntregar: estadosVehiculoEnTaller.contains(estado)
+                        ? () => _entregar(
+                            context,
+                            provider,
+                            items[i].idReparacion,
+                          )
+                        : null,
+                    onCancelar: () =>
+                        _cancelar(context, provider, items[i].idReparacion),
                   ),
                 ),
         ),
