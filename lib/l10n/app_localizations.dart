@@ -353,7 +353,7 @@ abstract class AppLocalizations {
   /// No description provided for @authOpenLinkOnRegister.
   ///
   /// In en, this message translates to:
-  /// **'Open the link in the email to activate your account. You can continue in the meantime.'**
+  /// **'Open the email link and return to verify your account before continuing.'**
   String get authOpenLinkOnRegister;
 
   /// No description provided for @authUnderstood.
@@ -361,12 +361,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Understood'**
   String get authUnderstood;
-
-  /// No description provided for @authContinueWithoutVerify.
-  ///
-  /// In en, this message translates to:
-  /// **'Continue without verifying'**
-  String get authContinueWithoutVerify;
 
   /// No description provided for @authResendEmail.
   ///

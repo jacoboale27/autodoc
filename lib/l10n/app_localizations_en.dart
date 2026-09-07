@@ -139,13 +139,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get authOpenLinkOnRegister =>
-      'Open the link in the email to activate your account. You can continue in the meantime.';
+      'Open the email link and return to verify your account before continuing.';
 
   @override
   String get authUnderstood => 'Understood';
-
-  @override
-  String get authContinueWithoutVerify => 'Continue without verifying';
 
   @override
   String get authResendEmail => 'Resend email';

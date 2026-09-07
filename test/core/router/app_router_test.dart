@@ -1,3 +1,4 @@
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart' as firebase_mocks;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -24,7 +25,9 @@ class FakeAuthSessionProvider extends ChangeNotifier
   String get currentUid => _currentUid;
 
   @override
-  User? get user => null;
+  User? get user => isLoggedIn
+      ? firebase_mocks.MockUser(uid: currentUid, isEmailVerified: true)
+      : null;
 
   @override
   String? get error => null;

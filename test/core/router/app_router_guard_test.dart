@@ -22,6 +22,7 @@ String? _redirect({
   bool isLoading = false,
 }) => resolveRedirect(
   isLoggedIn: isLoggedIn,
+  emailVerified: true,
   userData: userData,
   isLoading: isLoading,
   hasAttemptedFetch: hasAttemptedFetch,
