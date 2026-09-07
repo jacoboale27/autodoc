@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -123,18 +124,75 @@ class _WorkshopVerificationScreenState
   /// todavía. Cancelar el selector no toca el estado previo del slot: si ya
   /// había una previsualización o un archivo subido, siguen ahí.
   ///
-  /// El tope de tamaño se comprueba AQUÍ, antes de previsualizar: sin esto,
-  /// el taller veía el archivo ya previsualizado como si estuviera aceptado
-  /// y solo al pulsar "Confirmar y subir" se enteraba de que pesaba
-  /// demasiado. Mismo mensaje que ya usa `VerificacionService.subirEvidencia`
-  /// (no una segunda variante), porque es el mismo límite.
+  /// El NIT es el único slot que admite PDF (ver
+  /// `VerificacionTallerModel.extensionesPorSlot`), y `image_picker` —el
+  /// selector de galería de imágenes— nunca puede devolver uno: por eso tiene
+  /// su propia ruta con `file_picker` en vez de pasar por
+  /// `_seleccionarArchivo`. Fachada y rótulo siguen usando la cámara/galería
+  /// de siempre.
   Future<void> _elegirArchivo(String slot) async {
+    if (slot == 'nit') {
+      await _elegirArchivoNit();
+      return;
+    }
+
     final archivo = await _seleccionarArchivo();
     if (archivo == null || !mounted) return;
 
     final bytes = await archivo.readAsBytes();
     if (!mounted) return;
 
+    _procesarArchivoElegido(slot, bytes: bytes, nombre: archivo.name);
+  }
+
+  /// Selector del NIT. Usa `FilePicker.pickFiles` (API estática de
+  /// `file_picker`), que delega en `FilePickerPlatform.instance`: ese es el
+  /// punto exacto que un test debe sustituir para ejercer esta ruta de
+  /// verdad, no un valor inyectado por encima de la llamada.
+  ///
+  /// El formato se rechaza AQUÍ, antes de previsualizar y antes de que exista
+  /// ninguna posibilidad de subir: `VerificacionService.subirEvidencia`
+  /// también lo valida, pero solo al confirmar, y para entonces el taller ya
+  /// habría visto el archivo como si fuera aceptado.
+  Future<void> _elegirArchivoNit() async {
+    // Sin `withData`: esta deprecado y aqui era redundante, porque los bytes
+    // se leen mas abajo con `archivo.readAsBytes()`, que es exactamente lo
+    // que la deprecacion manda usar y funciona igual en web y en movil.
+    final resultado = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png'],
+    );
+    if (!mounted) return;
+    final archivos = resultado?.files ?? const [];
+    if (archivos.isEmpty) return;
+    final archivo = archivos.first;
+
+    final extension = _extensionDe(archivo.name);
+    final permitidas = VerificacionTallerModel.extensionesPorSlot['nit']!;
+    if (!permitidas.contains(extension)) {
+      _avisar(
+        context.l10n.tallerVerifFormatoNoPermitido(permitidas.join(', ')),
+        error: true,
+      );
+      return;
+    }
+
+    final bytes = await archivo.readAsBytes();
+    if (!mounted) return;
+
+    _procesarArchivoElegido('nit', bytes: bytes, nombre: archivo.name);
+  }
+
+  /// El tope de tamaño se comprueba AQUÍ, antes de previsualizar: sin esto,
+  /// el taller veía el archivo ya previsualizado como si estuviera aceptado
+  /// y solo al pulsar "Confirmar y subir" se enteraba de que pesaba
+  /// demasiado. Mismo mensaje que ya usa `VerificacionService.subirEvidencia`
+  /// (no una segunda variante), porque es el mismo límite.
+  void _procesarArchivoElegido(
+    String slot, {
+    required Uint8List bytes,
+    required String nombre,
+  }) {
     if (bytes.lengthInBytes >= VerificacionService.maxBytesEvidencia) {
       _avisar(
         VerificacionService.mensajeArchivoDemasiadoGrande(bytes.lengthInBytes),
@@ -144,8 +202,15 @@ class _WorkshopVerificationScreenState
     }
 
     setState(() {
-      _pendientes[slot] = _ArchivoPendiente(bytes: bytes, nombre: archivo.name);
+      _pendientes[slot] = _ArchivoPendiente(bytes: bytes, nombre: nombre);
     });
+  }
+
+  /// Extensión en minúscula, sin el punto. `''` si no hay ninguna.
+  static String _extensionDe(String nombre) {
+    final punto = nombre.lastIndexOf('.');
+    if (punto == -1 || punto == nombre.length - 1) return '';
+    return nombre.substring(punto + 1).toLowerCase();
   }
 
   /// Sube el archivo previsualizado. Es la única función de esta pantalla

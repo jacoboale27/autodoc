@@ -1120,6 +1120,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get tallerVerifDescartar => 'Descartar';
 
   @override
+  String tallerVerifFormatoNoPermitido(String formatos) {
+    return 'Ese archivo no vale para este documento. Formatos aceptados: $formatos.';
+  }
+
+  @override
   String chatOpeningSection(String label) {
     return 'Abriendo sección de $label...';
   }

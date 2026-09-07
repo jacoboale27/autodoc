@@ -2126,6 +2126,12 @@ abstract class AppLocalizations {
   /// **'Discard'**
   String get tallerVerifDescartar;
 
+  /// No description provided for @tallerVerifFormatoNoPermitido.
+  ///
+  /// In en, this message translates to:
+  /// **'That file doesn\'t work for this document. Accepted formats: {formatos}.'**
+  String tallerVerifFormatoNoPermitido(String formatos);
+
   /// No description provided for @chatOpeningSection.
   ///
   /// In en, this message translates to:

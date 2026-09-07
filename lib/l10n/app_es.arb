@@ -611,6 +611,14 @@
   "tallerVerifSubiendo": "Subiendo el archivo…",
   "tallerVerifPendienteBloqueado": "Tu solicitud ya está en revisión: no puedes subir esta selección ahora. Puedes descartarla.",
   "tallerVerifDescartar": "Descartar",
+  "tallerVerifFormatoNoPermitido": "Ese archivo no vale para este documento. Formatos aceptados: {formatos}.",
+  "@tallerVerifFormatoNoPermitido": {
+    "placeholders": {
+      "formatos": {
+        "type": "String"
+      }
+    }
+  },
   "chatOpeningSection": "Abriendo sección de {label}...",
   "@chatOpeningSection": {
     "placeholders": {
