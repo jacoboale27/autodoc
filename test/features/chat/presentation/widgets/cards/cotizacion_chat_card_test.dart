@@ -60,6 +60,27 @@ Future<FakeFirebaseFirestore> _firestoreConCotizacion({
 }
 
 void main() {
+  for (final isMe in [true, false]) {
+    testWidgets('draft oculto hasta publicarse (isMe: $isMe)', (tester) async {
+      final firestore = await _firestoreConCotizacion(estado: 'draft');
+      await pumpChatWidget(
+        tester,
+        _card(isMe: isMe, firestore: firestore),
+        width: 375,
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(ChatCardShell), findsNothing);
+      expect(find.textContaining('Filtro de aceite'), findsNothing);
+
+      await firestore.collection('cotizaciones').doc('q1').update({
+        'estado': 'pendiente',
+      });
+      await tester.pumpAndSettle();
+      expect(find.byType(ChatCardShell), findsOneWidget);
+      expect(find.textContaining('Filtro de aceite'), findsOneWidget);
+    });
+  }
+
   testWidgets(
     'el total es legible cuando la cotización es propia y el tema claro',
     (tester) async {
