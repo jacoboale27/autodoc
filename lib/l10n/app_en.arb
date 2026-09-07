@@ -614,6 +614,14 @@
   "tallerVerifSubiendo": "Uploading the file…",
   "tallerVerifPendienteBloqueado": "Your request is already under review: you can't upload this selection now. You can discard it.",
   "tallerVerifDescartar": "Discard",
+  "tallerVerifFormatoNoPermitido": "That file doesn't work for this document. Accepted formats: {formatos}.",
+  "@tallerVerifFormatoNoPermitido": {
+    "placeholders": {
+      "formatos": {
+        "type": "String"
+      }
+    }
+  },
   "chatOpeningSection": "Opening {label} section...",
   "@chatOpeningSection": {
     "placeholders": {

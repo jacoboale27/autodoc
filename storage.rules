@@ -217,6 +217,15 @@ service firebase.storage {
     // razonablemente como escaneo; fachada y rotulo son fotos y solo aceptan
     // imagen.
     //
+    // El nombre y el content-type del NIT se validan EMPAREJADOS, a
+    // diferencia de esFacturaValida() (que acepta imagen O pdf sin mirar la
+    // extension): sin esto, `nit.jpg` con `contentType: application/pdf` (o
+    // al reves) pasaba igual, porque cada valor por separado seguia siendo
+    // uno de los permitidos. Las Storage Rules no pueden inspeccionar los
+    // bytes reales del archivo —solo la extension declarada y la cabecera
+    // `contentType` que manda el cliente—, asi que emparejar ambas es el
+    // limite real de lo verificable aqui.
+    //
     // Borrado: solo admin, misma postura que `facturas/`. La evidencia es el
     // rastro de por que se aprobo un taller; si el propio taller pudiera
     // borrarla, bastaria con aprobarse y limpiar detras. Para corregir una
@@ -234,7 +243,10 @@ service firebase.storage {
         && request.auth.uid == tallerId
         && isMecanico()
         && (
-             (fileName.matches('^nit\\.(jpg|jpeg|png|webp|pdf)$') && esFacturaValida())
+             (fileName.matches('^nit\\.pdf$')
+               && request.resource.contentType == 'application/pdf'
+               && request.resource.size < 5 * 1024 * 1024)
+             || (fileName.matches('^nit\\.(jpg|jpeg|png|webp)$') && esImagenValida())
              || (fileName.matches('^(fachada|rotulo)\\.(jpg|jpeg|png|webp)$') && esImagenValida())
            );
 

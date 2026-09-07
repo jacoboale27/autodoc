@@ -316,31 +316,16 @@ void main() {
     },
   );
 
-  testWidgets(
-    'un PDF elegido para el NIT se previsualiza con nombre, tamaño e icono, '
-    'sin renderizador embebido',
-    (tester) async {
-      final bytes = Uint8List(2 * 1024 * 1024); // 2 MB
-      await provider.cargar('taller-1');
-
-      await _pumpPantalla(
-        tester,
-        provider,
-        selectorDeArchivo: () async => _archivoDePrueba('nit.pdf', bytes),
-      );
-
-      final botonesSubir = find.text('Subir');
-      // Los tres slots (fachada, rótulo, NIT) empiezan vacíos: el del NIT es
-      // el tercero en el orden en que se pintan.
-      await tester.tap(botonesSubir.at(2));
-      await tester.pump();
-      await tester.pump();
-
-      expect(find.byIcon(Icons.picture_as_pdf_outlined), findsOneWidget);
-      expect(find.textContaining('nit.pdf'), findsOneWidget);
-      expect(find.textContaining('2.0 MB'), findsOneWidget);
-    },
-  );
+  // El caso "un PDF elegido para el NIT..." vivía aquí y se retiró: inyectaba
+  // un `XFile` a través de `selectorDeArchivo`, el mismo seam que envuelve
+  // `ImagePicker().pickImage(source: gallery)` — un picker que EN NINGÚN caso
+  // real puede devolver un PDF. VER-01 movió el slot `nit` a `file_picker`
+  // (ver `_elegirArchivoNit` en `workshop_verification_screen.dart`), así que
+  // ese caso pasaba en verde sobre una ruta que ya no existe en el código de
+  // producción. La cobertura real —seleccionar PDF, tamaño, icono, extensión
+  // no permitida— vive ahora en
+  // `workshop_verification_nit_pdf_test.dart`, sustituyendo
+  // `FilePickerPlatform.instance` en vez del resultado del selector.
 
   testWidgets(
     'mientras un archivo esta subiendo, la descripcion del slot deja de '
