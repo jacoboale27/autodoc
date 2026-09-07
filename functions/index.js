@@ -1656,70 +1656,76 @@ exports.obtenerEmpleadosPublicos = functions.https.onCall(async (data, context) 
   return { empleados };
 });
 
-/**
- * 12. Callable: busca un propietario por correo para compartir un vehiculo.
- *
- * Igual que buscarVehiculoPorPlaca, resuelve del lado del servidor lo que
- * 'usuarios' ya no expone al cliente.
- *
- * Lo que el gate de "vehicleId + soy su propietario" SI protege: exige que
- * quien llama tenga una cuenta real con rol Propietario y sea dueno de ALGUN
- * vehiculo, y solo devuelve cuentas con rol 'Propietario' (nunca expone
- * mecanicos/admins por correo).
- *
- * Lo que el gate NO protege (hallazgo Important, revision de la 2a ronda de
- * Fase C): 'vehiculos' create solo exige id_propietario == auth.uid
- * (firestore.rules), asi que cualquier cuenta Propietario puede crearse un
- * vehiculo desechable en un solo write y usarlo para pasar este chequeo. En
- * la practica esta funcion es, para cualquier cuenta Propietario, un oraculo
- * correo -> (uid, nombre_completo) sobre toda la poblacion de propietarios,
- * sin limite de tasa. No es una regresion respecto al estado anterior a la
- * Fase C (antes el cliente podia consultar 'usuarios' por correo
- * directamente), pero SI reabre parcialmente lo que la Tarea 8 buscaba
- * cerrar. Deliberadamente NO se agrega aqui un rate-limiter ad-hoc: el
- * cierre real de este vector depende de App Check (Fase E, Tarea 14 del
- * plan), que verifica que la llamada viene de la app real y no de un script,
- * y es donde corresponde resolverlo sin duplicar infraestructura fragil.
- */
+/** Requests never resolve the target email. The owner delivers the code manually. */
 exports.buscarPropietarioPorCorreo = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+  await consumirIntentoCompartir(context.auth.uid);
+  const vehicleId = typeof data?.vehicleId === 'string' ? data.vehicleId : '';
+  const correo = typeof data?.correo === 'string' ? data.correo.trim().toLowerCase() : '';
+  if (!vehicleId || vehicleId.includes('/') || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo) || correo.length > 254) {
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid invitation.');
   }
+  const uid = context.auth.uid;
+  const codigoInvitacion = require('crypto').randomBytes(32).toString('hex');
+  const ref = db.collection('solicitudesCompartir').doc(hashInvitacion(codigoInvitacion));
+  await db.runTransaction(async tx => {
+    const vehicle = await tx.get(db.collection('vehiculos').doc(vehicleId));
+    const user = await tx.get(db.collection('usuarios').doc(uid));
+    if (!vehicle.exists || vehicle.data().id_propietario !== uid || !user.exists || user.data().rol !== 'Propietario') {
+      throw new functions.https.HttpsError('permission-denied', 'Owner required.');
+    }
+    tx.set(ref, { vehicleId, emisor: uid, correoHash: hashInvitacion(correo),
+      creado: Date.now(), expira: Date.now() + 86400000, estado: 'pendiente' });
+  });
+  return { estado: 'pendiente', codigoInvitacion };
+});
 
-  const vehicleId = data && data.vehicleId ? String(data.vehicleId) : '';
-  const correo = (data && data.correo ? String(data.correo) : '').trim().toLowerCase();
-  if (!vehicleId || !correo) {
-    throw new functions.https.HttpsError('invalid-argument', 'Debes indicar el vehiculo y el correo.');
+function hashInvitacion(value) {
+  return require('crypto').createHash('sha256').update(value).digest('hex');
+}
+
+// Server-only collection, transaction serializes attempts across instances.
+async function consumirIntentoCompartir(uid) {
+  const ref = db.collection('limitesCompartir').doc(uid);
+  await db.runTransaction(async tx => {
+    const snap = await tx.get(ref);
+    const now = Date.now();
+    const previous = snap.exists ? snap.data() : {};
+    const current = previous.expira > now ? previous : { intentos: 0, expira: now + 3600000 };
+    if (current.intentos >= 10) throw new functions.https.HttpsError('resource-exhausted', 'Try later.');
+    tx.set(ref, { intentos: current.intentos + 1, expira: current.expira });
+  });
+}
+
+exports.aceptarInvitacionVehiculo = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+  await consumirIntentoCompartir(context.auth.uid);
+  const codigo = data?.codigoInvitacion;
+  if (typeof codigo !== 'string' || !/^[a-f0-9]{64}$/.test(codigo)) {
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid invitation.');
   }
-
-  const vehiculoDoc = await db.collection('vehiculos').doc(vehicleId).get();
-  if (!vehiculoDoc.exists) {
-    throw new functions.https.HttpsError('not-found', 'Vehículo no encontrado.');
-  }
-  if (vehiculoDoc.data().id_propietario !== context.auth.uid) {
-    throw new functions.https.HttpsError(
-      'permission-denied',
-      'Solo el propietario del vehículo puede compartirlo.'
-    );
-  }
-
-  const snapshot = await db
-    .collection('usuarios')
-    .where('correo', '==', correo)
-    .limit(1)
-    .get();
-
-  if (snapshot.empty) return null;
-
-  const doc = snapshot.docs[0];
-  const d = doc.data();
-  if (d.rol !== 'Propietario') return null;
-
-  return {
-    uid: doc.id,
-    correo: d.correo || correo,
-    nombre: d.nombre_completo || 'Sin nombre',
-  };
+  const user = await admin.auth().getUser(context.auth.uid);
+  if (!user.emailVerified || !user.email) throw new functions.https.HttpsError('permission-denied', 'Verified email required.');
+  const ref = db.collection('solicitudesCompartir').doc(hashInvitacion(codigo));
+  await db.runTransaction(async tx => {
+    const snap = await tx.get(ref);
+    if (!snap.exists || snap.data().estado !== 'pendiente' || snap.data().expira <= Date.now()) {
+      throw new functions.https.HttpsError('failed-precondition', 'Invitation unavailable.');
+    }
+    const invitation = snap.data();
+    if (invitation.correoHash !== hashInvitacion(user.email.trim().toLowerCase())) {
+      throw new functions.https.HttpsError('permission-denied', 'Recipient required.');
+    }
+    const recipient = await tx.get(db.collection('usuarios').doc(context.auth.uid));
+    const vehicleRef = db.collection('vehiculos').doc(invitation.vehicleId);
+    const vehicle = await tx.get(vehicleRef);
+    if (!recipient.exists || recipient.data().rol !== 'Propietario' || !vehicle.exists || vehicle.data().id_propietario !== invitation.emisor) {
+      throw new functions.https.HttpsError('failed-precondition', 'Invitation unavailable.');
+    }
+    tx.update(vehicleRef, { shared_with: [...new Set([...(vehicle.data().shared_with || []), context.auth.uid])] });
+    tx.update(ref, { estado: 'aceptada' });
+  });
+  return { estado: 'aceptada' };
 });
 
 /**
@@ -1978,12 +1984,6 @@ async function assertSuperUser(uid) {
   }
 }
 
-// Contraseña temporal fija para cuentas creadas manualmente por un
-// Superusuario (decisión de producto: nunca pedirle al Superusuario que
-// escriba/transmita una contraseña específica por usuario). El nuevo
-// usuario debe cambiarla desde "Olvidé mi contraseña" en su primer login.
-const SUPERUSER_TEMP_PASSWORD = 'AutoDoc2026*';
-
 /**
  * Crea una cuenta (Auth + Firestore) en nombre de un Superusuario sin que
  * este pierda su propia sesión: FirebaseAuth.createUserWithEmailAndPassword
@@ -2016,7 +2016,6 @@ exports.superUserCreateAccount = functions.https.onCall(async (data, context) =>
   try {
     userRecord = await admin.auth().createUser({
       email: correo,
-      password: SUPERUSER_TEMP_PASSWORD,
       displayName: nombreCompleto,
     });
   } catch (err) {
@@ -2026,7 +2025,12 @@ exports.superUserCreateAccount = functions.https.onCall(async (data, context) =>
     throw new functions.https.HttpsError('invalid-argument', err.message);
   }
 
+  let enlaceInvitacion;
   try {
+    enlaceInvitacion = await admin.auth().generatePasswordResetLink(correo);
+    await db.collection('invitacionesCuenta').doc(userRecord.uid).set({
+      uid: userRecord.uid, emisor: context.auth.uid, creado: Date.now(), estado: 'pendiente',
+    });
     await db.collection('usuarios').doc(userRecord.uid).set({
       id_usuario: userRecord.uid,
       nombre_completo: nombreCompleto,
@@ -2050,7 +2054,39 @@ exports.superUserCreateAccount = functions.https.onCall(async (data, context) =>
     );
   }
 
-  return { idUsuario: userRecord.uid, passwordTemporal: SUPERUSER_TEMP_PASSWORD };
+  return { idUsuario: userRecord.uid, estado: 'pendiente', enlaceInvitacion };
+});
+
+// Password changes invalidate outstanding Auth password-reset codes. Never log the credential.
+exports.superUserRegenerateInvitation = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+  await assertSuperUser(context.auth.uid);
+  const uid = typeof data?.uid === 'string' ? data.uid : '';
+  if (!uid || uid.includes('/')) throw new functions.https.HttpsError('invalid-argument', 'Invalid uid.');
+  const account = await admin.auth().getUser(uid);
+  const profile = await db.collection('usuarios').doc(uid).get();
+  const invitationRef = db.collection('invitacionesCuenta').doc(uid);
+  const invitation = await invitationRef.get();
+  if (!invitation.exists || !profile.exists || profile.data().rol === 'Superusuario' || account.metadata.lastSignInTime) {
+    throw new functions.https.HttpsError('failed-precondition', 'Account already activated or unavailable.');
+  }
+  await db.runTransaction(async tx => {
+    const current = await tx.get(invitationRef);
+    if (!current.exists || current.data().estado === 'generando') {
+      throw new functions.https.HttpsError('aborted', 'Invitation generation in progress.');
+    }
+    tx.update(invitationRef, { estado: 'generando' });
+  });
+  try {
+    await admin.auth().updateUser(uid, { password: require('crypto').randomBytes(32).toString('base64url') });
+    await admin.auth().revokeRefreshTokens(uid);
+    const enlaceInvitacion = await admin.auth().generatePasswordResetLink(account.email);
+    await invitationRef.update({ estado: 'pendiente', emisor: context.auth.uid, creado: Date.now() });
+    return { estado: 'pendiente', enlaceInvitacion };
+  } catch (_) {
+    await invitationRef.update({ estado: 'fallida' });
+    throw new functions.https.HttpsError('internal', 'Invitation could not be generated.');
+  }
 });
 
 /**

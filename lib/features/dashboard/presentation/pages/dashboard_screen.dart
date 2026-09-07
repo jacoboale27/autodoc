@@ -29,6 +29,7 @@ import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
 import '../widgets/add_vehicle_form.dart';
+import '../widgets/share_vehicle_sheet.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -173,6 +174,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         windowClass,
                       ),
                       const SizedBox(height: AppSpacing.sm),
+                      TextButton.icon(
+                        icon: const Icon(Icons.mail_outline),
+                        label: Text(context.l10n.securityAcceptInvitation),
+                        onPressed: () =>
+                            showVehicleInvitationAcceptance(context),
+                      ),
                       if (vehicle?.tallerPendienteConfirmacion != null) ...[
                         _buildTallerPendienteBanner(
                           context,

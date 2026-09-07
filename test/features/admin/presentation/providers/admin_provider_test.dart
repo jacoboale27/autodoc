@@ -39,7 +39,7 @@ void main() {
         rol: 'Propietario',
       );
 
-      expect(result, false);
+      expect(result, isNull);
       expect(provider.isLoading, false);
       expect(provider.error, isNotNull);
       expect(loadingStates.first, true);

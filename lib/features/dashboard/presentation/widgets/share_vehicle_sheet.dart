@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:autodoc/l10n/app_localizations.dart';
 import '../../../../core/constants/firestore_collections.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -9,6 +10,37 @@ import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_snackbar.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
+
+/// Also available from the dashboard before the recipient owns any vehicle.
+Future<void> showVehicleInvitationAcceptance(BuildContext context) async {
+  final l10n = AppLocalizations.of(context)!;
+  var enteredCode = '';
+  final code = await showDialog<String>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(l10n.securityAcceptInvitation),
+      content: TextField(
+        onChanged: (value) => enteredCode = value,
+        decoration: InputDecoration(labelText: l10n.securityInvitationCode),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, enteredCode.trim()),
+          child: Text(l10n.securityAcceptInvitation),
+        ),
+      ],
+    ),
+  );
+  if (code == null || !context.mounted) return;
+  try {
+    await FirebaseFunctions.instance
+        .httpsCallable('aceptarInvitacionVehiculo')
+        .call({'codigoInvitacion': code});
+    if (context.mounted) AppSnackbar.show(context, l10n.securityAccessAccepted);
+  } catch (_) {
+    if (context.mounted) AppSnackbar.show(context, l10n.securityRequestError);
+  }
+}
 
 class ShareVehicleSheet extends StatefulWidget {
   final VehicleModel vehicle;
@@ -28,6 +60,9 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
   final _firestore = FirebaseFirestore.instance;
   final _functions = FirebaseFunctions.instance;
   bool _isLoading = false;
+  final _codeController = TextEditingController();
+  String? _invitationCode;
+  AppLocalizations get l10n => AppLocalizations.of(context)!;
   List<Map<String, String>> _sharedUsers = []; // {uid, email, name}
 
   @override
@@ -52,7 +87,7 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
             (u) => {
               'uid': (u as Map)['uid']?.toString() ?? '',
               'email': u['correo']?.toString() ?? '',
-              'name': u['nombre']?.toString() ?? 'Sin nombre',
+              'name': u['nombre']?.toString() ?? l10n.securityUnnamed,
             },
           )
           .toList();
@@ -66,6 +101,7 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
   @override
   void dispose() {
     _emailController.dispose();
+    _codeController.dispose();
     super.dispose();
   }
 
@@ -116,7 +152,7 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
               Icon(Icons.people_outline, color: primary, size: 24),
               const SizedBox(width: 10),
               Text(
-                'Compartir Vehículo',
+                l10n.securityShareVehicle,
                 style: AppTextStyles.titleLarge.copyWith(
                   fontSize: 20,
                   color: textColor,
@@ -141,7 +177,7 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
               Expanded(
                 child: AppTextField(
                   controller: _emailController,
-                  hintText: 'Agregar correo electrónico...',
+                  hintText: l10n.securityEmailHint,
                   keyboardType: TextInputType.emailAddress,
                   prefixIcon: const Icon(Icons.mail_outline),
                   textInputAction: TextInputAction.done,
@@ -151,7 +187,7 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
               const SizedBox(width: 10),
               AppButton(
                 text: '',
-                semanticLabel: 'Agregar persona',
+                semanticLabel: l10n.securityRequestAccess,
                 icon: const Icon(Icons.person_add),
                 size: AppButtonSize.small,
                 isLoading: _isLoading,
@@ -162,9 +198,23 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
 
           const SizedBox(height: 20),
 
+          if (_invitationCode != null) ...[
+            Text(l10n.securityDeliverCode),
+            SelectableText(_invitationCode!),
+            const SizedBox(height: 12),
+          ],
+          AppTextField(
+            controller: _codeController,
+            label: l10n.securityInvitationCode,
+          ),
+          AppButton(
+            text: l10n.securityAcceptInvitation,
+            onPressed: _isLoading ? null : _acceptInvitation,
+          ),
+          const SizedBox(height: 20),
           // Shared users list
           Text(
-            'PERSONAS CON ACCESO',
+            l10n.securityPeopleWithAccess,
             style: AppTextStyles.labelSmall.copyWith(
               fontWeight: FontWeight.w700,
               letterSpacing: 1,
@@ -194,7 +244,7 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Solo tú tienes acceso',
+                    l10n.securityOnlyYou,
                     style: AppTextStyles.bodySmall.copyWith(
                       fontSize: 13,
                       color: subTextColor,
@@ -259,7 +309,7 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
                         size: 18,
                       ),
                       onPressed: () => _removeUser(user['uid']!),
-                      tooltip: 'Revocar acceso',
+                      tooltip: l10n.securityRevoke,
                     ),
                   ],
                 ),
@@ -275,61 +325,42 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
     final email = _emailController.text.trim().toLowerCase();
     final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     if (email.isEmpty || !emailRegex.hasMatch(email)) {
-      _showSnack('Ingresa un correo válido');
+      _showSnack(l10n.securityInvalidEmail);
       return;
     }
 
     setState(() => _isLoading = true);
     try {
-      // I1 (Fase C, revision de correcciones): la busqueda por correo sobre
-      // 'usuarios' ya no es posible desde el cliente (Tarea 8 cerro esa
-      // coleccion a solo lectura del propio documento). Se resuelve via la
-      // Cloud Function callable `buscarPropietarioPorCorreo`, que verifica
-      // que el llamante es el propietario del vehiculo y solo devuelve
-      // cuentas con rol Propietario.
       final result = await _functions
           .httpsCallable('buscarPropietarioPorCorreo')
           .call({'vehicleId': widget.vehicle.idVehiculo, 'correo': email});
-      final data = result.data as Map?;
-
-      if (data == null) {
-        _showSnack('No se encontró un usuario con ese correo');
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      final targetUid = data['uid'] as String;
-
-      if (targetUid == widget.vehicle.idPropietario) {
-        _showSnack('No puedes compartir contigo mismo');
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      if (widget.vehicle.sharedWith.contains(targetUid)) {
-        _showSnack('Este usuario ya tiene acceso');
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      // Update Firestore
-      await _firestore
-          .collection(FirestoreCollections.vehiculos)
-          .doc(widget.vehicle.idVehiculo)
-          .update({
-            'shared_with': FieldValue.arrayUnion([targetUid]),
-          });
-
-      final newShared = [...widget.vehicle.sharedWith, targetUid];
-      widget.onUpdated(widget.vehicle.copyWith(sharedWith: newShared));
-
+      if (!mounted) return;
+      setState(
+        () => _invitationCode =
+            (result.data as Map)['codigoInvitacion'] as String,
+      );
       _emailController.clear();
-      await _loadSharedUsers();
-      _showSnack('Acceso concedido ✓');
-    } catch (e) {
-      _showSnack('Error: $e');
+      _showSnack(l10n.securityRequestPending);
+    } catch (_) {
+      _showSnack(l10n.securityRequestError);
     }
     if (mounted) setState(() => _isLoading = false);
+  }
+
+  Future<void> _acceptInvitation() async {
+    setState(() => _isLoading = true);
+    try {
+      await _functions.httpsCallable('aceptarInvitacionVehiculo').call({
+        'codigoInvitacion': _codeController.text.trim(),
+      });
+      if (!mounted) return;
+      _codeController.clear();
+      _showSnack(l10n.securityAccessAccepted);
+    } catch (_) {
+      if (mounted) _showSnack(l10n.securityRequestError);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _removeUser(String uid) async {
@@ -347,9 +378,9 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
       widget.onUpdated(widget.vehicle.copyWith(sharedWith: newShared));
 
       setState(() => _sharedUsers.removeWhere((u) => u['uid'] == uid));
-      _showSnack('Acceso revocado');
+      _showSnack(l10n.securityAccessRevoked);
     } catch (e) {
-      _showSnack('Error: $e');
+      _showSnack(l10n.securityRequestError);
     }
   }
 

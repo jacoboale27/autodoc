@@ -2521,6 +2521,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancelled'**
   String get chatCancelledStatus;
+
+  /// No description provided for @securityInvitationReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation ready'**
+  String get securityInvitationReady;
+
+  /// No description provided for @securityInvitationSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation sent'**
+  String get securityInvitationSent;
+
+  /// No description provided for @securityDeliverLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Deliver this link privately to the recipient to set their password. Email is not sent automatically.'**
+  String get securityDeliverLink;
+
+  /// No description provided for @securityRequestPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Request created. Give the code to the recipient for acceptance.'**
+  String get securityRequestPending;
+
+  /// No description provided for @securityDeliverCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Deliver this code privately to the specified email. It expires in 24 hours. The recipient must accept it in Share vehicle with their verified email.'**
+  String get securityDeliverCode;
+
+  /// No description provided for @securityRequestError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not complete the request. Check your verified email and code, or try again later.'**
+  String get securityRequestError;
+
+  /// No description provided for @securityInvitationCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Received invitation code'**
+  String get securityInvitationCode;
+
+  /// No description provided for @securityAcceptInvitation.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept vehicle access'**
+  String get securityAcceptInvitation;
+
+  /// No description provided for @securityAccessAccepted.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation accepted. Refresh your vehicle list.'**
+  String get securityAccessAccepted;
+
+  /// No description provided for @securityUnnamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unnamed'**
+  String get securityUnnamed;
+
+  /// No description provided for @securityShareVehicle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share vehicle'**
+  String get securityShareVehicle;
+
+  /// No description provided for @securityEmailHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipient email'**
+  String get securityEmailHint;
+
+  /// No description provided for @securityRequestAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Create request'**
+  String get securityRequestAccess;
+
+  /// No description provided for @securityPeopleWithAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'PEOPLE WITH ACCESS'**
+  String get securityPeopleWithAccess;
+
+  /// No description provided for @securityOnlyYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Only you have access'**
+  String get securityOnlyYou;
+
+  /// No description provided for @securityRevoke.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke access'**
+  String get securityRevoke;
+
+  /// No description provided for @securityInvalidEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid email'**
+  String get securityInvalidEmail;
+
+  /// No description provided for @securityAccessRevoked.
+  ///
+  /// In en, this message translates to:
+  /// **'Access revoked'**
+  String get securityAccessRevoked;
 }
 
 class _AppLocalizationsDelegate

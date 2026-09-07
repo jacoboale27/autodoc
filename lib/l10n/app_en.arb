@@ -719,4 +719,23 @@
   "chatCancelAppointment": "Cancel Appointment",
   "chatConfirmCancelAppointment": "Are you sure you want to cancel this appointment? It will be recorded that you cancelled it.",
   "chatCancelledStatus": "Cancelled"
+,
+  "securityInvitationReady": "Invitation ready",
+  "securityInvitationSent": "Invitation sent",
+  "securityDeliverLink": "Deliver this link privately to the recipient to set their password. Email is not sent automatically.",
+  "securityRequestPending": "Request created. Give the code to the recipient for acceptance.",
+  "securityDeliverCode": "Deliver this code privately to the specified email. It expires in 24 hours. The recipient must accept it in Share vehicle with their verified email.",
+  "securityRequestError": "Could not complete the request. Check your verified email and code, or try again later.",
+  "securityInvitationCode": "Received invitation code",
+  "securityAcceptInvitation": "Accept vehicle access",
+  "securityAccessAccepted": "Invitation accepted. Refresh your vehicle list.",
+  "securityUnnamed": "Unnamed",
+  "securityShareVehicle": "Share vehicle",
+  "securityEmailHint": "Recipient email",
+  "securityRequestAccess": "Create request",
+  "securityPeopleWithAccess": "PEOPLE WITH ACCESS",
+  "securityOnlyYou": "Only you have access",
+  "securityRevoke": "Revoke access",
+  "securityInvalidEmail": "Enter a valid email",
+  "securityAccessRevoked": "Access revoked"
 }

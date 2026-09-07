@@ -277,24 +277,23 @@ class AdminProvider with ChangeNotifier {
 
   // --- SUPERUSUARIO ---
 
-  Future<bool> crearUsuario({
+  Future<String?> crearUsuario({
     required String nombreCompleto,
     required String correo,
     required String rol,
   }) async {
     _setLoading(true);
     try {
-      final passwordTemporal = await _adminService.crearUsuarioComoSuperUser(
+      final enlaceInvitacion = await _adminService.crearUsuarioComoSuperUser(
         nombreCompleto: nombreCompleto,
         correo: correo,
         rol: rol,
       );
-      _setSuccess('Usuario creado. Contraseña temporal: $passwordTemporal');
       await fetchUsuarios();
-      return true;
+      return enlaceInvitacion;
     } catch (e) {
       _setError(e.toString());
-      return false;
+      return null;
     } finally {
       _setLoading(false);
     }

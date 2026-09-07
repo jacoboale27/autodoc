@@ -1323,4 +1323,63 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chatCancelledStatus => 'Cancelled';
+
+  @override
+  String get securityInvitationReady => 'Invitation ready';
+
+  @override
+  String get securityInvitationSent => 'Invitation sent';
+
+  @override
+  String get securityDeliverLink =>
+      'Deliver this link privately to the recipient to set their password. Email is not sent automatically.';
+
+  @override
+  String get securityRequestPending =>
+      'Request created. Give the code to the recipient for acceptance.';
+
+  @override
+  String get securityDeliverCode =>
+      'Deliver this code privately to the specified email. It expires in 24 hours. The recipient must accept it in Share vehicle with their verified email.';
+
+  @override
+  String get securityRequestError =>
+      'Could not complete the request. Check your verified email and code, or try again later.';
+
+  @override
+  String get securityInvitationCode => 'Received invitation code';
+
+  @override
+  String get securityAcceptInvitation => 'Accept vehicle access';
+
+  @override
+  String get securityAccessAccepted =>
+      'Invitation accepted. Refresh your vehicle list.';
+
+  @override
+  String get securityUnnamed => 'Unnamed';
+
+  @override
+  String get securityShareVehicle => 'Share vehicle';
+
+  @override
+  String get securityEmailHint => 'Recipient email';
+
+  @override
+  String get securityRequestAccess => 'Create request';
+
+  @override
+  String get securityPeopleWithAccess => 'PEOPLE WITH ACCESS';
+
+  @override
+  String get securityOnlyYou => 'Only you have access';
+
+  @override
+  String get securityRevoke => 'Revoke access';
+
+  @override
+  String get securityInvalidEmail => 'Enter a valid email';
+
+  @override
+  String get securityAccessRevoked => 'Access revoked';
 }

@@ -716,4 +716,23 @@
   "chatCancelAppointment": "Cancelar Cita",
   "chatConfirmCancelAppointment": "¿Seguro que quieres cancelar esta cita? Se registrará que la cancelaste tú.",
   "chatCancelledStatus": "Cancelada"
+,
+  "securityInvitationReady": "Invitación lista",
+  "securityInvitationSent": "Invitación enviada",
+  "securityDeliverLink": "Entrega este enlace al destinatario de forma privada para que configure su contraseña. No se envía correo automáticamente.",
+  "securityRequestPending": "Solicitud creada. Entrega el código al destinatario para que acepte.",
+  "securityDeliverCode": "Entrega este código en privado al correo indicado. Caduca en 24 horas. El destinatario debe aceptarlo desde Compartir vehículo con su correo verificado.",
+  "securityRequestError": "No se pudo completar la solicitud. Verifica tu correo y el código, o inténtalo más tarde.",
+  "securityInvitationCode": "Código de invitación recibido",
+  "securityAcceptInvitation": "Aceptar acceso al vehículo",
+  "securityAccessAccepted": "Invitación aceptada. Actualiza tu lista de vehículos.",
+  "securityUnnamed": "Sin nombre",
+  "securityShareVehicle": "Compartir vehículo",
+  "securityEmailHint": "Correo del destinatario",
+  "securityRequestAccess": "Crear solicitud",
+  "securityPeopleWithAccess": "PERSONAS CON ACCESO",
+  "securityOnlyYou": "Solo tú tienes acceso",
+  "securityRevoke": "Revocar acceso",
+  "securityInvalidEmail": "Ingresa un correo válido",
+  "securityAccessRevoked": "Acceso revocado"
 }
