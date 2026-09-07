@@ -96,3 +96,5 @@ functions/seed_testsprite_staging.js
 # Scratch de herramientas (Playwright MCP, superpowers SDD)
 .playwright-mcp/
 .superpowers/
+.playwright-cli/
+audit-*.yml
