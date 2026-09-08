@@ -77,7 +77,13 @@ reproducidos; el comentario del codigo describe los dos.
 | Functions (Mocha) | 150 / 150 | **173 / 173** |
 | E2E landing | no existia | **18 / 18**, exit 0 |
 | E2E app (Flutter) | 27 + 2 fixme | sin cambios (no se toco `lib/`) |
+| Flutter (`flutter test`) | 1140 / 1140 | **1140 / 1140** (ver nota abajo) |
 | Puertos al salir | — | **0 en LISTENING** |
+
+**Nota sobre la primera corrida de Flutter:** dio 1139 y un fallo, en una corrida lanzada en
+paralelo con las suites de reglas y de functions. La corrida limpia y secuencial da 1140/1140. No
+se pudo identificar el test porque la salida iba por `tail`; UX-01 no toca ni un archivo Dart, asi
+que el cambio no puede explicarlo, pero queda dicho que hubo un rojo y que no se llego a ver cual.
 
 Los defectos siguieron TDD: el endpoint se escribio contra 20 tests en rojo, y los cinco arreglos
 de los gates traen cada uno su caso.
