@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { useTheme } from "next-themes";
-import { usePathname, useRouter } from "@/i18n/routing";
+import { Link as LinkLocalizado, usePathname, useRouter } from "@/i18n/routing";
 import { Moon, Sun, Languages } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -52,15 +52,15 @@ export default function Header() {
 
         {/* Navigation */}
         <nav className="hidden md:flex items-center gap-8">
-          <Link href="#features" className="text-sm font-medium text-slate-600 dark:text-slate-200 transition hover:text-[#522C81] dark:hover:text-sky-400">
+          <LinkLocalizado href="/#features" className="text-sm font-medium text-slate-600 dark:text-slate-200 transition hover:text-[#522C81] dark:hover:text-sky-400">
             {t("navOwners")}
-          </Link>
-          <Link href="#workshops" className="text-sm font-medium text-slate-600 dark:text-slate-200 transition hover:text-[#522C81] dark:hover:text-sky-400">
+          </LinkLocalizado>
+          <LinkLocalizado href="/#workshops" className="text-sm font-medium text-slate-600 dark:text-slate-200 transition hover:text-[#522C81] dark:hover:text-sky-400">
             {t("navWorkshops")}
-          </Link>
-          <Link href="#testimonials" className="text-sm font-medium text-slate-600 dark:text-slate-200 transition hover:text-[#522C81] dark:hover:text-sky-400">
+          </LinkLocalizado>
+          <LinkLocalizado href="/#testimonials" className="text-sm font-medium text-slate-600 dark:text-slate-200 transition hover:text-[#522C81] dark:hover:text-sky-400">
             {t("navTestimonials")}
-          </Link>
+          </LinkLocalizado>
         </nav>
 
         {/* Actions & Toggles */}

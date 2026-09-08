@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
+import { APP_STORE_URL, PLAY_STORE_URL, WEB_APP_URL } from "@/lib/enlaces";
 
 export default function HeroSection() {
   const t = useTranslations();
@@ -46,7 +47,7 @@ export default function HeroSection() {
         {/* Dual CTAs & App Badges */}
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-            <Link href="https://autodoc-6ef5a.web.app/login" passHref target="_blank">
+            <Link href={`${WEB_APP_URL}/login`} passHref target="_blank">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -67,7 +68,7 @@ export default function HeroSection() {
           </div>
 
           <div className="flex items-center gap-3 pt-2">
-            <Link href="https://play.google.com/store/apps/details?id=com.autodoc.app" target="_blank" className="hover:opacity-80 transition-opacity">
+            <Link href={PLAY_STORE_URL} target="_blank" className="hover:opacity-80 transition-opacity">
               <Image 
                 src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" 
                 alt="Get it on Google Play" 
@@ -76,15 +77,18 @@ export default function HeroSection() {
                 className="h-[40px] w-auto"
               />
             </Link>
-            <Link href="https://apps.apple.com/app/id123456789" target="_blank" className="hover:opacity-80 transition-opacity">
-              <Image 
-                src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" 
-                alt="Download on the App Store" 
-                width={120} 
-                height={40} 
-                className="h-[40px] w-auto"
-              />
-            </Link>
+            {/* Badge de iOS: solo cuando exista ficha publica. Ver lib/enlaces.ts. */}
+            {APP_STORE_URL && (
+              <Link href={APP_STORE_URL} target="_blank" className="hover:opacity-80 transition-opacity">
+                <Image
+                  src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg"
+                  alt="Download on the App Store"
+                  width={120}
+                  height={40}
+                  className="h-[40px] w-auto"
+                />
+              </Link>
+            )}
           </div>
         </div>
       </motion.div>

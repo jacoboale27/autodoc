@@ -1493,5 +1493,50 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+
+    // Buzon de los formularios de la landing (UX-01: contacto y solicitud de
+    // afiliacion de talleres). Lo llena UNICAMENTE la Cloud Function
+    // recibirSolicitudLanding con el Admin SDK, que no pasa por estas reglas:
+    // desde el cliente esta cerrada por los dos lados.
+    //
+    // Cerrada a la escritura porque el formulario de afiliacion de la landing
+    // POSTeaba sin autenticar a la REST API de Firestore; que ahora escriba
+    // en otra coleccion no arregla nada si esa coleccion admite escrituras
+    // anonimas, porque se saltaria la validacion y el limitador del endpoint.
+    // Cerrada a la lectura porque guarda correos, telefonos y mensajes de
+    // personas que escribieron a soporte.
+    match /solicitudes_landing/{solicitudId} {
+      allow read: if isAdmin();
+
+      allow create: if false;
+
+      // El administrador atiende el buzon, no lo reescribe: lo unico que
+      // puede cambiar es el estado, y dentro de una lista cerrada. Sin el
+      // hasOnly, "marcar como atendida" autorizaria tambien a reescribir el
+      // mensaje o el correo de quien escribio.
+      allow update: if isAdmin()
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys().hasOnly(['estado'])
+                    // .get('estado','') y no .estado: un update que BORRE el campo
+                    // pasa el hasOnly y luego revienta la evaluacion en vez de
+                    // denegar limpio. Hoy el efecto neto es el mismo porque es el
+                    // ultimo termino de una cadena de &&, pero en cuanto esta
+                    // condicion entre en un || el error se propaga y tumba tambien
+                    // la rama que si deberia conceder.
+                    && request.resource.data.get('estado', '') in ['nueva', 'atendida', 'descartada'];
+
+      // Borrar una solicitud es destruir la unica copia de lo que alguien
+      // envio: se queda al nivel de Superusuario, como el hard delete de
+      // cuentas.
+      allow delete: if isSuperUser();
+    }
+
+    // Contador del limitador por IP del endpoint. Si un cliente pudiera
+    // tocarlo, el limite seria decorativo: bastaria con ponerlo a cero entre
+    // envio y envio. Ni siquiera el administrador tiene nada que hacer aqui.
+    match /solicitudes_landing_control/{ipHash} {
+      allow read, write: if false;
+    }
+
   }
 }
