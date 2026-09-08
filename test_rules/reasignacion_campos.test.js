@@ -90,6 +90,46 @@ describe('un update legitimo no puede reasignar el registro a otro vehiculo/tall
     );
   });
 
+  // `talleres_conocidos` es append-only por contrato (firestore.rules:134-137
+  // lo dice con todas las letras: lo escribe recibirTicketYVincular con Admin
+  // SDK y no se revoca nunca), pero las reglas no lo enforzaban. Vaciar los
+  // DOS arrays devuelve el vehiculo al estado que la rama de walk-in de
+  // puedeMecanicoAtenderVehiculo considera "coche que ningun taller ha
+  // atendido jamas", y ese estado abre el coche a CUALQUIER mecanico: es
+  // exactamente el agujero que la ronda 6 cerro, reabierto desde el lado del
+  // propietario. Con una cuenta de Mecanico propia, el dueño se fabrica
+  // historial de taller verificado y, via isOwnFinishedService, reseñas
+  // legitimas para un taller que controla.
+  test('el propietario NO puede vaciar talleres_conocidos para volver al estado walk-in', async () => {
+    await seed(env, async (s) => {
+      await s.collection('vehiculos').doc('v3').set({
+        id_vehiculo: 'v3', id_propietario: UIDS.owner1, placa: 'P-3',
+        talleres_vinculados: [UIDS.taller1], talleres_conocidos: [UIDS.taller1],
+      });
+    });
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('vehiculos').doc('v3').update({
+        talleres_conocidos: [], talleres_vinculados: [],
+      }),
+    );
+  });
+
+  test('el propietario SI puede revocar el vinculo vivo sin tocar el historico', async () => {
+    await seed(env, async (s) => {
+      await s.collection('vehiculos').doc('v3').set({
+        id_vehiculo: 'v3', id_propietario: UIDS.owner1, placa: 'P-3',
+        talleres_vinculados: [UIDS.taller1], talleres_conocidos: [UIDS.taller1],
+      });
+    });
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    // Es lo que hace VehicleService.revocarAccesoTaller: quita el vinculo
+    // vivo y deja intacto el registro de que ese taller estuvo ahi.
+    await assertSucceeds(
+      db.collection('vehiculos').doc('v3').update({ talleres_vinculados: [] }),
+    );
+  });
+
   test('el propietario SI puede editar los datos de su vehiculo', async () => {
     await seedEscenario();
     const db = await withRole(env, UIDS.owner1, 'Propietario');
