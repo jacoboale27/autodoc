@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'core/config/firebase_emulators.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
@@ -134,7 +135,22 @@ void main() async {
   }
   debugPrint("=== [AutoDoc Init] Firebase inicializado con éxito ===");
 
-  if (kIsWeb && AppSecrets.recaptchaSiteKey.isEmpty) {
+  // 1b. Emuladores locales, si el build lo pidió y lo permite. Va aquí, entre
+  // initializeApp y la primera operación de cualquier SDK: redirigir después
+  // de la primera lectura no tiene efecto y deja la app medio conectada a
+  // producción. No hace nada en un build de release (ver firebase_emulators).
+  await conectarEmuladoresFirebase();
+
+  if (usarEmuladoresFirebase) {
+    // App Check contra emuladores no aporta nada y sí estorba: el provider de
+    // reCAPTCHA Enterprise necesita una site key real y un dominio registrado,
+    // y sin eso no resuelve su token, dejando colgada la primera llamada de
+    // Auth hasta que expira como network-request-failed. Es el mismo modo de
+    // fallo que ya documenta la rama de abajo, pero garantizado.
+    debugPrint(
+      "=== [AutoDoc Init] App Check omitido: corriendo contra emuladores ===",
+    );
+  } else if (kIsWeb && AppSecrets.recaptchaSiteKey.isEmpty) {
     // Sin site key, el provider de reCAPTCHA Enterprise nunca resuelve su
     // token y cualquier llamada a Firebase Auth se queda colgada hasta
     // expirar como network-request-failed. Mejor omitir la activación y

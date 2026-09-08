@@ -59,23 +59,75 @@ probar (VER-01 y ROLE-01). El criterio aplicado aquí:
   omitía `tipo`, una forma de documento que `MensajeModel.toMap()` nunca genera; se corrigió antes
   de darlo por bueno, y el caso heredado se cubrió aparte.
 
-## 4. Lo que QA-01 todavía NO cubre
+## 4. Harness E2E: de producción a emuladores
 
-El último punto del checklist de §7 — *«Hacer que Playwright arranque sólo emuladores requeridos y
-use state aislado por proyecto»* — sigue **abierto**, y el estado de partida es peor de lo que
-sugiere el plan:
+El estado de partida era peor de lo que sugiere el plan. `e2e/playwright.config.js` arrancaba
+`flutter run -d web-server --dart-define-from-file=.env`: la suite completa corría **contra el
+Firebase de producción**, iniciaba sesión con dos cuentas fijas (`taller1@taller.com`,
+`nadie@gmail.com`) y `registro.spec.js` **creaba usuarios reales en cada corrida**. Y no había
+forma de redirigirla: no existía una sola llamada a `useAuthEmulator` en `lib/`.
 
-- `e2e/playwright.config.js:17` arranca `flutter run -d web-server --dart-define-from-file=.env`.
-  No levanta ningún emulador: la suite E2E corre **contra el Firebase de producción**.
-- `e2e/tests/mecanico.spec.js:15` y `propietario.spec.js:16` inician sesión con cuentas fijas
-  (`taller1@taller.com`, `nadie@gmail.com`).
-- `e2e/tests/registro.spec.js:12` **crea usuarios nuevos en producción** en cada corrida.
-- No hay cobertura E2E de administrador ni de superusuario.
+| Evidence ID | Cambio | Artefacto |
+|---|---|---|
+| `EVID-QA-020` | cableado a emuladores con doble candado: el `--dart-define` **y** `!kReleaseMode` | `lib/core/config/firebase_emulators.dart`, `lib/main.dart` |
+| `EVID-QA-021` | credenciales falsas versionadas: el E2E ya no puede alcanzar producción ni con el cableado roto | `e2e/emulator-config.json` |
+| `EVID-QA-022` | fixtures por rol sembrados con Admin SDK: propietario A/B, taller aprobado/pendiente, admin, superusuario, cuenta desechable | `e2e/scripts/seed-emulators.js` |
+| `EVID-QA-023` | arranque reproducible: emuladores + bundle compilado servido con fallback SPA | `e2e/playwright.config.js`, `scripts/build-web.js`, `scripts/serve-web.js` |
+| `EVID-QA-024` | matriz multirol E2E contra el bundle real | `e2e/tests/roles.spec.js`, 13 casos |
+| `EVID-QA-025` | prueba del propio harness (proyecto, verificación de correo, seis roles) | `e2e/tests/harness.spec.js`, 3 casos |
 
-Redirigirlo a emuladores no es configuración: **la app no tiene hoy ninguna vía para apuntar a
-emuladores** — no hay una sola llamada a `useAuthEmulator` / `useFirestoreEmulator` /
-`useStorageEmulator` en `lib/`. Hace falta añadir ese cableado a `lib/main.dart` detrás de un flag
-de compilación que no pueda activarse en un build de release, y solo entonces reescribir la config
-y las specs sobre fixtures sembrados por rol.
+**Resultado: 27 pasan, 2 marcadas `fixme`, exit 0** (`cd e2e && npm run build:web && npm test`).
 
-Hasta que eso se cierre, QA-01 no cumple su Definition of Done.
+### El candado que funcionó a la primera, en contra
+
+`flutter build web` compila en **release** por defecto, así que `!kReleaseMode` desactivó el
+cableado y Auth salió al endpoint real con las claves falsas: `auth/api-key-not-valid`. Es
+exactamente el comportamiento que se buscaba —un build de producción no puede quedar apuntando a
+un emulador— demostrado en la práctica. El bundle E2E se compila con `--profile`, que es código
+compilado igual que release pero con `kReleaseMode` en false.
+
+### Tres trampas que costaron corridas
+
+1. **El SDK importado de gstatic no sirve.** Un `import()` dentro de `page.evaluate` crea su propio
+   registro de apps: `getApps()` sale vacío y todo muere con "No Firebase App '[DEFAULT]'". Peor,
+   esa copia no heredaría el `useAuthEmulator`, así que hablaría con producción desde dentro de una
+   suite que se cree aislada. Lo correcto son los globales `window.firebase_core` / `firebase_auth`
+   / `firebase_firestore`, que **son** la instancia de la app.
+2. **Esperar a que exista la app no basta.** `getApps()` deja de estar vacío en cuanto corre
+   `initializeApp`, que es *antes* del redirect a emuladores. Un `signIn` en esa ventana sale a
+   producción. Se espera a `auth.emulatorConfig`, que sólo deja de ser null cuando el redirect ya
+   se aplicó. Cuatro rojos intermitentes salieron de aquí.
+3. **`getByLabel` no puede funcionar en esta app.** No emite ni un `aria-label`: Flutter web expone
+   la semántica como `<flt-semantics role="button">` cuyo rótulo es su texto. Todos los selectores
+   de las specs heredadas estaban condenados a expirar, apuntaran a donde apuntaran. Se migraron a
+   `getByRole`.
+
+### Hallazgo de accesibilidad, para UX-03
+
+La tarjeta del garaje y la ficha del directorio **se renderizan pero su texto no llega al árbol de
+semántica**: CanvasKit lo pinta en el canvas. La placa `E2E-AAA` es legible en el dashboard y no en
+el garaje. Para un lector de pantalla, esa lista de vehículos está vacía.
+
+### Lo que queda abierto
+
+- `e2e/tests/registro.spec.js` (2 casos, `fixme`): la pantalla de auth se rehízo en SEC-01/SEC-02 y
+  sus rótulos ya no existen; además el llenado de formularios de Flutter web es inestable. Ya no
+  toca producción, que era lo urgente. Rehacer el recorrido es trabajo de UX-01/UX-03.
+- `reuseExistingServer: true` significa que quien arranque los emuladores a mano debe pararlos: una
+  corrida de Playwright que los reutiliza no los cierra al salir.
+- Cobertura E2E de Storage y de callables: no incluida.
+
+## 5. Estado de la Definition of Done
+
+| Punto de la DoD | Estado |
+|---|---|
+| implementación mínima y localizada | cumplido |
+| prueba nueva falla antes y pasa después | cumplido en los cinco defectos de autorización; los de cobertura pura se declaran como tales |
+| pruebas existentes relevantes pasan | reglas 395/395, Flutter 1140/1140, `analyze` limpio |
+| Playwright/emulador donde cruza UI, autorización o persistencia | cumplido: 27 casos contra el bundle real y los emuladores |
+| responsive y localización | **no cubierto** — no hay UI nueva en esta tarea; los cuatro viewports son de UX-03 |
+| Evidence ID, resultado y artefacto registrados | este documento |
+| regresión del workstream ejecutada | cumplida |
+| reevaluación del criterio CREA afectado | Roles y BD ganan evidencia ejecutable por rol y por entidad; Seguridad gana cinco huecos cerrados |
+
+Queda fuera el registro por UI (`fixme`, §4) y la cobertura E2E de Storage y callables.
