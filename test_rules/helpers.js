@@ -13,6 +13,11 @@ const UIDS = {
   // pertenece a un taller DISTINTO (taller2), para los casos negativos.
   empleado1: 'uid-empleado-1',
   empleado2: 'uid-empleado-2',
+  // Superusuario: el nivel por encima de Administrador (isSuperUser()). No
+  // existia actor para el, asi que sus permisos EXCLUSIVOS —crear
+  // Administradores, hard-delete de cuentas— no tenian ni positivo ni
+  // negativo en la matriz de roles.
+  superusuario: 'uid-superusuario-1',
 };
 
 async function makeEnv() {
