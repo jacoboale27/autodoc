@@ -2,6 +2,8 @@
 
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { Link as LinkLocalizado } from "@/i18n/routing";
+import { APP_STORE_URL, PLAY_STORE_URL } from "@/lib/enlaces";
 import Image from "next/image";
 
 export default function Footer() {
@@ -34,19 +36,22 @@ export default function Footer() {
           <div>
             <h4 className="mb-6 font-bold text-slate-900 dark:text-white">{t("navPlatform")}</h4>
             <ul className="space-y-4 text-sm text-slate-500 dark:text-slate-400">
-              <li><Link href="#features" className="hover:text-[#522C81] dark:hover:text-sky-400">{t("footerOwners")}</Link></li>
-              <li><Link href="#workshops" className="hover:text-[#522C81] dark:hover:text-sky-400">{t("footerWorkshops")}</Link></li>
-              <li><Link href="#testimonials" className="hover:text-[#522C81] dark:hover:text-sky-400">{t("navTestimonials")}</Link></li>
+              <li><LinkLocalizado href="/#features" className="hover:text-[#522C81] dark:hover:text-sky-400">{t("footerOwners")}</LinkLocalizado></li>
+              <li><LinkLocalizado href="/#workshops" className="hover:text-[#522C81] dark:hover:text-sky-400">{t("footerWorkshops")}</LinkLocalizado></li>
+              <li><LinkLocalizado href="/#testimonials" className="hover:text-[#522C81] dark:hover:text-sky-400">{t("navTestimonials")}</LinkLocalizado></li>
             </ul>
           </div>
 
           <div>
             <h4 className="mb-6 font-bold text-slate-900 dark:text-white">{t("downloadApp")}</h4>
             <div className="flex flex-col gap-3">
-              <Link href="https://apps.apple.com/app/id123456789" target="_blank" className="inline-block hover:opacity-80 transition-opacity">
-                <Image src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt="Download on the App Store" width={120} height={40} className="h-10 w-auto" />
-              </Link>
-              <Link href="https://play.google.com/store/apps/details?id=com.autodoc.app" target="_blank" className="inline-block hover:opacity-80 transition-opacity">
+              {/* Badge de iOS: solo cuando exista ficha publica. Ver lib/enlaces.ts. */}
+              {APP_STORE_URL && (
+                <Link href={APP_STORE_URL} target="_blank" className="inline-block hover:opacity-80 transition-opacity">
+                  <Image src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt="Download on the App Store" width={120} height={40} className="h-10 w-auto" />
+                </Link>
+              )}
+              <Link href={PLAY_STORE_URL} target="_blank" className="inline-block hover:opacity-80 transition-opacity">
                 <Image src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Get it on Google Play" width={135} height={40} className="h-10 w-auto" />
               </Link>
             </div>
@@ -56,9 +61,9 @@ export default function Footer() {
         <div className="mt-16 flex flex-col items-center justify-between border-t border-slate-200 dark:border-slate-800 pt-8 sm:flex-row text-sm text-slate-500">
           <p>{t("footerCopyright")}</p>
           <div className="mt-4 flex gap-6 sm:mt-0">
-            <a href="mailto:soporte@autodoc.app" className="hover:text-slate-900 dark:hover:text-white">{t("footerContact")}</a>
-            <a href="https://autodoc.app/privacidad" target="_blank" rel="noopener noreferrer" className="hover:text-slate-900 dark:hover:text-white">{t("footerPrivacy")}</a>
-            <a href="https://autodoc.app/terminos" target="_blank" rel="noopener noreferrer" className="hover:text-slate-900 dark:hover:text-white">{t("footerTerms")}</a>
+            <LinkLocalizado href="/contact" className="hover:text-slate-900 dark:hover:text-white">{t("footerContact")}</LinkLocalizado>
+            <LinkLocalizado href="/privacy" className="hover:text-slate-900 dark:hover:text-white">{t("footerPrivacy")}</LinkLocalizado>
+            <LinkLocalizado href="/terms" className="hover:text-slate-900 dark:hover:text-white">{t("footerTerms")}</LinkLocalizado>
           </div>
         </div>
       </div>
