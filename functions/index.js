@@ -1,6 +1,5 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const firestore = require('@google-cloud/firestore');
 admin.initializeApp();
 
 const { abrirTicketDeReparacion, ErrorAutorizacionPermanente,
@@ -16,6 +15,13 @@ const {
 } = require('./src/obtenerPerfilPublico');
 const { listarEmpleadosPublicos } = require('./src/obtenerEmpleadosPublicos');
 const { CAMPO_MIGRACION, esMigracion } = require('./src/migracion');
+// El FieldValue tiene que salir del MISMO modulo que la instancia de Firestore.
+// Observado en el emulador de Functions: `admin.firestore.FieldValue` llega
+// undefined, y el de `@google-cloud/firestore` (que este package.json declara
+// aparte, por lo que es OTRA copia) hace que Firestore rechace el centinela con
+// "Couldn't serialize object of type ServerTimestampTransform". El punto de
+// entrada modular de firebase-admin devuelve el bueno en los dos entornos.
+const { FieldValue } = require('firebase-admin/firestore');
 
 const db = admin.firestore();
 const messaging = admin.messaging();
@@ -1374,6 +1380,10 @@ exports.onVehicleDelete = functions.firestore.document('vehiculos/{vehicleId}').
  */
 exports.scheduledFirestoreExport = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
   const projectId = process.env.GCP_PROJECT || process.env.GCLOUD_PROJECT;
+  // Se requiere aqui y no al principio del archivo: es una libreria pesada
+  // (gRPC y protos) que solo usa esta funcion, una vez al dia, y a nivel de
+  // modulo la pagaba el arranque en frio de las ~30 funciones del entrypoint.
+  const firestore = require('@google-cloud/firestore');
   const client = new firestore.v1.FirestoreAdminClient();
   const databaseName = client.databasePath(projectId, '(default)');
   const bucket = 'gs://' + projectId + '-backups';
@@ -2132,3 +2142,15 @@ exports.superUserDeleteAccount = functions.https.onCall(async (data, context) =>
 });
 
 exports.publishTallerProfile = require('./src/publishTallerProfile').publishTallerProfile;
+
+// Buzon de los formularios de la landing (UX-01). La landing es un export
+// estatico y no tiene servidor: este es su unico destino real. Ver
+// src/solicitudesLanding.js para el porque del contrato y del limitador.
+exports.recibirSolicitudLanding = functions
+  .runWith({ maxInstances: 10, memory: '128MB', timeoutSeconds: 20 })
+  .https.onRequest(
+  require('./src/solicitudesLanding').crearManejador({
+    db,
+    timestamp: () => FieldValue.serverTimestamp(),
+  })
+);
