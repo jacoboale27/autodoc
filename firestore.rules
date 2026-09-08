@@ -692,11 +692,17 @@ service cloud.firestore {
         || isAdmin()
       );
 
-      // Actualización: propietario del vehículo o admin
+      // Actualización: propietario del vehículo o admin.
+      // `id_vehiculo` es inmutable: la autorización de arriba mira el
+      // documento VIEJO (resource.data), así que sin este acotado el dueño de
+      // v1 podía reescribir id_vehiculo a v2 y colar la alerta en el coche de
+      // otra persona — un update legítimo sobre un documento propio que acaba
+      // escribiendo sobre datos ajenos. Ningún flujo real reasigna una alerta
+      // de vehículo: se borra y se crea.
       allow update: if isAuthenticated() && (
         isVehicleOwner(resource.data.id_vehiculo)
         || isAdmin()
-      );
+      ) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['id_vehiculo']);
 
       // Eliminación: propietario del vehículo o admin
       allow delete: if isAuthenticated() && (
@@ -1263,11 +1269,14 @@ service cloud.firestore {
       // otorga recien despues, al crear el 'servicios' correspondiente — asi
       // que sin el carve-out este update (paso 1 de tallerUpdateService)
       // fallaba con permission-denied antes de llegar a esa escritura.
+      // `id_vehiculo` inmutable, mismo motivo que en /alertas: la
+      // autorización mira resource.data (el doc viejo), así que reasignarlo
+      // movería el mantenimiento al coche de otro con un update autorizado.
       allow update: if isAuthenticated() && (
         isVehicleOwner(resource.data.id_vehiculo)
         || puedeMecanicoAtenderVehiculo(resource.data.id_vehiculo)
         || isAdmin()
-      );
+      ) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['id_vehiculo']);
 
       allow delete: if isAuthenticated() && (
         isVehicleOwner(resource.data.id_vehiculo)
@@ -1295,10 +1304,16 @@ service cloud.firestore {
         || isAdmin()
       );
 
+      // `id_vehiculo` e `id_taller` inmutables: actuaPorTaller() se evalúa
+      // sobre resource.data.id_taller (el viejo), de modo que sin este
+      // acotado el taller dueño de la entrada podía reasignarla al vehículo
+      // de otro cliente o atribuírsela a otro taller, falsificando historial
+      // ajeno desde un update que las reglas consideran legítimo.
       allow update: if isAuthenticated() && (
         (isMecanico() && actuaPorTaller(resource.data.id_taller))
         || isAdmin()
-      );
+      ) && !request.resource.data.diff(resource.data).affectedKeys()
+             .hasAny(['id_vehiculo', 'id_taller']);
 
       allow delete: if isAdmin();
     }
