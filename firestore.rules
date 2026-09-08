@@ -525,11 +525,23 @@ service cloud.firestore {
       allow create: if isAuthenticated() && request.resource.data.id_propietario == request.auth.uid;
       allow delete: if isAuthenticated() && resource.data.id_propietario == request.auth.uid;
 
-      // El propietario puede modificar todo su vehículo.
+      // El propietario puede modificar todo su vehículo MENOS de quién es:
+      // esta rama autoriza con `resource.data.id_propietario` (el documento
+      // viejo) y no acotaba campos, así que el dueño podía REGALAR el coche
+      // reescribiendo ese mismo campo. El vehículo aparecía en el panel de la
+      // víctima como suyo, con su historial y sus alertas colgando de él, y
+      // el atacante ya no podía deshacerlo: el update que le quitaba el
+      // permiso era el último que las reglas le permitían.
+      // `talleres_vinculados` se deja fuera del acotado a propósito — es la
+      // primitiva de consentimiento que el propio dueño escribe desde
+      // VehicleService.confirmarVinculoTaller / .rechazarVinculoTaller
+      // (vehicle_service.dart:63/95/122); congelarla aquí rompería el modelo
+      // de vínculos de las rondas 5/6.
       // Un mecánico de un taller ya vinculado puede actualizar el vehículo
       // únicamente para reportar el 'kilometraje_actual'.
       allow update: if isAuthenticated() && (
-        resource.data.id_propietario == request.auth.uid
+        (resource.data.id_propietario == request.auth.uid
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['id_propietario']))
         // Mismo motivo que en la lectura: comparar contra idTallerActor(),
         // no contra el uid de la sesion, para que un empleado del taller
         // vinculado pueda reportar el kilometraje.
@@ -693,6 +705,13 @@ service cloud.firestore {
       );
 
       // Actualización: propietario del vehículo o admin.
+      // El acotado va FUERA del paréntesis a propósito, así que ata también a
+      // isAdmin() — al contrario que en /servicios y /reparaciones, donde el
+      // admin queda exento del guard equivalente. Reasignar un registro al
+      // vehículo de otra persona no es una operación legítima de moderación:
+      // una corrección real de ese tipo se hace con Admin SDK, que no pasa
+      // por estas reglas. Mismo criterio en /mantenimientos y
+      // /historial_mantenimientos.
       // `id_vehiculo` es inmutable: la autorización de arriba mira el
       // documento VIEJO (resource.data), así que sin este acotado el dueño de
       // v1 podía reescribir id_vehiculo a v2 y colar la alerta en el coche de
@@ -948,7 +967,13 @@ service cloud.firestore {
         //      (`test/features/chat/tombstone_literal_test.dart`).
         allow update: if isAuthenticated() && esParticipante() && (
           (resource.data.id_remitente == request.auth.uid &&
-            resource.data.tipo == 'texto' &&
+            // `.get('tipo', 'texto')` y no `resource.data.tipo` a secas: los
+            // mensajes anteriores a la introduccion del campo no lo traen, y
+            // desreferenciarlo sobre ellos es un error de evaluacion que deja
+            // el mensaje ineditable para siempre en vez de denegar limpio. El
+            // default replica el que ya aplica el cliente al leerlos
+            // (MensajeModel.fromMap: `map['tipo'] ?? 'texto'`).
+            resource.data.get('tipo', 'texto') == 'texto' &&
             resource.data.get('is_deleted', false) != true &&
             request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['contenido', 'editado']) &&
@@ -1100,8 +1125,17 @@ service cloud.firestore {
       // ajeno: `allow create` (abajo) ya lo ata con `actuaPorTaller`. El
       // margen del mecanico sigue fuera de este documento, en la subcoleccion
       // `privado` (hallazgo H2).
+      // `resource == null` explicito, por el mismo motivo ya documentado en
+      // /vehiculos: sin esa rama, un get() sobre una cotizacion inexistente
+      // —la que se acaba de borrar, o un id que todavia no se ha escrito— no
+      // devuelve "no existe", sino que evalua `resource.data.id_propietario`
+      // sobre null. Eso es un error de evaluacion, no un false, y llega al
+      // cliente como PERMISSION_DENIED: un mensaje que manda a buscar un
+      // problema de permisos donde solo hay un documento ausente. No filtra
+      // nada, porque un documento inexistente no tiene datos que exponer.
       allow read: if isAuthenticated() &&
-        (resource.data.id_propietario == request.auth.uid ||
+        (resource == null ||
+         resource.data.id_propietario == request.auth.uid ||
          resource.data.id_mecanico == request.auth.uid ||
          actuaPorTaller(resource.data.get('id_taller', '')) ||
          isAdmin());

@@ -64,6 +64,38 @@ describe('un update legitimo no puede reasignar el registro a otro vehiculo/tall
     );
   });
 
+  // /vehiculos tiene la misma forma por el otro lado: la rama del propietario
+  // autoriza con `resource.data.id_propietario == request.auth.uid` y no acota
+  // campos, asi que el dueño podia REGALAR el vehiculo reescribiendo ese mismo
+  // campo. El coche aparecia en el panel de la victima como suyo, con su
+  // historial y sus alertas colgando, y el atacante ya no podia deshacerlo:
+  // el update que le quitaba el permiso era el ultimo que las reglas le
+  // dejaban hacer.
+  test('el propietario NO puede reasignar su vehiculo a otra persona', async () => {
+    await seedEscenario();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('vehiculos').doc('v1').update({ id_propietario: UIDS.owner2 }),
+    );
+  });
+
+  test('el propietario SI conserva el consentimiento de taller (talleres_vinculados)', async () => {
+    await seedEscenario();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    // Es la primitiva de consentimiento que escribe VehicleService
+    // .confirmarVinculoTaller / .rechazarVinculoTaller desde el propio
+    // cliente: acotarla aqui romperia el modelo de vinculos de las rondas 5/6.
+    await assertSucceeds(
+      db.collection('vehiculos').doc('v1').update({ talleres_vinculados: [UIDS.taller1, UIDS.taller2] }),
+    );
+  });
+
+  test('el propietario SI puede editar los datos de su vehiculo', async () => {
+    await seedEscenario();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertSucceeds(db.collection('vehiculos').doc('v1').update({ placa: 'P-9' }));
+  });
+
   // Controles positivos: el acotado no debe romper el update legitimo, que es
   // el unico que ejecutan los flujos reales.
   test('el propietario SI puede editar el resto de su alerta', async () => {
