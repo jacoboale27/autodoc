@@ -7,29 +7,9 @@ import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/core/models/reparacion_model.dart';
 
 import '../../../../helpers/test_helpers.mocks.dart';
+import '../../../../support/sembrar_reparacion.dart';
 
 void main() {
-  test('iniciarReparacion crea documento con estado recibido', () async {
-    final firestore = FakeFirebaseFirestore();
-    final repo = ReparacionRepository(
-      firestore: firestore,
-      functions: MockFirebaseFunctions(),
-    );
-
-    final id = await repo.iniciarReparacion(
-      idVehiculo: 'v1',
-      idTaller: 't1',
-      idPropietario: 'p1',
-      placa: 'P123-456',
-    );
-
-    final doc = await firestore
-        .collection(FirestoreCollections.reparaciones)
-        .doc(id)
-        .get();
-    expect(doc.data()!['estado'], 'recibido');
-  });
-
   test(
     'cambiarEstado actualiza estado y agrega entrada al historial',
     () async {
@@ -38,7 +18,8 @@ void main() {
         firestore: firestore,
         functions: MockFirebaseFunctions(),
       );
-      final id = await repo.iniciarReparacion(
+      final id = await sembrarReparacion(
+        firestore,
         idVehiculo: 'v1',
         idTaller: 't1',
         idPropietario: 'p1',
@@ -62,7 +43,8 @@ void main() {
       firestore: firestore,
       functions: MockFirebaseFunctions(),
     );
-    final id = await repo.iniciarReparacion(
+    final id = await sembrarReparacion(
+      firestore,
       idVehiculo: 'v1',
       idTaller: 't1',
       idPropietario: 'p1',
@@ -81,7 +63,8 @@ void main() {
       firestore: firestore,
       functions: MockFirebaseFunctions(),
     );
-    final id = await repo.iniciarReparacion(
+    final id = await sembrarReparacion(
+      firestore,
       idVehiculo: 'v1',
       idTaller: 't1',
       idPropietario: 'p1',
@@ -109,7 +92,8 @@ void main() {
         firestore: firestore,
         functions: MockFirebaseFunctions(),
       );
-      final id = await repo.iniciarReparacion(
+      final id = await sembrarReparacion(
+        firestore,
         idVehiculo: 'v1',
         idTaller: 't1',
         idPropietario: 'p1',
@@ -175,7 +159,8 @@ void main() {
         firestore: firestore,
         functions: MockFirebaseFunctions(),
       );
-      final idCreado = await repo.iniciarReparacion(
+      final idCreado = await sembrarReparacion(
+        firestore,
         idVehiculo: 'v1',
         idTaller: 't1',
         idPropietario: 'p1',
@@ -213,7 +198,8 @@ void main() {
       functions: MockFirebaseFunctions(),
     );
 
-    final viejo = await repo.iniciarReparacion(
+    final viejo = await sembrarReparacion(
+      firestore,
       idVehiculo: 'v1',
       idTaller: 't1',
       idPropietario: 'p1',
@@ -281,7 +267,8 @@ void main() {
         firestore: firestore,
         functions: MockFirebaseFunctions(),
       );
-      await repo.iniciarReparacion(
+      await sembrarReparacion(
+        firestore,
         idVehiculo: 'v1',
         idTaller: 't1',
         idPropietario: 'p1',
@@ -307,7 +294,8 @@ void main() {
         firestore: firestore,
         functions: MockFirebaseFunctions(),
       );
-      final id = await repo.iniciarReparacion(
+      final id = await sembrarReparacion(
+        firestore,
         idVehiculo: 'v1',
         idTaller: 't1',
         idPropietario: 'p1',
@@ -335,7 +323,8 @@ void main() {
         firestore: firestore,
         functions: MockFirebaseFunctions(),
       );
-      final id = await repo.iniciarReparacion(
+      final id = await sembrarReparacion(
+        firestore,
         idVehiculo: 'v1',
         idTaller: 't1',
         idPropietario: 'p1',
@@ -364,13 +353,15 @@ void main() {
       firestore: firestore,
       functions: MockFirebaseFunctions(),
     );
-    await repo.iniciarReparacion(
+    await sembrarReparacion(
+      firestore,
       idVehiculo: 'v1',
       idTaller: 't1',
       idPropietario: 'p1',
       placa: 'P123-456',
     );
-    await repo.iniciarReparacion(
+    await sembrarReparacion(
+      firestore,
       idVehiculo: 'v2',
       idTaller: 't2',
       idPropietario: 'p2',
@@ -398,7 +389,8 @@ void main() {
         functions: MockFirebaseFunctions(),
       );
 
-      final entregado = await repo.iniciarReparacion(
+      final entregado = await sembrarReparacion(
+        firestore,
         idVehiculo: 'v1',
         idTaller: 't1',
         idPropietario: 'p1',
@@ -408,7 +400,8 @@ void main() {
         idReparacion: entregado,
         nuevoEstado: estadoReparacionEntregado,
       );
-      final cancelado = await repo.iniciarReparacion(
+      final cancelado = await sembrarReparacion(
+        firestore,
         idVehiculo: 'v2',
         idTaller: 't1',
         idPropietario: 'p1',
@@ -418,7 +411,8 @@ void main() {
         idReparacion: cancelado,
         nuevoEstado: 'cancelado',
       );
-      await repo.iniciarReparacion(
+      await sembrarReparacion(
+        firestore,
         idVehiculo: 'v3',
         idTaller: 't1',
         idPropietario: 'p1',
@@ -440,7 +434,8 @@ void main() {
         firestore: firestore,
         functions: MockFirebaseFunctions(),
       );
-      final id = await repo.iniciarReparacion(
+      final id = await sembrarReparacion(
+        firestore,
         idVehiculo: 'v1',
         idTaller: 't1',
         idPropietario: 'p1',
@@ -466,7 +461,8 @@ void main() {
         firestore: firestore,
         functions: MockFirebaseFunctions(),
       );
-      final id = await repo.iniciarReparacion(
+      final id = await sembrarReparacion(
+        firestore,
         idVehiculo: 'v1',
         idTaller: 't1',
         idPropietario: 'p1',
@@ -540,7 +536,8 @@ void main() {
         firestore: firestore,
         functions: MockFirebaseFunctions(),
       );
-      final id = await repo.iniciarReparacion(
+      final id = await sembrarReparacion(
+        firestore,
         idVehiculo: 'v1',
         idTaller: 't1',
         idPropietario: 'p1',
@@ -668,7 +665,8 @@ void main() {
         firestore: firestore,
         functions: MockFirebaseFunctions(),
       );
-      final id = await repo.iniciarReparacion(
+      final id = await sembrarReparacion(
+        firestore,
         idVehiculo: 'v1',
         idTaller: 't1',
         idPropietario: 'p1',
