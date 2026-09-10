@@ -23,7 +23,7 @@ había mirado.
 | 7.7 | Doble lectura y carrera en la recepción | `runTransaction` + autorización inyectada | |
 | 7.8 | Lecturas redundantes en la apertura del ticket | El ticket se devuelve en vez de releerse; resolución de taller en paralelo y con atajo | |
 | 7.9 | La revocación del vínculo se traga sus errores | Marca en el ticket + reintento en la siguiente escritura | |
-| 7.10 | Sin cobertura E2E nueva | Suites relanzadas como regresión | Ver §6 |
+| 7.10 | Sin cobertura E2E nueva | Suite de la app relanzada: 32 pasan | La de la landing no aplica: no se toca |
 
 ---
 
@@ -217,10 +217,19 @@ retirando el guard, y el verde al reponerlo.
 | `flutter test` | 1167 | **1180 / 1180** |
 | `functions` (Mocha) | 170 | **197 passing** |
 | `test_rules` (Jest + emuladores) | 426 | **426 / 426**, 24 suites |
+| E2E de la app (Playwright) | 32 + 2 `fixme` | **32 pasan, 2 skipped**, exit 0 |
+| Puertos al salir | — | 0 en `LISTENING` |
 
 `firestore.rules` **no se ha tocado** en esta rama: el diff no incluye el
 archivo. La suite de reglas se relanza igualmente como regresión, porque el
 comportamiento alrededor de `/reparaciones` sí cambió.
+
+**La E2E de la landing no se relanza y es deliberado**: esta rama no toca
+`landing-web/` ni `e2e/tests-landing/`. Sus 20 casos siguen siendo los
+verificados el 2026-09-09.
+
+`functions` sube de 170 a 197: +11 pruebas nuevas de comportamiento y el resto
+de los dobles que hubo que enseñar a fallar (§3.4).
 
 ---
 
