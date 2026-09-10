@@ -93,11 +93,43 @@ Plan maestro: `docs/superpowers/plans/2026-09-06-remediation-master-plan-crea-j-
 Definition of Done al final, evidencia base en `docs/AUDITORIA_CREA_J_2026_CODEX.md` —
 **no repetir la auditoria antes de implementar**.
 
-**Estado a 2026-09-10. Cerradas y verificadas 11 tareas:** SEC-01, SEC-02, SEC-03, DATA-01,
-VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02 y FUNC-01.
+**Estado a 2026-09-10. Cerradas y verificadas 12 tareas:** SEC-01, SEC-02, SEC-03, DATA-01,
+VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01 y FUNC-02.
 
-**Siguiente por orden §12: FUNC-02.** Luego UX-03/04, SEC-04, OPS-01, H-01,
+**Siguiente por orden §12: UX-03 / UX-04.** Luego SEC-04, OPS-01, H-01,
 INNO-01, FINAL-01.
+
+FUNC-02 esta fusionada en `integracion/ola-1` (`58f5dd9`, sin conflictos). Evidencia en
+`docs/evidencia/FUNC-02-apertura-unica-de-tickets.md`. Lo que hay que saber sin leerla:
+
+- **Los cuatro metodos `@Deprecated` de `ReparacionProvider` y los dos del repositorio tenian
+  CERO consumidores en `lib/`.** Lo unico que los sostenia vivos era la siembra de 19 tests.
+  Esa siembra vive ahora en `test/support/sembrar_reparacion.dart`, donde no puede compilarse
+  dentro de la app. Si vas a retirar codigo muerto, mira primero quien lo sostiene.
+- **El peor camino obsoleto seguia VIVO en el servidor.** El callable
+  `iniciarReparacionPorVehiculo` no tenia llamador pero seguia desplegado e invocable por
+  cualquier mecanico autenticado: abria el ticket directamente en `'recibido'` —saltandose la
+  recepcion fisica— y se otorgaba `vehiculos.talleres_vinculados`. Su unica compuerta era
+  «existe una cotizacion aceptada para este vehiculo+taller», y **una cotizacion se queda en
+  `aceptada` para siempre**: con una visita YA ENTREGADA bastaba para recuperar el acceso al
+  coche que `revocarVinculoAlCerrarTicket` acababa de revocar.
+- **`firestore.rules` no podia taparlo.** `allow create: if false` sobre `/reparaciones` NO
+  alcanza a callables ni triggers: corren con Admin SDK. Cualquier funcion nueva sobre esa
+  coleccion tiene que replicar la autorizacion a mano.
+- **Paso de runbook, sin el cual la tarea esta cerrada en el repo y abierta en produccion:**
+  `firebase functions:delete iniciarReparacionPorVehiculo`. Borrar el export no retira el
+  endpoint desplegado, y `firebase deploy --only functions:<otra>` tampoco lo purga.
+- **Quedan tres escritores server-side sobre `/reparaciones` y ninguno mas:**
+  `onCotizacionAceptada` (crea, en `pendiente_recepcion`), `recibirVehiculoDelTicket`
+  (transiciona) y el barrido de `onVehicleDelete` (cierra). Lo vigila
+  `functions/test/apertura_unica_ticket.test.js`, que cuenta los accesos **por archivo**: su
+  primera version miraba solo el cuerpo de cada `exports.` y pasaba por casualidad, porque la
+  escritura real de `recibirVehiculoDelTicket` vive en `src/vinculoTaller.js`.
+- **Nueve gaps abiertos y anotados** en el §7 de esa evidencia. Los dos que mas valen: el
+  dedup de tickets puede fallar por volumen (`.limit(20)` sin filtro de estado ni orden en
+  `aceptarCotizacion.js:247`), y hay una consulta compuesta **sin indice declarado que falla
+  en silencio** (`initiate_service_screen.dart:269`, en un `.then` sin `catchError`; la
+  pantalla acaba diciendo «no hay cotizacion aceptada» por un `failed-precondition`).
 
 FUNC-01 esta fusionada en `integracion/ola-1` (`18c73d7`, sin conflictos). Evidencia en
 `docs/evidencia/FUNC-01-fotos-de-resenias.md`. Lo que hay que saber sin leerla:
@@ -182,16 +214,18 @@ llegan por la REST de Firestore (de ahi salia el crash) y retira Vercel Analytic
 | Suite | Resultado |
 |---|---|
 | `flutter analyze` | limpio |
-| `flutter test` | **1164 / 1164**, exit 0 |
-| `functions` (Mocha) | **173 passing** |
+| `flutter test` | **1167 / 1167**, exit 0 |
+| `functions` (Mocha) | **170 passing** |
 | `test_rules` (Jest + emuladores) | **426 / 426**, 24 suites, exit 0 |
 | E2E de la app (Playwright) | **32 pasan, 2 `fixme`**, exit 0 |
 | E2E de la landing | **20 / 20**, exit 0 |
 | Puertos al salir | 0 en `LISTENING` |
 
-**Siguiente tarea: FUNC-02** (retirar caminos obsoletos de reparacion). Empieza inventariando
-los consumidores reales de `iniciar*` en `reparacion_provider.dart:42-136` y su repositorio:
-es volumen de lectura, o sea fan-out de `codex exec -p worker`.
+**Siguiente tarea: UX-03 / UX-04** (accesibilidad y errores de datos). Dos frentes: la landing
+(`landing-web/src`: `prefers-reduced-motion`, menu movil accesible, `Link > button` anidado) y
+la app (`service_history_screen.dart` y demas: `Error: ${snapshot.error}` crudo -> estado
+localizado con reintento). Inventariarlos es volumen de lectura, o sea fan-out de
+`codex exec -p worker`.
 
 **El script `test` de `test_rules/` no acepta argumentos** (es un `firebase emulators:exec`;
 `npm test -- storage.test.js` muere con «Too many arguments»). Para una sola suite:

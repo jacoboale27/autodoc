@@ -10,8 +10,9 @@ Evidencia base: `docs/AUDITORIA_CREA_J_2026_CODEX.md` y `docs/AUDITORIA_CREA_J_2
 (dos auditorías independientes, ambas 64/100 por rutas distintas). **No repitas la auditoría
 antes de implementar**; el plan lo prohíbe.
 
-**Estado a 2026-09-10 — 11 tareas cerradas y verificadas:** SEC-01, SEC-02, SEC-03, DATA-01,
-VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02 y **FUNC-01**. **Siguiente por orden §12: FUNC-02.**
+**Estado a 2026-09-10 — 12 tareas cerradas y verificadas:** SEC-01, SEC-02, SEC-03, DATA-01,
+VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01 y **FUNC-02**.
+**Siguiente por orden §12: UX-03 / UX-04.**
 
 QA-01 ya esta fusionada en `integracion/ola-1` (`c17fead`), sin conflictos. Evidencia completa
 en `docs/evidencia/QA-01-matriz.md`. Lo que hay que saber sin leerla:
@@ -60,7 +61,7 @@ landing esa lectura se intercepta.
 
 ### Ramas — nada está fusionado a `main`
 
-`main` sigue en `1265d23`. **Las 11 tareas cerradas viven en `integracion/ola-1`**: ola 1
+`main` sigue en `1265d23`. **Las 12 tareas cerradas viven en `integracion/ola-1`**: ola 1
 (SEC-01/02/03, DATA-01), las tres de ola 2 (QA-02, VER-01, ROLE-01),
 QA-01, UX-01 y **UX-02** (fusionada el 2026-09-09, `d5c707a`, sin conflictos). Encima va
 `fix/landing-crash` (`564fdf0`), que **no es una tarea del plan** pero sí trabajo real sobre
@@ -75,8 +76,8 @@ al que hablar.
 | Gate | Resultado |
 |---|---|
 | `flutter analyze` | `No issues found!` |
-| `flutter test` | **1164 / 1164**, exit 0 |
-| `functions` (Mocha) | **173 passing** |
+| `flutter test` | **1167 / 1167**, exit 0 |
+| `functions` (Mocha) | **170 passing** |
 | `test_rules` (Jest + emuladores) | **426 / 426**, 24 suites |
 | E2E de la app (Playwright) | **32 pasan, 2 `fixme`**, exit 0 |
 | E2E de la landing | **20 / 20**, exit 0 |
@@ -129,10 +130,11 @@ Antes de empezar una tarea, mira qué ramas `fix/*` existen ya para no duplicar.
 
 ### Empezar aquí mañana (2026-09-11)
 
-**Toca FUNC-02 — "Retirar caminos obsoletos de reparación"** (§7 del plan, P2). Áreas que
-señala: `reparacion_provider.dart:42-136`, su repositorio y consumidores, y reglas/tests de
-Kanban. El primer paso del plan es **inventariar consumidores reales de `iniciar*`** — es
-volumen de lectura puro, o sea el caso exacto de `codex exec -p worker` en fan-out.
+**Toca UX-03 / UX-04 — "Accesibilidad y errores de datos"** (§7 del plan, P2). Áreas que
+señala: `landing-web/src`, `service_history_screen.dart`, componentes de error/empty state,
+ARB y pruebas. Dos frentes distintos: la landing (Next.js, `prefers-reduced-motion`, menú
+móvil accesible, `Link > button` anidado) y la app (`Error: ${snapshot.error}` crudo →
+estado localizado con reintento). Se pueden inventariar en paralelo.
 
 Corta la rama de la punta de `integracion/ola-1`, nunca de una `fix/*`.
 
@@ -151,8 +153,37 @@ Tres cosas que ahorran una hora:
   así que `npm test -- storage.test.js` muere con «Too many arguments». Para correr una sola
   suite: `npx firebase emulators:exec --only firestore,storage --project autodoc-rules-test
   "npx jest --runInBand storage.test.js"`.
-- **Las cifras de las suites subieron otra vez** con FUNC-01: `flutter test` 1150 → **1164**,
-  reglas 415 → **426** en 24 suites. Functions sigue en **173** y E2E de la app en **32**.
+- **Cifras al día tras FUNC-02:** `flutter test` **1167**, reglas **426** en 24 suites,
+  Functions **170** (baja de 173: se retiró código y su cobertura), E2E de la app **32**.
+
+FUNC-02 retiró los caminos muertos de reparación y, al inventariarlos, destapó que el peor
+seguía **vivo en el servidor**. Evidencia en
+`docs/evidencia/FUNC-02-apertura-unica-de-tickets.md`. Lo esencial:
+
+- **Lo que sostenía vivo a `iniciarReparacion` no era la app: eran sus tests.** Los cuatro
+  métodos `@Deprecated` de `ReparacionProvider` y los dos del repositorio tenían **cero**
+  consumidores en `lib/`; solo la siembra de 19 tests. Esa siembra vive ahora en
+  `test/support/sembrar_reparacion.dart`, donde no compila dentro de la app.
+- **El callable `iniciarReparacionPorVehiculo` seguía desplegado e invocable sin tener
+  llamador.** Abría el ticket directamente en `'recibido'` —saltándose la recepción física—
+  y se otorgaba `vehiculos.talleres_vinculados`. Su única compuerta era «existe una
+  cotización aceptada para este vehículo+taller», y **una cotización se queda en `aceptada`
+  para siempre**: con una visita YA ENTREGADA bastaba para recuperar el acceso al coche que
+  `revocarVinculoAlCerrarTicket` acababa de revocar. El `allow create: if false` de
+  `firestore.rules` no lo alcanzaba — los callables corren con Admin SDK.
+- **`firebase functions:delete iniciarReparacionPorVehiculo` es paso de runbook.** Borrar el
+  export NO retira el endpoint desplegado: mientras siga vivo en el proyecto de Firebase, el
+  replay sigue disponible en producción. Va en el mismo cajón que `SOLICITUDES_LANDING_SALT`.
+- **Quedan tres escritores server-side sobre `/reparaciones` y ninguno más**:
+  `onCotizacionAceptada` (crea, en `pendiente_recepcion`), `recibirVehiculoDelTicket`
+  (transiciona) y el barrido de `onVehicleDelete` (cierra). Lo vigila un centinela que
+  cuenta los accesos **por archivo** — la primera versión miraba solo el cuerpo de cada
+  `exports.` y pasaba por casualidad, porque la escritura real vive en `src/vinculoTaller.js`.
+- **Nueve gaps quedan abiertos y anotados** en el §7 de esa evidencia, con su razón. Los dos
+  que más valen: el **dedup de tickets puede fallar por volumen** (`.limit(20)` sin filtro de
+  estado ni orden en `aceptarCotizacion.js:247`) y una **consulta sin índice que falla en
+  silencio** (`initiate_service_screen.dart:269`, `.then` sin `catchError`, y la pantalla
+  acaba diciendo «no hay cotización aceptada» por un `failed-precondition`).
 
 FUNC-01 cerró el defecto de las fotos y, de camino, un agujero de reglas que no estaba en el
 enunciado. Evidencia en `docs/evidencia/FUNC-01-fotos-de-resenias.md`. Lo esencial:
