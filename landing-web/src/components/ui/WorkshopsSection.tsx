@@ -21,6 +21,18 @@ interface Workshop {
   rating: number;
 }
 
+type FirestoreNumberValue = {
+  doubleValue?: string | number;
+  integerValue?: string | number;
+};
+
+export function normalizarCalificacion(
+  campo: FirestoreNumberValue | undefined,
+): number {
+  const valor = Number(campo?.doubleValue ?? campo?.integerValue);
+  return Number.isFinite(valor) ? valor : 5;
+}
+
 export default function WorkshopsSection() {
   const t = useTranslations();
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
@@ -60,7 +72,7 @@ export default function WorkshopsSection() {
                 name: fields?.nombre?.stringValue || "Taller Mecánico",
                 specialty: fields?.especialidad?.stringValue || "Mecánica General",
                 location: fields?.ubicacion_municipio?.stringValue || "Ciudad",
-                rating: fields?.calificacion_promedio?.doubleValue || fields?.calificacion_promedio?.integerValue || 5.0,
+                rating: normalizarCalificacion(fields?.calificacion_promedio),
               };
             })
             .filter(Boolean);

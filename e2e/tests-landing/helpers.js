@@ -86,7 +86,9 @@ async function stubDirectorio(page) {
               especialidad: { stringValue: 'Mecánica General' },
               ubicacion_municipio: { stringValue: 'San Salvador' },
               estado: { stringValue: 'aprobado' },
-              calificacion_promedio: { doubleValue: 4.5 },
+              // Firestore REST serializa doubleValue e integerValue como
+              // strings, aunque conceptualmente sean numeros.
+              calificacion_promedio: { doubleValue: '4.5' },
             },
           },
         ],
