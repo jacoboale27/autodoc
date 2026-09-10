@@ -26,6 +26,20 @@ test.describe('directorio publico', () => {
     await expect(page.getByText('4.5', { exact: true })).toBeVisible();
     expect(errores).toEqual([]);
   });
+
+  test('no solicita el endpoint de Vercel Analytics en Firebase Hosting', async ({ page }) => {
+    const solicitudesVercel = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/_vercel/insights/')) {
+        solicitudesVercel.push(request.url());
+      }
+    });
+
+    await page.goto('/es');
+    await expect(page.getByText('Taller Demo E2E')).toBeVisible();
+
+    expect(solicitudesVercel).toEqual([]);
+  });
 });
 
 test.describe('CTAs de descarga', () => {
