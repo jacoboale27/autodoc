@@ -264,16 +264,26 @@ async function resolverIdTallerPropietario(db, idTaller) {
  * vez por volumen. 20 tickets es un ticket por visita: pocos años del mismo
  * coche en el mismo taller.
  *
- * **Tramo 2 — los tickets legados.** Firestore indexa por campo, asi que un
- * documento sin `estado` no aparece en ninguna consulta que filtre por
- * `estado`; tampoco en un `not-in` ("no esta en la lista" no incluye "no
- * existe"). Los tickets anteriores a A4b no traen el campo y nacian ya en
- * `recibido`, o sea ABIERTOS. Si el tramo 1 fuera todo, esos tickets pasarian
- * de contar a ser invisibles, y el dedup abriria duplicados justo sobre los
- * datos mas viejos del sistema. Cambiar un fallo por volumen por ese no es
- * arreglar nada, asi que el barrido acotado de antes se conserva como
- * fallback: solo corre cuando el tramo 1 no encontro nada, y solo busca
- * documentos SIN `estado`.
+ * **Tramo 2 — los tickets legados, y es BEST-EFFORT.** Firestore indexa por
+ * campo, asi que un documento sin `estado` no aparece en ninguna consulta que
+ * filtre por `estado`; tampoco en un `not-in` ("no esta en la lista" no
+ * incluye "no existe"). Los tickets anteriores a A4b no traen el campo y
+ * nacian ya en `recibido`, o sea ABIERTOS. Si el tramo 1 fuera todo, esos
+ * tickets pasarian de contar a ser invisibles y el dedup abriria duplicados
+ * justo sobre los datos mas viejos del sistema, asi que el barrido acotado de
+ * antes se conserva: corre solo cuando el tramo 1 no encontro nada, y solo
+ * busca documentos SIN `estado`.
+ *
+ * Lo que NO hace, y conviene no confundirlo: este tramo sigue siendo
+ * `limit(LIMITE_DEDUP_TICKETS_ABIERTOS)` sin `orderBy`, o sea ordenado por
+ * `__name__`. Arrastra intacta la misma ventana que el tramo 1 elimina — un
+ * par vehiculo+taller con mas de 20 tickets cuyo legado ordene por id despues
+ * de los 20 primeros sigue siendo invisible. No es un descuido: la unica
+ * consulta que veria a esos documentos seria "campo ausente", que Firestore no
+ * ofrece. **El cierre real es el backfill**, que ya es prerrequisito duro de
+ * despliegue por otras dos razones (ver `backfill_entregado.js`). Cuando haya
+ * corrido, ningun ticket carece de `estado` y este tramo no encuentra nada
+ * nunca: entonces se puede retirar y ahorrar sus lecturas.
  *
  * Coste: 1 lectura cuando hay ticket abierto (el caso que aborta la apertura)
  * y 1 + N cuando no lo hay, contra las N de siempre. `backfill_entregado.js`

@@ -88,7 +88,11 @@ void main() {
   });
 
   test('el inventario cubre todas las consultas ordenadas de lib/', () {
-    final total = _contarOrderBy(Directory('$raiz/lib'));
+    final total = _contarOcurrencias(
+      Directory('$raiz/lib'),
+      '.orderBy(',
+      '.dart',
+    );
 
     expect(
       total,
@@ -100,6 +104,33 @@ void main() {
           'y añadela a `_inventario`; si no lo es, el indice de un solo campo '
           'es automatico y basta con ajustar este contador. Este contador es '
           'lo unico que impide que el inventario se quede atras en silencio.',
+    );
+  });
+
+  test('el inventario cubre tambien las consultas del servidor', () {
+    // El disparador de arriba solo mira `lib/`, y eso dejaba ciegas a las
+    // consultas de Cloud Functions — que necesitan indice exactamente igual y
+    // fallan exactamente igual. Se descubrio cuando el barrido de caducidad
+    // del vinculo (`caducarVinculos.js`) nacio con una igualdad mas una
+    // desigualdad y sin indice declarado: el centinela lo dejo pasar porque el
+    // archivo no esta en `lib/`.
+    //
+    // Se cuentan los `.where(` y no los `.orderBy(` porque en el servidor casi
+    // ninguna consulta ordena: lo que las vuelve compuestas es acumular
+    // filtros, o mezclar una igualdad con una desigualdad (que a efectos de
+    // indice se comporta como un `orderBy`).
+    final total =
+        _contarOcurrencias(Directory('$raiz/functions/src'), '.where(', '.js') +
+        _contarOcurrencias(File('$raiz/functions/index.js'), '.where(', '.js');
+
+    expect(
+      total,
+      _whereServidorEsperados,
+      reason:
+          'El numero de `.where(` en functions/ cambio. Si añadiste una '
+          'consulta con dos o mas filtros, o con una desigualdad, necesita '
+          'indice compuesto: declaralo en firestore.indexes.json y añadela a '
+          '`_inventario`. Los emuladores NO detectan que falte.',
     );
   });
 }
@@ -239,6 +270,10 @@ const _huerfanosConocidos = <String>[];
 /// Cuántos `.orderBy(` hay hoy en `lib/`. Ver el tercer test.
 const _orderByEsperados = 15;
 
+/// Cuántos `.where(` hay hoy en `functions/index.js` y `functions/src/`. Ver el
+/// cuarto test.
+const _whereServidorEsperados = 24;
+
 class _Consulta {
   const _Consulta({
     required this.coleccion,
@@ -320,11 +355,20 @@ List<_Indice> _leerIndices(String raiz) {
       .toList();
 }
 
-int _contarOrderBy(Directory dir) {
+/// Cuántas veces aparece [aguja] en los archivos con [extension] bajo
+/// [origen], que puede ser un fichero suelto o un directorio.
+int _contarOcurrencias(
+  FileSystemEntity origen,
+  String aguja,
+  String extension,
+) {
+  final archivos = origen is Directory
+      ? origen.listSync(recursive: true)
+      : <FileSystemEntity>[origen];
   var total = 0;
-  for (final entidad in dir.listSync(recursive: true)) {
-    if (entidad is! File || !entidad.path.endsWith('.dart')) continue;
-    total += '.orderBy('.allMatches(entidad.readAsStringSync()).length;
+  for (final entidad in archivos) {
+    if (entidad is! File || !entidad.path.endsWith(extension)) continue;
+    total += aguja.allMatches(entidad.readAsStringSync()).length;
   }
   return total;
 }

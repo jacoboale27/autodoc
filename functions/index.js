@@ -881,10 +881,25 @@ exports.recibirVehiculoDelTicket = functions.https.onCall(async (data, context) 
     // `recibirTicketYVincular` lo volvia a leer para escribir: una lectura de
     // mas en cada recepcion y, peor, dos snapshots distintos — entre los dos,
     // `id_taller` o `estado` podian cambiar y se autorizaba sobre el viejo.
+    //
+    // El documento del llamante se lee UNA vez por invocacion, no una por
+    // intento: el cuerpo de una transaccion se reejecuta si algo de lo leido
+    // cambio, y sin esta cache cada reintento pagaba otra lectura de
+    // `usuarios/{uid}` y otro viaje de red DENTRO de la ventana de bloqueo
+    // sobre el ticket y el vehiculo. Se guarda la promesa, no el resultado,
+    // para que dos reintentos solapados compartan la misma lectura. El
+    // cortocircuito de `actuaPorTaller` se conserva: un taller que actua por
+    // si mismo no lee nada.
+    let llamante;
     const resultado = await recibirTicketYVincular(db, {
       idReparacion,
       ahora: new Date(),
-      autorizar: (idTaller) => actuaPorTaller(context.auth.uid, idTaller),
+      autorizar: async (idTaller) => {
+        if (context.auth.uid === idTaller) return true;
+        llamante ||= db.collection('usuarios').doc(context.auth.uid).get();
+        const doc = await llamante;
+        return doc.exists && doc.data().id_taller_propietario === idTaller;
+      },
     });
     return { recibido_ahora: resultado.recibidoAhora };
   } catch (error) {

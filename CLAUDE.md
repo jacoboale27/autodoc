@@ -153,8 +153,48 @@ Tres cosas que ahorran una hora:
   así que `npm test -- storage.test.js` muere con «Too many arguments». Para correr una sola
   suite: `npx firebase emulators:exec --only firestore,storage --project autodoc-rules-test
   "npx jest --runInBand storage.test.js"`.
-- **Cifras al día tras FUNC-02:** `flutter test` **1167**, reglas **426** en 24 suites,
-  Functions **170** (baja de 173: se retiró código y su cobertura), E2E de la app **32**.
+- **Cifras al día tras cerrar los residuales:** `flutter test` **1180**, reglas **426**
+  en 24 suites, Functions **197**, E2E de la app **32**.
+
+### Los nueve residuales de FUNC-02 están cerrados (rama `fix/gaps-func02`)
+
+No es una tarea del plan: es el drenaje del §7 de la evidencia de FUNC-02. Evidencia en
+`docs/evidencia/GAPS-FUNC-02-cierre-de-residuales.md`. Lo que hay que saber sin leerla:
+
+- **Dos de los nueve estaban mal descritos, y en la dirección peligrosa.** El «índice muerto
+  `Servicios`» no estaba muerto: era `servicios` **con la S mayúscula**, o sea el índice VIVO
+  mal escrito, y el historial de servicios del propietario moría con `failed-precondition` en
+  producción por su culpa. Y la «consulta que falla en silencio» no daba un mensaje
+  equivocado: dejaba a la pantalla pintando el **formulario manual**, así que el mecánico
+  re-tecleaba a mano el importe que el cliente ya había aprobado y era ese el que se guardaba
+  en `servicios`.
+- **Hay un centinela nuevo de índices: `test/firestore_indices_test.dart`.** Los emuladores
+  sirven cualquier consulta sin mirar `firestore.indexes.json`, así que una consulta sin
+  índice **no la detecta ninguna suite** — solo un usuario en producción. Cruza el inventario
+  con los índices en las dos direcciones y cuenta los `.orderBy(` de `lib/` y los `.where(` de
+  `functions/` como disparador. Destapó **seis consultas más sin índice** (reservas ×2,
+  servicios, cotizaciones, conversaciones) y **cuatro índices huérfanos**.
+- **Todos los tests de `InitiateServiceScreen` corrían contra un Firestore roto.** La pantalla
+  usaba `FirebaseFirestore.instance` (su propio test lo llamaba «no inyectable»); al
+  inyectarlo, trece se pusieron rojos de golpe. Llevaban ejerciendo el camino de fallo sin
+  saberlo, porque el `.then` sin `catchError` se lo tragaba.
+- **Dos dobles de prueba no podían ver el defecto que cubrían.** Uno tenía `limit()` como
+  no-op; el otro devolvía el documento **vivo** desde `get()` en vez de una copia, y un
+  snapshot de Firestore es inmutable — con eso, el primer test de la carrera del historial dio
+  **falso verde**. Los dos modelan ahora esas propiedades.
+- **La recepción pasa de `batch` a `runTransaction`** y la autorización viaja dentro, lo que
+  retira además la segunda lectura del ticket. **El vínculo caduca solo** a los 30 días sin
+  actividad (`caducarVinculosDeTalleresInactivos`): caduca el ACCESO, no el ticket, y el
+  reintento que ya existe lo recupera mientras el ticket siga abierto.
+- **Dos pasos de runbook nuevos, y uno no es negociable:** `node backfill_entregado.js --apply`
+  ANTES de desplegar la app web (el tablero pasa a ordenar por `fecha_actualizacion`, y un
+  `orderBy` excluye los documentos sin el campo, igual que el `whereIn` de la ronda 6), y
+  `firebase deploy --only firestore:indexes` antes que la app.
+- **Quedan nueve gaps NUEVOS anotados** en el §9 de esa evidencia, casi todos destapados por
+  el gate de revisión. El que más vale: **el tope del tablero acota documentos, no lecturas** —
+  un `whereIn` de 5 estados con `limit(200)` aplica el límite a cada subconsulta, así que lee
+  hasta 1000 para devolver 200. Sigue siendo mejor que el stream sin tope de antes, pero no
+  es lo que parece.
 
 FUNC-02 retiró los caminos muertos de reparación y, al inventariarlos, destapó que el peor
 seguía **vivo en el servidor**. Evidencia en

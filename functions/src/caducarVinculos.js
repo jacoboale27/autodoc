@@ -48,6 +48,9 @@ const CAMPO_VINCULO_ACTIVO = 'vinculo_activo';
  */
 const TOPE_POR_CORRIDA = 200;
 
+/** Cuantos tickets se caducan a la vez dentro de una corrida. */
+const TANDA = 20;
+
 /**
  * Revoca el vinculo de los tickets abiertos sin actividad desde hace `dias`.
  *
@@ -66,33 +69,52 @@ async function caducarVinculosInactivos(db, { ahora, dias, tope }) {
     .limit(tope === undefined ? TOPE_POR_CORRIDA : tope)
     .get();
 
-  let caducados = 0;
-  let fallidos = 0;
-  for (const doc of snap.docs) {
+  const caducarUno = async (doc) => {
     const ticket = doc.data();
     try {
       await revocarVinculo(db, {
         idVehiculo: (ticket.id_vehiculo || '').toString(),
         idTaller: (ticket.id_taller || '').toString(),
       });
+      // Las dos escrituras van EN ORDEN a proposito: si se marcara el ticket
+      // antes de revocar y la revocacion fallara, el barrido no volveria a
+      // verlo nunca y el vinculo quedaria vivo para siempre.
+      //
       // Se marca aunque el vehiculo ya no exista: `revocarVinculo` trata el
-      // not-found como caso normal (no hay vinculo que revocar) y dejar el
+      // not-found como caso normal (no hay vinculo que revocar), y dejar el
       // ticket marcado como vinculado solo haria que el barrido lo reintentara
-      // en cada corrida para siempre.
+      // en cada corrida.
       await doc.ref.update({ [CAMPO_VINCULO_ACTIVO]: false });
-      caducados += 1;
+      return true;
     } catch (error) {
       // Un fallo no puede parar el barrido: los demas tickets del lote siguen
-      // teniendo un vinculo que caducar. Se cuenta y se registra.
-      fallidos += 1;
+      // teniendo un vinculo que caducar. Se cuenta, se registra, y el ticket
+      // sigue marcado como vinculado, asi que la corrida siguiente lo reintenta.
       console.error(
         `caducarVinculosInactivos: no se pudo caducar el vinculo del ticket ${doc.id}:`,
         error
       );
+      return false;
     }
+  };
+
+  // Por tandas y no de uno en uno: son dos escrituras por ticket y hasta
+  // `TOPE_POR_CORRIDA` tickets, o sea 400 idas y vueltas en serie en el peor
+  // caso. Tampoco todas a la vez: un `Promise.all` de 400 escrituras contra
+  // Firestore agota el pool de conexiones y se autoestrangula.
+  let caducados = 0;
+  for (let i = 0; i < snap.docs.length; i += TANDA) {
+    const hechos = await Promise.all(
+      snap.docs.slice(i, i + TANDA).map(caducarUno)
+    );
+    caducados += hechos.filter(Boolean).length;
   }
 
-  return { revisados: snap.docs.length, caducados, fallidos };
+  return {
+    revisados: snap.docs.length,
+    caducados,
+    fallidos: snap.docs.length - caducados,
+  };
 }
 
 module.exports = {
