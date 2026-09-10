@@ -40,10 +40,20 @@ class InitiateServiceScreen extends StatefulWidget {
   final String reparacionId;
   final VehicleModel? vehiculoPrecargado;
 
+  /// Firestore inyectable, solo para pruebas.
+  ///
+  /// Esta pantalla usaba `FirebaseFirestore.instance` directamente en sus
+  /// cuatro consultas, y por eso ninguna de ellas tenia cobertura: sus tests
+  /// se limitaban a que el getter no lanzara al montar. El fallo que motivo
+  /// el cambio necesita justo lo contrario — una consulta que SI falla — para
+  /// poder verse.
+  final FirebaseFirestore? firestore;
+
   const InitiateServiceScreen({
     super.key,
     required this.reparacionId,
     this.vehiculoPrecargado,
+    this.firestore,
   });
 
   @override
@@ -51,6 +61,8 @@ class InitiateServiceScreen extends StatefulWidget {
 }
 
 class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
+  FirebaseFirestore get _db => widget.firestore ?? FirebaseFirestore.instance;
+
   VehicleModel? _vehiculo;
   bool _cargando = false;
   String? _errorCarga;
@@ -81,6 +93,25 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
 
   bool _hasApprovedQuote = false;
   CotizacionModel? _approvedQuote;
+
+  /// `true` cuando la consulta de la cotización aceptada FALLÓ, que no es lo
+  /// mismo que no haber encontrado ninguna.
+  ///
+  /// La distinción es el punto. Sin ella, `_hasApprovedQuote` en `false`
+  /// significaba a la vez "no hay cotización" y "no pude preguntarlo", y la
+  /// pantalla trataba las dos igual: pintaba el formulario manual de
+  /// materiales y mano de obra. El mecánico volvía a teclear a mano el
+  /// importe que el cliente ya había aprobado, y era ese importe tecleado el
+  /// que se guardaba en `servicios` —divergente del de la cotización, que
+  /// además se quedaba sin marcar como usada—. Un fallo de infraestructura
+  /// acababa escribiendo datos distintos de los que el cliente aprobó, sin un
+  /// solo mensaje.
+  ///
+  /// El fallo concreto que lo destapó: la consulta es compuesta
+  /// (`id_vehiculo`, `estado`, `orderBy fecha DESC`) y su índice no estaba
+  /// declarado, así que en producción devolvía `failed-precondition`. Iba en
+  /// un `.then(...)` sin `catchError`, o sea que ni se registraba.
+  bool _errorCotizacion = false;
 
   /// `true` una vez que "Recibir vehículo" confirmó la transición en esta
   /// sesión de pantalla (con éxito, sea recepción nueva o no-op). Deliberado
@@ -189,7 +220,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       _errorCarga = null;
     });
     try {
-      final reparacionDoc = await FirebaseFirestore.instance
+      final reparacionDoc = await _db
           .collection(FirestoreCollections.reparaciones)
           .doc(widget.reparacionId)
           .get();
@@ -209,7 +240,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
 
       DocumentSnapshot<Map<String, dynamic>> doc;
       try {
-        doc = await FirebaseFirestore.instance
+        doc = await _db
             .collection(FirestoreCollections.vehiculos)
             .doc(idVehiculo)
             .get();
@@ -259,6 +290,48 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   /// llegar aquí. Ya no lo hace (ver comentario más abajo), así que suelta el
   /// spinner en cuanto el vehículo está listo, sin esperar a ninguna
   /// escritura en Firestore.
+  /// Busca la cotización que el cliente ya aceptó para este vehículo.
+  ///
+  /// Los tres resultados posibles son distintos y la pantalla los distingue:
+  /// hay cotización (banner con el importe aprobado), no hay (formulario
+  /// manual) y **no se pudo saber** (ver [_errorCotizacion]). Reintentable:
+  /// una falta de índice o un corte de red se arregla solo o con un
+  /// despliegue, y no hay razón para obligar a salir y volver a entrar.
+  Future<void> _cargarCotizacionAceptada(VehicleModel vehiculo) async {
+    try {
+      final snapshot = await _db
+          .collection('cotizaciones')
+          .where('id_vehiculo', isEqualTo: vehiculo.idVehiculo)
+          .where('estado', isEqualTo: 'aceptada')
+          .orderBy('fecha', descending: true)
+          .limit(1)
+          .get();
+      if (!mounted) return;
+      setState(() {
+        _errorCotizacion = false;
+        if (snapshot.docs.isNotEmpty) {
+          _hasApprovedQuote = true;
+          _approvedQuote = CotizacionModel.fromMap(
+            snapshot.docs.first.data(),
+            snapshot.docs.first.id,
+          );
+          _costoController.text = _approvedQuote!.total.toStringAsFixed(2);
+        }
+      });
+    } catch (e) {
+      // Se registra a propósito: el caso que motivó esto (índice compuesto sin
+      // declarar) es invisible en los emuladores y solo se manifiesta en
+      // producción, así que el log es la única pista que va a existir.
+      debugPrint('No se pudo comprobar la cotización aceptada: $e');
+      if (!mounted) return;
+      setState(() {
+        _errorCotizacion = true;
+        _hasApprovedQuote = false;
+        _approvedQuote = null;
+      });
+    }
+  }
+
   Future<void> _onVehiculoListo() async {
     final vehiculo = _vehiculo!;
     _kmController.text = vehiculo.kilometrajeActual.toString();
@@ -266,29 +339,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       context.read<AlertProvider>().fetchAlerts(vehiculo.idVehiculo, vehiculo);
     }
 
-    FirebaseFirestore.instance
-        .collection('cotizaciones')
-        .where('id_vehiculo', isEqualTo: vehiculo.idVehiculo)
-        .where('estado', isEqualTo: 'aceptada')
-        .orderBy('fecha', descending: true)
-        .limit(1)
-        .get()
-        .then((snapshot) {
-          if (snapshot.docs.isNotEmpty) {
-            if (mounted) {
-              setState(() {
-                _hasApprovedQuote = true;
-                _approvedQuote = CotizacionModel.fromMap(
-                  snapshot.docs.first.data(),
-                  snapshot.docs.first.id,
-                );
-                _costoController.text = _approvedQuote!.total.toStringAsFixed(
-                  2,
-                );
-              });
-            }
-          }
-        });
+    await _cargarCotizacionAceptada(vehiculo);
 
     // Aquí no se toca el ticket. Hasta 2026-08-28 se creaba al montar la
     // pantalla, así que teclear una placa en "Buscar Vehículo" ya metía el
@@ -426,6 +477,21 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   }
 
   Future<void> _handleFinalizeService() async {
+    // Si no se pudo comprobar la cotización, no se guarda. Ocultar el
+    // formulario manual no basta: este botón vive fuera de ese bloque y sigue
+    // en pantalla, y la validación de materiales tampoco lo detiene — sin
+    // `Form` montado, `_materialesFormKey.currentState` es `null` y ese guard
+    // resuelve a `true`. Se escribiría un `servicios` a cero sobre un
+    // vehículo que quizá tiene una cotización aprobada de verdad.
+    if (_errorCotizacion) {
+      HapticFeedback.heavyImpact();
+      UiUtils.showErrorSnackbar(
+        context,
+        'No se puede finalizar sin saber si el cliente aprobó una '
+        'cotización. Reintenta la comprobación primero.',
+      );
+      return;
+    }
     if (_kmController.text.isEmpty) {
       HapticFeedback.heavyImpact();
       UiUtils.showErrorSnackbar(
@@ -535,10 +601,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       await alertProvider.fetchAlerts(_vehiculo!.idVehiculo, _vehiculo!);
 
       if (_hasApprovedQuote && _approvedQuote != null) {
-        await FirebaseFirestore.instance
-            .collection('cotizaciones')
-            .doc(_approvedQuote!.id)
-            .update({'estado': 'finalizada'});
+        await _db.collection('cotizaciones').doc(_approvedQuote!.id).update({
+          'estado': 'finalizada',
+        });
       }
 
       bool kanbanUpdateFailed = false;
@@ -715,11 +780,21 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
             ];
 
             final derecha = <Widget>[
-              if (_hasApprovedQuote) ...[
+              // Tres estados, no dos: con cotización aprobada, sin ella, y
+              // sin haber podido saberlo. Este último NO cae en "sin ella"
+              // a propósito (ver `_errorCotizacion`): ofrecer el formulario
+              // manual seria invitar a re-teclear un importe que quizas ya
+              // esta aprobado, y es el tecleado el que acabaria en
+              // `servicios`.
+              if (_errorCotizacion) ...[
+                _buildErrorCotizacion(colors),
+                const SizedBox(height: AppSpacing.xl),
+              ],
+              if (!_errorCotizacion && _hasApprovedQuote) ...[
                 _buildApprovedQuoteBanner(colors),
                 const SizedBox(height: AppSpacing.xl),
               ],
-              if (!_hasApprovedQuote) ...[
+              if (!_errorCotizacion && !_hasApprovedQuote) ...[
                 const AppSectionHeader(
                   title: 'Materiales / repuestos',
                   uppercase: true,
@@ -815,6 +890,55 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
             );
           },
         ),
+      ),
+    );
+  }
+
+  /// El estado "no se pudo comprobar si hay cotización aceptada".
+  ///
+  /// Dice qué pasó y qué se puede hacer, en vez de dejar a la pantalla
+  /// comportarse como si supiera algo que no sabe.
+  Widget _buildErrorCotizacion(AppColors colors) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.base),
+      decoration: BoxDecoration(
+        color: colors.error.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: colors.error.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.cloud_off_outlined, color: colors.error),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  'No se pudo comprobar si el cliente aprobó una cotización '
+                  'para este vehículo. No registres el servicio a mano hasta '
+                  'saberlo: si había una aprobada, el importe que teclees no '
+                  'será el que el cliente aceptó.',
+                  style: AppTextStyles.labelLarge.copyWith(
+                    color: colors.error,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: _vehiculo == null
+                  ? null
+                  : () => _cargarCotizacionAceptada(_vehiculo!),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Reintentar'),
+            ),
+          ),
+        ],
       ),
     );
   }

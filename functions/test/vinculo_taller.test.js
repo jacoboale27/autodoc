@@ -17,36 +17,86 @@ const {
   debeRevocarVinculo,
   revocarVinculo,
   recibirTicketYVincular,
+  revocarVinculoAlCerrar,
 } = require('../src/vinculoTaller');
 
 const AHORA = new Date('2026-09-06T12:00:00Z');
 
 /**
  * Doble en memoria con lo justo que usan estas funciones: `doc().get()`,
- * `doc().update()` y un `batch()` que acumula y aplica. `docs` va indexado
- * por `coleccion/id`; una clave ausente es un documento que no existe.
+ * `doc().update()`, un `batch()` que acumula y aplica, y un `runTransaction()`
+ * que modela el CONFLICTO. `docs` va indexado por `coleccion/id`; una clave
+ * ausente es un documento que no existe.
+ *
+ * El `runTransaction` no es decorativo. Firestore reintenta la transaccion
+ * entera si algo de lo que leyo cambio antes del commit, y esa propiedad es
+ * justo lo que se estaba probando al mudar la recepcion de `batch` a
+ * transaccion: sin modelar el conflicto, un doble que se limitara a ejecutar
+ * el cuerpo y aplicar las escrituras daria verde igual con las dos versiones,
+ * y el test no probaria nada. Aqui se lleva una version por documento, se
+ * anota la de cada `tx.get`, y si al commit alguna cambio se reejecuta el
+ * cuerpo con los datos nuevos.
  */
-function fakeDb(docs = {}) {
+/**
+ * `JSON.stringify` convierte un `Date` en cadena y el `parse` no lo deshace.
+ * El historial de estados lleva fechas, y los tests las comparan como `Date`,
+ * asi que se marcan y se reconstruyen.
+ */
+function serializarFechas(clave, valor) {
+  return valor instanceof Date ? { __fecha: valor.toISOString() } : valor;
+}
+
+function revivirFechas(clave, valor) {
+  return valor && valor.__fecha ? new Date(valor.__fecha) : valor;
+}
+
+function fakeDb(docs = {}, ganchoLectura = null, fallarAlEscribir = new Set()) {
   const escrituras = [];
+  const versiones = new Map();
+  const bump = (clave) => versiones.set(clave, (versiones.get(clave) || 0) + 1);
+  const existe = (clave) => Object.prototype.hasOwnProperty.call(docs, clave);
+  const errorNoExiste = (clave) => {
+    const error = new Error(`No document to update: ${clave}`);
+    error.code = 5;
+    return error;
+  };
   const refDe = (coleccion, id) => {
     const clave = `${coleccion}/${id}`;
     return {
       id,
       clave,
       async get() {
-        return {
-          exists: Object.prototype.hasOwnProperty.call(docs, clave),
-          data: () => docs[clave],
-        };
+        // Un snapshot de Firestore es INMUTABLE: es una copia del documento en
+        // el instante de la lectura. El doble devolvia `docs[clave]` vivo, asi
+        // que una escritura posterior se veia retroactivamente en un snapshot
+        // ya leido — y con eso ningun test podia distinguir "lei antes" de
+        // "lei despues". Copiar aqui es lo que hace observable la carrera.
+        const copia = existe(clave)
+          ? JSON.parse(JSON.stringify(docs[clave], serializarFechas), revivirFechas)
+          : undefined;
+        const instantanea = { exists: copia !== undefined, data: () => copia };
+        // Punto de interferencia: deja que un test escriba ENTRE la lectura y
+        // el commit, que es donde vive la carrera. Va en el doble, y no en un
+        // callback de produccion, para que la ventana sea la misma con `batch`
+        // y con transaccion — si no, el test no llegaria a ejercer la version
+        // rota y daria verde con ella.
+        if (ganchoLectura) await ganchoLectura(clave);
+        return instantanea;
       },
       async update(data) {
-        if (!Object.prototype.hasOwnProperty.call(docs, clave)) {
-          const error = new Error(`No document to update: ${clave}`);
-          error.code = 5;
+        // Un fallo que NO es "el documento no existe": indisponibilidad,
+        // cuota, permisos. `revocarVinculo` trata el not-found como caso
+        // normal (el dueño borro el coche, no hay vinculo que revocar), asi
+        // que para probar el camino de error hace falta otro.
+        if (fallarAlEscribir.has(clave)) {
+          const error = new Error(`UNAVAILABLE: ${clave}`);
+          error.code = 14;
           throw error;
         }
+        if (!existe(clave)) throw errorNoExiste(clave);
         escrituras.push({ clave, data });
         docs[clave] = Object.assign({}, docs[clave], data);
+        bump(clave);
       },
     };
   };
@@ -66,15 +116,39 @@ function fakeDb(docs = {}) {
         },
         async commit() {
           for (const { ref } of operaciones) {
-            if (!Object.prototype.hasOwnProperty.call(docs, ref.clave)) {
-              const error = new Error(`No document to update: ${ref.clave}`);
-              error.code = 5;
-              throw error;
-            }
+            if (!existe(ref.clave)) throw errorNoExiste(ref.clave);
           }
           for (const { ref, data } of operaciones) await ref.update(data);
         },
       };
+    },
+    async runTransaction(cuerpo) {
+      for (let intento = 0; intento < 5; intento += 1) {
+        const leidos = new Map();
+        const pendientes = [];
+        const tx = {
+          async get(ref) {
+            leidos.set(ref.clave, versiones.get(ref.clave) || 0);
+            return ref.get();
+          },
+          update(ref, data) {
+            pendientes.push({ ref, data });
+          },
+        };
+        const resultado = await cuerpo(tx);
+
+        const conflicto = [...leidos].some(
+          ([clave, version]) => (versiones.get(clave) || 0) !== version
+        );
+        if (conflicto) continue;
+
+        for (const { ref } of pendientes) {
+          if (!existe(ref.clave)) throw errorNoExiste(ref.clave);
+        }
+        for (const { ref, data } of pendientes) await ref.update(data);
+        return resultado;
+      }
+      throw new Error('transaccion: demasiados reintentos');
     },
   };
 }
@@ -240,10 +314,13 @@ describe('vinculoTaller / recibirTicketYVincular', () => {
     assert.strictEqual(db.docs['reparaciones/r1'].estado, 'en_revision');
     // Pero el vinculo SI se reescribe: un ticket abierto antes de que
     // existiera este flujo (o uno cuyo vinculo se revoco por error) recupera
-    // el acceso al reabrirlo, en vez de quedarse sin ficha para siempre.
+    // el acceso al reabrirlo, en vez de quedarse sin ficha para siempre. Y el
+    // ticket queda marcado como vinculado, que es lo que lo pone bajo la
+    // caducidad por inactividad: recuperar el acceso sin quedar sujeto a ella
+    // seria una puerta trasera al residual 7.2.
     assert.deepStrictEqual(
       db.escrituras.map((e) => e.clave),
-      ['vehiculos/v1']
+      ['reparaciones/r1', 'vehiculos/v1']
     );
   });
 
@@ -296,7 +373,11 @@ describe('vinculoTaller / recibirTicketYVincular', () => {
     });
 
     assert.strictEqual(resultado.recibidoAhora, false);
-    assert.deepStrictEqual(db.escrituras.map((x) => x.clave), ['vehiculos/v1']);
+    // Igual que arriba: el vinculo se reasegura y el ticket queda marcado.
+    assert.deepStrictEqual(db.escrituras.map((x) => x.clave), [
+      'reparaciones/r1',
+      'vehiculos/v1',
+    ]);
   });
 
   it('un ticket que no existe se rechaza con not-found', async () => {
@@ -321,5 +402,269 @@ describe('vinculoTaller / recibirTicketYVincular', () => {
         /ya no existe/.test(error.message)
     );
     assert.strictEqual(db.docs['reparaciones/r1'].estado, 'pendiente_recepcion');
+  });
+});
+
+describe('vinculoTaller / recibirTicketYVincular, concurrencia y autorizacion', () => {
+  it('no pierde una entrada de historial escrita mientras se recibia', async () => {
+    // Residual 7.7 de FUNC-02. `historial_estados` se reconstruye EN MEMORIA
+    // (se lee el array, se le hace push y se escribe entero, porque una
+    // entrada nueva no se puede añadir con `arrayUnion` sin arriesgar
+    // deduplicacion de objetos iguales). Con un `batch`, esa lectura no esta
+    // atada a la escritura: cualquier otra transicion que ocurra entre medias
+    // —el cliente avanzando el ticket desde el tablero, una cancelacion— se
+    // escribe y acto seguido la recepcion la pisa con su copia vieja del
+    // array. El estado se pierde sin error y sin rastro.
+    //
+    // Con `runTransaction`, Firestore detecta que el documento leido cambio y
+    // reejecuta el cuerpo sobre los datos nuevos.
+    let interferido = false;
+    const db = fakeDb({}, async (clave) => {
+      if (clave !== 'reparaciones/r1' || interferido) return;
+      interferido = true;
+      // Otro escritor mete su transicion justo despues de que la recepcion
+      // haya leido el ticket.
+      await db.collection('reparaciones').doc('r1').update({
+        historial_estados: [
+          { estado: 'pendiente_recepcion', timestamp: AHORA },
+          { estado: 'en_revision', timestamp: AHORA },
+        ],
+      });
+    });
+    db.docs['reparaciones/r1'] = ticketPendiente();
+    db.docs['vehiculos/v1'] = { talleres_vinculados: [] };
+
+    await recibirTicketYVincular(db, { idReparacion: 'r1', ahora: AHORA });
+
+    const estados = db.docs['reparaciones/r1'].historial_estados.map(
+      (e) => e.estado
+    );
+    assert.deepStrictEqual(estados, [
+      'pendiente_recepcion',
+      'en_revision',
+      'recibido',
+    ]);
+  });
+
+  it('sin autorizacion no escribe nada y lanza permission-denied', async () => {
+    // La autorizacion pasa a ocurrir DENTRO de la transaccion, sobre el mismo
+    // snapshot del ticket que decide la escritura. Antes el callable leia el
+    // ticket para autorizar y `recibirTicketYVincular` lo volvia a leer para
+    // escribir: una lectura de mas y, peor, una ventana en la que el
+    // `id_taller` podia cambiar entre las dos y la autorizacion quedaba
+    // decidida sobre el documento viejo.
+    const db = fakeDb({
+      'reparaciones/r1': ticketPendiente(),
+      'vehiculos/v1': { talleres_vinculados: [] },
+    });
+
+    await assert.rejects(
+      recibirTicketYVincular(db, {
+        idReparacion: 'r1',
+        ahora: AHORA,
+        autorizar: async () => false,
+      }),
+      (error) =>
+        error instanceof ErrorRecepcion && error.code === 'permission-denied'
+    );
+    assert.deepStrictEqual(db.escrituras, []);
+    assert.strictEqual(db.docs['reparaciones/r1'].estado, 'pendiente_recepcion');
+  });
+
+  it('la autorizacion recibe el id_taller del ticket recien leido', async () => {
+    const db = fakeDb({
+      'reparaciones/r1': ticketPendiente({ id_taller: 't-real' }),
+      'vehiculos/v1': { talleres_vinculados: [] },
+    });
+    const vistos = [];
+
+    await recibirTicketYVincular(db, {
+      idReparacion: 'r1',
+      ahora: AHORA,
+      autorizar: async (idTaller) => {
+        vistos.push(idTaller);
+        return true;
+      },
+    });
+
+    assert.deepStrictEqual(vistos, ['t-real']);
+  });
+});
+
+describe('vinculoTaller / revocarVinculoAlCerrar, un fallo no se pierde', () => {
+  const cerrado = { id_vehiculo: 'v1', id_taller: 't1', estado: 'entregado' };
+  const abierto = { id_vehiculo: 'v1', id_taller: 't1', estado: 'recibido' };
+
+  it('si la revocacion falla, deja marca en el ticket', async () => {
+    // Residual 7.9 de FUNC-02. El trigger capturaba el error, lo registraba y
+    // seguia. La razon era buena —el ticket ya esta cerrado y relanzar sin
+    // `failurePolicy` no reintenta nada— pero el resultado era que el vinculo
+    // sobrevivia al `entregado` sin que nadie pudiera saberlo: el taller
+    // conserva el acceso a la ficha de un coche que ya devolvio, y la unica
+    // huella es una linea de log. Dejar marca no arregla la revocacion, pero
+    // convierte un estado invisible en uno CONSULTABLE y reparable.
+    const db = fakeDb(
+      { 'reparaciones/r1': cerrado, 'vehiculos/v1': { talleres_vinculados: ['t1'] } },
+      null,
+      new Set(['vehiculos/v1'])
+    );
+
+    const { resultado, error } = await revocarVinculoAlCerrar(db, {
+      antes: abierto,
+      despues: cerrado,
+      ref: db.collection('reparaciones').doc('r1'),
+    });
+
+    assert.strictEqual(resultado, 'pendiente');
+    assert.ok(error, 'el error se devuelve para que el llamador lo registre');
+    assert.strictEqual(db.docs['reparaciones/r1'].vinculo_revocacion_pendiente, true);
+  });
+
+  it('una escritura posterior con la marca reintenta y la limpia', async () => {
+    // Autorreparacion sin maquinaria nueva: el propio trigger `onUpdate` se
+    // despierta con cualquier escritura sobre el ticket, y si ve la marca
+    // vuelve a intentarlo. No hace falta un barrido programado.
+    const db = fakeDb({
+      'reparaciones/r1': Object.assign({}, cerrado, {
+        vinculo_revocacion_pendiente: true,
+      }),
+      'vehiculos/v1': { talleres_vinculados: ['t1'] },
+    });
+
+    const { resultado } = await revocarVinculoAlCerrar(db, {
+      // Ya estaba cerrado antes y despues: no es la transicion, es la marca
+      // la que dispara el reintento.
+      antes: db.docs['reparaciones/r1'],
+      despues: db.docs['reparaciones/r1'],
+      ref: db.collection('reparaciones').doc('r1'),
+    });
+
+    assert.strictEqual(resultado, 'revocado');
+    const limpieza = db.escrituras.find(
+      (x) => x.clave === 'reparaciones/r1'
+    );
+    assert.ok(
+      limpieza && 'vinculo_revocacion_pendiente' in limpieza.data,
+      'la marca tiene que limpiarse, o el ticket se reintenta para siempre'
+    );
+  });
+
+  it('sin transicion de cierre y sin marca, no hace nada', async () => {
+    const db = fakeDb({ 'reparaciones/r1': abierto, 'vehiculos/v1': {} });
+
+    const { resultado } = await revocarVinculoAlCerrar(db, {
+      antes: abierto,
+      despues: abierto,
+      ref: db.collection('reparaciones').doc('r1'),
+    });
+
+    assert.strictEqual(resultado, 'nada');
+    assert.deepStrictEqual(db.escrituras, []);
+  });
+
+  it('un reintento que vuelve a fallar no reescribe la marca', async () => {
+    // Si reescribiera, cada reescritura despertaria al trigger otra vez: un
+    // bucle facturado sobre un fallo que no se arregla solo.
+    const db = fakeDb(
+      {
+        'reparaciones/r1': Object.assign({}, cerrado, {
+          vinculo_revocacion_pendiente: true,
+        }),
+        'vehiculos/v1': { talleres_vinculados: ['t1'] },
+      },
+      null,
+      new Set(['vehiculos/v1'])
+    );
+
+    const { resultado } = await revocarVinculoAlCerrar(db, {
+      antes: db.docs['reparaciones/r1'],
+      despues: db.docs['reparaciones/r1'],
+      ref: db.collection('reparaciones').doc('r1'),
+    });
+
+    assert.strictEqual(resultado, 'pendiente');
+    assert.deepStrictEqual(db.escrituras, []);
+  });
+});
+
+describe('vinculoTaller / el ticket dice si su vinculo esta vivo', () => {
+  // `vinculo_activo` es lo que hace barrible la caducidad del residual 7.2:
+  // el barrido pregunta por ese campo, no por el estado del ticket, porque un
+  // ticket abandonado sigue abandonado despues de caducarle el vinculo y
+  // volveria a salir en cada corrida. Lo mantienen los dos extremos, y si uno
+  // de los dos se olvida el barrido deja de funcionar en silencio.
+  it('recibir el vehiculo lo marca como vivo', async () => {
+    const db = fakeDb({
+      'reparaciones/r1': ticketPendiente(),
+      'vehiculos/v1': { talleres_vinculados: [] },
+    });
+
+    await recibirTicketYVincular(db, { idReparacion: 'r1', ahora: AHORA });
+
+    assert.strictEqual(db.docs['reparaciones/r1'].vinculo_activo, true);
+  });
+
+  it('recibir un ticket YA recibido tambien lo marca (reasegura el vinculo)', async () => {
+    // La recepcion es idempotente y reasegura el vinculo aunque no transicione
+    // el estado; si no marcara, un ticket legado recuperaria el acceso sin
+    // quedar sujeto a la caducidad.
+    const db = fakeDb({
+      'reparaciones/r1': ticketPendiente({ estado: 'en_revision' }),
+      'vehiculos/v1': { talleres_vinculados: [] },
+    });
+
+    const { recibidoAhora } = await recibirTicketYVincular(db, {
+      idReparacion: 'r1',
+      ahora: AHORA,
+    });
+
+    assert.strictEqual(recibidoAhora, false);
+    assert.strictEqual(db.docs['reparaciones/r1'].vinculo_activo, true);
+  });
+
+  it('cerrar el ticket lo marca como muerto', async () => {
+    const cerrado = {
+      id_vehiculo: 'v1',
+      id_taller: 't1',
+      estado: 'entregado',
+      vinculo_activo: true,
+    };
+    const db = fakeDb({
+      'reparaciones/r1': cerrado,
+      'vehiculos/v1': { talleres_vinculados: ['t1'] },
+    });
+
+    await revocarVinculoAlCerrar(db, {
+      antes: { id_vehiculo: 'v1', id_taller: 't1', estado: 'recibido' },
+      despues: cerrado,
+      ref: db.collection('reparaciones').doc('r1'),
+    });
+
+    assert.strictEqual(db.docs['reparaciones/r1'].vinculo_activo, false);
+  });
+});
+
+describe('vinculoTaller / la marca no cuesta escrituras de mas', () => {
+  it('cerrar un ticket legado (sin el campo) no le escribe nada', async () => {
+    // Cada escritura sobre el ticket vuelve a despertar al trigger, que es un
+    // `onUpdate` sobre la misma coleccion. Termina, pero se factura, y un
+    // ticket que nunca tuvo `vinculo_activo` no tiene nada que limpiar.
+    const cerrado = { id_vehiculo: 'v1', id_taller: 't1', estado: 'entregado' };
+    const db = fakeDb({
+      'reparaciones/r1': cerrado,
+      'vehiculos/v1': { talleres_vinculados: ['t1'] },
+    });
+
+    const { resultado } = await revocarVinculoAlCerrar(db, {
+      antes: { id_vehiculo: 'v1', id_taller: 't1', estado: 'recibido' },
+      despues: cerrado,
+      ref: db.collection('reparaciones').doc('r1'),
+    });
+
+    assert.strictEqual(resultado, 'revocado');
+    assert.deepStrictEqual(
+      db.escrituras.map((e) => e.clave),
+      ['vehiculos/v1']
+    );
   });
 });

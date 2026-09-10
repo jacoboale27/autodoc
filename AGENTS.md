@@ -99,6 +99,33 @@ VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01 y FUNC-02.
 **Siguiente por orden §12: UX-03 / UX-04.** Luego SEC-04, OPS-01, H-01,
 INNO-01, FINAL-01.
 
+**Los nueve residuales de FUNC-02 estan cerrados** en la rama `fix/gaps-func02`. No es una
+tarea del plan: es el drenaje del §7 de la evidencia de FUNC-02. Evidencia en
+`docs/evidencia/GAPS-FUNC-02-cierre-de-residuales.md`. Lo esencial:
+
+- **Dos estaban mal descritos.** El «indice muerto `Servicios`» era `servicios` con la S
+  MAYUSCULA, o sea el indice VIVO mal escrito: el historial de servicios del propietario moria
+  con `failed-precondition` por su culpa. Y la «consulta que falla en silencio» no daba un
+  mensaje equivocado: dejaba la pantalla pintando el FORMULARIO MANUAL, asi que el mecanico
+  re-tecleaba el importe ya aprobado y era ese el que se guardaba en `servicios`.
+- **Centinela nuevo: `test/firestore_indices_test.dart`.** Los emuladores sirven cualquier
+  consulta sin mirar `firestore.indexes.json`: una consulta sin indice NO la detecta ninguna
+  suite, solo produccion. Cruza el inventario con los indices en las dos direcciones y cuenta
+  los `.orderBy(` de `lib/` y los `.where(` de `functions/` como disparador. Destapo seis
+  consultas mas sin indice y cuatro indices huerfanos.
+- **`InitiateServiceScreen` acepta ahora un `firestore` inyectable.** Sus trece tests corrian
+  contra `FirebaseFirestore.instance` sin Firebase real, o sea contra una consulta que
+  SIEMPRE fallaba, y nadie lo sabia porque el `.then` sin `catchError` se lo tragaba. Si
+  montas esa pantalla en un test, pasale un `FakeFirebaseFirestore`.
+- **La recepcion usa `runTransaction`** y la autorizacion viaja dentro como callback. **El
+  vinculo caduca solo** a los 30 dias sin actividad: caduca el ACCESO, no el ticket.
+- **Runbook, y el primero no es negociable:** `node backfill_entregado.js --apply` ANTES de
+  desplegar la app web (el tablero ordena por `fecha_actualizacion` y un `orderBy` excluye los
+  documentos sin el campo), y `firebase deploy --only firestore:indexes` antes que la app.
+- **Quedan nueve gaps NUEVOS** en el §9 de esa evidencia. El que mas vale: el tope del tablero
+  acota documentos, no lecturas — un `whereIn` de 5 estados con `limit(200)` aplica el limite
+  a CADA subconsulta, asi que lee hasta 1000 para devolver 200.
+
 FUNC-02 esta fusionada en `integracion/ola-1` (`58f5dd9`, sin conflictos). Evidencia en
 `docs/evidencia/FUNC-02-apertura-unica-de-tickets.md`. Lo que hay que saber sin leerla:
 
@@ -214,8 +241,8 @@ llegan por la REST de Firestore (de ahi salia el crash) y retira Vercel Analytic
 | Suite | Resultado |
 |---|---|
 | `flutter analyze` | limpio |
-| `flutter test` | **1167 / 1167**, exit 0 |
-| `functions` (Mocha) | **170 passing** |
+| `flutter test` | **1180 / 1180**, exit 0 |
+| `functions` (Mocha) | **197 passing** |
 | `test_rules` (Jest + emuladores) | **426 / 426**, 24 suites, exit 0 |
 | E2E de la app (Playwright) | **32 pasan, 2 `fixme`**, exit 0 |
 | E2E de la landing | **20 / 20**, exit 0 |

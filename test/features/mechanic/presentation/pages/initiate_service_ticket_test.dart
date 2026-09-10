@@ -1,6 +1,7 @@
 // test/features/mechanic/presentation/pages/initiate_service_ticket_test.dart
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_core_platform_interface/test.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
@@ -50,6 +51,7 @@ void main() {
       InitiateServiceScreen(
         reparacionId: 'r1',
         vehiculoPrecargado: _vehiculoFake(),
+        firestore: FakeFirebaseFirestore(),
       ),
       width: 1024,
       location: '/initiate_service/r1',

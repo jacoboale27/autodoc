@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_core_platform_interface/test.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:autodoc/core/models/vehicle_model.dart';
@@ -43,6 +44,7 @@ void main() {
       InitiateServiceScreen(
         reparacionId: 'r1',
         vehiculoPrecargado: vehiculoFake(),
+        firestore: FakeFirebaseFirestore(),
       ),
       width: width,
       location: '/initiate_service/r1',

@@ -88,6 +88,7 @@ GoRouter _router({Widget? chatHome}) => GoRouter(
                   rutaVuelta: '/mechanic_dashboard',
                 )
               : InitiateServiceScreen(
+                  firestore: FakeFirebaseFirestore(),
                   reparacionId: id,
                   vehiculoPrecargado: state.extra is VehicleModel
                       ? state.extra as VehicleModel

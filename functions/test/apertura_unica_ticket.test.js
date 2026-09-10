@@ -111,15 +111,28 @@ describe('FUNC-02 / una sola puerta de apertura de tickets', () => {
     // Un callable nuevo que delegara en un helper de src/ —el patron de todo
     // el modulo— no se habria visto. Por eso se cuenta por archivo.
     const esperado = {
-      // El unico CREADOR: el trigger de aceptacion de cotizacion.
-      'src/aceptarCotizacion.js': 2,
+      // El unico CREADOR: el trigger de aceptacion de cotizacion. Son 3 y no
+      // 2 desde que el dedup pregunta en dos tramos (residual 7.3): el
+      // `estado not-in` que responde en una lectura, y el barrido acotado que
+      // solo corre si el primero no encontro nada y solo busca tickets
+      // legados, sin el campo `estado`, que ninguna consulta filtrada ve.
+      'src/aceptarCotizacion.js': 3,
       // La transicion `pendiente_recepcion` -> `recibido`, junto con el
-      // vinculo al vehiculo, en un solo lote atomico.
+      // vinculo al vehiculo, en una sola transaccion.
       'src/vinculoTaller.js': 1,
-      // index.js: la relectura del ticket para notificar, la lectura que
-      // autoriza `recibirVehiculoDelTicket`, y el barrido de `onVehicleDelete`
-      // que CIERRA los tickets del vehiculo borrado.
-      'index.js': 3,
+      // El barrido de caducidad del vinculo (residual 7.2). NO crea ni cierra
+      // tickets: consulta los que tienen vinculo vivo y sin actividad, y lo
+      // unico que les escribe es `vinculo_activo: false`. El acceso caduca; el
+      // ticket sigue siendo trabajo del taller.
+      'src/caducarVinculos.js': 1,
+      // index.js: la relectura del ticket para notificar y el barrido de
+      // `onVehicleDelete` que CIERRA los tickets del vehiculo borrado. Baja de
+      // 3 a 2 al cerrar el residual 7.7: `recibirVehiculoDelTicket` leia el
+      // ticket para autorizar y `recibirTicketYVincular` lo volvia a leer para
+      // escribir. Ahora la autorizacion se le pasa como callback y decide
+      // dentro de la transaccion, sobre el mismo snapshot. Una lectura menos
+      // por recepcion y una ventana TOCTOU menos.
+      'index.js': 2,
     };
 
     const real = {};

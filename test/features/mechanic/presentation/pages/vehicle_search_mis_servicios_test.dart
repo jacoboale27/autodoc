@@ -25,6 +25,7 @@ import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/vehicle_search_screen.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/reparacion_provider.dart';
+import 'package:autodoc/features/mechanic/presentation/widgets/aviso_tablero_truncado.dart';
 
 import '../../../../support/mechanic_harness.dart';
 import '../../../../support/vehicle_fixtures.dart';
@@ -63,12 +64,21 @@ class _FakeReparacionProviderConLista extends FakeReparacionProvider {
     bool isLoading = false,
     this.recibirDevuelve = true,
     this.alRecibir,
+    bool? truncado,
   }) : _error = error,
-       _isLoading = isLoading;
+       _isLoading = isLoading,
+       _truncado = truncado;
 
   final List<ReparacionModel> _lista;
   final String? _error;
   final bool _isLoading;
+
+  /// Fuerza [tableroTruncado] sin tener que sembrar 200 tickets, que ademas
+  /// pintaria 200 tarjetas en cada corrida.
+  final bool? _truncado;
+
+  @override
+  bool get tableroTruncado => _truncado ?? super.tableroTruncado;
 
   /// Que devuelve [recibirVehiculoPorId] en el reintento de acceso: `null`
   /// simula un fallo (el callable rechaza), cualquier otra cosa un exito.
@@ -146,6 +156,7 @@ Future<void> _pumpBuscarVehiculo(
   required List<ReparacionModel> reparaciones,
   String? error,
   bool isLoading = false,
+  bool? truncado,
 }) async {
   await pumpMechanicScreen(
     tester,
@@ -159,6 +170,7 @@ Future<void> _pumpBuscarVehiculo(
           reparaciones,
           error: error,
           isLoading: isLoading,
+          truncado: truncado,
         ),
       ),
     ],
@@ -555,5 +567,41 @@ void main() {
 
     expect(find.byType(SnackBar), findsOneWidget);
     expect(router.state.uri.toString(), '/mechanic_search');
+  });
+
+  testWidgets('cuando el tablero llega al tope, se avisa de que faltan', (
+    tester,
+  ) async {
+    // Residual 7.6 de FUNC-02: el stream del tablero pasa a estar acotado, y
+    // un recorte silencioso es peor que un tablero lento — una tarjeta que no
+    // esta se lee igual que un ticket que no existe.
+    await _pumpBuscarVehiculo(
+      tester,
+      reparaciones: [
+        _reparacionFake(
+          idReparacion: 'r1',
+          placa: 'P111111',
+          estado: 'recibido',
+        ),
+      ],
+      truncado: true,
+    );
+
+    expect(find.byType(AvisoTableroTruncado), findsOneWidget);
+  });
+
+  testWidgets('sin recorte no se avisa de nada', (tester) async {
+    await _pumpBuscarVehiculo(
+      tester,
+      reparaciones: [
+        _reparacionFake(
+          idReparacion: 'r1',
+          placa: 'P111111',
+          estado: 'recibido',
+        ),
+      ],
+    );
+
+    expect(find.byType(AvisoTableroTruncado), findsNothing);
   });
 }

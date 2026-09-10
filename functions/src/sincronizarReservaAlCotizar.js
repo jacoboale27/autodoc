@@ -55,8 +55,19 @@ async function reservaPerteneceACotizacion(db, reserva, cotizacion) {
   if (reserva.id_propietario !== cot.id_propietario) return false;
   if (!reserva.id_taller || !cot.id_taller) return false;
 
-  const tallerReserva = await resolverIdTallerPropietario(db, reserva.id_taller);
-  const tallerCotizacion = await resolverIdTallerPropietario(db, cot.id_taller);
+  // Atajo antes de leer nada: `resolverIdTallerPropietario` es una funcion del
+  // uid, asi que si los dos lados traen el MISMO uid la resolucion no puede
+  // separarlos. Se hacian dos lecturas de `usuarios` en cada cotizacion
+  // aceptada o rechazada para confirmar una igualdad que ya estaba delante, y
+  // ese es el caso comun con diferencia (residual 7.8 de FUNC-02).
+  if (reserva.id_taller === cot.id_taller) return true;
+
+  // Y cuando de verdad difieren, las dos resoluciones son independientes: la
+  // segunda no necesitaba nada de la primera y aun asi la esperaba.
+  const [tallerReserva, tallerCotizacion] = await Promise.all([
+    resolverIdTallerPropietario(db, reserva.id_taller),
+    resolverIdTallerPropietario(db, cot.id_taller),
+  ]);
   return tallerReserva === tallerCotizacion;
 }
 

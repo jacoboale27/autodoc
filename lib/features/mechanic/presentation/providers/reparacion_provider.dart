@@ -13,6 +13,15 @@ class ReparacionProvider extends ChangeNotifier {
   List<ReparacionModel> _reparaciones = [];
   List<ReparacionModel> get reparaciones => _reparaciones;
 
+  /// `true` cuando el tablero llegó al tope de [maxTicketsTablero] y por tanto
+  /// hay tickets vivos que NO se están mostrando.
+  ///
+  /// Se deriva de haber recibido exactamente el tope: es lo único que el
+  /// cliente puede saber sin pagar otra consulta. Puede dar un falso positivo
+  /// si el taller tiene justo 200 tickets abiertos y ni uno más, que es un
+  /// precio ridículo comparado con recortar en silencio.
+  bool get tableroTruncado => _reparaciones.length >= maxTicketsTablero;
+
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
@@ -45,22 +54,38 @@ class ReparacionProvider extends ChangeNotifier {
   /// para decidir entre la vista pública del vehículo (A3/B2, sin ticket) y
   /// `InitiateServiceScreen` (ticket ya abierto).
   ///
-  /// "Vigente" excluye `cancelado`: antes de la revisión de la Tarea 5, esta
-  /// consulta era solo UN insumo dentro de `InitiateServiceScreen` (para el
-  /// botón "Recibir vehículo", que sí rechaza un ticket cancelado en
-  /// [ReparacionRepository.recibirVehiculo]); ahora es la ÚNICA puerta de
-  /// entrada a toda la pantalla. Sin este filtro, un ticket cancelado
-  /// abría igual el formulario completo de materiales/cotización/finalizar
-  /// — justo lo que A3/B2 prohíbe ("sin cotización aceptada vigente, nada
-  /// de eso"). Un ticket `recibido` (incluido uno legado, anterior a A4b)
-  /// sigue contando como vigente: solo `cancelado` se trata como "no hay
-  /// ticket".
+  /// "Vigente" es el complemento de [estadosReparacionCerrados]: antes de la
+  /// revisión de la Tarea 5, esta consulta era solo UN insumo dentro de
+  /// `InitiateServiceScreen` (para el botón "Recibir vehículo", que sí
+  /// rechaza un ticket cerrado en [ReparacionRepository.recibirVehiculo]);
+  /// ahora es la ÚNICA puerta de entrada a toda la pantalla. Sin este filtro,
+  /// un ticket cerrado abría igual el formulario completo de
+  /// materiales/cotización/finalizar — justo lo que A3/B2 prohíbe ("sin
+  /// cotización aceptada vigente, nada de eso"). Un ticket `recibido`
+  /// (incluido uno legado, anterior a A4b, que llega aquí sin `estado` y
+  /// cuenta como abierto) sigue contando como vigente.
+  ///
+  /// **La compuerta excluía solo `cancelado`.** Un ticket ya `entregado`
+  /// abría la pantalla entera, y era un callejón sin salida: al entregar, el
+  /// vínculo con el vehículo ya se revocó, `firestore.rules` deniega la
+  /// lectura de la ficha y la pantalla muere en un error genérico. No era una
+  /// fuga —el servidor rechaza recibir un ticket cerrado y las reglas hacen
+  /// inmutable un ticket cerrado— pero mandaba al mecánico a un error en vez
+  /// de a la ficha pública, que es donde puede pedir una cotización nueva.
+  /// Residual 7.1 de FUNC-02, cerrado aquí.
+  ///
+  /// Usar la constante y no el literal es el punto: [estadosReparacionCerrados]
+  /// es el espejo en el cliente de `ESTADOS_TICKET_CERRADO`
+  /// (`functions/src/aceptarCotizacion.js`), o sea la misma definición de
+  /// "cerrado" que usa el servidor para decidir si abre un ticket NUEVO. La
+  /// compuerta y el creador ya no pueden discrepar.
   ///
   /// [ReparacionRepository.buscarReparacionActiva] en sí sigue sin filtrar
-  /// por estado a propósito: la lista de Mis Servicios quiere "cualquier
-  /// ticket existente", incluido uno ya entregado. El filtro de "vigente"
-  /// vive aquí, en el único método pensado para gating, y en ningún otro
-  /// sitio.
+  /// por estado a propósito: prefiere el abierto y cae al más reciente si
+  /// todos están cerrados. El filtro de "vigente" vive aquí, en el único
+  /// método pensado para gating, y en ningún otro sitio. "Mis Servicios" no
+  /// pasa por aquí: se pinta desde `watchReparacionesActivas`, cuyo `whereIn`
+  /// sobre [estadosReparacion] ya dejaba fuera `entregado` y `cancelado`.
   Future<String?> buscarReparacionActiva({
     required String idVehiculo,
     required String idTaller,
@@ -71,7 +96,10 @@ class ReparacionProvider extends ChangeNotifier {
     );
     if (idReparacion == null) return null;
     final reparacion = await _repository.obtenerReparacion(idReparacion);
-    if (reparacion == null || reparacion.estado == 'cancelado') return null;
+    if (reparacion == null ||
+        estadosReparacionCerrados.contains(reparacion.estado)) {
+      return null;
+    }
     return idReparacion;
   }
 

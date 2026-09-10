@@ -145,6 +145,9 @@ class FakeReparacionProvider extends ChangeNotifier
 
   @override
   List<ReparacionModel> get reparaciones => const [];
+
+  @override
+  bool get tableroTruncado => reparaciones.length >= maxTicketsTablero;
   @override
   bool get isLoading => false;
   @override
