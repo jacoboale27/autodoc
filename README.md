@@ -239,17 +239,24 @@ flutter build web --release \
 Para levantarla en local:
 
 ```bash
-cd build/web && python -m http.server 8087
+firebase emulators:start --only hosting
 ```
 
-> ⚠️ Ábrela en **`http://localhost:8087`**, nunca en `http://127.0.0.1:8087`.
+> ⚠️ Ábrela por **`localhost`** en el puerto que anuncie el emulador (5000 por
+> defecto; no está fijado en `firebase.json`), nunca por IP (`http://127.0.0.1:...`).
 > El App Check de la app usa reCAPTCHA Enterprise, y esa clave no admite la IP
 > como dominio: el token nunca resuelve, y Firebase Auth se queda colgado **sin
 > emitir una sola petición de red** — el login simplemente no hace nada, sin
 > error en consola. Está avisado en `lib/main.dart` (bloque de App Check).
 >
-> El servidor estático tampoco reescribe rutas, así que los enlaces profundos
-> (`/mechanic_reparaciones`) dan 404 al recargar: navega desde la raíz.
+> **No la sirvas con `python -m http.server`.** Ese servidor no reescribe
+> rutas, así que los enlaces profundos (`/mechanic_reparaciones`) dan 404 al
+> recargar — pero el 404 lo inventa el servidor de pruebas, no la app: el
+> `firebase.json` real sí trae el rewrite SPA (`**` → `/index.html`) para el
+> target `app`. El emulador de Hosting lee ese mismo `firebase.json`, así que
+> es lo único que reproduce en local lo que hará producción. La suite de
+> Playwright hace lo propio con `e2e/scripts/serve-web.js`, y
+> `e2e/tests/deep-links.spec.js` afirma que ambos rewrites coinciden.
 
 ### Cloud Functions
 

@@ -44,13 +44,37 @@ const VEHICULOS = { deA: 'e2e-vehiculo-a', deB: 'e2e-vehiculo-b' };
 // `auth.emulatorConfig` solo deja de ser null cuando `connectAuthEmulator` ya
 // se aplico, asi que esperar a el elimina la carrera y de paso afirma que
 // estamos donde creemos estar.
+//
+// Desde el shim de scripts/shim-emuladores.js, Auth se conecta al emulador
+// ANTES de que arranque Flutter. Eso arregla la sesion persistida pero rompe
+// una implicacion en la que esta funcion se apoyaba sin decirlo: como
+// main.dart cableaba Auth, Firestore y Storage en tres lineas seguidas, ver
+// `emulatorConfig` puesto significaba que los tres estaban listos. Ya no —
+// medido: Auth queda cableado en el arranque, `window.firebase_firestore` no
+// existe hasta ~1s despues, y en esa ventana `getFirestore` devuelve una
+// instancia apuntando a PRODUCCION. Los specs que leen Firestore nada mas
+// entrar (roles.spec.js) fallaban ahi de forma intermitente.
+//
+// Asi que ahora se espera a las tres piezas de verdad: la app montada
+// (`<flutter-view>`), Auth en el emulador, y Firestore en el suyo. Lo ultimo
+// se lee de `_settings.host`, que es API privada del SDK; si algun dia deja de
+// existir esta funcion se quedara esperando hasta agotar el timeout, que es el
+// modo de fallo que queremos — ruidoso, y no un verde sobre produccion.
 async function esperarAppLista(page) {
   await page.waitForFunction(
     () => {
       const core = window.firebase_core;
       const auth = window.firebase_auth;
-      if (!core || !auth || !core.getApps || core.getApps().length === 0) return false;
-      return !!auth.getAuth(core.getApps()[0]).emulatorConfig;
+      const firestore = window.firebase_firestore;
+      if (!core || !auth || !firestore) return false;
+      if (!core.getApps || core.getApps().length === 0) return false;
+      const app = core.getApps()[0];
+      if (!auth.getAuth(app).emulatorConfig) return false;
+      const ajustes = firestore.getFirestore(app)._settings;
+      if (!ajustes || !/^(localhost|127\.0\.0\.1):8080$/.test(ajustes.host)) {
+        return false;
+      }
+      return !!document.querySelector('flutter-view');
     },
     null,
     { timeout: 120000 },

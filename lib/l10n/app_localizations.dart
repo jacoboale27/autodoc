@@ -2629,6 +2629,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Access revoked'**
   String get securityAccessRevoked;
+
+  /// Title of the screen that replaces the app when Firebase Core fails to start
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t start AutoDoc'**
+  String get startupErrorTitle;
+
+  /// User-facing explanation of the startup failure, with no internal diagnostics
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t reach our services. Check your connection and try again. If the problem persists, contact the app administrator.'**
+  String get startupErrorBody;
+
+  /// Button that retries Firebase startup
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get startupErrorRetry;
+
+  /// Notice shown when the startup retry fails as well
+  ///
+  /// In en, this message translates to:
+  /// **'We still couldn\'t connect. Please try again in a moment.'**
+  String get startupErrorRetryFailed;
+
+  /// Title of the router 404 screen
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t find this page'**
+  String get notFoundTitle;
+
+  /// Explanation shown on the 404 screen
+  ///
+  /// In en, this message translates to:
+  /// **'The address you opened doesn\'t exist or has moved.'**
+  String get notFoundBody;
+
+  /// Button returning the user to the app root from the 404 screen
+  ///
+  /// In en, this message translates to:
+  /// **'Go to home'**
+  String get notFoundGoHome;
+
+  /// Button returning the user to the previous screen from the 404
+  ///
+  /// In en, this message translates to:
+  /// **'Go back'**
+  String get notFoundGoBack;
 }
 
 class _AppLocalizationsDelegate

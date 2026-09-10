@@ -6,6 +6,8 @@ import 'package:autodoc/core/router/app_router.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/models/user_model.dart';
+import 'package:autodoc/l10n/app_localizations.dart';
+import 'package:autodoc/core/widgets/not_found_screen.dart';
 
 /// Minimal fakes mirroring the ones in app_router_test.dart, kept local so
 /// this regression test has no cross-file dependency.
@@ -113,10 +115,16 @@ void main() {
       initialLocation: '/directorio', // the wrong path TestSprite used
     );
 
-    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpWidget(
+      MaterialApp.router(
+        routerConfig: router,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
+    );
     await tester.pumpAndSettle();
 
-    expect(find.text('Página no encontrada (404)'), findsOneWidget);
+    expect(find.byType(NotFoundScreen), findsOneWidget);
   });
 
   test('the real app router has /workshop_directory registered but not '

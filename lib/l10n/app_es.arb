@@ -741,5 +741,37 @@
   "securityOnlyYou": "Solo tú tienes acceso",
   "securityRevoke": "Revocar acceso",
   "securityInvalidEmail": "Ingresa un correo válido",
-  "securityAccessRevoked": "Acceso revocado"
+  "securityAccessRevoked": "Acceso revocado",
+  "startupErrorTitle": "No pudimos iniciar AutoDoc",
+  "@startupErrorTitle": {
+    "description": "Titulo de la pantalla que sustituye a la app cuando Firebase Core no arranca"
+  },
+  "startupErrorBody": "No fue posible conectar con nuestros servicios. Revisa tu conexión e intenta de nuevo. Si el problema continúa, contacta al administrador de la aplicación.",
+  "@startupErrorBody": {
+    "description": "Explicacion sin diagnostico interno del fallo de arranque"
+  },
+  "startupErrorRetry": "Intentar de nuevo",
+  "@startupErrorRetry": {
+    "description": "Boton que vuelve a intentar el arranque de Firebase"
+  },
+  "startupErrorRetryFailed": "Seguimos sin poder conectar. Inténtalo de nuevo en unos momentos.",
+  "@startupErrorRetryFailed": {
+    "description": "Aviso mostrado cuando el reintento de arranque tambien falla"
+  },
+  "notFoundTitle": "No encontramos esta página",
+  "@notFoundTitle": {
+    "description": "Titulo de la pantalla 404 del router"
+  },
+  "notFoundBody": "La dirección que abriste no existe o cambió de lugar.",
+  "@notFoundBody": {
+    "description": "Explicacion de la pantalla 404"
+  },
+  "notFoundGoHome": "Ir al inicio",
+  "@notFoundGoHome": {
+    "description": "Boton que devuelve al usuario a la raiz de la app desde el 404"
+  },
+  "notFoundGoBack": "Volver",
+  "@notFoundGoBack": {
+    "description": "Boton que vuelve a la pantalla anterior desde el 404"
+  }
 }

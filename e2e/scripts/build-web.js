@@ -75,4 +75,17 @@ if (!fs.existsSync(indice)) {
   console.error(`\nEl build termino pero no hay ${indice}.`);
   process.exit(1);
 }
+
+// El cableado de Auth al emulador NO se puede hacer desde Dart.
+//
+// `Firebase.initializeApp()` no retorna hasta que firebase_auth_web ha
+// restaurado la sesion persistida, y esa restauracion es una peticion de red
+// que sale ANTES de que main.dart pueda redirigir nada. El shim lo resuelve
+// creando la app de JS y conectando el emulador antes de arrancar Flutter; el
+// porque completo esta en scripts/shim-emuladores.js.
+//
+// Va aqui, sobre el artefacto, y no en web/index.html: ese es el archivo que se
+// despliega y no debe llevar ni una linea de andamiaje de pruebas.
+require('./shim-emuladores').inyectar();
+
 console.log('\nBundle listo en build/web, apuntado a los emuladores.');

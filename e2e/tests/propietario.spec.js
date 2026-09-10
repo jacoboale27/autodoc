@@ -33,7 +33,11 @@ test.describe('Flujos del Propietario', () => {
   });
 
   test('aterriza en su dashboard y ve su vehiculo sembrado', async ({ page }) => {
-    await expect(page).toHaveURL(/\/dashboard/);
+    // Timeout explicito, no el de 5 s por defecto: el `beforeEach` espera una
+    // duracion fija y el router se queda en `/?redirect=...` mientras carga el
+    // perfil, asi que bajo carga esa espera adivinada se queda corta. Esperar a
+    // la CONDICION en vez de a un reloj es lo que quita la intermitencia.
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 30000 });
     // La placa viene del fixture: comprobar el DATO y no solo la pantalla es
     // lo que prueba que la app leyo de verdad su Firestore.
     await expect(page.getByText('E2E-AAA').first()).toBeVisible({ timeout: 20000 });

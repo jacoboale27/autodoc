@@ -53,6 +53,7 @@ import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/notifications_screen.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/widgets/missing_argument_screen.dart';
+import 'package:autodoc/core/widgets/not_found_screen.dart';
 
 CustomTransitionPage<T> buildPageWithFadeThrough<T>({
   required BuildContext context,
@@ -383,7 +384,7 @@ GoRouter createAppRouter(
     redirect: (BuildContext context, GoRouterState state) =>
         appRouterRedirect(authProvider, profileProvider, context, state),
     errorBuilder: (context, state) =>
-        const Scaffold(body: Center(child: Text('Página no encontrada (404)'))),
+        NotFoundScreen(attemptedPath: state.uri.path),
     routes: [
       GoRoute(
         path: '/verify_email',

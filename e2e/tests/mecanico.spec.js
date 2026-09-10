@@ -27,7 +27,11 @@ test.describe('Flujos del Mecánico', () => {
   });
 
   test('aterriza en el panel de taller', async ({ page }) => {
-    await expect(page).toHaveURL(/mechanic_dashboard/);
+    // Timeout explicito, no el de 5 s por defecto: el `beforeEach` espera una
+    // duracion fija y el router se queda en `/?redirect=...` mientras carga el
+    // perfil, asi que bajo carga esa espera adivinada se queda corta. Esperar a
+    // la CONDICION en vez de a un reloj es lo que quita la intermitencia.
+    await expect(page).toHaveURL(/mechanic_dashboard/, { timeout: 30000 });
     await expect(page.getByText('Panel de Taller').first()).toBeVisible({ timeout: 20000 });
   });
 
