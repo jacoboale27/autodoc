@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('@playwright/test');
-const { esperarAppLista } = require('./helpers');
+const { ACTORES, esperarAppLista, iniciarSesion } = require('./helpers');
 
 // UX-02. Hasta aqui la suite de la app entraba SIEMPRE por '/' y navegaba
 // clicando, asi que nada probaba el caso que rompe en produccion: pegar una
@@ -18,6 +18,11 @@ async function despertarSemantica(page) {
 }
 
 test.describe('deep links y recuperacion de errores', () => {
+  // La app elige idioma por el del navegador (MaterialApp sin `locale`
+  // explicito). Fijarlo aqui es lo que permite afirmar la copy en español en
+  // vez de comparar contra lo que traiga la maquina de turno.
+  test.use({ locale: 'es-ES' });
+
   test('el servidor entrega la app, no un 404, para una ruta profunda', async ({
     request,
   }) => {
@@ -68,19 +73,17 @@ test.describe('deep links y recuperacion de errores', () => {
     expect(new URL(page.url()).pathname).toBe('/register');
   });
 
-  test('un deep link a una ruta inexistente no deja al usuario varado', async ({
-    page,
-  }) => {
-    // Sin sesion el redirect del router manda a /login antes de llegar al
-    // errorBuilder (app_router.dart: `if (!isLoggedIn && !isPublicRoute)`), asi
-    // que lo que se afirma aqui es lo que importa: nunca es el 404 del
-    // servidor ni una pantalla en blanco, siempre una pantalla util.
-    //
-    // El 404 propiamente dicho, con su copy localizada y su boton de salida,
-    // esta cubierto en test/core/router/app_router_not_found_screen_test.dart.
-    // No se puede ejercer aqui: exige sesion, y una sesion persistida rompe el
-    // cableado a emuladores en la siguiente carga completa (ver la nota de
-    // docs/evidencia/UX-02-errores-y-deep-links.md).
+  test('un deep link a una ruta inexistente: sin sesion lleva a /login, con '
+    + 'sesion muestra el 404 de la app', async ({ page }) => {
+    // Las dos mitades del mismo deep link van en el MISMO test, y no por
+    // elegancia: cada carga completa levanta CanvasKit y la persistencia
+    // offline de Firestore, y el emulador Java se degrada bajo esa carga (ver
+    // CLAUDE.md). Asi son dos arranques en vez de tres.
+
+    // 1. Sin sesion, el redirect del router manda a /login antes de llegar al
+    //    errorBuilder (app_router.dart: `if (!isLoggedIn && !isPublicRoute)`).
+    //    Lo que importa afirmar es que nunca es el 404 del servidor ni una
+    //    pantalla en blanco.
     await page.goto('/ruta_que_no_existe');
     await esperarAppLista(page);
     await despertarSemantica(page);
@@ -88,8 +91,40 @@ test.describe('deep links y recuperacion de errores', () => {
     await expect
       .poll(() => new URL(page.url()).pathname, { timeout: 30000 })
       .toBe('/login');
-    await expect(page.locator('flt-semantics').first()).toBeAttached({
+
+    // 2. Con sesion si se llega al errorBuilder. Esta mitad estuvo sin cubrir
+    //    mientras una sesion persistida rompia el cableado a emuladores en la
+    //    siguiente carga completa; lo arregla e2e/scripts/shim-emuladores.js, y
+    //    lo que sigue es lo que impide que el agujero vuelva en silencio.
+    await iniciarSesion(page, ACTORES.propietarioA);
+
+    // Navegacion de pagina completa CON la sesion ya persistida: el caso real
+    // del enlace pegado en la barra por alguien que ya habia entrado.
+    await page.goto('/ruta_que_no_existe');
+    await esperarAppLista(page);
+    await despertarSemantica(page);
+
+    // El router retiene en el splash mientras carga el perfil
+    // (`/?redirect=...`, app_router.dart:267) y navega al destino al terminar,
+    // asi que se espera a la condicion y no a un tiempo fijo.
+    await expect
+      .poll(() => new URL(page.url()).pathname, { timeout: 60000 })
+      .toBe('/ruta_que_no_existe');
+
+    // La pantalla de verdad: copy localizada y la ruta que fallo a la vista.
+    await expect(page.getByText('No encontramos esta página')).toBeVisible({
       timeout: 30000,
     });
+    await expect(page.getByText('/ruta_que_no_existe')).toBeVisible();
+
+    // Y la salida funciona, que es lo que separa un 404 util de un callejon.
+    //
+    // `.last()` no es un parche: Flutter emite DOS nodos de semantica por
+    // boton —el contenedor y el que lleva el rotulo y el `flt-tappable`— y el
+    // que recibe el clic es el segundo.
+    await page.getByRole('button', { name: 'Ir al inicio' }).last().click();
+    await expect
+      .poll(() => new URL(page.url()).pathname, { timeout: 30000 })
+      .not.toBe('/ruta_que_no_existe');
   });
 });

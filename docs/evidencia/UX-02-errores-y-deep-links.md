@@ -91,16 +91,24 @@ al 404 por `push` desde dentro de la app), no una inventada.
 | `flutter test` (suite completa) | **1149/1149**, exit 0 |
 | `test/core/widgets/firebase_initialization_error_screen_test.dart` | 6/6 |
 | `test/core/router/app_router_not_found_screen_test.dart` | 5/5 |
-| `e2e/tests/deep-links.spec.js` | 4/4 |
-| Suite E2E completa de la app | **31 pasan, 2 `fixme`, exit 0**, en **tres corridas seguidas** |
+| `e2e/tests/deep-links.spec.js` | 4/4, incluido el 404 **con sesión** |
+| `e2e/tests/sesion-persistida.spec.js` | 1/1 |
+| `e2e/tests/roles.spec.js` aislada | 3/3 corridas |
+| Suite E2E completa de la app | **32 pasan, 2 `fixme`, exit 0**, en **tres corridas seguidas** |
 | Puertos 8080/9099/9199/4400/5555 al salir | libres |
+
+Tras cerrar el defecto 2 no se tocó ni un archivo Dart, así que `flutter analyze` y
+`flutter test` siguen valiendo tal cual: el cambio vive entero en `e2e/`.
 
 ### TDD — los rojos que se vieron antes de implementar
 
-Ambas suites se corrieron y fallaron antes de escribir una línea de implementación:
+Las tres suites se corrieron y fallaron antes de escribir una línea de implementación:
 
 - 404: `The getter 'notFoundTitle' isn't defined for the type 'AppLocalizations'`.
 - Arranque: `No named parameter with the name 'onRetry'` y las claves ARB ausentes.
+- Sesión persistida: `TimeoutError: page.waitForFunction: Timeout 120000ms exceeded` en
+  `esperarAppLista`, justo después del `page.reload()` — el punto exacto que predecía la
+  lectura del plugin.
 
 ### Tests preexistentes que hubo que actualizar
 
@@ -143,9 +151,9 @@ suite vuelve a caerse al sembrar.
 
 Ahora espera a los dos, cada uno por su propio puerto.
 
-### 2. Una sesión persistida rompe el cableado a emuladores en la siguiente carga completa
+### 2. Una sesión persistida rompía el cableado a emuladores en la siguiente carga completa
 
-Con sesión iniciada, `page.goto('/garage')` arranca la app pero `auth.emulatorConfig`
+Con sesión iniciada, `page.goto('/garage')` arrancaba la app pero `auth.emulatorConfig`
 **nunca** se pone: sondeado cada 5 s durante 60 s, siempre `false`, sin usuario y con el
 router en `/login`. Sin sesión previa, la misma URL cablea emuladores en menos de 15 s.
 
@@ -154,10 +162,81 @@ Auth de producción** —el intento de restaurar la sesión persistida con las c
 *antes* de que la app anuncie `EMULADORES: Auth :9099 ... NO se esta usando produccion`.
 O sea, Auth se toca antes del redirect, que es justo la ventana contra la que avisa QA-01.
 
-Consecuencia práctica: **no se puede ejercer por E2E ningún flujo que exija sesión y una
-navegación de página completa.** Por eso el 404 autenticado se prueba por widget test y no
-aquí, y el spec lo dice en su propio comentario. No se ha arreglado: cae del lado del
-harness de QA-01, no de UX-02.
+Consecuencia práctica: **no se podía ejercer por E2E ningún flujo que exigiera sesión y una
+navegación de página completa.**
+
+**Arreglado.** La causa está en el orden de arranque de flutterfire, no en la app:
+
+`Firebase.initializeApp()` en web no retorna hasta que cada plugin termina su
+`ensurePluginInitialized`, y el de `firebase_auth_web` (6.2.5,
+`lib/firebase_auth_web.dart:84`) acaba con `await authDelegate.onWaitInitState()` —el
+primer evento de `onAuthStateChanged`—. Con sesión persistida en IndexedDB ese evento no
+llega hasta que el SDK de JS refresca el token guardado, o sea una petición de red, y todo
+eso ocurre **dentro** del `initializeApp`. Como `main.dart` solo puede llamar a
+`conectarEmuladoresFirebase()` después, llega tarde por construcción: la petición ya salió
+a producción y el instance de Auth ya está usado, así que el `connectAuthEmulator`
+posterior no tiene efecto.
+
+No es un bug de la app. En producción no hay emulador y restaurar la sesión contra el
+backend real es exactamente lo correcto; es un límite del orden de arranque que solo se
+puede romper desde fuera de Dart.
+
+El arreglo es `e2e/scripts/shim-emuladores.js`, que `build-web.js` inyecta en
+`build/web/index.html` **después** de compilar. Crea la app de JS y conecta el emulador de
+Auth antes de cargar `flutter_bootstrap.js`; flutterfire reutiliza la app que ya existe
+(`firebase.app()`, `firebase_core_web.dart:307`) y le sale un Auth ya cableado, así que
+`onWaitInitState()` restaura la sesión contra el emulador. Va sobre el artefacto y no sobre
+`web/index.html`, que es el que se despliega y no debe llevar andamiaje de pruebas.
+
+Tres detalles sin los que no funciona, los tres encontrados chocando con ellos:
+
+- **`initializeAuth` con las mismas opciones que usa flutterfire**
+  (`firebase_auth_web/lib/src/interop/auth.dart:22`), no un `getAuth` a secas. El SDK
+  devuelve el instance ya creado solo si las dependencias coinciden; si difieren lanza
+  `auth/already-initialized`. El primer intento usó `getAuth` y el resultado fue que
+  `Firebase.initializeApp` moría y la app caía a la pantalla de error de arranque.
+- **`window.flutterfire_web_sdk_version`** fuerza a flutterfire a importar la misma URL de
+  gstatic que importa el shim. Los módulos ES se deduplican por URL, y esa igualdad es lo
+  que garantiza que las dos mitades salgan del mismo registro. Es la letra pequeña del
+  aviso de `tests/helpers.js`: importar gstatic crea otro registro solo si la URL difiere.
+  `verificarVersionSdk()` compara contra la versión del plugin y **aborta el build** si
+  divergen.
+- **`sessionStorage['[DEFAULT]-firebaseEmulatorOrigin']`**, que convierte el
+  `useAuthEmulator` de `main.dart` en un no-op en vez de un segundo `connectAuthEmulator`
+  sobre un Auth ya inicializado.
+
+Cubierto por `e2e/tests/sesion-persistida.spec.js`, que además afirma que **no sale ni una
+petición** a `identitytoolkit`, `securetoken`, `firestore` ni `firebasestorage` de
+producción en toda la corrida.
+
+#### El falso verde que produjo este arreglo, y cómo se cazó
+
+El primer intento puso el test en verde con la app **rota**: el SDK de JS quedaba perfecto
+—`emulatorConfig` puesto, sesión restaurada— mientras `Firebase.initializeApp` moría con
+`auth/already-initialized` y Flutter mostraba la pantalla de error de arranque. Todas las
+afirmaciones miraban el SDK, que es la capa equivocada para detectar eso. Es la misma
+enfermedad que `CLAUDE.md` ya documenta dos veces: un test que ejercita una puerta distinta
+de la que dice probar.
+
+Se destapó porque dos specs que sí pasaban antes se pusieron rojas —los deep links
+aterrizaban en `/`— y la línea de tiempo de la consola lo dijo en una línea. El spec lleva
+ahora dos afirmaciones que lo habrían cazado solo: que no aparece `ERROR al inicializar
+Firebase` en consola, y que Flutter llegó a montar su árbol.
+
+#### El segundo agujero: `esperarAppLista` prometía más de lo que comprobaba
+
+`helpers.js` esperaba a `auth.emulatorConfig`, y eso implicaba —sin decirlo— que Firestore
+y Storage también estaban cableados, porque `main.dart` los conecta en las tres líneas
+siguientes. El shim rompe esa implicación: Auth queda cableado desde el arranque.
+
+Medido, no supuesto: a los ~3,1 s ya existe `<flutter-view>` y `auth.emulatorConfig` es
+`true`, pero `window.firebase_firestore` no existe hasta ~1 s más tarde, y en esa ventana
+`getFirestore()` devuelve una instancia apuntando a **producción**. `roles.spec.js`, que lee
+Firestore nada más entrar, falló en 2 de 3 corridas por eso; sin el shim daba 3/3.
+
+`esperarAppLista` espera ahora a las tres piezas de verdad: `<flutter-view>` montado, Auth
+en su emulador y Firestore en el suyo. Con eso `roles.spec.js` da 3/3 y la suite entera tres
+corridas seguidas en verde.
 
 ### 3. Dos specs ajenas se apoyaban en un `sleep` fijo
 
@@ -181,8 +260,10 @@ estaba documentado en `CLAUDE.md`.
 - El emulador de Hosting no está declarado en el bloque `emulators` de
   `firebase.json`; el README se apoya en el puerto por defecto (5000). No se tocó la
   config, que es canónica y compartida.
-- **El 404 con sesión no tiene cobertura E2E**, por el defecto 2 de arriba. Sí la tiene
-  por widget test contra el router real (5 casos).
+- ~~El 404 con sesión no tiene cobertura E2E~~. Ya la tiene: al cerrarse el defecto 2,
+  `deep-links.spec.js` ejerce las dos mitades del mismo deep link —sin sesión lleva a
+  `/login`, con sesión muestra el 404 real, con su copy en español, la ruta que falló y el
+  botón de salida—. Sigue cubierto además por widget test contra el router (5 casos).
 - No se probó el reintento de arranque de extremo a extremo: forzar un fallo de Firebase
   Core en el navegador exigiría un bundle con opciones inválidas, que es una suite aparte.
   Está cubierto por widget test, incluido el segundo toque y el reintento fallido.
