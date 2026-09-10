@@ -227,6 +227,41 @@ service cloud.firestore {
         && url.matches('^https://firebasestorage\\.googleapis\\.com/v0/b/[^/]+/o/' + prefijoRuta + '.*');
     }
 
+    // Las fotos de una resenia son URLs que escribe el CLIENTE en un documento
+    // de lectura ANONIMA (`allow read: if true`), asi que el argumento de
+    // esUrlDeStoragePropia aplica aqui con una audiencia aun mayor que en
+    // `talleres`: sin filtro, el autor de una resenia legitima puede apuntar a
+    // un servidor propio y cosechar IP y User-Agent de todo el que abra la
+    // ficha del taller, incluido el visitante de la landing.
+    //
+    // Importa desde FUNC-01: hasta entonces el cliente no escribia `fotos` en
+    // un update, y ahora reescribe la lista entera al editar la resenia.
+    //
+    // El bucle se desenrolla porque las reglas no iteran; el tope de 3
+    // (ReviewService.maxFotos) lo hace tratable y de paso acota el tamano de
+    // un documento que cualquiera puede leer.
+    function fotosBajoServicio(fotos, idServicio) {
+      let prefijo = 'resenia_fotos%2F' + idServicio + '%2F';
+      return fotos is list
+        && fotos.size() <= 3
+        && (fotos.size() < 1 || esUrlDeStoragePropia(fotos[0], prefijo))
+        && (fotos.size() < 2 || esUrlDeStoragePropia(fotos[1], prefijo))
+        && (fotos.size() < 3 || esUrlDeStoragePropia(fotos[2], prefijo));
+    }
+
+    // En un update se valida SOLO si `fotos` cambia. `request.resource.data` es
+    // el documento resultante, asi que una resenia ya publicada con una URL
+    // heredada que no pase el filtro quedaria ineditable —ni siquiera para
+    // corregir el texto— si se validara siempre.
+    function fotosDeReseniaValidasEnUpdate() {
+      return !request.resource.data.diff(resource.data)
+                .affectedKeys().hasAny(['fotos'])
+        || fotosBajoServicio(
+             request.resource.data.fotos,
+             resource.data.id_servicio,
+           );
+    }
+
     // La foto de perfil solo puede apuntar al objeto del propio usuario en
     // `perfiles/` (ver UserService.uploadProfilePhoto, que sube a
     // `perfiles/{uid}.jpg`). Ausente o vacia tambien vale: no todo el mundo
@@ -754,7 +789,11 @@ service cloud.firestore {
         && request.resource.data.id_servicio is string
         && request.resource.data.id_servicio.size() > 0
         && exists(/databases/$(database)/documents/servicios/$(request.resource.data.id_servicio))
-        && isOwnFinishedService(request.resource.data.id_servicio, request.resource.data.id_taller);
+        && isOwnFinishedService(request.resource.data.id_servicio, request.resource.data.id_taller)
+        && fotosBajoServicio(
+             request.resource.data.get('fotos', []),
+             request.resource.data.id_servicio,
+           );
 
       // El autor puede corregir su texto, puntuacion, fotos y la marca de tiempo
       // de edicion (fecha_resenia, que ReviewService.updateReview siempre
@@ -771,7 +810,9 @@ service cloud.firestore {
       // El admin puede moderar (p.ej. corregir comentario) pero, igual que
       // el autor, no puede reasignar id_servicio/id_taller/id_usuario vía
       // update: esa reasignación sigue prohibida sin excepción alguna.
-      allow update: if isAuthenticated() && (
+      allow update: if isAuthenticated()
+        && fotosDeReseniaValidasEnUpdate()
+        && (
         (resource.data.id_usuario == request.auth.uid
           && request.resource.data.diff(resource.data)
                .affectedKeys().hasOnly(['comentario', 'estrellas', 'fecha_resenia', 'fotos']))

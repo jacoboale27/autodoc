@@ -194,13 +194,94 @@ describe('storage: fotos de resenias', () => {
     await assertSucceeds(st.ref('resenia_fotos/s1/foto1.jpg').getDownloadURL());
   });
 
-  test('un usuario NO admin no puede borrar fotos de resenias', async () => {
+  // Antes de FUNC-01 el borrado era exclusivo del admin, y ese era el motivo
+  // real de que editar una resenia no pudiera quitar fotos: el autor no podia
+  // limpiar el objeto que dejaba de referenciar. Quien sube es quien borra.
+  test('el propietario del servicio SI puede borrar su propia foto', async () => {
     await seedUsuario(UIDS.owner1, 'Propietario');
     await seedVehiculo('v1', UIDS.owner1);
     await seedServicio('s1', 'v1', UIDS.taller1);
     const st = env.authenticatedContext(UIDS.owner1).storage();
     await st.ref('resenia_fotos/s1/foto1.jpg').put(imagen(200), META_JPEG);
+    await assertSucceeds(st.ref('resenia_fotos/s1/foto1.jpg').delete());
+  });
+
+  // owner2 tiene SU PROPIO vehiculo y servicio a proposito: si solo fuera una
+  // cuenta sin nada, el test pasaria igual con una regla tan floja como "es
+  // propietario de cualquier vehiculo", y no probaria que el {idServicio} de
+  // la ruta es lo que decide. Es la leccion de ROLE-01.
+  test('otro propietario, con vehiculo propio, NO puede borrar fotos ajenas', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedUsuario(UIDS.owner2, 'Propietario');
+    await seedVehiculo('v1', UIDS.owner1);
+    await seedVehiculo('v2', UIDS.owner2);
+    await seedServicio('s1', 'v1', UIDS.taller1);
+    await seedServicio('s2', 'v2', UIDS.taller1);
+    await env
+      .authenticatedContext(UIDS.owner1)
+      .storage()
+      .ref('resenia_fotos/s1/foto1.jpg')
+      .put(imagen(200), META_JPEG);
+    const otro = env.authenticatedContext(UIDS.owner2).storage();
+    await assertFails(otro.ref('resenia_fotos/s1/foto1.jpg').delete());
+  });
+
+  test('sin autenticar NO se puede borrar una foto de resenia', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedVehiculo('v1', UIDS.owner1);
+    await seedServicio('s1', 'v1', UIDS.taller1);
+    await env
+      .authenticatedContext(UIDS.owner1)
+      .storage()
+      .ref('resenia_fotos/s1/foto1.jpg')
+      .put(imagen(200), META_JPEG);
+    await assertFails(
+      env.unauthenticatedContext().storage()
+        .ref('resenia_fotos/s1/foto1.jpg').delete(),
+    );
+  });
+
+  // Fija la semantica del exists() del helper: si el servicio desaparece, ni
+  // el que fue su propietario borra. Es el huerfano conocido que documenta la
+  // evidencia de FUNC-01, no un descuido.
+  test('si el servicio ya no existe, ni el ex propietario puede borrar', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedVehiculo('v1', UIDS.owner1);
+    await seedServicio('s1', 'v1', UIDS.taller1);
+    const st = env.authenticatedContext(UIDS.owner1).storage();
+    await st.ref('resenia_fotos/s1/foto1.jpg').put(imagen(200), META_JPEG);
+    await seed(env, async (db) => {
+      await db.collection('servicios').doc('s1').delete();
+    });
     await assertFails(st.ref('resenia_fotos/s1/foto1.jpg').delete());
+  });
+
+  test('un mecanico vinculado al vehiculo NO puede borrar fotos de resenias', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedUsuario(UIDS.taller2, 'Mecanico');
+    await seedVehiculo('v1', UIDS.owner1, [UIDS.taller2]);
+    await seedServicio('s1', 'v1', UIDS.taller1);
+    await env
+      .authenticatedContext(UIDS.owner1)
+      .storage()
+      .ref('resenia_fotos/s1/foto1.jpg')
+      .put(imagen(200), META_JPEG);
+    const mecanico = env.authenticatedContext(UIDS.taller2).storage();
+    await assertFails(mecanico.ref('resenia_fotos/s1/foto1.jpg').delete());
+  });
+
+  test('el taller resenado NO puede borrar las fotos de la resenia', async () => {
+    await seedUsuario(UIDS.owner1, 'Propietario');
+    await seedUsuario(UIDS.taller1, 'Taller');
+    await seedVehiculo('v1', UIDS.owner1);
+    await seedServicio('s1', 'v1', UIDS.taller1);
+    await env
+      .authenticatedContext(UIDS.owner1)
+      .storage()
+      .ref('resenia_fotos/s1/foto1.jpg')
+      .put(imagen(200), META_JPEG);
+    const taller = env.authenticatedContext(UIDS.taller1).storage();
+    await assertFails(taller.ref('resenia_fotos/s1/foto1.jpg').delete());
   });
 
   test('el admin SI puede borrar fotos de resenias', async () => {

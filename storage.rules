@@ -301,11 +301,25 @@ service firebase.storage {
     // Escritura: solo el propietario del vehiculo del servicio reseniado
     // (ver esPropietarioDelServicio) puede subir fotos a su propia carpeta
     // de servicio.
-    // Eliminacion: solo admin (moderacion de contenido reportado).
+    // Eliminacion: el admin (moderacion de contenido reportado) y el propio
+    // autor.
+    //
+    // Que el autor borre es lo que hace posible editar una resenia quitando
+    // una foto (FUNC-01): ReviewService.updateReview reescribe la lista en
+    // Firestore y despues borra los objetos que dejan de estar referenciados.
+    // Mientras esto fue `if isAdmin()` a secas, ese borrado moria en
+    // permission-denied y cada foto retirada se quedaba para siempre en
+    // Storage, pagando cuota y accesible por su URL a cualquier autenticado.
+    //
+    // No se parece a `verificaciones/` —donde solo borra el admin— porque una
+    // foto de resenia no es el rastro documental de ninguna decision: es
+    // contenido del propio usuario, como las fotos de `talleres_fotos/`, que
+    // su dueño tambien borra. El taller resenado NO entra aqui: dejarle borrar
+    // la evidencia grafica de una mala resenia seria moderar en causa propia.
     match /resenia_fotos/{idServicio}/{fileName} {
       allow read: if isAuthenticated();
       allow write: if esImagenValida() && esPropietarioDelServicio(idServicio);
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || esPropietarioDelServicio(idServicio);
     }
   }
 }
