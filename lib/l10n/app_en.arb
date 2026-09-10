@@ -744,5 +744,37 @@
   "securityOnlyYou": "Only you have access",
   "securityRevoke": "Revoke access",
   "securityInvalidEmail": "Enter a valid email",
-  "securityAccessRevoked": "Access revoked"
+  "securityAccessRevoked": "Access revoked",
+  "startupErrorTitle": "We couldn't start AutoDoc",
+  "@startupErrorTitle": {
+    "description": "Title of the screen that replaces the app when Firebase Core fails to start"
+  },
+  "startupErrorBody": "We couldn't reach our services. Check your connection and try again. If the problem persists, contact the app administrator.",
+  "@startupErrorBody": {
+    "description": "User-facing explanation of the startup failure, with no internal diagnostics"
+  },
+  "startupErrorRetry": "Try again",
+  "@startupErrorRetry": {
+    "description": "Button that retries Firebase startup"
+  },
+  "startupErrorRetryFailed": "We still couldn't connect. Please try again in a moment.",
+  "@startupErrorRetryFailed": {
+    "description": "Notice shown when the startup retry fails as well"
+  },
+  "notFoundTitle": "We couldn't find this page",
+  "@notFoundTitle": {
+    "description": "Title of the router 404 screen"
+  },
+  "notFoundBody": "The address you opened doesn't exist or has moved.",
+  "@notFoundBody": {
+    "description": "Explanation shown on the 404 screen"
+  },
+  "notFoundGoHome": "Go to home",
+  "@notFoundGoHome": {
+    "description": "Button returning the user to the app root from the 404 screen"
+  },
+  "notFoundGoBack": "Go back",
+  "@notFoundGoBack": {
+    "description": "Button returning the user to the previous screen from the 404"
+  }
 }

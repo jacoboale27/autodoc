@@ -91,7 +91,40 @@ Future<void> startPushNotifications({PushNotificationService? push}) {
   return Future<void>.value();
 }
 
-void main() async {
+/// Firebase Core startup, extracted so the failure screen's retry can run the
+/// exact same code path instead of a near-copy of it.
+Future<void> _startFirebaseCore() async {
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    if (e.toString().contains('duplicate-app')) {
+      debugPrint('Firebase ya estaba inicializado (posible Hot Restart).');
+      Firebase.app(); // Asegurarnos de que Dart recupere la instancia
+    } else {
+      rethrow;
+    }
+  }
+}
+
+/// UX-02: what the retry button on [FirebaseInitializationErrorApp] runs.
+///
+/// Probes Firebase first so a still-broken connection reports back as `false`
+/// and the user gets told the attempt failed. Only once Core is up does it
+/// re-run [main], which completes the rest of startup and calls `runApp` with
+/// the real app, replacing the error screen.
+Future<bool> _retryStartup() async {
+  final probe = await FirebaseBootstrap.initialize(_startFirebaseCore);
+  if (!probe.isReady) {
+    debugPrint("=== [AutoDoc Init] Reintento fallido: ${probe.error} ===");
+    return false;
+  }
+  await main();
+  return true;
+}
+
+Future<void> main() async {
   usePathUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -112,25 +145,12 @@ void main() async {
 
   // 1. Inicializar Firebase
   debugPrint("=== [AutoDoc Init] Inicializando Firebase ===");
-  final firebaseResult = await FirebaseBootstrap.initialize(() async {
-    try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-    } catch (e) {
-      if (e.toString().contains('duplicate-app')) {
-        debugPrint('Firebase ya estaba inicializado (posible Hot Restart).');
-        Firebase.app(); // Asegurarnos de que Dart recupere la instancia
-      } else {
-        rethrow;
-      }
-    }
-  });
+  final firebaseResult = await FirebaseBootstrap.initialize(_startFirebaseCore);
   if (!firebaseResult.isReady) {
     debugPrint(
       "=== [AutoDoc Init] ERROR al inicializar Firebase: ${firebaseResult.error} ===",
     );
-    runApp(const FirebaseInitializationErrorApp());
+    runApp(const FirebaseInitializationErrorApp(onRetry: _retryStartup));
     return;
   }
   debugPrint("=== [AutoDoc Init] Firebase inicializado con éxito ===");

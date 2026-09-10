@@ -1384,4 +1384,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get securityAccessRevoked => 'Access revoked';
+
+  @override
+  String get startupErrorTitle => 'We couldn\'t start AutoDoc';
+
+  @override
+  String get startupErrorBody =>
+      'We couldn\'t reach our services. Check your connection and try again. If the problem persists, contact the app administrator.';
+
+  @override
+  String get startupErrorRetry => 'Try again';
+
+  @override
+  String get startupErrorRetryFailed =>
+      'We still couldn\'t connect. Please try again in a moment.';
+
+  @override
+  String get notFoundTitle => 'We couldn\'t find this page';
+
+  @override
+  String get notFoundBody =>
+      'The address you opened doesn\'t exist or has moved.';
+
+  @override
+  String get notFoundGoHome => 'Go to home';
+
+  @override
+  String get notFoundGoBack => 'Go back';
 }

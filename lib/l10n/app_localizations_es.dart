@@ -1392,4 +1392,31 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get securityAccessRevoked => 'Acceso revocado';
+
+  @override
+  String get startupErrorTitle => 'No pudimos iniciar AutoDoc';
+
+  @override
+  String get startupErrorBody =>
+      'No fue posible conectar con nuestros servicios. Revisa tu conexión e intenta de nuevo. Si el problema continúa, contacta al administrador de la aplicación.';
+
+  @override
+  String get startupErrorRetry => 'Intentar de nuevo';
+
+  @override
+  String get startupErrorRetryFailed =>
+      'Seguimos sin poder conectar. Inténtalo de nuevo en unos momentos.';
+
+  @override
+  String get notFoundTitle => 'No encontramos esta página';
+
+  @override
+  String get notFoundBody =>
+      'La dirección que abriste no existe o cambió de lugar.';
+
+  @override
+  String get notFoundGoHome => 'Ir al inicio';
+
+  @override
+  String get notFoundGoBack => 'Volver';
 }
