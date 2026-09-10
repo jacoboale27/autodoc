@@ -96,8 +96,9 @@ Definition of Done al final, evidencia base en `docs/AUDITORIA_CREA_J_2026_CODEX
 **Estado a 2026-09-10. Cerradas y verificadas 12 tareas:** SEC-01, SEC-02, SEC-03, DATA-01,
 VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01 y FUNC-02.
 
-**Siguiente por orden §12: UX-03 / UX-04.** Luego SEC-04, OPS-01, H-01,
-INNO-01, FINAL-01.
+**Siguiente trabajo: la tanda de drenaje de gaps** (`docs/evidencia/GAPS-02-plan-de-drenaje.md`,
+rama `fix/gaps-02`), que va ANTES de la siguiente tarea del plan. **Siguiente por orden §12,
+cuando esa tanda cierre: UX-03 / UX-04.** Luego SEC-04, OPS-01, H-01, INNO-01, FINAL-01.
 
 **Los nueve residuales de FUNC-02 estan cerrados** en la rama `fix/gaps-func02`. No es una
 tarea del plan: es el drenaje del §7 de la evidencia de FUNC-02. Evidencia en
@@ -248,7 +249,15 @@ llegan por la REST de Firestore (de ahi salia el crash) y retira Vercel Analytic
 | E2E de la landing | **20 / 20**, exit 0 |
 | Puertos al salir | 0 en `LISTENING` |
 
-**Siguiente tarea: UX-03 / UX-04** (accesibilidad y errores de datos). Dos frentes: la landing
+**Antes que nada, la tanda de drenaje de gaps.** El plan completo esta en
+`docs/evidencia/GAPS-02-plan-de-drenaje.md`: rama `fix/gaps-02` desde `integracion/ola-1`, tres
+lotes — A) streams sin tope (bandeja de chat, reservas, hilo de mensajes), B) decidir sobre los
+cuatro indices de solo igualdades, C) denormalizar `abierto` en el ticket, que toca reglas y
+Functions y por eso va al final con los dos revisores. La regla que lo motiva es permanente:
+**un gap documentado no esta cerrado**; al terminar una tarea se drenan los que dejo.
+
+**Siguiente tarea del plan, cuando esa tanda cierre: UX-03 / UX-04** (accesibilidad y errores
+de datos). Dos frentes: la landing
 (`landing-web/src`: `prefers-reduced-motion`, menu movil accesible, `Link > button` anidado) y
 la app (`service_history_screen.dart` y demas: `Error: ${snapshot.error}` crudo -> estado
 localizado con reintento). Inventariarlos es volumen de lectura, o sea fan-out de

@@ -12,7 +12,8 @@ antes de implementar**; el plan lo prohíbe.
 
 **Estado a 2026-09-10 — 12 tareas cerradas y verificadas:** SEC-01, SEC-02, SEC-03, DATA-01,
 VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01 y **FUNC-02**.
-**Siguiente por orden §12: UX-03 / UX-04.**
+**Siguiente por orden §12: UX-03 / UX-04**, pero antes va la tanda de drenaje de gaps
+(`docs/evidencia/GAPS-02-plan-de-drenaje.md`) — ver «Empezar aquí mañana».
 
 QA-01 ya esta fusionada en `integracion/ola-1` (`c17fead`), sin conflictos. Evidencia completa
 en `docs/evidencia/QA-01-matriz.md`. Lo que hay que saber sin leerla:
@@ -130,11 +131,25 @@ Antes de empezar una tarea, mira qué ramas `fix/*` existen ya para no duplicar.
 
 ### Empezar aquí mañana (2026-09-11)
 
-**Toca UX-03 / UX-04 — "Accesibilidad y errores de datos"** (§7 del plan, P2). Áreas que
-señala: `landing-web/src`, `service_history_screen.dart`, componentes de error/empty state,
-ARB y pruebas. Dos frentes distintos: la landing (Next.js, `prefers-reduced-motion`, menú
-móvil accesible, `Link > button` anidado) y la app (`Error: ${snapshot.error}` crudo →
-estado localizado con reintento). Se pueden inventariar en paralelo.
+**Primero se drenan los gaps nuevos, y DESPUÉS van UX-03 / UX-04.** Decisión del usuario del
+2026-09-10, y es regla permanente, no la excepción de esta vez: **un gap documentado no está
+cerrado**. El plan de la tanda —lotes, orden, trampas y gates— ya está escrito en
+`docs/evidencia/GAPS-02-plan-de-drenaje.md`; los gaps en sí, en el §9 de
+`docs/evidencia/GAPS-FUNC-02-cierre-de-residuales.md`.
+
+Resumen del plan: rama `fix/gaps-02` desde `integracion/ola-1`, y tres lotes —
+**A)** los streams sin tope (9.2 la bandeja de chat, 9.3 reservas y el hilo de mensajes);
+**B)** decidir sobre los cuatro índices de solo igualdades (9.4);
+**C)** denormalizar `abierto` en el ticket (9.1), el único que toca reglas y Functions y por
+eso va al final, con los dos revisores. 9.5 y 9.6 se remiten a OPS-01; 9.7, 9.8 y 9.9 se
+quedan anotados a propósito.
+
+**Cuando esa tanda cierre, toca UX-03 / UX-04 — "Accesibilidad y errores de datos"** (§7 del
+plan, P2). Áreas que señala: `landing-web/src`, `service_history_screen.dart`, componentes
+de error/empty state, ARB y pruebas. Dos frentes distintos: la landing (Next.js,
+`prefers-reduced-motion`, menú móvil accesible, `Link > button` anidado) y la app
+(`Error: ${snapshot.error}` crudo → estado localizado con reintento). Se pueden inventariar
+en paralelo.
 
 Corta la rama de la punta de `integracion/ola-1`, nunca de una `fix/*`.
 

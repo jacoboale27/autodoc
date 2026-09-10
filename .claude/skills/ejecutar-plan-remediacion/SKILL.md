@@ -16,13 +16,18 @@ Hechos: **SEC-01, SEC-02, SEC-03, DATA-01, VER-01, ROLE-01, QA-02, QA-01, UX-01,
 FUNC-01, FUNC-02** (a 2026-09-10). Siguiente por orden §12: **UX-03/04**, luego SEC-04,
 OPS-01, H-01, INNO-01, FINAL-01.
 
+**Pero antes de UX-03/04 va la tanda de drenaje de gaps**, planificada en
+`docs/evidencia/GAPS-02-plan-de-drenaje.md` (rama `fix/gaps-02`, tres lotes). Drenar los gaps
+que deja una tarea no es opcional ni es «cuando haya hueco»: es parte de cerrarla.
+
 Nada esta fusionado a `main` (`1265d23`). **Las 12 viven en `integracion/ola-1`.** FUNC-02
 entro el 2026-09-10 (`58f5dd9`, sin conflictos), y encima va `fix/landing-crash`, que no es
 del plan pero si trabajo real sobre la landing.
 
-**Pendiente de fusionar: `fix/gaps-func02`**, que no es una tarea del plan sino el drenaje de
-los nueve residuales que FUNC-02 habia dejado anotados. Evidencia en
-`docs/evidencia/GAPS-FUNC-02-cierre-de-residuales.md`, con nueve gaps NUEVOS en su §9.
+**`fix/gaps-func02` ya esta fusionada** (`67046ce`, sin conflictos): no era una tarea del plan
+sino el drenaje de los nueve residuales que FUNC-02 habia dejado anotados. Evidencia en
+`docs/evidencia/GAPS-FUNC-02-cierre-de-residuales.md`, con nueve gaps NUEVOS en su §9 — que
+son los que drena la tanda `fix/gaps-02`. Ya no queda ninguna rama `fix/*` sin fusionar.
 
 **Leccion del drenaje de residuales, y es la que mas vale de esta ronda:** documentar un gap
 no lo cierra. Al abrirlos, DOS de los nueve estaban descritos al reves —un «indice muerto»
