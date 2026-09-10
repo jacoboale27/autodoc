@@ -15,6 +15,19 @@ test.beforeEach(async ({ page }) => {
   await stubDirectorio(page);
 });
 
+test.describe('directorio publico', () => {
+  test('renderiza una calificacion serializada por Firestore REST sin tumbar la pagina', async ({ page }) => {
+    const errores = [];
+    page.on('pageerror', (error) => errores.push(error.message));
+
+    await page.goto('/es');
+
+    await expect(page.getByText('Taller Demo E2E')).toBeVisible();
+    await expect(page.getByText('4.5', { exact: true })).toBeVisible();
+    expect(errores).toEqual([]);
+  });
+});
+
 test.describe('CTAs de descarga', () => {
   test('ningun enlace apunta ya al id de ejemplo de la App Store', async ({ page }) => {
     for (const ruta of ['/es', '/en', '/es/contact']) {
