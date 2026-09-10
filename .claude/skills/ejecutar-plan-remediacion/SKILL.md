@@ -16,8 +16,8 @@ Hechos: **SEC-01, SEC-02, SEC-03, DATA-01, VER-01, ROLE-01, QA-02, QA-01, UX-01,
 (a 2026-09-09). Siguiente por orden §12: **FUNC-01**, luego FUNC-02, UX-03/04, SEC-04,
 OPS-01, H-01, INNO-01, FINAL-01.
 
-Nada esta fusionado a `main` (`1265d23`). **Las 10 viven en `integracion/ola-1`
-(`564fdf0`), y ya no queda ninguna rama `fix/*` pendiente de fusionar.** UX-02 entro el
+Nada esta fusionado a `main` (`1265d23`). **Las 10 viven en `integracion/ola-1` y ya no
+queda ninguna rama `fix/*` pendiente de fusionar.** UX-02 entro el
 2026-09-09 sin conflictos, y encima va `fix/landing-crash`, que no es del plan pero si
 trabajo real sobre la landing.
 

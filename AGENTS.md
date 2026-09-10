@@ -144,7 +144,7 @@ se intercepta.
 ### Estado de ramas — todo vive en `integracion/ola-1`
 
 `main` sigue en `1265d23`: **ninguna tarea del plan esta fusionada a `main`.** Las 10 tareas
-cerradas estan todas en **`integracion/ola-1` (`564fdf0`)**. Las tres de ola 2 (`fix/qa02`,
+cerradas estan todas en **`integracion/ola-1`**. Las tres de ola 2 (`fix/qa02`,
 `fix/ver01`, `fix/role`) se fusionaron el 2026-09-07, QA-01 el 2026-09-08, y UX-01 y UX-02 el
 2026-09-09, **ninguna con un solo conflicto**. Encima va `fix/landing-crash`, que **no es una
 tarea del plan** pero si trabajo real sobre la landing: normaliza las calificaciones que

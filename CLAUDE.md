@@ -44,7 +44,7 @@ UX-01 ya esta fusionada en `integracion/ola-1` (`ed2e8e1`). Evidencia en
   reversible) y crear la politica TTL de `solicitudes_landing_control`, que no se configura desde
   `firestore.indexes.json`.
 - **Suite nueva con config propia:** `cd e2e && npm run build:landing && npm run test:landing`
-  (18 casos). No necesita el bundle de Flutter ni el emulador de Auth.
+  (20 casos tras `fix/landing-crash`). No necesita el bundle de Flutter ni el emulador de Auth.
 
 **El bundle E2E de la app se compila con `--profile`, no con el release por defecto.**
 `flutter build web` compila en release, donde `kReleaseMode` desactiva el cableado a emuladores y
@@ -60,8 +60,8 @@ landing esa lectura se intercepta.
 
 ### Ramas — nada está fusionado a `main`
 
-`main` sigue en `1265d23`. **Las 10 tareas cerradas viven en `integracion/ola-1`, hoy en
-`564fdf0`**: ola 1 (SEC-01/02/03, DATA-01), las tres de ola 2 (QA-02, VER-01, ROLE-01),
+`main` sigue en `1265d23`. **Las 10 tareas cerradas viven en `integracion/ola-1`**: ola 1
+(SEC-01/02/03, DATA-01), las tres de ola 2 (QA-02, VER-01, ROLE-01),
 QA-01, UX-01 y **UX-02** (fusionada el 2026-09-09, `d5c707a`, sin conflictos). Encima va
 `fix/landing-crash` (`564fdf0`), que **no es una tarea del plan** pero sí trabajo real sobre
 la landing ya integrada: normaliza las calificaciones que llegan por la REST de Firestore
@@ -134,7 +134,7 @@ señala: `review_sheet.dart:230-235`, `review_service.dart`, reglas de Storage, 
 widget / servicio / reglas. Al tocar Storage y probablemente `firestore.rules`, **el
 subagente `firestore-rules-reviewer` es gate obligatorio** antes de cerrarla.
 
-Corta la rama de `integracion/ola-1` (`564fdf0`), nunca de una `fix/*`.
+Corta la rama de la punta de `integracion/ola-1`, nunca de una `fix/*`.
 
 Tres cosas que ahorran una hora, aprendidas ayer:
 
