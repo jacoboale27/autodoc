@@ -136,28 +136,29 @@ void main() {
   );
 
   test(
-    'una visita ya entregada sigue abriendo la pantalla (asimetria conocida)',
+    'una visita ya entregada NO vuelve a abrir la pantalla de servicio',
     () async {
-      // El caso que hacia explotable al callable retirado: la cotizacion se
-      // queda en 'aceptada' para siempre, asi que con la visita ya cerrada
-      // seguia bastando para abrir un ticket NUEVO, darlo por recibido y
-      // recuperar el vinculo con el vehiculo que `revocarVinculoAlCerrarTicket`
-      // habia revocado al entregar el coche. Eso ya no se puede provocar: no
-      // queda ninguna via, ni de cliente ni de servidor, que cree un ticket.
+      // Este es el caso que hacia explotable al callable retirado: la
+      // cotizacion se queda en 'aceptada' para siempre, asi que con la visita
+      // ya cerrada seguia bastando para abrir un ticket NUEVO, darlo por
+      // recibido y recuperar el vinculo con el vehiculo que
+      // `revocarVinculoAlCerrarTicket` habia revocado al entregar el coche.
       //
-      // Lo que este test fija es el estado REAL de la compuerta, no el que
-      // seria deseable: `ReparacionProvider.buscarReparacionActiva` excluye
-      // `cancelado` y NADA MAS, asi que un ticket ya `entregado` sigue abriendo
-      // la pantalla de servicio completa. `estadosReparacionCerrados` incluye
-      // los dos, de modo que la compuerta y la definicion de "cerrado" del
-      // repositorio no coinciden.
+      // FUNC-02 cerro la mitad server-side; esta es la otra mitad. La
+      // compuerta excluia solo `cancelado`, asi que un ticket ya `entregado`
+      // seguia mandando al mecanico a la pantalla de servicio completa —
+      // donde no habia nada que hacer: el vinculo ya estaba revocado, las
+      // reglas denegaban la lectura del vehiculo y la pantalla moria en un
+      // error generico. Un callejon sin salida, no una fuga.
       //
-      // No se corrige aqui a proposito: cambiar la compuerta toca la lista de
-      // Mis Servicios y los tickets legados anteriores a A4b, y merece su
-      // propia evidencia. Queda anotado como residual de FUNC-02. Si alguien
-      // estrecha la compuerta, este test es el que debe cambiar, y a conciencia.
+      // Ahora la compuerta usa `estadosReparacionCerrados`, la MISMA
+      // definicion de "cerrado" que usa el repositorio y que el servidor
+      // espeja en `ESTADOS_TICKET_CERRADO`: con la visita terminada no hay
+      // ticket vigente, y `abrirVehiculoComoMecanico` lleva a la ficha
+      // publica del vehiculo, que es donde el mecanico puede pedir una
+      // cotizacion nueva.
       final db = FakeFirebaseFirestore();
-      final idTicket = await sembrarReparacion(
+      await sembrarReparacion(
         db,
         idVehiculo: idVehiculo,
         idTaller: idTaller,
@@ -172,9 +173,12 @@ void main() {
         functions,
       ).buscarReparacionActiva(idVehiculo: idVehiculo, idTaller: idTaller);
 
-      expect(encontrado, idTicket);
+      expect(encontrado, isNull);
       expect(estadosReparacionCerrados, contains('entregado'));
-      // Lo que si esta garantizado: abrir esa pantalla no crea nada.
+      // El ticket sigue existiendo: lo que cambia es la compuerta, no el dato.
+      // "Mis Servicios" no se ve afectado — se pinta desde
+      // `watchReparacionesActivas`, cuyo `whereIn` sobre `estadosReparacion`
+      // ya dejaba fuera `entregado` y `cancelado`.
       expect(await contarTickets(db), 1);
     },
   );

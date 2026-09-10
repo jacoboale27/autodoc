@@ -511,11 +511,15 @@ class _RecentItem extends StatelessWidget {
 /// mismo ticket en `reparaciones` (`onCotizacionAceptada`), así que la única
 /// condición para aparecer aquí es `id_taller`, no de dónde vino el mecánico.
 ///
-/// `cancelado` se excluye a propósito: es el único estado que
-/// `ReparacionProvider.buscarReparacionActiva` (y por tanto
-/// `abrirVehiculoComoMecanico`) trata como "no hay ticket" — listar aquí un
-/// ticket cancelado y luego mandar a la ficha pública al tocarlo sería
-/// inconsistente con esa misma pantalla.
+/// `cancelado` se excluye a propósito, y `entregado` ya no puede llegar: el
+/// stream que alimenta esta lista (`watchReparacionesActivas`) filtra con
+/// `whereIn` sobre [estadosReparacion], que no incluye ninguno de los dos.
+/// El filtro explícito de `cancelado` se conserva como cinturón: listar aquí
+/// un ticket que `ReparacionProvider.buscarReparacionActiva` trata como "no
+/// hay ticket" —y por tanto `abrirVehiculoComoMecanico` manda a la ficha
+/// pública al tocarlo— sería inconsistente con esta misma pantalla. Esa
+/// compuerta usa [estadosReparacionCerrados] desde que se cerró el residual
+/// 7.1 de FUNC-02, así que las dos listas coinciden.
 class _MisServicios extends StatelessWidget {
   final ValueChanged<ReparacionModel> onSelect;
 

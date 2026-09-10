@@ -34,10 +34,43 @@ const {
 /**
  * Doble en memoria de Firestore, con lo justo que usa
  * `abrirTicketDeReparacion`: `collection(x).doc(y).get()/.set()` y
- * `collection(x).where(...).where(...).get()` con igualdad exacta (lo que
- * usa `existeTicketAbiertoParaVehiculo` para el dedup del hallazgo 2).
+ * `collection(x).where(...).where(...).limit(n).get()` (lo que usa
+ * `existeTicketAbiertoParaVehiculo` para el dedup del hallazgo 2).
  * `docs` va indexado por `coleccion/id`.
+ *
+ * Modela DOS cosas que la primera version daba por gratis y que resultaron
+ * ser justo donde estaba el defecto (residual 7.3 de FUNC-02):
+ *
+ *   - **`limit(n)` recorta de verdad.** Era un no-op que devolvia el
+ *     resultado entero, asi que ningun test podia distinguir "el dedup mira
+ *     todos los tickets" de "mira los primeros 20". El fallo por volumen era
+ *     invisible por construccion.
+ *   - **El orden por defecto es por ID de documento**, como en Firestore de
+ *     verdad: una consulta sin `orderBy` no devuelve "los mas recientes",
+ *     devuelve los primeros por `__name__`. Sin esto, "los primeros 20" no
+ *     significaba nada.
+ *
+ * Soporta ademas el operador `not-in`, con la misma semantica que Firestore:
+ * un documento al que le FALTA el campo filtrado **no coincide** — que es
+ * exactamente lo que obliga a que el backfill haya corrido antes.
  */
+/**
+ * Un filtro de consulta contra un documento, con la semantica de Firestore.
+ *
+ * Lo que importa aqui es el caso del campo AUSENTE: Firestore indexa por
+ * campo, asi que un documento sin `estado` no aparece en NINGUNA consulta que
+ * filtre por `estado` — ni siquiera en un `not-in`, por contraintuitivo que
+ * suene ("no esta en la lista" no incluye "no existe"). Los tickets anteriores
+ * a A4b no traen `estado`, y de ahi sale la precondicion de backfill que
+ * documenta `existeTicketAbiertoParaVehiculo`.
+ */
+function cumple(data, campo, op, valor) {
+  const tieneCampo = Object.prototype.hasOwnProperty.call(data, campo);
+  if (op === 'not-in') return tieneCampo && !valor.includes(data[campo]);
+  if (op === 'in') return tieneCampo && valor.includes(data[campo]);
+  return tieneCampo && data[campo] === valor;
+}
+
 function fakeDb(docs = {}) {
   const escrituras = [];
   return {
@@ -66,22 +99,25 @@ function fakeDb(docs = {}) {
           };
         },
         where(campo, op, valor) {
-          const filtros = [[campo, valor]];
+          const filtros = [[campo, op, valor]];
+          let tope = Infinity;
           const query = {
             where(campo2, op2, valor2) {
-              filtros.push([campo2, valor2]);
+              filtros.push([campo2, op2, valor2]);
               return query;
             },
-            limit() {
+            limit(n) {
+              tope = n;
               return query;
             },
             async get() {
               const prefijo = `${coleccion}/`;
               const coincidencias = Object.keys(docs)
                 .filter((clave) => clave.startsWith(prefijo))
-                .filter((clave) =>
-                  filtros.every(([f, v]) => docs[clave][f] === v)
-                )
+                // Firestore ordena por `__name__` cuando no hay `orderBy`.
+                .sort()
+                .filter((clave) => filtros.every(([f, o, v]) => cumple(docs[clave], f, o, v)))
+                .slice(0, tope)
                 .map((clave) => ({
                   id: clave.slice(prefijo.length),
                   data: () => docs[clave],
@@ -253,7 +289,7 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion', () => {
   it('crea el ticket de reparacion en pendiente_recepcion', async () => {
     const db = fakeDb({ 'vehiculos/v1': { placa: 'ABC123', id_propietario: 'cli1' } });
 
-    const id = await abrirTicketDeReparacion(db, {
+    const { id } = await abrirTicketDeReparacion(db, {
       cotizacionId: 'c1',
       antes: { estado: 'pendiente' },
       despues: cotizacion(),
@@ -310,7 +346,7 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion', () => {
   it('no crea nada si la cotizacion pasa a rechazada', async () => {
     const db = fakeDb({ 'vehiculos/v2': { placa: 'XYZ999', id_propietario: 'cli1' } });
 
-    const id = await abrirTicketDeReparacion(db, {
+    const { id } = await abrirTicketDeReparacion(db, {
       cotizacionId: 'c2',
       antes: { estado: 'pendiente' },
       despues: cotizacion({ estado: 'rechazada', id_vehiculo: 'v2' }),
@@ -409,7 +445,7 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion', () => {
     });
     const warn = sinon.stub(console, 'warn');
     try {
-      const id = await abrirTicketDeReparacion(db, {
+      const { id } = await abrirTicketDeReparacion(db, {
         cotizacionId: 'c1',
         antes: { estado: 'aceptada' }, // reintento del trigger
         despues: cotizacion(),
@@ -465,7 +501,7 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion, vinculo taller-vehicul
       'vehiculos/v1': { placa: 'ABC123', id_propietario: 'cli1', talleres_vinculados: [] },
     });
 
-    const id = await abrirTicketDeReparacion(db, {
+    const { id } = await abrirTicketDeReparacion(db, {
       cotizacionId: 'c1',
       antes: { estado: 'pendiente' },
       despues: cotizacion(),
@@ -484,7 +520,7 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion, vinculo taller-vehicul
       },
     });
 
-    const id = await abrirTicketDeReparacion(db, {
+    const { id } = await abrirTicketDeReparacion(db, {
       cotizacionId: 'c1',
       antes: { estado: 'pendiente' },
       despues: cotizacion(), // id_taller: 't1'
@@ -551,6 +587,69 @@ describe('onCotizacionAceptada / existeTicketAbiertoParaVehiculo (hallazgo 2)', 
     );
   });
 
+  it('VOLUMEN: ve el ticket abierto aunque haya 20 cerrados con id anterior', async () => {
+    // Residual 7.3 de FUNC-02. La version original traia hasta 20 documentos
+    // SIN filtro de estado y descartaba los cerrados en memoria. Como una
+    // consulta sin `orderBy` ordena por `__name__`, a un cliente recurrente
+    // le basta con acumular 20 tickets cerrados cuyo id ordene antes que el
+    // abierto para que el abierto quede FUERA de la ventana: el dedup no lo
+    // ve, `abrirTicketDeReparacion` cree que no hay nada abierto y abre un
+    // SEGUNDO ticket paralelo para la misma visita. Es el hallazgo 2 volviendo
+    // por la puerta de atras, con volumen en vez de con tickets legados.
+    //
+    // 20 no es una cifra inalcanzable: es un ticket por visita, y el mismo
+    // taller de siempre de un coche viejo los junta en pocos años.
+    const docs = {};
+    for (let i = 1; i <= 20; i += 1) {
+      const n = String(i).padStart(2, '0');
+      docs[`reparaciones/r${n}`] = {
+        id_vehiculo: 'v1',
+        id_taller: 't1',
+        estado: 'entregado',
+      };
+    }
+    // 'z' ordena despues de cualquier 'rNN': el ticket vigente es el ultimo
+    // de la lista, justo lo que el tope dejaba fuera.
+    docs['reparaciones/z_abierto'] = {
+      id_vehiculo: 'v1',
+      id_taller: 't1',
+      estado: 'recibido',
+    };
+
+    assert.strictEqual(
+      await existeTicketAbiertoParaVehiculo(fakeDb(docs), {
+        idVehiculo: 'v1',
+        idTaller: 't1',
+      }),
+      true
+    );
+  });
+
+  it('un ticket legado SIN el campo `estado` sigue contando como abierto', async () => {
+    // Contrapartida del arreglo, y la razon de que el dedup tenga DOS tramos.
+    //
+    // Filtrar por estado en la consulta es lo que permite pedir un documento
+    // en vez de veinte, pero Firestore indexa por campo: un documento sin
+    // `estado` no aparece en NINGUNA consulta que filtre por `estado` —
+    // tampoco en un `not-in`, por contraintuitivo que suene ("no esta en la
+    // lista" no incluye "no existe"). Los tickets anteriores a A4b no traen
+    // el campo.
+    //
+    // Si el dedup fuera solo el `not-in`, esos tickets pasarian de "cuentan
+    // como abiertos" a "invisibles", y una cotizacion aceptada abriria un
+    // ticket duplicado sobre una visita en curso. Cambiar un fallo por
+    // volumen por un fallo con los datos mas viejos del sistema no es
+    // arreglarlo. Por eso el barrido acotado se conserva como SEGUNDO tramo.
+    const db = fakeDb({
+      'reparaciones/legado_sin_estado': { id_vehiculo: 'v1', id_taller: 't1' },
+    });
+
+    assert.strictEqual(
+      await existeTicketAbiertoParaVehiculo(db, { idVehiculo: 'v1', idTaller: 't1' }),
+      true
+    );
+  });
+
   it('no cuenta un ticket abierto de OTRO vehiculo o de OTRO taller', async () => {
     const db = fakeDb({
       'reparaciones/r1': { id_vehiculo: 'v2', id_taller: 't1', estado: 'recibido' },
@@ -574,7 +673,7 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion, dedup por vehiculo+tal
       'reparaciones/legado1': { id_vehiculo: 'v1', id_taller: 't1', estado: 'recibido' },
     });
 
-    const id = await abrirTicketDeReparacion(db, {
+    const { id } = await abrirTicketDeReparacion(db, {
       cotizacionId: 'c1',
       antes: { estado: 'pendiente' },
       despues: cotizacion(),
@@ -592,13 +691,13 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion, dedup por vehiculo+tal
       'vehiculos/v1': { placa: 'ABC123', id_propietario: 'cli1' },
     });
 
-    const primero = await abrirTicketDeReparacion(db, {
+    const { id: primero } = await abrirTicketDeReparacion(db, {
       cotizacionId: 'c1',
       antes: { estado: 'pendiente' },
       despues: cotizacion(),
       ahora: AHORA,
     });
-    const segundo = await abrirTicketDeReparacion(db, {
+    const { id: segundo } = await abrirTicketDeReparacion(db, {
       cotizacionId: 'c2', // una segunda cotizacion, id de ticket derivado distinto
       antes: { estado: 'pendiente' },
       despues: cotizacion(),
@@ -623,7 +722,7 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion, dedup por vehiculo+tal
       },
     });
 
-    const id = await abrirTicketDeReparacion(db, {
+    const { id } = await abrirTicketDeReparacion(db, {
       cotizacionId: 'c1',
       antes: { estado: 'pendiente' },
       despues: cotizacion(),
@@ -675,7 +774,7 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion, empleado vs dueño (FI
       },
     });
 
-    const id = await abrirTicketDeReparacion(db, {
+    const { id } = await abrirTicketDeReparacion(db, {
       cotizacionId: 'c1',
       antes: { estado: 'pendiente' },
       despues: cotizacion({ id_mecanico: 'emp1', id_taller: 'emp1' }),
@@ -732,7 +831,7 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion, empleado vs dueño (FI
       },
     });
 
-    const id = await abrirTicketDeReparacion(db, {
+    const { id } = await abrirTicketDeReparacion(db, {
       cotizacionId: 'c1',
       antes: { estado: 'pendiente' },
       despues: cotizacion({ id_mecanico: 'emp1', id_taller: 'emp1' }),
@@ -757,7 +856,7 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion, empleado vs dueño (FI
       },
     });
 
-    const id = await abrirTicketDeReparacion(db, {
+    const { id } = await abrirTicketDeReparacion(db, {
       cotizacionId: 'c1',
       antes: { estado: 'pendiente' },
       despues: cotizacion(), // id_taller: 't1', un taller nuevo para este coche

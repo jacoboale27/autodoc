@@ -4,8 +4,8 @@ admin.initializeApp();
 
 const { abrirTicketDeReparacion, ErrorAutorizacionPermanente,
   ErrorTicketNoAplicable, ESTADOS_TICKET_CERRADO } = require('./src/aceptarCotizacion');
-const { ErrorRecepcion, debeRevocarVinculo, revocarVinculo,
-  recibirTicketYVincular } = require('./src/vinculoTaller');
+const { ErrorRecepcion, recibirTicketYVincular,
+  revocarVinculoAlCerrar } = require('./src/vinculoTaller');
 const { sincronizarReservaAlCotizar } = require('./src/sincronizarReservaAlCotizar');
 const {
   subconjuntoPublicoCliente,
@@ -718,7 +718,7 @@ exports.onCotizacionAceptada = functions
   .firestore.document('cotizaciones/{cotizacionId}')
   .onUpdate(async (change, context) => {
     try {
-      const idTicket = await abrirTicketDeReparacion(db, {
+      const abierto = await abrirTicketDeReparacion(db, {
         cotizacionId: context.params.cotizacionId,
         antes: change.before.data() || {},
         despues: change.after.data() || {},
@@ -732,8 +732,8 @@ exports.onCotizacionAceptada = functions
       // a saber nada del servicio hasta que el taller moviera el ticket a
       // mano. Va aqui y no dentro de `abrirTicketDeReparacion` para que esa
       // funcion siga siendo pura y testeable sin messaging.
-      if (idTicket) {
-        await notificarTicketAbierto(idTicket);
+      if (abierto.id) {
+        await notificarTicketAbierto(abierto.id, abierto.ticket);
       }
     } catch (error) {
       if (
@@ -787,11 +787,23 @@ exports.onCotizacionAceptada = functions
  * `failurePolicy` activo el trigger se reintentaria en bucle por un fallo de
  * FCM, sin que ningun reintento pudiera crear nada nuevo).
  */
-async function notificarTicketAbierto(idReparacion) {
+/** Respaldo de `notificarTicketAbierto` cuando el llamador no trae el ticket. */
+async function leerTicket(idReparacion) {
+  const snap = await db.collection('reparaciones').doc(idReparacion).get();
+  return snap.exists ? snap.data() : null;
+}
+
+async function notificarTicketAbierto(idReparacion, ticket) {
   try {
-    const snap = await db.collection('reparaciones').doc(idReparacion).get();
-    if (!snap.exists) return;
-    const { id_propietario: propietarioId, id_vehiculo: idVehiculo, placa } = snap.data();
+    // `ticket` llega de quien acaba de escribirlo. Antes esto releia el
+    // documento recien creado para sacar tres campos que el llamador ya tenia
+    // en memoria — una lectura por cotizacion aceptada — y encima comprobaba
+    // `if (!snap.exists) return`, que no podia ser cierto: se acababa de
+    // crear. Se conserva la relectura solo como camino de respaldo por si
+    // algun llamador futuro no trae el documento.
+    const datos = ticket || (await leerTicket(idReparacion));
+    if (!datos) return;
+    const { id_propietario: propietarioId, id_vehiculo: idVehiculo, placa } = datos;
     if (!propietarioId) return;
 
     const title = 'Tu servicio ya está agendado';
@@ -839,7 +851,9 @@ async function notificarTicketAbierto(idReparacion) {
  * inmediatamente despues para seguir trabajando.
  *
  * Corre con Admin SDK, asi que `firestore.rules` no lo alcanza: la
- * autorizacion se replica a mano aqui con `actuaPorTaller`. Sin ese chequeo,
+ * autorizacion se replica a mano con `actuaPorTaller`, que se le pasa a
+ * `recibirTicketYVincular` para que decida dentro de la transaccion, sobre el
+ * mismo snapshot del ticket que se va a escribir. Sin ese chequeo,
  * cualquier mecanico podria recibir el ticket de otro taller y otorgarse
  * acceso al coche de un desconocido. Desde FUNC-02 este es el UNICO callable
  * que escribe sobre /reparaciones: el `allow create: if false` de las reglas
@@ -856,26 +870,17 @@ exports.recibirVehiculoDelTicket = functions.https.onCall(async (data, context) 
     throw new functions.https.HttpsError('invalid-argument', 'Falta id_reparacion.');
   }
 
-  const ticketSnap = await db.collection('reparaciones').doc(idReparacion).get();
-  if (!ticketSnap.exists) {
-    throw new functions.https.HttpsError('not-found', 'Este ticket de servicio ya no existe.');
-  }
-
-  const puedeActuar = await actuaPorTaller(
-    context.auth.uid,
-    (ticketSnap.data().id_taller || '').toString()
-  );
-  if (!puedeActuar) {
-    throw new functions.https.HttpsError(
-      'permission-denied',
-      'Este ticket no es de tu taller.'
-    );
-  }
-
   try {
+    // La autorizacion viaja DENTRO de la transaccion, sobre el mismo snapshot
+    // del ticket que decide la escritura. Antes este callable leia
+    // `reparaciones/{id}` para comprobar `actuaPorTaller` y
+    // `recibirTicketYVincular` lo volvia a leer para escribir: una lectura de
+    // mas en cada recepcion y, peor, dos snapshots distintos — entre los dos,
+    // `id_taller` o `estado` podian cambiar y se autorizaba sobre el viejo.
     const resultado = await recibirTicketYVincular(db, {
       idReparacion,
       ahora: new Date(),
+      autorizar: (idTaller) => actuaPorTaller(context.auth.uid, idTaller),
     });
     return { recibido_ahora: resultado.recibidoAhora };
   } catch (error) {
@@ -911,21 +916,22 @@ exports.revocarVinculoAlCerrarTicket = functions.firestore
     // determinista y con `arrayRemove`; dejar que ademas dispare este trigger
     // solo anade una carrera sobre los mismos documentos de `vehiculos`.
     if (esMigracion(despues)) return null;
-    if (!debeRevocarVinculo(antes, despues)) return null;
 
-    try {
-      await revocarVinculo(db, {
-        idVehiculo: (despues.id_vehiculo || '').toString(),
-        idTaller: (despues.id_taller || '').toString(),
-      });
-    } catch (error) {
-      // No relanzar: el ticket ya esta cerrado y el servicio registrado. Un
-      // fallo aqui deja un vinculo de mas, que es el estado que habia ANTES
-      // de la Ronda 5 — molesto, no peligroso — mientras que relanzar sin
-      // `failurePolicy` no reintenta nada y solo ensucia las metricas.
+    const { resultado, error } = await revocarVinculoAlCerrar(db, {
+      antes,
+      despues,
+      ref: change.after.ref,
+    });
+    if (error) {
+      // Sigue sin relanzarse: el ticket ya esta cerrado y el servicio
+      // registrado, y relanzar sin `failurePolicy` no reintenta nada, solo
+      // ensucia las metricas. Lo que cambia es que el fallo ya no vive solo
+      // en este log: `revocarVinculoAlCerrar` deja marca en el ticket, asi
+      // que el vinculo que sobrevivio al cierre es consultable y la siguiente
+      // escritura sobre ese ticket lo reintenta.
       console.error(
         `revocarVinculoAlCerrarTicket: no se pudo revocar el vinculo del ` +
-          `ticket ${context.params.reparacionId}:`,
+          `ticket ${context.params.reparacionId} (${resultado}):`,
         error
       );
     }
