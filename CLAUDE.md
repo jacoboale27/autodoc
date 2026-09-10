@@ -10,8 +10,8 @@ Evidencia base: `docs/AUDITORIA_CREA_J_2026_CODEX.md` y `docs/AUDITORIA_CREA_J_2
 (dos auditorías independientes, ambas 64/100 por rutas distintas). **No repitas la auditoría
 antes de implementar**; el plan lo prohíbe.
 
-**Estado a 2026-09-09 — 10 tareas cerradas y verificadas:** SEC-01, SEC-02, SEC-03, DATA-01,
-VER-01, ROLE-01, QA-02, QA-01, UX-01 y **UX-02**. **Siguiente por orden §12: FUNC-01.**
+**Estado a 2026-09-10 — 11 tareas cerradas y verificadas:** SEC-01, SEC-02, SEC-03, DATA-01,
+VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02 y **FUNC-01**. **Siguiente por orden §12: FUNC-02.**
 
 QA-01 ya esta fusionada en `integracion/ola-1` (`c17fead`), sin conflictos. Evidencia completa
 en `docs/evidencia/QA-01-matriz.md`. Lo que hay que saber sin leerla:
@@ -60,7 +60,7 @@ landing esa lectura se intercepta.
 
 ### Ramas — nada está fusionado a `main`
 
-`main` sigue en `1265d23`. **Las 10 tareas cerradas viven en `integracion/ola-1`**: ola 1
+`main` sigue en `1265d23`. **Las 11 tareas cerradas viven en `integracion/ola-1`**: ola 1
 (SEC-01/02/03, DATA-01), las tres de ola 2 (QA-02, VER-01, ROLE-01),
 QA-01, UX-01 y **UX-02** (fusionada el 2026-09-09, `d5c707a`, sin conflictos). Encima va
 `fix/landing-crash` (`564fdf0`), que **no es una tarea del plan** pero sí trabajo real sobre
@@ -75,9 +75,9 @@ al que hablar.
 | Gate | Resultado |
 |---|---|
 | `flutter analyze` | `No issues found!` |
-| `flutter test` | **1150 / 1150**, exit 0 |
+| `flutter test` | **1164 / 1164**, exit 0 |
 | `functions` (Mocha) | **173 passing** |
-| `test_rules` (Jest + emuladores) | **415 / 415**, 24 suites |
+| `test_rules` (Jest + emuladores) | **426 / 426**, 24 suites |
 | E2E de la app (Playwright) | **32 pasan, 2 `fixme`**, exit 0 |
 | E2E de la landing | **20 / 20**, exit 0 |
 | Puertos al salir | 0 en `LISTENING` |
@@ -127,16 +127,16 @@ Las ramas `fix/*` ya integradas: **no trabajes sobre ellas**, parte de `integrac
 
 Antes de empezar una tarea, mira qué ramas `fix/*` existen ya para no duplicar.
 
-### Empezar aquí mañana (2026-09-10)
+### Empezar aquí mañana (2026-09-11)
 
-**Toca FUNC-01 — "Edición completa de reseñas con fotos"** (§7 del plan, P2). Áreas que
-señala: `review_sheet.dart:230-235`, `review_service.dart`, reglas de Storage, y tests de
-widget / servicio / reglas. Al tocar Storage y probablemente `firestore.rules`, **el
-subagente `firestore-rules-reviewer` es gate obligatorio** antes de cerrarla.
+**Toca FUNC-02 — "Retirar caminos obsoletos de reparación"** (§7 del plan, P2). Áreas que
+señala: `reparacion_provider.dart:42-136`, su repositorio y consumidores, y reglas/tests de
+Kanban. El primer paso del plan es **inventariar consumidores reales de `iniciar*`** — es
+volumen de lectura puro, o sea el caso exacto de `codex exec -p worker` en fan-out.
 
 Corta la rama de la punta de `integracion/ola-1`, nunca de una `fix/*`.
 
-Tres cosas que ahorran una hora, aprendidas ayer:
+Tres cosas que ahorran una hora:
 
 - **Un worktree nuevo no tiene dependencias instaladas, y el fallo no lo dice.** El build de
   la landing murió con `Cannot find module 'next-intl/plugin'`, que suena a bug del código y
@@ -147,9 +147,34 @@ Tres cosas que ahorran una hora, aprendidas ayer:
   tres fallaron en `global-setup` con «El emulador de Auth no respondio en 90 s», que parece
   un emulador roto y es solo la corrida anterior soltando los puertos. Comprueba 8080, 9099,
   9199, 4400, 5555 antes de relanzar.
-- **Las cifras de las suites subieron** al integrar UX-01/UX-02 y la landing: Functions
-  150 → **173**, reglas 395 → **415** en 24 suites, E2E de la app 31 → **32**. Si ves los
-  números viejos en algún sitio, están obsoletos.
+- **El script `test` de `test_rules/` no acepta argumentos.** Es un `firebase emulators:exec`,
+  así que `npm test -- storage.test.js` muere con «Too many arguments». Para correr una sola
+  suite: `npx firebase emulators:exec --only firestore,storage --project autodoc-rules-test
+  "npx jest --runInBand storage.test.js"`.
+- **Las cifras de las suites subieron otra vez** con FUNC-01: `flutter test` 1150 → **1164**,
+  reglas 415 → **426** en 24 suites. Functions sigue en **173** y E2E de la app en **32**.
+
+FUNC-01 cerró el defecto de las fotos y, de camino, un agujero de reglas que no estaba en el
+enunciado. Evidencia en `docs/evidencia/FUNC-01-fotos-de-resenias.md`. Lo esencial:
+
+- **El enunciado del plan describe mal el bug.** «La edición descarta fotos» no era cierto: el
+  sheet escondía el selector en modo edición precisamente para que no se descartara nada. El
+  defecto real era que **`updateReview` no mencionaba `fotos`**, así que tras publicar no había
+  forma de tocarlas, y que **`storage.rules` no dejaba al autor borrar las suyas**
+  (`allow delete: if isAdmin()`): sin ese segundo cambio la tarea no se podía cerrar, porque
+  limpiar un huérfano moría en `permission-denied`.
+- **`resenias` es de lectura ANÓNIMA y `fotos` aceptaba cualquier URL.** Era teórico mientras
+  el cliente no escribía `fotos` en un update; FUNC-01 es justo lo que lo vuelve alcanzable. Un
+  propietario con una reseña legítima podía apuntar a un servidor propio y cosechar IP y
+  User-Agent de todo el que abriera la ficha del taller. Cerrado con `fotosBajoServicio`,
+  hermano de `esUrlDeStoragePropia`. **En un update valida solo si `fotos` cambia**:
+  `request.resource.data` es el documento *resultante*, así que validar siempre dejaría
+  ineditables las reseñas con URLs heredadas, ni siquiera para corregir el texto.
+- **Queda residual y anotado:** el «vehículo fantasma» (`vehiculos` admite `create` con ID
+  elegido por el cliente, y `onVehicleDelete` es asíncrono), cuyo endurecimiento limpio —atar
+  el nombre del objeto al uid— es una migración, no un ajuste; y que **nadie borra las fotos
+  al ELIMINAR una reseña**, que es trabajo de un trigger `onDelete` con Admin SDK y encaja en
+  OPS-01.
 
 Sigue **abierto y sin dueño**: el rojo intermitente de `flutter test` (`1139 +1 -1`) que no
 se ha llegado a identificar — ver «Rarezas» más abajo — y el emulador Java de Firestore

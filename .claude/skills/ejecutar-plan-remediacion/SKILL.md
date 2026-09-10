@@ -12,17 +12,17 @@ orquestarlo**.
 
 ## Estado (actualizar al cerrar cada tarea)
 
-Hechos: **SEC-01, SEC-02, SEC-03, DATA-01, VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02**
-(a 2026-09-09). Siguiente por orden §12: **FUNC-01**, luego FUNC-02, UX-03/04, SEC-04,
+Hechos: **SEC-01, SEC-02, SEC-03, DATA-01, VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02,
+FUNC-01** (a 2026-09-10). Siguiente por orden §12: **FUNC-02**, luego UX-03/04, SEC-04,
 OPS-01, H-01, INNO-01, FINAL-01.
 
-Nada esta fusionado a `main` (`1265d23`). **Las 10 viven en `integracion/ola-1` y ya no
-queda ninguna rama `fix/*` pendiente de fusionar.** UX-02 entro el
-2026-09-09 sin conflictos, y encima va `fix/landing-crash`, que no es del plan pero si
-trabajo real sobre la landing.
+Nada esta fusionado a `main` (`1265d23`). **Las 11 viven en `integracion/ola-1` y ya no
+queda ninguna rama `fix/*` pendiente de fusionar.** FUNC-01 entro el
+2026-09-10 (`18c73d7`, sin conflictos), y encima va `fix/landing-crash`, que no es del plan
+pero si trabajo real sobre la landing.
 
-Arbol combinado verificado entero ese dia: `flutter analyze` limpio, `flutter test`
-**1150/1150**, Functions **173**, reglas **415/415** en 24 suites, E2E de la app **32 pasan
+Arbol combinado verificado entero el 2026-09-10: `flutter analyze` limpio, `flutter test`
+**1164/1164**, Functions **173**, reglas **426/426** en 24 suites, E2E de la app **32 pasan
 y 2 `fixme`**, E2E de la landing **20/20**, puertos libres al salir.
 
 Corta siempre de `integracion/ola-1`, no de las `fix/*`. Detalle de ramas y de las trampas

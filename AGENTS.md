@@ -93,11 +93,35 @@ Plan maestro: `docs/superpowers/plans/2026-09-06-remediation-master-plan-crea-j-
 Definition of Done al final, evidencia base en `docs/AUDITORIA_CREA_J_2026_CODEX.md` —
 **no repetir la auditoria antes de implementar**.
 
-**Estado a 2026-09-09. Cerradas y verificadas 10 tareas:** SEC-01, SEC-02, SEC-03, DATA-01,
-VER-01, ROLE-01, QA-02, QA-01, UX-01 y UX-02.
+**Estado a 2026-09-10. Cerradas y verificadas 11 tareas:** SEC-01, SEC-02, SEC-03, DATA-01,
+VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02 y FUNC-01.
 
-**Siguiente por orden §12: FUNC-01.** Luego FUNC-02, UX-03/04, SEC-04, OPS-01, H-01,
+**Siguiente por orden §12: FUNC-02.** Luego UX-03/04, SEC-04, OPS-01, H-01,
 INNO-01, FINAL-01.
+
+FUNC-01 esta fusionada en `integracion/ola-1` (`18c73d7`, sin conflictos). Evidencia en
+`docs/evidencia/FUNC-01-fotos-de-resenias.md`. Lo que hay que saber sin leerla:
+
+- **El enunciado del plan describe mal el bug.** «La edicion descarta fotos» no era cierto: el
+  sheet escondia el selector en modo edicion precisamente para que no se descartara nada. El
+  defecto real era que `ReviewService.updateReview` **no mencionaba `fotos`** —tras publicar no
+  habia forma de tocarlas— y que `storage.rules` **no dejaba al autor borrar las suyas**
+  (`allow delete: if isAdmin()`). Sin ese segundo cambio la tarea no se cerraba: limpiar un
+  huerfano moria en `permission-denied`.
+- **Agujero destapado por el gate de reglas:** `resenias` es de lectura ANONIMA y la rama del
+  autor del `allow update` aceptaba cualquier URL en `fotos`. Era teorico mientras el cliente no
+  escribia `fotos` en un update; FUNC-01 es justo lo que lo vuelve alcanzable. Cerrado con
+  `fotosBajoServicio` (hermano de `esUrlDeStoragePropia`): ancla host y prefijo
+  `resenia_fotos%2F{idServicio}%2F`, tope de 3. **En un update valida solo si `fotos` cambia**,
+  porque `request.resource.data` es el documento resultante y validar siempre dejaria
+  ineditables las resenias con URLs heredadas.
+- **Contrato nuevo:** `updateReview(..., fotosConservadas, fotosNuevas)`. `null` = no tocar, y
+  devuelve `null` y no `[]` porque una lista vacia seria indistinguible de «se borraron todas».
+  Storage se inyecta con dos typedefs, misma costura que `GaleriaService`.
+- **Residuales anotados, no cerrados:** el «vehiculo fantasma» (`vehiculos` admite `create` con
+  ID elegido por el cliente y `onVehicleDelete` es asincrono) —endurecerlo es una migracion, no
+  un ajuste— y que nadie borra las fotos al ELIMINAR una resena, que toca a un trigger
+  `onDelete` con Admin SDK y encaja en OPS-01.
 
 QA-01 ya esta fusionada en `integracion/ola-1` (`c17fead`, sin conflictos; arbol combinado
 verificado: reglas 395/395 en 23 suites). Destapo cinco huecos de autorizacion reales, todos de
@@ -152,21 +176,27 @@ llegan por la REST de Firestore (de ahi salia el crash) y retira Vercel Analytic
 
 **Ya no queda ninguna rama `fix/*` pendiente de fusionar.** Corta de `integracion/ola-1`.
 
-**Arbol combinado verificado entero el 2026-09-09** en
+**Arbol combinado verificado entero el 2026-09-10** en
 `C:/Users/User/Documents/creaj/wt-integra`:
 
 | Suite | Resultado |
 |---|---|
 | `flutter analyze` | limpio |
-| `flutter test` | **1150 / 1150**, exit 0 |
+| `flutter test` | **1164 / 1164**, exit 0 |
 | `functions` (Mocha) | **173 passing** |
-| `test_rules` (Jest + emuladores) | **415 / 415**, 24 suites, exit 0 |
+| `test_rules` (Jest + emuladores) | **426 / 426**, 24 suites, exit 0 |
 | E2E de la app (Playwright) | **32 pasan, 2 `fixme`**, exit 0 |
 | E2E de la landing | **20 / 20**, exit 0 |
 | Puertos al salir | 0 en `LISTENING` |
 
-**Siguiente tarea: FUNC-01** (edicion completa de resenas con fotos). Toca Storage y
-probablemente `firestore.rules`: el revisor de reglas es gate obligatorio antes de cerrarla.
+**Siguiente tarea: FUNC-02** (retirar caminos obsoletos de reparacion). Empieza inventariando
+los consumidores reales de `iniciar*` en `reparacion_provider.dart:42-136` y su repositorio:
+es volumen de lectura, o sea fan-out de `codex exec -p worker`.
+
+**El script `test` de `test_rules/` no acepta argumentos** (es un `firebase emulators:exec`;
+`npm test -- storage.test.js` muere con «Too many arguments»). Para una sola suite:
+`npx firebase emulators:exec --only firestore,storage --project autodoc-rules-test "npx jest
+--runInBand storage.test.js"`.
 
 Dos trampas de entorno, ambas pagadas ya:
 
