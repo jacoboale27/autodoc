@@ -1,33 +1,246 @@
 # AutoDoc — Guía para Claude Code
 
-## ⚠️ Prioridad actual del equipo — S1: subida de PDF del taller
+## ⚠️ Trabajo actual — plan de remediación CREA J 2026
 
-**Antes de tomar cualquier otra tarea, esta es la que va primero.** Está descrita en
-`docs/superpowers/plans/2026-09-02-hallazgos-uso-real.md`, sección **«Anexo — Tareas de
-seguimiento surgidas al ejecutar el Bloque A» → S1** (y los dos residuales de PDF de S6).
+El trabajo se dirige desde `docs/superpowers/plans/2026-09-06-remediation-master-plan-crea-j-10-10.md`
+(baseline 64/100 → objetivo 10/10). Su **§12 fija el orden**, y la Definition of Done del final
+manda sobre cualquier atajo. Para orquestarlo, usa la skill `ejecutar-plan-remediacion`.
 
-El taller **no puede subir su NIT en PDF**: la pantalla usa
-`ImagePicker().pickImage(source: gallery)`, que no selecciona PDF, aunque `storage.rules` ya
-admite PDF para el slot `nit`, el lado del administrador ya sabe mostrarlo, y `file_picker`
-ya está en `pubspec.yaml` sin usar. El NIT es el documento más determinante para aprobar un
-taller.
+Evidencia base: `docs/AUDITORIA_CREA_J_2026_CODEX.md` y `docs/AUDITORIA_CREA_J_2026_CLAUDE.md`
+(dos auditorías independientes, ambas 64/100 por rutas distintas). **No repitas la auditoría
+antes de implementar**; el plan lo prohíbe.
 
-**Trampa que hay que tener presente:** toda la rama PDF del lado del taller es hoy
-*inalcanzable en producción*. Su test pasa solo porque inyecta un `XFile` que el picker real
-nunca puede devolver. **La suite reporta verde sobre un flujo que nadie puede ejercer.** Trata
-esa rama como código de primera ejecución y ese test como NO verificado.
+**Estado a 2026-09-09 — 10 tareas cerradas y verificadas:** SEC-01, SEC-02, SEC-03, DATA-01,
+VER-01, ROLE-01, QA-02, QA-01, UX-01 y **UX-02**. **Siguiente por orden §12: FUNC-01.**
 
-El resto del anexo (S2–S6) y los Bloques B–G del mismo plan son el trabajo pendiente que
-sigue. Antes de empezar cualquiera de ellos, avisa en el equipo para no duplicar esfuerzo:
-S1 ya está asignada.
+QA-01 ya esta fusionada en `integracion/ola-1` (`c17fead`), sin conflictos. Evidencia completa
+en `docs/evidencia/QA-01-matriz.md`. Lo que hay que saber sin leerla:
+
+- **Construir la matriz destapo cinco huecos de autorizacion reales**, todos de la misma forma:
+  una regla que autoriza mirando `resource.data` —el documento VIEJO— y luego no mira lo que el
+  write deja escrito. Los peores: el propietario podia **regalar su vehiculo** reescribiendo
+  `id_propietario`, y podia vaciar `talleres_conocidos` para devolver el coche al estado walk-in,
+  que lo abre a **cualquier** mecanico (el agujero de la ronda 6, reabierto desde el otro lado).
+- **La suite E2E corria contra PRODUCCION** y `registro.spec.js` creaba usuarios reales en cada
+  corrida. Ya no: la app tiene cableado a emuladores (`lib/core/config/firebase_emulators.dart`)
+  tras un doble candado (`--dart-define` **y** `!kReleaseMode`).
+- **Queda abierto:** los dos flujos de registro por UI estan en `fixme`; sin cobertura E2E de
+  Storage ni callables.
+
+UX-01 ya esta fusionada en `integracion/ola-1` (`ed2e8e1`). Evidencia en
+`docs/evidencia/UX-01-contacto-y-ctas.md`. Lo esencial:
+
+- **Eran DOS los formularios que fingian enviar, no uno.** El de contacto era `<form action="#">`.
+  El de afiliacion de talleres —que no estaba en el enunciado del plan y era el peor— POSTeaba
+  **sin autenticar a la REST API de Firestore de PRODUCCION** contra `/talleres`, cuya regla es
+  `allow create: if isAdmin()`: se denegaba siempre, con un estado de exito implementado que
+  nadie podia alcanzar. Ademas los legales del pie apuntaban fuera del sitio, las anclas del menu
+  morian fuera de la home, y la pagina de contacto **no la enlazaba nadie**.
+- **El contrato ahora es la Cloud Function `recibirSolicitudLanding`** (la landing es un export
+  estatico y no tiene servidor): valida, honeypot, cupo por IP con contador transaccional, y
+  escribe con Admin SDK en `solicitudes_landing`, cerrada a los clientes por los dos lados.
+- **Sin dos pasos de runbook el endpoint NO debe desplegarse:** definir `SOLICITUDES_LANDING_SALT`
+  (sin ella la funcion se niega a arrancar, a proposito: con la sal versionada el hash de IP era
+  reversible) y crear la politica TTL de `solicitudes_landing_control`, que no se configura desde
+  `firestore.indexes.json`.
+- **Suite nueva con config propia:** `cd e2e && npm run build:landing && npm run test:landing`
+  (18 casos). No necesita el bundle de Flutter ni el emulador de Auth.
+
+**El bundle E2E de la app se compila con `--profile`, no con el release por defecto.**
+`flutter build web` compila en release, donde `kReleaseMode` desactiva el cableado a emuladores y
+Auth sale al endpoint REAL con las claves falsas, muriendo en `auth/api-key-not-valid`.
+
+**Playwright esperaba a la pieza equivocada, en las dos suites.** La config espera al puerto del
+**hub** (4400), que abre antes que Firestore y mucho antes de que Functions cargue los triggers:
+los dos primeros tests fallaban en 53 ms con ECONNREFUSED contra 8080 y el tercero pasaba tras
+8 s — que parece el emulador muriendose a media suite y es justo lo contrario. Ambas esperan ya a
+Firestore de verdad. Y **el navegador leyendo Firestore por REST desestabiliza el emulador**
+(Chromium aborta las conexiones al navegar, netty acumula "Connection reset"): en la suite de la
+landing esa lectura se intercepta.
+
+### Ramas — nada está fusionado a `main`
+
+`main` sigue en `1265d23`. **Las 10 tareas cerradas viven en `integracion/ola-1`, hoy en
+`564fdf0`**: ola 1 (SEC-01/02/03, DATA-01), las tres de ola 2 (QA-02, VER-01, ROLE-01),
+QA-01, UX-01 y **UX-02** (fusionada el 2026-09-09, `d5c707a`, sin conflictos). Encima va
+`fix/landing-crash` (`564fdf0`), que **no es una tarea del plan** pero sí trabajo real sobre
+la landing ya integrada: normaliza las calificaciones que llegan por la REST de Firestore
+—de ahí salía el crash— y retira Vercel Analytics, que en Firebase Hosting no tiene backend
+al que hablar.
+
+**Ya no queda ninguna rama `fix/*` pendiente de fusionar.**
+
+#### Árbol combinado, verificado entero el 2026-09-09
+
+| Gate | Resultado |
+|---|---|
+| `flutter analyze` | `No issues found!` |
+| `flutter test` | **1150 / 1150**, exit 0 |
+| `functions` (Mocha) | **173 passing** |
+| `test_rules` (Jest + emuladores) | **415 / 415**, 24 suites |
+| E2E de la app (Playwright) | **32 pasan, 2 `fixme`**, exit 0 |
+| E2E de la landing | **20 / 20**, exit 0 |
+| Puertos al salir | 0 en `LISTENING` |
+
+UX-02 cerró dos callejones sin salida en la app y, en un segundo commit, el defecto del
+harness que ella misma había destapado. Evidencia en
+`docs/evidencia/UX-02-errores-y-deep-links.md`. Lo que hay que saber sin leerla:
+
+- **El rewrite SPA ya existia** en `firebase.json` para el target `app`. El hueco era de
+  evidencia: **ningun spec de la suite de la app navegaba a otra cosa que `/`**. El README si
+  desinformaba, documentando `python -m http.server` (que no reescribe rutas) y presentando su
+  404 como una limitacion a sortear. Ahora apunta al emulador de Hosting.
+- **RESUELTO — el cableado a emuladores no se puede hacer desde Dart.**
+  `Firebase.initializeApp()` en web no retorna hasta que `firebase_auth_web` termina su
+  `ensurePluginInitialized`, que espera al primer `onAuthStateChanged`. Con sesion persistida
+  ese evento exige refrescar el token guardado: una peticion de red que sale **dentro** del
+  `initializeApp`, contra PRODUCCION, y que deja el Auth ya usado — asi que el
+  `conectarEmuladoresFirebase()` de `main.dart` llega tarde por construccion y
+  `emulatorConfig` se queda en null para siempre. No es un bug de la app: en produccion
+  restaurar la sesion contra el backend real es lo correcto.
+  El arreglo es `e2e/scripts/shim-emuladores.js`, que `build-web.js` inyecta en
+  `build/web/index.html` **despues** de compilar (nunca en `web/index.html`, que es lo que se
+  despliega): crea la app de JS y conecta el emulador antes de cargar `flutter_bootstrap.js`,
+  y flutterfire reutiliza esa app. Tiene que usar **`initializeAuth` con las mismas opciones
+  que flutterfire**, no `getAuth`, o el arranque muere con `auth/already-initialized`.
+- **`esperarAppLista` ya no implica lo que implicaba.** Esperar a `auth.emulatorConfig`
+  significaba que Firestore y Storage tambien estaban cableados, porque `main.dart` los conecta
+  en las tres lineas siguientes. Con el shim, Auth queda cableado desde el arranque y hay ~1 s
+  en el que `getFirestore()` apunta a **produccion**: `roles.spec.js` fallaba en 2 de 3
+  corridas por eso. El helper espera ahora a las tres piezas: `<flutter-view>` montado, Auth en
+  su emulador y Firestore en el suyo.
+- **Ese arreglo produjo un falso verde de manual, y merece recordarse.** El primer intento
+  dejaba el SDK de JS perfecto mientras Flutter caia a la pantalla de error de arranque: todas
+  las afirmaciones miraban el SDK, la capa equivocada. **Un test de E2E sobre Firebase tiene
+  que afirmar tambien que la app de Flutter arranco** — que no hay `ERROR al inicializar
+  Firebase` en consola y que hay arbol montado.
+- **La siembra corria antes de que Auth estuviera arriba** (`global-setup.js` esperaba solo a
+  Firestore, pero sembrar tambien crea usuarios). Arreglado; reproducible al revertirlo.
+- **Cada arranque de la app en un test cuesta caro** (CanvasKit + persistencia offline de
+  Firestore) y degrada el emulador Java: un test de mas tumbaba specs ajenas por timeout.
+  Agrupa `goto` y `reload` en el mismo test en vez de partirlos.
+
+Ojo con el nombre: `fix/ux1` (sin el cero) es de un intento anterior y **no tiene ni un commit
+propio** — es ancestro de `integracion/ola-1`. La buena es `fix/ux01`.
+
+Las ramas `fix/*` ya integradas: **no trabajes sobre ellas**, parte de `integracion/ola-1`.
+
+Antes de empezar una tarea, mira qué ramas `fix/*` existen ya para no duplicar.
+
+### Empezar aquí mañana (2026-09-10)
+
+**Toca FUNC-01 — "Edición completa de reseñas con fotos"** (§7 del plan, P2). Áreas que
+señala: `review_sheet.dart:230-235`, `review_service.dart`, reglas de Storage, y tests de
+widget / servicio / reglas. Al tocar Storage y probablemente `firestore.rules`, **el
+subagente `firestore-rules-reviewer` es gate obligatorio** antes de cerrarla.
+
+Corta la rama de `integracion/ola-1` (`564fdf0`), nunca de una `fix/*`.
+
+Tres cosas que ahorran una hora, aprendidas ayer:
+
+- **Un worktree nuevo no tiene dependencias instaladas, y el fallo no lo dice.** El build de
+  la landing murió con `Cannot find module 'next-intl/plugin'`, que suena a bug del código y
+  solo significaba que faltaba `pnpm install` en `landing-web/`. Por worktree hay que sembrar
+  `flutter pub get`, `functions/npm ci`, `test_rules/npm ci`, `e2e/npm ci` y
+  `landing-web/pnpm install`.
+- **No encadenes corridas de Playwright sin esperar a que se liberen los puertos.** Dos de
+  tres fallaron en `global-setup` con «El emulador de Auth no respondio en 90 s», que parece
+  un emulador roto y es solo la corrida anterior soltando los puertos. Comprueba 8080, 9099,
+  9199, 4400, 5555 antes de relanzar.
+- **Las cifras de las suites subieron** al integrar UX-01/UX-02 y la landing: Functions
+  150 → **173**, reglas 395 → **415** en 24 suites, E2E de la app 31 → **32**. Si ves los
+  números viejos en algún sitio, están obsoletos.
+
+Sigue **abierto y sin dueño**: el rojo intermitente de `flutter test` (`1139 +1 -1`) que no
+se ha llegado a identificar — ver «Rarezas» más abajo — y el emulador Java de Firestore
+muriéndose ~1 de cada 6 corridas en Windows.
+
+### La trampa a vigilar: los dobles de prueba no aplican las reglas
+
+Hay tests de autorización escritos contra `FakeFirebaseFirestore` y
+`fake_firebase_security_rules`, que **no aplican las reglas reales**. El motor falso solo
+conoce `read, write, update, delete, list` — **no existe `create` ni `get`** —, `write` ya
+incluye `update` y `delete`, y `isAllowed` hace OR de todos los `allow` que casen. Un verde ahí
+no prueba autorización; eso solo lo prueba `test_rules/` contra los emuladores.
+
+Ese patrón ya produjo **dos** falsos verdes reales, y ambos son la misma enfermedad — un test
+que ejercita una puerta distinta de la que dice probar:
+
+1. **VER-01 (cerrada):** el test del PDF del NIT inyectaba un `XFile` que el picker real nunca
+   podía producir, sobre una pantalla que usaba `ImagePicker` y por tanto jamás admitía un PDF.
+   Verde sobre un flujo inalcanzable en producción. Hoy la pantalla usa `FilePicker` y el test
+   sustituye `FilePickerPlatform.instance`, o sea recorre la ruta de selección de verdad.
+   Al escribir los negativos apareció además un agujero de MIME spoofing (`nit.jpg` declarando
+   `application/pdf`) que se cerró emparejando nombre y content-type en `storage.rules`.
+2. **ROLE-01 (cerrada):** el test de variantes de rol apuntaba a
+   `talleres/{id}/catalogo_servicios`, cuya regla es `actuaPorTaller()` — **propiedad pura, sin
+   mirar el rol**. Habría pasado con cualquier cadena. Se repuntó a la lectura de `vehiculos`
+   vinculados (`firestore.rules:516`), que sí pasa por `isMecanico()`.
+
+**Antes de dar por bueno un test de autorización, abre la regla que dice cubrir y comprueba que
+el predicado que te importa es el que decide.**
+
+### Rarezas
+
+- **Resuelta — el fallo de la primera corrida de Mocha tras `npm ci`.** No era intermitente:
+  el hook `before()` de `functions/test/empleados.test.js` termina con un `require` *síncrono*
+  de `index.js`, que arrastra firebase-admin y firebase-functions. En frío ese require tarda
+  ~4 s leyendo de disco y bloquea el event loop, así que el timeout por defecto de Mocha
+  (2000 ms) vencía y la suite daba 147/1. En caliente la suite entera corre en 294 ms, de ahí
+  la apariencia de azar. Arreglado con `--timeout 20000` en el script `test` de
+  `functions/package.json`, verificado borrando `node_modules` y reinstalando (150/150 en frío).
+- **Abierta — un rojo de `flutter test` que no se ha podido identificar.** El 2026-09-08
+  aparecio dos veces `1139 +1 -1` (en `fix/ux01` y en el arbol fusionado) contra cuatro corridas
+  de 1140/1140, incluida una repitiendo `analyze` justo antes para forzar la hipotesis obvia. Las
+  dos rojas tenian en comun que la salida pasaba por `tail`, que **se comio el nombre del test y
+  ademas falseo el codigo de salida a 0** (el del pipe es el de `tail`). Si vuelve a salir:
+  **captura la salida entera a un archivo, nunca por `tail`**, y apunta aqui el nombre. Puede ser
+  una dependencia de orden o de temporizacion; hoy no hay evidencia para afirmar ni descartar.
+- **Abierta:** el emulador Java de Firestore muere a media suite en Windows
+  (`Connection reset`) ~1 de cada 6 corridas.
+
+El plan `docs/superpowers/plans/2026-09-02-hallazgos-uso-real.md` (anexo S2–S6, Bloques B–G)
+sigue pendiente y se retoma cuando el plan de remediación cierre.
 
 ## Flujo de trabajo obligatorio para cada petición
 
-1. **Contexto del proyecto**: usa **graphify** (`/graphify`, o las skills `graphify` instaladas) como fuente principal de contexto del código — grafo de conocimiento ya construido en `graphify-out/graph.json` (3977 nodos, 5400 edges). Si el grafo no responde lo suficiente, complementa buscando directamente en el código (Grep/Glob/Read).
+1. **Contexto del proyecto**: usa **graphify** (`/graphify`, o las skills `graphify` instaladas) como fuente principal de contexto del código — grafo de conocimiento ya construido en `graphify-out/graph.json` (7802 nodos, 12106 edges). Si el grafo no responde lo suficiente, complementa buscando directamente en el código (Grep/Glob/Read).
 2. **Superpowers**: usa las skills de `superpowers` (brainstorming, TDD, debugging sistemático, subagent-driven development, code review) según corresponda al tipo de tarea.
 3. **find-skills**: antes de improvisar una solución, usa `find-skills` para revisar si ya existe una skill relevante instalada o disponible en las marketplaces configuradas.
 
 Ver también `CONVENTIONS.md` para arquitectura (Clean Architecture + Provider), reglas de Firestore/roles, y estilo de código.
+
+## Cómo se corren las suites (detalles que cuestan una hora si se ignoran)
+
+- `test_rules/` va **siempre por `npm test`**, que envuelve todo en `firebase emulators:exec`.
+  Invocar `npx jest` a pelo da ECONNREFUSED porque no hay emulador levantado.
+- **No cambies los puertos de emulador** de `firebase.json` ni de `test_rules/helpers.js` para
+  esquivar una colisión local: son canónicos y compartidos. Si el puerto está ocupado, mata el
+  proceso que lo tiene — normalmente es una corrida tuya anterior que sigue viva.
+- Un hook de pre-commit rechaza el commit si queda Dart sin formatear: `dart format` antes.
+- **Dos suites de Playwright, cada una con su config.** La de la app va contra emuladores
+  desde QA-01; la de la landing (`e2e/tests-landing/`, UX-01) se lanza con
+  `npm run build:landing && npm run test:landing` y no necesita ni el bundle de Flutter ni el
+  emulador de Auth. **Ninguna de las dos espera al puerto del hub para dar por listos los
+  emuladores**: el hub abre antes que Firestore, y eso hacia fallar los primeros tests con
+  ECONNREFUSED como si el emulador se hubiera muerto.
+- **`e2e/` (Playwright) va contra emuladores desde QA-01.** Primero `cd e2e && npm run build:web`
+  (compila el bundle en `--profile`, tarda varios minutos, incluye un `flutter clean` que no es
+  opcional), luego `npm test`. La config levanta los emuladores y siembra los fixtures sola.
+  Tres cosas que cuestan una tarde si se ignoran:
+  - **`getByLabel` no puede funcionar**: la app no emite ni un `aria-label`. Flutter web expone la
+    semántica como `<flt-semantics role="button">` con el rótulo como texto — usa `getByRole`. Y
+    hace falta un clic (`page.mouse.click(10,10)`) para que Flutter construya ese árbol; sin él
+    ningún selector encuentra nada.
+  - **No importes el SDK de gstatic dentro de `page.evaluate`**: crea su propio registro de apps
+    (`getApps()` vacío) y, peor, no hereda el `useAuthEmulator` — hablaría con producción desde
+    dentro de una suite que se cree aislada. Usa los globales `window.firebase_core` /
+    `firebase_auth` / `firebase_firestore`, que son la instancia real.
+  - **Usa `esperarAppLista()` de `e2e/tests/helpers.js`; no improvises la espera.** Comprueba
+    tres cosas, y las tres hacen falta: `<flutter-view>` montado, Auth en su emulador y
+    **Firestore en el suyo**. Desde el shim de emuladores (UX-02), Auth queda cableado antes
+    de que arranque Flutter, así que `auth.emulatorConfig` por sí solo dejó de implicar que
+    Firestore lo esté: hay ~1 s en el que `getFirestore()` apunta a producción.
 
 ## Skills/plugins instalados (scope: user)
 
@@ -40,6 +253,10 @@ Ver también `CONVENTIONS.md` para arquitectura (Clean Architecture + Provider),
 ## Automatizaciones locales del proyecto (`.claude/`)
 
 - Hooks: bloqueo de edición de `.env`/credenciales, auto-`dart format` post-edición.
-- Subagentes: `firestore-rules-reviewer`, `functions-perf-reviewer`.
-- Slash command: `/test [unit|rules|integration|all]`.
-- Skill: `firebase-deploy-check`.
+- Subagentes: `firestore-rules-reviewer`, `functions-perf-reviewer`. Son **gate obligatorio**,
+  no opinión opcional: pásalos después de implementar y antes de cerrar cualquier tarea que
+  toque `firestore.rules` o `functions/index.js`.
+- Slash commands: `/test [unit|rules|integration|all]`, `/delegate-to-codex`.
+- Skills: `firebase-deploy-check`, `ejecutar-plan-remediacion`.
+- `AGENTS.md` (raíz) repite el estado del plan para los workers de Codex, que arrancan en frío.
+  **Si cierras una tarea del plan, actualiza los dos archivos.**

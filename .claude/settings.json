@@ -26,5 +26,13 @@
   "attribution": {
     "commit": "",
     "pr": ""
+  },
+    "permissions": {
+    "allow": [
+      "Bash(codex exec -p worker:*)",
+      "mcp__codex__codex-reply"
+    ]
   }
+
 }
+
