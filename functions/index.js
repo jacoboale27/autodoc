@@ -6,7 +6,6 @@ const { abrirTicketDeReparacion, ErrorAutorizacionPermanente,
   ErrorTicketNoAplicable, ESTADOS_TICKET_CERRADO } = require('./src/aceptarCotizacion');
 const { ErrorRecepcion, debeRevocarVinculo, revocarVinculo,
   recibirTicketYVincular } = require('./src/vinculoTaller');
-const { verificarAperturaManual } = require('./src/iniciarReparacionPorVehiculo');
 const { sincronizarReservaAlCotizar } = require('./src/sincronizarReservaAlCotizar');
 const {
   subconjuntoPublicoCliente,
@@ -636,93 +635,6 @@ exports.notifyOnReservationStatusChange = functions.firestore
   });
 
 /**
- * Helper: crea (o reutiliza, si ya existe uno para el mismo vehiculo+taller)
- * el ticket Kanban de reparación y notifica al propietario. Corre siempre
- * con Admin SDK porque necesita leer `vehiculos/{id}` (placa, id_propietario)
- * sin las restricciones de `talleres_vinculados` que aplican al cliente (ver
- * firestore.rules match /vehiculos) — ni el trigger de cotización ni el
- * callable de "Buscar Vehículo" pueden resolver esos datos del lado cliente
- * sin reabrir el bug de permission-denied que originó este helper.
- *
- * Devuelve `{ idReparacion, creado }` o `null` si el vehículo no existe.
- */
-async function crearOReutilizarTicketReparacion({ idVehiculo, idTaller }) {
-  const existente = await db.collection('reparaciones')
-    .where('id_vehiculo', '==', idVehiculo)
-    .where('id_taller', '==', idTaller)
-    .limit(20)
-    .get();
-  // RONDA 4: solo se reutiliza un ticket ABIERTO. Con `limit(1)` sin filtro,
-  // este helper devolvia cualquiera — incluido uno `cancelado`, que
-  // `recibirVehiculo` rechaza por diseño ("hace falta una cotizacion nueva"):
-  // el callable respondia con exito, la pantalla de servicio abria ese ticket
-  // muerto y recibir el vehiculo fallaba sin explicacion. Misma definicion de
-  // "cerrado" que `ESTADOS_TICKET_CERRADO` en src/aceptarCotizacion.js y que
-  // `estadosReparacionCerrados` en el cliente, para que las tres coincidan.
-  const abierto = existente.docs.find(
-    (doc) => !ESTADOS_TICKET_CERRADO.includes((doc.data().estado || 'recibido').toString())
-  );
-  if (abierto) {
-    return { idReparacion: abierto.id, creado: false };
-  }
-
-  const vehiculoDoc = await db.collection('vehiculos').doc(idVehiculo).get();
-  if (!vehiculoDoc.exists) return null;
-  const placa = vehiculoDoc.data().placa || '';
-  const propietarioId = vehiculoDoc.data().id_propietario;
-  if (!propietarioId) return null;
-
-  const ahora = admin.firestore.FieldValue.serverTimestamp();
-  const reparacionRef = db.collection('reparaciones').doc();
-  // Ronda 3: el ticket y el vinculo se escriben juntos, igual que en
-  // `abrirTicketDeReparacion`. `talleres_vinculados` ya no es una
-  // precondicion para abrir el ticket (era circular), pero sigue siendo lo
-  // que hace legible `vehiculos/{id}` para el taller en firestore.rules: sin
-  // esta escritura el ticket nace y la pantalla que lo abre no puede cargar
-  // el vehiculo.
-  const lote = db.batch();
-  lote.set(reparacionRef, {
-    id_vehiculo: idVehiculo,
-    id_taller: idTaller,
-    id_propietario: propietarioId,
-    placa: placa,
-    estado: 'recibido',
-    historial_estados: [{ estado: 'recibido', timestamp: new Date() }],
-    fecha_creacion: ahora,
-    fecha_actualizacion: ahora,
-  });
-  lote.update(vehiculoDoc.ref, {
-    talleres_vinculados: admin.firestore.FieldValue.arrayUnion(idTaller),
-  });
-  await lote.commit();
-
-  const userDoc = await db.collection('usuarios').doc(propietarioId).get();
-  const fcmToken = userDoc.exists ? userDoc.data().fcmToken : null;
-  const title = 'Tu vehículo ya está en seguimiento';
-  const body = `${placa}: se abrió el ticket de servicio en el taller.`;
-  if (fcmToken) {
-    try {
-      await messaging.send({
-        token: fcmToken,
-        notification: { title, body },
-        data: { type: 'reparacion', reparacionId: reparacionRef.id },
-      });
-    } catch (fcmError) {
-      console.error('Error sending FCM reparacion-created push:', fcmError);
-    }
-  }
-  await writeNotification(propietarioId, {
-    tipo: 'reparacion',
-    titulo: title,
-    body,
-    deepLink: `/vehicle_profile/${idVehiculo}`,
-    metadata: { reparacionId: reparacionRef.id, estado: 'recibido' },
-  });
-
-  return { idReparacion: reparacionRef.id, creado: true, placa, propietarioId };
-}
-
-/**
  * Verifica que quien llama pueda actuar en nombre de `tallerId`: o es el
  * propio taller, o es un empleado suyo (usuarios/{uid}.id_taller_propietario
  * == tallerId). Espejo en Admin SDK de `actuaPorTaller()` en firestore.rules.
@@ -740,10 +652,11 @@ async function actuaPorTaller(callerUid, tallerId) {
  *
  * Ya NO abre el ticket de Reparaciones: eso lo hace `onCotizacionAceptada`
  * (A4b) para TODA cotización aceptada, tenga o no reserva detrás, y en el
- * estado `pendiente_recepcion`. Si esta función siguiera llamando a
- * `crearOReutilizarTicketReparacion`, cada aceptación con cita abriría dos
- * tickets para el mismo vehículo (uno aquí en 'recibido' y otro allí), que es
- * exactamente el "vehículo recibido sin que nadie lo reciba" que A3 prohíbe.
+ * estado `pendiente_recepcion`. FUNC-02 retiró el helper gemelo
+ * (`crearOReutilizarTicketReparacion`), que abría el ticket directamente en
+ * 'recibido': mientras existió, esta función podía abrir un segundo ticket
+ * para el mismo vehículo y darlo por recibido sin que nadie lo recibiera,
+ * que es exactamente lo que A3 prohíbe.
  */
 exports.sincronizarReservaYReparacionAlCotizar = functions.firestore
   .document('cotizaciones/{cotizacionId}')
@@ -811,10 +724,9 @@ exports.onCotizacionAceptada = functions
         despues: change.after.data() || {},
         ahora: new Date(),
       });
-      // RONDA 4: avisar al cliente. El camino gemelo
-      // (`crearOReutilizarTicketReparacion`, usado por el callable de "Buscar
-      // Vehiculo") si notificaba al abrir el ticket, pero ESTE — que desde
-      // A4b abre practicamente todos — no notificaba nada, y
+      // RONDA 4: avisar al cliente. El camino gemelo (el callable de "Buscar
+      // Vehiculo", retirado en FUNC-02) si notificaba al abrir el ticket,
+      // pero ESTE — que ya abre TODOS — no notificaba nada, y
       // `notifyOnReparacionStatusChange` es un onUpdate, asi que la creacion
       // tampoco lo despertaba. El cliente aceptaba la cotizacion y no volvia
       // a saber nada del servicio hasta que el taller moviera el ticket a
@@ -912,63 +824,6 @@ async function notificarTicketAbierto(idReparacion) {
 }
 
 /**
- * 5a3. Callable: abre (o reutiliza) el ticket Kanban de reparación para un
- * vehículo encontrado por placa desde "Buscar Vehículo"
- * (VehicleSearchScreen -> InitiateServiceScreen). Existe porque
- * `buscarVehiculoPorPlaca` deliberadamente NO devuelve `id_propietario` al
- * cliente (ver ese callable) para no exponer al dueño a cualquier mecánico
- * que busque una placa — pero `reparaciones` sí necesita ese campo para
- * crearse. En vez de relajar esa protección, la creación del ticket se hace
- * aquí, del lado servidor, donde sí se puede leer el vehículo completo.
- *
- * Corre con Admin SDK, así que `firestore.rules` (que en /reparaciones tiene
- * `allow create: if false` desde A4b) no lo alcanza. Hallazgo 1 de la
- * revisión de la Tarea 4: antes de `verificarAperturaManual` este callable
- * era la única puerta server-side que quedaba abierta para abrir un ticket
- * sin vínculo con el vehículo y sin cotización aceptada — justo lo que A3
- * prohíbe. Ver `./src/iniciarReparacionPorVehiculo.js`.
- */
-exports.iniciarReparacionPorVehiculo = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
-  }
-
-  const callerDoc = await db.collection('usuarios').doc(context.auth.uid).get();
-  const rol = callerDoc.exists ? callerDoc.data().rol : null;
-  if (!['Mecanico', 'Taller'].includes(rol)) {
-    throw new functions.https.HttpsError(
-      'permission-denied',
-      'Solo mecánicos pueden abrir tickets de reparación.'
-    );
-  }
-
-  const idVehiculo = data && data.id_vehiculo ? String(data.id_vehiculo) : '';
-  const idTaller = data && data.id_taller ? String(data.id_taller) : '';
-  if (!idVehiculo || !idTaller) {
-    throw new functions.https.HttpsError('invalid-argument', 'Faltan id_vehiculo o id_taller.');
-  }
-
-  const puedeActuar = await actuaPorTaller(context.auth.uid, idTaller);
-  if (!puedeActuar) {
-    throw new functions.https.HttpsError(
-      'permission-denied',
-      'No puedes abrir tickets en nombre de ese taller.'
-    );
-  }
-
-  const verificacion = await verificarAperturaManual(db, { idVehiculo, idTaller });
-  if (!verificacion.ok) {
-    throw new functions.https.HttpsError(verificacion.code, verificacion.message);
-  }
-
-  const resultado = await crearOReutilizarTicketReparacion({ idVehiculo, idTaller });
-  if (!resultado) {
-    throw new functions.https.HttpsError('not-found', 'Vehículo no encontrado.');
-  }
-  return { id_reparacion: resultado.idReparacion };
-});
-
-/**
  * 5a4. Callable: recibe el vehiculo de un ticket.
  *
  * Mueve el ticket de `pendiente_recepcion` a `recibido` Y otorga el vinculo
@@ -984,10 +839,12 @@ exports.iniciarReparacionPorVehiculo = functions.https.onCall(async (data, conte
  * inmediatamente despues para seguir trabajando.
  *
  * Corre con Admin SDK, asi que `firestore.rules` no lo alcanza: la
- * autorizacion se replica a mano aqui con `actuaPorTaller`, igual que en
- * `iniciarReparacionPorVehiculo` (ver el hallazgo 1 de la revision de la
- * Tarea 4). Sin ese chequeo, cualquier mecanico podria recibir el ticket de
- * otro taller y otorgarse acceso al coche de un desconocido.
+ * autorizacion se replica a mano aqui con `actuaPorTaller`. Sin ese chequeo,
+ * cualquier mecanico podria recibir el ticket de otro taller y otorgarse
+ * acceso al coche de un desconocido. Desde FUNC-02 este es el UNICO callable
+ * que escribe sobre /reparaciones: el `allow create: if false` de las reglas
+ * no protege a los callables, asi que cualquiera que se añada sobre esta
+ * coleccion tiene que replicar la autorizacion aqui a mano, igual que este.
  */
 exports.recibirVehiculoDelTicket = functions.https.onCall(async (data, context) => {
   if (!context.auth) {

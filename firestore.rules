@@ -1195,11 +1195,14 @@ service cloud.firestore {
       // acotar el `update` por rol y valor no sirve de nada: el mecanico se
       // saltaba la regla de update entera CREANDO la cotizacion ya en
       // 'aceptada'. No dispara `onCotizacionAceptada` (es un onUpdate), pero
-      // si satisface la mitad "cotizacion aceptada" del gate de
-      // `verificarAperturaManual` (functions/src/iniciarReparacionPorVehiculo.js:53),
-      // que es justo el predicado que la revision de la Tarea 4 (R14) anadio
-      // para proteger ese callable. Es decir: la parte a la que el gate
-      // restringe podia emitirse medio gate ella sola.
+      // una cotizacion nacida 'aceptada' es un dato falso que otras piezas
+      // creen: cuando existia el callable `iniciarReparacionPorVehiculo`
+      // (retirado en FUNC-02), su gate solo miraba "hay una cotizacion
+      // aceptada para este vehiculo+taller", asi que el mecanico podia
+      // emitirse medio gate el solo. Ese consumidor ya no existe, pero el
+      // dato sigue siendo la prueba de consentimiento del propietario en
+      // toda la app: fijar el estado inicial en 'draft' es lo que hace que
+      // 'aceptada' solo pueda venir de el.
       // Verificado que los tres creadores reales (chat_screen.dart:1007,
       // reserva_detail_screen.dart:200, reserva_chat_card.dart:137) usan el
       // repositorio, que guarda draft y publica pendiente tras el margen.
@@ -1212,9 +1215,10 @@ service cloud.firestore {
       // ajeno>, estado: 'pendiente'} y luego satisfacia el, la rama DEL
       // PROPIETARIO de `update` (arriba) para aceptarsela el mismo — dos
       // escrituras, cotizacion 'aceptada' sin que el dueño real participara.
-      // Eso es exactamente lo que `existeCotizacionAceptada`
-      // (iniciarReparacionPorVehiculo.js:47-56) busca para dejar recibir el
-      // vehiculo. Se reutilizan getVehicleOwner() y actuaPorTaller() (mismas
+      // Una cotizacion 'aceptada' fabricada asi valia como consentimiento
+      // del propietario ante cualquier consumidor server-side (lo era, en su
+      // dia, para el callable de apertura manual retirado en FUNC-02). Se
+      // reutilizan getVehicleOwner() y actuaPorTaller() (mismas
       // funciones que ya usaba el viejo `allow create` de /reparaciones) en
       // vez de escribir un lookup nuevo:
       //   - getVehicleOwner(id_vehiculo) == id_propietario: ata el
@@ -1478,17 +1482,19 @@ service cloud.firestore {
       // justamente lo que dejaba recibir un vehiculo sin cotizacion aceptada
       // (A3/B2).
       //
-      // El callable `iniciarReparacionPorVehiculo` tambien corre con Admin
-      // SDK y por tanto tampoco pasa por esta regla: sigue pudiendo escribir
-      // en esta coleccion pese al `if false` de abajo. NO es una via
-      // deliberadamente permisiva por diseno: es un hueco que este `if false`
-      // no cierra. Se mitiga del lado del propio callable, que replica a mano
-      // las comprobaciones que esta regla haria (vinculo del taller al
-      // vehiculo y, ahora tambien, cotizacion aceptada) — ver
-      // `functions/src/iniciarReparacionPorVehiculo.js` y el hallazgo 1 de la
-      // revision de la Tarea 4. Cualquier otro callable o trigger que se
-      // añada sobre /reparaciones tiene que hacer lo mismo: este `if false`
-      // no lo protege.
+      // ESTE `if false` NO PROTEGE A LOS CALLABLES NI A LOS TRIGGERS: corren
+      // con Admin SDK y no pasan por las reglas. Hubo un segundo creador por
+      // esa via, el callable `iniciarReparacionPorVehiculo`, que ademas abria
+      // el ticket directamente en 'recibido' y se otorgaba el vinculo con el
+      // vehiculo; FUNC-02 lo retiro entero (ya no tenia consumidor en el
+      // cliente, pero seguia desplegado e invocable). Desde entonces escriben
+      // aqui tres funciones y ninguna mas: el trigger `onCotizacionAceptada`,
+      // que es el unico que CREA; el callable `recibirVehiculoDelTicket`, que
+      // transiciona a 'recibido' y otorga el vinculo; y el barrido de
+      // `onVehicleDelete`, que solo CIERRA los tickets del vehiculo borrado.
+      // Cualquier funcion nueva sobre /reparaciones tiene que replicar a mano
+      // la autorizacion que esta regla haria — la regla no se la va a aplicar.
+      // Lo vigila `functions/test/apertura_unica_ticket.test.js`.
       allow create: if false;
 
       // Las invariantes de la maquina de estados vivian SOLO en

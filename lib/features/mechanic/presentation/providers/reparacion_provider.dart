@@ -39,158 +39,6 @@ class ReparacionProvider extends ChangeNotifier {
         );
   }
 
-  @Deprecated('El ticket lo crea onCotizacionAceptada; usa recibirVehiculo')
-  Future<String?> iniciar({
-    required String idVehiculo,
-    required String idTaller,
-    required String idPropietario,
-    required String placa,
-  }) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      final id = await _repository.iniciarReparacion(
-        idVehiculo: idVehiculo,
-        idTaller: idTaller,
-        idPropietario: idPropietario,
-        placa: placa,
-      );
-      _error = null;
-      return id;
-    } catch (e) {
-      _error = e.toString();
-      return null;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  /// Igual que [iniciar], pero primero busca si ya existe un ticket para
-  /// este vehículo en este taller (cualquier estado) y lo reutiliza en vez
-  /// de crear uno nuevo. `InitiateServiceScreen._onVehiculoListo` llama a
-  /// esto cada vez que se (re)entra a la pantalla de servicio de un
-  /// vehículo — sin esta comprobación, cada reentrada (recarga, volver
-  /// atrás y reabrir) creaba un ticket Kanban duplicado para la misma
-  /// visita.
-  @Deprecated('El ticket lo crea onCotizacionAceptada; usa recibirVehiculo')
-  Future<String?> iniciarOReutilizar({
-    required String idVehiculo,
-    required String idTaller,
-    required String idPropietario,
-    required String placa,
-  }) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      final existente = await _repository.buscarReparacionActiva(
-        idVehiculo: idVehiculo,
-        idTaller: idTaller,
-      );
-      if (existente != null) {
-        _error = null;
-        return existente;
-      }
-      final id = await _repository.iniciarReparacion(
-        idVehiculo: idVehiculo,
-        idTaller: idTaller,
-        idPropietario: idPropietario,
-        placa: placa,
-      );
-      _error = null;
-      return id;
-    } catch (e) {
-      _error = e.toString();
-      return null;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  /// Igual que [iniciarOReutilizar], pero para vehículos que llegaron por
-  /// "Buscar Vehículo" (búsqueda por placa), donde el cliente no conoce el
-  /// `id_propietario` del vehículo (ver
-  /// [ReparacionRepository.iniciarOReutilizarPorVehiculo]).
-  @Deprecated('El ticket lo crea onCotizacionAceptada; usa recibirVehiculo')
-  Future<String?> iniciarOReutilizarPorVehiculo({
-    required String idVehiculo,
-    required String idTaller,
-  }) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      final id = await _repository.iniciarOReutilizarPorVehiculo(
-        idVehiculo: idVehiculo,
-        idTaller: idTaller,
-      );
-      _error = null;
-      return id;
-    } catch (e) {
-      _error = e.toString();
-      return null;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  /// Marca la llegada física del vehículo al taller y devuelve el id del
-  /// ticket junto con si esta llamada lo movió a `recibido` recién ahora, o
-  /// `null` si no hay ninguno que recibir.
-  ///
-  /// El ticket ya no se crea aquí: nace cuando el cliente acepta la
-  /// cotización (Cloud Function `onCotizacionAceptada`), en
-  /// `pendiente_recepcion`. Si no aparece ninguno para este vehículo+taller es
-  /// justamente el caso que A3/B2 quiere impedir —recibir un vehículo sin
-  /// cotización aceptada— y se responde con un error accionable en vez de
-  /// abrir un ticket por la puerta de atrás.
-  ///
-  /// `recibidoAhora` en el resultado distingue "acabo de recibirlo" de "ya
-  /// estaba recibido" (hallazgo 2 de la revisión de la Tarea 4): sin esto la
-  /// pantalla no puede saber si de verdad transicionó algo, y podía anunciar
-  /// "vehículo recibido" cuando [ReparacionRepository.buscarReparacionActiva]
-  /// —sin orden ni filtro de estado— resolvió un ticket legado ya recibido en
-  /// vez del ticket nuevo que de verdad está esperando en el tablero.
-  @Deprecated(
-    'La Tarea 5 mueve esta busqueda a abrirVehiculoComoMecanico, antes de '
-    'entrar a InitiateServiceScreen: la ruta /initiate_service/:reparacionId '
-    'ya conoce el id del ticket, asi que la pantalla no necesita volver a '
-    'buscarlo por vehiculo+taller. Usa buscarReparacionActiva (para decidir '
-    'a donde navegar) y recibirVehiculoPorId (para la transicion) por '
-    'separado.',
-  )
-  Future<({String idReparacion, bool recibidoAhora})?> recibirVehiculo({
-    required String idVehiculo,
-    required String idTaller,
-  }) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      final idReparacion = await _repository.buscarReparacionActiva(
-        idVehiculo: idVehiculo,
-        idTaller: idTaller,
-      );
-      if (idReparacion == null) {
-        _error =
-            'Este vehículo no tiene una cotización aceptada en tu taller, '
-            'así que todavía no hay nada que recibir.';
-        return null;
-      }
-      final recibidoAhora = await _repository.recibirVehiculo(
-        idReparacion: idReparacion,
-      );
-      _error = null;
-      return (idReparacion: idReparacion, recibidoAhora: recibidoAhora);
-    } catch (e) {
-      _error = e.toString();
-      return null;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
   /// Busca si ya existe un ticket **vigente** de reparación para este
   /// vehículo en este taller. Es el único método que
   /// `abrirVehiculoComoMecanico` (`navegacion_vehiculo.dart`, Tarea 5) usa
@@ -209,10 +57,10 @@ class ReparacionProvider extends ChangeNotifier {
   /// ticket".
   ///
   /// [ReparacionRepository.buscarReparacionActiva] en sí sigue sin filtrar
-  /// por estado a propósito (lo necesitan sus llamadores deprecados, que
-  /// quieren reutilizar cualquier ticket existente); el filtro de
-  /// "vigente" vive aquí, en el único método pensado para gating, y en
-  /// ningún otro sitio.
+  /// por estado a propósito: la lista de Mis Servicios quiere "cualquier
+  /// ticket existente", incluido uno ya entregado. El filtro de "vigente"
+  /// vive aquí, en el único método pensado para gating, y en ningún otro
+  /// sitio.
   Future<String?> buscarReparacionActiva({
     required String idVehiculo,
     required String idTaller,

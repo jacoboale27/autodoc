@@ -256,9 +256,12 @@ describe('cotizaciones/privado/margen (hallazgo H2: el beneficio no debe ser leg
   // Residual encontrado en la re-revision de la revision de rama: acotar el
   // `update` por rol y valor no sirve de nada si el `create` deja elegir el
   // estado inicial. Crear ya en 'aceptada' no dispara `onCotizacionAceptada`
-  // (es un onUpdate), pero SI satisface la mitad "cotizacion aceptada" del
-  // gate de `verificarAperturaManual`, que es el predicado que R14 anadio
-  // para proteger `iniciarReparacionPorVehiculo`.
+  // (es un onUpdate), pero deja escrito un consentimiento del propietario que
+  // el propietario nunca dio. Cuando existia el callable de apertura manual
+  // (`iniciarReparacionPorVehiculo`, retirado en FUNC-02) eso bastaba para
+  // abrir un ticket; el dato sigue siendo la prueba de consentimiento en el
+  // resto de la app, asi que fijar el estado inicial en 'draft' sigue siendo
+  // lo que impide fabricarla.
   test('el mecanico NO puede crear la cotizacion ya en estado aceptada', async () => {
     const db = await withRole(env, UIDS.taller1, 'Taller');
     await assertFails(
@@ -341,8 +344,9 @@ describe('cotizaciones/privado/margen (hallazgo H2: el beneficio no debe ser leg
 // {id_mecanico: self, id_propietario: SELF, id_vehiculo: <vehiculo ajeno>,
 // estado: 'pendiente'} y luego, con la rama DEL PROPIETARIO de `update` (ya
 // blindada por rol+valor), aceptarsela el mismo — dos escrituras hasta
-// 'aceptada'. Eso es justo lo que `existeCotizacionAceptada`
-// (iniciarReparacionPorVehiculo.js:47-56) busca.
+// 'aceptada' — una prueba de consentimiento del propietario fabricada sin el.
+// (En su dia era ademas lo que buscaba el gate del callable de apertura
+// manual, retirado en FUNC-02.)
 describe('cotizaciones create (FIX 1: ataque de auto-aceptacion en dos escrituras)', () => {
   const seedVehiculoAjeno = async () =>
     seed(env, async (s) => {

@@ -13,26 +13,6 @@ class ReparacionRepository {
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _functions = functions ?? FirebaseFunctions.instance;
 
-  /// Igual que [iniciarReparacion]/[buscarReparacionActiva] combinados, pero
-  /// vía el callable `iniciarReparacionPorVehiculo` en vez de escribir
-  /// directo a Firestore. Se usa cuando el vehículo viene de "Buscar
-  /// Vehículo" (búsqueda por placa): `buscarVehiculoPorPlaca` no devuelve
-  /// `id_propietario` a propósito (para no exponer al dueño a cualquier
-  /// mecánico que busque una placa, ver ese callable), así que el cliente no
-  /// tiene ese dato para satisfacer la regla de creación de `reparaciones` —
-  /// el callable lo resuelve del lado servidor.
-  @Deprecated('El ticket lo crea onCotizacionAceptada')
-  Future<String> iniciarOReutilizarPorVehiculo({
-    required String idVehiculo,
-    required String idTaller,
-  }) async {
-    final result = await _functions
-        .httpsCallable('iniciarReparacionPorVehiculo')
-        .call({'id_vehiculo': idVehiculo, 'id_taller': idTaller});
-    final data = result.data as Map;
-    return data['id_reparacion'] as String;
-  }
-
   /// Cuántos tickets se traen para elegir el vigente. Un vehículo+taller
   /// legítimo acumula uno por visita, así que 20 cubre de sobra el historial
   /// de un cliente recurrente sin dejar la consulta sin tope.
@@ -54,11 +34,11 @@ class ReparacionRepository {
   /// el coche.
   ///
   /// Se prefiere el ticket ABIERTO más reciente; si todos están cerrados se
-  /// devuelve el más reciente, para no cambiar el comportamiento de los
-  /// llamadores que sí quieren "cualquier ticket existente" (los deprecados,
-  /// y la lista de Mis Servicios, donde un ticket ya entregado sigue siendo
-  /// tocable). El filtro de `cancelado` vive en
-  /// `ReparacionProvider.buscarReparacionActiva`, como hasta ahora.
+  /// devuelve el más reciente, para no cambiar el comportamiento del llamador
+  /// que sí quiere "cualquier ticket existente": la lista de Mis Servicios,
+  /// donde un ticket ya entregado sigue siendo tocable. El filtro de
+  /// `cancelado` vive en `ReparacionProvider.buscarReparacionActiva`, que es
+  /// el único que decide si se puede abrir la pantalla de servicio.
   ///
   /// Se ordena en memoria y no con `orderBy`: añadirlo a una consulta que ya
   /// tiene dos igualdades exige un índice compuesto nuevo, y el tope de
@@ -115,39 +95,6 @@ class ReparacionRepository {
         .get();
     if (!snap.exists || snap.data() == null) return null;
     return ReparacionModel.fromMap(snap.data()!, snap.id);
-  }
-
-  /// Crea un ticket desde el cliente. **Ya no es alcanzable en producción**:
-  /// desde A4b `firestore.rules` cierra `allow create` en `reparaciones` y el
-  /// único creador es la Cloud Function `onCotizacionAceptada`. Se conserva
-  /// porque hay tickets en producción abiertos por esta vía y porque los
-  /// tests la siguen usando para sembrar datos.
-  @Deprecated('El ticket lo crea onCotizacionAceptada')
-  Future<String> iniciarReparacion({
-    required String idVehiculo,
-    required String idTaller,
-    required String idPropietario,
-    required String placa,
-  }) async {
-    final ahora = DateTime.now();
-    final docRef = _firestore
-        .collection(FirestoreCollections.reparaciones)
-        .doc();
-    final model = ReparacionModel(
-      idReparacion: docRef.id,
-      idVehiculo: idVehiculo,
-      idTaller: idTaller,
-      idPropietario: idPropietario,
-      placa: placa,
-      estado: 'recibido',
-      historialEstados: [
-        {'estado': 'recibido', 'timestamp': ahora},
-      ],
-      fechaCreacion: ahora,
-      fechaActualizacion: ahora,
-    );
-    await docRef.set(model.toMap());
-    return docRef.id;
   }
 
   /// Marca que el vehículo llegó físicamente al taller: transición
