@@ -13,6 +13,15 @@ class ReparacionProvider extends ChangeNotifier {
   List<ReparacionModel> _reparaciones = [];
   List<ReparacionModel> get reparaciones => _reparaciones;
 
+  /// `true` cuando el tablero llegó al tope de [maxTicketsTablero] y por tanto
+  /// hay tickets vivos que NO se están mostrando.
+  ///
+  /// Se deriva de haber recibido exactamente el tope: es lo único que el
+  /// cliente puede saber sin pagar otra consulta. Puede dar un falso positivo
+  /// si el taller tiene justo 200 tickets abiertos y ni uno más, que es un
+  /// precio ridículo comparado con recortar en silencio.
+  bool get tableroTruncado => _reparaciones.length >= maxTicketsTablero;
+
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 

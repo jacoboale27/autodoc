@@ -8,6 +8,10 @@ const { ErrorRecepcion, recibirTicketYVincular,
   revocarVinculoAlCerrar } = require('./src/vinculoTaller');
 const { sincronizarReservaAlCotizar } = require('./src/sincronizarReservaAlCotizar');
 const {
+  DIAS_CADUCIDAD_VINCULO,
+  caducarVinculosInactivos,
+} = require('./src/caducarVinculos');
+const {
   subconjuntoPublicoCliente,
   compartenConversacion,
   llamanteEsMecanico,
@@ -935,6 +939,41 @@ exports.revocarVinculoAlCerrarTicket = functions.firestore
         error
       );
     }
+    return null;
+  });
+
+/**
+ * 5a6. La posesion del coche caduca sola.
+ *
+ * El vinculo taller-vehiculo se otorga al recibir el coche y se revoca al
+ * cerrarse el ticket, pero **nadie caducaba la posesion**: un taller que
+ * simplemente no moviera el ticket a `entregado` conservaba el acceso a la
+ * ficha del coche, su galeria, sus alertas y el historial que escribieron
+ * otros talleres, indefinidamente. El cierre dependia de su buena voluntad.
+ *
+ * Lo que caduca es el ACCESO, no el ticket: el ticket sigue abierto y en su
+ * estado, porque es trabajo del taller y no le toca a una funcion programada
+ * darlo por terminado ni inventarse una fecha de entrega. Es reversible sin
+ * que nadie intervenga — `recibirVehiculoDelTicket` reasegura el vinculo
+ * mientras el ticket no este cerrado, y la pantalla de servicio ya ofrece ese
+ * reintento —, asi que una reparacion larga de verdad se recupera con un
+ * toque.
+ *
+ * Residual 7.2 de FUNC-02. La logica vive en `src/caducarVinculos.js` para
+ * poder probarla sin firebase-functions.
+ */
+exports.caducarVinculosDeTalleresInactivos = functions.pubsub
+  .schedule('every 24 hours')
+  .onRun(async () => {
+    const { revisados, caducados, fallidos } = await caducarVinculosInactivos(
+      db,
+      { ahora: new Date() }
+    );
+    console.log(
+      `caducarVinculosDeTalleresInactivos: ${revisados} tickets sin actividad ` +
+        `en ${DIAS_CADUCIDAD_VINCULO} dias, ${caducados} vinculos caducados, ` +
+        `${fallidos} fallidos.`
+    );
     return null;
   });
 

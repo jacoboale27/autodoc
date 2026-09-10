@@ -99,6 +99,10 @@
         {
           "fieldPath": "estado",
           "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fecha_actualizacion",
+          "order": "DESCENDING"
         }
       ]
     },
@@ -116,6 +120,20 @@
         },
         {
           "fieldPath": "estado",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "reparaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "vinculo_activo",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fecha_actualizacion",
           "order": "ASCENDING"
         }
       ]

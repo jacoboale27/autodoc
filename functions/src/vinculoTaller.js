@@ -36,6 +36,22 @@ const { ESTADOS_TICKET_CERRADO } = require('./aceptarCotizacion');
  * `admin.firestore` dispara `ensureApp()`, hostil para stubbear en tests.
  */
 
+/**
+ * Campo del ticket que dice si su vinculo con el vehiculo esta VIVO ahora
+ * mismo.
+ *
+ * Existe para que la caducidad por inactividad (`src/caducarVinculos.js`,
+ * residual 7.2) pueda barrer por consulta en vez de por estado del ticket: un
+ * ticket abandonado sigue abandonado despues de caducarle el vinculo, asi que
+ * una consulta por estado lo devolveria en cada corrida y los que se quedan
+ * rancios despues no llegarian a barrerse nunca.
+ *
+ * Lo mantienen los dos extremos del ciclo de vida del vinculo, y si uno de los
+ * dos se olvida el barrido deja de funcionar en silencio: por eso hay tests
+ * que lo fijan a los dos lados.
+ */
+const CAMPO_VINCULO_ACTIVO = 'vinculo_activo';
+
 /** Estado en el que nace el ticket, antes de que el coche llegue. */
 const ESTADO_PENDIENTE_RECEPCION = 'pendiente_recepcion';
 const ESTADO_RECIBIDO = 'recibido';
@@ -203,7 +219,15 @@ async function recibirTicketYVincular(db, { idReparacion, ahora, autorizar }) {
           estado: ESTADO_RECIBIDO,
           historial_estados: historial,
           fecha_actualizacion: ahora,
+          [CAMPO_VINCULO_ACTIVO]: true,
         });
+      } else if (ticket[CAMPO_VINCULO_ACTIVO] !== true) {
+        // Recepcion idempotente: no transiciona el estado pero SI reasegura el
+        // vinculo, asi que el ticket tiene que quedar marcado. Sin esto, un
+        // ticket legado recuperaria el acceso sin quedar sujeto a la
+        // caducidad. Solo se escribe si hacia falta, para no pagar una
+        // escritura en cada "Recibir" repetido.
+        tx.update(ref, { [CAMPO_VINCULO_ACTIVO]: true });
       }
       // El vinculo se reasegura siempre (ver la nota de idempotencia arriba).
       //
@@ -291,9 +315,17 @@ async function revocarVinculoAlCerrar(db, { antes, despues, ref }) {
       idVehiculo: (despues.id_vehiculo || '').toString(),
       idTaller: (despues.id_taller || '').toString(),
     });
-    if (reintento) {
-      await ref.update({ [CAMPO_REVOCACION_PENDIENTE]: FieldValue.delete() });
+    // Solo se escribe si hay algo que limpiar. Cada escritura sobre el ticket
+    // vuelve a despertar a este mismo trigger (es un `onUpdate` sobre la
+    // coleccion que escribe): termina —ni la transicion ni la marca se
+    // cumplen la segunda vez— pero es una invocacion facturada, y no tiene
+    // sentido pagarla por un ticket legado que nunca tuvo el campo.
+    const limpieza = {};
+    if (despues[CAMPO_VINCULO_ACTIVO] === true) {
+      limpieza[CAMPO_VINCULO_ACTIVO] = false;
     }
+    if (reintento) limpieza[CAMPO_REVOCACION_PENDIENTE] = FieldValue.delete();
+    if (Object.keys(limpieza).length > 0) await ref.update(limpieza);
     return { resultado: 'revocado' };
   } catch (error) {
     if (!reintento) {
@@ -311,6 +343,7 @@ async function revocarVinculoAlCerrar(db, { antes, despues, ref }) {
 
 module.exports = {
   CAMPO_REVOCACION_PENDIENTE,
+  CAMPO_VINCULO_ACTIVO,
   ESTADO_PENDIENTE_RECEPCION,
   ESTADO_RECIBIDO,
   ErrorRecepcion,

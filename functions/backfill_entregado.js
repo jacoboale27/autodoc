@@ -18,6 +18,13 @@
 //    desaparecerían del tablero en silencio. Se les escribe el estado que
 //    siempre tuvieron implícito.
 //
+// 2b. `watchReparacionesActivas` pasa además a ORDENAR por
+//    `fecha_actualizacion` (para poder acotarse con un `limit` que no recorte
+//    tickets al azar), y `orderBy` excluye igual que `whereIn` los documentos
+//    sin el campo. A los tickets que no la tengan se les escribe su última
+//    actividad real — nunca la fecha de la migración, que los pondría a todos
+//    los primeros del tablero.
+//
 // 3. `talleres_vinculados` arrastra vínculos de visitas ya terminadas: la
 //    revocación automática (`revocarVinculoAlCerrarTicket`) solo dispara en la
 //    TRANSICIÓN de abierto a cerrado, así que todo lo que se cerró antes de
@@ -71,6 +78,10 @@ const {
   ESTADOS_VEHICULO_EN_TALLER,
 } = require('./src/aceptarCotizacion');
 const { CAMPO_MIGRACION } = require('./src/migracion');
+const {
+  fechaActualizacionTolerante,
+  cambioFechaActualizacion,
+} = require('./src/backfillFechas');
 
 const APLICAR = process.argv.includes('--apply');
 const DIAS_ENTREGADO = (() => {
@@ -105,14 +116,6 @@ async function aplicar(ops) {
 /** Marca de migración que los triggers de `reparaciones` usan para callarse. */
 const CENTINELA = { [CAMPO_MIGRACION]: true };
 
-/** `fecha_actualizacion` tolerante: sin fecha se trata como muy antiguo. */
-function fechaActualizacion(data) {
-  const valor = data.fecha_actualizacion || data.fecha_creacion;
-  if (valor && typeof valor.toDate === 'function') return valor.toDate();
-  if (valor instanceof Date) return valor;
-  return new Date(0);
-}
-
 async function main() {
   const corte = new Date(Date.now() - DIAS_ENTREGADO * 24 * 60 * 60 * 1000);
   console.log(
@@ -134,30 +137,38 @@ async function main() {
   let entregadosSinEstado = 0;
   let entregados = 0;
   let sigueEsperando = 0;
+  let sinFechaActualizacion = 0;
 
   // Cierra un ticket como 'entregado' SIN mover la fecha: `fecha_actualizacion`
   // y el sello del historial conservan el momento real de la ultima actividad,
   // que es el unico registro de cuando salio el coche. Poner `new Date()` aqui
   // hacia que todo ticket historico dijera que se entrego el dia de la
   // migracion.
+  // Los cambios de cada ticket se acumulan en un solo objeto y se escriben una
+  // vez: un ticket puede necesitar estado Y fecha, y dos escrituras sobre el
+  // mismo documento serian dos invocaciones de los triggers y dos facturas.
+  const cambiosPorTicket = new Map();
+  const acumular = (doc, data) => {
+    if (!cambiosPorTicket.has(doc.id)) {
+      cambiosPorTicket.set(doc.id, { ref: doc.ref, data: { ...CENTINELA } });
+    }
+    return cambiosPorTicket.get(doc.id).data;
+  };
+
   const marcarEntregado = (doc, data) => {
-    opsTickets.push({
-      ref: doc.ref,
-      data: {
-        ...CENTINELA,
+    Object.assign(acumular(doc, data), {
+      estado: 'entregado',
+      historial_estados: admin.firestore.FieldValue.arrayUnion({
         estado: 'entregado',
-        historial_estados: admin.firestore.FieldValue.arrayUnion({
-          estado: 'entregado',
-          timestamp: fechaActualizacion(data),
-        }),
-      },
+        timestamp: fechaActualizacionTolerante(data),
+      }),
     });
   };
 
   for (const doc of snap.docs) {
     const data = doc.data();
     let estado = data.estado ? data.estado.toString() : '';
-    const viejo = fechaActualizacion(data) < corte;
+    const viejo = fechaActualizacionTolerante(data) < corte;
 
     if (!estado) {
       // Ticket anterior a A4b: nacio en 'recibido' y nunca escribio el campo.
@@ -178,7 +189,7 @@ async function main() {
       } else {
         estado = 'recibido';
         recibidosSinEstado += 1;
-        opsTickets.push({ ref: doc.ref, data: { ...CENTINELA, estado } });
+        Object.assign(acumular(doc, data), { estado });
       }
     } else if (estado === 'listo_para_entrega') {
       if (viejo) {
@@ -190,12 +201,25 @@ async function main() {
       }
     }
 
+    // Residual 7.6 de FUNC-02: `watchReparacionesActivas` pasa a ordenar por
+    // `fecha_actualizacion` para poder acotarse con un `limit`, y un `orderBy`
+    // EXCLUYE los documentos que no tienen el campo. Sin esto, los tickets
+    // anteriores a A4b desaparecerian del tablero en silencio — el mismo fallo
+    // que el `whereIn` sobre `estado` obligo a cubrir en la ronda 6.
+    const fecha = cambioFechaActualizacion(data);
+    if (Object.keys(fecha).length > 0) {
+      sinFechaActualizacion += 1;
+      Object.assign(acumular(doc, data), fecha);
+    }
+
     estadoFinal.set(doc.id, {
       estado,
       idVehiculo: (data.id_vehiculo || '').toString(),
       idTaller: (data.id_taller || '').toString(),
     });
   }
+
+  opsTickets.push(...cambiosPorTicket.values());
 
   console.log(
     `  ${sinEstado} sin 'estado': ${recibidosSinEstado} recientes -> ` +
@@ -205,6 +229,11 @@ async function main() {
   console.log(`  ${entregados} 'listo_para_entrega' viejos -> 'entregado'`);
   console.log(
     `  ${sigueEsperando} 'listo_para_entrega' recientes se quedan en el tablero`
+  );
+  console.log(
+    `  ${sinFechaActualizacion} sin 'fecha_actualizacion' -> se les escribe su ` +
+      `ultima actividad real (sin ella caerian del tablero, que ahora ordena ` +
+      `por ese campo)`
   );
   await aplicar(opsTickets);
 

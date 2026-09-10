@@ -204,9 +204,22 @@ const _inventario = <_Consulta>[
   _Consulta(
     coleccion: 'reparaciones',
     igualdades: ['id_taller', 'estado'],
-    // `whereIn` sobre `estado`: el tablero Kanban y "Mis Servicios".
+    orden: 'fecha_actualizacion',
+    descendente: true,
+    // `whereIn` sobre `estado`: el tablero Kanban y "Mis Servicios". El orden
+    // es parte del tope de la consulta, no un adorno — ver
+    // `watchReparacionesActivas`.
     origen:
         'lib/features/mechanic/data/repositories/reparacion_repository.dart:237',
+  ),
+  _Consulta(
+    coleccion: 'reparaciones',
+    igualdades: ['vinculo_activo'],
+    orden: 'fecha_actualizacion',
+    // Barrido de caducidad del vínculo: `fecha_actualizacion < corte`. Una
+    // desigualdad ordena igual que un `orderBy` de cara al índice, y va
+    // ascendente porque interesan los más antiguos.
+    origen: 'functions/src/caducarVinculos.js:62',
   ),
   _Consulta(
     coleccion: 'reparaciones',
@@ -224,7 +237,7 @@ const _inventario = <_Consulta>[
 const _huerfanosConocidos = <String>[];
 
 /// Cuántos `.orderBy(` hay hoy en `lib/`. Ver el tercer test.
-const _orderByEsperados = 14;
+const _orderByEsperados = 15;
 
 class _Consulta {
   const _Consulta({

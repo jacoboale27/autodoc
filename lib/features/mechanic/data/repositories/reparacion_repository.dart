@@ -234,11 +234,34 @@ class ReparacionRepository {
   /// justo lo que el backfill de `functions/backfill_entregado.js`
   /// arregla escribiéndoles `estado: 'recibido'` — hay que correrlo ANTES de
   /// desplegar esta versión.
+  ///
+  /// **Va acotado** (residual 7.6 de FUNC-02). Sin `limit` este stream traía
+  /// el conjunto entero en cada `attach` del listener, y su tamaño no depende
+  /// del uso normal sino de que el taller cierre sus tickets: un ticket que
+  /// nunca pasa a `entregado` se queda aquí para siempre (residual 7.2). El
+  /// tope acota el coste sin depender de esa disciplina.
+  ///
+  /// El `orderBy` es parte del tope, no un adorno: recortar sin ordenar deja
+  /// fuera tickets **arbitrarios**, porque sin `orderBy` el orden es por
+  /// `__name__`, o sea por un id aleatorio. Ordenando por actividad, lo que
+  /// cae fuera es lo más rancio, que es lo que un tablero puede permitirse
+  /// perder de vista. Y que se haya llegado al tope se anuncia: ver
+  /// `ReparacionProvider.tableroTruncado`.
+  ///
+  /// Ese `orderBy` añade una segunda precondición al mismo backfill: excluye
+  /// los documentos sin `fecha_actualizacion`, y los tickets anteriores a A4b
+  /// pueden no tenerla. `backfill_entregado.js` se la escribe (pasada 1), con
+  /// el valor tolerante que ya usaba para decidir la antigüedad — así el
+  /// ticket conserva el momento real de su última actividad, no el de la
+  /// migración. **Correr el backfill antes de desplegar esta versión no es
+  /// opcional**, exactamente igual que para el `whereIn` de arriba.
   Stream<List<ReparacionModel>> watchReparacionesActivas(String idTaller) {
     return _firestore
         .collection(FirestoreCollections.reparaciones)
         .where('id_taller', isEqualTo: idTaller)
         .where('estado', whereIn: estadosReparacion)
+        .orderBy('fecha_actualizacion', descending: true)
+        .limit(maxTicketsTablero)
         .snapshots()
         .map(
           (snap) => snap.docs

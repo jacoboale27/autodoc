@@ -120,6 +120,11 @@ describe('FUNC-02 / una sola puerta de apertura de tickets', () => {
       // La transicion `pendiente_recepcion` -> `recibido`, junto con el
       // vinculo al vehiculo, en una sola transaccion.
       'src/vinculoTaller.js': 1,
+      // El barrido de caducidad del vinculo (residual 7.2). NO crea ni cierra
+      // tickets: consulta los que tienen vinculo vivo y sin actividad, y lo
+      // unico que les escribe es `vinculo_activo: false`. El acceso caduca; el
+      // ticket sigue siendo trabajo del taller.
+      'src/caducarVinculos.js': 1,
       // index.js: la relectura del ticket para notificar y el barrido de
       // `onVehicleDelete` que CIERRA los tickets del vehiculo borrado. Baja de
       // 3 a 2 al cerrar el residual 7.7: `recibirVehiculoDelTicket` leia el

@@ -314,10 +314,13 @@ describe('vinculoTaller / recibirTicketYVincular', () => {
     assert.strictEqual(db.docs['reparaciones/r1'].estado, 'en_revision');
     // Pero el vinculo SI se reescribe: un ticket abierto antes de que
     // existiera este flujo (o uno cuyo vinculo se revoco por error) recupera
-    // el acceso al reabrirlo, en vez de quedarse sin ficha para siempre.
+    // el acceso al reabrirlo, en vez de quedarse sin ficha para siempre. Y el
+    // ticket queda marcado como vinculado, que es lo que lo pone bajo la
+    // caducidad por inactividad: recuperar el acceso sin quedar sujeto a ella
+    // seria una puerta trasera al residual 7.2.
     assert.deepStrictEqual(
       db.escrituras.map((e) => e.clave),
-      ['vehiculos/v1']
+      ['reparaciones/r1', 'vehiculos/v1']
     );
   });
 
@@ -370,7 +373,11 @@ describe('vinculoTaller / recibirTicketYVincular', () => {
     });
 
     assert.strictEqual(resultado.recibidoAhora, false);
-    assert.deepStrictEqual(db.escrituras.map((x) => x.clave), ['vehiculos/v1']);
+    // Igual que arriba: el vinculo se reasegura y el ticket queda marcado.
+    assert.deepStrictEqual(db.escrituras.map((x) => x.clave), [
+      'reparaciones/r1',
+      'vehiculos/v1',
+    ]);
   });
 
   it('un ticket que no existe se rechaza con not-found', async () => {
@@ -577,5 +584,87 @@ describe('vinculoTaller / revocarVinculoAlCerrar, un fallo no se pierde', () => 
 
     assert.strictEqual(resultado, 'pendiente');
     assert.deepStrictEqual(db.escrituras, []);
+  });
+});
+
+describe('vinculoTaller / el ticket dice si su vinculo esta vivo', () => {
+  // `vinculo_activo` es lo que hace barrible la caducidad del residual 7.2:
+  // el barrido pregunta por ese campo, no por el estado del ticket, porque un
+  // ticket abandonado sigue abandonado despues de caducarle el vinculo y
+  // volveria a salir en cada corrida. Lo mantienen los dos extremos, y si uno
+  // de los dos se olvida el barrido deja de funcionar en silencio.
+  it('recibir el vehiculo lo marca como vivo', async () => {
+    const db = fakeDb({
+      'reparaciones/r1': ticketPendiente(),
+      'vehiculos/v1': { talleres_vinculados: [] },
+    });
+
+    await recibirTicketYVincular(db, { idReparacion: 'r1', ahora: AHORA });
+
+    assert.strictEqual(db.docs['reparaciones/r1'].vinculo_activo, true);
+  });
+
+  it('recibir un ticket YA recibido tambien lo marca (reasegura el vinculo)', async () => {
+    // La recepcion es idempotente y reasegura el vinculo aunque no transicione
+    // el estado; si no marcara, un ticket legado recuperaria el acceso sin
+    // quedar sujeto a la caducidad.
+    const db = fakeDb({
+      'reparaciones/r1': ticketPendiente({ estado: 'en_revision' }),
+      'vehiculos/v1': { talleres_vinculados: [] },
+    });
+
+    const { recibidoAhora } = await recibirTicketYVincular(db, {
+      idReparacion: 'r1',
+      ahora: AHORA,
+    });
+
+    assert.strictEqual(recibidoAhora, false);
+    assert.strictEqual(db.docs['reparaciones/r1'].vinculo_activo, true);
+  });
+
+  it('cerrar el ticket lo marca como muerto', async () => {
+    const cerrado = {
+      id_vehiculo: 'v1',
+      id_taller: 't1',
+      estado: 'entregado',
+      vinculo_activo: true,
+    };
+    const db = fakeDb({
+      'reparaciones/r1': cerrado,
+      'vehiculos/v1': { talleres_vinculados: ['t1'] },
+    });
+
+    await revocarVinculoAlCerrar(db, {
+      antes: { id_vehiculo: 'v1', id_taller: 't1', estado: 'recibido' },
+      despues: cerrado,
+      ref: db.collection('reparaciones').doc('r1'),
+    });
+
+    assert.strictEqual(db.docs['reparaciones/r1'].vinculo_activo, false);
+  });
+});
+
+describe('vinculoTaller / la marca no cuesta escrituras de mas', () => {
+  it('cerrar un ticket legado (sin el campo) no le escribe nada', async () => {
+    // Cada escritura sobre el ticket vuelve a despertar al trigger, que es un
+    // `onUpdate` sobre la misma coleccion. Termina, pero se factura, y un
+    // ticket que nunca tuvo `vinculo_activo` no tiene nada que limpiar.
+    const cerrado = { id_vehiculo: 'v1', id_taller: 't1', estado: 'entregado' };
+    const db = fakeDb({
+      'reparaciones/r1': cerrado,
+      'vehiculos/v1': { talleres_vinculados: ['t1'] },
+    });
+
+    const { resultado } = await revocarVinculoAlCerrar(db, {
+      antes: { id_vehiculo: 'v1', id_taller: 't1', estado: 'recibido' },
+      despues: cerrado,
+      ref: db.collection('reparaciones').doc('r1'),
+    });
+
+    assert.strictEqual(resultado, 'revocado');
+    assert.deepStrictEqual(
+      db.escrituras.map((e) => e.clave),
+      ['vehiculos/v1']
+    );
   });
 });

@@ -17,6 +17,7 @@ import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/reparaciones_kanban_screen.dart'
     show etiquetasEstado;
+import 'package:autodoc/features/mechanic/presentation/widgets/aviso_tablero_truncado.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/reparacion_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 import 'package:autodoc/features/mechanic/presentation/navegacion_vehiculo.dart';
@@ -565,11 +566,15 @@ class _MisServicios extends StatelessWidget {
       );
     } else {
       content = Column(
-        children: reparaciones
-            .map(
-              (r) => _MisServiciosItem(reparacion: r, onTap: () => onSelect(r)),
-            )
-            .toList(),
+        children: [
+          // El tablero va acotado (ver `watchReparacionesActivas`): si se llegó
+          // al tope hay servicios abiertos que NO están en esta lista, y
+          // callárselo convierte "no aparece" en "no existe".
+          if (provider.tableroTruncado) const AvisoTableroTruncado(),
+          ...reparaciones.map(
+            (r) => _MisServiciosItem(reparacion: r, onTap: () => onSelect(r)),
+          ),
+        ],
       );
     }
 
