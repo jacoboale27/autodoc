@@ -268,6 +268,12 @@ en frio tiene que saber antes de tocar `reparaciones` o el chat:
   9.4): Firestore las resuelve por index merging. Se retiraron cuatro indices. Si tu consulta
   lleva un `not-in` o un `in`, eso es una DESIGUALDAD y va en `orden`, no en `igualdades`.
 
+**El gap 7.1 de esa tanda esta cerrado aparte** (`fix/marcar-leidos`, fusionada el
+2026-09-11): `marcarComoLeidos` leia el hilo entero y su WriteBatch reventaba con mas de
+499 mensajes del otro participante, dejando el contador de no leidos sin resetear para
+siempre. Ahora filtra en el servidor (`id_remitente` + `estado != 'visto'`) y marca por
+lotes de 400. Indice nuevo: `mensajes (id_remitente, estado)`.
+
 **Siguiente tarea del plan: UX-03 / UX-04** (accesibilidad y errores
 de datos). Dos frentes: la landing
 (`landing-web/src`: `prefers-reduced-motion`, menu movil accesible, `Link > button` anidado) y

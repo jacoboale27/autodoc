@@ -169,11 +169,17 @@ pruebas. Dos frentes distintos: la landing (Next.js, `prefers-reduced-motion`, m
 accesible, `Link > button` anidado) y la app (`Error: ${snapshot.error}` crudo → estado
 localizado con reintento). Se pueden inventariar en paralelo.
 
-Y **antes de UX-03/UX-04 hay que decidir qué se hace con los gaps nuevos** del §7 de
-`GAPS-02-drenaje.md` — la regla del 2026-09-10 es permanente: un gap documentado no está
-cerrado. El que más vale: **el batch de `marcarComoLeidos` revienta** con un hilo de más de
-499 mensajes del otro participante (límite de 500 escrituras por `WriteBatch`), y a partir
-de ahí el contador de no leídos no se resetea nunca más.
+**El gap 7.1 ya está cerrado** (rama `fix/marcar-leidos`, fusionada el 2026-09-11): el
+batch de `marcarComoLeidos` reventaba con hilos de más de 499 mensajes del otro
+participante y dejaba el contador de no leídos sin resetear para siempre. Era el único de
+los seis que rompía; el resto del §7 de `GAPS-02-drenaje.md` son descubrimientos y
+decisiones documentadas, y **quedan por decidir antes de UX-03/UX-04** — la regla del
+2026-09-10 sigue siendo permanente: un gap documentado no está cerrado.
+
+Del cierre de 7.1 vale la pena recordar dos cosas: **`FakeFirebaseFirestore` SÍ aplica el
+límite de 500 por batch**, así que ese defecto se reproduce con el doble tal cual; y lo que
+el doble no ve —cuántos lotes se commitean y de qué tamaño— hay que envolverlo para
+afirmarlo, o «se marcaron todos» da igual de verde leyendo el hilo entero de una vez.
 
 Corta la rama de la punta de `integracion/ola-1`, nunca de una `fix/*`.
 
