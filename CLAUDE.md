@@ -71,8 +71,9 @@ la landing ya integrada: normaliza las calificaciones que llegan por la REST de 
 —de ahí salía el crash— y retira Vercel Analytics, que en Firebase Hosting no tiene backend
 al que hablar.
 
-**Pendiente de fusionar: `fix/gaps-02`** (la tanda de drenaje, cerrada el 2026-09-11).
-Ninguna otra.
+**Ya no queda ninguna rama `fix/*` pendiente de fusionar.** `fix/gaps-02` (la tanda de
+drenaje) entro el 2026-09-11 en `integracion/ola-1` (`3130550`), fast-forward y sin
+conflictos.
 
 #### Árbol combinado, verificado entero el 2026-09-09
 

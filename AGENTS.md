@@ -96,8 +96,9 @@ Definition of Done al final, evidencia base en `docs/AUDITORIA_CREA_J_2026_CODEX
 **Estado a 2026-09-11. Cerradas y verificadas 12 tareas:** SEC-01, SEC-02, SEC-03, DATA-01,
 VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01 y FUNC-02.
 
-**La tanda de drenaje de gaps YA ESTA CERRADA** (rama `fix/gaps-02`, pendiente de fusionar;
-evidencia en `docs/evidencia/GAPS-02-drenaje.md`): cierra los gaps 9.1, 9.2, 9.3 y 9.4.
+**La tanda de drenaje de gaps YA ESTA CERRADA Y FUSIONADA** (rama `fix/gaps-02`, en
+`integracion/ola-1` desde el 2026-09-11, `3130550`; evidencia en
+`docs/evidencia/GAPS-02-drenaje.md`): cierra los gaps 9.1, 9.2, 9.3 y 9.4.
 **Siguiente por orden §12: UX-03 / UX-04.** Luego SEC-04, OPS-01, H-01, INNO-01, FINAL-01.
 
 **Los nueve residuales de FUNC-02 estan cerrados** en la rama `fix/gaps-func02`. No es una
