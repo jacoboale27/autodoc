@@ -182,6 +182,8 @@ colapso del dedup— va al §7 como gaps nuevos, con su razón.
 | `flutter test` | **1197 / 1197**, exit 0 (salida entera a archivo, nunca por `tail`) |
 | `functions` (Mocha) | **218 passing** |
 | `test_rules` (Jest + emuladores) | **435 / 435**, 25 suites, exit 0 |
+| E2E de la app (Playwright) | **32 pasan, 2 `fixme`**, exit 0. No ejercita chat ni `reparaciones` (ninguna de sus siembras toca esas colecciones), así que lo que confirma es que la app sigue arrancando |
+| Puertos al salir | 0 en `LISTENING` |
 | E2E de la landing | no se relanza: no se toca `landing-web/` ni `e2e/tests-landing/` |
 
 ---
