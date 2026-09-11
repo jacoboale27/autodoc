@@ -240,6 +240,16 @@ const _inventario = <_Consulta>[
     origen: 'lib/features/chat/data/repositories/chat_repository.dart:52',
   ),
   _Consulta(
+    coleccion: 'mensajes',
+    igualdades: ['id_remitente'],
+    orden: 'estado',
+    // `marcarComoLeidos`, acotada (gap 7.1): `estado != 'visto'`. Una
+    // desigualdad cuenta como el `orderBy` de cara al indice, asi que su campo
+    // va el ULTIMO. Es una subcoleccion, pero la consulta NO es de grupo de
+    // coleccion: el indice va con queryScope COLLECTION igual que los demas.
+    origen: 'lib/features/chat/data/repositories/chat_repository.dart:205',
+  ),
+  _Consulta(
     coleccion: 'talleres',
     igualdades: ['estado'],
     orden: 'calificacion_promedio',

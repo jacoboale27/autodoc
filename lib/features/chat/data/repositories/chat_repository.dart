@@ -164,7 +164,52 @@ class ChatRepository {
     await batch.commit();
   }
 
-  // Marcar mensajes como leídos
+  /// Resetea el contador de no leídos y marca como vistos los mensajes del
+  /// otro participante, **por lotes acotados** (gap 7.1).
+  ///
+  /// Antes traía el hilo ENTERO (`.get()` sin `limit`, en cada apertura de la
+  /// conversación) y metía todas las escrituras en un solo `WriteBatch`. Un
+  /// batch admite **500 operaciones**: con más de 499 mensajes del otro, el
+  /// `commit()` fallaba entero y se llevaba por delante el reseteo del
+  /// contador, así que la conversación arrastraba su globo rojo para siempre y
+  /// cada apertura reintentaba el mismo batch imposible.
+  ///
+  /// El filtro pasa al SERVIDOR —`id_remitente == el otro` y
+  /// `estado != 'visto'`— en vez de traerlo todo y descartar en memoria, así
+  /// que se leen solo los mensajes que se van a escribir. Necesita el índice
+  /// compuesto `mensajes (id_remitente, estado)`.
+  ///
+  /// Es una desigualdad y no un `whereIn ['enviado','entregado']` a propósito:
+  /// un `in` se ejecuta como N subconsultas con el `limit` aplicado a cada
+  /// una, que es exactamente lo que el gap 9.1 acaba de quitar del tablero.
+  ///
+  /// **Una desigualdad excluye los documentos que no tienen el campo**, la
+  /// trampa de siempre. Aquí se comprobó antes de usarla: `estado` está en
+  /// `MensajeModel.toMap` desde el primer commit del modelo (`50b8c87`), el
+  /// único escritor de la subcolección es `enviarMensaje` —ningún trigger
+  /// escribe mensajes, solo los lee— y por tanto no existe ni ha existido un
+  /// mensaje sin `estado`. Y el bucle converge aunque lo hubiera: un documento
+  /// invisible al filtro nunca es devuelto, así que no puede repetirse.
+  ///
+  /// El otro participante se resuelve **leyendo la conversación**, no se
+  /// recibe como parámetro: en una conversación solo hay dos partes, así que
+  /// «los que no son míos» y «los suyos» son el mismo conjunto, pero la
+  /// igualdad sí se puede combinar con el filtro de estado. Esa lectura de un
+  /// documento sustituye a las N que costaba traerse el hilo entero, y evita
+  /// que un llamador pueda equivocarse de uid — si se pasara el propio, se
+  /// marcarían como vistos los mensajes de uno mismo.
+  ///
+  /// Si el uid no es ninguno de los dos participantes no se escribe nada: no
+  /// hay contador que resetear ni acuses que dar.
+  ///
+  /// El bucle es convergente sin cursor: cada vuelta marca como vistos los que
+  /// devuelve, y esos dejan de cumplir el filtro. No hace falta paginar con
+  /// `startAfter` — que además sería frágil, porque el campo que ordena es el
+  /// mismo que se está reescribiendo.
+  ///
+  /// El reseteo del contador viaja en el PRIMER lote, no suelto: así la
+  /// escritura que el usuario nota —el globo que desaparece— sigue siendo
+  /// atómica con el primer tramo de acuses, como lo era antes.
   Future<void> marcarComoLeidos(
     String conversacionId,
     bool isMecanico,
@@ -174,29 +219,49 @@ class ChatRepository {
         .collection(FirestoreCollections.conversaciones)
         .doc(conversacionId);
 
-    final batch = _firestore.batch();
-
-    // 1. Resetear contador de la conversación
-    batch.update(convRef, {
-      isMecanico ? 'no_leidos_mecanico' : 'no_leidos_propietario': 0,
-    });
-
-    // 2. Actualizar estado de los mensajes no leídos del otro usuario a 'visto'
-    final unreadMsgs = await _firestore
-        .collection(FirestoreCollections.conversaciones)
-        .doc(conversacionId)
-        .collection(FirestoreCollections.mensajes)
-        .where('id_remitente', isNotEqualTo: currentUserId)
-        .get();
-
-    for (var doc in unreadMsgs.docs) {
-      final data = doc.data();
-      if (data['estado'] != 'visto') {
-        batch.update(doc.reference, {'estado': 'visto'});
-      }
+    final conv = await convRef.get();
+    final datos = conv.data();
+    if (datos == null) return;
+    final idPropietario = (datos['id_propietario'] ?? '').toString();
+    final idMecanico = (datos['id_mecanico'] ?? '').toString();
+    final String idOtroParticipante;
+    if (currentUserId.isNotEmpty && currentUserId == idPropietario) {
+      idOtroParticipante = idMecanico;
+    } else if (currentUserId.isNotEmpty && currentUserId == idMecanico) {
+      idOtroParticipante = idPropietario;
+    } else {
+      return;
     }
+    if (idOtroParticipante.isEmpty) return;
 
-    await batch.commit();
+    final mensajes = convRef.collection(FirestoreCollections.mensajes);
+
+    var primerLote = true;
+    while (true) {
+      final pendientes = await mensajes
+          .where('id_remitente', isEqualTo: idOtroParticipante)
+          .where('estado', isNotEqualTo: kEstadoMensajeVisto)
+          .limit(maxMensajesPorLoteDeLectura)
+          .get();
+
+      if (pendientes.docs.isEmpty && !primerLote) return;
+
+      final batch = _firestore.batch();
+      if (primerLote) {
+        batch.update(convRef, {
+          isMecanico ? 'no_leidos_mecanico' : 'no_leidos_propietario': 0,
+        });
+        primerLote = false;
+      }
+      for (final doc in pendientes.docs) {
+        batch.update(doc.reference, {'estado': kEstadoMensajeVisto});
+      }
+      await batch.commit();
+
+      // El lote que no se llena es el último: los que acabamos de marcar ya no
+      // cumplen el filtro, así que la siguiente vuelta traería lo que quede.
+      if (pendientes.docs.length < maxMensajesPorLoteDeLectura) return;
+    }
   }
 
   // Actualizar metadatos de un mensaje

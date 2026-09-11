@@ -190,13 +190,7 @@ colapso del dedup— va al §7 como gaps nuevos, con su razón.
 
 ## 7. Gaps nuevos que deja esta tanda
 
-### 7.1 `marcarComoLeidos` lee el hilo entero y su batch puede reventar (MEDIO)
-
-`chat_repository.dart`: `.where('id_remitente', isNotEqualTo: uid).get()` **sin `limit`**
-cada vez que se abre una conversación, filtrando `estado != 'visto'` en memoria, y todo
-dentro de un único `WriteBatch`. Un hilo con más de 499 mensajes del otro participante
-**revienta el commit** (límite de 500 escrituras) y el contador de no leídos no se resetea
-nunca más. El gap 9.3 acotó el stream de al lado y dejó esta lectura intacta.
+### 7.1 `marcarComoLeidos` — **CERRADO** el 2026-09-11 (ver §9)
 
 ### 7.2 El stream de reservas no lo consume ninguna pantalla (BAJO)
 
@@ -249,3 +243,60 @@ siembras de test sin el campo `abierto` — el defecto ensayado, no una regresi�
 4. Pendientes de antes: `SOLICITUDES_LANDING_SALT` y la política TTL de
    `solicitudes_landing_control`. Ya ejecutado el 2026-09-10:
    `firebase functions:delete iniciarReparacionPorVehiculo`.
+
+
+---
+
+## 9. Cierre del gap 7.1 (rama `fix/marcar-leidos`)
+
+El único de los seis que no era descubrimiento ni decisión, sino **un defecto que rompe**.
+
+`marcarComoLeidos` hacía `.where('id_remitente', isNotEqualTo: uid).get()` **sin `limit`**
+en cada apertura de conversación, descartaba los ya vistos en memoria, y metía todas las
+escrituras en un único `WriteBatch`. Un batch admite **500 operaciones**: con más de 499
+mensajes del otro participante el `commit()` falla entero **y se lleva por delante el
+reseteo del contador**, así que la conversación arrastra su globo rojo para siempre y cada
+apertura reintenta el mismo batch imposible.
+
+**El defecto se reproduce con `FakeFirebaseFirestore` tal cual**: el doble sí aplica el
+límite y lanza «Firestore supports at most 500 tasks in a batch». Se comprobó antes de
+arreglar nada. Lo que el doble NO ve es *cuántos* lotes se commitean y de qué tamaño —
+«se marcaron todos» daría igual de verde leyendo el hilo entero de una vez—, así que el
+test envuelve `batch()` para contarlo. Esa es la afirmación que distingue las dos
+versiones.
+
+**Qué cambia:**
+
+- El filtro pasa al servidor: `id_remitente == el otro` **y** `estado != 'visto'`, con
+  `limit(400)`. Se leen solo los mensajes que se van a escribir.
+- Bucle por lotes hasta agotar, **convergente sin cursor**: cada vuelta marca los que
+  devuelve, y esos dejan de cumplir el filtro. Paginar con `startAfter` sería frágil, porque
+  el campo que ordena es el mismo que se está reescribiendo.
+- El reseteo del contador viaja en el PRIMER lote, no suelto: la escritura que el usuario
+  nota —el globo que desaparece— sigue siendo atómica con el primer tramo de acuses, como
+  lo era antes.
+- **El otro participante se resuelve leyendo la conversación**, no se recibe como
+  parámetro. Esa lectura de un documento sustituye a las N que costaba traerse el hilo, y
+  cierra de paso un riesgo que el diseño con parámetro abría: un llamador que pasara el uid
+  propio marcaría como vistos sus propios mensajes. Con la guarda, un uid que no participa
+  —o vacío, o una conversación borrada— no escribe nada.
+
+**La desigualdad, otra vez, y otra vez comprobada.** `estado != 'visto'` excluye los
+documentos sin el campo. Se verificó antes de usarla: `estado` está en
+`MensajeModel.toMap` desde el primer commit del modelo (`50b8c87`) y el único escritor de
+la subcolección es `enviarMensaje` — ningún trigger escribe mensajes, solo los lee. Se
+descartó `whereIn ['enviado','entregado']` a propósito: un `in` vuelve a multiplicar
+subconsultas, que es justo lo que el gap 9.1 acaba de quitar del tablero.
+
+**Índice nuevo:** `mensajes (id_remitente, estado)`, con su entrada en el inventario del
+centinela.
+
+**Evidencia:** `test/features/chat/marcar_leidos_acotado_test.dart` (9 casos).
+
+**Gates:** `flutter analyze` limpio, `flutter test` **1206 / 1206**. No se relanzan reglas
+ni Functions: el cambio no toca `firestore.rules` ni `functions/`.
+
+**Runbook:** el índice nuevo entra en el mismo `firebase deploy --only firestore:indexes`
+que ya estaba pendiente. **Va antes que la app**: sin él la consulta muere con
+`failed-precondition` y, como el fallo ocurre al abrir una conversación, dejaría el chat
+sin acuses de lectura.

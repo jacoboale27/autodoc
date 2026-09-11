@@ -16,6 +16,27 @@ part 'mensaje_model.g.dart';
 /// Llegar al tope se anuncia ([ChatProvider.hiloTruncado]).
 const int maxMensajesHilo = 200;
 
+/// Cuántos mensajes se marcan como vistos por lote (gap 7.1).
+///
+/// `marcarComoLeidos` leía el hilo ENTERO y metía todas las escrituras en un
+/// solo `WriteBatch`. Un batch de Firestore admite **500 operaciones**: con más
+/// de 499 mensajes del otro participante el `commit()` falla entero, y con él
+/// se queda sin resetear el contador de no leídos — la conversación arrastra su
+/// globo rojo para siempre y cada apertura reintenta el mismo batch imposible.
+///
+/// 400 y no 499 para dejar sitio holgado al reseteo del contador, que viaja en
+/// el primer lote, y por el mismo margen que usa `TAM_LOTE` en
+/// `functions/backfill_entregado.js`.
+const int maxMensajesPorLoteDeLectura = 400;
+
+/// Estado de un mensaje que el receptor ya vio (el doble check).
+///
+/// Vive aquí y no como literal suelto porque `ChatRepository.marcarComoLeidos`
+/// lo usa en los DOS lados de la misma operación —el filtro de la consulta y
+/// el valor que escribe—, y si esos dos se separaran el bucle dejaría de
+/// converger: marcaría una y otra vez los mismos documentos.
+const String kEstadoMensajeVisto = 'visto';
+
 @HiveType(typeId: 0)
 class MensajeModel {
   @HiveField(0)
