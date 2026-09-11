@@ -129,6 +129,14 @@ service cloud.firestore {
       return datos.get('estado', 'recibido');
     }
 
+    // ¿Este ticket queda ABIERTO? Espejo de `ticketAbierto`
+    // (lib/core/models/reparacion_model.dart) y de su gemelo en
+    // functions/src/aceptarCotizacion.js. Las tres copias tienen que decir lo
+    // mismo: es el campo que el tablero consulta por igualdad (gap 9.1).
+    function ticketAbierto(datos) {
+      return !(estadoTicket(datos) in estadosTicketCerrado());
+    }
+
     // ¿Este taller ha tenido este vehiculo alguna vez?
     //
     // `talleres_conocidos` es append-only: se escribe al recibir el vehiculo
@@ -1515,7 +1523,43 @@ service cloud.firestore {
       //
       // Las tres se cierran sin ninguna lectura extra, solo con `resource` y
       // `request.resource`.
-      allow update: if isAuthenticated() && (
+      // El booleano denormalizado que el tablero consulta (gap 9.1) tiene que
+      // decir la verdad sobre el estado RESULTANTE, lo escriba quien lo
+      // escriba. Se mira `request.resource.data` y NO `resource.data`:
+      // autorizar contra el documento VIEJO es el patron exacto que destapo
+      // los cinco huecos de autorizacion de QA-01.
+      //
+      // Son DOS condiciones y hacen falta las dos:
+      //
+      //   1. si el campo esta, su valor tiene que ser el derivado del estado.
+      //      Sin esto el taller podria poner `abierto: false` en un ticket
+      //      vivo —escondiendo un coche de su propio tablero sin cerrar el
+      //      ticket, con el vinculo a la ficha intacto— o dejarlo en `true` al
+      //      entregar, y el coche entregado ocuparia una columna para siempre.
+      //   2. si el documento YA lo tenia, tiene que seguir teniendolo. El
+      //      `.get(campo, derivado)` de la condicion 1 no distingue "nunca lo
+      //      tuvo" de "me lo acabo de borrar": sobre un campo ausente degenera
+      //      en `derivado == derivado`, una tautologia, y un
+      //      `update({abierto: FieldValue.delete()})` lograba por OMISION
+      //      exactamente lo que la condicion 1 impide por valor. Lo encontro
+      //      el gate de revision de esta misma rama.
+      //
+      // La tolerancia a la ausencia se conserva solo para los tickets legados
+      // que nunca tuvieron el campo y cuyo backfill aun no ha corrido: no
+      // salen en el tablero (una igualdad sobre un campo ausente no devuelve
+      // nada), pero el taller no se queda sin poder tocar sus tickets viejos.
+      //
+      // Va fuera de la rama del taller, aplicandose tambien al admin: un admin
+      // que cerrara un ticket sin bajar `abierto` dejaria una tarjeta clavada
+      // en el tablero que el taller NO puede arreglar, porque un ticket
+      // cerrado le es inmutable.
+      function abiertoCoherente() {
+        return request.resource.data.get('abierto', ticketAbierto(request.resource.data))
+                 == ticketAbierto(request.resource.data)
+          && (!('abierto' in resource.data) || 'abierto' in request.resource.data);
+      }
+
+      allow update: if isAuthenticated() && abiertoCoherente() && (
         isAdmin() ||
         (actuaPorTaller(resource.data.id_taller)
           && !request.resource.data.diff(resource.data)

@@ -1,5 +1,21 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// Cuántas conversaciones trae la bandeja como mucho.
+///
+/// Gap 9.2 de `GAPS-FUNC-02-cierre-de-residuales.md`: el stream de la bandeja
+/// no tenía tope ni orden en el servidor —traía TODAS las conversaciones del
+/// usuario y las ordenaba con un `sort` en memoria—, así que un mecánico con
+/// 800 hilos pagaba 800 lecturas en cada apertura del chat y en cada reattach
+/// del listener. El tope no es una cifra de producto: es un techo de coste.
+///
+/// 100 conversaciones simultáneas ya es una bandeja muy por encima de la de
+/// cualquier usuario real, así que en la práctica no recorta nada; lo que hace
+/// es acotar el peor caso.
+///
+/// Llegar al tope se anuncia ([ChatProvider.bandejaTruncada]): un recorte
+/// silencioso hace que un hilo que falta se lea como un hilo que no existe.
+const int maxConversacionesBandeja = 100;
+
 class ConversacionModel {
   final String id;
   final String idPropietario;

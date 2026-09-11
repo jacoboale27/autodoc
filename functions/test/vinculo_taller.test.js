@@ -281,6 +281,65 @@ describe('vinculoTaller / recibirTicketYVincular', () => {
     );
   });
 
+  it('deja el ticket marcado como ABIERTO (gap 9.1)', async () => {
+    // El ticket ya estaba abierto antes de recibirlo, asi que el valor no
+    // cambia; lo que importa es que quede ESCRITO. Los tickets anteriores al
+    // gap 9.1 no traen el campo, y desde que el tablero consulta
+    // `abierto == true` un documento sin el no aparece: esta escritura es lo
+    // que repara a los legados que pasen por una recepcion, sin esperar al
+    // backfill.
+    const db = fakeDb({
+      'reparaciones/r1': ticketPendiente(),
+      'vehiculos/v1': { placa: 'ABC123', id_propietario: 'cli1' },
+    });
+
+    await recibirTicketYVincular(db, { idReparacion: 'r1', ahora: AHORA });
+
+    assert.strictEqual(db.docs['reparaciones/r1'].abierto, true);
+  });
+
+  it('repara `abierto` en un ticket LEGADO, que es el que lo necesita', async () => {
+    // Gate de revision: la escritura vivia dentro de `if (recibidoAhora)`, y
+    // `recibidoAhora` solo es cierto para un ticket en `pendiente_recepcion`
+    // — o sea uno que creo `construirTicketReparacion`, que YA escribe el
+    // campo. Reparaba justo el caso que no lo necesitaba.
+    //
+    // Los legados (anteriores a A4b, sin `estado`) se resuelven a 'recibido',
+    // asi que caen por la rama idempotente y nunca recibian `abierto`. Son
+    // exactamente los que no salen en el tablero.
+    const db = fakeDb({
+      'reparaciones/r1': { id_vehiculo: 'v1', id_taller: 't1', id_propietario: 'cli1' },
+      'vehiculos/v1': { placa: 'ABC123', id_propietario: 'cli1' },
+    });
+
+    const resultado = await recibirTicketYVincular(db, {
+      idReparacion: 'r1',
+      ahora: AHORA,
+    });
+
+    assert.strictEqual(resultado.recibidoAhora, false);
+    assert.strictEqual(db.docs['reparaciones/r1'].abierto, true);
+  });
+
+  it('un legado ya reparado no paga otra escritura', async () => {
+    // La rama idempotente solo escribe si hace falta: recibir dos veces no
+    // puede costar una escritura cada vez.
+    const db = fakeDb({
+      'reparaciones/r1': {
+        id_vehiculo: 'v1', id_taller: 't1', id_propietario: 'cli1',
+        estado: 'en_revision', abierto: true, vinculo_activo: true,
+      },
+      'vehiculos/v1': { placa: 'ABC123', id_propietario: 'cli1' },
+    });
+
+    await recibirTicketYVincular(db, { idReparacion: 'r1', ahora: AHORA });
+
+    assert.deepStrictEqual(
+      db.escrituras.map((e) => e.clave),
+      ['vehiculos/v1']
+    );
+  });
+
   it('revocar el vinculo NO borra `talleres_conocidos`', async () => {
     // La visita termina y el taller pierde el acceso a la ficha, pero no la
     // historia de que atendio el coche: si `talleres_conocidos` se borrara,

@@ -84,8 +84,8 @@ class ReparacionProvider extends ChangeNotifier {
   /// por estado a propósito: prefiere el abierto y cae al más reciente si
   /// todos están cerrados. El filtro de "vigente" vive aquí, en el único
   /// método pensado para gating, y en ningún otro sitio. "Mis Servicios" no
-  /// pasa por aquí: se pinta desde `watchReparacionesActivas`, cuyo `whereIn`
-  /// sobre [estadosReparacion] ya dejaba fuera `entregado` y `cancelado`.
+  /// pasa por aquí: se pinta desde `watchReparacionesActivas`, cuya igualdad
+  /// `abierto == true` ya deja fuera `entregado` y `cancelado`.
   Future<String?> buscarReparacionActiva({
     required String idVehiculo,
     required String idTaller,

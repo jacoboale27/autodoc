@@ -2677,6 +2677,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Go back'**
   String get notFoundGoBack;
+
+  /// Notice that the chat inbox hit its cap and some conversations are not listed
+  ///
+  /// In en, this message translates to:
+  /// **'Showing the {tope} conversations with the most recent activity. There are more threads that do not fit here.'**
+  String bandejaTruncada(int tope);
+
+  /// Notice that the chat thread hit its cap and older messages were not loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Showing the {tope} most recent messages. Older ones are not loaded.'**
+  String hiloTruncado(int tope);
 }
 
 class _AppLocalizationsDelegate

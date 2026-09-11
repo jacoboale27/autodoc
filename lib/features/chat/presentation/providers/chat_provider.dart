@@ -19,8 +19,23 @@ class ChatProvider extends ChangeNotifier {
   List<ConversacionModel> _conversaciones = [];
   List<ConversacionModel> get conversaciones => _conversaciones;
 
+  /// `true` cuando la bandeja llegó al tope de [maxConversacionesBandeja] y
+  /// por tanto hay conversaciones que NO se están mostrando.
+  ///
+  /// Se deriva de haber recibido exactamente el tope: es lo único que el
+  /// cliente puede saber sin pagar otra consulta. Puede dar un falso positivo
+  /// con justo 100 conversaciones y ni una más — un precio ridículo comparado
+  /// con recortar en silencio.
+  bool get bandejaTruncada =>
+      _conversaciones.length >= maxConversacionesBandeja;
+
   List<MensajeModel> _mensajesActuales = [];
   List<MensajeModel> get mensajesActuales => _mensajesActuales;
+
+  /// `true` cuando el hilo llegó al tope de [maxMensajesHilo]: hay mensajes
+  /// MÁS ANTIGUOS que no se están mostrando. Los recientes están todos, que es
+  /// de qué lado tiene que caer el recorte.
+  bool get hiloTruncado => _mensajesActuales.length >= maxMensajesHilo;
 
   StreamSubscription? _conversacionesSub;
   StreamSubscription? _mensajesSub;

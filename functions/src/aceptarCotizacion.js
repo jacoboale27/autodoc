@@ -86,6 +86,29 @@ class ErrorTicketNoAplicable extends Error {}
 const ESTADOS_TICKET_CERRADO = ['cancelado', 'entregado'];
 
 /**
+ * ¿Este estado deja el ticket ABIERTO, o sea en alguna columna del tablero?
+ *
+ * Es la definicion del booleano `abierto` que el ticket lleva denormalizado
+ * desde el gap 9.1: el tablero consultaba `estado whereIn [5 estados]`, y
+ * Firestore ejecuta un `in` como N subconsultas aplicando el `limit` a CADA
+ * una, asi que leia hasta 1000 documentos para devolver 200. Una igualdad lee
+ * exactamente el tope.
+ *
+ * Espejo de `ticketAbierto` en lib/core/models/reparacion_model.dart y de la
+ * funcion del mismo nombre en firestore.rules. Las tres copias tienen que
+ * decir lo mismo.
+ *
+ * Los tickets anteriores a A4b no traen `estado` y nacian en 'recibido':
+ * cuentan como abiertos, igual que en las otras dos copias.
+ *
+ * @param {?string} estado
+ * @returns {boolean}
+ */
+function ticketAbierto(estado) {
+  return !ESTADOS_TICKET_CERRADO.includes((estado || 'recibido').toString());
+}
+
+/**
  * Estados en los que el coche esta FISICAMENTE en el taller: los unicos en
  * los que el vinculo `vehiculos.talleres_vinculados` esta justificado.
  *
@@ -173,6 +196,10 @@ function construirTicketReparacion({ cotizacionId, cotizacion, vehiculo, idTalle
     id_propietario: idPropietario,
     placa: datosVehiculo.placa || cotizacion.placa || '',
     estado: 'pendiente_recepcion',
+    // Denormalizado para que el tablero pregunte por una igualdad (gap 9.1).
+    // Un ticket que naciera sin el campo no aparece en el tablero: una
+    // igualdad sobre un campo ausente no devuelve nada.
+    abierto: ticketAbierto('pendiente_recepcion'),
     historial_estados: [{ estado: 'pendiente_recepcion', timestamp: ahora }],
     fecha_creacion: ahora,
     fecha_actualizacion: ahora,
@@ -507,6 +534,7 @@ module.exports = {
   PREFIJO_TICKET,
   ESTADOS_TICKET_CERRADO,
   ESTADOS_VEHICULO_EN_TALLER,
+  ticketAbierto,
   ErrorAutorizacionPermanente,
   ErrorTicketNoAplicable,
   idTicketDeCotizacion,

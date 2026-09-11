@@ -27,6 +27,11 @@ Future<FakeFirebaseFirestore> seedReparaciones({
       'id_propietario': 'p$i',
       'placa': 'ABC${100 + i}',
       'estado': estado,
+      // El tablero consulta `abierto == true` desde el gap 9.1, y una igualdad
+      // sobre un campo ausente no devuelve NADA: una siembra que se lo olvide
+      // no pinta ni una tarjeta. Es la misma trampa que el backfill cubre en
+      // produccion.
+      'abierto': ticketAbierto(estado),
       'historial_estados': <Map<String, dynamic>>[],
       'fecha_creacion': DateTime(2026, 8, 1),
       'fecha_actualizacion': DateTime(2026, 8, 5),

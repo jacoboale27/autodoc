@@ -776,5 +776,23 @@
   "notFoundGoBack": "Go back",
   "@notFoundGoBack": {
     "description": "Button returning the user to the previous screen from the 404"
+  },
+  "bandejaTruncada": "Showing the {tope} conversations with the most recent activity. There are more threads that do not fit here.",
+  "@bandejaTruncada": {
+    "description": "Notice that the chat inbox hit its cap and some conversations are not listed",
+    "placeholders": {
+      "tope": {
+        "type": "int"
+      }
+    }
+  },
+  "hiloTruncado": "Showing the {tope} most recent messages. Older ones are not loaded.",
+  "@hiloTruncado": {
+    "description": "Notice that the chat thread hit its cap and older messages were not loaded",
+    "placeholders": {
+      "tope": {
+        "type": "int"
+      }
+    }
   }
 }

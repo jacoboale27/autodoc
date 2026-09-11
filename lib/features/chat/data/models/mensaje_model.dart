@@ -3,6 +3,19 @@ import 'package:hive/hive.dart';
 
 part 'mensaje_model.g.dart';
 
+/// Cuántos mensajes trae un hilo como mucho.
+///
+/// Gap 9.3 de `GAPS-FUNC-02-cierre-de-residuales.md`: `streamMensajes` traía
+/// el hilo ENTERO en cada apertura del chat, sin techo, y un hilo solo crece.
+///
+/// El recorte va por el FINAL —los [maxMensajesHilo] más recientes— y no por
+/// el principio: un hilo al que le falta lo último dicho es peor que uno
+/// lento. La consulta ya venía ordenada `timestamp DESC`, así que el `limit`
+/// cae del lado correcto por construcción.
+///
+/// Llegar al tope se anuncia ([ChatProvider.hiloTruncado]).
+const int maxMensajesHilo = 200;
+
 @HiveType(typeId: 0)
 class MensajeModel {
   @HiveField(0)

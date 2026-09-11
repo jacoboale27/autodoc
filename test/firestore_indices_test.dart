@@ -50,6 +50,12 @@ void main() {
     final sinIndice = <String>[];
 
     for (final consulta in _inventario) {
+      // Una consulta de SOLO igualdades no necesita índice compuesto:
+      // Firestore la resuelve por *index merging* sobre los índices de un
+      // solo campo, que son automáticos. Esta regla era más estricta que
+      // Firestore (gap 9.4) y con ella el centinela exigía —y por tanto
+      // mantenía vivos— cuatro índices que nadie necesita.
+      if (!consulta.necesitaCompuesto) continue;
       if (!indices.any((indice) => indice.sirve(consulta))) {
         sinIndice.add('${consulta.origen} necesita $consulta');
       }
@@ -68,8 +74,16 @@ void main() {
 
   test('no hay indices declarados que ninguna consulta use', () {
     final indices = _leerIndices(raiz);
+    // Un índice solo cuenta como "usado" si sirve a una consulta que de
+    // verdad exige compuesto. Casar con una consulta de solo igualdades no
+    // basta: esa consulta se resuelve igual sin él, así que el índice sigue
+    // siendo un coste por escritura que no compra nada (gap 9.4).
     final huerfanos = indices
-        .where((indice) => !_inventario.any(indice.sirve))
+        .where(
+          (indice) => !_inventario.any(
+            (consulta) => consulta.necesitaCompuesto && indice.sirve(consulta),
+          ),
+        )
         .map((indice) => indice.toString())
         .where((nombre) => !_huerfanosConocidos.contains(nombre))
         .toList();
@@ -205,6 +219,27 @@ const _inventario = <_Consulta>[
     origen: 'lib/features/chat/data/repositories/chat_repository.dart:91',
   ),
   _Consulta(
+    coleccion: 'conversaciones',
+    igualdades: ['id_propietario'],
+    orden: 'ultimo_mensaje_ts',
+    descendente: true,
+    // La bandeja de chat, acotada (gap 9.2). El campo del `where` lo elige el
+    // rol en tiempo de ejecución, así que son dos índices distintos y hacen
+    // falta los dos — igual que en `reservas`.
+    //
+    // Los dos se habían retirado por huérfanos al cerrar los residuales de
+    // FUNC-02: estaban huérfanos precisamente PORQUE el orden se hacía en
+    // memoria. Acotar la consulta es lo que vuelve a necesitarlos.
+    origen: 'lib/features/chat/data/repositories/chat_repository.dart:52',
+  ),
+  _Consulta(
+    coleccion: 'conversaciones',
+    igualdades: ['id_mecanico'],
+    orden: 'ultimo_mensaje_ts',
+    descendente: true,
+    origen: 'lib/features/chat/data/repositories/chat_repository.dart:52',
+  ),
+  _Consulta(
     coleccion: 'talleres',
     igualdades: ['estado'],
     orden: 'calificacion_promedio',
@@ -234,11 +269,13 @@ const _inventario = <_Consulta>[
   ),
   _Consulta(
     coleccion: 'reparaciones',
-    igualdades: ['id_taller', 'estado'],
+    igualdades: ['id_taller', 'abierto'],
     orden: 'fecha_actualizacion',
     descendente: true,
-    // `whereIn` sobre `estado`: el tablero Kanban y "Mis Servicios". El orden
-    // es parte del tope de la consulta, no un adorno — ver
+    // El tablero Kanban y "Mis Servicios". Fue un `whereIn` sobre `estado`
+    // hasta el gap 9.1: ahora es la igualdad sobre el booleano denormalizado,
+    // que es lo que hace que el `limit` acote lecturas y no solo documentos.
+    // El orden es parte del tope, no un adorno — ver
     // `watchReparacionesActivas`.
     origen:
         'lib/features/mechanic/data/repositories/reparacion_repository.dart:237',
@@ -254,10 +291,16 @@ const _inventario = <_Consulta>[
   ),
   _Consulta(
     coleccion: 'reparaciones',
-    igualdades: ['id_vehiculo', 'id_taller', 'estado'],
+    igualdades: ['id_vehiculo', 'id_taller'],
+    orden: 'estado',
     // Dedup del servidor: `estado not-in ESTADOS_TICKET_CERRADO`. Un `not-in`
     // es una desigualdad, así que su campo va el ÚLTIMO del índice — que es
     // donde queda.
+    //
+    // Va en `orden` y no en `igualdades` justamente porque NO es una
+    // igualdad: desde el gap 9.4, las consultas de solo igualdades ya no
+    // exigen compuesto, y declararla como tal habría hecho que el centinela
+    // dejara de pedir el índice que esta consulta sí necesita.
     origen: 'functions/src/aceptarCotizacion.js:247',
   ),
 ];
@@ -268,7 +311,7 @@ const _inventario = <_Consulta>[
 const _huerfanosConocidos = <String>[];
 
 /// Cuántos `.orderBy(` hay hoy en `lib/`. Ver el tercer test.
-const _orderByEsperados = 15;
+const _orderByEsperados = 16;
 
 /// Cuántos `.where(` hay hoy en `functions/index.js` y `functions/src/`. Ver el
 /// cuarto test.
@@ -288,6 +331,12 @@ class _Consulta {
   final String? orden;
   final bool descendente;
   final String origen;
+
+  /// Solo las consultas que **ordenan** (o que llevan una desigualdad, que
+  /// para el índice se comporta igual) exigen un índice compuesto. Las de
+  /// solo igualdades las resuelve el *index merging* sobre los índices
+  /// automáticos de un campo.
+  bool get necesitaCompuesto => orden != null;
 
   @override
   String toString() {

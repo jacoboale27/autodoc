@@ -1411,4 +1411,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notFoundGoBack => 'Go back';
+
+  @override
+  String bandejaTruncada(int tope) {
+    return 'Showing the $tope conversations with the most recent activity. There are more threads that do not fit here.';
+  }
+
+  @override
+  String hiloTruncado(int tope) {
+    return 'Showing the $tope most recent messages. Older ones are not loaded.';
+  }
 }

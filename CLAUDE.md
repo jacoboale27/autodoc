@@ -10,10 +10,11 @@ Evidencia base: `docs/AUDITORIA_CREA_J_2026_CODEX.md` y `docs/AUDITORIA_CREA_J_2
 (dos auditorías independientes, ambas 64/100 por rutas distintas). **No repitas la auditoría
 antes de implementar**; el plan lo prohíbe.
 
-**Estado a 2026-09-10 — 12 tareas cerradas y verificadas:** SEC-01, SEC-02, SEC-03, DATA-01,
+**Estado a 2026-09-11 — 12 tareas cerradas y verificadas:** SEC-01, SEC-02, SEC-03, DATA-01,
 VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01 y **FUNC-02**.
-**Siguiente por orden §12: UX-03 / UX-04**, pero antes va la tanda de drenaje de gaps
-(`docs/evidencia/GAPS-02-plan-de-drenaje.md`) — ver «Empezar aquí mañana».
+**Siguiente por orden §12: UX-03 / UX-04.** La tanda de drenaje de gaps que iba antes ya
+está cerrada (rama `fix/gaps-02`, evidencia en `docs/evidencia/GAPS-02-drenaje.md`) — ver
+más abajo.
 
 QA-01 ya esta fusionada en `integracion/ola-1` (`c17fead`), sin conflictos. Evidencia completa
 en `docs/evidencia/QA-01-matriz.md`. Lo que hay que saber sin leerla:
@@ -70,7 +71,8 @@ la landing ya integrada: normaliza las calificaciones que llegan por la REST de 
 —de ahí salía el crash— y retira Vercel Analytics, que en Firebase Hosting no tiene backend
 al que hablar.
 
-**Ya no queda ninguna rama `fix/*` pendiente de fusionar.**
+**Pendiente de fusionar: `fix/gaps-02`** (la tanda de drenaje, cerrada el 2026-09-11).
+Ninguna otra.
 
 #### Árbol combinado, verificado entero el 2026-09-09
 
@@ -129,27 +131,48 @@ Las ramas `fix/*` ya integradas: **no trabajes sobre ellas**, parte de `integrac
 
 Antes de empezar una tarea, mira qué ramas `fix/*` existen ya para no duplicar.
 
-### Empezar aquí mañana (2026-09-11)
+### La tanda de drenaje `fix/gaps-02` está cerrada (2026-09-11)
 
-**Primero se drenan los gaps nuevos, y DESPUÉS van UX-03 / UX-04.** Decisión del usuario del
-2026-09-10, y es regla permanente, no la excepción de esta vez: **un gap documentado no está
-cerrado**. El plan de la tanda —lotes, orden, trampas y gates— ya está escrito en
-`docs/evidencia/GAPS-02-plan-de-drenaje.md`; los gaps en sí, en el §9 de
-`docs/evidencia/GAPS-FUNC-02-cierre-de-residuales.md`.
+Cierra los gaps **9.1, 9.2, 9.3 y 9.4** del §9 de `GAPS-FUNC-02-cierre-de-residuales.md`.
+Evidencia en `docs/evidencia/GAPS-02-drenaje.md`. Lo que hay que saber sin leerla:
 
-Resumen del plan: rama `fix/gaps-02` desde `integracion/ola-1`, y tres lotes —
-**A)** los streams sin tope (9.2 la bandeja de chat, 9.3 reservas y el hilo de mensajes);
-**B)** decidir sobre los cuatro índices de solo igualdades (9.4);
-**C)** denormalizar `abierto` en el ticket (9.1), el único que toca reglas y Functions y por
-eso va al final, con los dos revisores. 9.5 y 9.6 se remiten a OPS-01; 9.7, 9.8 y 9.9 se
-quedan anotados a propósito.
+- **La trampa que el plan mandaba comprobar antes de tocar la bandeja de chat NO existía.**
+  Ninguna conversación puede nacer sin `ultimo_mensaje_ts` (campo obligatorio del modelo,
+  único creador en `lib/`, las Functions solo leen esa colección, y el modelo nació con el
+  campo). Ni backfill ni paso de runbook. Comprobarlo ahorró una migración inventada — y es
+  el contrapunto del lote C, donde la misma trampa sí era real.
+- **Denormalizar `abierto` puso rojos diez tests de golpe**, todos por siembras que no
+  escribían el campo: una igualdad sobre un campo ausente no devuelve NADA. Es exactamente
+  lo que le pasaría a producción sin correr el backfill, ensayado gratis.
+- **Los dos revisores encontraron cuatro cosas mal, dos graves.** (1) `abierto` se podía
+  **borrar** con `FieldValue.delete()` y la regla lo dejaba pasar —`.get(campo, derivado)`
+  degenera en una tautología sobre un campo ausente—, así que un taller escondía un ticket
+  vivo de su propio tablero con el vínculo al coche intacto. (2) El backfill estampaba el
+  centinela `migracion_ronda6` en TODOS los tickets, y ese centinela es **pegajoso**: cada
+  ticket vivo el día de la migración habría dejado de notificar sus transiciones y de
+  revocar el vínculo al entregarse, para siempre. Los dos cerrados, con sus tests.
+- **`ReservaProvider.inicializarReservasUsuario` no tiene ningún llamador en `lib/`**: lo
+  sostienen sus tests, como los `iniciar*` de FUNC-02. Se acotó igual; anotado como gap.
+- **El runbook creció:** el backfill tiene ahora una pasada 4 (`abierto`) y **sin ella el
+  tablero de todos los talleres sale vacío**; el despliegue de índices **retira seis** de
+  producción; y las reglas van DESPUÉS del backfill y JUNTO a la app, nunca antes.
 
-**Cuando esa tanda cierre, toca UX-03 / UX-04 — "Accesibilidad y errores de datos"** (§7 del
-plan, P2). Áreas que señala: `landing-web/src`, `service_history_screen.dart`, componentes
-de error/empty state, ARB y pruebas. Dos frentes distintos: la landing (Next.js,
-`prefers-reduced-motion`, menú móvil accesible, `Link > button` anidado) y la app
-(`Error: ${snapshot.error}` crudo → estado localizado con reintento). Se pueden inventariar
-en paralelo.
+Cifras de la rama: `flutter analyze` limpio, Functions **218**, reglas **435 / 435** en 25
+suites.
+
+### Lo siguiente: UX-03 / UX-04
+
+**"Accesibilidad y errores de datos"** (§7 del plan, P2). Áreas que señala:
+`landing-web/src`, `service_history_screen.dart`, componentes de error/empty state, ARB y
+pruebas. Dos frentes distintos: la landing (Next.js, `prefers-reduced-motion`, menú móvil
+accesible, `Link > button` anidado) y la app (`Error: ${snapshot.error}` crudo → estado
+localizado con reintento). Se pueden inventariar en paralelo.
+
+Y **antes de UX-03/UX-04 hay que decidir qué se hace con los gaps nuevos** del §7 de
+`GAPS-02-drenaje.md` — la regla del 2026-09-10 es permanente: un gap documentado no está
+cerrado. El que más vale: **el batch de `marcarComoLeidos` revienta** con un hilo de más de
+499 mensajes del otro participante (límite de 500 escrituras por `WriteBatch`), y a partir
+de ahí el contador de no leídos no se resetea nunca más.
 
 Corta la rama de la punta de `integracion/ola-1`, nunca de una `fix/*`.
 

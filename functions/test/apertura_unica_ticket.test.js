@@ -125,14 +125,20 @@ describe('FUNC-02 / una sola puerta de apertura de tickets', () => {
       // unico que les escribe es `vinculo_activo: false`. El acceso caduca; el
       // ticket sigue siendo trabajo del taller.
       'src/caducarVinculos.js': 1,
-      // index.js: la relectura del ticket para notificar y el barrido de
-      // `onVehicleDelete` que CIERRA los tickets del vehiculo borrado. Baja de
-      // 3 a 2 al cerrar el residual 7.7: `recibirVehiculoDelTicket` leia el
+      // El barrido de `onVehicleDelete`, que CIERRA los tickets del vehiculo
+      // borrado. Vivia inline en index.js y sale aqui con el gap 9.1: desde
+      // que el tablero consulta `abierto == true` en vez de mirar `estado`, un
+      // barrido que cierre el ticket sin bajar `abierto` deja la tarjeta
+      // clavada en el tablero para siempre — y un cuerpo de trigger no es
+      // ejercitable, asi que ese fallo no lo veia ninguna prueba. Es el mismo
+      // movimiento que ya hicieron `vinculoTaller` y `caducarVinculos`.
+      'src/cerrarTicketsDeVehiculo.js': 1,
+      // index.js: solo queda la relectura del ticket para notificar. Bajo de 3
+      // a 2 al cerrar el residual 7.7 (`recibirVehiculoDelTicket` leia el
       // ticket para autorizar y `recibirTicketYVincular` lo volvia a leer para
-      // escribir. Ahora la autorizacion se le pasa como callback y decide
-      // dentro de la transaccion, sobre el mismo snapshot. Una lectura menos
-      // por recepcion y una ventana TOCTOU menos.
-      'index.js': 2,
+      // escribir; ahora la autorizacion viaja como callback dentro de la
+      // transaccion) y de 2 a 1 al extraer el barrido de arriba.
+      'index.js': 1,
     };
 
     const real = {};

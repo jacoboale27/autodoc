@@ -116,6 +116,20 @@ class FakeChatProvider extends ChangeNotifier implements ChatProvider {
   @override
   List<MensajeModel> get mensajesActuales => _mensajes;
 
+  /// Los dos avisos de truncado se derivan aquí de la **misma** regla que en
+  /// `ChatProvider` (longitud contra el tope) en vez de ser un flag que el
+  /// test enciende a mano.
+  ///
+  /// Es deliberado, y viene de la tanda anterior: dos dobles de prueba no
+  /// podían ver el defecto que decían cubrir —uno tenía `limit()` como no-op—
+  /// y uno de ellos dio un falso verde. Un flag manual dejaría pasar una
+  /// pantalla que pinta el aviso con tres conversaciones en la lista.
+  @override
+  bool get bandejaTruncada =>
+      _conversaciones.length >= maxConversacionesBandeja;
+  @override
+  bool get hiloTruncado => _mensajes.length >= maxMensajesHilo;
+
   /// Registro de llamadas, para poder afirmar que la UI **no** dispara
   /// trabajo de red de más (ver Task 11, el `FutureBuilder` en `build`).
   final List<String> llamadas = [];

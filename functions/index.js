@@ -18,6 +18,7 @@ const {
 } = require('./src/obtenerPerfilPublico');
 const { listarEmpleadosPublicos } = require('./src/obtenerEmpleadosPublicos');
 const { CAMPO_MIGRACION, esMigracion } = require('./src/migracion');
+const { cerrarTicketsDeVehiculo } = require('./src/cerrarTicketsDeVehiculo');
 // El FieldValue tiene que salir del MISMO modulo que la instancia de Firestore.
 // Observado en el emulador de Functions: `admin.firestore.FieldValue` llega
 // undefined, y el de `@google-cloud/firestore` (que este package.json declara
@@ -1245,31 +1246,10 @@ exports.onVehicleDelete = functions.firestore.document('vehiculos/{vehicleId}').
     // no una novedad que notificarle a un propietario que acaba de borrar el
     // vehiculo a proposito.
     try {
-      const abiertos = await db
-        .collection('reparaciones')
-        .where('id_vehiculo', '==', vehicleId)
-        .get();
-      const cerrables = abiertos.docs.filter(
-        (d) => !ESTADOS_TICKET_CERRADO.includes((d.data().estado || 'recibido').toString())
-      );
-      for (let i = 0; i < cerrables.length; i += 400) {
-        const lote = db.batch();
-        for (const d of cerrables.slice(i, i + 400)) {
-          lote.update(d.ref, {
-            estado: 'cancelado',
-            [CAMPO_MIGRACION]: true,
-            historial_estados: admin.firestore.FieldValue.arrayUnion({
-              estado: 'cancelado',
-              timestamp: new Date(),
-            }),
-            fecha_actualizacion: new Date(),
-          });
-        }
-        await lote.commit();
-      }
-      if (cerrables.length > 0) {
+      const cerrados = await cerrarTicketsDeVehiculo(db, { vehicleId });
+      if (cerrados > 0) {
         console.log(
-          `Closed ${cerrables.length} open reparaciones for deleted vehicle ${vehicleId}.`
+          `Closed ${cerrados} open reparaciones for deleted vehicle ${vehicleId}.`
         );
       }
     } catch (e) {

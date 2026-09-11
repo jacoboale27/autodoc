@@ -1419,4 +1419,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get notFoundGoBack => 'Volver';
+
+  @override
+  String bandejaTruncada(int tope) {
+    return 'Se muestran las $tope conversaciones con actividad mas reciente. Hay mas hilos que no caben aqui.';
+  }
+
+  @override
+  String hiloTruncado(int tope) {
+    return 'Se muestran los $tope mensajes mas recientes. Los anteriores no estan cargados.';
+  }
 }

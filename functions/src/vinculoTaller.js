@@ -1,7 +1,7 @@
 'use strict';
 
 const { FieldValue } = require('firebase-admin/firestore');
-const { ESTADOS_TICKET_CERRADO } = require('./aceptarCotizacion');
+const { ESTADOS_TICKET_CERRADO, ticketAbierto } = require('./aceptarCotizacion');
 
 /**
  * RONDA 5 — el vinculo taller-vehiculo sigue a la POSESION del coche, no a la
@@ -217,17 +217,34 @@ async function recibirTicketYVincular(db, { idReparacion, ahora, autorizar }) {
         historial.push({ estado: ESTADO_RECIBIDO, timestamp: ahora });
         tx.update(ref, {
           estado: ESTADO_RECIBIDO,
+          // Denormalizado para el tablero (gap 9.1). El ticket ya estaba
+          // abierto, asi que el valor no cambia; lo que hace falta es que
+          // quede ESCRITO — un ticket legado sin el campo no aparece en el
+          // tablero, porque una igualdad sobre un campo ausente no devuelve
+          // nada. Asi la recepcion repara al legado sin esperar al backfill.
+          abierto: ticketAbierto(ESTADO_RECIBIDO),
           historial_estados: historial,
           fecha_actualizacion: ahora,
           [CAMPO_VINCULO_ACTIVO]: true,
         });
-      } else if (ticket[CAMPO_VINCULO_ACTIVO] !== true) {
+      } else if (
+        ticket[CAMPO_VINCULO_ACTIVO] !== true ||
+        ticket.abierto !== ticketAbierto(estado)
+      ) {
         // Recepcion idempotente: no transiciona el estado pero SI reasegura el
         // vinculo, asi que el ticket tiene que quedar marcado. Sin esto, un
         // ticket legado recuperaria el acceso sin quedar sujeto a la
         // caducidad. Solo se escribe si hacia falta, para no pagar una
         // escritura en cada "Recibir" repetido.
-        tx.update(ref, { [CAMPO_VINCULO_ACTIVO]: true });
+        //
+        // Aqui es donde se repara `abierto` en los tickets LEGADOS, y no en la
+        // rama de arriba: los legados no traen `estado`, se resuelven a
+        // 'recibido' y por tanto nunca son `recibidoAhora`. Son justo los que
+        // no salen en el tablero mientras no corra el backfill.
+        tx.update(ref, {
+          [CAMPO_VINCULO_ACTIVO]: true,
+          abierto: ticketAbierto(estado),
+        });
       }
       // El vinculo se reasegura siempre (ver la nota de idempotencia arriba).
       //

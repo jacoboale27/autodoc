@@ -12,6 +12,10 @@ class ReservaProvider extends ChangeNotifier {
   List<ReservaModel> _reservas = [];
   List<ReservaModel> get reservas => _reservas;
 
+  /// `true` cuando el historial llegó al tope de [maxReservasHistorial] y por
+  /// tanto hay reservas más antiguas que no se están mostrando.
+  bool get reservasTruncadas => _reservas.length >= maxReservasHistorial;
+
   StreamSubscription? _reservasSub;
 
   bool _isLoading = false;

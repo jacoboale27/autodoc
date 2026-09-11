@@ -15,38 +15,6 @@
       ]
     },
     {
-      "collectionGroup": "conversaciones",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "id_propietario",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "id_mecanico",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "conversaciones",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "id_propietario",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "id_mecanico",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "id_vehiculo",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "servicios",
       "queryScope": "COLLECTION",
       "fields": [
@@ -79,25 +47,11 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "id_vehiculo",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "id_taller",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "reparaciones",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
           "fieldPath": "id_taller",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "estado",
+          "fieldPath": "abierto",
           "order": "ASCENDING"
         },
         {
@@ -147,24 +101,6 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "id_taller",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "estado",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "cotizaciones",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "id_vehiculo",
-          "order": "ASCENDING"
-        },
-        {
           "fieldPath": "estado",
           "order": "ASCENDING"
         },
@@ -198,6 +134,34 @@
         },
         {
           "fieldPath": "fecha_hora_propuesta",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "conversaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "id_propietario",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ultimo_mensaje_ts",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "conversaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "id_mecanico",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ultimo_mensaje_ts",
           "order": "DESCENDING"
         }
       ]

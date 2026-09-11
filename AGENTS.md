@@ -93,12 +93,12 @@ Plan maestro: `docs/superpowers/plans/2026-09-06-remediation-master-plan-crea-j-
 Definition of Done al final, evidencia base en `docs/AUDITORIA_CREA_J_2026_CODEX.md` —
 **no repetir la auditoria antes de implementar**.
 
-**Estado a 2026-09-10. Cerradas y verificadas 12 tareas:** SEC-01, SEC-02, SEC-03, DATA-01,
+**Estado a 2026-09-11. Cerradas y verificadas 12 tareas:** SEC-01, SEC-02, SEC-03, DATA-01,
 VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01 y FUNC-02.
 
-**Siguiente trabajo: la tanda de drenaje de gaps** (`docs/evidencia/GAPS-02-plan-de-drenaje.md`,
-rama `fix/gaps-02`), que va ANTES de la siguiente tarea del plan. **Siguiente por orden §12,
-cuando esa tanda cierre: UX-03 / UX-04.** Luego SEC-04, OPS-01, H-01, INNO-01, FINAL-01.
+**La tanda de drenaje de gaps YA ESTA CERRADA** (rama `fix/gaps-02`, pendiente de fusionar;
+evidencia en `docs/evidencia/GAPS-02-drenaje.md`): cierra los gaps 9.1, 9.2, 9.3 y 9.4.
+**Siguiente por orden §12: UX-03 / UX-04.** Luego SEC-04, OPS-01, H-01, INNO-01, FINAL-01.
 
 **Los nueve residuales de FUNC-02 estan cerrados** en la rama `fix/gaps-func02`. No es una
 tarea del plan: es el drenaje del §7 de la evidencia de FUNC-02. Evidencia en
@@ -249,14 +249,25 @@ llegan por la REST de Firestore (de ahi salia el crash) y retira Vercel Analytic
 | E2E de la landing | **20 / 20**, exit 0 |
 | Puertos al salir | 0 en `LISTENING` |
 
-**Antes que nada, la tanda de drenaje de gaps.** El plan completo esta en
-`docs/evidencia/GAPS-02-plan-de-drenaje.md`: rama `fix/gaps-02` desde `integracion/ola-1`, tres
-lotes — A) streams sin tope (bandeja de chat, reservas, hilo de mensajes), B) decidir sobre los
-cuatro indices de solo igualdades, C) denormalizar `abierto` en el ticket, que toca reglas y
-Functions y por eso va al final con los dos revisores. La regla que lo motiva es permanente:
-**un gap documentado no esta cerrado**; al terminar una tarea se drenan los que dejo.
+**La tanda de drenaje `fix/gaps-02` esta cerrada** (2026-09-11). Cuatro cosas que un worker
+en frio tiene que saber antes de tocar `reparaciones` o el chat:
 
-**Siguiente tarea del plan, cuando esa tanda cierre: UX-03 / UX-04** (accesibilidad y errores
+- **El tablero ya NO filtra por `estado`.** Es la igualdad `abierto == true` sobre un booleano
+  denormalizado en el ticket (gap 9.1): un `whereIn` aplica el `limit` a CADA subconsulta, asi
+  que leia hasta 1000 documentos para devolver 200. Si siembras un ticket en un test **tienes
+  que escribir `abierto`**: una igualdad sobre un campo ausente no devuelve nada, y eso puso
+  rojos diez tests de golpe.
+- **`abierto` se deriva SIEMPRE del estado, nunca se pasa como parametro.** Lo escriben el
+  cliente (`ReparacionModel.toMap`, `cambiarEstado`), los tres escritores server-side y el
+  backfill; `firestore.rules` lo ata al estado RESULTANTE y exige ademas que un campo que
+  estaba siga estando — sin eso, un `FieldValue.delete()` esquivaba la regla entera.
+- **El barrido de `onVehicleDelete` vive ahora en `functions/src/cerrarTicketsDeVehiculo.js`**,
+  no inline en `index.js`. El centinela de accesos por archivo cuenta `index.js`: 1.
+- **El centinela de indices ya no exige compuesto a las consultas de solo igualdades** (gap
+  9.4): Firestore las resuelve por index merging. Se retiraron cuatro indices. Si tu consulta
+  lleva un `not-in` o un `in`, eso es una DESIGUALDAD y va en `orden`, no en `igualdades`.
+
+**Siguiente tarea del plan: UX-03 / UX-04** (accesibilidad y errores
 de datos). Dos frentes: la landing
 (`landing-web/src`: `prefers-reduced-motion`, menu movil accesible, `Link > button` anidado) y
 la app (`service_history_screen.dart` y demas: `Error: ${snapshot.error}` crudo -> estado

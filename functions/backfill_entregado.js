@@ -77,11 +77,12 @@ const {
   ESTADOS_TICKET_CERRADO,
   ESTADOS_VEHICULO_EN_TALLER,
 } = require('./src/aceptarCotizacion');
-const { CAMPO_MIGRACION } = require('./src/migracion');
+const { CAMPO_MIGRACION, cambioNecesitaCentinela } = require('./src/migracion');
 const {
   fechaActualizacionTolerante,
   cambioFechaActualizacion,
 } = require('./src/backfillFechas');
+const { cambioAbierto } = require('./src/backfillAbierto');
 
 const APLICAR = process.argv.includes('--apply');
 const DIAS_ENTREGADO = (() => {
@@ -138,6 +139,7 @@ async function main() {
   let entregados = 0;
   let sigueEsperando = 0;
   let sinFechaActualizacion = 0;
+  let sinAbiertoCorrecto = 0;
 
   // Cierra un ticket como 'entregado' SIN mover la fecha: `fecha_actualizacion`
   // y el sello del historial conservan el momento real de la ultima actividad,
@@ -150,7 +152,13 @@ async function main() {
   const cambiosPorTicket = new Map();
   const acumular = (doc, data) => {
     if (!cambiosPorTicket.has(doc.id)) {
-      cambiosPorTicket.set(doc.id, { ref: doc.ref, data: { ...CENTINELA } });
+      // Sin CENTINELA de entrada: se estampa al final, y solo sobre los
+      // cambios que mueven el estado. Estaba aqui, incondicional, y con la
+      // pasada 4 (`abierto`) eso habria marcado la coleccion ENTERA —
+      // incluidos los tickets vivos, que a partir de esa corrida dejarian de
+      // notificar sus transiciones al propietario y de revocar el vinculo al
+      // entregarse. El centinela es pegajoso y nadie lo borra.
+      cambiosPorTicket.set(doc.id, { ref: doc.ref, data: {} });
     }
     return cambiosPorTicket.get(doc.id).data;
   };
@@ -212,6 +220,18 @@ async function main() {
       Object.assign(acumular(doc, data), fecha);
     }
 
+    // Gap 9.1: el tablero consulta `abierto == true`, y una igualdad sobre un
+    // campo ausente no devuelve nada. Los tickets anteriores a ese cambio no
+    // traen el campo: sin esta pasada desaparecen del tablero en silencio, el
+    // mismo fallo que el `whereIn` sobre `estado` y el `orderBy` sobre
+    // `fecha_actualizacion` ya obligaron a cubrir aqui. Se calcula con el
+    // estado RESULTANTE, ya con las pasadas 1 y 2 aplicadas.
+    const abierto = cambioAbierto(data, estado);
+    if (Object.keys(abierto).length > 0) {
+      sinAbiertoCorrecto += 1;
+      Object.assign(acumular(doc, data), abierto);
+    }
+
     estadoFinal.set(doc.id, {
       estado,
       idVehiculo: (data.id_vehiculo || '').toString(),
@@ -219,6 +239,9 @@ async function main() {
     });
   }
 
+  for (const cambio of cambiosPorTicket.values()) {
+    if (cambioNecesitaCentinela(cambio.data)) Object.assign(cambio.data, CENTINELA);
+  }
   opsTickets.push(...cambiosPorTicket.values());
 
   console.log(
@@ -227,6 +250,10 @@ async function main() {
       `'entregado'`
   );
   console.log(`  ${entregados} 'listo_para_entrega' viejos -> 'entregado'`);
+  console.log(
+    `  ${sinAbiertoCorrecto} sin 'abierto' correcto -> se escribe (sin el, el ` +
+      `ticket no sale en el tablero: la consulta es una igualdad)`
+  );
   console.log(
     `  ${sigueEsperando} 'listo_para_entrega' recientes se quedan en el tablero`
   );

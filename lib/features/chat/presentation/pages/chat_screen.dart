@@ -30,6 +30,7 @@ import 'package:autodoc/features/chat/presentation/widgets/cards/review_chat_car
 import 'package:autodoc/features/chat/presentation/widgets/cards/imagen_chat_card.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/audio_chat_card.dart';
 import 'package:autodoc/features/chat/presentation/widgets/voice_record_button.dart';
+import 'package:autodoc/core/widgets/aviso_lista_truncada.dart';
 import 'package:autodoc/features/chat/data/models/mensaje_model.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cotizacion_picker.dart';
 import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
@@ -685,8 +686,19 @@ class _ChatScreenState extends State<ChatScreen> {
                         horizontal: 16,
                         vertical: 24,
                       ),
-                      itemCount: chatProvider.mensajesActuales.length,
+                      // Un elemento de más cuando el hilo va truncado (gap
+                      // 9.3). La lista está invertida, así que el ÚLTIMO
+                      // índice es lo que se ve arriba del todo: justo donde
+                      // se han quedado los mensajes que no se cargaron.
+                      itemCount:
+                          chatProvider.mensajesActuales.length +
+                          (chatProvider.hiloTruncado ? 1 : 0),
                       itemBuilder: (context, index) {
+                        if (index >= chatProvider.mensajesActuales.length) {
+                          return AvisoListaTruncada(
+                            mensaje: context.l10n.hiloTruncado(maxMensajesHilo),
+                          );
+                        }
                         final msg = chatProvider.mensajesActuales[index];
                         final isMe = msg.idRemitente == userId;
                         final nombreAutor = isMe ? 'Tú' : targetName;

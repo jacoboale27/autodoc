@@ -773,5 +773,23 @@
   "notFoundGoBack": "Volver",
   "@notFoundGoBack": {
     "description": "Boton que vuelve a la pantalla anterior desde el 404"
+  },
+  "bandejaTruncada": "Se muestran las {tope} conversaciones con actividad mas reciente. Hay mas hilos que no caben aqui.",
+  "@bandejaTruncada": {
+    "description": "Aviso de que la bandeja de chat llego a su tope y hay conversaciones que no se listan",
+    "placeholders": {
+      "tope": {
+        "type": "int"
+      }
+    }
+  },
+  "hiloTruncado": "Se muestran los {tope} mensajes mas recientes. Los anteriores no estan cargados.",
+  "@hiloTruncado": {
+    "description": "Aviso de que el hilo de chat llego a su tope y los mensajes mas antiguos no se cargaron",
+    "placeholders": {
+      "tope": {
+        "type": "int"
+      }
+    }
   }
 }

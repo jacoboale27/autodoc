@@ -211,6 +211,11 @@ class ReparacionRepository {
 
       tx.update(docRef, {
         'estado': nuevoEstado,
+        // Denormalizado para que el tablero pregunte por una igualdad (gap
+        // 9.1). Va SIEMPRE junto al estado y derivado de él: `firestore.rules`
+        // exige que el documento resultante sea coherente, así que un update
+        // que mueva `estado` sin mover esto se deniega.
+        'abierto': ticketAbierto(nuevoEstado),
         'historial_estados': historial,
         'fecha_actualizacion': Timestamp.fromDate(ahora),
       });
@@ -226,14 +231,20 @@ class ReparacionRepository {
   /// tickets cancelados y todos los ya entregados, crecimiento sin techo, y
   /// pagando lecturas por documentos que ninguna de las dos pantallas pinta.
   ///
-  /// Es `whereIn` sobre [estadosReparacion] y no `whereNotIn` sobre
-  /// [estadosReparacionCerrados] a propósito: `whereNotIn` **excluye los
-  /// documentos que no tienen el campo**, así que los tickets anteriores a
-  /// A4b (sin `estado`, nacidos en `recibido`) desaparecerían del tablero en
-  /// silencio. Con `whereIn` esos tickets también quedan fuera, pero eso es
-  /// justo lo que el backfill de `functions/backfill_entregado.js`
-  /// arregla escribiéndoles `estado: 'recibido'` — hay que correrlo ANTES de
-  /// desplegar esta versión.
+  /// El filtro es la **igualdad** `abierto == true`, y no el `whereIn` sobre
+  /// [estadosReparacion] que tuvo hasta el gap 9.1. La diferencia no es de
+  /// estilo: Firestore ejecuta un `in` como N subconsultas y aplica el
+  /// `limit` **a cada una** antes de fusionar, así que el `whereIn` de cinco
+  /// estados con `limit(200)` leía hasta 1000 documentos para devolver 200 —
+  /// el tope acotaba documentos, no lecturas. Una igualdad lee exactamente el
+  /// tope.
+  ///
+  /// El precio es un campo denormalizado que hay que mantener coherente; quién
+  /// lo escribe y quién lo ata está en [ticketAbierto]. Y trae la misma
+  /// precondición que el `whereIn` y que el `orderBy`: **una igualdad sobre un
+  /// campo ausente no devuelve nada**, así que los tickets anteriores a este
+  /// cambio no aparecerían hasta que `backfill_entregado.js` les escriba
+  /// `abierto`. Correrlo ANTES de desplegar no es opcional.
   ///
   /// **Va acotado** (residual 7.6 de FUNC-02). Sin `limit` este stream traía
   /// el conjunto entero en cada `attach` del listener, y su tamaño no depende
@@ -259,7 +270,7 @@ class ReparacionRepository {
     return _firestore
         .collection(FirestoreCollections.reparaciones)
         .where('id_taller', isEqualTo: idTaller)
-        .where('estado', whereIn: estadosReparacion)
+        .where('abierto', isEqualTo: true)
         .orderBy('fecha_actualizacion', descending: true)
         .limit(maxTicketsTablero)
         .snapshots()

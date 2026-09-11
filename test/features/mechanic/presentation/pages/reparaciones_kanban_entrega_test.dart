@@ -6,6 +6,8 @@
 // que son las dos que tienen efectos fuera del propio ticket.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+
+import 'package:autodoc/core/models/reparacion_model.dart';
 import 'package:provider/provider.dart';
 
 import 'package:autodoc/features/mechanic/data/repositories/reparacion_repository.dart';
@@ -23,6 +25,9 @@ Future<FakeFirebaseFirestore> sembrarTicket(String estado) async {
     'id_propietario': 'p1',
     'placa': 'ABC123',
     'estado': estado,
+    // Ver la nota de `reparaciones_kanban_responsive_test.dart`: sin este
+    // campo el tablero no devuelve el ticket (gap 9.1).
+    'abierto': ticketAbierto(estado),
     'historial_estados': <Map<String, dynamic>>[],
     'fecha_creacion': DateTime(2026, 8, 1),
     'fecha_actualizacion': DateTime(2026, 8, 5),

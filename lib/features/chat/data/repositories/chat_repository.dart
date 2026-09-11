@@ -33,7 +33,24 @@ class ChatRepository {
 
   final FirebaseFirestore _firestore;
 
-  // Obtener stream de conversaciones de un usuario
+  /// Bandeja de conversaciones del usuario, **acotada** (gap 9.2).
+  ///
+  /// Antes era `where(...)` a secas más un `list.sort(...)` en memoria: traía
+  /// la colección entera del usuario en cada `attach` del listener y ordenaba
+  /// después. Ordenar en cliente no acota nada — el coste ya se pagó.
+  ///
+  /// El `orderBy` es parte del tope, no un adorno: recortar sin ordenar deja
+  /// fuera conversaciones **arbitrarias**, porque sin él Firestore ordena por
+  /// `__name__`, o sea por un id aleatorio.
+  ///
+  /// **Ese `orderBy` excluye los documentos sin `ultimo_mensaje_ts`**, que es
+  /// la trampa que el tablero y el `whereIn` de la ronda 6 ya pagaron con una
+  /// pasada de backfill. Aquí NO hace falta, y se comprobó antes de tocar la
+  /// consulta: el campo es obligatorio en `ConversacionModel` (no es
+  /// nulable, y `toMap` siempre lo escribe), `ChatProvider.crearConversacion`
+  /// es el único creador de `lib/`, no hay ningún creador server-side (las
+  /// Functions solo leen esta colección) y el modelo nació con el campo en su
+  /// primer commit. No existe ni ha existido una conversación sin él.
   Stream<List<ConversacionModel>> streamConversaciones(
     String userId,
     bool isMecanico,
@@ -41,23 +58,29 @@ class ChatRepository {
     return _firestore
         .collection(FirestoreCollections.conversaciones)
         .where(isMecanico ? 'id_mecanico' : 'id_propietario', isEqualTo: userId)
+        .orderBy('ultimo_mensaje_ts', descending: true)
+        .limit(maxConversacionesBandeja)
         .snapshots()
-        .map((snapshot) {
-          final list = snapshot.docs
+        .map(
+          (snapshot) => snapshot.docs
               .map((doc) => ConversacionModel.fromMap(doc.data(), doc.id))
-              .toList();
-          list.sort((a, b) => b.ultimoMensajeTs.compareTo(a.ultimoMensajeTs));
-          return list;
-        });
+              .toList(),
+        );
   }
 
-  // Obtener stream de mensajes de una conversación
+  /// Mensajes de una conversación, **acotados a los [maxMensajesHilo] más
+  /// recientes** (gap 9.3).
+  ///
+  /// El `limit` cae sobre una consulta ya descendente, así que recorta por el
+  /// principio del hilo (lo viejo) y nunca por el final (lo último dicho).
+  /// Que se haya llegado al tope se anuncia: ver `ChatProvider.hiloTruncado`.
   Stream<List<MensajeModel>> streamMensajes(String conversacionId) {
     return _firestore
         .collection(FirestoreCollections.conversaciones)
         .doc(conversacionId)
         .collection(FirestoreCollections.mensajes)
         .orderBy('timestamp', descending: true)
+        .limit(maxMensajesHilo)
         .snapshots()
         .map(
           (snapshot) => snapshot.docs
