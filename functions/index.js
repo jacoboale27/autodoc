@@ -20,6 +20,7 @@ const { listarEmpleadosPublicos } = require('./src/obtenerEmpleadosPublicos');
 const { CAMPO_MIGRACION, esMigracion } = require('./src/migracion');
 const { cerrarTicketsDeVehiculo } = require('./src/cerrarTicketsDeVehiculo');
 const { notificarAlertasVencidas } = require('./src/alertasVencidas');
+const { exportarFirestore } = require('./src/exportacionFirestore');
 const { enviarRecordatoriosDeReserva } = require('./src/recordatoriosReserva');
 // El FieldValue tiene que salir del MISMO modulo que la instancia de Firestore.
 // Observado en el emulador de Functions: `admin.firestore.FieldValue` llega
@@ -1138,23 +1139,23 @@ exports.onVehicleDelete = functions.firestore.document('vehiculos/{vehicleId}').
  * 8. Scheduled function for automated Firestore backup (C-03).
  * Runs every 24 hours to export the database to Google Cloud Storage.
  */
-exports.scheduledFirestoreExport = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
-  const projectId = process.env.GCP_PROJECT || process.env.GCLOUD_PROJECT;
+exports.scheduledFirestoreExport = functions.pubsub.schedule('every 24 hours').onRun(async () => {
   // Se requiere aqui y no al principio del archivo: es una libreria pesada
   // (gRPC y protos) que solo usa esta funcion, una vez al dia, y a nivel de
   // modulo la pagaba el arranque en frio de las ~30 funciones del entrypoint.
   const firestore = require('@google-cloud/firestore');
   const client = new firestore.v1.FirestoreAdminClient();
-  const databaseName = client.databasePath(projectId, '(default)');
-  const bucket = 'gs://' + projectId + '-backups';
 
   try {
-    const [response] = await client.exportDocuments({
-      name: databaseName,
-      outputUriPrefix: bucket,
+    // OPS-01: la logica vive en `src/exportacionFirestore.js`. El bucket se
+    // puede fijar por entorno para que staging y produccion no compartan
+    // destino, igual que ya pasa con las claves.
+    const respuesta = await exportarFirestore(client, {
+      projectId: process.env.GCP_PROJECT || process.env.GCLOUD_PROJECT,
+      bucket: process.env.FIRESTORE_BACKUP_BUCKET,
     });
-    console.log(`Export operation initiated: ${response.name}`);
-    return response;
+    console.log(`Export operation initiated: ${respuesta.name}`);
+    return respuesta;
   } catch (error) {
     console.error('Error exporting Firestore database:', error);
     throw error;
