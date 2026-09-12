@@ -34,26 +34,26 @@ export default function TestimonialsSection() {
         {/* Testimonial Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-8 shadow-xl flex flex-col justify-between hover:border-slate-600 transition-colors">
-            <p className="text-slate-300 text-lg italic mb-6">"{t("testimonial1Quote")}"</p>
+            <p className="text-slate-300 text-lg italic mb-6">&quot;{t("testimonial1Quote")}&quot;</p>
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 rounded-full bg-sky-500/20 text-sky-400 flex items-center font-bold justify-center text-lg border border-sky-500/30">
                 CM
               </div>
               <div>
-                <h4 className="text-white font-bold">{t("testimonial1Author")}</h4>
+                <h3 className="text-base text-white font-bold">{t("testimonial1Author")}</h3>
                 <p className="text-slate-400 text-sm">{t("testimonial1Role")}</p>
               </div>
             </div>
           </div>
 
           <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-8 shadow-xl flex flex-col justify-between hover:border-slate-600 transition-colors">
-            <p className="text-slate-300 text-lg italic mb-6">"{t("testimonial2Quote")}"</p>
+            <p className="text-slate-300 text-lg italic mb-6">&quot;{t("testimonial2Quote")}&quot;</p>
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center font-bold justify-center text-lg border border-emerald-500/30">
                 TA
               </div>
               <div>
-                <h4 className="text-white font-bold">{t("testimonial2Author")}</h4>
+                <h3 className="text-base text-white font-bold">{t("testimonial2Author")}</h3>
                 <p className="text-slate-400 text-sm">{t("testimonial2Role")}</p>
               </div>
             </div>

@@ -27,6 +27,17 @@ type FirestoreNumberValue = {
   integerValue?: string | number;
 };
 
+interface WorkshopDocument {
+  name: string;
+  fields?: {
+    nombre?: { stringValue?: string };
+    especialidad?: { stringValue?: string };
+    ubicacion_municipio?: { stringValue?: string };
+    estado?: { stringValue?: string };
+    calificacion_promedio?: FirestoreNumberValue;
+  };
+}
+
 export function normalizarCalificacion(
   campo: FirestoreNumberValue | undefined,
 ): number {
@@ -63,9 +74,9 @@ export default function WorkshopsSection() {
         
         if (data.documents) {
           const parsed = data.documents
-            .map((doc: any) => {
+            .map((doc: WorkshopDocument): Workshop | null => {
               const fields = doc.fields;
-              const id = doc.name.split("/").pop();
+              const id = doc.name.split("/").pop()!;
               const estado = fields?.estado?.stringValue || 'aprobado';
               if (estado !== 'aprobado') return null;
 
@@ -77,7 +88,7 @@ export default function WorkshopsSection() {
                 rating: normalizarCalificacion(fields?.calificacion_promedio),
               };
             })
-            .filter(Boolean);
+            .filter((workshop: Workshop | null): workshop is Workshop => workshop !== null);
           
           setWorkshops(parsed.slice(0, 3));
         }
@@ -183,7 +194,7 @@ export default function WorkshopsSection() {
                       <MapPin className="w-4 h-4 mr-1 text-[#522C81] dark:text-purple-400" />
                       {workshop.location}
                     </div>
-                    <div className="flex items-center text-amber-500 font-bold">
+                    <div className="flex items-center text-amber-700 dark:text-amber-500 font-bold">
                       <Star className="w-4 h-4 mr-1 fill-current" />
                       {workshop.rating.toFixed(1)}
                     </div>

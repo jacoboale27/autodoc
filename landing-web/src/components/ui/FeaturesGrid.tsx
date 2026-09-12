@@ -3,7 +3,6 @@
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
-import Image from "next/image";
 
 export default function FeaturesGrid() {
   const t = useTranslations();
@@ -42,6 +41,7 @@ export default function FeaturesGrid() {
 
   return (
     <section id="features" className="relative z-10 w-full bg-slate-100 dark:bg-[#0a0f1e] py-32 overflow-hidden transition-colors duration-300">
+      <h2 className="sr-only">{t("navPlatform")}</h2>
       <div className="mx-auto max-w-7xl px-6 lg:flex lg:gap-16 lg:items-center">
         
         {/* Left Column: Feature List */}
@@ -77,7 +77,7 @@ export default function FeaturesGrid() {
                       <h3 className={`text-xl font-bold transition-colors ${isActive ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-200"}`}>
                         {feat.title}
                       </h3>
-                      <p className={`mt-2 leading-relaxed transition-colors ${isActive ? "text-slate-600 dark:text-slate-200" : "text-slate-500"}`}>
+                      <p className={`mt-2 leading-relaxed transition-colors ${isActive ? "text-slate-600 dark:text-slate-200" : "text-slate-500 dark:text-slate-400"}`}>
                         {feat.desc}
                       </p>
                     </div>
@@ -101,6 +101,7 @@ export default function FeaturesGrid() {
             >
               {activeIndex === 0 && (
                 <div className="relative w-full h-full">
+                  {/* Decorativa: los datos del vehiculo aparecen en los widgets de texto. */}
                   <div 
                     className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 hover:scale-105 opacity-80 dark:opacity-60"
                     style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1592199564137-731e91904939?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTAwNDR8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBsdXh1cnklMjBjYXIlMjBwYXJrZWQlMjBpbiUyMGElMjBtaW5pbWFsaXN0JTIwYnJpZ2h0JTIwc3R1ZGlvfGVufDB8fHx8MTc4Mjk0MjYxNnww&ixlib=rb-4.1.0&q=85)' }}
@@ -131,6 +132,7 @@ export default function FeaturesGrid() {
 
               {activeIndex === 1 && (
                 <div className="relative w-full h-full bg-slate-50/90 dark:bg-slate-900/50 flex flex-col p-12">
+                  {/* Decorativa: el historial y sus servicios se describen en el texto superpuesto. */}
                   <div 
                     className="absolute inset-0 bg-cover bg-center opacity-10 dark:opacity-30"
                     style={{ backgroundImage: 'url(https://images.pexels.com/photos/8985913/pexels-photo-8985913.jpeg)' }}
@@ -159,6 +161,7 @@ export default function FeaturesGrid() {
 
               {activeIndex === 2 && (
                 <div className="relative w-full h-full flex items-center justify-center">
+                  {/* Decorativa: el aviso y su plazo estan expresados en la tarjeta de alerta. */}
                   <div 
                     className="absolute inset-0 bg-cover bg-center opacity-30 dark:opacity-50"
                     style={{ backgroundImage: 'url(https://images.pexels.com/photos/10924197/pexels-photo-10924197.jpeg)' }}
@@ -169,7 +172,7 @@ export default function FeaturesGrid() {
                         <svg className="w-10 h-10 text-[#FC8181] dark:text-inherit" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                         <div>
                           <p className="font-black text-lg leading-tight">{t("featuresAlertTitle")}</p>
-                          <p className="text-xs font-bold opacity-80 text-[#FC8181] dark:text-inherit">{t("featuresAlertDesc")}</p>
+                          <p className="text-xs font-bold text-[#C53030] dark:text-inherit">{t("featuresAlertDesc")}</p>
                         </div>
                       </div>
                     </div>
@@ -184,7 +187,7 @@ export default function FeaturesGrid() {
                         <div className="w-20 h-20 rounded-3xl bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-sky-400/30 flex items-center justify-center text-4xl shadow-sm">
                           <svg className="w-10 h-10 text-[#522C81] dark:text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
                         </div>
-                        <span className="text-xs font-bold text-slate-500">TALLER</span>
+                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400">TALLER</span>
                       </div>
                       <div className="flex-1 max-w-[120px] h-px bg-gradient-to-r from-[#81E6D9]/50 to-[#81E6D9]/50 dark:from-sky-400/50 dark:to-sky-400/50 relative">
                         <div className="absolute inset-0 flex items-center justify-center">
