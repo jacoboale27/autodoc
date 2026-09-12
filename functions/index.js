@@ -19,6 +19,7 @@ const {
 const { listarEmpleadosPublicos } = require('./src/obtenerEmpleadosPublicos');
 const { CAMPO_MIGRACION, esMigracion } = require('./src/migracion');
 const { cerrarTicketsDeVehiculo } = require('./src/cerrarTicketsDeVehiculo');
+const { notificarAlertasVencidas } = require('./src/alertasVencidas');
 const { enviarRecordatoriosDeReserva } = require('./src/recordatoriosReserva');
 // El FieldValue tiene que salir del MISMO modulo que la instancia de Firestore.
 // Observado en el emulador de Functions: `admin.firestore.FieldValue` llega
@@ -88,100 +89,21 @@ async function deleteQueryBatch(db, query, resolve, reject) {
  * 1. Scheduled function to check alerts (alertas) daily.
  * Notifies the user if an alert is expiring in 7 days or less, or already expired.
  */
-exports.checkAlertsDaily = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
-  const now = new Date();
-  const futureDate = new Date();
-  futureDate.setDate(now.getDate() + 7);
-
-  const limit = 500;
-  let lastDoc = null;
-  
-  const vehiculosCache = {};
-  const usuariosCache = {};
-
+exports.checkAlertsDaily = functions.pubsub.schedule('every 24 hours').onRun(async () => {
+  // OPS-01: la logica vive en `src/alertasVencidas.js` para poder ejercerla
+  // con fixtures. Aqui solo queda el enganche del scheduler.
   try {
-    while (true) {
-      let q = db.collection('alertas')
-        .where('estado', '==', 'Pendiente')
-        .orderBy(admin.firestore.FieldPath.documentId())
-        .limit(limit);
-      if (lastDoc) {
-        q = q.startAfter(lastDoc);
-      }
-      const alertasSnapshot = await q.get();
-      if (alertasSnapshot.empty) break;
-
-      for (const doc of alertasSnapshot.docs) {
-        const alerta = doc.data();
-        let fechaLimite;
-        
-        if (alerta.fecha_limite && alerta.fecha_limite.toDate) {
-          fechaLimite = alerta.fecha_limite.toDate();
-        } else if (typeof alerta.fecha_limite === 'string') {
-          fechaLimite = new Date(alerta.fecha_limite);
-        } else {
-          continue; // No valid date
-        }
-
-        if (fechaLimite <= futureDate) {
-          // Find the vehicle owner
-          const vehiculoId = alerta.id_vehiculo;
-          if (!vehiculoId) continue;
-
-          if (!vehiculosCache[vehiculoId]) {
-            const vehiculoDoc = await db.collection('vehiculos').doc(vehiculoId).get();
-            vehiculosCache[vehiculoId] = vehiculoDoc.exists ? vehiculoDoc.data() : null;
-          }
-          const vehiculoData = vehiculosCache[vehiculoId];
-          if (!vehiculoData) continue;
-
-          const ownerId = vehiculoData.id_propietario;
-          if (!ownerId) continue;
-
-          if (!usuariosCache[ownerId]) {
-            const userDoc = await db.collection('usuarios').doc(ownerId).get();
-            usuariosCache[ownerId] = userDoc.exists ? userDoc.data() : null;
-          }
-          const userData = usuariosCache[ownerId];
-          if (!userData) continue;
-
-          const fcmToken = userData.fcmToken;
-          if (!fcmToken) continue;
-
-          const isExpired = fechaLimite < now;
-          const title = isExpired ? '¡Alerta Vencida!' : 'Alerta por Vencer';
-          const body = isExpired 
-              ? `La alerta de ${alerta.tipo_alerta} para tu vehículo ${vehiculoData.placa} ya venció.`
-              : `La alerta de ${alerta.tipo_alerta} para tu vehículo ${vehiculoData.placa} está por vencer.`;
-
-          await messaging.send({
-            token: fcmToken,
-            notification: {
-              title: title,
-              body: body,
-            },
-            data: {
-              type: 'alerta',
-              alertaId: doc.id,
-              vehiculoId: vehiculoId
-            }
-          });
-
-          // Persist in notification center
-          await writeNotification(ownerId, {
-            tipo: 'alerta',
-            titulo: title,
-            body: body,
-            deepLink: '/alerts',
-            metadata: { alertaId: doc.id, vehiculoId: vehiculoId },
-          });
-        }
-      }
-
-      lastDoc = alertasSnapshot.docs[alertasSnapshot.docs.length - 1];
-    }
+    const resumen = await notificarAlertasVencidas(db, messaging, {
+      escribirNotificacion: writeNotification,
+    });
+    console.log('checkAlertsDaily:', JSON.stringify(resumen));
+    return resumen;
   } catch (error) {
+    // Se relanza para que Cloud Scheduler lo marque fallido y reintente. La
+    // version anterior se lo tragaba, asi que un barrido roto era
+    // indistinguible de un dia sin alertas.
     console.error('Error checking alerts:', error);
+    throw error;
   }
 });
 

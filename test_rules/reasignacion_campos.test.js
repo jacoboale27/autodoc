@@ -1,4 +1,5 @@
 const { assertFails, assertSucceeds } = require('@firebase/rules-unit-testing');
+const { deleteField } = require('firebase/firestore');
 const { makeEnv, seed, withRole, UIDS } = require('./helpers');
 
 let env;
@@ -156,5 +157,62 @@ describe('un update legitimo no puede reasignar el registro a otro vehiculo/tall
     await assertSucceeds(
       db.collection('historial_mantenimientos').doc('h1').update({ descripcion: 'corregido' }),
     );
+  });
+});
+
+describe('la contabilidad del barrido de alertas es del servidor (OPS-01)', () => {
+  // `ultimo_aviso` es lo que impide que `checkAlertsDaily` reenvie el mismo
+  // push cada 24 h mientras la alerta siga 'Pendiente'. Lo escribe el barrido
+  // con Admin SDK, que no pasa por estas reglas. Si el cliente pudiera
+  // tocarlo, el propietario podria devolverse a si mismo el aviso diario que
+  // el arreglo elimina — y, peor, cualquier escritura descuidada de la app
+  // sobre el documento entero lo borraria sin querer.
+  const conAviso = async () => {
+    await seed(env, async (s) => {
+      await s.collection('vehiculos').doc('v1').set({
+        id_vehiculo: 'v1', id_propietario: UIDS.owner1, placa: 'P-1',
+      });
+      await s.collection('alertas').doc('a1').set({
+        id_vehiculo: 'v1', tipo: 'soat', descripcion: 'vence pronto',
+        ultimo_aviso: 'por_vencer',
+      });
+    });
+  };
+
+  test('el propietario NO puede reescribir ultimo_aviso', async () => {
+    await conAviso();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(db.collection('alertas').doc('a1').update({ ultimo_aviso: null }));
+  });
+
+  test('el propietario NO puede BORRAR ultimo_aviso', async () => {
+    // El caso que se escapa si la regla ata el valor en vez de la clave: un
+    // `FieldValue.delete()` no escribe ningun valor que validar. Asi se
+    // esquivo una regla equivalente en la tanda de drenaje anterior.
+    await conAviso();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('alertas').doc('a1').update({ ultimo_aviso: deleteField() }),
+    );
+  });
+
+  test('el propietario NO puede retrasar fecha_ultimo_aviso', async () => {
+    await conAviso();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('alertas').doc('a1').update({ fecha_ultimo_aviso: new Date(0) }),
+    );
+  });
+
+  test('ni siquiera el admin: una correccion real se hace con Admin SDK', async () => {
+    await conAviso();
+    const db = await withRole(env, UIDS.admin, 'Administrador');
+    await assertFails(db.collection('alertas').doc('a1').update({ ultimo_aviso: null }));
+  });
+
+  test('el propietario SI puede seguir editando su alerta con el campo puesto', async () => {
+    await conAviso();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertSucceeds(db.collection('alertas').doc('a1').update({ descripcion: 'renovado' }));
   });
 });
