@@ -93,13 +93,59 @@ Plan maestro: `docs/superpowers/plans/2026-09-06-remediation-master-plan-crea-j-
 Definition of Done al final, evidencia base en `docs/AUDITORIA_CREA_J_2026_CODEX.md` —
 **no repetir la auditoria antes de implementar**.
 
-**Estado a 2026-09-11. Cerradas y verificadas 12 tareas:** SEC-01, SEC-02, SEC-03, DATA-01,
-VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01 y FUNC-02.
+**Estado a 2026-09-12. Cerradas y verificadas 14 tareas:** SEC-01, SEC-02, SEC-03, DATA-01,
+VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01, FUNC-02 y UX-03 / UX-04.
 
 **La tanda de drenaje de gaps YA ESTA CERRADA Y FUSIONADA** (rama `fix/gaps-02`, en
 `integracion/ola-1` desde el 2026-09-11, `3130550`; evidencia en
 `docs/evidencia/GAPS-02-drenaje.md`): cierra los gaps 9.1, 9.2, 9.3 y 9.4.
-**Siguiente por orden §12: UX-03 / UX-04.** Luego SEC-04, OPS-01, H-01, INNO-01, FINAL-01.
+**Siguiente por orden §12: SEC-04 / OPS-01.** Luego H-01, INNO-01, FINAL-01.
+
+UX-03 / UX-04 ya estan cerradas y fusionadas (`fix/ux03-ux04`). Evidencia en
+`docs/evidencia/UX-03-UX-04-accesibilidad-y-errores.md`. Lo que hay que saber sin leerla:
+
+- **No habia un menu movil inaccesible: no habia menu.** La navegacion de la landing es
+  `hidden md:flex`, asi que por debajo de 768 px los tres enlaces de seccion desaparecian, y
+  «Iniciar Sesion» (`hidden sm:block`) tambien: a 320 px solo quedaba «Probar Gratis».
+- **Quitar las animaciones bajo `prefers-reduced-motion` deja la landing PEOR que antes.** Es
+  un export estatico: framer-motion hornea el valor de `initial` como estilo inline en el HTML
+  y en el servidor `useReducedMotion()` no sabe nada. Sin nadie que anime esos estilos, el
+  elemento se queda congelado donde lo dejo el servidor — **invisible para siempre**. Medido:
+  con `{}` y tambien con solo `{initial: false}`, el titulo de talleres seguia en `opacity: 0`
+  a los 2,5 s. Hace falta un destino explicito (`animate: REPOSO`) que PISE el estilo inline.
+- **`test.use({ reducedMotion })` NO surte efecto en Playwright 1.62.1.** `matchMedia(...)`
+  dentro de la pagina seguia dando `false` y los casos fallaban con el arreglo ya puesto. Usa
+  `page.emulateMedia()`, y antes del `goto`.
+- **El `Error: ${snapshot.error}` del enunciado era uno de cuarenta, y el patron estaba una
+  capa mas abajo:** quince providers guardaban `_error = e.toString()` (77 sitios) y las
+  pantallas pintan ese campo tal cual. Consecuencia que nadie habia visto: donde la pantalla
+  hace `provider.error ?? context.l10n.loQueSea`, **la cadena traducida no se veia nunca** —
+  el error crudo no es null cuando algo falla. Habia ARB traducido al ingles inalcanzable.
+- **Ocho tests existentes se pusieron rojos y los ocho probaban de mentira.** Lanzaban una
+  CADENA suelta (`thenThrow('email-already-in-use')`) y afirmaban que `provider.error` la
+  contenia: con `_error = e.toString()` eso pasaba por construccion, sin ejercer una linea del
+  manejo real de errores de Firebase. Ahora lanzan `FirebaseAuthException`.
+- **Los codigos de Auth no caen en el mensaje generico, a proposito:** son los unicos errores
+  de la app que la persona puede resolver sola. Taparlos habria sido cambiar un defecto por
+  otro.
+- **Centinela nuevo: `test/errores_sin_detalle_tecnico_test.dart`.** Ninguna otra suite ve
+  este defecto — un `Text('Error: $e')` compila, analiza limpio y pasa cualquier test de
+  widget. Destapo cinco fugas mas. Mira solo presentacion y providers; `data/` queda fuera
+  adrede.
+- **El hook de pre-commit daba un falso positivo:** `dart format .` no falla, MUERE recorriendo
+  `landing-web/node_modules` tras un `pnpm install` en el worktree (rutas de pnpm mas largas de
+  lo que Windows admite). Decia «hay Dart sin formatear» sin listar un archivo. Ya lo
+  distingue.
+- **La E2E de la app dio 2 rojos en la primera corrida y 0 en la segunda.** Es la contencion ya
+  conocida, no una regresion: los dos specs solos dan 9/9.
+
+Cifras del arbol con UX-03/UX-04: `flutter analyze` limpio, `flutter test` **1216/1216**,
+E2E de la landing **40/40**, E2E de la app **32 pasan y 2 `fixme`**.
+
+Gaps anotados en el §Gaps de esa evidencia: contraste por debajo de 4.5:1 en seis sitios de la
+landing (cifras de un worker, **sin verificar a mano**), jerarquia de encabezados con saltos,
+cuatro imagenes de fondo por CSS sin alternativa textual, el fundido de `FeaturesGrid` bajo
+movimiento reducido (deliberado) y una clave de ARB que no hace falta todavia.
 
 **Los nueve residuales de FUNC-02 estan cerrados** en la rama `fix/gaps-func02`. No es una
 tarea del plan: es el drenaje del §7 de la evidencia de FUNC-02. Evidencia en
@@ -274,12 +320,9 @@ en frio tiene que saber antes de tocar `reparaciones` o el chat:
 siempre. Ahora filtra en el servidor (`id_remitente` + `estado != 'visto'`) y marca por
 lotes de 400. Indice nuevo: `mensajes (id_remitente, estado)`.
 
-**Siguiente tarea del plan: UX-03 / UX-04** (accesibilidad y errores
-de datos). Dos frentes: la landing
-(`landing-web/src`: `prefers-reduced-motion`, menu movil accesible, `Link > button` anidado) y
-la app (`service_history_screen.dart` y demas: `Error: ${snapshot.error}` crudo -> estado
-localizado con reintento). Inventariarlos es volumen de lectura, o sea fan-out de
-`codex exec -p worker`.
+**Siguiente tarea del plan: SEC-04 / OPS-01** (operacion y suites confiables). UX-03 / UX-04
+se cerraron el 2026-09-12; lo que dejaron esta arriba y en
+`docs/evidencia/UX-03-UX-04-accesibilidad-y-errores.md`.
 
 **El script `test` de `test_rules/` no acepta argumentos** (es un `firebase emulators:exec`;
 `npm test -- storage.test.js` muere con «Too many arguments»). Para una sola suite:
