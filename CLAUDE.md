@@ -10,11 +10,70 @@ Evidencia base: `docs/AUDITORIA_CREA_J_2026_CODEX.md` y `docs/AUDITORIA_CREA_J_2
 (dos auditorías independientes, ambas 64/100 por rutas distintas). **No repitas la auditoría
 antes de implementar**; el plan lo prohíbe.
 
-**Estado a 2026-09-12 — 14 tareas cerradas y verificadas:** SEC-01, SEC-02, SEC-03, DATA-01,
-VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01, FUNC-02 y **UX-03 / UX-04**.
-**Siguiente por orden §12: SEC-04 / OPS-01.** La tanda de drenaje de gaps que iba antes de
-UX-03 ya está cerrada (rama `fix/gaps-02`, evidencia en
-`docs/evidencia/GAPS-02-drenaje.md`) — ver más abajo.
+**Estado a 2026-09-12 — 16 tareas cerradas y verificadas:** SEC-01, SEC-02, SEC-03, DATA-01,
+VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01, FUNC-02, UX-03 / UX-04 y
+**SEC-04 / OPS-01**.
+**Siguiente por orden §12: H-01** (hardening), luego INNO-01 —solo si el mock judge lo
+exige— y FINAL-01. Las dos tandas de drenaje de gaps están cerradas: `fix/gaps-02`
+(residuales de FUNC-02) y `fix/gaps-03` (accesibilidad de la landing que dejó UX-03).
+
+### SEC-04 / OPS-01 — enforcement de App Check y tareas programadas
+
+Rama `fix/sec04-ops01`. Evidencia en
+`docs/evidencia/SEC-04-OPS-01-enforcement-y-tareas-programadas.md`. Lo que hay que saber
+sin leerla:
+
+- **App Check estaba a medias, y faltaba la mitad que protege.** El cliente firma desde
+  `lib/main.dart:183` y **ningún servidor comprobaba la firma**. Y la trampa: este repo usa
+  Cloud Functions **v1**, donde el enforcement **no tiene interruptor de consola**. Activar
+  App Check en la consola habría mostrado el producto «protegido» mientras los doce
+  callables aceptaban cualquier llamada. Ahora los 12 llaman a `exigirAppCheck`, con un
+  centinela que corta el entrypoint por bloques `exports.` — **no cuenta ocurrencias**,
+  porque contar `onCall` y contar `exigirAppCheck` daría el mismo número aunque uno llevara
+  dos y otro ninguna.
+- **El modo por defecto es `monitor`, no `enforce`, y es deliberado.** Con `enforce` la
+  suite E2E entera dejaría de pasar: el emulador de Functions no emite tokens. Encenderlo
+  es un paso de runbook, y un valor no reconocido cae a `monitor` (caer a `off` sería
+  inseguro en silencio; caer a `enforce` por una errata tiraría la app entera).
+- **El barrido de alertas mandaba el mismo push cada día, para siempre.** Nada marcaba la
+  alerta como avisada y `estado` solo lo cambia el usuario a mano. Ahora hay dos escalones
+  y dos notificaciones en toda la vida de una alerta. `ultimo_aviso` queda cerrado al
+  cliente en las reglas, por `affectedKeys()` y **también en el `create`** — sin eso se
+  podía nacer la alerta ya silenciada, y de forma irreversible.
+- **El recordatorio de citas leía todas las reservas confirmadas de la historia, cada día**,
+  y calculaba «mañana» en UTC: Colombia es UTC-5, así que las citas de tarde salían
+  descolocadas. Ahora la cota va en el servidor, con índice `reservas (estado,
+  fecha_hora_propuesta)`.
+- **El respaldo no fallaba sin `projectId`: exportaba a `gs://undefined-backups`.** Es la
+  única copia de seguridad del proyecto y podía llevar meses sin hacerse.
+- **Los dos revisores encontraron tres defectos que los tests propios no veían**, y uno
+  grave: el `update` de contabilidad estaba fuera del `try`, así que **borrar una alerta a
+  media pasada abortaba el barrido del día entero** — denegación de servicio con una
+  operación que las reglas autorizan. También que `startAfter` era un no-op en los dos
+  dobles, por lo que la paginación no la ejercía ningún test.
+- **Cuatro pasos de runbook nuevos** en `docs/RUNBOOK.md`: desplegar índices y correr
+  `node backfill_ultimo_aviso.js --apply` **antes** que las funciones (sin el backfill, la
+  primera corrida notifica de golpe todo el histórico); cómo llega `APP_CHECK_ENFORCEMENT`
+  a las funciones desplegadas (archivos `.env` por proyecto, no un ajuste de consola); y
+  los prerrequisitos del respaldo (bucket, rol IAM y política de ciclo de vida).
+
+### Los gaps de accesibilidad de UX-03 están cerrados (`fix/gaps-03`)
+
+Evidencia en `docs/evidencia/GAPS-03-accesibilidad-de-la-landing.md`. Dos cosas que valen:
+
+- **Las cifras de contraste heredadas eran aproximadas.** Venían de los hex de Tailwind 3 y
+  la landing usa Tailwind **4**, que computa en OKLCH: medido de verdad, `amber-600` seguía
+  fallando (3.058:1) y hubo que subir a `amber-700`.
+- **La anotación no decía el tema, y no todos fallaban en el mismo.** El pie fallaba en
+  oscuro y pasaba en claro; la calificación, al revés. Arreglar «el contraste del pie» sin
+  medir habría tocado el lado que ya cumplía.
+- Las cuatro imágenes de fondo por CSS **son decorativas** y por tanto no necesitan
+  alternativa textual: quedan con un comentario para que la próxima auditoría no las
+  levante otra vez.
+
+**Cifras al día del árbol combinado:** `flutter analyze` limpio, `flutter test`
+**1216/1216**, Functions **263**, reglas **446/446** en 25 suites, E2E de la landing
+**42/42**.
 
 UX-03 / UX-04 ya estan cerradas y fusionadas (`fix/ux03-ux04`). Evidencia en
 `docs/evidencia/UX-03-UX-04-accesibilidad-y-errores.md`. Lo que hay que saber sin leerla:

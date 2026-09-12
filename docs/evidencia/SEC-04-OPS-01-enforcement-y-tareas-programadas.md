@@ -257,16 +257,119 @@ Y la entrada de deuda de `buscarPropietarioPorCorreo`, reescrita.
 
 | Gate | Resultado |
 |---|---|
-| `flutter analyze` | _(pendiente de rellenar)_ |
-| `flutter test` | _(pendiente de rellenar)_ |
-| `functions` (Mocha) | **260 passing** (218 antes) |
-| `test_rules` (Jest + emuladores) | _(pendiente de rellenar)_ |
+| `flutter analyze` | `No issues found!` |
+| `flutter test` | **1216 / 1216**, exit 0 |
+| `functions` (Mocha) | **263 passing** (218 antes: +45 de esta tarea) |
+| `test_rules` (Jest + emuladores) | **446 / 446**, 25 suites, exit 0 (11 nuevos) |
 | Centinela de índices | **4 / 4** |
 | E2E de la app | _(pendiente de rellenar)_ |
-| E2E de la landing | no se relanzó: ninguno de los cuatro commits toca `landing-web/` |
+| E2E de la landing | no se relanzó: ningún commit de esta rama toca `landing-web/` |
 
-Los dos revisores del proyecto **sí aplican** aquí y se pasaron: el cambio
-toca `firestore.rules`, `functions/index.js` y `firestore.indexes.json`.
+Los dos revisores del proyecto **sí aplican** aquí y se pasaron los dos: el
+cambio toca `firestore.rules`, `functions/index.js` y `firestore.indexes.json`.
+Sus hallazgos están arriba, y los ocho quedaron cerrados o anotados.
+
+Los cuatro negativos de reglas se comprobaron **rojos antes del cambio**,
+revirtiendo el acotado y volviendo a correr la suite, con el control positivo
+verde en las dos pasadas. El del `create` lo verificó el propio revisor contra
+el emulador.
+
+Una nota de operación para la próxima corrida: una suite de reglas que expire
+deja el emulador de Firestore y el hub **vivos** en 8080 y 4400, y la
+siguiente corrida se queda colgada sin decir por qué. Comprobar los puertos
+antes de relanzar, como ya avisa `CLAUDE.md`.
+
+---
+
+## La ronda de revisión — ocho hallazgos, y tres eran defectos reales
+
+Los dos revisores del proyecto (`firestore-rules-reviewer` y
+`functions-perf-reviewer`) volvieron a pagar su coste. Lo que encontraron y
+mis tests no:
+
+### El barrido de alertas se podía tumbar entero desde el cliente
+
+El `update` de contabilidad estaba **fuera** del `try`. Las reglas permiten al
+propietario borrar su alerta (`allow delete`), así que si la borra entre el
+`get()` de la página y su turno en el bucle, el `NOT_FOUND` sube sin capturar
+y **aborta la corrida completa**: todas las alertas de todos los usuarios se
+quedan sin aviso ese día, y sin checkpoint que recupere el cursor. La ventana
+es real —una página son hasta 500 documentos, cada uno con lecturas y un
+envío—, así que es una denegación de servicio disparable por cualquier usuario
+con una operación que las reglas le autorizan.
+
+El mismo defecto estaba en el otro extremo del recordatorio de citas: la
+lectura de `usuarios/{uid}` tampoco estaba cubierta por su `try`, y un fallo
+transitorio de lectura se llevaba por delante el resto de citas del día.
+
+El precio de no propagar: si el marcado falla después de haber enviado el
+push, mañana se reenvía. Reenviar una vez es mucho mejor que tumbar la
+corrida.
+
+### Se podía **crear** una alerta ya silenciada
+
+El `allow update` cerraba la puerta y el `allow create` la dejaba abierta. Un
+propietario que cree su alerta con `ultimo_aviso: 'vencida'` consigue que el
+barrido no la avise nunca, ni por vencer ni vencida. Que la interfaz actual no
+lo haga no es una compuerta: cualquier cliente autenticado escribe por SDK o
+por REST. El revisor lo verificó contra el emulador, no lo dedujo.
+
+Solo se puede silenciar uno a sí mismo, lo que limita la severidad. Pero es
+**irreversible desde el cliente**, precisamente porque el candado del update
+bloquea esa clave.
+
+### `startAfter` era un no-op en los dos dobles
+
+Y con eso **la paginación no la ejercía ningún test**, en ninguno de los dos
+barridos. No por descuido: con un `startAfter` que no avanza, un caso de dos
+páginas devuelve la primera eternamente, así que el test entra en bucle
+infinito y no hay forma de escribirlo. Es exactamente la trampa que este
+proyecto ya tiene documentada — «un doble tenía `limit()` como no-op».
+
+Ahora avanza de verdad, y hay un test por barrido que comprueba las dos
+mitades del contrato: que no se salta documentos y que no los repite.
+
+El revisor validó además, y esto conviene que conste, que **las escrituras de
+`ultimo_aviso` sobre documentos ya recorridos no desestabilizan el cursor**:
+ni `estado` ni `__name__` participan en el write, y son los dos campos del
+índice que sirve la consulta.
+
+### Y cinco más, menores pero reales
+
+- **Los tres barridos corrían con el `timeoutSeconds` por defecto (60 s)**
+  haciendo round-trips secuenciales por documento, con páginas de hasta 500.
+  Ahora `runWith({ timeoutSeconds: 540, memory: '512MB' })`.
+- **La primera corrida tras desplegar sería una estampida.** `ultimo_aviso` no
+  existe en producción, así que el barrido nuevo notificaría de golpe todo el
+  volumen histórico — y el caso que más documentos acumula es justo el que el
+  cambio arregla. De ahí `backfill_ultimo_aviso.js`.
+- **`every 24 hours` es un intervalo anclado al despliegue, no una hora.** Tras
+  cada redespliegue el recordatorio podía acabar saliendo a las 3 de la
+  mañana. Los dos de notificación pasan a `0 9 * * *` en zona de Bogotá.
+- **El comentario prometía un reintento que no está configurado.** No hay
+  `failurePolicy` ni `retryConfig`: relanzar da visibilidad, no reintento. Y en
+  reservas el reintento sería **dañino**, porque no hay marca de idempotencia y
+  reenviaría los recordatorios ya entregados. Comentarios corregidos.
+- **El runbook no decía cómo llega `APP_CHECK_ENFORCEMENT` a las funciones
+  desplegadas**, así que la tabla de verificación no era ejecutable. Son
+  archivos `.env` por proyecto que lee `firebase-tools`, y cambiar el modo es
+  un despliegue, no un interruptor.
+
+### Lo que los revisores dieron por bueno
+
+Vale la pena registrarlo, porque son las decisiones que más dudé:
+
+- **El índice nuevo es el correcto y está completo**, y ninguno de los dos que
+  ya existían en `reservas` queda redundante.
+- **No acotar por fecha la consulta de alertas es correcto.** El razonamiento
+  del orden por tipo se validó, no se aceptó.
+- **`exigirAppCheck` no añade coste medible**, y estar antes del check de
+  `unauthenticated` es lo correcto: rechaza el tráfico de bots antes de tocar
+  Firestore y no revela si la sesión es válida.
+- **La cota de fecha en reservas no cambia el conjunto notificado.** La versión
+  inline ya descartaba las reservas cuya fecha no fuera `Timestamp`, así que
+  mover el filtro al servidor deja fuera exactamente lo mismo. Es el reverso
+  exacto del argumento de alertas, y ambos son correctos por el mismo motivo.
 
 ---
 
@@ -274,10 +377,14 @@ toca `firestore.rules`, `functions/index.js` y `firestore.indexes.json`.
 
 | # | Qué | Por qué se deja |
 |---|---|---|
-| 1 | **El paso 2 de la verificación de App Check es manual.** No hay spec que ejerza el rechazo de punta a punta contra el emulador de Functions con `APP_CHECK_ENFORCEMENT=enforce`. | Lo automatizado es el paso 1, a nivel de unidad, que sí prueba el rechazo. El de punta a punta exige meter el emulador de Functions en una suite que hoy no lo levanta, y con `enforce` puesto **toda** la suite fallaría: hace falta una config aparte. |
-| 2 | **La consulta de `alertasVencidas` sigue barriendo todas las pendientes.** No se acotó por fecha por la convivencia de `Timestamp` y cadena en `fecha_limite`. | Acotarla sin normalizar antes dejaría fuera en silencio las alertas heredadas. El backfill es una tarea con su propio riesgo y su propio centinela, no un ajuste. |
-| 3 | **Cada alerta notificada hace un `update` suelto**, no un batch. | Con el dedup nuevo el volumen de escrituras cae de «todas las pendientes cada día» a «dos por alerta en toda su vida», así que el batch compra mucho menos que antes. Merece medirse antes de complicarlo. |
-| 4 | **Los siete triggers de notificación siguen sin test.** OPS-01 nombra «cron/backup/notificaciones»; se cubrieron las cuatro programadas y el respaldo, no los `onCreate`/`onUpdate` que mandan push. | Son siete y ninguno tiene la lógica separada del acceso a Firestore: extraerlos es una tanda propia, del tamaño de esta. Inventariados en el reconocimiento de esta tarea. |
-| 5 | **El recordatorio de reserva no escribe en el centro de notificaciones**, solo manda push — al revés que el de alertas, que ahora sí. | Es una inconsistencia real, no una decisión. Se deja porque cambia el contenido que ve el usuario y merece decidirse con el criterio de producto, no de paso. |
-| 6 | **El texto de los recordatorios no dice la hora de la cita** («a la hora acordada»). | Functions no tiene ARB ni localización; meter texto localizado en el servidor es una decisión de arquitectura que no cabe en esta tarea. |
-| 7 | **`checkAlertsDaily` no vuelve a avisar si el usuario mueve la fecha límite hacia el futuro y luego vuelve a acercarse.** El escalón anotado no se limpia. | Alcanzable pero raro, y limpiarlo bien exige comparar contra la fecha además del escalón. Anotado para que conste que es una elección. |
+| 1 | **Los barridos siguen haciendo N+1**: una lectura por vehículo y por usuario, y un `messaging.send()` por destinatario, todo secuencial. La caché por `Map` amortiza los repetidos pero no agrupa los distintos. | El `timeoutSeconds: 540` quita el riesgo inmediato, que era el que apremiaba. Agruparlo bien son dos cambios (`db.getAll()` por página y `messaging.sendEach()`) y el segundo obliga a rehacer el marcado por índice de resultado: es una tanda propia, no un ajuste. |
+| 2 | **El paso 2 de la verificación de App Check es manual.** No hay spec que ejerza el rechazo de punta a punta contra el emulador de Functions con `enforce`. | Lo automatizado es el paso 1, a nivel de unidad, que sí prueba el rechazo. El de punta a punta exige una config aparte: con `enforce` puesto, la suite E2E entera fallaría, porque el emulador no emite tokens. |
+| 3 | **Nadie ha comprobado cómo trata el cliente Flutter un `failed-precondition`** donde antes recibía `unauthenticated`. | Solo importa cuando se active `enforce`, y forma parte de esa puesta en marcha. Anotado junto al paso 3 del runbook. |
+| 4 | **`alertasVencidas` relee cada día todo lo ya avisado**, y ese conjunto solo crece: una alerta vencida que nadie cierra se queda `Pendiente` para siempre y cae en `yaAvisadas`. | Hay una salida barata que el revisor propone —denormalizar `avisos_pendientes` y consultar dos igualdades, que por el criterio del gap 9.4 no exigen índice compuesto— pero es una denormalización, y en este proyecto esas van con sus dos revisores y su backfill. No cabe de paso. |
+| 5 | **El reintento de Cloud Scheduler no está configurado en ninguna.** Relanzar da visibilidad. | En alertas sería seguro activarlo (`ultimo_aviso` la hace idempotente) y en reservas no lo es hasta que haya marca por reserva. Activar solo una de las dos merece decidirse aparte. |
+| 6 | **Los siete triggers de notificación siguen sin test.** OPS-01 nombra «cron/backup/notificaciones»; se cubrieron las cuatro programadas y el respaldo, no los `onCreate`/`onUpdate` que mandan push. | Son siete y ninguno tiene la lógica separada del acceso a Firestore: extraerlos es una tanda del tamaño de esta. Quedan inventariados con ruta y línea en el reconocimiento de esta tarea. |
+| 7 | **El recordatorio de reserva no escribe en el centro de notificaciones**, solo manda push — al revés que el de alertas, que ahora sí. | Es una inconsistencia real, no una decisión. Se deja porque cambia lo que ve el usuario y merece criterio de producto. |
+| 8 | **El texto de los recordatorios no dice la hora de la cita** («a la hora acordada»). | Functions no tiene ARB ni localización; meter texto localizado en el servidor es una decisión de arquitectura que no cabe aquí. |
+| 9 | **`fecha_ultimo_aviso` se escribe pero no se lee.** | Es telemetría operativa, útil para diagnosticar desde la consola. Si algún día se usa para throttling habrá que revisar que sembrarla en el create sigue cerrado — hoy lo está. |
+| 10 | **La lista de campos de servidor en `/alertas` es denylist (`hasAny`), no allowlist (`hasOnly`)** como en `/reservas`. Cualquier campo de servidor futuro nacerá escribible por el cliente hasta que alguien recuerde ampliarla. | Es justo así como llegó el hallazgo del `create` de esta ronda. Cambiarlo exige enumerar los campos legítimos del modelo (`AlertModel.toMap()` ya lista los diez), y eso es una tarea con su propia regresión. |
+| 11 | **`checkAlertsDaily` no vuelve a avisar si el usuario aleja la fecha límite y luego se vuelve a acercar.** El escalón anotado no se limpia. | Alcanzable pero raro, y limpiarlo bien exige comparar contra la fecha además del escalón. Anotado para que conste que es una elección. |
