@@ -21,6 +21,7 @@ const { CAMPO_MIGRACION, esMigracion } = require('./src/migracion');
 const { cerrarTicketsDeVehiculo } = require('./src/cerrarTicketsDeVehiculo');
 const { notificarAlertasVencidas } = require('./src/alertasVencidas');
 const { exportarFirestore } = require('./src/exportacionFirestore');
+const { exigirAppCheck } = require('./src/appCheck');
 const { enviarRecordatoriosDeReserva } = require('./src/recordatoriosReserva');
 // El FieldValue tiene que salir del MISMO modulo que la instancia de Firestore.
 // Observado en el emulador de Functions: `admin.firestore.FieldValue` llega
@@ -790,6 +791,7 @@ async function notificarTicketAbierto(idReparacion, ticket) {
  * coleccion tiene que replicar la autorizacion aqui a mano, igual que este.
  */
 exports.recibirVehiculoDelTicket = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'recibirVehiculoDelTicket');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1228,6 +1230,7 @@ exports.aggregateRatings = functions.firestore
  * stay protected by firestore.rules (owner, admin, or talleres_vinculados).
  */
 exports.buscarVehiculoPorPlaca = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'buscarVehiculoPorPlaca');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1279,6 +1282,7 @@ exports.buscarVehiculoPorPlaca = functions.https.onCall(async (data, context) =>
  * server-side (no confia en una lista que mande el cliente).
  */
 exports.obtenerUsuariosCompartidos = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'obtenerUsuariosCompartidos');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1339,6 +1343,7 @@ exports.obtenerUsuariosCompartidos = functions.https.onCall(async (data, context
  * ningun round-trip a Cloud Functions.
  */
 exports.obtenerPerfilPublico = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'obtenerPerfilPublico');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1414,6 +1419,7 @@ exports.obtenerPerfilPublico = functions.https.onCall(async (data, context) => {
  * llega hasta aqui.
  */
 exports.obtenerEmpleadosPublicos = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'obtenerEmpleadosPublicos');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1429,6 +1435,7 @@ exports.obtenerEmpleadosPublicos = functions.https.onCall(async (data, context) 
 
 /** Requests never resolve the target email. The owner delivers the code manually. */
 exports.buscarPropietarioPorCorreo = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'buscarPropietarioPorCorreo');
   if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
   await consumirIntentoCompartir(context.auth.uid);
   const vehicleId = typeof data?.vehicleId === 'string' ? data.vehicleId : '';
@@ -1469,6 +1476,7 @@ async function consumirIntentoCompartir(uid) {
 }
 
 exports.aceptarInvitacionVehiculo = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'aceptarInvitacionVehiculo');
   if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
   await consumirIntentoCompartir(context.auth.uid);
   const codigo = data?.codigoInvitacion;
@@ -1510,6 +1518,7 @@ exports.aceptarInvitacionVehiculo = functions.https.onCall(async (data, context)
  * el rol Taller ni reasignar su vinculo a otro taller.
  */
 exports.crearEmpleadoTaller = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'crearEmpleadoTaller');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1682,6 +1691,7 @@ exports.crearEmpleadoTaller = functions.https.onCall(async (data, context) => {
  *    'usuarios'.
  */
 exports.desactivarEmpleadoTaller = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'desactivarEmpleadoTaller');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1765,6 +1775,7 @@ async function assertSuperUser(uid) {
  * Firestore falla, se borra el usuario de Auth para no dejarlo huérfano.
  */
 exports.superUserCreateAccount = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'superUserCreateAccount');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1830,6 +1841,7 @@ exports.superUserCreateAccount = functions.https.onCall(async (data, context) =>
 
 // Password changes invalidate outstanding Auth password-reset codes. Never log the credential.
 exports.superUserRegenerateInvitation = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'superUserRegenerateInvitation');
   if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
   await assertSuperUser(context.auth.uid);
   const uid = typeof data?.uid === 'string' ? data.uid : '';
@@ -1869,6 +1881,7 @@ exports.superUserRegenerateInvitation = functions.https.onCall(async (data, cont
  * las demás cuentas de máximo privilegio).
  */
 exports.superUserDeleteAccount = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'superUserDeleteAccount');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
