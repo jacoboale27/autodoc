@@ -262,7 +262,7 @@ Y la entrada de deuda de `buscarPropietarioPorCorreo`, reescrita.
 | `functions` (Mocha) | **263 passing** (218 antes: +45 de esta tarea) |
 | `test_rules` (Jest + emuladores) | **446 / 446**, 25 suites, exit 0 (11 nuevos) |
 | Centinela de índices | **4 / 4** |
-| E2E de la app | _(pendiente de rellenar)_ |
+| E2E de la app | **32 pasan, 2 `fixme`**, exit 0 — con `--workers=1`, ver abajo |
 | E2E de la landing | no se relanzó: ningún commit de esta rama toca `landing-web/` |
 
 Los dos revisores del proyecto **sí aplican** aquí y se pasaron los dos: el
@@ -278,6 +278,34 @@ Una nota de operación para la próxima corrida: una suite de reglas que expire
 deja el emulador de Firestore y el hub **vivos** en 8080 y 4400, y la
 siguiente corrida se queda colgada sin decir por qué. Comprobar los puertos
 antes de relanzar, como ya avisa `CLAUDE.md`.
+
+### La E2E de la app en paralelo: la caracterización anterior se queda corta
+
+La evidencia de UX-03/04 dejó escrito que la primera corrida completa daba dos
+rojos —`propietario` y `mecanico`, los dos aterrizando en `/profile_setup`— y
+que **la siguiente corrida daba 32/32**. Aquí no se curó sola: dos corridas
+paralelas seguidas fallaron, y la segunda **peor que la primera** (1 rojo y
+luego 2). Solo con `--workers=1` sale entera en verde.
+
+Se investigó antes de atribuirlo, porque «es el flake conocido» es justo la
+frase con la que se cuela una regresión:
+
+- El spec de `propietario` **pasa 5/5 corrido solo**.
+- El redirect sale de `app_router.dart:287`: se dispara cuando
+  `userData == null`, es decir cuando **la lectura del perfil en Firestore aún
+  no ha llegado**. No hay ningún callable en ese camino, así que el guard de
+  App Check —que además en `monitor` no rechaza nada— no puede alcanzarlo. Y
+  el cambio de reglas toca solo `/alertas`, otro bloque `match`.
+- Con la concurrencia a uno, **32 pasan y 0 fallan**.
+
+Es decir: el emulador Java de Firestore no da abasto cuando cuatro workers
+arrancan la app a la vez (CanvasKit más la persistencia offline), y lo que se
+pierde es la primera lectura del perfil. La conclusión práctica para la
+próxima tanda es que **el número de gate de esta suite hay que tomarlo con
+`--workers=1`**; en paralelo no es reproducible, y tratar sus rojos como
+señal cuesta una investigación por corrida.
+
+
 
 ---
 

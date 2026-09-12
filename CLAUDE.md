@@ -71,6 +71,14 @@ Evidencia en `docs/evidencia/GAPS-03-accesibilidad-de-la-landing.md`. Dos cosas 
   alternativa textual: quedan con un comentario para que la próxima auditoría no las
   levante otra vez.
 
+**La E2E de la app en paralelo no es reproducible, y su rojo no es senal.** El emulador Java
+de Firestore no da abasto cuando cuatro workers arrancan la app a la vez, y lo que se pierde
+es la primera lectura del perfil: el router ve `userData == null` y manda a `/profile_setup`.
+UX-03/04 anoto que la corrida siguiente salia 32/32; en SEC-04/OPS-01 **no se curo sola** —dos
+corridas paralelas seguidas fallaron, la segunda peor que la primera— y solo
+`npm test -- --workers=1` la saca entera en verde. **Toma el numero de gate de esta suite en
+serie**; en paralelo cada rojo cuesta una investigacion.
+
 **Cifras al día del árbol combinado:** `flutter analyze` limpio, `flutter test`
 **1216/1216**, Functions **263**, reglas **446/446** en 25 suites, E2E de la landing
 **42/42**.
