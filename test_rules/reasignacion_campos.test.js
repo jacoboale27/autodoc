@@ -1,4 +1,5 @@
 const { assertFails, assertSucceeds } = require('@firebase/rules-unit-testing');
+const { deleteField } = require('firebase/firestore');
 const { makeEnv, seed, withRole, UIDS } = require('./helpers');
 
 let env;
@@ -156,5 +157,145 @@ describe('un update legitimo no puede reasignar el registro a otro vehiculo/tall
     await assertSucceeds(
       db.collection('historial_mantenimientos').doc('h1').update({ descripcion: 'corregido' }),
     );
+  });
+});
+
+describe('la contabilidad del barrido de alertas es del servidor (OPS-01)', () => {
+  // `ultimo_aviso` es lo que impide que `checkAlertsDaily` reenvie el mismo
+  // push cada 24 h mientras la alerta siga 'Pendiente'. Lo escribe el barrido
+  // con Admin SDK, que no pasa por estas reglas. Si el cliente pudiera
+  // tocarlo, el propietario podria devolverse a si mismo el aviso diario que
+  // el arreglo elimina — y, peor, cualquier escritura descuidada de la app
+  // sobre el documento entero lo borraria sin querer.
+  const conAviso = async () => {
+    await seed(env, async (s) => {
+      await s.collection('vehiculos').doc('v1').set({
+        id_vehiculo: 'v1', id_propietario: UIDS.owner1, placa: 'P-1',
+      });
+      await s.collection('alertas').doc('a1').set({
+        id_vehiculo: 'v1', tipo: 'soat', descripcion: 'vence pronto',
+        ultimo_aviso: 'por_vencer',
+        // Tiene que estar sembrado: borrar un campo que no existe no afecta a
+        // ninguna clave, asi que el update pasaria por ser un no-op y el test
+        // seria rojo por el fixture, no por la regla.
+        fecha_ultimo_aviso: new Date('2026-09-10T00:00:00Z'),
+      });
+    });
+  };
+
+  test('el propietario NO puede reescribir ultimo_aviso', async () => {
+    // El payload es un escalon valido y no `null` a proposito: con `null`,
+    // este test seguiria verde aunque alguien reescribiera la regla como
+    // "solo se aceptan valores de ESCALONES", que es justo el agujero.
+    await conAviso();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(db.collection('alertas').doc('a1').update({ ultimo_aviso: 'vencida' }));
+  });
+
+  test('el propietario NO puede BORRAR ultimo_aviso', async () => {
+    // El caso que se escapa si la regla ata el valor en vez de la clave: un
+    // `FieldValue.delete()` no escribe ningun valor que validar. Asi se
+    // esquivo una regla equivalente en la tanda de drenaje anterior.
+    await conAviso();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('alertas').doc('a1').update({ ultimo_aviso: deleteField() }),
+    );
+  });
+
+  test('el propietario NO puede retrasar fecha_ultimo_aviso', async () => {
+    await conAviso();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('alertas').doc('a1').update({ fecha_ultimo_aviso: new Date(0) }),
+    );
+  });
+
+  test('ni siquiera el admin: una correccion real se hace con Admin SDK', async () => {
+    await conAviso();
+    const db = await withRole(env, UIDS.admin, 'Administrador');
+    await assertFails(db.collection('alertas').doc('a1').update({ ultimo_aviso: null }));
+  });
+
+  test('tampoco por set() con merge, que es otra forma de escribir', async () => {
+    // Hoy denegado, pero nada lo fijaba. Es la forma exacta en que un cliente
+    // esquivaria una futura reescritura de la regla hacia validacion por
+    // valor: `affectedKeys()` sobre `diff()` es insensible a la forma del
+    // write, y este test es lo que impide que se pierda esa propiedad.
+    await conAviso();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('alertas').doc('a1').set({ ultimo_aviso: 'vencida' }, { merge: true }),
+    );
+  });
+
+  test('tampoco borrandolo con set() y merge', async () => {
+    await conAviso();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('alertas').doc('a1').set({ ultimo_aviso: deleteField() }, { merge: true }),
+    );
+  });
+
+  test('tampoco con un set() completo que se deje el campo fuera', async () => {
+    // El patron "leer, modelar, reescribir el documento entero" con un
+    // `AlertModel.toMap()` que no conoce estos campos. Omitirlos en un
+    // overwrite es borrarlos, y la regla tiene que verlo igual.
+    await conAviso();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('alertas').doc('a1').set({
+        id_vehiculo: 'v1', tipo: 'soat', descripcion: 'reescrita',
+      }),
+    );
+  });
+
+  test('el propietario NO puede BORRAR fecha_ultimo_aviso', async () => {
+    await conAviso();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('alertas').doc('a1').update({ fecha_ultimo_aviso: deleteField() }),
+    );
+  });
+
+  test('el propietario NO puede CREAR una alerta ya silenciada', async () => {
+    // Lo encontro el revisor de reglas, y era alcanzable: el `allow update`
+    // cerraba la puerta pero el `allow create` la dejaba abierta. Crear con
+    // `ultimo_aviso: 'vencida'` hace que el barrido no avise nunca de esa
+    // alerta, y el propio candado del update lo vuelve irreversible desde el
+    // cliente.
+    await seed(env, async (s) => {
+      await s.collection('vehiculos').doc('v1').set({
+        id_vehiculo: 'v1', id_propietario: UIDS.owner1, placa: 'P-1',
+      });
+    });
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('alertas').doc('nueva').set({
+        id_vehiculo: 'v1', estado: 'Pendiente', tipo: 'soat', ultimo_aviso: 'vencida',
+      }),
+    );
+  });
+
+  test('pero SI puede crear una alerta normal', async () => {
+    // Control positivo del acotado del create: sin esto, cerrar la puerta de
+    // mas pasaria desapercibido.
+    await seed(env, async (s) => {
+      await s.collection('vehiculos').doc('v1').set({
+        id_vehiculo: 'v1', id_propietario: UIDS.owner1, placa: 'P-1',
+      });
+    });
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertSucceeds(
+      db.collection('alertas').doc('nueva').set({
+        id_vehiculo: 'v1', estado: 'Pendiente', tipo: 'soat',
+      }),
+    );
+  });
+
+  test('el propietario SI puede seguir editando su alerta con el campo puesto', async () => {
+    await conAviso();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertSucceeds(db.collection('alertas').doc('a1').update({ descripcion: 'renovado' }));
   });
 });

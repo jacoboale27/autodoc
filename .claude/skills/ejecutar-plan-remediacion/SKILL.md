@@ -13,8 +13,23 @@ orquestarlo**.
 ## Estado (actualizar al cerrar cada tarea)
 
 Hechos: **SEC-01, SEC-02, SEC-03, DATA-01, VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02,
-FUNC-01, FUNC-02, UX-03 y UX-04** (a 2026-09-12). Siguiente por orden §12: **SEC-04 /
-OPS-01**, luego H-01, INNO-01, FINAL-01.
+FUNC-01, FUNC-02, UX-03/UX-04 y SEC-04/OPS-01** (a 2026-09-12). Siguiente por orden §12:
+**H-01**, luego INNO-01 —solo si el mock judge lo exige— y FINAL-01. Las dos tandas de
+drenaje estan cerradas: `fix/gaps-02` y `fix/gaps-03`.
+
+**Leccion de SEC-04/OPS-01, y es la que mas vale de esta ronda: un interruptor de consola
+puede mentir sobre lo que cubre.** App Check estaba activado en el cliente desde hacia meses
+y ningun servidor comprobaba la firma; peor, en Cloud Functions **v1** el enforcement no
+tiene ajuste de consola, asi que activarlo habria mostrado el producto «protegido» mientras
+los doce callables aceptaban cualquier llamada. Antes de dar por cubierto un control que
+depende de configuracion externa, busca la linea de codigo que lo aplica.
+
+**Y los dos revisores volvieron a encontrar lo que los tests propios no veian**, tres veces:
+un `update` fuera del `try` que convertia el barrido en una denegacion de servicio
+disparable por cualquier usuario; un `allow create` que dejaba nacer el documento ya
+silenciado mientras el `allow update` cerraba la puerta; y `startAfter` como no-op en los dos
+dobles, con lo que la paginacion no la ejercia ningun test. **Un doble que no puede fallar no
+esta probando nada** — ya van tres rondas con la misma cicatriz.
 
 **Leccion de UX-03/04, y vale para cualquier tarea de UI:** el enunciado del plan describia
 un menu movil inaccesible y UN error crudo. No habia menu movil ninguno, y el error crudo era

@@ -49,7 +49,15 @@ describe('SEC-01 / SEC-03', () => {
     let selected = source.slice(source.indexOf('async function assertSuperUser'), source.indexOf('/**\n * Elimina una cuenta de forma permanente'));
     const lookup = source.indexOf('exports.buscarPropietarioPorCorreo');
     selected += '\n' + source.slice(lookup, source.indexOf('/**\n * 13.', lookup));
-    const sandbox = { exports: {}, admin, db, functions, require, console, Date, Buffer };
+    // El harness evalua un RECORTE del fuente, asi que los `require` de la
+    // cabecera de index.js no entran en el sandbox: las dependencias que use
+    // el trozo recortado hay que inyectarlas aqui. `exigirAppCheck` es la de
+    // SEC-04, y se inyecta la de verdad —no un doble— para que estos tests
+    // corran contra el mismo guard que produccion.
+    const { exigirAppCheck } = require('../src/appCheck');
+    const sandbox = {
+      exports: {}, admin, db, functions, require, console, Date, Buffer, exigirAppCheck,
+    };
     vm.runInNewContext(selected, sandbox); api = sandbox.exports;
   });
   it('creates an account without a shared password and returns only a manual invitation', async () => {

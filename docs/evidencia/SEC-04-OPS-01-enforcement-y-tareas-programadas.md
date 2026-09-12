@@ -1,0 +1,418 @@
+# SEC-04 / OPS-01 — Enforcement de App Check y tareas programadas
+
+Rama `fix/sec04-ops01`, cortada de `integracion/ola-1` (`dd4958e`).
+Evidencia `EVID-OPS-001..012`.
+
+Dos tareas que comparten superficie —`functions/`— y por eso van juntas, en
+commits separados. SEC-04 es el §7 «SEC-04 / OPS-01 / QA-02» del plan
+maestro; QA-02 ya estaba cerrada desde la ola 2.
+
+---
+
+## Lo que hay que saber sin leer el resto
+
+1. **App Check estaba a medias, y la mitad que faltaba era la que protege.**
+   El cliente firma desde hace meses (`lib/main.dart:183`: reCAPTCHA
+   Enterprise en web, Play Integrity en Android, DeviceCheck en iOS) y
+   **ningún servidor comprobaba la firma**. Cero ocurrencias de `context.app`
+   en todo `functions/`. Un cliente que firma y un servidor que no verifica no
+   es media protección: es ninguna, porque el atacante simplemente no firma.
+
+2. **Y la trampa es que la consola miente sobre la cobertura.** Este repo usa
+   Cloud Functions **v1**, donde el enforcement de App Check **no tiene
+   interruptor**. Para Firestore y Storage basta activarlo en la consola de
+   Firebase; para las Functions v1 hay que mirar `context.app` en el código,
+   función por función. Alguien que activara App Check en la consola vería el
+   producto «protegido» mientras los doce callables seguían aceptando
+   cualquier llamada. El runbook ya lo había detectado y lo dejaba como deuda
+   con dueño ausente.
+
+3. **El barrido de alertas mandaba el mismo push todos los días, para
+   siempre.** Es el defecto más visible para un usuario real de todos los que
+   quedaban abiertos. Nada marcaba la alerta como avisada, y `estado` solo
+   sale de `Pendiente` cuando el propietario la cierra a mano desde la app
+   (`alert_provider.dart:304`). Un SOAT vencido que su dueño no cierre —el
+   caso normal, porque la gente renueva el SOAT y se olvida de la app— le
+   manda una notificación diaria indefinidamente. Es exactamente la clase de
+   notificación que hace que se desactiven todas las notificaciones de la app.
+
+4. **El recordatorio de citas leía la colección entera cada día**, y encima
+   avisaba del día equivocado. Sin cota de fecha en la consulta: filtraba
+   `estado == 'confirmada'` y paginaba todo, descartando en memoria. Una
+   reserva confirmada de hace dos años se seguía leyendo a diario. Y «mañana»
+   se calculaba en UTC: Colombia es UTC-5, así que una cita a las 20:00 de
+   Bogotá cae al día siguiente en UTC y su recordatorio salía descolocado —
+   justo las citas de tarde, que son la mayoría.
+
+5. **El respaldo no fallaba cuando le faltaba configuración: exportaba a una
+   ruta basura.** `client.databasePath(undefined, '(default)')` construye
+   `projects/undefined/databases/(default)` sin protestar y el bucket salía
+   como `gs://undefined-backups`. El error que llegaba después hablaba de un
+   recurso inexistente, no de la variable que faltaba. Un respaldo puede
+   llevar meses sin hacerse así sin que nadie lo note — y es la única copia de
+   seguridad que tiene el proyecto.
+
+6. **Dos de las cuatro tareas programadas se tragaban sus errores** con un
+   `console.error` y devolvían normalmente. Cloud Scheduler las veía correctas
+   y no reintentaba: un barrido roto era indistinguible de un día sin trabajo
+   que hacer.
+
+---
+
+## SEC-04 — el enforcement (`6f5c172`)
+
+### Qué se implementó
+
+`functions/src/appCheck.js`, y una llamada `exigirAppCheck(context, '<nombre>')`
+como primera línea de los **12** `functions.https.onCall` de `index.js`.
+
+Firebase ya valida el token antes de que llegue el `context`: si `context.app`
+está presente, el token era auténtico. Lo que faltaba —y es lo único que hace
+este módulo— es **decidir qué hacer cuando no está**.
+
+### Por qué el modo por defecto es `monitor` y no `enforce`
+
+Una llamada sin token no es solo un atacante. Es también un build web al que
+le faltó `RECAPTCHA_SITE_KEY`, un móvil con Play Integrity caído, o una
+versión vieja en caché. Encender el rechazo de golpe expulsa a usuarios
+legítimos, y el síntoma —llamadas que fallan sin patrón— es de los más
+difíciles de atribuir.
+
+El runbook ya exigía dos fases (monitorización, y enforcement solo si el
+porcentaje de tokens válidos supera el 98 %), así que el código tiene que
+poder estar en la primera. `APP_CHECK_ENFORCEMENT=enforce` es un paso de
+runbook, no un valor por defecto.
+
+Un valor **no reconocido** cae a `monitor`. Es la decisión con más
+consecuencia del módulo: caer a `off` sería inseguro en silencio, y caer a
+`enforce` por una errata de configuración dejaría fuera a la aplicación
+entera.
+
+Hay un efecto secundario que conviene tener presente: con `enforce` por
+defecto, **la suite de E2E dejaría de pasar entera**, porque el emulador de
+Functions no emite tokens de App Check. Que el rechazo sea observable desde el
+emulador es lo que lo hace verificable; que esté apagado por defecto es lo que
+mantiene la suite útil.
+
+### El mensaje de rechazo es opaco a propósito
+
+`failed-precondition` con «No se pudo verificar la aplicación». No nombra App
+Check, ni el proveedor, ni la variable de configuración. Un mensaje que
+explique qué falta le está diciendo al atacante exactamente contra qué está
+chocando. El detalle útil queda en el log del servidor, con el callable y el
+uid.
+
+### El centinela, y por qué cuenta bloques y no ocurrencias
+
+En v1 la protección es una línea de código dentro de cada `onCall`. Eso
+significa que **un callable nuevo nace sin protección y nadie se entera** —
+que es exactamente cómo se llegó al estado que SEC-04 arregla.
+
+`functions/test/app_check_cobertura.test.js` corta el entrypoint en un bloque
+por `exports.` y exige que todo bloque con un `onCall` tenga su
+`exigirAppCheck`. Contar `onCall` y contar `exigirAppCheck` y comparar los dos
+números daría el mismo resultado aunque un callable llevara dos
+comprobaciones y otro ninguna: es el error que ya cometió la primera versión
+del centinela de FUNC-02, que miraba solo el cuerpo de cada `exports.` y
+pasaba por casualidad.
+
+El primero de sus tres tests comprueba que **el corte encuentra los callables
+que hay**. Sin él, los otros dos podrían estar recorriendo una lista vacía y
+pasando por eso.
+
+El tercero exige que cada callable se registre con su **propio** nombre. No es
+seguridad: es que en la fase de monitorización el log es lo único que dice qué
+callable está perdiendo tokens, y un copiar-pegar que deje el nombre del
+anterior lo envenena justo cuando hay que usarlo.
+
+### Un test existente cargaba `index.js` de una forma que había que respetar
+
+`functions/test/security_functions.test.js` no hace `require('../index.js')`:
+lee el fuente, **recorta un trozo por posición de texto** y lo evalúa en un
+sandbox de `vm` con un conjunto acotado de globales. Los `require` de la
+cabecera no entran en ese recorte, así que el guard nuevo llegaba como
+`ReferenceError` y tumbaba once tests de SEC-01/SEC-03.
+
+Se inyecta en el sandbox **el guard de verdad**, no un doble: así esos tests
+siguen corriendo contra el mismo código que producción.
+
+### La deuda que esto cierra
+
+El runbook tenía una entrada abierta y sin dueño: `buscarPropietarioPorCorreo`
+como oráculo `correo -> (uid, nombre_completo)` sin límite de tasa, cuyo
+cierre se difería explícitamente a «cuando exista enforcement de App Check».
+Estaba **doblemente desactualizada**: SEC-03 ya había rehecho el contrato del
+callable (ahora crea una solicitud con código aleatorio y guarda el correo
+hasheado, con límite de intentos por uid), y SEC-04 añade la mitad que
+faltaba. La entrada se reescribió; no se borró, porque la condición que queda
+—que solo rechaza en `enforce`— importa.
+
+---
+
+## OPS-01 — las tareas programadas (`fe8875e`, `b5ec904`, `ac59c7e`)
+
+Cuatro funciones programadas, `pubsub.schedule('every 24 hours')` las cuatro.
+Solo una, `caducarVinculosDeTalleresInactivos`, tenía su lógica extraída y
+probada (de FUNC-02). Las otras tres estaban inline en `index.js` y **sin un
+solo test**. Las tres se extrajeron siguiendo ese mismo patrón: módulo en
+`functions/src/`, doble en memoria en el test.
+
+### `checkAlertsDaily` → `src/alertasVencidas.js`
+
+El arreglo del push diario son dos escalones, `por_vencer` y `vencida`, y cada
+uno se avisa una vez: dos notificaciones en la vida de una alerta.
+
+Dos detalles que no son obvios y que están probados:
+
+- **Un envío fallido NO consume el escalón.** Si lo consumiera, un token
+  muerto o un corte de red se llevaría el aviso por delante para siempre.
+- **Sin `fcmToken` no había push y tampoco entrada en el centro de
+  notificaciones.** El push es el transporte; el centro de notificaciones es
+  el registro duradero. Perder el registro porque el transporte no está
+  disponible es al revés de como debería ser. Ahora el registro se escribe
+  igual.
+
+**La consulta de esta función NO se acotó por fecha**, al contrario que la de
+recordatorios, y es deliberado: `fecha_limite` convive en `Timestamp` y en
+cadena ISO heredada —el código inline ya manejaba las dos— y Firestore ordena
+por **tipo** antes que por valor. Una cota sobre `Timestamp` dejaría fuera, en
+silencio, todas las alertas con fecha de texto. Es el mismo fallo que el
+`orderBy` que excluye documentos sin el campo, que este proyecto ya se ha
+comido dos veces. Acotarla exige antes un backfill que normalice el tipo:
+queda como gap.
+
+`ultimo_aviso` y `fecha_ultimo_aviso` son contabilidad del servidor y quedan
+**cerrados al cliente** en `firestore.rules`. Se atan por `affectedKeys()` y no
+por valor: atar el valor deja pasar un `FieldValue.delete()`, que es
+exactamente cómo se esquivó una regla equivalente en la tanda de drenaje
+anterior. Los cuatro negativos son rojos sin ese acotado y el control positivo
+—el propietario sigue pudiendo editar el resto de su alerta— se mantiene
+verde; comprobado revirtiendo la regla y volviendo a correr la suite.
+
+### `sendReservationReminders` → `src/recordatoriosReserva.js`
+
+La cota de fecha va ahora en el servidor, con su índice compuesto nuevo
+`reservas (estado ASC, fecha_hora_propuesta ASC)`, declarado en
+`firestore.indexes.json` y registrado en el inventario del centinela
+`test/firestore_indices_test.dart`. **El centinela hizo su trabajo**: al añadir
+el índice sin registrar la consulta lo marcó como huérfano, y al cambiar el
+número de `.where(` de `functions/` avisó de que había una consulta nueva que
+podía necesitar índice.
+
+La zona horaria es un desfase fijo de −300 minutos y no una librería de zonas:
+Colombia no tiene horario de verano desde 1993, y arrastrar `tzdata` a un
+entrypoint que ya paga arranque en frío por treinta funciones no compensa. Si
+algún día hay usuarios fuera de Colombia el supuesto deja de valer; está
+anotado en el módulo y en el runbook.
+
+Un tercer defecto, más pequeño: **un token FCM muerto abortaba el barrido
+entero**, porque el error subía hasta el `catch` de fuera del bucle. El
+propietario que desinstaló la app dejaba sin recordatorio a todas las citas
+que vinieran después ese día.
+
+**El doble de prueba registra los filtros que recibe la consulta.** Es
+deliberado: un barrido sin cota devuelve exactamente los mismos documentos que
+uno acotado con los fixtures de un test, así que sin esa aserción el test
+daría verde sobre el defecto que dice cubrir.
+
+### `scheduledFirestoreExport` → `src/exportacionFirestore.js`
+
+Falla en la validación, antes de llamar al cliente, y el mensaje nombra la
+variable que falta. El bucket se puede fijar con `FIRESTORE_BACKUP_BUCKET`
+para que staging y producción no compartan destino, igual que ya hacen con las
+claves.
+
+Lo que ningún test puede cubrir va al runbook, en su sección nueva: que el
+bucket exista y esté en la misma región, que la cuenta de servicio tenga
+`roles/datastore.importExportAdmin`, y que haya política de ciclo de vida —
+sin la tercera, una copia completa diaria se acumula indefinidamente y el
+coste crece sin techo.
+
+### Las cuatro relanzan el error
+
+Dos de ellas lo tragaban con un `console.error` y devolvían normalmente. Cloud
+Scheduler no reintenta lo que no falla, así que un barrido roto era
+indistinguible de un día sin trabajo. Ahora se relanza.
+
+---
+
+## Runbook
+
+`docs/RUNBOOK.md` tiene tres secciones nuevas o reescritas:
+
+- **App Check — verificación reproducible**: los cuatro pasos, con la tabla
+  fechada por entorno que hay que rellenar. El orden no es negociable: staging
+  entero antes que producción, y las métricas antes que cualquier `Enforce`.
+- **Respaldo de Firestore — prerrequisitos**: los tres requisitos externos con
+  sus comandos y su tabla de verificación. Incluye la advertencia que más
+  vale: un respaldo que nunca se ha restaurado no está demostrado.
+- **Tareas programadas**: qué corre, en qué módulo, y qué hay que operar para
+  cada una.
+
+Y la entrada de deuda de `buscarPropietarioPorCorreo`, reescrita.
+
+---
+
+## Gates
+
+| Gate | Resultado |
+|---|---|
+| `flutter analyze` | `No issues found!` |
+| `flutter test` | **1216 / 1216**, exit 0 |
+| `functions` (Mocha) | **263 passing** (218 antes: +45 de esta tarea) |
+| `test_rules` (Jest + emuladores) | **446 / 446**, 25 suites, exit 0 (11 nuevos) |
+| Centinela de índices | **4 / 4** |
+| E2E de la app | **32 pasan, 2 `fixme`**, exit 0 — con `--workers=1`, ver abajo |
+| E2E de la landing | no se relanzó: ningún commit de esta rama toca `landing-web/` |
+
+Los dos revisores del proyecto **sí aplican** aquí y se pasaron los dos: el
+cambio toca `firestore.rules`, `functions/index.js` y `firestore.indexes.json`.
+Sus hallazgos están arriba, y los ocho quedaron cerrados o anotados.
+
+Los cuatro negativos de reglas se comprobaron **rojos antes del cambio**,
+revirtiendo el acotado y volviendo a correr la suite, con el control positivo
+verde en las dos pasadas. El del `create` lo verificó el propio revisor contra
+el emulador.
+
+Una nota de operación para la próxima corrida: una suite de reglas que expire
+deja el emulador de Firestore y el hub **vivos** en 8080 y 4400, y la
+siguiente corrida se queda colgada sin decir por qué. Comprobar los puertos
+antes de relanzar, como ya avisa `CLAUDE.md`.
+
+### La E2E de la app en paralelo: la caracterización anterior se queda corta
+
+La evidencia de UX-03/04 dejó escrito que la primera corrida completa daba dos
+rojos —`propietario` y `mecanico`, los dos aterrizando en `/profile_setup`— y
+que **la siguiente corrida daba 32/32**. Aquí no se curó sola: dos corridas
+paralelas seguidas fallaron, y la segunda **peor que la primera** (1 rojo y
+luego 2). Solo con `--workers=1` sale entera en verde.
+
+Se investigó antes de atribuirlo, porque «es el flake conocido» es justo la
+frase con la que se cuela una regresión:
+
+- El spec de `propietario` **pasa 5/5 corrido solo**.
+- El redirect sale de `app_router.dart:287`: se dispara cuando
+  `userData == null`, es decir cuando **la lectura del perfil en Firestore aún
+  no ha llegado**. No hay ningún callable en ese camino, así que el guard de
+  App Check —que además en `monitor` no rechaza nada— no puede alcanzarlo. Y
+  el cambio de reglas toca solo `/alertas`, otro bloque `match`.
+- Con la concurrencia a uno, **32 pasan y 0 fallan**.
+
+Es decir: el emulador Java de Firestore no da abasto cuando cuatro workers
+arrancan la app a la vez (CanvasKit más la persistencia offline), y lo que se
+pierde es la primera lectura del perfil. La conclusión práctica para la
+próxima tanda es que **el número de gate de esta suite hay que tomarlo con
+`--workers=1`**; en paralelo no es reproducible, y tratar sus rojos como
+señal cuesta una investigación por corrida.
+
+
+
+---
+
+## La ronda de revisión — ocho hallazgos, y tres eran defectos reales
+
+Los dos revisores del proyecto (`firestore-rules-reviewer` y
+`functions-perf-reviewer`) volvieron a pagar su coste. Lo que encontraron y
+mis tests no:
+
+### El barrido de alertas se podía tumbar entero desde el cliente
+
+El `update` de contabilidad estaba **fuera** del `try`. Las reglas permiten al
+propietario borrar su alerta (`allow delete`), así que si la borra entre el
+`get()` de la página y su turno en el bucle, el `NOT_FOUND` sube sin capturar
+y **aborta la corrida completa**: todas las alertas de todos los usuarios se
+quedan sin aviso ese día, y sin checkpoint que recupere el cursor. La ventana
+es real —una página son hasta 500 documentos, cada uno con lecturas y un
+envío—, así que es una denegación de servicio disparable por cualquier usuario
+con una operación que las reglas le autorizan.
+
+El mismo defecto estaba en el otro extremo del recordatorio de citas: la
+lectura de `usuarios/{uid}` tampoco estaba cubierta por su `try`, y un fallo
+transitorio de lectura se llevaba por delante el resto de citas del día.
+
+El precio de no propagar: si el marcado falla después de haber enviado el
+push, mañana se reenvía. Reenviar una vez es mucho mejor que tumbar la
+corrida.
+
+### Se podía **crear** una alerta ya silenciada
+
+El `allow update` cerraba la puerta y el `allow create` la dejaba abierta. Un
+propietario que cree su alerta con `ultimo_aviso: 'vencida'` consigue que el
+barrido no la avise nunca, ni por vencer ni vencida. Que la interfaz actual no
+lo haga no es una compuerta: cualquier cliente autenticado escribe por SDK o
+por REST. El revisor lo verificó contra el emulador, no lo dedujo.
+
+Solo se puede silenciar uno a sí mismo, lo que limita la severidad. Pero es
+**irreversible desde el cliente**, precisamente porque el candado del update
+bloquea esa clave.
+
+### `startAfter` era un no-op en los dos dobles
+
+Y con eso **la paginación no la ejercía ningún test**, en ninguno de los dos
+barridos. No por descuido: con un `startAfter` que no avanza, un caso de dos
+páginas devuelve la primera eternamente, así que el test entra en bucle
+infinito y no hay forma de escribirlo. Es exactamente la trampa que este
+proyecto ya tiene documentada — «un doble tenía `limit()` como no-op».
+
+Ahora avanza de verdad, y hay un test por barrido que comprueba las dos
+mitades del contrato: que no se salta documentos y que no los repite.
+
+El revisor validó además, y esto conviene que conste, que **las escrituras de
+`ultimo_aviso` sobre documentos ya recorridos no desestabilizan el cursor**:
+ni `estado` ni `__name__` participan en el write, y son los dos campos del
+índice que sirve la consulta.
+
+### Y cinco más, menores pero reales
+
+- **Los tres barridos corrían con el `timeoutSeconds` por defecto (60 s)**
+  haciendo round-trips secuenciales por documento, con páginas de hasta 500.
+  Ahora `runWith({ timeoutSeconds: 540, memory: '512MB' })`.
+- **La primera corrida tras desplegar sería una estampida.** `ultimo_aviso` no
+  existe en producción, así que el barrido nuevo notificaría de golpe todo el
+  volumen histórico — y el caso que más documentos acumula es justo el que el
+  cambio arregla. De ahí `backfill_ultimo_aviso.js`.
+- **`every 24 hours` es un intervalo anclado al despliegue, no una hora.** Tras
+  cada redespliegue el recordatorio podía acabar saliendo a las 3 de la
+  mañana. Los dos de notificación pasan a `0 9 * * *` en zona de Bogotá.
+- **El comentario prometía un reintento que no está configurado.** No hay
+  `failurePolicy` ni `retryConfig`: relanzar da visibilidad, no reintento. Y en
+  reservas el reintento sería **dañino**, porque no hay marca de idempotencia y
+  reenviaría los recordatorios ya entregados. Comentarios corregidos.
+- **El runbook no decía cómo llega `APP_CHECK_ENFORCEMENT` a las funciones
+  desplegadas**, así que la tabla de verificación no era ejecutable. Son
+  archivos `.env` por proyecto que lee `firebase-tools`, y cambiar el modo es
+  un despliegue, no un interruptor.
+
+### Lo que los revisores dieron por bueno
+
+Vale la pena registrarlo, porque son las decisiones que más dudé:
+
+- **El índice nuevo es el correcto y está completo**, y ninguno de los dos que
+  ya existían en `reservas` queda redundante.
+- **No acotar por fecha la consulta de alertas es correcto.** El razonamiento
+  del orden por tipo se validó, no se aceptó.
+- **`exigirAppCheck` no añade coste medible**, y estar antes del check de
+  `unauthenticated` es lo correcto: rechaza el tráfico de bots antes de tocar
+  Firestore y no revela si la sesión es válida.
+- **La cota de fecha en reservas no cambia el conjunto notificado.** La versión
+  inline ya descartaba las reservas cuya fecha no fuera `Timestamp`, así que
+  mover el filtro al servidor deja fuera exactamente lo mismo. Es el reverso
+  exacto del argumento de alertas, y ambos son correctos por el mismo motivo.
+
+---
+
+## Gaps abiertos
+
+| # | Qué | Por qué se deja |
+|---|---|---|
+| 1 | **Los barridos siguen haciendo N+1**: una lectura por vehículo y por usuario, y un `messaging.send()` por destinatario, todo secuencial. La caché por `Map` amortiza los repetidos pero no agrupa los distintos. | El `timeoutSeconds: 540` quita el riesgo inmediato, que era el que apremiaba. Agruparlo bien son dos cambios (`db.getAll()` por página y `messaging.sendEach()`) y el segundo obliga a rehacer el marcado por índice de resultado: es una tanda propia, no un ajuste. |
+| 2 | **El paso 2 de la verificación de App Check es manual.** No hay spec que ejerza el rechazo de punta a punta contra el emulador de Functions con `enforce`. | Lo automatizado es el paso 1, a nivel de unidad, que sí prueba el rechazo. El de punta a punta exige una config aparte: con `enforce` puesto, la suite E2E entera fallaría, porque el emulador no emite tokens. |
+| 3 | **Nadie ha comprobado cómo trata el cliente Flutter un `failed-precondition`** donde antes recibía `unauthenticated`. | Solo importa cuando se active `enforce`, y forma parte de esa puesta en marcha. Anotado junto al paso 3 del runbook. |
+| 4 | **`alertasVencidas` relee cada día todo lo ya avisado**, y ese conjunto solo crece: una alerta vencida que nadie cierra se queda `Pendiente` para siempre y cae en `yaAvisadas`. | Hay una salida barata que el revisor propone —denormalizar `avisos_pendientes` y consultar dos igualdades, que por el criterio del gap 9.4 no exigen índice compuesto— pero es una denormalización, y en este proyecto esas van con sus dos revisores y su backfill. No cabe de paso. |
+| 5 | **El reintento de Cloud Scheduler no está configurado en ninguna.** Relanzar da visibilidad. | En alertas sería seguro activarlo (`ultimo_aviso` la hace idempotente) y en reservas no lo es hasta que haya marca por reserva. Activar solo una de las dos merece decidirse aparte. |
+| 6 | **Los siete triggers de notificación siguen sin test.** OPS-01 nombra «cron/backup/notificaciones»; se cubrieron las cuatro programadas y el respaldo, no los `onCreate`/`onUpdate` que mandan push. | Son siete y ninguno tiene la lógica separada del acceso a Firestore: extraerlos es una tanda del tamaño de esta. Quedan inventariados con ruta y línea en el reconocimiento de esta tarea. |
+| 7 | **El recordatorio de reserva no escribe en el centro de notificaciones**, solo manda push — al revés que el de alertas, que ahora sí. | Es una inconsistencia real, no una decisión. Se deja porque cambia lo que ve el usuario y merece criterio de producto. |
+| 8 | **El texto de los recordatorios no dice la hora de la cita** («a la hora acordada»). | Functions no tiene ARB ni localización; meter texto localizado en el servidor es una decisión de arquitectura que no cabe aquí. |
+| 9 | **`fecha_ultimo_aviso` se escribe pero no se lee.** | Es telemetría operativa, útil para diagnosticar desde la consola. Si algún día se usa para throttling habrá que revisar que sembrarla en el create sigue cerrado — hoy lo está. |
+| 10 | **La lista de campos de servidor en `/alertas` es denylist (`hasAny`), no allowlist (`hasOnly`)** como en `/reservas`. Cualquier campo de servidor futuro nacerá escribible por el cliente hasta que alguien recuerde ampliarla. | Es justo así como llegó el hallazgo del `create` de esta ronda. Cambiarlo exige enumerar los campos legítimos del modelo (`AlertModel.toMap()` ya lista los diez), y eso es una tarea con su propia regresión. |
+| 11 | **`checkAlertsDaily` no vuelve a avisar si el usuario aleja la fecha límite y luego se vuelve a acercar.** El escalón anotado no se limpia. | Alcanzable pero raro, y limpiarlo bien exige comparar contra la fecha además del escalón. Anotado para que conste que es una elección. |

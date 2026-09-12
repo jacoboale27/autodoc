@@ -752,11 +752,22 @@ service cloud.firestore {
         || isAdmin()
       );
 
-      // Creación: propietario del vehículo o admin
+      // Creación: propietario del vehículo o admin.
+      //
+      // El acotado de los campos del servidor tiene que estar también aquí, y
+      // no solo en el update: sin él, el propietario crea la alerta **ya
+      // silenciada** (`ultimo_aviso: 'vencida'`) y el barrido no la avisa
+      // nunca, ni por vencer ni vencida. Que la interfaz actual no lo haga no
+      // es una compuerta: cualquier cliente autenticado escribe por SDK o por
+      // REST. Y es irreversible desde el cliente, porque el `allow update` de
+      // abajo bloquea justamente esa clave.
+      //
+      // Va con `keys()` y no con `diff()` porque en un create no hay
+      // `resource.data` contra el que comparar.
       allow create: if isAuthenticated() && (
         isVehicleOwner(request.resource.data.id_vehiculo)
         || isAdmin()
-      );
+      ) && !request.resource.data.keys().hasAny(['ultimo_aviso', 'fecha_ultimo_aviso']);
 
       // Actualización: propietario del vehículo o admin.
       // El acotado va FUERA del paréntesis a propósito, así que ata también a
@@ -772,10 +783,20 @@ service cloud.firestore {
       // otra persona — un update legítimo sobre un documento propio que acaba
       // escribiendo sobre datos ajenos. Ningún flujo real reasigna una alerta
       // de vehículo: se borra y se crea.
+      //
+      // `ultimo_aviso` y `fecha_ultimo_aviso` son contabilidad del servidor
+      // (OPS-01): el barrido diario los usa para no reenviar el mismo aviso
+      // cada 24 h. Los escribe `checkAlertsDaily` con Admin SDK, que no pasa
+      // por estas reglas; un cliente que pudiera borrarlos o retrasarlos se
+      // devolvería a sí mismo el push diario que el arreglo elimina. Se atan
+      // por `affectedKeys()` y no por valor a propósito: atar el valor deja
+      // pasar un `FieldValue.delete()`, que es cómo se esquivó una regla
+      // equivalente en la tanda de drenaje anterior.
       allow update: if isAuthenticated() && (
         isVehicleOwner(resource.data.id_vehiculo)
         || isAdmin()
-      ) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['id_vehiculo']);
+      ) && !request.resource.data.diff(resource.data).affectedKeys()
+             .hasAny(['id_vehiculo', 'ultimo_aviso', 'fecha_ultimo_aviso']);
 
       // Eliminación: propietario del vehículo o admin
       allow delete: if isAuthenticated() && (

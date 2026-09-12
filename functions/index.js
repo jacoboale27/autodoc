@@ -19,6 +19,10 @@ const {
 const { listarEmpleadosPublicos } = require('./src/obtenerEmpleadosPublicos');
 const { CAMPO_MIGRACION, esMigracion } = require('./src/migracion');
 const { cerrarTicketsDeVehiculo } = require('./src/cerrarTicketsDeVehiculo');
+const { notificarAlertasVencidas } = require('./src/alertasVencidas');
+const { exportarFirestore } = require('./src/exportacionFirestore');
+const { exigirAppCheck } = require('./src/appCheck');
+const { enviarRecordatoriosDeReserva } = require('./src/recordatoriosReserva');
 // El FieldValue tiene que salir del MISMO modulo que la instancia de Firestore.
 // Observado en el emulador de Functions: `admin.firestore.FieldValue` llega
 // undefined, y el de `@google-cloud/firestore` (que este package.json declara
@@ -87,100 +91,29 @@ async function deleteQueryBatch(db, query, resolve, reject) {
  * 1. Scheduled function to check alerts (alertas) daily.
  * Notifies the user if an alert is expiring in 7 days or less, or already expired.
  */
-exports.checkAlertsDaily = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
-  const now = new Date();
-  const futureDate = new Date();
-  futureDate.setDate(now.getDate() + 7);
-
-  const limit = 500;
-  let lastDoc = null;
-  
-  const vehiculosCache = {};
-  const usuariosCache = {};
-
+exports.checkAlertsDaily = functions.runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .pubsub.schedule('0 9 * * *')
+  .timeZone('America/Bogota')
+  .onRun(async () => {
+  // OPS-01: la logica vive en `src/alertasVencidas.js` para poder ejercerla
+  // con fixtures. Aqui solo queda el enganche del scheduler.
   try {
-    while (true) {
-      let q = db.collection('alertas')
-        .where('estado', '==', 'Pendiente')
-        .orderBy(admin.firestore.FieldPath.documentId())
-        .limit(limit);
-      if (lastDoc) {
-        q = q.startAfter(lastDoc);
-      }
-      const alertasSnapshot = await q.get();
-      if (alertasSnapshot.empty) break;
-
-      for (const doc of alertasSnapshot.docs) {
-        const alerta = doc.data();
-        let fechaLimite;
-        
-        if (alerta.fecha_limite && alerta.fecha_limite.toDate) {
-          fechaLimite = alerta.fecha_limite.toDate();
-        } else if (typeof alerta.fecha_limite === 'string') {
-          fechaLimite = new Date(alerta.fecha_limite);
-        } else {
-          continue; // No valid date
-        }
-
-        if (fechaLimite <= futureDate) {
-          // Find the vehicle owner
-          const vehiculoId = alerta.id_vehiculo;
-          if (!vehiculoId) continue;
-
-          if (!vehiculosCache[vehiculoId]) {
-            const vehiculoDoc = await db.collection('vehiculos').doc(vehiculoId).get();
-            vehiculosCache[vehiculoId] = vehiculoDoc.exists ? vehiculoDoc.data() : null;
-          }
-          const vehiculoData = vehiculosCache[vehiculoId];
-          if (!vehiculoData) continue;
-
-          const ownerId = vehiculoData.id_propietario;
-          if (!ownerId) continue;
-
-          if (!usuariosCache[ownerId]) {
-            const userDoc = await db.collection('usuarios').doc(ownerId).get();
-            usuariosCache[ownerId] = userDoc.exists ? userDoc.data() : null;
-          }
-          const userData = usuariosCache[ownerId];
-          if (!userData) continue;
-
-          const fcmToken = userData.fcmToken;
-          if (!fcmToken) continue;
-
-          const isExpired = fechaLimite < now;
-          const title = isExpired ? '¡Alerta Vencida!' : 'Alerta por Vencer';
-          const body = isExpired 
-              ? `La alerta de ${alerta.tipo_alerta} para tu vehículo ${vehiculoData.placa} ya venció.`
-              : `La alerta de ${alerta.tipo_alerta} para tu vehículo ${vehiculoData.placa} está por vencer.`;
-
-          await messaging.send({
-            token: fcmToken,
-            notification: {
-              title: title,
-              body: body,
-            },
-            data: {
-              type: 'alerta',
-              alertaId: doc.id,
-              vehiculoId: vehiculoId
-            }
-          });
-
-          // Persist in notification center
-          await writeNotification(ownerId, {
-            tipo: 'alerta',
-            titulo: title,
-            body: body,
-            deepLink: '/alerts',
-            metadata: { alertaId: doc.id, vehiculoId: vehiculoId },
-          });
-        }
-      }
-
-      lastDoc = alertasSnapshot.docs[alertasSnapshot.docs.length - 1];
-    }
+    const resumen = await notificarAlertasVencidas(db, messaging, {
+      escribirNotificacion: writeNotification,
+    });
+    console.log('checkAlertsDaily:', JSON.stringify(resumen));
+    return resumen;
   } catch (error) {
+    // Se relanza para que la corrida quede marcada como fallida y sea
+    // visible. La version anterior se lo tragaba con un console.error, asi
+    // que un barrido roto era indistinguible de un dia sin alertas.
+    //
+    // OJO: relanzar da VISIBILIDAD, no reintento. No hay `failurePolicy` ni
+    // `retryConfig` configurados. Aqui seria seguro anadirlo —`ultimo_aviso`
+    // hace el barrido idempotente— pero se deja fuera para no cambiar dos
+    // cosas a la vez.
     console.error('Error checking alerts:', error);
+    throw error;
   }
 });
 
@@ -866,6 +799,7 @@ async function notificarTicketAbierto(idReparacion, ticket) {
  * coleccion tiene que replicar la autorizacion aqui a mano, igual que este.
  */
 exports.recibirVehiculoDelTicket = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'recibirVehiculoDelTicket');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1084,79 +1018,28 @@ exports.notifyOnReparacionStatusChange = functions.firestore
  * 6. Scheduled function to send reservation reminders daily.
  * Notifies the owner and mechanic if they have an approved reservation for the next day.
  */
-exports.sendReservationReminders = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const dateString = tomorrow.toISOString().split('T')[0]; // 'YYYY-MM-DD'
-
-  const limit = 500;
-  let lastDoc = null;
-
-  const usuariosCache = {};
-
+exports.sendReservationReminders = functions.runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .pubsub.schedule('0 9 * * *')
+  .timeZone('America/Bogota')
+  .onRun(async () => {
+  // OPS-01: la logica vive en `src/recordatoriosReserva.js` para poder
+  // ejercerla con fixtures. Aqui solo queda el enganche del scheduler.
   try {
-    while (true) {
-      let q = db.collection('reservas')
-        .where('estado', '==', 'confirmada')
-        .orderBy(admin.firestore.FieldPath.documentId())
-        .limit(limit);
-      if (lastDoc) {
-        q = q.startAfter(lastDoc);
-      }
-      const reservasSnapshot = await q.get();
-      if (reservasSnapshot.empty) break;
-
-      for (const doc of reservasSnapshot.docs) {
-        const reserva = doc.data();
-
-        const fechaPropuesta = reserva.fecha_hora_propuesta && reserva.fecha_hora_propuesta.toDate
-          ? reserva.fecha_hora_propuesta.toDate()
-          : null;
-        if (!fechaPropuesta) continue;
-        const fechaPropuestaString = fechaPropuesta.toISOString().split('T')[0];
-        if (fechaPropuestaString !== dateString) continue;
-
-        // Notify Owner
-        if (reserva.id_propietario) {
-          if (!(reserva.id_propietario in usuariosCache)) {
-            const ownerDoc = await db.collection('usuarios').doc(reserva.id_propietario).get();
-            usuariosCache[reserva.id_propietario] = ownerDoc.exists ? ownerDoc.data() : null;
-          }
-          const ownerData = usuariosCache[reserva.id_propietario];
-          if (ownerData && ownerData.fcmToken) {
-            await messaging.send({
-              token: ownerData.fcmToken,
-              notification: {
-                title: 'Recordatorio de Cita',
-                body: 'Tienes una cita programada para mañana a la hora acordada.'
-              }
-            });
-          }
-        }
-
-        // Notify Mechanic
-        if (reserva.id_mecanico) {
-          if (!(reserva.id_mecanico in usuariosCache)) {
-            const mechanicDoc = await db.collection('usuarios').doc(reserva.id_mecanico).get();
-            usuariosCache[reserva.id_mecanico] = mechanicDoc.exists ? mechanicDoc.data() : null;
-          }
-          const mechanicData = usuariosCache[reserva.id_mecanico];
-          if (mechanicData && mechanicData.fcmToken) {
-            await messaging.send({
-              token: mechanicData.fcmToken,
-              notification: {
-                title: 'Recordatorio de Cita',
-                body: 'Tienes una cita programada para mañana con el vehículo del cliente.'
-              }
-            });
-          }
-        }
-      }
-
-      lastDoc = reservasSnapshot.docs[reservasSnapshot.docs.length - 1];
-    }
+    const resumen = await enviarRecordatoriosDeReserva(db, messaging);
+    console.log('sendReservationReminders:', JSON.stringify(resumen));
+    return resumen;
   } catch (error) {
+    // Se relanza a proposito: la version anterior se lo tragaba con un
+    // console.error, asi que un barrido roto no se distinguia de un dia sin
+    // citas.
+    //
+    // OJO: relanzar da VISIBILIDAD, no reintento, y aqui es mejor asi. A
+    // diferencia del barrido de alertas, el recordatorio NO tiene marca de
+    // idempotencia: si la corrida muere en la reserva 900, un reintento
+    // reenviaria los 900 recordatorios ya entregados. Configurar reintento
+    // exige antes una marca por reserva.
     console.error('Error in sendReservationReminders:', error);
+    throw error;
   }
 });
 
@@ -1275,23 +1158,25 @@ exports.onVehicleDelete = functions.firestore.document('vehiculos/{vehicleId}').
  * 8. Scheduled function for automated Firestore backup (C-03).
  * Runs every 24 hours to export the database to Google Cloud Storage.
  */
-exports.scheduledFirestoreExport = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
-  const projectId = process.env.GCP_PROJECT || process.env.GCLOUD_PROJECT;
+exports.scheduledFirestoreExport = functions.runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .pubsub.schedule('every 24 hours')
+  .onRun(async () => {
   // Se requiere aqui y no al principio del archivo: es una libreria pesada
   // (gRPC y protos) que solo usa esta funcion, una vez al dia, y a nivel de
   // modulo la pagaba el arranque en frio de las ~30 funciones del entrypoint.
   const firestore = require('@google-cloud/firestore');
   const client = new firestore.v1.FirestoreAdminClient();
-  const databaseName = client.databasePath(projectId, '(default)');
-  const bucket = 'gs://' + projectId + '-backups';
 
   try {
-    const [response] = await client.exportDocuments({
-      name: databaseName,
-      outputUriPrefix: bucket,
+    // OPS-01: la logica vive en `src/exportacionFirestore.js`. El bucket se
+    // puede fijar por entorno para que staging y produccion no compartan
+    // destino, igual que ya pasa con las claves.
+    const respuesta = await exportarFirestore(client, {
+      projectId: process.env.GCP_PROJECT || process.env.GCLOUD_PROJECT,
+      bucket: process.env.FIRESTORE_BACKUP_BUCKET,
     });
-    console.log(`Export operation initiated: ${response.name}`);
-    return response;
+    console.log(`Export operation initiated: ${respuesta.name}`);
+    return respuesta;
   } catch (error) {
     console.error('Error exporting Firestore database:', error);
     throw error;
@@ -1364,6 +1249,7 @@ exports.aggregateRatings = functions.firestore
  * stay protected by firestore.rules (owner, admin, or talleres_vinculados).
  */
 exports.buscarVehiculoPorPlaca = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'buscarVehiculoPorPlaca');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1415,6 +1301,7 @@ exports.buscarVehiculoPorPlaca = functions.https.onCall(async (data, context) =>
  * server-side (no confia en una lista que mande el cliente).
  */
 exports.obtenerUsuariosCompartidos = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'obtenerUsuariosCompartidos');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1475,6 +1362,7 @@ exports.obtenerUsuariosCompartidos = functions.https.onCall(async (data, context
  * ningun round-trip a Cloud Functions.
  */
 exports.obtenerPerfilPublico = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'obtenerPerfilPublico');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1550,6 +1438,7 @@ exports.obtenerPerfilPublico = functions.https.onCall(async (data, context) => {
  * llega hasta aqui.
  */
 exports.obtenerEmpleadosPublicos = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'obtenerEmpleadosPublicos');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1565,6 +1454,7 @@ exports.obtenerEmpleadosPublicos = functions.https.onCall(async (data, context) 
 
 /** Requests never resolve the target email. The owner delivers the code manually. */
 exports.buscarPropietarioPorCorreo = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'buscarPropietarioPorCorreo');
   if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
   await consumirIntentoCompartir(context.auth.uid);
   const vehicleId = typeof data?.vehicleId === 'string' ? data.vehicleId : '';
@@ -1605,6 +1495,7 @@ async function consumirIntentoCompartir(uid) {
 }
 
 exports.aceptarInvitacionVehiculo = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'aceptarInvitacionVehiculo');
   if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
   await consumirIntentoCompartir(context.auth.uid);
   const codigo = data?.codigoInvitacion;
@@ -1646,6 +1537,7 @@ exports.aceptarInvitacionVehiculo = functions.https.onCall(async (data, context)
  * el rol Taller ni reasignar su vinculo a otro taller.
  */
 exports.crearEmpleadoTaller = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'crearEmpleadoTaller');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1818,6 +1710,7 @@ exports.crearEmpleadoTaller = functions.https.onCall(async (data, context) => {
  *    'usuarios'.
  */
 exports.desactivarEmpleadoTaller = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'desactivarEmpleadoTaller');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1901,6 +1794,7 @@ async function assertSuperUser(uid) {
  * Firestore falla, se borra el usuario de Auth para no dejarlo huérfano.
  */
 exports.superUserCreateAccount = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'superUserCreateAccount');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1966,6 +1860,7 @@ exports.superUserCreateAccount = functions.https.onCall(async (data, context) =>
 
 // Password changes invalidate outstanding Auth password-reset codes. Never log the credential.
 exports.superUserRegenerateInvitation = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'superUserRegenerateInvitation');
   if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
   await assertSuperUser(context.auth.uid);
   const uid = typeof data?.uid === 'string' ? data.uid : '';
@@ -2005,6 +1900,7 @@ exports.superUserRegenerateInvitation = functions.https.onCall(async (data, cont
  * las demás cuentas de máximo privilegio).
  */
 exports.superUserDeleteAccount = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'superUserDeleteAccount');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
