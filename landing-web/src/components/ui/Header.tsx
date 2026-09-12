@@ -7,12 +7,15 @@ import { motion } from "framer-motion";
 import { useTheme } from "next-themes";
 import { Link as LinkLocalizado, usePathname, useRouter } from "@/i18n/routing";
 import { Moon, Sun, Languages, Menu, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { aparicion, useMovimientoReducido } from "@/lib/movimiento";
 
 const WEB_APP_URL = "https://autodoc-6ef5a.web.app";
 
 const ID_PANEL_MOVIL = "menu-movil";
+
+// La hidratacion no necesita suscripcion: React compara el snapshot servidor/cliente.
+const sinSuscripcion = () => () => {};
 
 /// Las tres secciones de la home. Se declaran una vez y se pintan en los dos
 /// sitios —barra de escritorio y panel movil— para que no puedan divergir: el
@@ -26,17 +29,13 @@ const SECCIONES = [
 export default function Header() {
   const t = useTranslations();
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(sinSuscripcion, () => true, () => false);
   const [abierto, setAbierto] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const reducido = useMovimientoReducido();
   const botonMenu = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const cerrar = useCallback((devolverFoco: boolean) => {
     setAbierto(false);

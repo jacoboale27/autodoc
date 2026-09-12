@@ -34,7 +34,7 @@ export default function Footer() {
 
           {/* Links */}
           <div>
-            <h4 className="mb-6 font-bold text-slate-900 dark:text-white">{t("navPlatform")}</h4>
+            <h2 className="mb-6 text-base font-bold text-slate-900 dark:text-white">{t("navPlatform")}</h2>
             <ul className="space-y-4 text-sm text-slate-500 dark:text-slate-400">
               <li><LinkLocalizado href="/#features" className="hover:text-[#522C81] dark:hover:text-sky-400">{t("footerOwners")}</LinkLocalizado></li>
               <li><LinkLocalizado href="/#workshops" className="hover:text-[#522C81] dark:hover:text-sky-400">{t("footerWorkshops")}</LinkLocalizado></li>
@@ -43,7 +43,7 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="mb-6 font-bold text-slate-900 dark:text-white">{t("downloadApp")}</h4>
+            <h2 className="mb-6 text-base font-bold text-slate-900 dark:text-white">{t("downloadApp")}</h2>
             <div className="flex flex-col gap-3">
               {/* Badge de iOS: solo cuando exista ficha publica. Ver lib/enlaces.ts. */}
               {APP_STORE_URL && (
@@ -58,7 +58,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-16 flex flex-col items-center justify-between border-t border-slate-200 dark:border-slate-800 pt-8 sm:flex-row text-sm text-slate-500">
+        <div className="mt-16 flex flex-col items-center justify-between border-t border-slate-200 dark:border-slate-800 pt-8 sm:flex-row text-sm text-slate-500 dark:text-slate-400">
           <p>{t("footerCopyright")}</p>
           <div className="mt-4 flex gap-6 sm:mt-0">
             <LinkLocalizado href="/contact" className="hover:text-slate-900 dark:hover:text-white">{t("footerContact")}</LinkLocalizado>

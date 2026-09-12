@@ -1,4 +1,3 @@
-import { getTranslations } from "next-intl/server";
 import { setRequestLocale } from 'next-intl/server';
 import Header from "@/components/ui/Header";
 import Footer from "@/components/ui/Footer";
@@ -10,8 +9,6 @@ export default async function PrivacyPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-
-  const t = await getTranslations();
 
   return (
     <main className="relative min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0f172a] dark:text-white">

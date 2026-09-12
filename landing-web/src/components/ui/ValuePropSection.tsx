@@ -55,7 +55,7 @@ export default function ValuePropSection() {
           className="relative flex-1"
         >
           <div className="relative h-[400px] w-full overflow-hidden rounded-[2.5rem] border border-slate-200 dark:border-slate-800 lg:h-[600px] shadow-2xl dark:shadow-none">
-            {/* The unsplash image from Flutter value_prop_section.dart */}
+            {/* Decorativa: la propuesta de valor esta descrita en el titulo y texto contiguos. */}
             <div 
               className="absolute inset-0 bg-cover bg-center"
               style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1649769069590-268b0b994462)' }}
