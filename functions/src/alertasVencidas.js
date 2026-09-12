@@ -87,6 +87,7 @@ async function notificarAlertasVencidas(db, messaging, opciones = {}) {
     ilegibles: 0,
     sinDestinatario: 0,
     fallidas: 0,
+    noMarcadas: 0,
   };
   let cursor = null;
 
@@ -170,7 +171,26 @@ async function notificarAlertasVencidas(db, messaging, opciones = {}) {
       return;
     }
 
-    await doc.ref.update({ ultimo_aviso: escalon, fecha_ultimo_aviso: ahora });
+    try {
+      await doc.ref.update({ ultimo_aviso: escalon, fecha_ultimo_aviso: ahora });
+    } catch (e) {
+      // Esta escritura estaba FUERA del try, y eso la volvia una denegacion de
+      // servicio disparable por cualquier usuario con una operacion que las
+      // reglas le permiten: `allow delete` deja al propietario borrar su
+      // alerta, y si la borra entre el `get()` de la pagina y su turno en el
+      // bucle, el update falla con NOT_FOUND, la promesa sube sin capturar y
+      // el barrido ENTERO aborta — todas las alertas de todos los usuarios se
+      // quedan sin aviso ese dia, y sin checkpoint que recupere el cursor.
+      // La ventana es real: una pagina son hasta 500 documentos y cada uno
+      // hace lecturas y un envio de push.
+      //
+      // El precio de no propagar: si el marcado falla despues de haber
+      // enviado el push, manana se reenvia. Reenviar una vez es mucho mejor
+      // que tumbar la corrida.
+      resumen.noMarcadas += 1;
+      console.error(`Alerta ${doc.id} avisada pero no marcada:`, e && e.code ? e.code : e);
+      return;
+    }
     resumen.notificadas += 1;
   }
 

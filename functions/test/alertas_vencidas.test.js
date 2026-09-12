@@ -48,8 +48,17 @@ function fakeDb(docs = {}) {
   const refDe = (coleccion, id) => ({
     id,
     async update(data) {
-      escrituras.push({ clave: coleccion + '/' + id, data });
-      docs[coleccion + '/' + id] = Object.assign({}, docs[coleccion + '/' + id], data);
+      const clave = coleccion + '/' + id;
+      if (!Object.prototype.hasOwnProperty.call(docs, clave)) {
+        // Firestore rechaza el update de un documento que ya no existe. El
+        // doble tiene que modelarlo: sin esto no se puede ver que borrar una
+        // alerta a media pasada tumbaba el barrido entero.
+        const e = new Error('No document to update: ' + clave);
+        e.code = 5;
+        throw e;
+      }
+      escrituras.push({ clave, data });
+      docs[clave] = Object.assign({}, docs[clave], data);
     },
     async get() {
       lecturas += 1;
@@ -68,13 +77,19 @@ function fakeDb(docs = {}) {
     },
     collection(coleccion) {
       const consulta = (filtros) => {
-        const conLimite = (n) => ({
-          startAfter: () => conLimite(n),
+        // `startAfter` avanza de verdad. Cuando era un no-op, un caso de dos
+        // paginas devolvia la primera para siempre — asi que no habia forma de
+        // escribir el test, y la paginacion se quedaba sin ejercer. Es la
+        // trampa que este proyecto ya tiene documentada: un doble que no puede
+        // ver la propiedad que dice cubrir.
+        const conLimite = (n, desde) => ({
+          startAfter: (doc) => conLimite(n, doc.id),
           async get() {
             const prefijo = coleccion + '/';
             const claves = Object.keys(docs)
               .filter((k) => k.startsWith(prefijo))
               .sort()
+              .filter((k) => desde === undefined || k.slice(prefijo.length) > desde)
               .filter((k) => filtros.every((f) => cumple(docs[k], f[0], f[1], f[2])))
               .slice(0, n);
             return {
@@ -291,6 +306,73 @@ describe('alertasVencidas / notificarAlertasVencidas', () => {
 
     assert.strictEqual(r.notificadas, 0);
     assert.strictEqual(r.sinDestinatario, 1);
+  });
+
+  it('recorre TODAS las paginas y no procesa ninguna alerta dos veces', async () => {
+    // La paginacion no la ejercia ningun test, porque `startAfter` era un
+    // no-op en el doble: con el, un caso de dos paginas devolvia la primera
+    // eternamente. Este test comprueba las dos mitades del contrato —que no se
+    // salta documentos y que no los repite— y de paso que las escrituras de
+    // `ultimo_aviso` sobre documentos ya recorridos no desestabilizan el
+    // cursor, porque no tocan ni `estado` ni `__name__`, que son los dos
+    // campos del indice que sirve la consulta.
+    const docs = { 'vehiculos/v1': { id_propietario: 'p1', placa: 'ABC123' },
+                   'usuarios/p1': { fcmToken: 'tok-p1' } };
+    for (let i = 1; i <= 5; i += 1) {
+      docs[`alertas/a${i}`] = {
+        estado: 'Pendiente', id_vehiculo: 'v1', tipo_alerta: 'SOAT', fecha_limite: enDias(3),
+      };
+    }
+    const db = fakeDb(docs);
+    const messaging = fakeMessaging();
+    const centro = recolector();
+
+    const r = await notificarAlertasVencidas(db, messaging, {
+      ahora: AHORA,
+      limite: 2,
+      escribirNotificacion: centro.escribirNotificacion,
+    });
+
+    assert.strictEqual(r.revisadas, 5, 'se salto alguna pagina');
+    assert.strictEqual(r.notificadas, 5);
+    const avisadas = messaging.enviados.map((m) => m.data.alertaId).sort();
+    assert.deepStrictEqual(avisadas, ['a1', 'a2', 'a3', 'a4', 'a5'], 'repitio o se salto alguna');
+  });
+
+  it('borrar una alerta a media pasada NO tumba el barrido entero', async () => {
+    // Lo destapo el revisor de reglas, y es el hallazgo mas grave de esta
+    // tanda: el `update` de contabilidad estaba FUERA del try, asi que un
+    // NOT_FOUND subia sin capturar y abortaba la corrida completa. Las reglas
+    // permiten al propietario borrar su alerta (`allow delete`), y una pagina
+    // son hasta 500 documentos con lecturas y un push cada uno: la ventana
+    // para que alguien borre entre el `get()` y su turno en el bucle es real.
+    // Una denegacion de servicio a todos los usuarios, disparable por
+    // cualquiera con una operacion que las reglas le autorizan.
+    const db = fakeDb(
+      Object.assign(escenario({ fecha_limite: enDias(3) }), {
+        'alertas/a2': {
+          estado: 'Pendiente',
+          id_vehiculo: 'v1',
+          tipo_alerta: 'Tecnomecanica',
+          fecha_limite: enDias(2),
+        },
+      })
+    );
+    const messaging = fakeMessaging();
+    // El borrado se cuela justo donde cabe en la realidad: entre el envio y
+    // el marcado.
+    const escribirNotificacion = async (uid, n) => {
+      if (n.metadata.alertaId === 'a1') delete db.docs['alertas/a1'];
+    };
+
+    const r = await notificarAlertasVencidas(db, messaging, {
+      ahora: AHORA,
+      escribirNotificacion,
+    });
+
+    assert.strictEqual(r.noMarcadas, 1, 'no se contabilizo la alerta sin marcar');
+    assert.strictEqual(r.notificadas, 1, 'la segunda alerta se quedo sin avisar');
+    assert.strictEqual(db.docs['alertas/a2'].ultimo_aviso, 'por_vencer');
   });
 
   it('no relee el mismo vehiculo ni el mismo usuario dos veces', async () => {

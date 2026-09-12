@@ -91,7 +91,10 @@ async function deleteQueryBatch(db, query, resolve, reject) {
  * 1. Scheduled function to check alerts (alertas) daily.
  * Notifies the user if an alert is expiring in 7 days or less, or already expired.
  */
-exports.checkAlertsDaily = functions.pubsub.schedule('every 24 hours').onRun(async () => {
+exports.checkAlertsDaily = functions.runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .pubsub.schedule('0 9 * * *')
+  .timeZone('America/Bogota')
+  .onRun(async () => {
   // OPS-01: la logica vive en `src/alertasVencidas.js` para poder ejercerla
   // con fixtures. Aqui solo queda el enganche del scheduler.
   try {
@@ -101,9 +104,14 @@ exports.checkAlertsDaily = functions.pubsub.schedule('every 24 hours').onRun(asy
     console.log('checkAlertsDaily:', JSON.stringify(resumen));
     return resumen;
   } catch (error) {
-    // Se relanza para que Cloud Scheduler lo marque fallido y reintente. La
-    // version anterior se lo tragaba, asi que un barrido roto era
-    // indistinguible de un dia sin alertas.
+    // Se relanza para que la corrida quede marcada como fallida y sea
+    // visible. La version anterior se lo tragaba con un console.error, asi
+    // que un barrido roto era indistinguible de un dia sin alertas.
+    //
+    // OJO: relanzar da VISIBILIDAD, no reintento. No hay `failurePolicy` ni
+    // `retryConfig` configurados. Aqui seria seguro anadirlo —`ultimo_aviso`
+    // hace el barrido idempotente— pero se deja fuera para no cambiar dos
+    // cosas a la vez.
     console.error('Error checking alerts:', error);
     throw error;
   }
@@ -1010,7 +1018,10 @@ exports.notifyOnReparacionStatusChange = functions.firestore
  * 6. Scheduled function to send reservation reminders daily.
  * Notifies the owner and mechanic if they have an approved reservation for the next day.
  */
-exports.sendReservationReminders = functions.pubsub.schedule('every 24 hours').onRun(async () => {
+exports.sendReservationReminders = functions.runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .pubsub.schedule('0 9 * * *')
+  .timeZone('America/Bogota')
+  .onRun(async () => {
   // OPS-01: la logica vive en `src/recordatoriosReserva.js` para poder
   // ejercerla con fixtures. Aqui solo queda el enganche del scheduler.
   try {
@@ -1020,7 +1031,13 @@ exports.sendReservationReminders = functions.pubsub.schedule('every 24 hours').o
   } catch (error) {
     // Se relanza a proposito: la version anterior se lo tragaba con un
     // console.error, asi que un barrido roto no se distinguia de un dia sin
-    // citas. Con el throw, Cloud Scheduler lo marca fallido y reintenta.
+    // citas.
+    //
+    // OJO: relanzar da VISIBILIDAD, no reintento, y aqui es mejor asi. A
+    // diferencia del barrido de alertas, el recordatorio NO tiene marca de
+    // idempotencia: si la corrida muere en la reserva 900, un reintento
+    // reenviaria los 900 recordatorios ya entregados. Configurar reintento
+    // exige antes una marca por reserva.
     console.error('Error in sendReservationReminders:', error);
     throw error;
   }
@@ -1141,7 +1158,9 @@ exports.onVehicleDelete = functions.firestore.document('vehiculos/{vehicleId}').
  * 8. Scheduled function for automated Firestore backup (C-03).
  * Runs every 24 hours to export the database to Google Cloud Storage.
  */
-exports.scheduledFirestoreExport = functions.pubsub.schedule('every 24 hours').onRun(async () => {
+exports.scheduledFirestoreExport = functions.runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .pubsub.schedule('every 24 hours')
+  .onRun(async () => {
   // Se requiere aqui y no al principio del archivo: es una libreria pesada
   // (gRPC y protos) que solo usa esta funcion, una vez al dia, y a nivel de
   // modulo la pagaba el arranque en frio de las ~30 funciones del entrypoint.

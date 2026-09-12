@@ -115,23 +115,28 @@ async function enviarRecordatoriosDeReserva(db, messaging, opciones = {}) {
 
   async function avisar(uid, rol) {
     if (!uid) return;
-    if (!usuarios.has(uid)) {
-      const snap = await db.collection('usuarios').doc(uid).get();
-      usuarios.set(uid, snap.exists ? snap.data() : null);
-    }
-    const usuario = usuarios.get(uid);
-    const token = usuario && usuario.fcmToken;
-    if (!token) {
-      resumen.sinToken += 1;
-      return;
-    }
+    // El try envuelve TAMBIEN la lectura del usuario. Cuando solo cubria el
+    // envio, un fallo transitorio leyendo `usuarios/{uid}` subia hasta el
+    // catch de fuera del bucle y abortaba el barrido entero: el resto de
+    // citas del dia se quedaban sin recordatorio por una lectura que falla.
+    // Es el mismo defecto que el revisor encontro en el barrido de alertas,
+    // en el otro extremo de la funcion.
     try {
+      if (!usuarios.has(uid)) {
+        const snap = await db.collection('usuarios').doc(uid).get();
+        usuarios.set(uid, snap.exists ? snap.data() : null);
+      }
+      const usuario = usuarios.get(uid);
+      const token = usuario && usuario.fcmToken;
+      if (!token) {
+        resumen.sinToken += 1;
+        return;
+      }
       await messaging.send({ token, notification: TEXTOS[rol] });
       resumen.enviados += 1;
     } catch (e) {
       // Un token muerto es lo normal (app desinstalada), no una averia del
-      // barrido. En la version inline el error subia hasta el catch de fuera
-      // del bucle y abortaba el resto de recordatorios del dia.
+      // barrido.
       resumen.fallidos += 1;
       console.error(`Recordatorio no entregado a ${uid} (${rol}):`, e && e.code ? e.code : e);
     }

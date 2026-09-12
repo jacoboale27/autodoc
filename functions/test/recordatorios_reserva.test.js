@@ -69,8 +69,13 @@ function fakeDb(docs = {}) {
     },
     collection(coleccion) {
       const consulta = (filtros, orden) => {
-        const conLimite = (n) => ({
-          startAfter: () => conLimite(n),
+        // `startAfter` avanza de verdad. Con un no-op, un caso de dos paginas
+        // devolveria la primera para siempre y la paginacion se quedaria sin
+        // ejercer. El doble ordena por id de documento y no por
+        // `fecha_hora_propuesta`, asi que los fixtures del test de paginacion
+        // se nombran en el mismo orden que sus fechas.
+        const conLimite = (n, desde) => ({
+          startAfter: (doc) => conLimite(n, doc.id),
           async get() {
             consultas.push({
               coleccion,
@@ -81,6 +86,7 @@ function fakeDb(docs = {}) {
             const claves = Object.keys(docs)
               .filter((k) => k.startsWith(prefijo))
               .sort()
+              .filter((k) => desde === undefined || k.slice(prefijo.length) > desde)
               .filter((k) => filtros.every((f) => cumple(docs[k], f[0], f[1], f[2])))
               .slice(0, n);
             return {
@@ -242,6 +248,26 @@ describe('recordatoriosReserva / enviarRecordatoriosDeReserva', () => {
       messaging.enviados.map((m) => m.token),
       ['tok-m1']
     );
+  });
+
+  it('recorre TODAS las paginas y avisa de cada reserva una sola vez', async () => {
+    const docs = { 'usuarios/p1': { fcmToken: 'tok-p1' } };
+    for (let i = 1; i <= 5; i += 1) {
+      docs[`reservas/r${i}`] = {
+        estado: 'confirmada',
+        fecha_hora_propuesta: ts(`2026-09-13T1${i}:00:00Z`),
+        id_propietario: 'p1',
+        id_mecanico: null,
+      };
+    }
+    const db = fakeDb(docs);
+    const messaging = fakeMessaging();
+
+    const r = await enviarRecordatoriosDeReserva(db, messaging, { ahora: AHORA, limite: 2 });
+
+    assert.strictEqual(r.reservas, 5, 'se salto alguna pagina');
+    assert.strictEqual(r.enviados, 5);
+    assert.ok(db.consultas.length >= 3, 'no llego a paginar');
   });
 
   it('no relee el mismo usuario cuando se repite entre reservas', async () => {
