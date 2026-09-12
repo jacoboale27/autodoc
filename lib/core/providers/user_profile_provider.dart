@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/features/profile/data/services/user_service.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 /// Extracted from UserProfileProvider to reduce coupling.
 class UserProfileProvider with ChangeNotifier {
@@ -40,7 +41,7 @@ class UserProfileProvider with ChangeNotifier {
       _setLoading(false);
     } catch (e) {
       debugPrint('UserProfileProvider: fetch FALLÓ para $userId: $e');
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
       _hasAttemptedFetch = true;
       _setLoading(false);
     }
@@ -76,7 +77,7 @@ class UserProfileProvider with ChangeNotifier {
       _setLoading(false);
       return true;
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
       _setLoading(false);
       return false;
     }

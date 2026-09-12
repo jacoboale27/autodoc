@@ -725,8 +725,7 @@
   },
   "chatCancelAppointment": "Cancel Appointment",
   "chatConfirmCancelAppointment": "Are you sure you want to cancel this appointment? It will be recorded that you cancelled it.",
-  "chatCancelledStatus": "Cancelled"
-,
+  "chatCancelledStatus": "Cancelled",
   "securityInvitationReady": "Invitation ready",
   "securityInvitationSent": "Invitation sent",
   "securityDeliverLink": "Deliver this link privately to the recipient to set their password. Email is not sent automatically.",
@@ -794,5 +793,25 @@
         "type": "int"
       }
     }
+  },
+  "errorDatosTitulo": "We couldn't load this information",
+  "@errorDatosTitulo": {
+    "description": "Title of the error state on a screen that queries data (UX-04)"
+  },
+  "errorDatosPermiso": "You don't have access to this information. If you think you should, sign in again.",
+  "@errorDatosPermiso": {
+    "description": "Error message when the backend denies access (permission-denied / unauthorized)"
+  },
+  "errorDatosConexion": "We couldn't reach the server. Check your connection and try again.",
+  "@errorDatosConexion": {
+    "description": "Error message for network or service unavailable"
+  },
+  "errorDatosGenerico": "Something went wrong loading this information. Try again in a moment.",
+  "@errorDatosGenerico": {
+    "description": "Default error message, with no technical detail"
+  },
+  "errorReintentar": "Retry",
+  "@errorReintentar": {
+    "description": "Action to retry a failed query"
   }
 }

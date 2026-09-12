@@ -1429,4 +1429,22 @@ class AppLocalizationsEs extends AppLocalizations {
   String hiloTruncado(int tope) {
     return 'Se muestran los $tope mensajes mas recientes. Los anteriores no estan cargados.';
   }
+
+  @override
+  String get errorDatosTitulo => 'No pudimos cargar esta informacion';
+
+  @override
+  String get errorDatosPermiso =>
+      'No tienes acceso a esta informacion. Si crees que deberia estar disponible, vuelve a iniciar sesion.';
+
+  @override
+  String get errorDatosConexion =>
+      'No pudimos conectar con el servidor. Revisa tu conexion e intentalo de nuevo.';
+
+  @override
+  String get errorDatosGenerico =>
+      'Algo salio mal al cargar esta informacion. Intentalo de nuevo en un momento.';
+
+  @override
+  String get errorReintentar => 'Reintentar';
 }

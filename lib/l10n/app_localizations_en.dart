@@ -1421,4 +1421,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String hiloTruncado(int tope) {
     return 'Showing the $tope most recent messages. Older ones are not loaded.';
   }
+
+  @override
+  String get errorDatosTitulo => 'We couldn\'t load this information';
+
+  @override
+  String get errorDatosPermiso =>
+      'You don\'t have access to this information. If you think you should, sign in again.';
+
+  @override
+  String get errorDatosConexion =>
+      'We couldn\'t reach the server. Check your connection and try again.';
+
+  @override
+  String get errorDatosGenerico =>
+      'Something went wrong loading this information. Try again in a moment.';
+
+  @override
+  String get errorReintentar => 'Retry';
 }

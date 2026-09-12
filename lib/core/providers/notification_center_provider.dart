@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:autodoc/core/models/app_notification_model.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 /// Provider for the in-app notification center.
 /// Streams notifications from `notificaciones/{userId}/items`
@@ -47,7 +48,7 @@ class NotificationCenterProvider extends ChangeNotifier {
             notifyListeners();
           },
           onError: (e) {
-            _error = e.toString();
+            _error = mensajeSeguroDeError(e);
             _isLoading = false;
             notifyListeners();
           },
@@ -64,7 +65,7 @@ class NotificationCenterProvider extends ChangeNotifier {
           .doc(notificationId)
           .update({'leida': true});
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       notifyListeners();
     }
   }
@@ -84,7 +85,7 @@ class NotificationCenterProvider extends ChangeNotifier {
       }
       await batch.commit();
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       notifyListeners();
     }
   }
@@ -99,7 +100,7 @@ class NotificationCenterProvider extends ChangeNotifier {
           .doc(notificationId)
           .delete();
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       notifyListeners();
     }
   }

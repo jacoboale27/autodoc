@@ -15,6 +15,7 @@ import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/empleado_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 /// Pantalla de gestión de sub-cuentas de empleados de un taller: lista los
 /// empleados vinculados (`talleres/{idTaller}/empleados`), permite
@@ -259,7 +260,7 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ).showSnackBar(SnackBar(content: Text(mensajeSeguroDeError(e))));
       }
     }
   }

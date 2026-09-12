@@ -7,6 +7,7 @@ import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart'
 import 'package:autodoc/core/theme/app_theme.dart';
 import 'package:autodoc/l10n/app_localizations.dart';
 import '../../helpers/test_helpers.mocks.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 
 void main() {
   late MockAuthService mockAuthService;
@@ -45,7 +46,7 @@ void main() {
       // Mock the sendPasswordReset to throw an exception
       when(
         mockAuthService.sendPasswordReset(any),
-      ).thenThrow('Could not send the email.');
+      ).thenThrow(FirebaseAuthException(code: 'network-request-failed'));
 
       await tester.pumpWidget(
         buildTestableWidget(const AuthScreen(isLogin: true)),
@@ -70,9 +71,13 @@ void main() {
       // After the fix, it should pop immediately on failure
       expect(find.byType(AlertDialog), findsNothing);
 
-      // SnackBar should appear with error message
-      // (searching for snackbar content text)
-      expect(find.text('Could not send the email.'), findsOneWidget);
+      // SnackBar con un mensaje utilizable. UX-04: antes se lanzaba una cadena
+      // suelta y se afirmaba que esa MISMA cadena aparecia en pantalla, lo que
+      // con `_error = e.toString()` era cierto por construccion. En produccion
+      // lo que llegaba era `[firebase_auth/network-request-failed] ...` y eso
+      // es lo que se pintaba.
+      expect(find.textContaining('network-request-failed'), findsNothing);
+      expect(find.textContaining('conexion'), findsOneWidget);
     },
   );
 }

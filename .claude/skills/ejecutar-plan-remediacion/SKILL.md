@@ -13,8 +13,15 @@ orquestarlo**.
 ## Estado (actualizar al cerrar cada tarea)
 
 Hechos: **SEC-01, SEC-02, SEC-03, DATA-01, VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02,
-FUNC-01, FUNC-02** (a 2026-09-10). Siguiente por orden §12: **UX-03/04**, luego SEC-04,
-OPS-01, H-01, INNO-01, FINAL-01.
+FUNC-01, FUNC-02, UX-03 y UX-04** (a 2026-09-12). Siguiente por orden §12: **SEC-04 /
+OPS-01**, luego H-01, INNO-01, FINAL-01.
+
+**Leccion de UX-03/04, y vale para cualquier tarea de UI:** el enunciado del plan describia
+un menu movil inaccesible y UN error crudo. No habia menu movil ninguno, y el error crudo era
+uno de cuarenta — el patron real estaba una capa mas abajo, en quince providers que guardaban
+`_error = e.toString()`. **El fan-out de reconocimiento a Codex fue lo que lo destapo**, y el
+inventario aun se quedo corto: el centinela escrito despues encontro cinco fugas mas. Cifras
+al dia: `flutter test` **1216**, E2E de la landing **40**, E2E de la app **32**.
 
 **Pero antes de UX-03/04 va la tanda de drenaje de gaps**, planificada en
 `docs/evidencia/GAPS-02-plan-de-drenaje.md` (rama `fix/gaps-02`, tres lotes). Drenar los gaps

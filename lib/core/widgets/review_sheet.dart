@@ -10,6 +10,7 @@ import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/reviews/data/services/review_service.dart';
 import 'package:autodoc/core/models/review_model.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 /// Sustituye al `ImagePicker()` real. Solo lo usan los tests: no hay forma de
 /// atravesar el canal de plataforma de `image_picker` en un widget test, así
@@ -122,7 +123,7 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
         setState(() => _checking = false);
         UiUtils.showErrorSnackbar(
           context,
-          'No se pudo verificar tu reseña: ${e.toString().replaceFirst('StateError: ', '')}',
+          mensajeDeReglaDeNegocio(e, accion: 'No se pudo verificar tu reseña'),
         );
       }
     }
@@ -198,7 +199,7 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
       if (mounted) {
         UiUtils.showErrorSnackbar(
           context,
-          e.toString().replaceFirst('StateError: ', ''),
+          mensajeDeReglaDeNegocio(e, accion: 'No se pudo publicar tu reseña'),
         );
       }
     } finally {

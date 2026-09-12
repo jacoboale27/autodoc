@@ -18,6 +18,7 @@ import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_section_header.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class WorkshopSettingsScreen extends StatefulWidget {
   const WorkshopSettingsScreen({super.key});
@@ -152,7 +153,7 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text(mensajeSeguroDeError(e)),
             backgroundColor: context.appColors.error,
           ),
         );
@@ -281,7 +282,12 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error GPS: $e'),
+            content: Text(
+              mensajeSeguroDeError(
+                e,
+                accion: 'No se pudo obtener tu ubicacion',
+              ),
+            ),
             backgroundColor: context.appColors.error,
           ),
         );

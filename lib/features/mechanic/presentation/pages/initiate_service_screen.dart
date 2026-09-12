@@ -30,6 +30,7 @@ import 'package:autodoc/core/utils/input_formatters.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/service_finalized_screen.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class InitiateServiceScreen extends StatefulWidget {
   /// Id del ticket de `reparaciones`. Desde la Tarea 5 (A3/B2) es lo que
@@ -423,7 +424,10 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _reparacionError = 'No se pudo marcar el vehículo como recibido: $e';
+        _reparacionError = mensajeSeguroDeError(
+          e,
+          accion: 'No se pudo marcar el vehículo como recibido',
+        );
         _recibiendo = false;
       });
     }
@@ -683,13 +687,19 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                     'asignado a otro taller, o tu cuenta aún no está '
                     'aprobada. Pídele al propietario que confirme el '
                     'vínculo desde su panel.'
-              : 'Error al registrar servicio: ${e.message ?? e.code}',
+              : mensajeSeguroDeError(
+                  e,
+                  accion: 'No se pudo registrar el servicio',
+                ),
         );
       }
     } catch (e) {
       if (mounted) {
         HapticFeedback.heavyImpact();
-        UiUtils.showErrorSnackbar(context, 'Error al registrar servicio: $e');
+        UiUtils.showErrorSnackbar(
+          context,
+          mensajeSeguroDeError(e, accion: 'No se pudo registrar el servicio'),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);

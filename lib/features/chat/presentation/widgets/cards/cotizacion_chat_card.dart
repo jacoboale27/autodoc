@@ -15,6 +15,7 @@ import 'package:autodoc/features/reviews/data/services/review_service.dart';
 import 'package:autodoc/core/widgets/review_sheet.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class CotizacionChatCard extends StatefulWidget {
   final Map<String, dynamic> metadata;
@@ -109,7 +110,7 @@ class _CotizacionChatCardState extends State<CotizacionChatCard> {
         tallerId,
       );
     } catch (e) {
-      errorMessage = e.toString().replaceFirst('StateError: ', '');
+      errorMessage = mensajeDeReglaDeNegocio(e);
     }
     if (mounted) setState(() => _isCheckingReview = false);
     if (!context.mounted) return;

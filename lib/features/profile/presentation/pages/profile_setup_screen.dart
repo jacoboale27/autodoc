@@ -22,6 +22,7 @@ import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/role_utils.dart';
 import 'package:autodoc/core/providers/session_reset.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -821,7 +822,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error al guardar: $e'),
+          content: Text(mensajeSeguroDeError(e, accion: 'No se pudo guardar')),
           backgroundColor: appColors.error,
         ),
       );

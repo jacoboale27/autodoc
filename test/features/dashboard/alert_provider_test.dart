@@ -3,6 +3,7 @@ import 'package:mockito/mockito.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import '../../helpers/test_helpers.mocks.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 void main() {
   late MockFirebaseFirestore mockFirestore;
@@ -50,12 +51,25 @@ void main() {
         when(
           mockAlertsCollection.where('id_vehiculo', isEqualTo: '1'),
         ).thenReturn(mockQuery);
-        when(mockQuery.get()).thenThrow('Firestore error');
+        when(mockQuery.get()).thenThrow(
+          FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'unavailable',
+            message: 'The service is currently unavailable.',
+          ),
+        );
 
         await alertProvider.fetchAlerts('1', vehicle);
 
         expect(alertProvider.isLoading, false);
-        expect(alertProvider.error, contains('Firestore error'));
+        // UX-04: antes se lanzaba la cadena 'Firestore error' y se afirmaba que
+        // el provider la contenia, lo que con `_error = e.toString()` pasaba
+        // siempre sin probar nada. Lo que llega de verdad es un
+        // `FirebaseException`, y de el se estaba pintando el `[cloud_firestore/
+        // ...]` entero en pantalla.
+        expect(alertProvider.error, isNot(contains('cloud_firestore')));
+        expect(alertProvider.error, isNot(contains('unavailable')));
+        expect(alertProvider.error, contains('conexion'));
       },
     );
   });

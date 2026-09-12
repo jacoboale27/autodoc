@@ -722,8 +722,7 @@
   },
   "chatCancelAppointment": "Cancelar Cita",
   "chatConfirmCancelAppointment": "¿Seguro que quieres cancelar esta cita? Se registrará que la cancelaste tú.",
-  "chatCancelledStatus": "Cancelada"
-,
+  "chatCancelledStatus": "Cancelada",
   "securityInvitationReady": "Invitación lista",
   "securityInvitationSent": "Invitación enviada",
   "securityDeliverLink": "Entrega este enlace al destinatario de forma privada para que configure su contraseña. No se envía correo automáticamente.",
@@ -791,5 +790,25 @@
         "type": "int"
       }
     }
+  },
+  "errorDatosTitulo": "No pudimos cargar esta informacion",
+  "@errorDatosTitulo": {
+    "description": "Titulo del estado de error de una pantalla que consulta datos (UX-04)"
+  },
+  "errorDatosPermiso": "No tienes acceso a esta informacion. Si crees que deberia estar disponible, vuelve a iniciar sesion.",
+  "@errorDatosPermiso": {
+    "description": "Mensaje de error cuando el backend deniega el acceso (permission-denied / unauthorized)"
+  },
+  "errorDatosConexion": "No pudimos conectar con el servidor. Revisa tu conexion e intentalo de nuevo.",
+  "@errorDatosConexion": {
+    "description": "Mensaje de error de red o servicio no disponible"
+  },
+  "errorDatosGenerico": "Algo salio mal al cargar esta informacion. Intentalo de nuevo en un momento.",
+  "@errorDatosGenerico": {
+    "description": "Mensaje de error por defecto, sin detalle tecnico"
+  },
+  "errorReintentar": "Reintentar",
+  "@errorReintentar": {
+    "description": "Accion para volver a intentar una consulta que fallo"
   }
 }

@@ -34,6 +34,7 @@ import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
 import 'package:autodoc/features/dashboard/presentation/widgets/talleres_con_acceso_card.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class VehicleProfileScreen extends StatefulWidget {
   final String vehiculoId;
@@ -626,7 +627,9 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
           setState(() => _notasEliminandose.remove(nota));
           messenger.showSnackBar(
             SnackBar(
-              content: Text('No se pudo eliminar la nota: $e'),
+              content: Text(
+                mensajeSeguroDeError(e, accion: 'No se pudo eliminar la nota'),
+              ),
               backgroundColor: colors.error,
             ),
           );

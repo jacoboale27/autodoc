@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { aparicion, useMovimientoReducido } from "@/lib/movimiento";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { MapPin, Star, ShieldCheck, Calendar, FileSpreadsheet, CheckCircle2, AlertCircle } from "lucide-react";
@@ -35,6 +36,7 @@ export function normalizarCalificacion(
 
 export default function WorkshopsSection() {
   const t = useTranslations();
+  const reducido = useMovimientoReducido();
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -140,9 +142,12 @@ export default function WorkshopsSection() {
         {/* Dynamic Workshops Grid */}
         <div className="mb-20">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            data-testid="workshops-titulo"
+            {...aparicion(reducido, {
+              initial: { opacity: 0, y: 20 },
+              whileInView: { opacity: 1, y: 0 },
+              viewport: { once: true },
+            })}
             className="text-center mb-12"
           >
             <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl mb-4">
@@ -162,9 +167,11 @@ export default function WorkshopsSection() {
               {workshops.map((workshop, idx) => (
                 <motion.div
                   key={workshop.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
+                  {...aparicion(reducido, {
+                    initial: { opacity: 0, y: 20 },
+                    whileInView: { opacity: 1, y: 0 },
+                    viewport: { once: true },
+                  })}
                   transition={{ delay: idx * 0.1 }}
                   className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow"
                 >
@@ -229,9 +236,11 @@ export default function WorkshopsSection() {
 
         {/* Affiliation Registration Form Section */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          {...aparicion(reducido, {
+            initial: { opacity: 0, y: 30 },
+            whileInView: { opacity: 1, y: 0 },
+            viewport: { once: true },
+          })}
           transition={{ duration: 0.8 }}
           className="mx-auto max-w-3xl bg-slate-50 dark:bg-slate-800/60 rounded-3xl p-8 sm:p-12 border border-slate-200 dark:border-slate-700 shadow-xl"
         >
