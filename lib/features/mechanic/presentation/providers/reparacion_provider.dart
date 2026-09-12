@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:autodoc/core/models/reparacion_model.dart';
 import 'package:autodoc/features/mechanic/data/repositories/reparacion_repository.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class ReparacionProvider extends ChangeNotifier {
   final ReparacionRepository _repository;
@@ -41,7 +42,7 @@ class ReparacionProvider extends ChangeNotifier {
             notifyListeners();
           },
           onError: (e) {
-            _error = e.toString();
+            _error = mensajeSeguroDeError(e);
             _isLoading = false;
             notifyListeners();
           },
@@ -123,7 +124,7 @@ class ReparacionProvider extends ChangeNotifier {
       _error = null;
       return recibidoAhora;
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       return null;
     } finally {
       _isLoading = false;
@@ -139,7 +140,7 @@ class ReparacionProvider extends ChangeNotifier {
       );
       _error = null;
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       rethrow;
     } finally {
       notifyListeners();

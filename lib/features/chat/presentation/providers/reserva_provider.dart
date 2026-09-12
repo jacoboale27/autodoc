@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../../data/models/reserva_model.dart';
 import '../../data/repositories/reserva_repository.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class ReservaProvider extends ChangeNotifier {
   ReservaProvider({ReservaRepository? repository})
@@ -57,7 +58,7 @@ class ReservaProvider extends ChangeNotifier {
             notifyListeners();
           },
           onError: (e) {
-            _error = e.toString();
+            _error = mensajeSeguroDeError(e);
             _isLoading = false;
             notifyListeners();
           },
@@ -79,7 +80,7 @@ class ReservaProvider extends ChangeNotifier {
       notifyListeners();
       return id;
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       _isLoading = false;
       notifyListeners();
       return '';
@@ -99,7 +100,7 @@ class ReservaProvider extends ChangeNotifier {
       );
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       notifyListeners();
       return false;
     }
@@ -117,7 +118,7 @@ class ReservaProvider extends ChangeNotifier {
         fechaConfirmada: fechaConfirmada,
       );
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       notifyListeners();
     }
   }

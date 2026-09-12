@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:autodoc/core/models/galeria_taller.dart';
 import 'package:autodoc/features/mechanic/data/services/galeria_service.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 /// Estado de la pantalla de galería comercial del taller.
 class GaleriaProvider extends ChangeNotifier {
@@ -93,7 +94,10 @@ class GaleriaProvider extends ChangeNotifier {
           _ => 'No se pudo guardar el cambio. Error de Firebase «${e.code}».',
         };
       } else {
-        _error = 'No se pudo guardar el cambio. Error inesperado: $e';
+        _error = mensajeSeguroDeError(
+          e,
+          accion: 'No se pudo guardar el cambio',
+        );
       }
       return false;
     } finally {

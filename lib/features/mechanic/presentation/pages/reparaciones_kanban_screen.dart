@@ -12,6 +12,7 @@ import 'package:autodoc/core/widgets/app_empty_state.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/reparacion_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/reparacion_card.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 /// Etiquetas visibles de los estados del tablero, en el mismo orden que
 /// `estadosReparacion`. Pública porque los tests y `ReparacionCard`
@@ -241,7 +242,10 @@ class _EstadoColumn extends StatelessWidget {
       await provider.cambiarEstado(idReparacion, siguienteEstado);
     } catch (e) {
       if (context.mounted) {
-        UiUtils.showErrorSnackbar(context, 'No se pudo avanzar el ticket: $e');
+        UiUtils.showErrorSnackbar(
+          context,
+          mensajeSeguroDeError(e, accion: 'No se pudo avanzar el ticket'),
+        );
       }
     }
   }

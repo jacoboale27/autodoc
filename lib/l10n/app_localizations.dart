@@ -2689,6 +2689,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Showing the {tope} most recent messages. Older ones are not loaded.'**
   String hiloTruncado(int tope);
+
+  /// Title of the error state on a screen that queries data (UX-04)
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t load this information'**
+  String get errorDatosTitulo;
+
+  /// Error message when the backend denies access (permission-denied / unauthorized)
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t have access to this information. If you think you should, sign in again.'**
+  String get errorDatosPermiso;
+
+  /// Error message for network or service unavailable
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t reach the server. Check your connection and try again.'**
+  String get errorDatosConexion;
+
+  /// Default error message, with no technical detail
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong loading this information. Try again in a moment.'**
+  String get errorDatosGenerico;
+
+  /// Action to retry a failed query
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get errorReintentar;
 }
 
 class _AppLocalizationsDelegate

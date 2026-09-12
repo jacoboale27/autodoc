@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:autodoc/features/auth/data/services/auth_service.dart';
 import 'package:autodoc/features/admin/data/services/admin_auth_service.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService;
@@ -59,7 +60,7 @@ class AuthProvider with ChangeNotifier {
       _setLoading(false);
       return credential?.user != null;
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
       _setLoading(false);
       return false;
     }
@@ -73,7 +74,7 @@ class AuthProvider with ChangeNotifier {
       _setLoading(false);
       return credential?.user != null;
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
       _setLoading(false);
       return false;
     }
@@ -92,7 +93,7 @@ class AuthProvider with ChangeNotifier {
       _setLoading(false);
       return false;
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
       _setLoading(false);
       return false;
     }
@@ -106,7 +107,7 @@ class AuthProvider with ChangeNotifier {
       _setLoading(false);
       return true;
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
       _setLoading(false);
       return false;
     }
@@ -120,7 +121,7 @@ class AuthProvider with ChangeNotifier {
       _setLoading(false);
       return true;
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
       _setLoading(false);
       return false;
     }
@@ -151,7 +152,7 @@ class AuthProvider with ChangeNotifier {
       if (e == 'requires-recent-login') {
         _error = 'requires-recent-login';
       } else {
-        _error = e.toString();
+        _error = mensajeSeguroDeError(e);
       }
       notifyListeners();
       return false;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:autodoc/core/services/push_notification_service.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 /// Extracted from UserProfileProvider to reduce coupling.
 class AuthSessionProvider with ChangeNotifier {
@@ -26,7 +27,7 @@ class AuthSessionProvider with ChangeNotifier {
         notifyListeners();
       },
       onError: (e) {
-        _error = e.toString();
+        _error = mensajeSeguroDeError(e);
         notifyListeners();
       },
     );
@@ -40,7 +41,7 @@ class AuthSessionProvider with ChangeNotifier {
       _error = null;
       notifyListeners();
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       notifyListeners();
     }
   }

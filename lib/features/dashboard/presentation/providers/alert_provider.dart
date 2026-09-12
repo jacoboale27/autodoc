@@ -11,6 +11,7 @@ import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/core/constants/storage_paths.dart';
 import 'package:autodoc/features/dashboard/data/services/invoice_upload_service.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class AlertProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore;
@@ -86,7 +87,7 @@ class AlertProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       _isLoading = false;
       notifyListeners();
     }
@@ -309,7 +310,7 @@ class AlertProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       notifyListeners();
     }
   }
@@ -485,7 +486,7 @@ class AlertProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       _isLoading = false;
       notifyListeners();
       rethrow;
@@ -517,7 +518,7 @@ class AlertProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       _isLoading = false;
       notifyListeners();
       rethrow;
@@ -556,7 +557,7 @@ class AlertProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       _isLoading = false;
       notifyListeners();
       rethrow;
@@ -662,7 +663,7 @@ class AlertProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       _isLoading = false;
       notifyListeners();
       rethrow;
@@ -750,7 +751,7 @@ class AlertProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       _isLoading = false;
       notifyListeners();
       rethrow;

@@ -3,6 +3,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:autodoc/core/models/empleado_model.dart';
 import 'package:autodoc/features/mechanic/data/repositories/empleado_repository.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class EmpleadoProvider extends ChangeNotifier {
   final EmpleadoRepository _repository;
@@ -40,7 +41,7 @@ class EmpleadoProvider extends ChangeNotifier {
             notifyListeners();
           },
           onError: (e) {
-            _error = e.toString();
+            _error = mensajeSeguroDeError(e);
             notifyListeners();
           },
         );
@@ -68,7 +69,7 @@ class EmpleadoProvider extends ChangeNotifier {
       _error = null;
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       return false;
     } finally {
       _isLoading = false;
@@ -94,7 +95,7 @@ class EmpleadoProvider extends ChangeNotifier {
       await _repository.desactivarEmpleado(idTaller, idEmpleado);
       _error = null;
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       rethrow;
     } finally {
       _isLoading = false;

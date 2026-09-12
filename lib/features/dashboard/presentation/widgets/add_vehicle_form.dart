@@ -12,6 +12,7 @@ import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_dialog_content.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class AddVehicleForm extends StatefulWidget {
   final Function(VehicleModel) onFinish;
@@ -255,7 +256,10 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
       });
     } catch (e) {
       setState(() {
-        _makesError = e.toString();
+        _makesError = mensajeSeguroDeError(
+          e,
+          accion: 'No se pudieron cargar las marcas',
+        );
         _isLoadingMakes = false;
       });
     }
@@ -274,7 +278,10 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
       });
     } catch (e) {
       setState(() {
-        _modelsError = e.toString();
+        _modelsError = mensajeSeguroDeError(
+          e,
+          accion: 'No se pudieron cargar los modelos',
+        );
         _isLoadingModels = false;
       });
     }

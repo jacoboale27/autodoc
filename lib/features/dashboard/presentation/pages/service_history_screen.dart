@@ -14,6 +14,8 @@ import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/theme/app_theme.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_empty_state.dart';
+import 'package:autodoc/core/widgets/app_error_state.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 import 'package:autodoc/core/widgets/app_grid.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_scaffold.dart';
@@ -42,6 +44,16 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
 
   String _sortOption =
       'Fecha (Reciente)'; // 'Fecha (Reciente)', 'Fecha (Antiguo)', 'Costo (Mayor)', 'Costo (Menor)'
+
+  /// Cambia en cada reintento (UX-04).
+  ///
+  /// El `StreamBuilder` vive en `build`, asi que un `setState` cualquiera lo
+  /// reconstruye pero le entrega **el mismo objeto Stream**: Flutter compara
+  /// `oldWidget.stream == widget.stream` y, si son el mismo, NO se resuscribe.
+  /// Reintentar repintaria entonces el error que ya estaba. Esta clave va en el
+  /// `key` del `StreamBuilder` para forzar un elemento nuevo, y con el una
+  /// suscripcion nueva.
+  int _intento = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -196,6 +208,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
           // List & Stats
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
+              key: ValueKey(_intento),
               stream: (widget.firestore ?? FirebaseFirestore.instance)
                   .collection(FirestoreCollections.servicios)
                   .where('id_vehiculo', isEqualTo: widget.vehiculoId)
@@ -208,11 +221,14 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                   );
                 }
                 if (snapshot.hasError) {
-                  return Center(
-                    child: Text(
-                      'Error: ${snapshot.error}',
-                      style: TextStyle(color: colors.textPrimary),
-                    ),
+                  // Antes: `Text('Error: ${snapshot.error}')`. El fallo
+                  // probable aqui es `failed-precondition` por una consulta
+                  // sin indice —este repo ya se comio uno en produccion— y ese
+                  // mensaje trae la consulta entera y un enlace a la consola de
+                  // Firebase del proyecto.
+                  return AppErrorState(
+                    mensaje: mensajeDeError(context.l10n, snapshot.error),
+                    onReintentar: () => setState(() => _intento += 1),
                   );
                 }
 

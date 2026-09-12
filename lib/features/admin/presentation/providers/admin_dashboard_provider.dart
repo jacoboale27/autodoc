@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../data/services/admin_service.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class AdminDashboardProvider with ChangeNotifier {
   final AdminService _adminService = AdminService();
@@ -38,13 +39,13 @@ class AdminDashboardProvider with ChangeNotifier {
           notifyListeners();
         },
         onError: (e) {
-          _error = e.toString();
+          _error = mensajeSeguroDeError(e);
           _isLoading = false;
           notifyListeners();
         },
       );
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       _isLoading = false;
       notifyListeners();
     }
