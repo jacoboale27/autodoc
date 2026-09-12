@@ -19,6 +19,7 @@ const {
 const { listarEmpleadosPublicos } = require('./src/obtenerEmpleadosPublicos');
 const { CAMPO_MIGRACION, esMigracion } = require('./src/migracion');
 const { cerrarTicketsDeVehiculo } = require('./src/cerrarTicketsDeVehiculo');
+const { enviarRecordatoriosDeReserva } = require('./src/recordatoriosReserva');
 // El FieldValue tiene que salir del MISMO modulo que la instancia de Firestore.
 // Observado en el emulador de Functions: `admin.firestore.FieldValue` llega
 // undefined, y el de `@google-cloud/firestore` (que este package.json declara
@@ -1084,79 +1085,19 @@ exports.notifyOnReparacionStatusChange = functions.firestore
  * 6. Scheduled function to send reservation reminders daily.
  * Notifies the owner and mechanic if they have an approved reservation for the next day.
  */
-exports.sendReservationReminders = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const dateString = tomorrow.toISOString().split('T')[0]; // 'YYYY-MM-DD'
-
-  const limit = 500;
-  let lastDoc = null;
-
-  const usuariosCache = {};
-
+exports.sendReservationReminders = functions.pubsub.schedule('every 24 hours').onRun(async () => {
+  // OPS-01: la logica vive en `src/recordatoriosReserva.js` para poder
+  // ejercerla con fixtures. Aqui solo queda el enganche del scheduler.
   try {
-    while (true) {
-      let q = db.collection('reservas')
-        .where('estado', '==', 'confirmada')
-        .orderBy(admin.firestore.FieldPath.documentId())
-        .limit(limit);
-      if (lastDoc) {
-        q = q.startAfter(lastDoc);
-      }
-      const reservasSnapshot = await q.get();
-      if (reservasSnapshot.empty) break;
-
-      for (const doc of reservasSnapshot.docs) {
-        const reserva = doc.data();
-
-        const fechaPropuesta = reserva.fecha_hora_propuesta && reserva.fecha_hora_propuesta.toDate
-          ? reserva.fecha_hora_propuesta.toDate()
-          : null;
-        if (!fechaPropuesta) continue;
-        const fechaPropuestaString = fechaPropuesta.toISOString().split('T')[0];
-        if (fechaPropuestaString !== dateString) continue;
-
-        // Notify Owner
-        if (reserva.id_propietario) {
-          if (!(reserva.id_propietario in usuariosCache)) {
-            const ownerDoc = await db.collection('usuarios').doc(reserva.id_propietario).get();
-            usuariosCache[reserva.id_propietario] = ownerDoc.exists ? ownerDoc.data() : null;
-          }
-          const ownerData = usuariosCache[reserva.id_propietario];
-          if (ownerData && ownerData.fcmToken) {
-            await messaging.send({
-              token: ownerData.fcmToken,
-              notification: {
-                title: 'Recordatorio de Cita',
-                body: 'Tienes una cita programada para mañana a la hora acordada.'
-              }
-            });
-          }
-        }
-
-        // Notify Mechanic
-        if (reserva.id_mecanico) {
-          if (!(reserva.id_mecanico in usuariosCache)) {
-            const mechanicDoc = await db.collection('usuarios').doc(reserva.id_mecanico).get();
-            usuariosCache[reserva.id_mecanico] = mechanicDoc.exists ? mechanicDoc.data() : null;
-          }
-          const mechanicData = usuariosCache[reserva.id_mecanico];
-          if (mechanicData && mechanicData.fcmToken) {
-            await messaging.send({
-              token: mechanicData.fcmToken,
-              notification: {
-                title: 'Recordatorio de Cita',
-                body: 'Tienes una cita programada para mañana con el vehículo del cliente.'
-              }
-            });
-          }
-        }
-      }
-
-      lastDoc = reservasSnapshot.docs[reservasSnapshot.docs.length - 1];
-    }
+    const resumen = await enviarRecordatoriosDeReserva(db, messaging);
+    console.log('sendReservationReminders:', JSON.stringify(resumen));
+    return resumen;
   } catch (error) {
+    // Se relanza a proposito: la version anterior se lo tragaba con un
+    // console.error, asi que un barrido roto no se distinguia de un dia sin
+    // citas. Con el throw, Cloud Scheduler lo marca fallido y reintenta.
     console.error('Error in sendReservationReminders:', error);
+    throw error;
   }
 });
 

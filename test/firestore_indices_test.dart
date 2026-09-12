@@ -313,6 +313,21 @@ const _inventario = <_Consulta>[
     // dejara de pedir el índice que esta consulta sí necesita.
     origen: 'functions/src/aceptarCotizacion.js:247',
   ),
+  _Consulta(
+    coleccion: 'reservas',
+    igualdades: ['estado'],
+    orden: 'fecha_hora_propuesta',
+    // OPS-01: recordatorio diario de citas. La desigualdad es doble
+    // (`>= inicio` y `< fin` de la ventana de mañana), lo que a efectos de
+    // índice se comporta como un `orderBy` ascendente sobre ese campo.
+    //
+    // Antes de OPS-01 esta consulta era de solo igualdades —`estado ==
+    // 'confirmada'`— y por eso no aparecía aquí: barría la colección entera y
+    // descartaba en memoria. Acotarla en el servidor es lo que la vuelve
+    // compuesta, y este índice es el precio de no leer cada reserva que haya
+    // existido jamás, todos los días.
+    origen: 'functions/src/recordatoriosReserva.js:86',
+  ),
 ];
 
 /// Índices que no sirven a ninguna consulta del inventario y aun así se
@@ -325,7 +340,7 @@ const _orderByEsperados = 16;
 
 /// Cuántos `.where(` hay hoy en `functions/index.js` y `functions/src/`. Ver el
 /// cuarto test.
-const _whereServidorEsperados = 24;
+const _whereServidorEsperados = 26;
 
 class _Consulta {
   const _Consulta({
