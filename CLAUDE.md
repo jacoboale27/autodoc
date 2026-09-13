@@ -10,13 +10,56 @@ Evidencia base: `docs/AUDITORIA_CREA_J_2026_CODEX.md` y `docs/AUDITORIA_CREA_J_2
 (dos auditorías independientes, ambas 64/100 por rutas distintas). **No repitas la auditoría
 antes de implementar**; el plan lo prohíbe.
 
-**Estado a 2026-09-12 — 16 tareas cerradas y verificadas:** SEC-01, SEC-02, SEC-03, DATA-01,
+**Estado a 2026-09-13 — 17 tareas cerradas y verificadas:** SEC-01, SEC-02, SEC-03, DATA-01,
 VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01, FUNC-02, UX-03 / UX-04 y
-**SEC-04 / OPS-01**.
-**Siguiente por orden §12: H-01** (hardening), luego INNO-01 —solo si el mock judge lo
+**SEC-04 / OPS-01** y **H-01**.
+**Siguiente por orden §12: INNO-01** —solo si el mock judge lo
 exige— y FINAL-01. Las tandas de drenaje de gaps están cerradas: `fix/gaps-02`
 (residuales de FUNC-02), `fix/gaps-03` (accesibilidad de la landing que dejó UX-03) y
 **`fix/gaps-04`** (lo que quedaba abierto antes de H-01, cerrada el 2026-09-13).
+
+### H-01 está cerrada (2026-09-13, `hardening/h-01`)
+
+Hardening, QA destructivo, matriz de evidencia y **segunda auditoría adversarial desde cero**.
+Evidencia en `docs/evidencia/H-01-hardening.md` y `docs/AUDITORIA_CREA_J_2026_v2.md`.
+**Veredicto del juez independiente: 85/100, sin P0.** Lo que hay que saber sin leerlas:
+
+- **⚠️ RUNBOOK, Pendiente 0, BLOQUEANTE antes de desplegar reglas.** Las reglas nuevas resuelven
+  el estado del taller con `.get('estado','pendiente')`, así que **un taller de producción sin
+  ese campo pierde de golpe las facturas y la galería**. Hay que contarlos antes de desplegar, y
+  **no** hacer un backfill ciego a `'aprobado'`: eso convertiría el arreglo en su contrario.
+  Ninguna suite puede avisar — todas siembran `estado`.
+- **El registro por UI ya no está en `fixme`**, y su razón documentada era falsa a medias: los
+  rótulos seguían vivos en el ARB; lo que cambió fue el final del recorrido. La otra mitad sí era
+  cierta y tiene arreglo: **en Flutter web `fill()` no sirve y `keyboard.type` sí** — el primero
+  escribe en el `<input>` del proxy y Flutter lo descarta al cambiar de foco.
+- **El `errorText` de un campo NO es un nodo del árbol de semántica en Flutter web**: viaja
+  pegado al `aria-label` del `<input>`. `getByText` no puede verlo nunca. Afirmarlo ahí prueba
+  además que el error se anuncia a un lector de pantalla.
+- **Dos auditores independientes encontraron conjuntos DISTINTOS.** El agujero de Storage lo vio
+  solo el abogado del diablo; el juez, que puntuó Seguridad 16/20, no lo detectó. Y **uno de los
+  cinco cargos era falso**, con cita de `ruta:línea` igual que los verdaderos: la cita hace el
+  cargo comprobable, no cierto.
+- **El gate de revisión tumbó mi propio arreglo.** Atar la cita a su conversación no cerraba
+  nada: el `create` de `/conversaciones` dejaba fabricarse esa conversación nombrando de mecánico
+  a la víctima. La rama del mecánico se cerró en la Ronda 3; la del propietario seguía abierta
+  desde entonces.
+- **Recargar la página en `/task_config` o `/task_complete` reventaba la app** — `state.extra` no
+  sobrevive a un refresh y el cast era incondicional. No hace falta teclear la URL: basta F5.
+- **Refutar un cargo dio un defecto que nadie pidió**: el chat no duplica mensajes, pero el envío
+  es fire-and-forget y el texto ya se borró, así que si falla la persona lo pierde sin ver error.
+- **Centinela nuevo** `test/core/providers/salidas_de_sesion_test.dart`: obliga a que toda
+  pantalla que cierre sesión limpie los providers, con un mapa de exenciones razonadas y un
+  segundo test que rompe si una exención se queda huérfana.
+
+**Cifras:** `flutter analyze` limpio, `flutter test` **1227/1227**, Functions **276**, reglas
+**465/465** en 28 suites, E2E de la app **37/37 en serie y cero `fixme`**, E2E de la landing
+**42/42**, puertos libres al salir.
+
+**Quedan diez gaps anotados** en el §6 de la evidencia de H-01, más los quince de GAPS-04. Los de
+más peso: App Check en `monitor` por defecto (deliberado, es paso de runbook), seis formularios
+sin defensa contra doble envío —solo uno verificado a mano— y las lecturas sin cota del panel del
+mecánico y del barrido de alertas.
 
 ### La tanda GAPS-04 está cerrada (2026-09-13, `fix/gaps-04`, fusionada)
 
