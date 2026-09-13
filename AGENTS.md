@@ -97,8 +97,52 @@ Definition of Done al final, evidencia base en `docs/AUDITORIA_CREA_J_2026_CODEX
 VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01, FUNC-02, UX-03 / UX-04 y
 **SEC-04 / OPS-01**.
 **Siguiente por orden §12: H-01** (hardening), luego INNO-01 —solo si el mock judge lo
-exige— y FINAL-01. Las dos tandas de drenaje de gaps están cerradas: `fix/gaps-02`
-(residuales de FUNC-02) y `fix/gaps-03` (accesibilidad de la landing que dejó UX-03).
+exige— y FINAL-01. Las tandas de drenaje de gaps están cerradas: `fix/gaps-02`
+(residuales de FUNC-02), `fix/gaps-03` (accesibilidad de la landing que dejó UX-03) y
+**`fix/gaps-04`** (lo que quedaba abierto antes de H-01, cerrada el 2026-09-13).
+
+### La tanda GAPS-04 está cerrada (2026-09-13, `fix/gaps-04`, fusionada)
+
+Drenaje de los gaps que quedaban abiertos antes de H-01. Evidencia en
+`docs/evidencia/GAPS-04-drenaje.md`. Lo que hay que saber sin leerla:
+
+- **Remitir un gap a una tarea futura NO lo cierra.** Dos gaps se habían «remitido a
+  OPS-01», OPS-01 cerró sin recogerlos y ahí se quedaron. Son justo los dos de más valor de
+  la tanda. Si mandas un gap a una tarea, esa tarea tiene que recogerlo explícitamente en su
+  evidencia o volver a quedar anotado.
+- **Otra vez dos descripciones de gap estaban mal, y la peor tranquilizaba.** El gap 9.6
+  decía que nadie recogía `vinculo_revocacion_pendiente`; en realidad el barrido sí la
+  recoge, pero **a los 30 días** — o sea que un fallo de revocación regalaba un mes de
+  acceso a la ficha de un coche ya devuelto. Ya van tres rondas seguidas: **la anotación
+  sirve para no perder el gap, no como diagnóstico.**
+- **`/alertas` pasa de denylist a allowlist.** Una denylist cubre los campos de servidor que
+  existían el día que se escribió y deja nacer escribible cualquiera posterior — por ahí
+  llegó el hallazgo de SEC-04. Hay un centinela nuevo, `test/alertas_campos_test.dart`, que
+  cruza `camposDeAlerta()` de las reglas con `AlertModel.toMap()` **en las dos direcciones**:
+  sin él, un campo nuevo del modelo se denegaría **solo en producción**, porque los
+  emuladores obedecen la regla igual de bien que Firestore.
+- **Trigger nuevo `borrarFotosAlEliminarResenia`.** Al eliminar una reseña sus fotos se
+  quedaban en Storage. Son **dos** caminos y el segundo no estaba anotado: el borrado de
+  cuenta barre reseñas en lotes de 500 sin pasar por la app.
+- **Retirado `streamReservasUsuario` y toda su rama** (cero consumidores en `lib/`,
+  sostenida por tres tests — el patrón de FUNC-02). **Y el centinela de índices paró un
+  defecto real**: con sus dos índices se iba también un tercero de `reservas` que usa el
+  recordatorio de citas, que es del **servidor**. Vaciar `lib/` de consultas a una colección
+  no significa que la colección se quede sin consultas.
+- **Los dos revisores encontraron siete defectos que las suites propias no veían**, y el peor
+  era mío repitiendo el gap 9.1: **en un `whereIn` el `limit` se aplica por subconsulta**, así
+  que un `limit(50)` con 30 vehículos lee hasta 1500 documentos. Es la tercera tanda seguida
+  en que los gates pagan su coste.
+- **Runbook nuevo:** `firebase deploy --only firestore:indexes` antes que la app — crea uno
+  (`servicios (id_vehiculo, id_taller, fecha DESC)`) y retira dos de `reservas`.
+
+**Cifras al día:** `flutter analyze` limpio, `flutter test` **1221 / 1221**, Functions
+**276**, reglas **454 / 454** en 26 suites, puertos libres al salir.
+
+**Quedan quince gaps anotados** en el §7 de esa evidencia, con su razón. Los de más peso: la
+denormalización de `avisos_pendientes` (el barrido de alertas relee cada día todo lo ya
+avisado), el N+1 de los barridos, los siete triggers de notificación sin test, y el panel del
+mecánico con cuatro streams sin tope.
 
 ### SEC-04 / OPS-01 — enforcement de App Check y tareas programadas
 
