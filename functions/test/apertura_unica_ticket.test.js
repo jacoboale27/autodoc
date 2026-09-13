@@ -124,7 +124,13 @@ describe('FUNC-02 / una sola puerta de apertura de tickets', () => {
       // tickets: consulta los que tienen vinculo vivo y sin actividad, y lo
       // unico que les escribe es `vinculo_activo: false`. El acceso caduca; el
       // ticket sigue siendo trabajo del taller.
-      'src/caducarVinculos.js': 1,
+      //
+      // Son 2 y no 1 desde el gap 9.6: la segunda consulta recoge los tickets
+      // que quedaron marcados con `vinculo_revocacion_pendiente` porque la
+      // revocacion al cierre fallo. Es una LECTURA mas, sobre el mismo camino
+      // y con la misma escritura: no abre ninguna puerta nueva sobre el ticket
+      // — al contrario, cierra antes un acceso que ya deberia estar cerrado.
+      'src/caducarVinculos.js': 2,
       // El barrido de `onVehicleDelete`, que CIERRA los tickets del vehiculo
       // borrado. Vivia inline en index.js y sale aqui con el gap 9.1: desde
       // que el tablero consulta `abierto == true` en vez de mirar `estado`, un

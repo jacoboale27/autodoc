@@ -8,30 +8,6 @@ class ReservaRepository {
 
   final FirebaseFirestore _firestore;
 
-  /// Reservas del usuario, **acotadas** a [maxReservasHistorial] (gap 9.3).
-  ///
-  /// El stream no tenía tope: traía el historial COMPLETO de la cuenta, con
-  /// las completadas y canceladas de siempre, en cada `attach` del listener.
-  /// Ya venía ordenado por `fecha_hora_propuesta DESC` y con su índice
-  /// declarado, así que lo que cae fuera es lo más antiguo — y que se haya
-  /// llegado al tope se anuncia (`ReservaProvider.reservasTruncadas`).
-  Stream<List<ReservaModel>> streamReservasUsuario(
-    String userId, {
-    bool isMecanico = false,
-  }) {
-    return _firestore
-        .collection(FirestoreCollections.reservas)
-        .where(isMecanico ? 'id_mecanico' : 'id_propietario', isEqualTo: userId)
-        .orderBy('fecha_hora_propuesta', descending: true)
-        .limit(maxReservasHistorial)
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => ReservaModel.fromMap(doc.data(), doc.id))
-              .toList(),
-        );
-  }
-
   // Obtener reserva por ID
   Future<ReservaModel?> getReserva(String reservaId) async {
     final doc = await _firestore

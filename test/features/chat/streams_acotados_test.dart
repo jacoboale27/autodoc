@@ -4,11 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:autodoc/features/chat/data/models/conversacion_model.dart';
 import 'package:autodoc/features/chat/data/models/mensaje_model.dart';
-import 'package:autodoc/features/chat/data/models/reserva_model.dart';
 import 'package:autodoc/features/chat/data/repositories/chat_repository.dart';
-import 'package:autodoc/features/chat/data/repositories/reserva_repository.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
-import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
 
 /// Los tres streams sin tope que dejó anotados el §9 de
 /// `GAPS-FUNC-02-cierre-de-residuales.md` (gaps 9.2 y 9.3).
@@ -162,47 +159,10 @@ void main() {
     });
   });
 
-  group('historial de reservas (gap 9.3)', () {
-    Future<FakeFirebaseFirestore> conReservas(int cuantas) async {
-      final db = FakeFirebaseFirestore();
-      for (var i = 0; i < cuantas; i += 1) {
-        await db.collection('reservas').doc('r$i').set({
-          'id_conversacion': 'c1',
-          'id_propietario': 'p1',
-          'id_mecanico': 'm1',
-          'id_vehiculo': 'v1',
-          'id_taller': 't1',
-          'fecha_hora_propuesta': Timestamp.fromDate(
-            DateTime(2026, 1, 1).add(Duration(days: cuantas - i)),
-          ),
-          'tipo_servicio': 'revision',
-          'estado': 'pendiente',
-          'fecha_creacion': Timestamp.fromDate(DateTime(2026, 1, 1)),
-        });
-      }
-      return db;
-    }
-
-    test('el historial se acota al tope y trae las MÁS RECIENTES', () async {
-      final db = await conReservas(maxReservasHistorial + 5);
-      final repo = ReservaRepository(firestore: db);
-
-      final reservas = await repo.streamReservasUsuario('p1').first;
-
-      expect(reservas, hasLength(maxReservasHistorial));
-      expect(reservas.first.id, 'r0');
-    });
-
-    test('al llegar al tope, el provider lo dice', () async {
-      final db = await conReservas(maxReservasHistorial + 5);
-      final provider = ReservaProvider(
-        repository: ReservaRepository(firestore: db),
-      );
-
-      provider.inicializarReservasUsuario('p1');
-      await Future<void>.delayed(Duration.zero);
-
-      expect(provider.reservasTruncadas, isTrue);
-    });
-  });
+  // El grupo de "historial de reservas (gap 9.3)" vivia aqui. Se fue con
+  // `streamReservasUsuario`, que el gap 7.2 de GAPS-02 dejo anotado como
+  // stream sin ningun consumidor en `lib/`: lo sostenian exactamente estos
+  // tests y los de reseteo de sesion, que es el patron que FUNC-02 ya habia
+  // encontrado. El stream estaba acotado (lo acoto la tanda anterior), pero
+  // acotar bien un camino que nadie recorre no lo vuelve util.
 }

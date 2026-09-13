@@ -1,15 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Cuántas reservas trae el historial como mucho.
-///
-/// Gap 9.3 de `GAPS-FUNC-02-cierre-de-residuales.md`: `streamReservasUsuario`
-/// traía TODAS las reservas históricas del usuario, incluidas las completadas
-/// y canceladas de hace años. Ya venía ordenado por
-/// `fecha_hora_propuesta DESC` y con su índice declarado, así que lo único que
-/// le faltaba era el tope — y el aviso de que se llegó a él
-/// ([ReservaProvider.reservasTruncadas]).
-const int maxReservasHistorial = 100;
-
 class ReservaModel {
   final String id;
   final String idConversacion;

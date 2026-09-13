@@ -111,48 +111,6 @@
       ]
     },
     {
-      "collectionGroup": "reservas",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "id_mecanico",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "fecha_hora_propuesta",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "reservas",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "id_propietario",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "fecha_hora_propuesta",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "reservas",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "estado",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "fecha_hora_propuesta",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "conversaciones",
       "queryScope": "COLLECTION",
       "fields": [
@@ -190,6 +148,38 @@
         },
         {
           "fieldPath": "estado",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "servicios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "id_vehiculo",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "id_taller",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fecha",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "reservas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "estado",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fecha_hora_propuesta",
           "order": "ASCENDING"
         }
       ]

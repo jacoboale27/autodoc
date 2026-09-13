@@ -1,6 +1,11 @@
 'use strict';
 
-const { revocarVinculo } = require('./vinculoTaller');
+const { FieldValue } = require('firebase-admin/firestore');
+
+const {
+  CAMPO_REVOCACION_PENDIENTE,
+  revocarVinculo,
+} = require('./vinculoTaller');
 
 /**
  * Residual 7.2 de FUNC-02 — la posesion del coche caduca sola.
@@ -62,12 +67,46 @@ async function caducarVinculosInactivos(db, { ahora, dias, tope }) {
   const plazo = dias === undefined ? DIAS_CADUCIDAD_VINCULO : dias;
   const corte = new Date(ahora.getTime() - plazo * 24 * 60 * 60 * 1000);
 
-  const snap = await db
+  const limite = tope === undefined ? TOPE_POR_CORRIDA : tope;
+
+  // Los MARCADOS van primero y se llevan el presupuesto que necesiten: son
+  // los urgentes (una revocacion que ya fallo sobre un coche ya devuelto),
+  // mientras que un ticket rancio lleva 30 dias asi y puede esperar a la
+  // corrida siguiente.
+  //
+  // Y el presupuesto se REPARTE, no se duplica. Con `limit(limite)` en las dos
+  // consultas, `pendientes` podia llegar a 2 x TOPE_POR_CORRIDA tras la dedup
+  // —el doble de lo que ese tope dice acotar—, y cada ticket cuesta dos
+  // escrituras que ademas despiertan a los `onUpdate` de la misma coleccion.
+  //
+  // Es una sola igualdad, asi que la sirve el indice automatico y no anade
+  // compuesto. Eso deja de ser cierto en cuanto se le ponga un `orderBy`: ver
+  // el gap de inanicion anotado en la evidencia.
+  const marcados = await db
     .collection('reparaciones')
-    .where(CAMPO_VINCULO_ACTIVO, '==', true)
-    .where('fecha_actualizacion', '<', corte)
-    .limit(tope === undefined ? TOPE_POR_CORRIDA : tope)
+    .where(CAMPO_REVOCACION_PENDIENTE, '==', true)
+    .limit(limite)
     .get();
+
+  const restante = limite - marcados.docs.length;
+  const rancios =
+    restante > 0
+      ? await db
+          .collection('reparaciones')
+          .where(CAMPO_VINCULO_ACTIVO, '==', true)
+          .where('fecha_actualizacion', '<', corte)
+          .limit(restante)
+          .get()
+      : { docs: [] };
+
+  // Un ticket rancio Y marcado sale en las dos. Procesarlo dos veces seria una
+  // revocacion redundante y, peor, un contador inflado que haria parecer que
+  // el barrido trabaja mas de lo que trabaja.
+  const porId = new Map();
+  for (const doc of [...marcados.docs, ...rancios.docs]) {
+    if (!porId.has(doc.id)) porId.set(doc.id, doc);
+  }
+  const pendientes = [...porId.values()];
 
   const caducarUno = async (doc) => {
     const ticket = doc.data();
@@ -84,7 +123,15 @@ async function caducarVinculosInactivos(db, { ahora, dias, tope }) {
       // not-found como caso normal (no hay vinculo que revocar), y dejar el
       // ticket marcado como vinculado solo haria que el barrido lo reintentara
       // en cada corrida.
-      await doc.ref.update({ [CAMPO_VINCULO_ACTIVO]: false });
+      //
+      // Y se limpia la marca si la habia: dejarla puesta con el vinculo ya
+      // revocado la convierte en mentira, y la marca existe precisamente para
+      // poder preguntar cuantos vinculos quedaron colgando.
+      const limpieza = { [CAMPO_VINCULO_ACTIVO]: false };
+      if (ticket[CAMPO_REVOCACION_PENDIENTE] === true) {
+        limpieza[CAMPO_REVOCACION_PENDIENTE] = FieldValue.delete();
+      }
+      await doc.ref.update(limpieza);
       return true;
     } catch (error) {
       // Un fallo no puede parar el barrido: los demas tickets del lote siguen
@@ -103,17 +150,17 @@ async function caducarVinculosInactivos(db, { ahora, dias, tope }) {
   // caso. Tampoco todas a la vez: un `Promise.all` de 400 escrituras contra
   // Firestore agota el pool de conexiones y se autoestrangula.
   let caducados = 0;
-  for (let i = 0; i < snap.docs.length; i += TANDA) {
+  for (let i = 0; i < pendientes.length; i += TANDA) {
     const hechos = await Promise.all(
-      snap.docs.slice(i, i + TANDA).map(caducarUno)
+      pendientes.slice(i, i + TANDA).map(caducarUno)
     );
     caducados += hechos.filter(Boolean).length;
   }
 
   return {
-    revisados: snap.docs.length,
+    revisados: pendientes.length,
     caducados,
-    fallidos: snap.docs.length - caducados,
+    fallidos: pendientes.length - caducados,
   };
 }
 
