@@ -24,7 +24,7 @@ const seedEscenario = async () => {
       talleres_vinculados: [UIDS.taller2],
     });
     await s.collection('alertas').doc('a1').set({
-      id_vehiculo: 'v1', tipo: 'soat', descripcion: 'vence pronto',
+      id_vehiculo: 'v1', tipo_alerta: 'soat', descripcion: 'vence pronto',
     });
     await s.collection('mantenimientos').doc('m1').set({
       id_vehiculo: 'v1', nombre: 'Pastillas de Freno', frecuencia_km: 20000,
@@ -173,7 +173,7 @@ describe('la contabilidad del barrido de alertas es del servidor (OPS-01)', () =
         id_vehiculo: 'v1', id_propietario: UIDS.owner1, placa: 'P-1',
       });
       await s.collection('alertas').doc('a1').set({
-        id_vehiculo: 'v1', tipo: 'soat', descripcion: 'vence pronto',
+        id_vehiculo: 'v1', tipo_alerta: 'soat', descripcion: 'vence pronto',
         ultimo_aviso: 'por_vencer',
         // Tiene que estar sembrado: borrar un campo que no existe no afecta a
         // ninguna clave, asi que el update pasaria por ser un no-op y el test
@@ -245,7 +245,7 @@ describe('la contabilidad del barrido de alertas es del servidor (OPS-01)', () =
     const db = await withRole(env, UIDS.owner1, 'Propietario');
     await assertFails(
       db.collection('alertas').doc('a1').set({
-        id_vehiculo: 'v1', tipo: 'soat', descripcion: 'reescrita',
+        id_vehiculo: 'v1', tipo_alerta: 'soat', descripcion: 'reescrita',
       }),
     );
   });
@@ -272,7 +272,7 @@ describe('la contabilidad del barrido de alertas es del servidor (OPS-01)', () =
     const db = await withRole(env, UIDS.owner1, 'Propietario');
     await assertFails(
       db.collection('alertas').doc('nueva').set({
-        id_vehiculo: 'v1', estado: 'Pendiente', tipo: 'soat', ultimo_aviso: 'vencida',
+        id_vehiculo: 'v1', estado: 'Pendiente', tipo_alerta: 'soat', ultimo_aviso: 'vencida',
       }),
     );
   });
@@ -288,7 +288,7 @@ describe('la contabilidad del barrido de alertas es del servidor (OPS-01)', () =
     const db = await withRole(env, UIDS.owner1, 'Propietario');
     await assertSucceeds(
       db.collection('alertas').doc('nueva').set({
-        id_vehiculo: 'v1', estado: 'Pendiente', tipo: 'soat',
+        id_vehiculo: 'v1', estado: 'Pendiente', tipo_alerta: 'soat',
       }),
     );
   });

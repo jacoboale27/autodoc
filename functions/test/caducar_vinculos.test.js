@@ -166,6 +166,83 @@ describe('caducarVinculos / caducarVinculosInactivos', () => {
     assert.strictEqual(db.docs['reparaciones/r1'].vinculo_activo, false);
   });
 
+  // Gap 9.6 de GAPS-FUNC-02, que se remitio a OPS-01 y OPS-01 cerro sin
+  // recogerlo.
+  //
+  // Cuando `revocarVinculoAlCerrar` falla, deja `vinculo_revocacion_pendiente`
+  // en el ticket y el vinculo VIVO. La evidencia decia que nadie recoge esa
+  // marca; al abrirlo resulta ser mas fino y menos tranquilizador de lo que
+  // parece: el ticket conserva `vinculo_activo: true`, asi que este barrido SI
+  // acaba viendolo — pero solo cuando pasen los 30 dias de inactividad, y ese
+  // reloj arranca en el cierre. O sea que un fallo de revocacion regala **un
+  // mes de acceso a la ficha de un coche que ya se devolvio**, que es
+  // exactamente el estado que el cierre del ticket queria terminar.
+  //
+  // La marca dice "esto habia que revocarlo YA". El barrido tiene que tratarla
+  // como tal y no esperar a que el ticket se ponga rancio.
+  it('recoge de inmediato un ticket con revocacion pendiente, sin esperar al plazo', async () => {
+    const db = fakeDb({
+      'reparaciones/r1': ticketVivo(1, {
+        estado: 'entregado',
+        vinculo_revocacion_pendiente: true,
+      }),
+      'vehiculos/v1': { talleres_vinculados: ['t1'], talleres_conocidos: ['t1'] },
+    });
+
+    const { caducados } = await caducarVinculosInactivos(db, { ahora: AHORA });
+
+    assert.strictEqual(caducados, 1);
+    // El doble no ejecuta las transformaciones de Firestore, asi que
+    // `talleres_vinculados` guarda el `arrayRemove` sin aplicar. Se afirma lo
+    // que si es observable —que la revocacion se intento contra el vehiculo— y
+    // no el resultado, que aqui solo probaria el doble.
+    assert.ok(
+      db.escrituras.some((e) => e.clave === 'vehiculos/v1'),
+      'tiene que intentar revocar el vinculo en el vehiculo'
+    );
+    assert.strictEqual(db.docs['reparaciones/r1'].vinculo_activo, false);
+  });
+
+  // Sin esto la marca se queda puesta para siempre y miente: el vinculo ya no
+  // existe, pero "cuantos vinculos quedaron colgando" —que es para lo que se
+  // invento la marca— sigue contandolo.
+  it('limpia la marca cuando consigue revocar', async () => {
+    const db = fakeDb({
+      'reparaciones/r1': ticketVivo(1, {
+        estado: 'entregado',
+        vinculo_revocacion_pendiente: true,
+      }),
+      'vehiculos/v1': { talleres_vinculados: ['t1'] },
+    });
+
+    await caducarVinculosInactivos(db, { ahora: AHORA });
+
+    const escritura = db.escrituras.find((e) => e.clave === 'reparaciones/r1');
+    assert.ok(escritura, 'el barrido tiene que escribir en el ticket');
+    assert.ok(
+      'vinculo_revocacion_pendiente' in escritura.data,
+      'la marca tiene que limpiarse en la misma escritura'
+    );
+  });
+
+  // Un ticket rancio Y marcado cae en las dos consultas. Procesarlo dos veces
+  // seria una revocacion redundante y un contador inflado.
+  it('no cuenta dos veces un ticket que es rancio y ademas esta marcado', async () => {
+    const db = fakeDb({
+      'reparaciones/r1': ticketVivo(DIAS_CADUCIDAD_VINCULO + 1, {
+        vinculo_revocacion_pendiente: true,
+      }),
+      'vehiculos/v1': { talleres_vinculados: ['t1'] },
+    });
+
+    const { revisados, caducados } = await caducarVinculosInactivos(db, {
+      ahora: AHORA,
+    });
+
+    assert.strictEqual(revisados, 1);
+    assert.strictEqual(caducados, 1);
+  });
+
   it('el plazo es configurable, para poder barrer mas agresivo si hace falta', async () => {
     const db = fakeDb({
       'reparaciones/r1': ticketVivo(10),

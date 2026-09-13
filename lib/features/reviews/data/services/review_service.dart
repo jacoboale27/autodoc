@@ -59,6 +59,16 @@ class ReviewService {
   /// límite lo tiene que hacer cumplir el servicio: la UI solo lo refleja.
   static const int maxFotos = 3;
 
+  /// Techo del tope que usa [findReviewableServiceId]. El tope real es
+  /// `reseñas previas con ese taller + 1`, casi siempre 1; esta constante solo
+  /// impide que crezca sin fin si alguien acumula muchísimas reseñas.
+  ///
+  /// **No son «50 lecturas».** En un `whereIn` el `limit` se aplica a cada
+  /// subconsulta, así que el coste es `tope × tamaño del chunk` (hasta 30). Es
+  /// el mismo gap 9.1 que ya se documentó para el tablero. Ver el gap 7.4 de
+  /// `docs/evidencia/GAPS-02-drenaje.md`.
+  static const int maxServiciosResenables = 50;
+
   final FirebaseFirestore _firestore;
   final SubidorDeFotoResenia _subir;
   final BorradorDeFotoResenia _borrar;
@@ -104,6 +114,13 @@ class ReviewService {
   /// no haya sido reseñado. Devuelve el id_servicio más reciente disponible,
   /// o null si el usuario no tiene ningún servicio finalizado con ese taller
   /// (o ya reseñó todos).
+  ///
+  /// Sólo mira los más recientes de ese taller por tanda de vehículos: tantos
+  /// como reseñas previas haya con él, más uno (ver [maxServiciosResenables]).
+  /// Un propietario que superase las [maxServiciosResenables] visitas reseñadas
+  /// al mismo taller dejaría de ver ofrecidas las más antiguas, que es un caso
+  /// que no se da y cuyo coste alternativo es leer todo su historial en cada
+  /// apertura de la ficha.
   Future<String?> findReviewableServiceId(
     String userId,
     String tallerId,
@@ -130,22 +147,38 @@ class ReviewService {
         i,
         i + 30 > vehicleIds.length ? vehicleIds.length : i + 30,
       );
+      // El filtro por taller va en el SERVIDOR, no en memoria (gap 7.4 de
+      // `GAPS-02-drenaje.md`). Antes esta consulta no tenia ni `id_taller` ni
+      // `limit`: traia el historial COMPLETO de servicios del propietario —de
+      // todos los talleres, de toda la vida de la cuenta— lo ordenaba en
+      // memoria y devolvia como mucho un id. El conjunto pasa a ser "sus
+      // servicios con ESTE taller", que es lo unico que la funcion mira.
+      //
+      // El `orderBy` tambien se baja al servidor: sin el, un `limit` recorta
+      // por `__name__` y el tope se llevaria documentos arbitrarios en vez de
+      // los mas recientes, que es el defecto que arreglo el tablero Kanban.
+      //
+      // El tope se calcula, no es fijo, y la razon es el gap 9.1: en un
+      // `whereIn` el `limit` se aplica a **cada subconsulta** antes de mezclar,
+      // asi que un `limit(50)` con 30 vehiculos lee hasta 1500 documentos para
+      // devolver un id. Como lo unico que busca el bucle es el PRIMERO no
+      // resenado, y los resenados ya estan en memoria, basta con pedir
+      // `resenadas + 1`: entre los `k + 1` mas recientes no pueden estar
+      // resenados los `k + 1`. Con el caso normal (ninguna resena previa con
+      // ese taller) eso es `limit(1)`.
+      final tope = reviewedServiceIds.length + 1 > maxServiciosResenables
+          ? maxServiciosResenables
+          : reviewedServiceIds.length + 1;
       final serviciosSnap = await _firestore
           .collection(FirestoreCollections.servicios)
           .where('id_vehiculo', whereIn: chunk)
+          .where('id_taller', isEqualTo: tallerId)
+          .orderBy('fecha', descending: true)
+          .limit(tope)
           .get();
 
-      final docs = serviciosSnap.docs.toList()
-        ..sort((a, b) {
-          final tsA = a.data()['fecha'] as Timestamp?;
-          final tsB = b.data()['fecha'] as Timestamp?;
-          if (tsA == null || tsB == null) return 0;
-          return tsB.compareTo(tsA);
-        });
-
-      for (final doc in docs) {
-        final docTaller = doc.data()['id_taller'] as String?;
-        if (docTaller == tallerId && !reviewedServiceIds.contains(doc.id)) {
+      for (final doc in serviciosSnap.docs) {
+        if (!reviewedServiceIds.contains(doc.id)) {
           return doc.id;
         }
       }

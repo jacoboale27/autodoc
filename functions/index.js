@@ -23,6 +23,7 @@ const { notificarAlertasVencidas } = require('./src/alertasVencidas');
 const { exportarFirestore } = require('./src/exportacionFirestore');
 const { exigirAppCheck } = require('./src/appCheck');
 const { enviarRecordatoriosDeReserva } = require('./src/recordatoriosReserva');
+const { borrarFotosDeResenia } = require('./src/fotosDeResenia');
 // El FieldValue tiene que salir del MISMO modulo que la instancia de Firestore.
 // Observado en el emulador de Functions: `admin.firestore.FieldValue` llega
 // undefined, y el de `@google-cloud/firestore` (que este package.json declara
@@ -1238,6 +1239,43 @@ exports.aggregateRatings = functions.firestore
         suma_estrellas: sum,
       });
     });
+  });
+
+/**
+ * 9 bis. Al borrarse una resenia, sus fotos se van con ella.
+ *
+ * Residual de FUNC-01, que cerro la EDICION (conservar/anadir/quitar, con el
+ * huerfano borrado tras confirmar Firestore) y dejo el borrado del documento
+ * sin limpiar nada. Se remitio a OPS-01 y OPS-01 cerro sin recogerlo.
+ *
+ * Va como trigger y no en el cliente porque son dos caminos y **uno de ellos
+ * no pasa por la app**: `deleteUserData` barre las resenias del usuario en
+ * lotes de 500 al borrarse la cuenta. Un trigger `onDelete` cubre los dos por
+ * construccion, y ademas es el unico que tiene permiso — `storage.rules` deja
+ * borrar al autor, pero en el borrado de cuenta ya no hay autor que firme.
+ *
+ * Es aparte de `aggregateRatings` (que es un `onWrite` y ya contempla el
+ * borrado para la media) a proposito: mezclarlos ataria el recalculo de la
+ * calificacion al exito de un borrado en Storage, que es justo lo que no debe
+ * pasar.
+ *
+ * La logica vive en `src/fotosDeResenia.js` para poder probarla sin
+ * firebase-functions, como el resto del modulo.
+ */
+exports.borrarFotosAlEliminarResenia = functions.firestore
+  .document('resenias/{reseniaId}')
+  .onDelete(async (snap, context) => {
+    const { borradas, fallidas } = await borrarFotosDeResenia(
+      storage.bucket(),
+      snap.data() || {}
+    );
+    if (fallidas > 0) {
+      console.warn(
+        `borrarFotosAlEliminarResenia: ${context.params.reseniaId} dejo ` +
+        `${fallidas} foto(s) sin borrar (${borradas} borradas).`
+      );
+    }
+    return null;
   });
 
 /**

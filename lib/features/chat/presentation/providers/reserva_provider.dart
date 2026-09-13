@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../../data/models/reserva_model.dart';
 import '../../data/repositories/reserva_repository.dart';
@@ -10,59 +9,22 @@ class ReservaProvider extends ChangeNotifier {
 
   final ReservaRepository _reservaRepository;
 
-  List<ReservaModel> _reservas = [];
-  List<ReservaModel> get reservas => _reservas;
-
-  /// `true` cuando el historial llegó al tope de [maxReservasHistorial] y por
-  /// tanto hay reservas más antiguas que no se están mostrando.
-  bool get reservasTruncadas => _reservas.length >= maxReservasHistorial;
-
-  StreamSubscription? _reservasSub;
-
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
   String? _error;
   String? get error => _error;
 
-  @override
-  void dispose() {
-    _reservasSub?.cancel();
-    super.dispose();
-  }
-
-  /// Vacia el estado por usuario y cancela la suscripcion activa. Se llama
-  /// al cerrar sesion: sin cancelarla, sigue escuchando con el uid del
-  /// usuario saliente y repuebla la lista en cuanto llegue el siguiente
-  /// snapshot.
+  /// Vacia el estado por usuario. Se llama al cerrar sesion.
+  ///
+  /// Ya no cancela ninguna suscripcion: este provider dejo de tener stream al
+  /// retirarse `inicializarReservasUsuario` (gap 7.2 de GAPS-02). Se conserva
+  /// porque `clearUserScopedProviders` lo llama junto a los demas y porque el
+  /// error y el flag de carga si son estado por usuario.
   void clear() {
-    _reservasSub?.cancel();
-    _reservasSub = null;
-    _reservas = [];
     _error = null;
     _isLoading = false;
     notifyListeners();
-  }
-
-  void inicializarReservasUsuario(String userId, {bool isMecanico = false}) {
-    _isLoading = true;
-    notifyListeners();
-
-    _reservasSub?.cancel();
-    _reservasSub = _reservaRepository
-        .streamReservasUsuario(userId, isMecanico: isMecanico)
-        .listen(
-          (data) {
-            _reservas = data;
-            _isLoading = false;
-            notifyListeners();
-          },
-          onError: (e) {
-            _error = mensajeSeguroDeError(e);
-            _isLoading = false;
-            notifyListeners();
-          },
-        );
   }
 
   Future<ReservaModel?> obtenerReserva(String reservaId) {

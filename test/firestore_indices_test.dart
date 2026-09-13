@@ -157,29 +157,35 @@ void main() {
 /// ese mismo campo, la sirve el índice automático de un campo: esas no van
 /// aquí.
 const _inventario = <_Consulta>[
-  _Consulta(
-    coleccion: 'reservas',
-    igualdades: ['id_mecanico'],
-    orden: 'fecha_hora_propuesta',
-    descendente: true,
-    origen: 'lib/features/chat/data/repositories/reserva_repository.dart:17',
-  ),
-  _Consulta(
-    coleccion: 'reservas',
-    igualdades: ['id_propietario'],
-    orden: 'fecha_hora_propuesta',
-    descendente: true,
-    // La misma consulta, con el campo elegido en tiempo de ejecución según el
-    // rol: `where(isMecanico ? 'id_mecanico' : 'id_propietario', ...)`. Son
-    // dos índices distintos y hacen falta los dos.
-    origen: 'lib/features/chat/data/repositories/reserva_repository.dart:17',
-  ),
+  // Las dos consultas por rol de `reservas` vivian aqui. Se fueron con
+  // `streamReservasUsuario` (gap 7.2 de GAPS-02): eran las dos variantes de un
+  // stream que no consumia ninguna pantalla. Con ellas se retiran sus DOS
+  // indices de produccion, que es un paso de runbook.
+  //
+  // El TERCER indice de `reservas` se queda, y por poco: al retirar los otros
+  // dos se fue tambien de un plumazo, y fue este centinela el que lo paro.
+  // Lo usa el recordatorio diario de citas, que es del SERVIDOR — o sea que
+  // vaciar `lib/` de consultas a una coleccion no significa que la coleccion
+  // se haya quedado sin consultas.
+  // (la entrada de `reservas / estado + fecha_hora_propuesta` que sirve al
+  // recordatorio de citas ya estaba mas abajo, puesta por OPS-01: no se
+  // duplica aqui. Lo que si queda dicho es POR QUE ese indice sobrevivio a la
+  // retirada de los otros dos.)
   _Consulta(
     coleccion: 'servicios',
     igualdades: ['id_vehiculo'],
     orden: 'fecha',
     descendente: true,
     origen: 'lib/features/dashboard/data/services/vehicle_service.dart:300',
+  ),
+  // Gap 7.4 de GAPS-02: antes no llevaba `id_taller` ni orden ni tope, asi
+  // que leia el historial COMPLETO del propietario para devolver un id.
+  _Consulta(
+    coleccion: 'servicios',
+    igualdades: ['id_vehiculo', 'id_taller'],
+    orden: 'fecha',
+    descendente: true,
+    origen: 'lib/features/reviews/data/services/review_service.dart:160',
   ),
   _Consulta(
     coleccion: 'servicios',
@@ -336,11 +342,18 @@ const _inventario = <_Consulta>[
 const _huerfanosConocidos = <String>[];
 
 /// Cuántos `.orderBy(` hay hoy en `lib/`. Ver el tercer test.
+/// 16: sube a 17 con el `orderBy` que `findReviewableServiceId` baja al
+/// servidor (gap 7.4) y vuelve a 16 al retirarse `streamReservasUsuario`
+/// (gap 7.2). Ambos de GAPS-02.
 const _orderByEsperados = 16;
 
 /// Cuántos `.where(` hay hoy en `functions/index.js` y `functions/src/`. Ver el
 /// cuarto test.
-const _whereServidorEsperados = 26;
+/// 27 desde que `caducarVinculosInactivos` consulta tambien por
+/// `vinculo_revocacion_pendiente` (gap 9.6). Es una **sola igualdad**, asi que
+/// el indice automatico la sirve y no anade compuesto; por eso sube el contador
+/// y no el inventario.
+const _whereServidorEsperados = 27;
 
 class _Consulta {
   const _Consulta({

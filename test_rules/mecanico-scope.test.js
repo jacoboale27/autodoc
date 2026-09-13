@@ -19,7 +19,7 @@ const seedEscenario = async () => {
     await s.collection('historial_mantenimientos').doc('h1').set({
       id_vehiculo: 'v1', id_taller: UIDS.taller1, nombre_tarea: 'Filtro de Aceite',
     });
-    await s.collection('alertas').doc('a1').set({ id_vehiculo: 'v1', tipo: 'soat' });
+    await s.collection('alertas').doc('a1').set({ id_vehiculo: 'v1', tipo_alerta: 'soat' });
   });
 };
 

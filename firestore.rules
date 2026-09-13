@@ -742,6 +742,39 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Inventario de campos legitimos de /alertas, en un solo sitio para que el
+    // create y el update no puedan divergir. Espejo de `AlertModel.toMap()`
+    // (lib/core/models/alert_model.dart:57-71).
+    function camposDeAlerta() {
+      return [
+        'id_alerta', 'id_vehiculo', 'tipo_alerta', 'titulo', 'descripcion',
+        'fecha_limite', 'kilometraje_objetivo', 'estado', 'prioridad',
+        'metadata'
+      ];
+    }
+
+    // Los mismos menos `id_vehiculo` y menos `id_alerta`, que son identidad.
+    //
+    // `id_vehiculo`, porque reasignar una alerta a otro vehiculo no es una
+    // operacion legitima (ver el comentario del update).
+    //
+    // `id_alerta`, porque es un espejo del id del documento y la app lo usa
+    // como DESTINO de la escritura al completar la alerta
+    // (`alert_provider.dart:296-307`). Dejarlo mutable —como quedo en el primer
+    // intento de esta regla— permite al propietario reescribirlo a un id con
+    // uno de los prefijos sinteticos (`soat_`, `task_`...), que hacen que ese
+    // write se salte en silencio: la alerta se pinta completada y sigue
+    // `Pendiente` en el servidor, avisando por push para siempre. No cruza el
+    // limite de usuario, asi que es integridad, no IDOR — pero no hay ningun
+    // flujo que actualice el campo, asi que cerrarlo es gratis. Lo encontro el
+    // gate de revision de reglas.
+    function camposMutablesDeAlerta() {
+      return [
+        'tipo_alerta', 'titulo', 'descripcion', 'fecha_limite',
+        'kilometraje_objetivo', 'estado', 'prioridad', 'metadata'
+      ];
+    }
+
     // 5. Tabla de Alertas y Recordatorios
     // Restringido: solo el propietario del vehículo vinculado o admin puede gestionar alertas
     match /alertas/{alertaId} {
@@ -764,10 +797,23 @@ service cloud.firestore {
       //
       // Va con `keys()` y no con `diff()` porque en un create no hay
       // `resource.data` contra el que comparar.
+      //
+      // Y va por ALLOWLIST (`hasOnly`), como /reservas, no por denylist
+      // (`hasAny`), que es como estaba. Una denylist enumera lo prohibido, asi
+      // que cubre los campos de servidor que existian el dia que se escribio y
+      // deja nacer escribible cualquiera posterior. Ahi mismo llego el
+      // hallazgo de SEC-04 —se podia crear la alerta ya silenciada— y el
+      // `avisos_pendientes` que traera la denormalizacion del barrido seria el
+      // siguiente. El inventario sale de `AlertModel.toMap()`
+      // (lib/core/models/alert_model.dart:57-71): si el modelo gana un campo,
+      // este `hasOnly` tiene que ganarlo tambien, y quien lo obliga es el
+      // centinela `test/alertas_campos_test.dart`, que cruza las dos listas en
+      // las dos direcciones. Sin el, un campo nuevo del modelo se denegaria
+      // solo en produccion.
       allow create: if isAuthenticated() && (
         isVehicleOwner(request.resource.data.id_vehiculo)
         || isAdmin()
-      ) && !request.resource.data.keys().hasAny(['ultimo_aviso', 'fecha_ultimo_aviso']);
+      ) && request.resource.data.keys().hasOnly(camposDeAlerta());
 
       // Actualización: propietario del vehículo o admin.
       // El acotado va FUERA del paréntesis a propósito, así que ata también a
@@ -792,11 +838,16 @@ service cloud.firestore {
       // por `affectedKeys()` y no por valor a propósito: atar el valor deja
       // pasar un `FieldValue.delete()`, que es cómo se esquivó una regla
       // equivalente en la tanda de drenaje anterior.
+      //
+      // Como el create, va por allowlist: la lista de abajo son los campos del
+      // modelo MENOS `id_vehiculo`, que es inmutable por el parrafo anterior.
+      // `ultimo_aviso` y `fecha_ultimo_aviso` quedan fuera por no estar
+      // dentro, que es justo la propiedad que la denylist no tenia.
       allow update: if isAuthenticated() && (
         isVehicleOwner(resource.data.id_vehiculo)
         || isAdmin()
-      ) && !request.resource.data.diff(resource.data).affectedKeys()
-             .hasAny(['id_vehiculo', 'ultimo_aviso', 'fecha_ultimo_aviso']);
+      ) && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(camposMutablesDeAlerta());
 
       // Eliminación: propietario del vehículo o admin
       allow delete: if isAuthenticated() && (
