@@ -352,6 +352,22 @@ class _ChatScreenState extends State<ChatScreen> {
 
     final reservaId = await reservaProvider.solicitarReserva(reserva);
 
+    // `solicitarReserva` devuelve '' cuando la escritura fallo, y guarda el
+    // motivo en `error`. Hasta H-01 nadie miraba ese valor: la tarjeta de cita
+    // se publicaba igual, con `id_reserva: ''`, anunciando a los dos
+    // participantes una reserva que no existe. Es la enfermedad de DATA-01
+    // —artefacto publico sin su registro de respaldo— un piso mas abajo.
+    if (reservaId.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.chatReservationFailed),
+          backgroundColor: context.appColors.error,
+        ),
+      );
+      return;
+    }
+
     await provider.enviarMensaje(
       conversacionId: widget.conversacionId,
       contenido:

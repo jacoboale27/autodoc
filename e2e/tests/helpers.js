@@ -17,6 +17,13 @@ const CLAVE = 'e2e-password-123';
 
 const VEHICULOS = { deA: 'e2e-vehiculo-a', deB: 'e2e-vehiculo-b' };
 
+// NOTA (H-01): la app SI emite `aria-label` en los <input> de texto, al
+// contrario de lo que decia la guia heredada. Medido en /register:
+//   Email / salto / name@example.com / salto / Fill in email and password.
+// O sea que `getByLabel` funciona sobre los campos, y el `errorText` de un
+// validator viaja AHI y no como nodo de texto — `getByText` no puede verlo.
+// Lo usa `registro.spec.js`.
+//
 // Los SDK se toman de `window.firebase_core` / `firebase_auth` /
 // `firebase_firestore`, que es como flutterfire publica sus modulos en la
 // pagina.

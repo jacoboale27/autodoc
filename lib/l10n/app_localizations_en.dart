@@ -1169,6 +1169,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get chatReservationFailed =>
+      'The appointment could not be created. Please try again.';
+
+  @override
   String get chatReservationDetail => 'Appointment Detail';
 
   @override

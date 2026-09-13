@@ -42,8 +42,16 @@ module.exports = defineConfig({
       command:
         'npx firebase emulators:start --only auth,firestore,storage --project autodoc-e2e',
       cwd: '..',
-      // El hub de emuladores. Esperar a el, y no a Firestore, es lo que
-      // garantiza que los tres esten arriba antes de sembrar.
+      // El hub de emuladores. Playwright espera a este puerto solo para no
+      // seguir adelante con el proceso muerto: el hub abre ANTES que Firestore
+      // y mucho antes de que Functions cargue los triggers, asi que llegar
+      // aqui NO significa que los emuladores respondan.
+      //
+      // La espera que de verdad cuenta esta en scripts/global-setup.js, que
+      // pregunta a Firestore (8080) y a Auth (9099) directamente. No la
+      // sustituyas por esta: los dos primeros tests caian con ECONNREFUSED en
+      // 53 ms mientras el tercero pasaba tras 8 s, que parece el emulador
+      // muriendose a media suite y es justo lo contrario.
       port: 4400,
       timeout: 120 * 1000,
       reuseExistingServer: true,

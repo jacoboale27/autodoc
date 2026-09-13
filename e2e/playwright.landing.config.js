@@ -35,7 +35,10 @@ module.exports = defineConfig({
       command:
         'npx firebase emulators:start --only functions,firestore --project autodoc-e2e',
       cwd: '..',
-      // El hub: esperar a el garantiza que Functions y Firestore ya respondan.
+      // El hub. Esperar a el NO garantiza que Functions y Firestore
+      // respondan — abre antes que los dos. La espera real esta en
+      // scripts/global-setup-landing.js, contra Firestore (8080) y el propio
+      // endpoint de la funcion (5001).
       port: 4400,
       timeout: 180 * 1000,
       reuseExistingServer: true,
