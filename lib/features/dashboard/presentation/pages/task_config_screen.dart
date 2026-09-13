@@ -16,6 +16,7 @@ import 'package:autodoc/core/widgets/app_section_header.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class TaskConfigScreen extends StatefulWidget {
   final MaintenanceTask task;
@@ -244,7 +245,7 @@ class _TaskConfigScreenState extends State<TaskConfigScreen> {
       }
     } catch (e) {
       if (mounted) {
-        UiUtils.showErrorSnackbar(context, 'Error: $e');
+        UiUtils.showErrorSnackbar(context, mensajeSeguroDeError(e));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

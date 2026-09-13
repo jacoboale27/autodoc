@@ -103,12 +103,14 @@ class FakeUserProfileProvider extends ChangeNotifier
 /// `ReparacionRepository()`, que a su vez cae en `FirebaseFirestore.instance`
 /// y `FirebaseFunctions.instance` en los inicializadores de sus campos.
 ///
-/// [llamadasIniciar] sigue contando en un solo contador las tres vías que
-/// CREAN el ticket desde el cliente (`iniciar`/`iniciarOReutilizar`/
-/// `iniciarOReutilizarPorVehiculo`). Desde A4b el ticket lo abre la Cloud
-/// Function `onCotizacionAceptada` y ninguna de las tres debe volver a
-/// llamarse desde la pantalla: el contador se queda como red de seguridad de
-/// esa regresión. [llamadasRecibir] cuenta la transición que sí ocurre ahora.
+/// Hubo aquí un contador `llamadasIniciar` que vigilaba que la pantalla no
+/// creara el ticket por su cuenta. FUNC-02 lo retiró junto con los tres
+/// métodos que contaba: ya no existe ninguna forma de crear un ticket desde
+/// el cliente, así que ese contador no podía subir nunca y afirmar que valía
+/// cero había dejado de discriminar nada. La garantía es ahora de
+/// compilación (la API no existe) y de `firestore.rules`
+/// (`allow create: if false` en `/reparaciones`).
+/// [llamadasRecibir] cuenta la transición que sí ocurre.
 ///
 /// [errorAlRecibir], si se fija, simula el caso que A3/B2 quiere impedir: no
 /// hay ninguna cotización aceptada, así que no hay ticket que recibir.
@@ -124,8 +126,7 @@ class FakeReparacionProvider extends ChangeNotifier
   final String idReparacion;
   final String? errorAlRecibir;
 
-  /// Qué debe devolver [recibirVehiculoPorId] (y el [recibirVehiculo]
-  /// heredado, deprecado): `true` simula una recepción real (el caso por
+  /// Qué debe devolver [recibirVehiculoPorId]: `true` simula una recepción real (el caso por
   /// defecto de casi todos los tests existentes), `false` simula el
   /// hallazgo 2 de la revisión de la Tarea 4 — el ticket resuelto ya estaba
   /// recibido de antes, así que la pantalla no debe anunciar una recepción
@@ -136,15 +137,17 @@ class FakeReparacionProvider extends ChangeNotifier
   /// ningún ticket para este vehículo+taller — el caso que A3/B2 gatea, ver
   /// `vehicle_gating_test.dart` —, cualquier otro valor simula uno ya
   /// existente. Independiente de [idReparacion] (que solo alimenta
-  /// [recibirVehiculoPorId]/[recibirVehiculo]): un test que fija uno no
-  /// cambia el otro sin querer.
+  /// [recibirVehiculoPorId]): un test que fija uno no cambia el otro sin
+  /// querer.
   final String? reparacionActivaId;
 
-  int llamadasIniciar = 0;
   int llamadasRecibir = 0;
 
   @override
   List<ReparacionModel> get reparaciones => const [];
+
+  @override
+  bool get tableroTruncado => reparaciones.length >= maxTicketsTablero;
   @override
   bool get isLoading => false;
   @override
@@ -164,51 +167,6 @@ class FakeReparacionProvider extends ChangeNotifier
     llamadasRecibir++;
     if (errorAlRecibir != null) return null;
     return recibidoAhora;
-  }
-
-  @override
-  @Deprecated(
-    'La Tarea 5 mueve esta busqueda a abrirVehiculoComoMecanico; usa '
-    'recibirVehiculoPorId',
-  )
-  Future<({String idReparacion, bool recibidoAhora})?> recibirVehiculo({
-    required String idVehiculo,
-    required String idTaller,
-  }) async {
-    llamadasRecibir++;
-    if (errorAlRecibir != null) return null;
-    return (idReparacion: idReparacion, recibidoAhora: recibidoAhora);
-  }
-
-  @override
-  Future<String?> iniciar({
-    required String idVehiculo,
-    required String idTaller,
-    required String idPropietario,
-    required String placa,
-  }) async {
-    llamadasIniciar++;
-    return idReparacion;
-  }
-
-  @override
-  Future<String?> iniciarOReutilizar({
-    required String idVehiculo,
-    required String idTaller,
-    required String idPropietario,
-    required String placa,
-  }) async {
-    llamadasIniciar++;
-    return idReparacion;
-  }
-
-  @override
-  Future<String?> iniciarOReutilizarPorVehiculo({
-    required String idVehiculo,
-    required String idTaller,
-  }) async {
-    llamadasIniciar++;
-    return idReparacion;
   }
 
   @override

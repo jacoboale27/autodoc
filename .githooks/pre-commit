@@ -20,14 +20,32 @@ if ! command -v dart >/dev/null 2>&1; then
   exit 0
 fi
 
-if dart format --output=none --set-exit-if-changed . >/dev/null 2>&1; then
+salida=$(dart format --output=none --set-exit-if-changed . 2>&1)
+if [ $? -eq 0 ]; then
   exit 0
+fi
+
+# `dart format .` MUERE —no falla: muere— recorriendo `landing-web/node_modules`
+# en cuanto se ha hecho `pnpm install` en el worktree: pnpm anida rutas mas
+# largas de lo que Windows admite y salta una PathNotFoundException. El hook
+# leia ese exit distinto de cero como "hay Dart sin formatear" y detenia el
+# commit con un mensaje falso, que ademas no listaba ni un archivo. En el CI no
+# pasa porque el checkout es limpio, asi que esto solo se ve en local.
+#
+# Cuando es eso, se reintenta sobre las tres raices de Dart del repo
+# (`git ls-files '*.dart'` no devuelve ninguna otra).
+if printf '%s' "$salida" | grep -q 'PathNotFoundException'; then
+  salida=$(dart format --output=none --set-exit-if-changed lib test integration_test 2>&1)
+  if [ $? -eq 0 ]; then
+    exit 0
+  fi
 fi
 
 echo "" >&2
 echo "  Commit detenido: hay Dart sin formatear." >&2
 echo "" >&2
-dart format --output=none --set-exit-if-changed . 2>&1 | grep '^Changed' >&2
+printf '%s
+' "$salida" | grep '^Changed' >&2
 echo "" >&2
 echo "  Arreglalo con:  dart format ." >&2
 echo "  Saltatelo con:  git commit --no-verify" >&2

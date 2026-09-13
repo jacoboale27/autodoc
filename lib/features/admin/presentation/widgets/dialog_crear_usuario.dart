@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:autodoc/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import '../providers/admin_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
@@ -7,11 +8,7 @@ import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_dialog_content.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
 
-/// Formulario modal exclusivo de Superusuario para registrar una cuenta
-/// manualmente sin perder la sesión propia (ver superUserCreateAccount en
-/// functions/index.js). No incluye campo de contraseña: se asigna una
-/// genérica en el backend y el usuario la cambia después vía "Olvidé mi
-/// contraseña".
+/// Crea una cuenta y entrega una invitacion de primera configuracion.
 class DialogCrearUsuario extends StatefulWidget {
   const DialogCrearUsuario({super.key});
 
@@ -38,14 +35,33 @@ class _DialogCrearUsuarioState extends State<DialogCrearUsuario> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSubmitting = true);
-    final ok = await context.read<AdminProvider>().crearUsuario(
+    final enlace = await context.read<AdminProvider>().crearUsuario(
       nombreCompleto: _nombreController.text.trim(),
       correo: _correoController.text.trim(),
       rol: _rolSeleccionado,
     );
     if (!mounted) return;
     setState(() => _isSubmitting = false);
-    if (ok) Navigator.pop(context);
+    if (enlace != null) {
+      final l10n = AppLocalizations.of(context)!;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(l10n.securityInvitationReady),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [Text(l10n.securityDeliverLink), SelectableText(enlace)],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(l10n.securityInvitationSent),
+            ),
+          ],
+        ),
+      );
+      if (mounted) Navigator.pop(context);
+    }
   }
 
   @override
@@ -88,8 +104,7 @@ class _DialogCrearUsuarioState extends State<DialogCrearUsuario> {
               ),
               const SizedBox(height: 12),
               Text(
-                'Se asignará una contraseña temporal genérica. El usuario '
-                'deberá cambiarla desde "Olvidé mi contraseña" en el login.',
+                AppLocalizations.of(context)!.securityDeliverLink,
                 style: AppTextStyles.bodySmall.copyWith(
                   color: colors.textSecondary,
                 ),

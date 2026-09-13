@@ -55,6 +55,46 @@ const List<String> estadosReparacionCerrados = [
   estadoReparacionEntregado,
 ];
 
+/// Cuántos tickets vivos se traen para el tablero Kanban y "Mis Servicios".
+///
+/// No es una cifra de negocio, es un techo de coste: el stream que los
+/// alimenta no tenía ninguno y traía el conjunto entero en cada apertura del
+/// tablero. 200 tickets ABIERTOS a la vez está muy por encima de cualquier
+/// taller real —son visitas simultáneas sin cerrar—, así que en la práctica no
+/// recorta nada; lo que hace es que un taller que no cierra sus tickets
+/// degrade su propio tablero en vez de la factura de lecturas de todos.
+///
+/// Llegar al tope se anuncia ([ReparacionProvider.tableroTruncado]): un
+/// recorte silencioso en un tablero es peor que un tablero lento, porque una
+/// tarjeta que no está se lee como un ticket que no existe.
+const int maxTicketsTablero = 200;
+
+/// ¿Este estado deja el ticket ABIERTO (o sea, en alguna columna del tablero)?
+///
+/// Es la definición única del booleano `abierto` que el ticket lleva
+/// denormalizado, y la razón de que exista está en el gap 9.1: el tablero
+/// filtraba con un `whereIn` de cinco estados, y Firestore ejecuta un `in`
+/// como **N subconsultas aplicando el límite a cada una** antes de fusionar.
+/// Con `limit(200)` eso son hasta 1000 documentos leídos para devolver 200, en
+/// cada `attach` del listener. El tope acotaba documentos, no lecturas.
+///
+/// Preguntando por una igualdad —`abierto == true`— la consulta lee
+/// exactamente el tope. El precio es mantener el campo coherente con `estado`,
+/// y por eso se deriva SIEMPRE de él y nunca se pasa como parámetro:
+///
+///   - el cliente lo escribe en `ReparacionModel.toMap` y en
+///     `ReparacionRepository.cambiarEstado`;
+///   - `firestore.rules` lo ata al `estado` RESULTANTE
+///     (`request.resource.data`, nunca `resource.data` — mirar el documento
+///     viejo es el patrón exacto que destapó los cinco huecos de QA-01);
+///   - los tres escritores server-side lo escriben con su propio espejo
+///     (`ticketAbierto` en `functions/src/aceptarCotizacion.js`);
+///   - los tickets anteriores a este cambio no lo tienen, y **una igualdad
+///     sobre un campo ausente no devuelve nada**: `backfill_entregado.js` los
+///     cubre en su pasada 4, que hay que correr ANTES de desplegar la app.
+bool ticketAbierto(String estado) =>
+    !estadosReparacionCerrados.contains(estado);
+
 /// Estados en los que el coche está FÍSICAMENTE en el taller.
 ///
 /// No es ni [estadosReparacion] (que incluye `pendiente_recepcion`, cuando el
@@ -100,6 +140,7 @@ class ReparacionModel {
       'id_propietario': idPropietario,
       'placa': placa,
       'estado': estado,
+      'abierto': ticketAbierto(estado),
       'historial_estados': historialEstados
           .map(
             (h) => {

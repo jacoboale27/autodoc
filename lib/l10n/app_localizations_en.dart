@@ -139,13 +139,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get authOpenLinkOnRegister =>
-      'Open the link in the email to activate your account. You can continue in the meantime.';
+      'Open the email link and return to verify your account before continuing.';
 
   @override
   String get authUnderstood => 'Understood';
-
-  @override
-  String get authContinueWithoutVerify => 'Continue without verifying';
 
   @override
   String get authResendEmail => 'Resend email';
@@ -1116,6 +1113,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tallerVerifDescartar => 'Discard';
 
   @override
+  String tallerVerifFormatoNoPermitido(String formatos) {
+    return 'That file doesn\'t work for this document. Accepted formats: $formatos.';
+  }
+
+  @override
   String chatOpeningSection(String label) {
     return 'Opening $label section...';
   }
@@ -1165,6 +1167,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String chatReservationSuccess(String status) {
     return 'Reservation $status successfully';
   }
+
+  @override
+  String get chatReservationFailed =>
+      'The appointment could not be created. Please try again.';
 
   @override
   String get chatReservationDetail => 'Appointment Detail';
@@ -1323,4 +1329,118 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chatCancelledStatus => 'Cancelled';
+
+  @override
+  String get securityInvitationReady => 'Invitation ready';
+
+  @override
+  String get securityInvitationSent => 'Invitation sent';
+
+  @override
+  String get securityDeliverLink =>
+      'Deliver this link privately to the recipient to set their password. Email is not sent automatically.';
+
+  @override
+  String get securityRequestPending =>
+      'Request created. Give the code to the recipient for acceptance.';
+
+  @override
+  String get securityDeliverCode =>
+      'Deliver this code privately to the specified email. It expires in 24 hours. The recipient must accept it in Share vehicle with their verified email.';
+
+  @override
+  String get securityRequestError =>
+      'Could not complete the request. Check your verified email and code, or try again later.';
+
+  @override
+  String get securityInvitationCode => 'Received invitation code';
+
+  @override
+  String get securityAcceptInvitation => 'Accept vehicle access';
+
+  @override
+  String get securityAccessAccepted =>
+      'Invitation accepted. Refresh your vehicle list.';
+
+  @override
+  String get securityUnnamed => 'Unnamed';
+
+  @override
+  String get securityShareVehicle => 'Share vehicle';
+
+  @override
+  String get securityEmailHint => 'Recipient email';
+
+  @override
+  String get securityRequestAccess => 'Create request';
+
+  @override
+  String get securityPeopleWithAccess => 'PEOPLE WITH ACCESS';
+
+  @override
+  String get securityOnlyYou => 'Only you have access';
+
+  @override
+  String get securityRevoke => 'Revoke access';
+
+  @override
+  String get securityInvalidEmail => 'Enter a valid email';
+
+  @override
+  String get securityAccessRevoked => 'Access revoked';
+
+  @override
+  String get startupErrorTitle => 'We couldn\'t start AutoDoc';
+
+  @override
+  String get startupErrorBody =>
+      'We couldn\'t reach our services. Check your connection and try again. If the problem persists, contact the app administrator.';
+
+  @override
+  String get startupErrorRetry => 'Try again';
+
+  @override
+  String get startupErrorRetryFailed =>
+      'We still couldn\'t connect. Please try again in a moment.';
+
+  @override
+  String get notFoundTitle => 'We couldn\'t find this page';
+
+  @override
+  String get notFoundBody =>
+      'The address you opened doesn\'t exist or has moved.';
+
+  @override
+  String get notFoundGoHome => 'Go to home';
+
+  @override
+  String get notFoundGoBack => 'Go back';
+
+  @override
+  String bandejaTruncada(int tope) {
+    return 'Showing the $tope conversations with the most recent activity. There are more threads that do not fit here.';
+  }
+
+  @override
+  String hiloTruncado(int tope) {
+    return 'Showing the $tope most recent messages. Older ones are not loaded.';
+  }
+
+  @override
+  String get errorDatosTitulo => 'We couldn\'t load this information';
+
+  @override
+  String get errorDatosPermiso =>
+      'You don\'t have access to this information. If you think you should, sign in again.';
+
+  @override
+  String get errorDatosConexion =>
+      'We couldn\'t reach the server. Check your connection and try again.';
+
+  @override
+  String get errorDatosGenerico =>
+      'Something went wrong loading this information. Try again in a moment.';
+
+  @override
+  String get errorReintentar => 'Retry';
 }

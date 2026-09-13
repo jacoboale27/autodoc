@@ -21,6 +21,50 @@ Debe ejecutarla una persona con esas credenciales.
 > Google Cloud Console que esa clave **no está expuesta**, así que esta
 > acción se descarta — no requiere rotación.
 
+### Pendiente 0 — ANTES de desplegar las reglas de H-01: contar talleres sin `estado`
+
+**Bloqueante.** H-01 endurece dos sitios que antes miraban solo el `rol`:
+
+- `storage.rules` → `isVinculadoAlVehiculo()` pasa a exigir taller **aprobado**. Afecta a
+  `facturas/{vehicleId}` y a la galería `vehiculos/{vehicleId}/**`.
+- `firestore.rules` → abrir una conversación como propietario exige que el `id_mecanico`
+  nombrado sea un taller aprobado.
+
+Ambas resuelven el estado con `.get('estado', 'pendiente')`. O sea: **un usuario con rol
+`Mecanico` o `Taller` al que le falte el campo `estado`, o lo tenga con un valor heredado
+fuera de `['aprobado','activo']`, pierde de golpe** el acceso a las facturas y a la galería de
+los vehículos a los que está vinculado, y deja de poder recibir chats nuevos de propietarios.
+
+Ninguna suite puede avisar de esto: `test_rules/storage.test.js:17` siembra siempre
+`estado: 'activo'` y las suites nuevas siembran el caso a propósito. Es el mismo tipo de
+trampa que el backfill de `abierto` en `fix/gaps-02` — una igualdad sobre un campo ausente no
+devuelve nada.
+
+**Qué hacer, en este orden:**
+
+1. Contar, contra el proyecto real y **antes** de desplegar:
+
+   ```
+   cd functions
+   node contar_talleres_sin_estado.js           # cuenta y lista; no escribe nada
+   node contar_talleres_sin_estado.js --csv    # la lista completa, para decidir una a una
+   ```
+
+   Lo que hay que saber es cuántos documentos de `usuarios` cumplen
+   `rol in ['Mecanico','Taller']` **y** (`estado` ausente **o** `estado` fuera de
+   `['aprobado','activo']`).
+
+2. Si el resultado es **cero**, desplegar reglas y app juntas. No hace falta nada más.
+
+3. Si es **distinto de cero**, hay que decidir documento a documento antes de desplegar: los
+   que estén operativos necesitan `estado: 'aprobado'`; los que estén realmente pendientes o
+   suspendidos **deben** perder el acceso, que es justo el defecto que H-01 cierra. No hagas un
+   backfill ciego a `'aprobado'`: convertiría el arreglo en su contrario.
+
+**El expediente de verificación no se ve afectado**, y es deliberado: `verificaciones/{tallerId}`
+sigue usando el `isMecanico()` laxo de `storage.rules`, porque un taller sube su NIT y sus fotos
+precisamente cuando todavía no está aprobado.
+
 ### Pendiente 1 — Crear el proyecto de staging (Step 1 del brief)
 
 ```bash
@@ -436,12 +480,112 @@ Para Cloud Functions **no basta con un toggle**: este repo usa Cloud
 Functions **v1** (`functions/index.js`, `require('firebase-functions')`), y
 en v1 el enforcement de App Check se implementa a **nivel de código**,
 revisando `context.app` dentro de cada `onCall` y rechazando la llamada si es
-`undefined` — no existe un ajuste de consola equivalente para v1. Hoy
-**ningún** `onCall` de `functions/index.js` verifica `context.app`, así que
-activar App Check en la consola no protege las Functions de este proyecto en
-absoluto; solo protege Firestore y Storage. Implementar esa verificación de
-código es trabajo pendiente, ver "Trabajo pendiente / deuda conocida" más
-abajo — no se implementó en la Fase E ni en este fix wave.
+`undefined` — no existe un ajuste de consola equivalente para v1.
+
+**Estado (SEC-04, cerrada).** Esa verificación ya existe:
+`functions/src/appCheck.js` la implementa y los **12** `onCall` de
+`functions/index.js` la invocan como su primera línea. Un centinela
+(`functions/test/app_check_cobertura.test.js`) impide que un callable nuevo
+nazca sin ella: corta el entrypoint en bloques por `exports.` y falla si
+alguno declara un `onCall` sin su `exigirAppCheck`. Cuenta bloques y no
+ocurrencias a propósito — contar `onCall` y contar `exigirAppCheck` daría el
+mismo número aunque un callable llevara dos comprobaciones y otro ninguna.
+
+Lo que **no** hace ese cambio por sí solo es rechazar nada. El modo por
+defecto es `monitor`:
+
+| `APP_CHECK_ENFORCEMENT` | Efecto |
+|---|---|
+| ausente, o valor no reconocido | cae a `monitor` |
+| `monitor` | no rechaza; registra cada llamada sin token, con el callable y el uid |
+| `enforce` | rechaza con `failed-precondition`, con un mensaje que no nombra App Check |
+| `off` | ni rechaza ni registra (válvula de emergencia sin desplegar código) |
+
+Un valor no reconocido cae a `monitor` a propósito: caer a `off` sería
+inseguro en silencio, y caer a `enforce` por una errata de configuración
+dejaría fuera a la aplicación entera. Por el mismo motivo el mensaje de
+rechazo es opaco — nombrar App Check, el proveedor o la variable le diría al
+atacante contra qué está chocando.
+
+### App Check — verificación reproducible
+
+Procedimiento a ejecutar y **fechar** para dar por demostrado el enforcement.
+Ningún paso necesita secretos en el registro: se anota el resultado, no la
+clave.
+
+1. **Cobertura de código**, reproducible en local y sin consola:
+
+   ```bash
+   cd functions && npx mocha test/app_check.test.js test/app_check_cobertura.test.js
+   ```
+
+   Cubre los 12 callables y los negativos de rechazo.
+
+2. **Rechazo real en `enforce`**, contra el emulador y nunca contra
+   producción:
+
+   ```bash
+   cd functions
+   APP_CHECK_ENFORCEMENT=enforce npx firebase emulators:start --only functions \
+     --project autodoc-rules-test
+   ```
+
+   Cualquier `onCall` invocado contra ese emulador debe devolver
+   `failed-precondition`. El emulador de Functions **no emite tokens de App
+   Check**, así que toda llamada desde él cae en el caso sin token — que es
+   justo lo que vuelve verificable el rechazo, y también por qué el modo por
+   defecto no puede ser `enforce`: con él, la suite de E2E entera dejaría de
+   pasar.
+
+   Este paso es **manual**: no hay todavía un spec que lo ejerza de punta a
+   punta. Queda anotado como gap de SEC-04; lo que sí está automatizado es el
+   paso 1, que prueba el rechazo a nivel de unidad.
+
+3. **Métricas de consola** (Firebase Console → App Check → Métricas), por
+   producto y por app. Anotar el porcentaje de peticiones con token válido de
+   los últimos 7 días. **No pasar a `enforce` por debajo del 98 %.**
+
+4. **Enforcement de Firestore y Storage** (Firebase Console → App Check →
+   producto → Enforce), uno a uno, verificando entre cada paso.
+
+| Fecha | Entorno | Paso | Resultado | Quién |
+|---|---|---|---|---|
+| _(pendiente)_ | staging | 3 — métricas | | |
+| _(pendiente)_ | staging | 4 — Firestore/Storage Enforce | | |
+| _(pendiente)_ | staging | `APP_CHECK_ENFORCEMENT=enforce` | | |
+| _(pendiente)_ | production | 3 — métricas | | |
+| _(pendiente)_ | production | 4 — Firestore/Storage Enforce | | |
+| _(pendiente)_ | production | `APP_CHECK_ENFORCEMENT=enforce` | | |
+
+**El orden importa:** staging entero antes que producción, y dentro de cada
+entorno las métricas antes que cualquier `Enforce`. Poner
+`APP_CHECK_ENFORCEMENT=enforce` con el porcentaje por debajo del umbral no es
+un ajuste agresivo: es una caída de servicio para los clientes que aún no
+firman.
+
+**Cómo llega la variable a las funciones desplegadas.** No es un ajuste de
+consola: en Cloud Functions v1 las variables de entorno se entregan con los
+archivos `.env` que lee `firebase-tools` al desplegar, dentro de `functions/`:
+
+| Archivo | Se aplica a |
+|---|---|
+| `functions/.env` | todos los proyectos |
+| `functions/.env.autodoc-staging` | solo staging |
+| `functions/.env.autodoc-6ef5a` | solo producción |
+
+Ninguno está versionado ni debe estarlo. Para pasar un entorno a enforcement
+se añade `APP_CHECK_ENFORCEMENT=enforce` al archivo de **ese** proyecto y se
+redespliegan las funciones; sin redespliegue la variable no cambia. Cambiar el
+modo es, por tanto, un despliegue, no un interruptor — tenerlo presente antes
+de prometer una vuelta atrás inmediata. La marcha atrás rápida existe, pero es
+otro despliegue con `off`.
+
+**Y un aviso que cuesta caro olvidar:** `lib/main.dart:173-181` **omite App
+Check en web cuando falta `RECAPTCHA_SITE_KEY`**, y lo omite entero contra
+emuladores. Es decir, un build web sin esa clave emite **cero** tokens
+válidos, por configuración y no por clientes antiguos. Poner `enforce` con la
+web en ese estado no es una degradación parcial: es la caída total de la web.
+El paso 3 lo detectaría, pero conviene mirar el build antes que las métricas.
 
 **Nota sobre CI/CD (actualizada, Fase E fix wave):** `flutter_ci.yml` ya no
 existe — la Tarea 15 lo eliminó por completo. El único workflow de web es
@@ -466,30 +610,120 @@ arriba, en "Acciones manuales pendientes").
 
 ## Trabajo pendiente / deuda conocida
 
-### `buscarPropietarioPorCorreo` sigue expuesto a enumeración sin límite de tasa
+### `buscarPropietarioPorCorreo` — cerrado por SEC-03 y SEC-04
 
-`functions/index.js:922` (`exports.buscarPropietarioPorCorreo`), con el
-comentario explicativo en `functions/index.js:897-921`: la Fase C cerró
-parcialmente el hallazgo Important de que esta función actúa, para cualquier
-cuenta con rol Propietario, como un oráculo `correo -> (uid, nombre_completo)`
-sobre toda la población de propietarios, sin límite de tasa (una cuenta
-Propietario puede crearse un vehículo desechable en un solo write para pasar
-el gate de `vehicleId + soy su propietario`). El comentario en el código
-diferia deliberadamente el cierre completo de este hallazgo a "App Check
-(Fase E, Tarea 14 del plan)", asumiendo que el enforcement de App Check en
-Functions bloquearía las llamadas que no vengan de la app real.
+Esta entrada describía un oráculo `correo -> (uid, nombre_completo)` sin
+límite de tasa y difería su cierre a "cuando exista enforcement de App Check".
+Las dos mitades están cerradas y la descripción ya no corresponde al código:
 
-Con la Fase E terminada, ese enforcement **no existe todavía**: como se
-explica arriba, las Cloud Functions v1 de este repo requieren verificar
-`context.app` a nivel de código en cada `onCall`, y ningún `onCall` de
-`functions/index.js` lo hace hoy — activar App Check en la consola de
-Firebase no protege esta función. El hallazgo queda, por tanto, **abierto sin
-dueño**: no se implementó en la Fase E ni en este fix wave (que es
-deliberadamente solo de documentación/CI, no de cambios de comportamiento en
-producción). Cerrarlo requiere una tarea propia que añada la verificación de
-`context.app` en `buscarPropietarioPorCorreo` (y evalúe si conviene
-extenderla a otros `onCall` sensibles), con su propia revisión — no debe
-implementarse como un fix de documentación.
+- **SEC-03** rehízo el contrato del callable. Ya no resuelve el correo: crea
+  una solicitud con un código de invitación aleatorio y guarda el correo
+  **hasheado**. La respuesta es indistinguible exista o no la cuenta destino,
+  y cada intento se contabiliza por uid en `limitesCompartir` con una
+  transacción que los serializa entre instancias.
+- **SEC-04** añadió la verificación de `context.app` que esta entrada estaba
+  esperando — en este callable y en los otros once.
+
+Queda una condición, y es la de siempre: la verificación **solo rechaza** con
+`APP_CHECK_ENFORCEMENT=enforce`. Mientras el despliegue siga en `monitor`, el
+límite de tasa por uid es el único control activo contra el abuso
+automatizado.
+
+---
+
+## Respaldo de Firestore — prerrequisitos (OPS-01)
+
+`scheduledFirestoreExport` (`functions/src/exportacionFirestore.js`) es la
+**única** copia de seguridad del proyecto. Corre cada 24 h y exporta la base
+entera a Cloud Storage. Tres cosas tienen que existir fuera del repositorio y
+**ningún test puede comprobarlas**:
+
+1. **El bucket de destino.** Por defecto `gs://<projectId>-backups`; se puede
+   fijar con `FIRESTORE_BACKUP_BUCKET` para que staging y producción no
+   compartan destino. Debe estar en la misma región que la base de datos, o la
+   exportación falla.
+
+   ```bash
+   gcloud storage buckets create gs://<projectId>-backups --location=<region>
+   ```
+
+2. **El rol de la cuenta de servicio.** La que ejecuta la función necesita
+   `roles/datastore.importExportAdmin` en el proyecto y escritura en el
+   bucket. Sin él la exportación muere con `PERMISSION_DENIED` — que ahora sí
+   se relanza, así que Cloud Scheduler la marca fallida en vez de tragársela.
+
+   ```bash
+   gcloud projects add-iam-policy-binding <projectId> \
+     --member=serviceAccount:<projectId>@appspot.gserviceaccount.com \
+     --role=roles/datastore.importExportAdmin
+   ```
+
+3. **Política de ciclo de vida en el bucket.** Sin ella, una copia completa
+   diaria se acumula indefinidamente y el coste crece sin techo. No es una
+   optimización: es la diferencia entre un respaldo y una factura.
+
+**Verificación fechada** — configurarlo no basta, hay que comprobarlo:
+
+| Fecha | Entorno | Bucket existe | Rol IAM | Ciclo de vida | Última exportación correcta |
+|---|---|---|---|---|---|
+| _(pendiente)_ | staging | | | | |
+| _(pendiente)_ | production | | | | |
+
+Comprobar la última exportación con `gcloud storage ls
+gs://<projectId>-backups` y con `firebase functions:log --only
+scheduledFirestoreExport`. **Un respaldo que nunca se ha restaurado no está
+demostrado**: la prueba completa incluye importar una exportación a un
+proyecto desechable.
+
+---
+
+## Tareas programadas — qué corre y qué hay que operar (OPS-01)
+
+Las cuatro funciones programadas del proyecto, todas
+`pubsub.schedule('every 24 hours')`. Las cuatro tienen ya su lógica extraída y
+probada con fixtures; aquí va lo que **no** puede cubrir un test.
+
+| Función | Módulo | Qué falla si no se opera |
+|---|---|---|
+| `checkAlertsDaily` | `src/alertasVencidas.js` | nada externo; depende de `ultimo_aviso`, cerrado al cliente en `firestore.rules` |
+| `sendReservationReminders` | `src/recordatoriosReserva.js` | necesita el índice `reservas (estado, fecha_hora_propuesta)` **desplegado antes** que la función |
+| `caducarVinculosDeTalleresInactivos` | `src/caducarVinculos.js` | ver FUNC-02 |
+| `scheduledFirestoreExport` | `src/exportacionFirestore.js` | bucket, rol IAM y ciclo de vida (arriba) |
+
+Las cuatro **relanzan** el error en vez de tragárselo, para que Cloud
+Scheduler las marque fallidas y reintente. Antes de OPS-01, dos terminaban en
+un `console.error` y un barrido roto era indistinguible de un día sin trabajo.
+
+**Zona horaria.** El recordatorio de citas calcula "mañana" en hora de
+Colombia (UTC-5 fijo, sin horario de verano), no en UTC. Si algún día hay
+usuarios fuera de Colombia ese supuesto deja de valer y hay que resolver la
+zona por reserva.
+
+### Orden de despliegue de OPS-01 — los dos pasos no son negociables
+
+1. **`firebase deploy --only firestore:indexes` ANTES que las funciones.**
+   `sendReservationReminders` pasa a acotar su consulta por fecha y necesita
+   el índice `reservas (estado, fecha_hora_propuesta)`. Sin él la consulta
+   muere con `failed-precondition` — y ahora, gracias al relanzamiento del
+   error, morirá ruidosamente todos los días en vez de en silencio. Mejor,
+   pero sigue siendo un día sin recordatorios por cada día que falte el
+   índice.
+
+2. **`node backfill_ultimo_aviso.js --apply` ANTES de desplegar las
+   funciones.** `ultimo_aviso` no existe en ningún documento de producción, así
+   que la primera corrida del barrido nuevo notificaría de golpe **todo** el
+   volumen histórico de alertas pendientes vencidas o por vencer: un push, una
+   escritura de notificación y un update por cada una, en una sola invocación.
+   Y el caso que más documentos acumula es justo el que el cambio arregla —
+   alertas vencidas que nadie cierra, que llevan meses avisando a diario.
+
+   El script es dry-run por defecto. Estampa a cada alerta el escalón en el
+   que está hoy y nada más, así que no le quita ningún aviso a nadie: lo único
+   que suprime es la repetición que el usuario ya venía recibiendo.
+
+Van al mismo cajón que `SOLICITUDES_LANDING_SALT` (UX-01),
+`firebase functions:delete iniciarReparacionPorVehiculo` (FUNC-02) y
+`node backfill_entregado.js --apply` (GAPS-02).
 
 ---
 

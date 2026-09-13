@@ -530,17 +530,6 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-  Future<void> _navigateAfterAuth(AuthProvider authProvider) async {
-    if (authProvider.needsEmailVerification) {
-      final canContinue = await _showEmailVerificationDialog(
-        isRegistration: false,
-        email: _emailController.text.trim(),
-      );
-      if (!canContinue || !mounted) return;
-    }
-    // Navigation is automatically handled by the app_router.dart listening to auth and profile changes.
-  }
-
   Future<void> _handleEmailSignIn(AuthProvider authProvider) async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
@@ -551,7 +540,7 @@ class _AuthScreenState extends State<AuthScreen> {
     if (success) {
       HapticFeedback.lightImpact();
       await _persistRememberMe();
-      await _navigateAfterAuth(authProvider);
+      // The central router reacts to the Firebase session.
     } else if (authProvider.error != null) {
       HapticFeedback.heavyImpact();
       UiUtils.showErrorSnackbar(context, authProvider.error!);
@@ -567,8 +556,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
     if (success) {
       HapticFeedback.lightImpact();
-      await _showEmailVerificationDialog(isRegistration: true, email: email);
-      if (mounted) context.go('/profile_setup');
+      // The central router sends the new session to the verification gate.
     } else if (authProvider.error != null) {
       HapticFeedback.heavyImpact();
       UiUtils.showErrorSnackbar(context, authProvider.error!);
@@ -588,7 +576,7 @@ class _AuthScreenState extends State<AuthScreen> {
         final success = await authProvider.signInWithGoogle();
         if (success && mounted) {
           HapticFeedback.lightImpact();
-          await _navigateAfterAuth(authProvider);
+          // The central router reacts to the Firebase session.
         } else if (mounted && authProvider.error != null) {
           HapticFeedback.heavyImpact();
           UiUtils.showErrorSnackbar(context, authProvider.error!);
@@ -708,127 +696,5 @@ class _AuthScreenState extends State<AuthScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       resetEmailController.dispose();
     });
-  }
-
-  /// Retorna true si puede continuar (correo verificado o usuario eligió continuar).
-  Future<bool> _showEmailVerificationDialog({
-    required bool isRegistration,
-    required String email,
-  }) async {
-    final colors = context.appColors;
-    final authProvider = context.read<AuthProvider>();
-
-    return await showDialog<bool>(
-          context: context,
-          barrierDismissible: !isRegistration,
-          builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Row(
-              children: [
-                Icon(Icons.mark_email_unread_outlined, color: colors.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    context.l10n.authVerifyEmailTitle,
-                    style: AppTextStyles.titleLarge,
-                  ),
-                ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isRegistration
-                      ? context.l10n.authSentLinkTo
-                      : context.l10n.authAccountNotVerified,
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  email,
-                  style: AppTextStyles.titleMedium.copyWith(
-                    color: colors.primary,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  isRegistration
-                      ? context.l10n.authOpenLinkOnRegister
-                      : context.l10n.authOpenLinkThenVerify,
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              if (isRegistration)
-                AppButton(
-                  text: context.l10n.authUnderstood,
-                  type: AppButtonType.primary,
-                  size: AppButtonSize.small,
-                  onPressed: () => Navigator.pop(ctx, true),
-                )
-              else
-                AppButton(
-                  text: context.l10n.authContinueWithoutVerify,
-                  type: AppButtonType.text,
-                  size: AppButtonSize.small,
-                  onPressed: () => Navigator.pop(ctx, true),
-                ),
-              AppButton(
-                text: context.l10n.authResendEmail,
-                type: AppButtonType.text,
-                size: AppButtonSize.small,
-                onPressed: () async {
-                  final ok = await authProvider.sendEmailVerification();
-                  if (!ctx.mounted) return;
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        ok
-                            ? ctx.l10n.authEmailResent
-                            : (authProvider.error ?? ctx.l10n.authResendError),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              if (!isRegistration)
-                AppButton(
-                  text: context.l10n.authAlreadyVerified,
-                  type: AppButtonType.primary,
-                  size: AppButtonSize.small,
-                  onPressed: () async {
-                    final verified = await authProvider
-                        .refreshEmailVerificationStatus();
-                    if (!ctx.mounted) return;
-                    if (verified) {
-                      Navigator.pop(ctx, true);
-                      ScaffoldMessenger.of(ctx).showSnackBar(
-                        SnackBar(
-                          content: Text(ctx.l10n.authEmailVerifiedSuccess),
-                          backgroundColor: colors.success,
-                        ),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(ctx).showSnackBar(
-                        SnackBar(
-                          content: Text(ctx.l10n.authVerificationNotDetected),
-                        ),
-                      );
-                    }
-                  },
-                ),
-            ],
-          ),
-        ) ??
-        false;
   }
 }

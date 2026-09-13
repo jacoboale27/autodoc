@@ -1,7 +1,7 @@
 'use strict';
 
 const { FieldValue } = require('firebase-admin/firestore');
-const { ESTADOS_TICKET_CERRADO } = require('./aceptarCotizacion');
+const { ESTADOS_TICKET_CERRADO, ticketAbierto } = require('./aceptarCotizacion');
 
 /**
  * RONDA 5 — el vinculo taller-vehiculo sigue a la POSESION del coche, no a la
@@ -35,6 +35,22 @@ const { ESTADOS_TICKET_CERRADO } = require('./aceptarCotizacion');
  * `db` se inyecta por el mismo motivo que en `aceptarCotizacion.js`: leer
  * `admin.firestore` dispara `ensureApp()`, hostil para stubbear en tests.
  */
+
+/**
+ * Campo del ticket que dice si su vinculo con el vehiculo esta VIVO ahora
+ * mismo.
+ *
+ * Existe para que la caducidad por inactividad (`src/caducarVinculos.js`,
+ * residual 7.2) pueda barrer por consulta en vez de por estado del ticket: un
+ * ticket abandonado sigue abandonado despues de caducarle el vinculo, asi que
+ * una consulta por estado lo devolveria en cada corrida y los que se quedan
+ * rancios despues no llegarian a barrerse nunca.
+ *
+ * Lo mantienen los dos extremos del ciclo de vida del vinculo, y si uno de los
+ * dos se olvida el barrido deja de funcionar en silencio: por eso hay tests
+ * que lo fijan a los dos lados.
+ */
+const CAMPO_VINCULO_ACTIVO = 'vinculo_activo';
 
 /** Estado en el que nace el ticket, antes de que el coche llegue. */
 const ESTADO_PENDIENTE_RECEPCION = 'pendiente_recepcion';
@@ -101,14 +117,41 @@ async function revocarVinculo(db, { idVehiculo, idTaller }) {
 
 /**
  * Recibe el vehiculo de un ticket: lo mueve a `recibido` y otorga el vinculo,
- * en UNA sola escritura atomica.
+ * en UNA sola transaccion.
  *
- * Va en el servidor —y no en el cliente, como hasta ahora— porque las dos
+ * Va en el servidor —y no en el cliente, como hasta la Ronda 5— porque las dos
  * mitades tienen que pasar juntas y el cliente no puede escribir la segunda
  * (`firestore.rules` solo le deja tocar `kilometraje_actual` del vehiculo).
  * Partirlo en "el cliente mueve el ticket, un trigger otorga el vinculo"
  * tampoco vale: el trigger es asincrono, y la pantalla que recibe el vehiculo
  * necesita leer la ficha INMEDIATAMENTE despues para seguir trabajando.
+ *
+ * **Transaccion y no `batch` (residual 7.7 de FUNC-02).** Un `batch` es
+ * atomico al escribir pero no ata la escritura a la lectura que la decidio, y
+ * aqui hay dos cosas que dependen de esa lectura:
+ *
+ *   - `historial_estados` se reconstruye EN MEMORIA: se lee el array, se le
+ *     añade la entrada y se escribe entero (`arrayUnion` no sirve, porque dos
+ *     transiciones al mismo estado son objetos iguales y las deduplicaria).
+ *     Con un `batch`, otra transicion escrita entre la lectura y el commit —el
+ *     cliente avanzando el ticket desde el tablero, una cancelacion— quedaba
+ *     PISADA por la copia vieja del array. Se perdia un estado del historial
+ *     sin error y sin rastro.
+ *   - la autorizacion (ver `autorizar`) decide sobre `id_taller`. Con la
+ *     lectura suelta habia una ventana en la que ese campo podia cambiar entre
+ *     autorizar y escribir.
+ *
+ * La transaccion cierra las dos: si algo de lo leido cambio, Firestore
+ * reejecuta el cuerpo sobre los datos nuevos.
+ *
+ * **`autorizar` va DENTRO, y por eso el callable ya no lee el ticket.** Antes
+ * `recibirVehiculoDelTicket` leia `reparaciones/{id}` para comprobar
+ * `actuaPorTaller` y esta funcion lo volvia a leer para escribir: una lectura
+ * de mas por recepcion y dos snapshots distintos decidiendo cosas distintas.
+ * Ahora se lee una vez y se autoriza sobre ese mismo snapshot. Si la
+ * transaccion se reintenta, `autorizar` se vuelve a llamar — correcto, porque
+ * lo que autoriza es el ticket que se va a escribir, no el que se leyo la
+ * primera vez.
  *
  * Idempotente: recibir dos veces no es un error. Si el ticket ya paso de
  * `pendiente_recepcion` devuelve `recibidoAhora: false` sin escribir el
@@ -117,82 +160,119 @@ async function revocarVinculo(db, { idVehiculo, idTaller }) {
  * quedarse permanentemente sin ficha.
  *
  * @param {FirebaseFirestore.Firestore} db
- * @param {{idReparacion: string, ahora: Date}} args
+ * @param {{idReparacion: string, ahora: Date,
+ *          autorizar?: (idTaller: string) => Promise<boolean>}} args
  * @returns {Promise<{idVehiculo: string, idTaller: string, recibidoAhora: boolean}>}
  */
-async function recibirTicketYVincular(db, { idReparacion, ahora }) {
+async function recibirTicketYVincular(db, { idReparacion, ahora, autorizar }) {
   const ref = db.collection('reparaciones').doc(idReparacion);
-  const snap = await ref.get();
-  if (!snap.exists) {
-    throw new ErrorRecepcion('not-found', 'Este ticket de servicio ya no existe.');
-  }
-
-  const ticket = snap.data();
-  // Los tickets anteriores a A4b no traen `estado`; nacian en 'recibido'.
-  const estado = (ticket.estado || ESTADO_RECIBIDO).toString();
-  const idVehiculo = (ticket.id_vehiculo || '').toString();
-  const idTaller = (ticket.id_taller || '').toString();
-
-  // Un ticket ya CERRADO no se puede recibir: la visita termino. Recibir uno
-  // volveria a otorgar el vinculo al vehiculo sobre una visita que ya no
-  // existe — exactamente el acceso permanente que este diseño elimina.
-  if (ESTADOS_TICKET_CERRADO.includes(estado)) {
-    throw new ErrorRecepcion(
-      'failed-precondition',
-      estado === 'entregado'
-        ? 'Este vehículo ya se entregó: hace falta una cotización aceptada ' +
-            'nueva para volver a recibirlo.'
-        : 'El ticket de este vehículo está cancelado: hace falta una ' +
-            'cotización aceptada nueva.'
-    );
-  }
-  if (!idVehiculo || !idTaller) {
-    throw new ErrorRecepcion(
-      'failed-precondition',
-      'A este ticket le faltan datos para recibir el vehículo. Avisa a soporte ' +
-        'con la placa.'
-    );
-  }
-
-  const lote = db.batch();
-  const recibidoAhora = estado === ESTADO_PENDIENTE_RECEPCION;
-  if (recibidoAhora) {
-    const historial = Array.isArray(ticket.historial_estados)
-      ? ticket.historial_estados.slice()
-      : [];
-    historial.push({ estado: ESTADO_RECIBIDO, timestamp: ahora });
-    lote.update(ref, {
-      estado: ESTADO_RECIBIDO,
-      historial_estados: historial,
-      fecha_actualizacion: ahora,
-    });
-  }
-  // El vinculo se reasegura siempre (ver la nota de idempotencia de arriba).
-  //
-  // Son DOS arrays con significados distintos y ciclos de vida distintos:
-  //
-  //   talleres_vinculados  "este taller tiene el coche AHORA". Se revoca al
-  //                        cerrarse el ticket. Autoriza LEER la ficha.
-  //   talleres_conocidos   "este taller ha tenido el coche alguna vez".
-  //                        Append-only, nunca se revoca. Autoriza ESCRIBIR un
-  //                        `servicios`/`historial_mantenimientos` mas.
-  //
-  // El segundo nace de la revision adversarial de la ronda 6: el carve-out de
-  // walk-in de firestore.rules preguntaba si `talleres_vinculados` estaba
-  // vacio para dejar pasar al primer taller de un coche nuevo. En cuanto la
-  // ronda 5 empezo a revocar ese array, "vacio" paso a significar "coche ya
-  // entregado", que es el estado de reposo de casi toda la flota — y con el,
-  // cualquier taller podia inyectar un servicio falso en el historial de
-  // cualquier cliente. Separar el "ahora" del "alguna vez" cierra el hueco sin
-  // romper el walk-in legitimo.
-  lote.update(db.collection('vehiculos').doc(idVehiculo), {
-    talleres_vinculados: FieldValue.arrayUnion(idTaller),
-    talleres_conocidos: FieldValue.arrayUnion(idTaller),
-  });
-
   try {
-    await lote.commit();
+    return await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) {
+        throw new ErrorRecepcion('not-found', 'Este ticket de servicio ya no existe.');
+      }
+
+      const ticket = snap.data();
+      // Los tickets anteriores a A4b no traen `estado`; nacian en 'recibido'.
+      const estado = (ticket.estado || ESTADO_RECIBIDO).toString();
+      const idVehiculo = (ticket.id_vehiculo || '').toString();
+      const idTaller = (ticket.id_taller || '').toString();
+
+      // Un ticket ya CERRADO no se puede recibir: la visita termino. Recibir
+      // uno volveria a otorgar el vinculo al vehiculo sobre una visita que ya
+      // no existe — exactamente el acceso permanente que este diseño elimina.
+      if (ESTADOS_TICKET_CERRADO.includes(estado)) {
+        throw new ErrorRecepcion(
+          'failed-precondition',
+          estado === 'entregado'
+            ? 'Este vehículo ya se entregó: hace falta una cotización aceptada ' +
+                'nueva para volver a recibirlo.'
+            : 'El ticket de este vehículo está cancelado: hace falta una ' +
+                'cotización aceptada nueva.'
+        );
+      }
+      if (!idVehiculo || !idTaller) {
+        throw new ErrorRecepcion(
+          'failed-precondition',
+          'A este ticket le faltan datos para recibir el vehículo. Avisa a soporte ' +
+            'con la placa.'
+        );
+      }
+
+      // Corre con Admin SDK: `firestore.rules` no alcanza a esto, asi que la
+      // autorizacion se replica a mano y sobre el snapshot recien leido.
+      if (autorizar && !(await autorizar(idTaller))) {
+        throw new ErrorRecepcion(
+          'permission-denied',
+          'Este ticket no es de tu taller.'
+        );
+      }
+
+      const recibidoAhora = estado === ESTADO_PENDIENTE_RECEPCION;
+      if (recibidoAhora) {
+        const historial = Array.isArray(ticket.historial_estados)
+          ? ticket.historial_estados.slice()
+          : [];
+        historial.push({ estado: ESTADO_RECIBIDO, timestamp: ahora });
+        tx.update(ref, {
+          estado: ESTADO_RECIBIDO,
+          // Denormalizado para el tablero (gap 9.1). El ticket ya estaba
+          // abierto, asi que el valor no cambia; lo que hace falta es que
+          // quede ESCRITO — un ticket legado sin el campo no aparece en el
+          // tablero, porque una igualdad sobre un campo ausente no devuelve
+          // nada. Asi la recepcion repara al legado sin esperar al backfill.
+          abierto: ticketAbierto(ESTADO_RECIBIDO),
+          historial_estados: historial,
+          fecha_actualizacion: ahora,
+          [CAMPO_VINCULO_ACTIVO]: true,
+        });
+      } else if (
+        ticket[CAMPO_VINCULO_ACTIVO] !== true ||
+        ticket.abierto !== ticketAbierto(estado)
+      ) {
+        // Recepcion idempotente: no transiciona el estado pero SI reasegura el
+        // vinculo, asi que el ticket tiene que quedar marcado. Sin esto, un
+        // ticket legado recuperaria el acceso sin quedar sujeto a la
+        // caducidad. Solo se escribe si hacia falta, para no pagar una
+        // escritura en cada "Recibir" repetido.
+        //
+        // Aqui es donde se repara `abierto` en los tickets LEGADOS, y no en la
+        // rama de arriba: los legados no traen `estado`, se resuelven a
+        // 'recibido' y por tanto nunca son `recibidoAhora`. Son justo los que
+        // no salen en el tablero mientras no corra el backfill.
+        tx.update(ref, {
+          [CAMPO_VINCULO_ACTIVO]: true,
+          abierto: ticketAbierto(estado),
+        });
+      }
+      // El vinculo se reasegura siempre (ver la nota de idempotencia arriba).
+      //
+      // Son DOS arrays con significados distintos y ciclos de vida distintos:
+      //
+      //   talleres_vinculados  "este taller tiene el coche AHORA". Se revoca al
+      //                        cerrarse el ticket. Autoriza LEER la ficha.
+      //   talleres_conocidos   "este taller ha tenido el coche alguna vez".
+      //                        Append-only, nunca se revoca. Autoriza ESCRIBIR
+      //                        un `servicios`/`historial_mantenimientos` mas.
+      //
+      // El segundo nace de la revision adversarial de la ronda 6: el carve-out
+      // de walk-in de firestore.rules preguntaba si `talleres_vinculados`
+      // estaba vacio para dejar pasar al primer taller de un coche nuevo. En
+      // cuanto la ronda 5 empezo a revocar ese array, "vacio" paso a significar
+      // "coche ya entregado", que es el estado de reposo de casi toda la flota
+      // — y con el, cualquier taller podia inyectar un servicio falso en el
+      // historial de cualquier cliente. Separar el "ahora" del "alguna vez"
+      // cierra el hueco sin romper el walk-in legitimo.
+      tx.update(db.collection('vehiculos').doc(idVehiculo), {
+        talleres_vinculados: FieldValue.arrayUnion(idTaller),
+        talleres_conocidos: FieldValue.arrayUnion(idTaller),
+      });
+
+      return { idVehiculo, idTaller, recibidoAhora };
+    });
   } catch (error) {
+    if (error instanceof ErrorRecepcion) throw error;
     if (error && (error.code === 5 || error.code === 'not-found')) {
       throw new ErrorRecepcion(
         'not-found',
@@ -202,15 +282,90 @@ async function recibirTicketYVincular(db, { idReparacion, ahora }) {
     }
     throw error;
   }
+}
 
-  return { idVehiculo, idTaller, recibidoAhora };
+/** Campo que marca "hay que revocar este vinculo y no se pudo". */
+const CAMPO_REVOCACION_PENDIENTE = 'vinculo_revocacion_pendiente';
+
+/**
+ * La revocacion al cerrarse el ticket, con su fallo hecho VISIBLE.
+ *
+ * Vive aqui y no en el handler del trigger por el mismo motivo que el resto
+ * del modulo: para poder probarla sin firebase-functions.
+ *
+ * **Que cambia (residual 7.9 de FUNC-02).** El trigger capturaba el error de
+ * `revocarVinculo`, lo registraba y seguia. El razonamiento era correcto —el
+ * ticket ya esta cerrado, el servicio registrado, y relanzar sin
+ * `failurePolicy` no reintenta nada, solo ensucia las metricas— pero el
+ * resultado era que el vinculo sobrevivia al `entregado` sin que nadie
+ * pudiera saberlo. El taller conserva la lectura de la ficha de un coche que
+ * ya devolvio, y la unica huella es una linea de log que nadie consulta.
+ *
+ * No es escalada de privilegios: `tallerConoceElVehiculo` le permite escribir
+ * su `servicios` igualmente via `talleres_conocidos`, que es append-only por
+ * diseño. Es una inconsistencia de datos — y de las que no se descubren.
+ *
+ * Asi que el fallo deja una MARCA en el propio ticket. Dos efectos:
+ *
+ *   1. Es consultable: se puede preguntar cuantos vinculos quedaron colgando,
+ *      en vez de tener que leerse los logs.
+ *   2. Se autorrepara sin maquinaria nueva. Este mismo trigger es un
+ *      `onUpdate`, asi que cualquier escritura posterior sobre el ticket lo
+ *      despierta; si ve la marca, reintenta y la limpia. No hace falta un
+ *      barrido programado.
+ *
+ * Un reintento que vuelve a fallar NO reescribe la marca, a proposito: cada
+ * reescritura volveria a despertar al trigger, y eso es un bucle facturado
+ * sobre un fallo que no se va a arreglar solo.
+ *
+ * @param {FirebaseFirestore.Firestore} db
+ * @param {{antes: object, despues: object, ref: FirebaseFirestore.DocumentReference}} args
+ * @returns {Promise<{resultado: 'nada'|'revocado'|'pendiente', error?: Error}>}
+ */
+async function revocarVinculoAlCerrar(db, { antes, despues, ref }) {
+  const cierra = debeRevocarVinculo(antes, despues);
+  const reintento = despues[CAMPO_REVOCACION_PENDIENTE] === true;
+  if (!cierra && !reintento) return { resultado: 'nada' };
+
+  try {
+    await revocarVinculo(db, {
+      idVehiculo: (despues.id_vehiculo || '').toString(),
+      idTaller: (despues.id_taller || '').toString(),
+    });
+    // Solo se escribe si hay algo que limpiar. Cada escritura sobre el ticket
+    // vuelve a despertar a este mismo trigger (es un `onUpdate` sobre la
+    // coleccion que escribe): termina —ni la transicion ni la marca se
+    // cumplen la segunda vez— pero es una invocacion facturada, y no tiene
+    // sentido pagarla por un ticket legado que nunca tuvo el campo.
+    const limpieza = {};
+    if (despues[CAMPO_VINCULO_ACTIVO] === true) {
+      limpieza[CAMPO_VINCULO_ACTIVO] = false;
+    }
+    if (reintento) limpieza[CAMPO_REVOCACION_PENDIENTE] = FieldValue.delete();
+    if (Object.keys(limpieza).length > 0) await ref.update(limpieza);
+    return { resultado: 'revocado' };
+  } catch (error) {
+    if (!reintento) {
+      try {
+        await ref.update({ [CAMPO_REVOCACION_PENDIENTE]: true });
+      } catch (errorMarca) {
+        // Si ni la marca se puede escribir, no queda mas que el log: es el
+        // comportamiento de antes, ya como ultimo recurso y no como norma.
+        return { resultado: 'pendiente', error, errorMarca };
+      }
+    }
+    return { resultado: 'pendiente', error };
+  }
 }
 
 module.exports = {
+  CAMPO_REVOCACION_PENDIENTE,
+  CAMPO_VINCULO_ACTIVO,
   ESTADO_PENDIENTE_RECEPCION,
   ESTADO_RECIBIDO,
   ErrorRecepcion,
   debeRevocarVinculo,
   revocarVinculo,
   recibirTicketYVincular,
+  revocarVinculoAlCerrar,
 };

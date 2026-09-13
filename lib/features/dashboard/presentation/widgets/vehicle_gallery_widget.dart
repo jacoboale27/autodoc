@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../data/services/vehicle_photo_service.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class VehicleGalleryWidget extends StatelessWidget {
   final String vehicleId;
@@ -65,7 +66,14 @@ class VehicleGalleryWidget extends StatelessWidget {
                   } catch (e) {
                     messenger.hideCurrentSnackBar();
                     messenger.showSnackBar(
-                      SnackBar(content: Text('No se pudo subir la foto: $e')),
+                      SnackBar(
+                        content: Text(
+                          mensajeSeguroDeError(
+                            e,
+                            accion: 'No se pudo subir la foto',
+                          ),
+                        ),
+                      ),
                     );
                   }
                 },

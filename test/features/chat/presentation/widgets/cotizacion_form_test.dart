@@ -81,6 +81,7 @@ void main() {
         InitiateServiceScreen(
           reparacionId: 'r1',
           vehiculoPrecargado: _vehiculoFake(),
+          firestore: FakeFirebaseFirestore(),
         ),
         width: 1024,
         location: '/initiate_service/r1',

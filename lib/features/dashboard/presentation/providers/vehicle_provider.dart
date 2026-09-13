@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../../../core/models/vehicle_model.dart';
 import '../../../../core/services/vehicle_image_service.dart';
 import '../../data/services/vehicle_service.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class VehicleProvider with ChangeNotifier {
   final VehicleService _vehicleService;
@@ -144,7 +145,7 @@ class VehicleProvider with ChangeNotifier {
           }
         }
       } else {
-        _setError(e.toString());
+        _setError(mensajeSeguroDeError(e));
       }
       _setLoading(false);
     }
@@ -178,7 +179,7 @@ class VehicleProvider with ChangeNotifier {
       _setLoading(false);
       return true;
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
       _setLoading(false);
       return false;
     }
@@ -199,7 +200,7 @@ class VehicleProvider with ChangeNotifier {
       _setLoading(false);
       return true;
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
       _setLoading(false);
       return false;
     }
@@ -221,7 +222,7 @@ class VehicleProvider with ChangeNotifier {
       _setLoading(false);
       return true;
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
       _setLoading(false);
       return false;
     }
@@ -270,7 +271,7 @@ class VehicleProvider with ChangeNotifier {
       _setLoading(false);
       return true;
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
       _setLoading(false);
       return false;
     }
@@ -289,7 +290,7 @@ class VehicleProvider with ChangeNotifier {
       }
       _setLoading(false);
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
       _setLoading(false);
     }
   }
@@ -312,7 +313,7 @@ class VehicleProvider with ChangeNotifier {
       _setLoading(false);
       return true;
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
       _setLoading(false);
       return false;
     }
@@ -332,7 +333,7 @@ class VehicleProvider with ChangeNotifier {
       _setLoading(false);
       return true;
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
       _setLoading(false);
       return false;
     }
@@ -360,7 +361,7 @@ class VehicleProvider with ChangeNotifier {
       _setLoading(false);
       return true;
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
       _setLoading(false);
       return false;
     }
@@ -377,7 +378,7 @@ class VehicleProvider with ChangeNotifier {
       _setLoading(false);
       return vehicle;
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
       _setLoading(false);
       return null;
     }
@@ -407,7 +408,7 @@ class VehicleProvider with ChangeNotifier {
       _setLoading(false);
       return vehicle;
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
       _setLoading(false);
       rethrow;
     }

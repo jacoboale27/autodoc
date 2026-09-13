@@ -8,23 +8,6 @@ class ReservaRepository {
 
   final FirebaseFirestore _firestore;
 
-  // Obtener reservas de un usuario
-  Stream<List<ReservaModel>> streamReservasUsuario(
-    String userId, {
-    bool isMecanico = false,
-  }) {
-    return _firestore
-        .collection(FirestoreCollections.reservas)
-        .where(isMecanico ? 'id_mecanico' : 'id_propietario', isEqualTo: userId)
-        .orderBy('fecha_hora_propuesta', descending: true)
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => ReservaModel.fromMap(doc.data(), doc.id))
-              .toList(),
-        );
-  }
-
   // Obtener reserva por ID
   Future<ReservaModel?> getReserva(String reservaId) async {
     final doc = await _firestore

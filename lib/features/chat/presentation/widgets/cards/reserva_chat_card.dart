@@ -18,6 +18,21 @@ import 'package:autodoc/features/chat/presentation/widgets/cotizacion_picker.dar
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 
+/// Un `id_reserva` ausente y uno VACIO son el mismo caso, y hasta H-01 solo se
+/// trataba el primero.
+///
+/// `ReservaProvider.solicitarReserva` devuelve `''` cuando la escritura de la
+/// reserva falla (`reserva_provider.dart:48`), y el emisor del mensaje no
+/// comprueba ese valor: la tarjeta se publica igual, con la cadena vacia en la
+/// metadata. Como `'' != null`, las cuatro guardas de este archivo la dejaban
+/// pasar: se navegaba a `/reserva_detail/` sin id, se escuchaba
+/// `reservas/{vacio}` y se intentaba escribir el estado en esa misma ruta.
+String? _idDeReserva(Map<String, dynamic> metadata) {
+  final crudo = metadata['id_reserva'] as String?;
+  if (crudo == null || crudo.trim().isEmpty) return null;
+  return crudo;
+}
+
 class ReservaChatCard extends StatelessWidget {
   /// Sentinel usado solo cuando no hay documento vivo del que leer el
   /// `id_proponente` real (mensaje sin `id_reserva`, o documento
@@ -61,7 +76,7 @@ class ReservaChatCard extends StatelessWidget {
       mensajeId,
       newMeta,
     );
-    final reservaId = metadata['id_reserva'];
+    final reservaId = _idDeReserva(metadata);
     if (reservaId != null) {
       await reservaProvider.cambiarEstadoReserva(
         reservaId,
@@ -182,7 +197,7 @@ class ReservaChatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String? reservaId = metadata['id_reserva'] as String?;
+    final String? reservaId = _idDeReserva(metadata);
 
     // Los mensajes de reserva ya existentes en producción pueden no traer
     // `id_reserva` en su metadata: sin documento que leer, se renderiza
@@ -239,7 +254,7 @@ class ReservaChatCard extends StatelessWidget {
     final isMecanico = isMechanicRole(currentUser?.rol);
     final currentUserId = currentUser?.idUsuario ?? '';
 
-    final String? reservaId = metadata['id_reserva'] as String?;
+    final String? reservaId = _idDeReserva(metadata);
     final String fechaRaw = metadata['fecha'] ?? '';
     final String hora = metadata['hora'] ?? '';
     // `metadata['estado']` es una copia congelada al enviarse el mensaje:
@@ -419,10 +434,10 @@ class ReservaChatCard extends StatelessWidget {
             child: AppButton(
               text: context.l10n.chatViewDetail,
               type: AppButtonType.text,
-              onPressed: metadata['id_reserva'] == null
+              onPressed: _idDeReserva(metadata) == null
                   ? null
                   : () => context.push(
-                      '/reserva_detail/${metadata['id_reserva']}',
+                      '/reserva_detail/${_idDeReserva(metadata)}',
                     ),
             ),
           ),

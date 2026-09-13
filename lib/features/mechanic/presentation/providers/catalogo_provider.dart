@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:autodoc/core/models/catalogo_item_model.dart';
 import 'package:autodoc/features/mechanic/data/repositories/catalogo_repository.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 /// Gestiona el catálogo rápido de servicios/repuestos de un taller
 /// (`talleres/{idTaller}/catalogo_servicios`), permitiendo agregarlo con un
@@ -47,7 +48,7 @@ class CatalogoProvider extends ChangeNotifier {
           // fallaba en silencio: el stream simplemente dejaba de emitir, sin
           // registrar el error ni exponerlo via [error] para la UI.
           onError: (e) {
-            _error = e.toString();
+            _error = mensajeSeguroDeError(e);
             notifyListeners();
           },
         );
@@ -69,7 +70,7 @@ class CatalogoProvider extends ChangeNotifier {
         precio: precio,
       );
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       rethrow;
     } finally {
       _isLoading = false;
@@ -89,7 +90,7 @@ class CatalogoProvider extends ChangeNotifier {
     try {
       await _repository.eliminarItem(_idTaller!, idItem);
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       rethrow;
     } finally {
       _isLoading = false;

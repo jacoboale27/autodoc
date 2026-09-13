@@ -49,6 +49,17 @@ service cloud.firestore {
         getUserData().get('estado', 'pendiente') in ['aprobado', 'activo'];
     }
 
+    // Igual que isMecanico(), pero sobre un uid CUALQUIERA y no sobre el
+    // llamante. Hace falta para validar a la contraparte que un documento
+    // nombra, no a quien escribe.
+    function esMecanicoAprobado(uid) {
+      return exists(/databases/$(database)/documents/usuarios/$(uid)) &&
+        get(/databases/$(database)/documents/usuarios/$(uid)).data.rol
+          in ['Mecanico', 'Taller'] &&
+        get(/databases/$(database)/documents/usuarios/$(uid)).data
+          .get('estado', 'pendiente') in ['aprobado', 'activo'];
+    }
+
     // Obtiene el propietario de un vehículo
     function getVehicleOwner(vehiculoId) {
       return get(/databases/$(database)/documents/vehiculos/$(vehiculoId)).data.id_propietario;
@@ -127,6 +138,14 @@ service cloud.firestore {
     // 'recibido'. Mismo defecto que aplican el cliente y las functions.
     function estadoTicket(datos) {
       return datos.get('estado', 'recibido');
+    }
+
+    // ¿Este ticket queda ABIERTO? Espejo de `ticketAbierto`
+    // (lib/core/models/reparacion_model.dart) y de su gemelo en
+    // functions/src/aceptarCotizacion.js. Las tres copias tienen que decir lo
+    // mismo: es el campo que el tablero consulta por igualdad (gap 9.1).
+    function ticketAbierto(datos) {
+      return !(estadoTicket(datos) in estadosTicketCerrado());
     }
 
     // ¿Este taller ha tenido este vehiculo alguna vez?
@@ -225,6 +244,41 @@ service cloud.firestore {
       return url is string
         && url.size() < 2000
         && url.matches('^https://firebasestorage\\.googleapis\\.com/v0/b/[^/]+/o/' + prefijoRuta + '.*');
+    }
+
+    // Las fotos de una resenia son URLs que escribe el CLIENTE en un documento
+    // de lectura ANONIMA (`allow read: if true`), asi que el argumento de
+    // esUrlDeStoragePropia aplica aqui con una audiencia aun mayor que en
+    // `talleres`: sin filtro, el autor de una resenia legitima puede apuntar a
+    // un servidor propio y cosechar IP y User-Agent de todo el que abra la
+    // ficha del taller, incluido el visitante de la landing.
+    //
+    // Importa desde FUNC-01: hasta entonces el cliente no escribia `fotos` en
+    // un update, y ahora reescribe la lista entera al editar la resenia.
+    //
+    // El bucle se desenrolla porque las reglas no iteran; el tope de 3
+    // (ReviewService.maxFotos) lo hace tratable y de paso acota el tamano de
+    // un documento que cualquiera puede leer.
+    function fotosBajoServicio(fotos, idServicio) {
+      let prefijo = 'resenia_fotos%2F' + idServicio + '%2F';
+      return fotos is list
+        && fotos.size() <= 3
+        && (fotos.size() < 1 || esUrlDeStoragePropia(fotos[0], prefijo))
+        && (fotos.size() < 2 || esUrlDeStoragePropia(fotos[1], prefijo))
+        && (fotos.size() < 3 || esUrlDeStoragePropia(fotos[2], prefijo));
+    }
+
+    // En un update se valida SOLO si `fotos` cambia. `request.resource.data` es
+    // el documento resultante, asi que una resenia ya publicada con una URL
+    // heredada que no pase el filtro quedaria ineditable —ni siquiera para
+    // corregir el texto— si se validara siempre.
+    function fotosDeReseniaValidasEnUpdate() {
+      return !request.resource.data.diff(resource.data)
+                .affectedKeys().hasAny(['fotos'])
+        || fotosBajoServicio(
+             request.resource.data.fotos,
+             resource.data.id_servicio,
+           );
     }
 
     // La foto de perfil solo puede apuntar al objeto del propio usuario en
@@ -525,11 +579,34 @@ service cloud.firestore {
       allow create: if isAuthenticated() && request.resource.data.id_propietario == request.auth.uid;
       allow delete: if isAuthenticated() && resource.data.id_propietario == request.auth.uid;
 
-      // El propietario puede modificar todo su vehículo.
+      // El propietario puede modificar todo su vehículo MENOS de quién es:
+      // esta rama autoriza con `resource.data.id_propietario` (el documento
+      // viejo) y no acotaba campos, así que el dueño podía REGALAR el coche
+      // reescribiendo ese mismo campo. El vehículo aparecía en el panel de la
+      // víctima como suyo, con su historial y sus alertas colgando de él, y
+      // el atacante ya no podía deshacerlo: el update que le quitaba el
+      // permiso era el último que las reglas le permitían.
+      // `talleres_conocidos` también se congela, y por un motivo distinto: la
+      // cabecera de este archivo (ver tallerConoceElVehiculo) declara que es
+      // append-only y que solo lo escribe recibirTicketYVincular con Admin
+      // SDK, pero nada lo hacía cumplir. Vaciarlo junto con
+      // `talleres_vinculados` devuelve el vehículo al estado que la rama de
+      // walk-in de puedeMecanicoAtenderVehiculo lee como "coche que ningún
+      // taller ha atendido jamás", y ese estado lo abre a CUALQUIER mecánico:
+      // es el agujero que cerró la ronda 6, reabierto desde el lado del
+      // propietario. Ningún flujo de cliente escribe este array.
+      // `talleres_vinculados`, en cambio, se deja fuera del acotado a
+      // propósito — es la primitiva de consentimiento que el propio dueño
+      // escribe desde VehicleService.confirmarVinculoTaller /
+      // .rechazarVinculoTaller / .revocarAccesoTaller
+      // (vehicle_service.dart:57-127); congelarla rompería el modelo de
+      // vínculos de las rondas 5/6.
       // Un mecánico de un taller ya vinculado puede actualizar el vehículo
       // únicamente para reportar el 'kilometraje_actual'.
       allow update: if isAuthenticated() && (
-        resource.data.id_propietario == request.auth.uid
+        (resource.data.id_propietario == request.auth.uid
+          && !request.resource.data.diff(resource.data)
+                .affectedKeys().hasAny(['id_propietario', 'talleres_conocidos']))
         // Mismo motivo que en la lectura: comparar contra idTallerActor(),
         // no contra el uid de la sesion, para que un empleado del taller
         // vinculado pueda reportar el kilometraje.
@@ -676,6 +753,39 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Inventario de campos legitimos de /alertas, en un solo sitio para que el
+    // create y el update no puedan divergir. Espejo de `AlertModel.toMap()`
+    // (lib/core/models/alert_model.dart:57-71).
+    function camposDeAlerta() {
+      return [
+        'id_alerta', 'id_vehiculo', 'tipo_alerta', 'titulo', 'descripcion',
+        'fecha_limite', 'kilometraje_objetivo', 'estado', 'prioridad',
+        'metadata'
+      ];
+    }
+
+    // Los mismos menos `id_vehiculo` y menos `id_alerta`, que son identidad.
+    //
+    // `id_vehiculo`, porque reasignar una alerta a otro vehiculo no es una
+    // operacion legitima (ver el comentario del update).
+    //
+    // `id_alerta`, porque es un espejo del id del documento y la app lo usa
+    // como DESTINO de la escritura al completar la alerta
+    // (`alert_provider.dart:296-307`). Dejarlo mutable —como quedo en el primer
+    // intento de esta regla— permite al propietario reescribirlo a un id con
+    // uno de los prefijos sinteticos (`soat_`, `task_`...), que hacen que ese
+    // write se salte en silencio: la alerta se pinta completada y sigue
+    // `Pendiente` en el servidor, avisando por push para siempre. No cruza el
+    // limite de usuario, asi que es integridad, no IDOR — pero no hay ningun
+    // flujo que actualice el campo, asi que cerrarlo es gratis. Lo encontro el
+    // gate de revision de reglas.
+    function camposMutablesDeAlerta() {
+      return [
+        'tipo_alerta', 'titulo', 'descripcion', 'fecha_limite',
+        'kilometraje_objetivo', 'estado', 'prioridad', 'metadata'
+      ];
+    }
+
     // 5. Tabla de Alertas y Recordatorios
     // Restringido: solo el propietario del vehículo vinculado o admin puede gestionar alertas
     match /alertas/{alertaId} {
@@ -686,17 +796,69 @@ service cloud.firestore {
         || isAdmin()
       );
 
-      // Creación: propietario del vehículo o admin
+      // Creación: propietario del vehículo o admin.
+      //
+      // El acotado de los campos del servidor tiene que estar también aquí, y
+      // no solo en el update: sin él, el propietario crea la alerta **ya
+      // silenciada** (`ultimo_aviso: 'vencida'`) y el barrido no la avisa
+      // nunca, ni por vencer ni vencida. Que la interfaz actual no lo haga no
+      // es una compuerta: cualquier cliente autenticado escribe por SDK o por
+      // REST. Y es irreversible desde el cliente, porque el `allow update` de
+      // abajo bloquea justamente esa clave.
+      //
+      // Va con `keys()` y no con `diff()` porque en un create no hay
+      // `resource.data` contra el que comparar.
+      //
+      // Y va por ALLOWLIST (`hasOnly`), como /reservas, no por denylist
+      // (`hasAny`), que es como estaba. Una denylist enumera lo prohibido, asi
+      // que cubre los campos de servidor que existian el dia que se escribio y
+      // deja nacer escribible cualquiera posterior. Ahi mismo llego el
+      // hallazgo de SEC-04 —se podia crear la alerta ya silenciada— y el
+      // `avisos_pendientes` que traera la denormalizacion del barrido seria el
+      // siguiente. El inventario sale de `AlertModel.toMap()`
+      // (lib/core/models/alert_model.dart:57-71): si el modelo gana un campo,
+      // este `hasOnly` tiene que ganarlo tambien, y quien lo obliga es el
+      // centinela `test/alertas_campos_test.dart`, que cruza las dos listas en
+      // las dos direcciones. Sin el, un campo nuevo del modelo se denegaria
+      // solo en produccion.
       allow create: if isAuthenticated() && (
         isVehicleOwner(request.resource.data.id_vehiculo)
         || isAdmin()
-      );
+      ) && request.resource.data.keys().hasOnly(camposDeAlerta());
 
-      // Actualización: propietario del vehículo o admin
+      // Actualización: propietario del vehículo o admin.
+      // El acotado va FUERA del paréntesis a propósito, así que ata también a
+      // isAdmin() — al contrario que en /servicios y /reparaciones, donde el
+      // admin queda exento del guard equivalente. Reasignar un registro al
+      // vehículo de otra persona no es una operación legítima de moderación:
+      // una corrección real de ese tipo se hace con Admin SDK, que no pasa
+      // por estas reglas. Mismo criterio en /mantenimientos y
+      // /historial_mantenimientos.
+      // `id_vehiculo` es inmutable: la autorización de arriba mira el
+      // documento VIEJO (resource.data), así que sin este acotado el dueño de
+      // v1 podía reescribir id_vehiculo a v2 y colar la alerta en el coche de
+      // otra persona — un update legítimo sobre un documento propio que acaba
+      // escribiendo sobre datos ajenos. Ningún flujo real reasigna una alerta
+      // de vehículo: se borra y se crea.
+      //
+      // `ultimo_aviso` y `fecha_ultimo_aviso` son contabilidad del servidor
+      // (OPS-01): el barrido diario los usa para no reenviar el mismo aviso
+      // cada 24 h. Los escribe `checkAlertsDaily` con Admin SDK, que no pasa
+      // por estas reglas; un cliente que pudiera borrarlos o retrasarlos se
+      // devolvería a sí mismo el push diario que el arreglo elimina. Se atan
+      // por `affectedKeys()` y no por valor a propósito: atar el valor deja
+      // pasar un `FieldValue.delete()`, que es cómo se esquivó una regla
+      // equivalente en la tanda de drenaje anterior.
+      //
+      // Como el create, va por allowlist: la lista de abajo son los campos del
+      // modelo MENOS `id_vehiculo`, que es inmutable por el parrafo anterior.
+      // `ultimo_aviso` y `fecha_ultimo_aviso` quedan fuera por no estar
+      // dentro, que es justo la propiedad que la denylist no tenia.
       allow update: if isAuthenticated() && (
         isVehicleOwner(resource.data.id_vehiculo)
         || isAdmin()
-      );
+      ) && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(camposMutablesDeAlerta());
 
       // Eliminación: propietario del vehículo o admin
       allow delete: if isAuthenticated() && (
@@ -718,7 +880,11 @@ service cloud.firestore {
         && request.resource.data.id_servicio is string
         && request.resource.data.id_servicio.size() > 0
         && exists(/databases/$(database)/documents/servicios/$(request.resource.data.id_servicio))
-        && isOwnFinishedService(request.resource.data.id_servicio, request.resource.data.id_taller);
+        && isOwnFinishedService(request.resource.data.id_servicio, request.resource.data.id_taller)
+        && fotosBajoServicio(
+             request.resource.data.get('fotos', []),
+             request.resource.data.id_servicio,
+           );
 
       // El autor puede corregir su texto, puntuacion, fotos y la marca de tiempo
       // de edicion (fecha_resenia, que ReviewService.updateReview siempre
@@ -735,7 +901,9 @@ service cloud.firestore {
       // El admin puede moderar (p.ej. corregir comentario) pero, igual que
       // el autor, no puede reasignar id_servicio/id_taller/id_usuario vía
       // update: esa reasignación sigue prohibida sin excepción alguna.
-      allow update: if isAuthenticated() && (
+      allow update: if isAuthenticated()
+        && fotosDeReseniaValidasEnUpdate()
+        && (
         (resource.data.id_usuario == request.auth.uid
           && request.resource.data.diff(resource.data)
                .affectedKeys().hasOnly(['comentario', 'estrellas', 'fecha_resenia', 'fotos']))
@@ -789,8 +957,20 @@ service cloud.firestore {
       // `compartenConversacion` exige; el callable lo bloquea aparte con
       // `llamanteEsMecanico` (segunda barrera independiente), pero la regla
       // debe cerrar tambien su propio hueco en vez de depender solo de eso.
+      // H-01, gate de revision de reglas: la rama del propietario no
+      // comprobaba NADA sobre `id_mecanico`, asi que cualquier cuenta se
+      // fabricaba una conversacion nombrando de mecanico a una victima. Eso
+      // no solo ensucia su bandeja: es el primer paso de un ataque en dos
+      // escrituras que burlaba el gate nuevo de /reservas, porque
+      // `esConversacionDeAmbos` daba por buena la relacion que esta misma
+      // regla acababa de fabricar. La rama del mecanico ya estaba cerrada
+      // (Ronda 3); esta era la simetrica que faltaba.
+      //
+      // Un propietario puede abrir chat con cualquier TALLER APROBADO, que es
+      // el flujo real; no con un usuario arbitrario.
       allow create: if isAuthenticated() && (
-        request.resource.data.id_propietario == request.auth.uid ||
+        (request.resource.data.id_propietario == request.auth.uid
+          && esMecanicoAprobado(request.resource.data.id_mecanico)) ||
         (request.resource.data.id_mecanico == request.auth.uid
           && isMecanico()
           && actuaPorTaller(request.resource.data.id_taller))
@@ -942,7 +1122,13 @@ service cloud.firestore {
         //      (`test/features/chat/tombstone_literal_test.dart`).
         allow update: if isAuthenticated() && esParticipante() && (
           (resource.data.id_remitente == request.auth.uid &&
-            resource.data.tipo == 'texto' &&
+            // `.get('tipo', 'texto')` y no `resource.data.tipo` a secas: los
+            // mensajes anteriores a la introduccion del campo no lo traen, y
+            // desreferenciarlo sobre ellos es un error de evaluacion que deja
+            // el mensaje ineditable para siempre en vez de denegar limpio. El
+            // default replica el que ya aplica el cliente al leerlos
+            // (MensajeModel.fromMap: `map['tipo'] ?? 'texto'`).
+            resource.data.get('tipo', 'texto') == 'texto' &&
             resource.data.get('is_deleted', false) != true &&
             request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['contenido', 'editado']) &&
@@ -997,6 +1183,18 @@ service cloud.firestore {
     }
 
     // 8. Tabla de Reservas
+    // Una cita solo puede nacer dentro de una conversacion existente en la
+    // que participen EXACTAMENTE los dos uid que la cita nombra. Ver la nota
+    // del `allow create` de /reservas.
+    function esConversacionDeAmbos(convId, propietario, mecanico) {
+      return convId is string && convId.size() > 0 &&
+        exists(/databases/$(database)/documents/conversaciones/$(convId)) &&
+        get(/databases/$(database)/documents/conversaciones/$(convId))
+          .data.get('id_propietario', '') == propietario &&
+        get(/databases/$(database)/documents/conversaciones/$(convId))
+          .data.get('id_mecanico', '') == mecanico;
+    }
+
     match /reservas/{reservaId} {
       allow read: if isAuthenticated() &&
         (resource.data.id_propietario == request.auth.uid ||
@@ -1008,13 +1206,28 @@ service cloud.firestore {
       // crea el documento, con tal de que se asigne a sí mismo en su propio
       // campo (id_propietario/id_mecanico). Restringir esto a solo
       // propietario, como hacia la version anterior de esta regla, rompe la
-      // mitad del flujo (el mecanico proponiendo fecha). Nota: al igual que
-      // en la version anterior, no se valida aqui que exista una relacion
-      // previa (conversacion) entre ambos uid — riesgo residual conocido,
-      // sin escalar respecto al comportamiento previo a este merge.
+      // mitad del flujo (el mecanico proponiendo fecha).
+      //
+      // H-01 cierra el riesgo residual que esta nota reconocia: no se
+      // comprobaba que existiera relacion previa entre los dos uid. Sin eso,
+      // cualquier cuenta autenticada creaba una cita poniendo de `id_mecanico`
+      // a una victima, y `onReservaCreada` (functions/index.js) confia en ese
+      // campo para notificarle — suplantacion con notificacion dirigida, sin
+      // tocar la UI. Lo levanto la segunda auditoria adversarial.
+      //
+      // La cita queda atada a su conversacion, que YA es una relacion de
+      // fiar: crear una conversacion se endurecio en el hallazgo C2 justo
+      // porque `obtenerPerfilPublico` se apoya en que exista. No cambia el
+      // contrato de la app: `ReservaModel.toMap()` escribe `id_conversacion`
+      // siempre y en `lib/` hay un unico creador de reservas.
       allow create: if isAuthenticated() &&
         (request.resource.data.id_propietario == request.auth.uid ||
-         request.resource.data.id_mecanico == request.auth.uid);
+         request.resource.data.id_mecanico == request.auth.uid) &&
+        esConversacionDeAmbos(
+          request.resource.data.get('id_conversacion', ''),
+          request.resource.data.id_propietario,
+          request.resource.data.id_mecanico
+        );
       // Tras crearse, solo estado/fecha_hora_confirmada/fecha_hora_propuesta
       // son escribibles (ver ReservaRepository.actualizarEstadoReserva y
       // .reprogramarReserva, los unicos dos flujos reales de escritura):
@@ -1072,6 +1285,16 @@ service cloud.firestore {
 
     // 9. Tabla de Cotizaciones
     match /cotizaciones/{cotizacionId} {
+      // El margen debe estar confirmado ANTES de publicar y seguir existiendo
+      // despues de la solicitud (tambien si un cliente intenta usar un batch).
+      function tieneContratoPrivado() {
+        let path = /databases/$(database)/documents/cotizaciones/$(cotizacionId)/privado/margen;
+        return exists(path) && existsAfter(path) &&
+          getAfter(path).data.keys().hasOnly(['beneficios']) &&
+          getAfter(path).data.beneficios is list &&
+          resource.data.items is list &&
+          getAfter(path).data.beneficios.size() == resource.data.items.size();
+      }
       // RONDA 4: `actuaPorTaller(id_taller)` ademas de `id_mecanico ==
       // auth.uid`. La cotizacion es del TALLER, no del operario que la
       // redacto: con solo `id_mecanico`, un empleado no podia ver las
@@ -1084,23 +1307,35 @@ service cloud.firestore {
       // ajeno: `allow create` (abajo) ya lo ata con `actuaPorTaller`. El
       // margen del mecanico sigue fuera de este documento, en la subcoleccion
       // `privado` (hallazgo H2).
+      // `resource == null` explicito, por el mismo motivo ya documentado en
+      // /vehiculos: sin esa rama, un get() sobre una cotizacion inexistente
+      // —la que se acaba de borrar, o un id que todavia no se ha escrito— no
+      // devuelve "no existe", sino que evalua `resource.data.id_propietario`
+      // sobre null. Eso es un error de evaluacion, no un false, y llega al
+      // cliente como PERMISSION_DENIED: un mensaje que manda a buscar un
+      // problema de permisos donde solo hay un documento ausente. No filtra
+      // nada, porque un documento inexistente no tiene datos que exponer.
       allow read: if isAuthenticated() &&
-        (resource.data.id_propietario == request.auth.uid ||
+        (resource == null ||
+         resource.data.id_propietario == request.auth.uid ||
          resource.data.id_mecanico == request.auth.uid ||
          actuaPorTaller(resource.data.get('id_taller', '')) ||
          isAdmin());
-      // El estado inicial esta fijado a 'pendiente' a proposito. Sin esto,
+      // El estado inicial esta fijado a 'draft' a proposito. Sin esto,
       // acotar el `update` por rol y valor no sirve de nada: el mecanico se
       // saltaba la regla de update entera CREANDO la cotizacion ya en
       // 'aceptada'. No dispara `onCotizacionAceptada` (es un onUpdate), pero
-      // si satisface la mitad "cotizacion aceptada" del gate de
-      // `verificarAperturaManual` (functions/src/iniciarReparacionPorVehiculo.js:53),
-      // que es justo el predicado que la revision de la Tarea 4 (R14) anadio
-      // para proteger ese callable. Es decir: la parte a la que el gate
-      // restringe podia emitirse medio gate ella sola.
+      // una cotizacion nacida 'aceptada' es un dato falso que otras piezas
+      // creen: cuando existia el callable `iniciarReparacionPorVehiculo`
+      // (retirado en FUNC-02), su gate solo miraba "hay una cotizacion
+      // aceptada para este vehiculo+taller", asi que el mecanico podia
+      // emitirse medio gate el solo. Ese consumidor ya no existe, pero el
+      // dato sigue siendo la prueba de consentimiento del propietario en
+      // toda la app: fijar el estado inicial en 'draft' es lo que hace que
+      // 'aceptada' solo pueda venir de el.
       // Verificado que los tres creadores reales (chat_screen.dart:1007,
       // reserva_detail_screen.dart:200, reserva_chat_card.dart:137) usan el
-      // valor por defecto de CotizacionModel, que ya es 'pendiente'.
+      // repositorio, que guarda draft y publica pendiente tras el margen.
       //
       // Ronda 2 (FIX 1) — hasta aqui, `create` solo comprobaba que el
       // mecanico se nombrara a si mismo y que el estado naciera 'pendiente'.
@@ -1110,9 +1345,10 @@ service cloud.firestore {
       // ajeno>, estado: 'pendiente'} y luego satisfacia el, la rama DEL
       // PROPIETARIO de `update` (arriba) para aceptarsela el mismo — dos
       // escrituras, cotizacion 'aceptada' sin que el dueño real participara.
-      // Eso es exactamente lo que `existeCotizacionAceptada`
-      // (iniciarReparacionPorVehiculo.js:47-56) busca para dejar recibir el
-      // vehiculo. Se reutilizan getVehicleOwner() y actuaPorTaller() (mismas
+      // Una cotizacion 'aceptada' fabricada asi valia como consentimiento
+      // del propietario ante cualquier consumidor server-side (lo era, en su
+      // dia, para el callable de apertura manual retirado en FUNC-02). Se
+      // reutilizan getVehicleOwner() y actuaPorTaller() (mismas
       // funciones que ya usaba el viejo `allow create` de /reparaciones) en
       // vez de escribir un lookup nuevo:
       //   - getVehicleOwner(id_vehiculo) == id_propietario: ata el
@@ -1132,7 +1368,8 @@ service cloud.firestore {
       // de 10 por solicitud de documento unico.
       allow create: if isAuthenticated() &&
         request.resource.data.id_mecanico == request.auth.uid &&
-        request.resource.data.estado == 'pendiente' &&
+        request.resource.data.estado == 'draft' &&
+        request.resource.data.items is list &&
         request.resource.data.id_propietario != request.auth.uid &&
         actuaPorTaller(request.resource.data.id_taller) &&
         // El vehiculo es OPCIONAL: un cliente que contacta al taller desde el
@@ -1175,7 +1412,12 @@ service cloud.firestore {
       // abrir un ticket. Separar por rol Y por valor cierra esa via.
       allow update: if isAuthenticated() &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado']) &&
+        tieneContratoPrivado() &&
         (
+          (resource.data.estado == 'draft'
+            && resource.data.id_mecanico == request.auth.uid
+            && request.resource.data.estado == 'pendiente')
+          || (resource.data.estado in ['pendiente', 'aceptada', 'rechazada', 'finalizada'] && (
           (resource.data.id_propietario == request.auth.uid
             && request.resource.data.estado in ['aceptada', 'rechazada'])
           // RONDA 4: `actuaPorTaller(id_taller)`, no solo `id_mecanico ==
@@ -1192,7 +1434,14 @@ service cloud.firestore {
           || ((resource.data.id_mecanico == request.auth.uid
                 || actuaPorTaller(resource.data.get('id_taller', '')))
             && request.resource.data.estado == 'finalizada')
+          ))
         );
+
+      // Limpieza de una creacion fallida, sin dejar un margen huerfano.
+      allow delete: if isAuthenticated() &&
+        resource.data.id_mecanico == request.auth.uid &&
+        resource.data.estado == 'draft' &&
+        !existsAfter(/databases/$(database)/documents/cotizaciones/$(cotizacionId)/privado/margen);
 
       // Beneficio por renglon (ver CotizacionItem.beneficio en el cliente):
       // documento privado fuera del doc principal porque 'cotizaciones' es
@@ -1203,8 +1452,19 @@ service cloud.firestore {
           get(/databases/$(database)/documents/cotizaciones/$(cotizacionId)).data.id_mecanico == request.auth.uid
           || isAdmin()
         );
-        allow write: if isAuthenticated() &&
-          get(/databases/$(database)/documents/cotizaciones/$(cotizacionId)).data.id_mecanico == request.auth.uid;
+        allow create, update: if isAuthenticated() && docId == 'margen' &&
+          get(/databases/$(database)/documents/cotizaciones/$(cotizacionId)).data.id_mecanico == request.auth.uid &&
+          get(/databases/$(database)/documents/cotizaciones/$(cotizacionId)).data.estado == 'draft' &&
+          getAfter(/databases/$(database)/documents/cotizaciones/$(cotizacionId)).data.estado == 'draft' &&
+          request.resource.data.keys().hasOnly(['beneficios']) &&
+          request.resource.data.beneficios is list &&
+          request.resource.data.beneficios.size() ==
+            get(/databases/$(database)/documents/cotizaciones/$(cotizacionId)).data.items.size();
+        allow delete: if isAuthenticated() &&
+          get(/databases/$(database)/documents/cotizaciones/$(cotizacionId)).data.id_mecanico == request.auth.uid &&
+          get(/databases/$(database)/documents/cotizaciones/$(cotizacionId)).data.estado == 'draft' &&
+          (!existsAfter(/databases/$(database)/documents/cotizaciones/$(cotizacionId)) ||
+            getAfter(/databases/$(database)/documents/cotizaciones/$(cotizacionId)).data.estado == 'draft');
       }
     }
 
@@ -1229,11 +1489,14 @@ service cloud.firestore {
       // otorga recien despues, al crear el 'servicios' correspondiente — asi
       // que sin el carve-out este update (paso 1 de tallerUpdateService)
       // fallaba con permission-denied antes de llegar a esa escritura.
+      // `id_vehiculo` inmutable, mismo motivo que en /alertas: la
+      // autorización mira resource.data (el doc viejo), así que reasignarlo
+      // movería el mantenimiento al coche de otro con un update autorizado.
       allow update: if isAuthenticated() && (
         isVehicleOwner(resource.data.id_vehiculo)
         || puedeMecanicoAtenderVehiculo(resource.data.id_vehiculo)
         || isAdmin()
-      );
+      ) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['id_vehiculo']);
 
       allow delete: if isAuthenticated() && (
         isVehicleOwner(resource.data.id_vehiculo)
@@ -1261,10 +1524,16 @@ service cloud.firestore {
         || isAdmin()
       );
 
+      // `id_vehiculo` e `id_taller` inmutables: actuaPorTaller() se evalúa
+      // sobre resource.data.id_taller (el viejo), de modo que sin este
+      // acotado el taller dueño de la entrada podía reasignarla al vehículo
+      // de otro cliente o atribuírsela a otro taller, falsificando historial
+      // ajeno desde un update que las reglas consideran legítimo.
       allow update: if isAuthenticated() && (
         (isMecanico() && actuaPorTaller(resource.data.id_taller))
         || isAdmin()
-      );
+      ) && !request.resource.data.diff(resource.data).affectedKeys()
+             .hasAny(['id_vehiculo', 'id_taller']);
 
       allow delete: if isAdmin();
     }
@@ -1343,17 +1612,19 @@ service cloud.firestore {
       // justamente lo que dejaba recibir un vehiculo sin cotizacion aceptada
       // (A3/B2).
       //
-      // El callable `iniciarReparacionPorVehiculo` tambien corre con Admin
-      // SDK y por tanto tampoco pasa por esta regla: sigue pudiendo escribir
-      // en esta coleccion pese al `if false` de abajo. NO es una via
-      // deliberadamente permisiva por diseno: es un hueco que este `if false`
-      // no cierra. Se mitiga del lado del propio callable, que replica a mano
-      // las comprobaciones que esta regla haria (vinculo del taller al
-      // vehiculo y, ahora tambien, cotizacion aceptada) — ver
-      // `functions/src/iniciarReparacionPorVehiculo.js` y el hallazgo 1 de la
-      // revision de la Tarea 4. Cualquier otro callable o trigger que se
-      // añada sobre /reparaciones tiene que hacer lo mismo: este `if false`
-      // no lo protege.
+      // ESTE `if false` NO PROTEGE A LOS CALLABLES NI A LOS TRIGGERS: corren
+      // con Admin SDK y no pasan por las reglas. Hubo un segundo creador por
+      // esa via, el callable `iniciarReparacionPorVehiculo`, que ademas abria
+      // el ticket directamente en 'recibido' y se otorgaba el vinculo con el
+      // vehiculo; FUNC-02 lo retiro entero (ya no tenia consumidor en el
+      // cliente, pero seguia desplegado e invocable). Desde entonces escriben
+      // aqui tres funciones y ninguna mas: el trigger `onCotizacionAceptada`,
+      // que es el unico que CREA; el callable `recibirVehiculoDelTicket`, que
+      // transiciona a 'recibido' y otorga el vinculo; y el barrido de
+      // `onVehicleDelete`, que solo CIERRA los tickets del vehiculo borrado.
+      // Cualquier funcion nueva sobre /reparaciones tiene que replicar a mano
+      // la autorizacion que esta regla haria — la regla no se la va a aplicar.
+      // Lo vigila `functions/test/apertura_unica_ticket.test.js`.
       allow create: if false;
 
       // Las invariantes de la maquina de estados vivian SOLO en
@@ -1374,7 +1645,43 @@ service cloud.firestore {
       //
       // Las tres se cierran sin ninguna lectura extra, solo con `resource` y
       // `request.resource`.
-      allow update: if isAuthenticated() && (
+      // El booleano denormalizado que el tablero consulta (gap 9.1) tiene que
+      // decir la verdad sobre el estado RESULTANTE, lo escriba quien lo
+      // escriba. Se mira `request.resource.data` y NO `resource.data`:
+      // autorizar contra el documento VIEJO es el patron exacto que destapo
+      // los cinco huecos de autorizacion de QA-01.
+      //
+      // Son DOS condiciones y hacen falta las dos:
+      //
+      //   1. si el campo esta, su valor tiene que ser el derivado del estado.
+      //      Sin esto el taller podria poner `abierto: false` en un ticket
+      //      vivo —escondiendo un coche de su propio tablero sin cerrar el
+      //      ticket, con el vinculo a la ficha intacto— o dejarlo en `true` al
+      //      entregar, y el coche entregado ocuparia una columna para siempre.
+      //   2. si el documento YA lo tenia, tiene que seguir teniendolo. El
+      //      `.get(campo, derivado)` de la condicion 1 no distingue "nunca lo
+      //      tuvo" de "me lo acabo de borrar": sobre un campo ausente degenera
+      //      en `derivado == derivado`, una tautologia, y un
+      //      `update({abierto: FieldValue.delete()})` lograba por OMISION
+      //      exactamente lo que la condicion 1 impide por valor. Lo encontro
+      //      el gate de revision de esta misma rama.
+      //
+      // La tolerancia a la ausencia se conserva solo para los tickets legados
+      // que nunca tuvieron el campo y cuyo backfill aun no ha corrido: no
+      // salen en el tablero (una igualdad sobre un campo ausente no devuelve
+      // nada), pero el taller no se queda sin poder tocar sus tickets viejos.
+      //
+      // Va fuera de la rama del taller, aplicandose tambien al admin: un admin
+      // que cerrara un ticket sin bajar `abierto` dejaria una tarjeta clavada
+      // en el tablero que el taller NO puede arreglar, porque un ticket
+      // cerrado le es inmutable.
+      function abiertoCoherente() {
+        return request.resource.data.get('abierto', ticketAbierto(request.resource.data))
+                 == ticketAbierto(request.resource.data)
+          && (!('abierto' in resource.data) || 'abierto' in request.resource.data);
+      }
+
+      allow update: if isAuthenticated() && abiertoCoherente() && (
         isAdmin() ||
         (actuaPorTaller(resource.data.id_taller)
           && !request.resource.data.diff(resource.data)
@@ -1397,6 +1704,51 @@ service cloud.firestore {
       );
 
       allow delete: if isAdmin();
+    }
+
+
+    // Buzon de los formularios de la landing (UX-01: contacto y solicitud de
+    // afiliacion de talleres). Lo llena UNICAMENTE la Cloud Function
+    // recibirSolicitudLanding con el Admin SDK, que no pasa por estas reglas:
+    // desde el cliente esta cerrada por los dos lados.
+    //
+    // Cerrada a la escritura porque el formulario de afiliacion de la landing
+    // POSTeaba sin autenticar a la REST API de Firestore; que ahora escriba
+    // en otra coleccion no arregla nada si esa coleccion admite escrituras
+    // anonimas, porque se saltaria la validacion y el limitador del endpoint.
+    // Cerrada a la lectura porque guarda correos, telefonos y mensajes de
+    // personas que escribieron a soporte.
+    match /solicitudes_landing/{solicitudId} {
+      allow read: if isAdmin();
+
+      allow create: if false;
+
+      // El administrador atiende el buzon, no lo reescribe: lo unico que
+      // puede cambiar es el estado, y dentro de una lista cerrada. Sin el
+      // hasOnly, "marcar como atendida" autorizaria tambien a reescribir el
+      // mensaje o el correo de quien escribio.
+      allow update: if isAdmin()
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys().hasOnly(['estado'])
+                    // .get('estado','') y no .estado: un update que BORRE el campo
+                    // pasa el hasOnly y luego revienta la evaluacion en vez de
+                    // denegar limpio. Hoy el efecto neto es el mismo porque es el
+                    // ultimo termino de una cadena de &&, pero en cuanto esta
+                    // condicion entre en un || el error se propaga y tumba tambien
+                    // la rama que si deberia conceder.
+                    && request.resource.data.get('estado', '') in ['nueva', 'atendida', 'descartada'];
+
+      // Borrar una solicitud es destruir la unica copia de lo que alguien
+      // envio: se queda al nivel de Superusuario, como el hard delete de
+      // cuentas.
+      allow delete: if isSuperUser();
+    }
+
+    // Contador del limitador por IP del endpoint. Si un cliente pudiera
+    // tocarlo, el limite seria decorativo: bastaria con ponerlo a cero entre
+    // envio y envio. Ni siquiera el administrador tiene nada que hacer aqui.
+    match /solicitudes_landing_control/{ipHash} {
+      allow read, write: if false;
     }
 
   }

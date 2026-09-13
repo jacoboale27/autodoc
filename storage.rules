@@ -82,9 +82,22 @@ service firebase.storage {
         request.resource.contentType.matches('audio/(mp4|aac|m4a|mpeg)');
     }
 
-    // Mecanico cuyo taller esta vinculado al vehiculo.
+    // Mecanico APROBADO cuyo taller esta vinculado al vehiculo.
+    //
+    // Usa `esTallerAprobado()` y no `isMecanico()`, que en este archivo mira
+    // `rol` pero no `estado`. Con el laxo, un taller que ya estaba en
+    // `talleres_vinculados` y despues perdia la habilitacion conservaba las
+    // facturas del vehiculo —leerlas y escribirlas— mientras firestore.rules
+    // se las denegaba por la misma operacion. La asimetria de isMecanico()
+    // esta documentada arriba, pero la razon que da cubre el expediente de
+    // verificacion (linea ~244), que se sube con la cuenta sin aprobar a
+    // proposito; no cubre los documentos de un vehiculo ajeno.
+    //
+    // Lo vigila `test_rules/storage_taller_suspendido.test.js`. No lo veia
+    // ninguna suite porque `storage.test.js:17` siembra siempre
+    // `estado: 'activo'`.
     function isVinculadoAlVehiculo(vehicleId) {
-      return isMecanico() &&
+      return esTallerAprobado(request.auth.uid) &&
         firestore.exists(/databases/(default)/documents/vehiculos/$(vehicleId)) &&
         firestore.get(/databases/(default)/documents/vehiculos/$(vehicleId))
           .data.get('talleres_vinculados', []).hasAny([request.auth.uid]);
@@ -217,6 +230,15 @@ service firebase.storage {
     // razonablemente como escaneo; fachada y rotulo son fotos y solo aceptan
     // imagen.
     //
+    // El nombre y el content-type del NIT se validan EMPAREJADOS, a
+    // diferencia de esFacturaValida() (que acepta imagen O pdf sin mirar la
+    // extension): sin esto, `nit.jpg` con `contentType: application/pdf` (o
+    // al reves) pasaba igual, porque cada valor por separado seguia siendo
+    // uno de los permitidos. Las Storage Rules no pueden inspeccionar los
+    // bytes reales del archivo —solo la extension declarada y la cabecera
+    // `contentType` que manda el cliente—, asi que emparejar ambas es el
+    // limite real de lo verificable aqui.
+    //
     // Borrado: solo admin, misma postura que `facturas/`. La evidencia es el
     // rastro de por que se aprobo un taller; si el propio taller pudiera
     // borrarla, bastaria con aprobarse y limpiar detras. Para corregir una
@@ -234,7 +256,10 @@ service firebase.storage {
         && request.auth.uid == tallerId
         && isMecanico()
         && (
-             (fileName.matches('^nit\\.(jpg|jpeg|png|webp|pdf)$') && esFacturaValida())
+             (fileName.matches('^nit\\.pdf$')
+               && request.resource.contentType == 'application/pdf'
+               && request.resource.size < 5 * 1024 * 1024)
+             || (fileName.matches('^nit\\.(jpg|jpeg|png|webp)$') && esImagenValida())
              || (fileName.matches('^(fachada|rotulo)\\.(jpg|jpeg|png|webp)$') && esImagenValida())
            );
 
@@ -289,11 +314,25 @@ service firebase.storage {
     // Escritura: solo el propietario del vehiculo del servicio reseniado
     // (ver esPropietarioDelServicio) puede subir fotos a su propia carpeta
     // de servicio.
-    // Eliminacion: solo admin (moderacion de contenido reportado).
+    // Eliminacion: el admin (moderacion de contenido reportado) y el propio
+    // autor.
+    //
+    // Que el autor borre es lo que hace posible editar una resenia quitando
+    // una foto (FUNC-01): ReviewService.updateReview reescribe la lista en
+    // Firestore y despues borra los objetos que dejan de estar referenciados.
+    // Mientras esto fue `if isAdmin()` a secas, ese borrado moria en
+    // permission-denied y cada foto retirada se quedaba para siempre en
+    // Storage, pagando cuota y accesible por su URL a cualquier autenticado.
+    //
+    // No se parece a `verificaciones/` —donde solo borra el admin— porque una
+    // foto de resenia no es el rastro documental de ninguna decision: es
+    // contenido del propio usuario, como las fotos de `talleres_fotos/`, que
+    // su dueño tambien borra. El taller resenado NO entra aqui: dejarle borrar
+    // la evidencia grafica de una mala resenia seria moderar en causa propia.
     match /resenia_fotos/{idServicio}/{fileName} {
       allow read: if isAuthenticated();
       allow write: if esImagenValida() && esPropietarioDelServicio(idServicio);
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || esPropietarioDelServicio(idServicio);
     }
   }
 }

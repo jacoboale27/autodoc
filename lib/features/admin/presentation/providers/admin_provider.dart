@@ -5,6 +5,7 @@ import '../../../../core/models/review_model.dart';
 import '../../../../core/models/admin_log_model.dart';
 import '../../../../core/utils/role_utils.dart';
 import '../../data/services/admin_service.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class AdminProvider with ChangeNotifier {
   final AdminService _adminService;
@@ -87,7 +88,7 @@ class AdminProvider with ChangeNotifier {
       _talleres = futures[1] as List<WorkshopModel>;
       _resenias = futures[2] as List<ReviewModel>;
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
     } finally {
       _setLoading(false);
     }
@@ -100,7 +101,7 @@ class AdminProvider with ChangeNotifier {
     try {
       _usuarios = await _adminService.fetchUsuarios();
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
     } finally {
       _setLoading(false);
     }
@@ -113,7 +114,7 @@ class AdminProvider with ChangeNotifier {
       _setSuccess('Usuario aprobado correctamente');
       await fetchUsuarios();
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
     } finally {
       _setLoading(false);
     }
@@ -130,7 +131,7 @@ class AdminProvider with ChangeNotifier {
       _setSuccess('Usuario suspendido correctamente');
       await fetchUsuarios();
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
     } finally {
       _setLoading(false);
     }
@@ -143,7 +144,7 @@ class AdminProvider with ChangeNotifier {
       _setSuccess('Usuario reactivado correctamente');
       await fetchUsuarios();
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
     } finally {
       _setLoading(false);
     }
@@ -160,7 +161,7 @@ class AdminProvider with ChangeNotifier {
       _setSuccess('Rol cambiado a $nuevoRol correctamente');
       await fetchUsuarios();
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
     } finally {
       _setLoading(false);
     }
@@ -175,7 +176,7 @@ class AdminProvider with ChangeNotifier {
       _setSuccess('Taller aprobado correctamente');
       _talleres = await _adminService.fetchTalleres();
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
     } finally {
       _setLoading(false);
     }
@@ -192,7 +193,7 @@ class AdminProvider with ChangeNotifier {
       _setSuccess('Taller rechazado');
       _talleres = await _adminService.fetchTalleres();
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
     } finally {
       _setLoading(false);
     }
@@ -209,7 +210,7 @@ class AdminProvider with ChangeNotifier {
       _setSuccess('Taller suspendido');
       _talleres = await _adminService.fetchTalleres();
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
     } finally {
       _setLoading(false);
     }
@@ -222,7 +223,7 @@ class AdminProvider with ChangeNotifier {
       _setSuccess('Taller reactivado');
       _talleres = await _adminService.fetchTalleres();
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
     } finally {
       _setLoading(false);
     }
@@ -243,7 +244,7 @@ class AdminProvider with ChangeNotifier {
       _setSuccess('Reseña eliminada');
       _resenias = await _adminService.fetchResenias();
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
     } finally {
       _setLoading(false);
     }
@@ -256,7 +257,7 @@ class AdminProvider with ChangeNotifier {
       _setSuccess('Reporte descartado');
       _resenias = await _adminService.fetchResenias();
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
     } finally {
       _setLoading(false);
     }
@@ -269,7 +270,7 @@ class AdminProvider with ChangeNotifier {
     try {
       _logs = await _adminService.fetchLogs();
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
     } finally {
       _setLoading(false);
     }
@@ -277,24 +278,23 @@ class AdminProvider with ChangeNotifier {
 
   // --- SUPERUSUARIO ---
 
-  Future<bool> crearUsuario({
+  Future<String?> crearUsuario({
     required String nombreCompleto,
     required String correo,
     required String rol,
   }) async {
     _setLoading(true);
     try {
-      final passwordTemporal = await _adminService.crearUsuarioComoSuperUser(
+      final enlaceInvitacion = await _adminService.crearUsuarioComoSuperUser(
         nombreCompleto: nombreCompleto,
         correo: correo,
         rol: rol,
       );
-      _setSuccess('Usuario creado. Contraseña temporal: $passwordTemporal');
       await fetchUsuarios();
-      return true;
+      return enlaceInvitacion;
     } catch (e) {
-      _setError(e.toString());
-      return false;
+      _setError(mensajeSeguroDeError(e));
+      return null;
     } finally {
       _setLoading(false);
     }
@@ -307,7 +307,7 @@ class AdminProvider with ChangeNotifier {
       _setSuccess('Cuenta eliminada permanentemente');
       await fetchUsuarios();
     } catch (e) {
-      _setError(e.toString());
+      _setError(mensajeSeguroDeError(e));
     } finally {
       _setLoading(false);
     }

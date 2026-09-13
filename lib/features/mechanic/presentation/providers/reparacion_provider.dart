@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:autodoc/core/models/reparacion_model.dart';
 import 'package:autodoc/features/mechanic/data/repositories/reparacion_repository.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class ReparacionProvider extends ChangeNotifier {
   final ReparacionRepository _repository;
@@ -12,6 +13,15 @@ class ReparacionProvider extends ChangeNotifier {
 
   List<ReparacionModel> _reparaciones = [];
   List<ReparacionModel> get reparaciones => _reparaciones;
+
+  /// `true` cuando el tablero llegó al tope de [maxTicketsTablero] y por tanto
+  /// hay tickets vivos que NO se están mostrando.
+  ///
+  /// Se deriva de haber recibido exactamente el tope: es lo único que el
+  /// cliente puede saber sin pagar otra consulta. Puede dar un falso positivo
+  /// si el taller tiene justo 200 tickets abiertos y ni uno más, que es un
+  /// precio ridículo comparado con recortar en silencio.
+  bool get tableroTruncado => _reparaciones.length >= maxTicketsTablero;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -32,163 +42,11 @@ class ReparacionProvider extends ChangeNotifier {
             notifyListeners();
           },
           onError: (e) {
-            _error = e.toString();
+            _error = mensajeSeguroDeError(e);
             _isLoading = false;
             notifyListeners();
           },
         );
-  }
-
-  @Deprecated('El ticket lo crea onCotizacionAceptada; usa recibirVehiculo')
-  Future<String?> iniciar({
-    required String idVehiculo,
-    required String idTaller,
-    required String idPropietario,
-    required String placa,
-  }) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      final id = await _repository.iniciarReparacion(
-        idVehiculo: idVehiculo,
-        idTaller: idTaller,
-        idPropietario: idPropietario,
-        placa: placa,
-      );
-      _error = null;
-      return id;
-    } catch (e) {
-      _error = e.toString();
-      return null;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  /// Igual que [iniciar], pero primero busca si ya existe un ticket para
-  /// este vehículo en este taller (cualquier estado) y lo reutiliza en vez
-  /// de crear uno nuevo. `InitiateServiceScreen._onVehiculoListo` llama a
-  /// esto cada vez que se (re)entra a la pantalla de servicio de un
-  /// vehículo — sin esta comprobación, cada reentrada (recarga, volver
-  /// atrás y reabrir) creaba un ticket Kanban duplicado para la misma
-  /// visita.
-  @Deprecated('El ticket lo crea onCotizacionAceptada; usa recibirVehiculo')
-  Future<String?> iniciarOReutilizar({
-    required String idVehiculo,
-    required String idTaller,
-    required String idPropietario,
-    required String placa,
-  }) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      final existente = await _repository.buscarReparacionActiva(
-        idVehiculo: idVehiculo,
-        idTaller: idTaller,
-      );
-      if (existente != null) {
-        _error = null;
-        return existente;
-      }
-      final id = await _repository.iniciarReparacion(
-        idVehiculo: idVehiculo,
-        idTaller: idTaller,
-        idPropietario: idPropietario,
-        placa: placa,
-      );
-      _error = null;
-      return id;
-    } catch (e) {
-      _error = e.toString();
-      return null;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  /// Igual que [iniciarOReutilizar], pero para vehículos que llegaron por
-  /// "Buscar Vehículo" (búsqueda por placa), donde el cliente no conoce el
-  /// `id_propietario` del vehículo (ver
-  /// [ReparacionRepository.iniciarOReutilizarPorVehiculo]).
-  @Deprecated('El ticket lo crea onCotizacionAceptada; usa recibirVehiculo')
-  Future<String?> iniciarOReutilizarPorVehiculo({
-    required String idVehiculo,
-    required String idTaller,
-  }) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      final id = await _repository.iniciarOReutilizarPorVehiculo(
-        idVehiculo: idVehiculo,
-        idTaller: idTaller,
-      );
-      _error = null;
-      return id;
-    } catch (e) {
-      _error = e.toString();
-      return null;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  /// Marca la llegada física del vehículo al taller y devuelve el id del
-  /// ticket junto con si esta llamada lo movió a `recibido` recién ahora, o
-  /// `null` si no hay ninguno que recibir.
-  ///
-  /// El ticket ya no se crea aquí: nace cuando el cliente acepta la
-  /// cotización (Cloud Function `onCotizacionAceptada`), en
-  /// `pendiente_recepcion`. Si no aparece ninguno para este vehículo+taller es
-  /// justamente el caso que A3/B2 quiere impedir —recibir un vehículo sin
-  /// cotización aceptada— y se responde con un error accionable en vez de
-  /// abrir un ticket por la puerta de atrás.
-  ///
-  /// `recibidoAhora` en el resultado distingue "acabo de recibirlo" de "ya
-  /// estaba recibido" (hallazgo 2 de la revisión de la Tarea 4): sin esto la
-  /// pantalla no puede saber si de verdad transicionó algo, y podía anunciar
-  /// "vehículo recibido" cuando [ReparacionRepository.buscarReparacionActiva]
-  /// —sin orden ni filtro de estado— resolvió un ticket legado ya recibido en
-  /// vez del ticket nuevo que de verdad está esperando en el tablero.
-  @Deprecated(
-    'La Tarea 5 mueve esta busqueda a abrirVehiculoComoMecanico, antes de '
-    'entrar a InitiateServiceScreen: la ruta /initiate_service/:reparacionId '
-    'ya conoce el id del ticket, asi que la pantalla no necesita volver a '
-    'buscarlo por vehiculo+taller. Usa buscarReparacionActiva (para decidir '
-    'a donde navegar) y recibirVehiculoPorId (para la transicion) por '
-    'separado.',
-  )
-  Future<({String idReparacion, bool recibidoAhora})?> recibirVehiculo({
-    required String idVehiculo,
-    required String idTaller,
-  }) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      final idReparacion = await _repository.buscarReparacionActiva(
-        idVehiculo: idVehiculo,
-        idTaller: idTaller,
-      );
-      if (idReparacion == null) {
-        _error =
-            'Este vehículo no tiene una cotización aceptada en tu taller, '
-            'así que todavía no hay nada que recibir.';
-        return null;
-      }
-      final recibidoAhora = await _repository.recibirVehiculo(
-        idReparacion: idReparacion,
-      );
-      _error = null;
-      return (idReparacion: idReparacion, recibidoAhora: recibidoAhora);
-    } catch (e) {
-      _error = e.toString();
-      return null;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
   }
 
   /// Busca si ya existe un ticket **vigente** de reparación para este
@@ -197,22 +55,38 @@ class ReparacionProvider extends ChangeNotifier {
   /// para decidir entre la vista pública del vehículo (A3/B2, sin ticket) y
   /// `InitiateServiceScreen` (ticket ya abierto).
   ///
-  /// "Vigente" excluye `cancelado`: antes de la revisión de la Tarea 5, esta
-  /// consulta era solo UN insumo dentro de `InitiateServiceScreen` (para el
-  /// botón "Recibir vehículo", que sí rechaza un ticket cancelado en
-  /// [ReparacionRepository.recibirVehiculo]); ahora es la ÚNICA puerta de
-  /// entrada a toda la pantalla. Sin este filtro, un ticket cancelado
-  /// abría igual el formulario completo de materiales/cotización/finalizar
-  /// — justo lo que A3/B2 prohíbe ("sin cotización aceptada vigente, nada
-  /// de eso"). Un ticket `recibido` (incluido uno legado, anterior a A4b)
-  /// sigue contando como vigente: solo `cancelado` se trata como "no hay
-  /// ticket".
+  /// "Vigente" es el complemento de [estadosReparacionCerrados]: antes de la
+  /// revisión de la Tarea 5, esta consulta era solo UN insumo dentro de
+  /// `InitiateServiceScreen` (para el botón "Recibir vehículo", que sí
+  /// rechaza un ticket cerrado en [ReparacionRepository.recibirVehiculo]);
+  /// ahora es la ÚNICA puerta de entrada a toda la pantalla. Sin este filtro,
+  /// un ticket cerrado abría igual el formulario completo de
+  /// materiales/cotización/finalizar — justo lo que A3/B2 prohíbe ("sin
+  /// cotización aceptada vigente, nada de eso"). Un ticket `recibido`
+  /// (incluido uno legado, anterior a A4b, que llega aquí sin `estado` y
+  /// cuenta como abierto) sigue contando como vigente.
+  ///
+  /// **La compuerta excluía solo `cancelado`.** Un ticket ya `entregado`
+  /// abría la pantalla entera, y era un callejón sin salida: al entregar, el
+  /// vínculo con el vehículo ya se revocó, `firestore.rules` deniega la
+  /// lectura de la ficha y la pantalla muere en un error genérico. No era una
+  /// fuga —el servidor rechaza recibir un ticket cerrado y las reglas hacen
+  /// inmutable un ticket cerrado— pero mandaba al mecánico a un error en vez
+  /// de a la ficha pública, que es donde puede pedir una cotización nueva.
+  /// Residual 7.1 de FUNC-02, cerrado aquí.
+  ///
+  /// Usar la constante y no el literal es el punto: [estadosReparacionCerrados]
+  /// es el espejo en el cliente de `ESTADOS_TICKET_CERRADO`
+  /// (`functions/src/aceptarCotizacion.js`), o sea la misma definición de
+  /// "cerrado" que usa el servidor para decidir si abre un ticket NUEVO. La
+  /// compuerta y el creador ya no pueden discrepar.
   ///
   /// [ReparacionRepository.buscarReparacionActiva] en sí sigue sin filtrar
-  /// por estado a propósito (lo necesitan sus llamadores deprecados, que
-  /// quieren reutilizar cualquier ticket existente); el filtro de
-  /// "vigente" vive aquí, en el único método pensado para gating, y en
-  /// ningún otro sitio.
+  /// por estado a propósito: prefiere el abierto y cae al más reciente si
+  /// todos están cerrados. El filtro de "vigente" vive aquí, en el único
+  /// método pensado para gating, y en ningún otro sitio. "Mis Servicios" no
+  /// pasa por aquí: se pinta desde `watchReparacionesActivas`, cuya igualdad
+  /// `abierto == true` ya deja fuera `entregado` y `cancelado`.
   Future<String?> buscarReparacionActiva({
     required String idVehiculo,
     required String idTaller,
@@ -223,7 +97,10 @@ class ReparacionProvider extends ChangeNotifier {
     );
     if (idReparacion == null) return null;
     final reparacion = await _repository.obtenerReparacion(idReparacion);
-    if (reparacion == null || reparacion.estado == 'cancelado') return null;
+    if (reparacion == null ||
+        estadosReparacionCerrados.contains(reparacion.estado)) {
+      return null;
+    }
     return idReparacion;
   }
 
@@ -247,7 +124,7 @@ class ReparacionProvider extends ChangeNotifier {
       _error = null;
       return recibidoAhora;
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       return null;
     } finally {
       _isLoading = false;
@@ -263,7 +140,7 @@ class ReparacionProvider extends ChangeNotifier {
       );
       _error = null;
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       rethrow;
     } finally {
       notifyListeners();

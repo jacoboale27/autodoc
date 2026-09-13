@@ -12,6 +12,7 @@ import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:autodoc/features/profile/data/services/user_service.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 /// Datos que necesita [ServiceFinalizedScreen], pasados via `state.extra` de
 /// go_router (no caben en la URL: son varios campos ya resueltos por
@@ -110,7 +111,10 @@ class _ServiceFinalizedScreenState extends State<ServiceFinalizedScreen> {
       if (!mounted) return;
       UiUtils.showErrorSnackbar(
         context,
-        'No se pudo enviar la solicitud de reseña: $e',
+        mensajeSeguroDeError(
+          e,
+          accion: 'No se pudo enviar la solicitud de reseña',
+        ),
       );
     } finally {
       if (mounted) setState(() => _enviandoResenia = false);

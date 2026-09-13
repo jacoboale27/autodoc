@@ -353,7 +353,7 @@ abstract class AppLocalizations {
   /// No description provided for @authOpenLinkOnRegister.
   ///
   /// In en, this message translates to:
-  /// **'Open the link in the email to activate your account. You can continue in the meantime.'**
+  /// **'Open the email link and return to verify your account before continuing.'**
   String get authOpenLinkOnRegister;
 
   /// No description provided for @authUnderstood.
@@ -361,12 +361,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Understood'**
   String get authUnderstood;
-
-  /// No description provided for @authContinueWithoutVerify.
-  ///
-  /// In en, this message translates to:
-  /// **'Continue without verifying'**
-  String get authContinueWithoutVerify;
 
   /// No description provided for @authResendEmail.
   ///
@@ -2132,6 +2126,12 @@ abstract class AppLocalizations {
   /// **'Discard'**
   String get tallerVerifDescartar;
 
+  /// No description provided for @tallerVerifFormatoNoPermitido.
+  ///
+  /// In en, this message translates to:
+  /// **'That file doesn\'t work for this document. Accepted formats: {formatos}.'**
+  String tallerVerifFormatoNoPermitido(String formatos);
+
   /// No description provided for @chatOpeningSection.
   ///
   /// In en, this message translates to:
@@ -2221,6 +2221,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reservation {status} successfully'**
   String chatReservationSuccess(String status);
+
+  /// No description provided for @chatReservationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The appointment could not be created. Please try again.'**
+  String get chatReservationFailed;
 
   /// No description provided for @chatReservationDetail.
   ///
@@ -2521,6 +2527,204 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancelled'**
   String get chatCancelledStatus;
+
+  /// No description provided for @securityInvitationReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation ready'**
+  String get securityInvitationReady;
+
+  /// No description provided for @securityInvitationSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation sent'**
+  String get securityInvitationSent;
+
+  /// No description provided for @securityDeliverLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Deliver this link privately to the recipient to set their password. Email is not sent automatically.'**
+  String get securityDeliverLink;
+
+  /// No description provided for @securityRequestPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Request created. Give the code to the recipient for acceptance.'**
+  String get securityRequestPending;
+
+  /// No description provided for @securityDeliverCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Deliver this code privately to the specified email. It expires in 24 hours. The recipient must accept it in Share vehicle with their verified email.'**
+  String get securityDeliverCode;
+
+  /// No description provided for @securityRequestError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not complete the request. Check your verified email and code, or try again later.'**
+  String get securityRequestError;
+
+  /// No description provided for @securityInvitationCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Received invitation code'**
+  String get securityInvitationCode;
+
+  /// No description provided for @securityAcceptInvitation.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept vehicle access'**
+  String get securityAcceptInvitation;
+
+  /// No description provided for @securityAccessAccepted.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation accepted. Refresh your vehicle list.'**
+  String get securityAccessAccepted;
+
+  /// No description provided for @securityUnnamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unnamed'**
+  String get securityUnnamed;
+
+  /// No description provided for @securityShareVehicle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share vehicle'**
+  String get securityShareVehicle;
+
+  /// No description provided for @securityEmailHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipient email'**
+  String get securityEmailHint;
+
+  /// No description provided for @securityRequestAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Create request'**
+  String get securityRequestAccess;
+
+  /// No description provided for @securityPeopleWithAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'PEOPLE WITH ACCESS'**
+  String get securityPeopleWithAccess;
+
+  /// No description provided for @securityOnlyYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Only you have access'**
+  String get securityOnlyYou;
+
+  /// No description provided for @securityRevoke.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke access'**
+  String get securityRevoke;
+
+  /// No description provided for @securityInvalidEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid email'**
+  String get securityInvalidEmail;
+
+  /// No description provided for @securityAccessRevoked.
+  ///
+  /// In en, this message translates to:
+  /// **'Access revoked'**
+  String get securityAccessRevoked;
+
+  /// Title of the screen that replaces the app when Firebase Core fails to start
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t start AutoDoc'**
+  String get startupErrorTitle;
+
+  /// User-facing explanation of the startup failure, with no internal diagnostics
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t reach our services. Check your connection and try again. If the problem persists, contact the app administrator.'**
+  String get startupErrorBody;
+
+  /// Button that retries Firebase startup
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get startupErrorRetry;
+
+  /// Notice shown when the startup retry fails as well
+  ///
+  /// In en, this message translates to:
+  /// **'We still couldn\'t connect. Please try again in a moment.'**
+  String get startupErrorRetryFailed;
+
+  /// Title of the router 404 screen
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t find this page'**
+  String get notFoundTitle;
+
+  /// Explanation shown on the 404 screen
+  ///
+  /// In en, this message translates to:
+  /// **'The address you opened doesn\'t exist or has moved.'**
+  String get notFoundBody;
+
+  /// Button returning the user to the app root from the 404 screen
+  ///
+  /// In en, this message translates to:
+  /// **'Go to home'**
+  String get notFoundGoHome;
+
+  /// Button returning the user to the previous screen from the 404
+  ///
+  /// In en, this message translates to:
+  /// **'Go back'**
+  String get notFoundGoBack;
+
+  /// Notice that the chat inbox hit its cap and some conversations are not listed
+  ///
+  /// In en, this message translates to:
+  /// **'Showing the {tope} conversations with the most recent activity. There are more threads that do not fit here.'**
+  String bandejaTruncada(int tope);
+
+  /// Notice that the chat thread hit its cap and older messages were not loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Showing the {tope} most recent messages. Older ones are not loaded.'**
+  String hiloTruncado(int tope);
+
+  /// Title of the error state on a screen that queries data (UX-04)
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t load this information'**
+  String get errorDatosTitulo;
+
+  /// Error message when the backend denies access (permission-denied / unauthorized)
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t have access to this information. If you think you should, sign in again.'**
+  String get errorDatosPermiso;
+
+  /// Error message for network or service unavailable
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t reach the server. Check your connection and try again.'**
+  String get errorDatosConexion;
+
+  /// Default error message, with no technical detail
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong loading this information. Try again in a moment.'**
+  String get errorDatosGenerico;
+
+  /// Action to retry a failed query
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get errorReintentar;
 }
 
 class _AppLocalizationsDelegate

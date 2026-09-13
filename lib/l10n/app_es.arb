@@ -45,9 +45,8 @@
   "authSentLinkTo": "Enviamos un enlace de verificación a:",
   "authAccountNotVerified": "Tu cuenta aún no está verificada. Revisa el correo enviado a:",
   "authOpenLinkThenVerify": "Abre el enlace del correo y luego pulsa \"Ya verifiqué\" para continuar.",
-  "authOpenLinkOnRegister": "Abre el enlace del correo para activar tu cuenta. Puedes continuar mientras tanto.",
+  "authOpenLinkOnRegister": "Abre el enlace del correo y vuelve para verificar tu cuenta antes de continuar.",
   "authUnderstood": "Entendido",
-  "authContinueWithoutVerify": "Continuar sin verificar",
   "authResendEmail": "Reenviar correo",
   "authEmailResent": "Correo de verificación reenviado.",
   "authResendError": "No se pudo reenviar.",
@@ -612,6 +611,14 @@
   "tallerVerifSubiendo": "Subiendo el archivo…",
   "tallerVerifPendienteBloqueado": "Tu solicitud ya está en revisión: no puedes subir esta selección ahora. Puedes descartarla.",
   "tallerVerifDescartar": "Descartar",
+  "tallerVerifFormatoNoPermitido": "Ese archivo no vale para este documento. Formatos aceptados: {formatos}.",
+  "@tallerVerifFormatoNoPermitido": {
+    "placeholders": {
+      "formatos": {
+        "type": "String"
+      }
+    }
+  },
   "chatOpeningSection": "Abriendo sección de {label}...",
   "@chatOpeningSection": {
     "placeholders": {
@@ -651,6 +658,7 @@
       }
     }
   },
+  "chatReservationFailed": "No se pudo crear la cita. Intentalo de nuevo.",
   "chatReservationDetail": "Detalle de Cita",
   "coreAppTitle": "AutoDoc Taller",
   "chatViewFullHistory": "Ver Historial Completo",
@@ -715,5 +723,93 @@
   },
   "chatCancelAppointment": "Cancelar Cita",
   "chatConfirmCancelAppointment": "¿Seguro que quieres cancelar esta cita? Se registrará que la cancelaste tú.",
-  "chatCancelledStatus": "Cancelada"
+  "chatCancelledStatus": "Cancelada",
+  "securityInvitationReady": "Invitación lista",
+  "securityInvitationSent": "Invitación enviada",
+  "securityDeliverLink": "Entrega este enlace al destinatario de forma privada para que configure su contraseña. No se envía correo automáticamente.",
+  "securityRequestPending": "Solicitud creada. Entrega el código al destinatario para que acepte.",
+  "securityDeliverCode": "Entrega este código en privado al correo indicado. Caduca en 24 horas. El destinatario debe aceptarlo desde Compartir vehículo con su correo verificado.",
+  "securityRequestError": "No se pudo completar la solicitud. Verifica tu correo y el código, o inténtalo más tarde.",
+  "securityInvitationCode": "Código de invitación recibido",
+  "securityAcceptInvitation": "Aceptar acceso al vehículo",
+  "securityAccessAccepted": "Invitación aceptada. Actualiza tu lista de vehículos.",
+  "securityUnnamed": "Sin nombre",
+  "securityShareVehicle": "Compartir vehículo",
+  "securityEmailHint": "Correo del destinatario",
+  "securityRequestAccess": "Crear solicitud",
+  "securityPeopleWithAccess": "PERSONAS CON ACCESO",
+  "securityOnlyYou": "Solo tú tienes acceso",
+  "securityRevoke": "Revocar acceso",
+  "securityInvalidEmail": "Ingresa un correo válido",
+  "securityAccessRevoked": "Acceso revocado",
+  "startupErrorTitle": "No pudimos iniciar AutoDoc",
+  "@startupErrorTitle": {
+    "description": "Titulo de la pantalla que sustituye a la app cuando Firebase Core no arranca"
+  },
+  "startupErrorBody": "No fue posible conectar con nuestros servicios. Revisa tu conexión e intenta de nuevo. Si el problema continúa, contacta al administrador de la aplicación.",
+  "@startupErrorBody": {
+    "description": "Explicacion sin diagnostico interno del fallo de arranque"
+  },
+  "startupErrorRetry": "Intentar de nuevo",
+  "@startupErrorRetry": {
+    "description": "Boton que vuelve a intentar el arranque de Firebase"
+  },
+  "startupErrorRetryFailed": "Seguimos sin poder conectar. Inténtalo de nuevo en unos momentos.",
+  "@startupErrorRetryFailed": {
+    "description": "Aviso mostrado cuando el reintento de arranque tambien falla"
+  },
+  "notFoundTitle": "No encontramos esta página",
+  "@notFoundTitle": {
+    "description": "Titulo de la pantalla 404 del router"
+  },
+  "notFoundBody": "La dirección que abriste no existe o cambió de lugar.",
+  "@notFoundBody": {
+    "description": "Explicacion de la pantalla 404"
+  },
+  "notFoundGoHome": "Ir al inicio",
+  "@notFoundGoHome": {
+    "description": "Boton que devuelve al usuario a la raiz de la app desde el 404"
+  },
+  "notFoundGoBack": "Volver",
+  "@notFoundGoBack": {
+    "description": "Boton que vuelve a la pantalla anterior desde el 404"
+  },
+  "bandejaTruncada": "Se muestran las {tope} conversaciones con actividad mas reciente. Hay mas hilos que no caben aqui.",
+  "@bandejaTruncada": {
+    "description": "Aviso de que la bandeja de chat llego a su tope y hay conversaciones que no se listan",
+    "placeholders": {
+      "tope": {
+        "type": "int"
+      }
+    }
+  },
+  "hiloTruncado": "Se muestran los {tope} mensajes mas recientes. Los anteriores no estan cargados.",
+  "@hiloTruncado": {
+    "description": "Aviso de que el hilo de chat llego a su tope y los mensajes mas antiguos no se cargaron",
+    "placeholders": {
+      "tope": {
+        "type": "int"
+      }
+    }
+  },
+  "errorDatosTitulo": "No pudimos cargar esta informacion",
+  "@errorDatosTitulo": {
+    "description": "Titulo del estado de error de una pantalla que consulta datos (UX-04)"
+  },
+  "errorDatosPermiso": "No tienes acceso a esta informacion. Si crees que deberia estar disponible, vuelve a iniciar sesion.",
+  "@errorDatosPermiso": {
+    "description": "Mensaje de error cuando el backend deniega el acceso (permission-denied / unauthorized)"
+  },
+  "errorDatosConexion": "No pudimos conectar con el servidor. Revisa tu conexion e intentalo de nuevo.",
+  "@errorDatosConexion": {
+    "description": "Mensaje de error de red o servicio no disponible"
+  },
+  "errorDatosGenerico": "Algo salio mal al cargar esta informacion. Intentalo de nuevo en un momento.",
+  "@errorDatosGenerico": {
+    "description": "Mensaje de error por defecto, sin detalle tecnico"
+  },
+  "errorReintentar": "Reintentar",
+  "@errorReintentar": {
+    "description": "Accion para volver a intentar una consulta que fallo"
+  }
 }

@@ -104,24 +104,15 @@ void main() {
     notis.initialize('owner-1');
     await _waitUntil(notis, () => notis.notifications.isNotEmpty);
 
-    // --- ReservaProvider: mismo patron de stream, via ReservaRepository
-    // inyectado con el mismo FakeFirebaseFirestore. ---
-    await fakeFirestore.collection('reservas').add({
-      'id_conversacion': 'c1',
-      'id_propietario': 'owner-1',
-      'id_mecanico': 'mec-1',
-      'id_vehiculo': 'v1',
-      'id_taller': 'taller-1',
-      'fecha_hora_propuesta': Timestamp.fromDate(DateTime(2026, 1, 1)),
-      'tipo_servicio': 'Cambio de aceite',
-      'estado': 'pendiente',
-      'fecha_creacion': Timestamp.fromDate(DateTime(2026, 1, 1)),
-    });
+    // --- ReservaProvider: ya NO tiene stream. `inicializarReservasUsuario`
+    // se retiro con el gap 7.2 de GAPS-02 (no lo llamaba nadie en `lib/`), asi
+    // que aqui solo queda comprobar que `clearUserScopedProviders` lo sigue
+    // alcanzando sin romperse. La propiedad que probaba su strand —que clear()
+    // cancela la suscripcion y no solo vacia la lista— la siguen probando
+    // chat, notificaciones y reparaciones, mas abajo en este mismo archivo. ---
     final reservas = ReservaProvider(
       repository: ReservaRepository(firestore: fakeFirestore),
     );
-    reservas.inicializarReservasUsuario('owner-1');
-    await _waitUntil(reservas, () => reservas.reservas.isNotEmpty);
 
     // --- ReparacionProvider: suscripcion viva por taller, mismo patron
     // de stream. Es el provider que faltaba en clearUserScopedProviders. ---
@@ -131,6 +122,9 @@ void main() {
       'id_propietario': 'owner-1',
       'placa': 'ABC-123',
       'estado': 'recibido',
+      // Gap 9.1: el tablero consulta `abierto == true`, y una igualdad sobre
+      // un campo ausente no devuelve nada.
+      'abierto': true,
       'fecha_creacion': Timestamp.fromDate(DateTime(2026, 1, 1)),
       'fecha_actualizacion': Timestamp.fromDate(DateTime(2026, 1, 1)),
     });
@@ -153,7 +147,6 @@ void main() {
 
     expect(alertas.alerts, isEmpty);
     expect(chat.conversaciones, isEmpty);
-    expect(reservas.reservas, isEmpty);
     expect(notis.notifications, isEmpty);
     expect(reparaciones.reparaciones, isEmpty);
 
@@ -189,17 +182,6 @@ void main() {
       'fecha_creacion': Timestamp.fromDate(DateTime(2026, 1, 2)),
       'fecha_actualizacion': Timestamp.fromDate(DateTime(2026, 1, 2)),
     });
-    await fakeFirestore.collection('reservas').add({
-      'id_conversacion': 'c2',
-      'id_propietario': 'owner-1',
-      'id_mecanico': 'mec-1',
-      'id_vehiculo': 'v1',
-      'id_taller': 'taller-1',
-      'fecha_hora_propuesta': Timestamp.fromDate(DateTime(2026, 1, 2)),
-      'tipo_servicio': 'Otra reserva tras cerrar sesion',
-      'estado': 'pendiente',
-      'fecha_creacion': Timestamp.fromDate(DateTime(2026, 1, 2)),
-    });
     // Deja correr los microtasks pendientes: si la suscripcion seguia
     // viva, este es el momento en que repoblaria las listas.
     await Future<void>.delayed(const Duration(milliseconds: 50));
@@ -216,13 +198,6 @@ void main() {
       isEmpty,
       reason:
           'clear() debe cancelar _subscription, no solo vaciar la lista '
-          'una vez',
-    );
-    expect(
-      reservas.reservas,
-      isEmpty,
-      reason:
-          'clear() debe cancelar _reservasSub, no solo vaciar la lista '
           'una vez',
     );
     expect(
@@ -247,27 +222,32 @@ void main() {
       firestore: FakeFirebaseFirestore(),
     );
 
-    // reservas SI arranca una suscripcion real antes de llamar clear(), a
-    // diferencia de los otros tres providers de este test (que aqui se
-    // prueban sin iniciar nada): confirma que cancelar dos veces una
-    // suscripcion que si llego a existir tampoco lanza.
-    final reservasFirestore = FakeFirebaseFirestore();
-    await reservasFirestore.collection('reservas').add({
-      'id_conversacion': 'c1',
+    // El chat SI arranca una suscripcion real antes de llamar clear(), a
+    // diferencia de los otros providers de este test (que aqui se prueban sin
+    // iniciar nada): confirma que cancelar dos veces una suscripcion que si
+    // llego a existir tampoco lanza. Este strand lo llevaba `reservas`, que
+    // dejo de tener stream al retirarse `inicializarReservasUsuario`.
+    final reservas = ReservaProvider(
+      repository: ReservaRepository(firestore: FakeFirebaseFirestore()),
+    );
+
+    final chatFirestore = FakeFirebaseFirestore();
+    await chatFirestore.collection('conversaciones').add({
       'id_propietario': 'owner-1',
       'id_mecanico': 'mec-1',
-      'id_vehiculo': 'v1',
-      'id_taller': 'taller-1',
-      'fecha_hora_propuesta': Timestamp.fromDate(DateTime(2026, 1, 1)),
-      'tipo_servicio': 'Cambio de aceite',
-      'estado': 'pendiente',
-      'fecha_creacion': Timestamp.fromDate(DateTime(2026, 1, 1)),
+      'nombre_propietario': 'Owner',
+      'nombre_mecanico': 'Taller',
+      'ultimo_mensaje': 'Hola',
+      'ultimo_mensaje_ts': Timestamp.fromDate(DateTime(2026, 1, 1)),
     });
-    final reservas = ReservaProvider(
-      repository: ReservaRepository(firestore: reservasFirestore),
+    final chatConStream = ChatProvider(
+      repository: ChatRepository(firestore: chatFirestore),
     );
-    reservas.inicializarReservasUsuario('owner-1');
-    await _waitUntil(reservas, () => reservas.reservas.isNotEmpty);
+    chatConStream.inicializarConversaciones('owner-1', false);
+    await _waitUntil(
+      chatConStream,
+      () => chatConStream.conversaciones.isNotEmpty,
+    );
 
     expect(() => alertas.clear(), returnsNormally);
     expect(() => alertas.clear(), returnsNormally);
@@ -275,6 +255,8 @@ void main() {
     expect(() => chat.clear(), returnsNormally);
     expect(() => reservas.clear(), returnsNormally);
     expect(() => reservas.clear(), returnsNormally);
+    expect(() => chatConStream.clear(), returnsNormally);
+    expect(() => chatConStream.clear(), returnsNormally);
     expect(() => notis.clear(), returnsNormally);
     expect(() => notis.clear(), returnsNormally);
   });

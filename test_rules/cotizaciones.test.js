@@ -15,8 +15,79 @@ const seedCotizacion = async () => {
       items: [{ material: 'Aceite', cantidad: 1, costo: 20 }],
       estado: 'pendiente',
     });
+    await s.collection('cotizaciones').doc('c1').collection('privado').doc('margen').set({ beneficios: [8] });
   });
 };
+
+describe('DATA-01: publicacion solo con contrato privado confirmado', () => {
+  const draft = {
+    id_propietario: UIDS.owner1,
+    id_mecanico: UIDS.taller1,
+    id_taller: UIDS.taller1,
+    items: [{ material: 'Filtro', cantidad: 1, costo: 20 }],
+    estado: 'draft',
+  };
+
+  test('no permite crear directamente ningun estado publicado', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    for (const estado of ['pendiente', 'aceptada', 'rechazada', 'finalizada']) {
+      await assertFails(db.collection('cotizaciones').doc(estado).set({ ...draft, estado }));
+    }
+  });
+
+  test('draft no se publica sin margen ni se acepta o finaliza aun con margen', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    const owner = await withRole(env, UIDS.owner1, 'Propietario');
+    const ref = db.collection('cotizaciones').doc('draft');
+    await assertSucceeds(ref.set(draft));
+    await assertFails(ref.update({ estado: 'pendiente' }));
+    await assertSucceeds(ref.collection('privado').doc('margen').set({ beneficios: [8] }));
+    for (const estado of ['aceptada', 'rechazada', 'pendiente']) {
+      await assertFails(owner.collection('cotizaciones').doc('draft').update({ estado }));
+    }
+    await assertFails(ref.update({ estado: 'finalizada' }));
+    await assertSucceeds(ref.update({ estado: 'pendiente' }));
+    await assertSucceeds(owner.collection('cotizaciones').doc('draft').update({ estado: 'aceptada' }));
+  });
+
+  test('rechaza margen invalido y permite limpiar el draft tras fallo privado', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    const ref = db.collection('cotizaciones').doc('draft');
+    await assertSucceeds(ref.set(draft));
+    for (const data of [{}, { beneficios: [] }, { beneficios: '8' }, { beneficios: [8], extra: true }]) {
+      await assertFails(ref.collection('privado').doc('margen').set(data));
+    }
+    await assertFails(ref.update({ estado: 'pendiente' }));
+    await assertSucceeds(ref.delete());
+  });
+
+  test('no permite borrar el contrato al publicar ni despues de publicar', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    const ref = db.collection('cotizaciones').doc('draft');
+    const margen = ref.collection('privado').doc('margen');
+    await assertSucceeds(ref.set(draft));
+    await assertSucceeds(margen.set({ beneficios: [8] }));
+    const batch = db.batch();
+    batch.update(ref, { estado: 'pendiente' });
+    batch.delete(margen);
+    await assertFails(batch.commit());
+    await assertSucceeds(ref.update({ estado: 'pendiente' }));
+    await assertFails(margen.delete());
+    await assertFails(margen.set({ beneficios: [] }));
+    await assertFails(ref.delete());
+    await assertFails(ref.update({ estado: 'draft' }));
+  });
+
+  test('no publica el margen y el padre juntos sin confirmacion previa', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    const ref = db.collection('cotizaciones').doc('draft');
+    await assertSucceeds(ref.set(draft));
+    const batch = db.batch();
+    batch.set(ref.collection('privado').doc('margen'), { beneficios: [8] });
+    batch.update(ref, { estado: 'pendiente' });
+    await assertFails(batch.commit());
+  });
+});
 
 describe('cotizaciones update (hallazgo H1: campo abierto permitia alterar precio/partes)', () => {
   test('el propietario SI puede aceptar (solo estado)', async () => {
@@ -151,7 +222,7 @@ describe('cotizaciones/privado/margen (hallazgo H2: el beneficio no debe ser leg
     );
   });
 
-  test('el mecanico SI puede crear la cotizacion y su margen privado en dos pasos (flujo real de ChatRepository.crearCotizacion)', async () => {
+  test('el mecanico SI puede crear la cotizacion y su margen privado en tres pasos (flujo real de ChatRepository.crearCotizacion)', async () => {
     // FIX 1 (Ronda 2): `create` ahora exige que id_propietario sea el dueño
     // REAL de id_vehiculo (getVehicleOwner), asi que este fixture necesita
     // un vehiculo de verdad en vez de solo los ids sueltos que bastaban antes.
@@ -169,7 +240,7 @@ describe('cotizaciones/privado/margen (hallazgo H2: el beneficio no debe ser leg
         id_vehiculo: 'v-c2',
         id_taller: UIDS.taller1,
         items: [{ material: 'Aceite', cantidad: 1, costo: 20 }],
-        estado: 'pendiente',
+        estado: 'draft',
       }),
     );
     await assertSucceeds(
@@ -177,14 +248,20 @@ describe('cotizaciones/privado/margen (hallazgo H2: el beneficio no debe ser leg
         beneficios: [8],
       }),
     );
+    await assertSucceeds(
+      db.collection('cotizaciones').doc('c2').update({ estado: 'pendiente' }),
+    );
   });
 
   // Residual encontrado en la re-revision de la revision de rama: acotar el
   // `update` por rol y valor no sirve de nada si el `create` deja elegir el
   // estado inicial. Crear ya en 'aceptada' no dispara `onCotizacionAceptada`
-  // (es un onUpdate), pero SI satisface la mitad "cotizacion aceptada" del
-  // gate de `verificarAperturaManual`, que es el predicado que R14 anadio
-  // para proteger `iniciarReparacionPorVehiculo`.
+  // (es un onUpdate), pero deja escrito un consentimiento del propietario que
+  // el propietario nunca dio. Cuando existia el callable de apertura manual
+  // (`iniciarReparacionPorVehiculo`, retirado en FUNC-02) eso bastaba para
+  // abrir un ticket; el dato sigue siendo la prueba de consentimiento en el
+  // resto de la app, asi que fijar el estado inicial en 'draft' sigue siendo
+  // lo que impide fabricarla.
   test('el mecanico NO puede crear la cotizacion ya en estado aceptada', async () => {
     const db = await withRole(env, UIDS.taller1, 'Taller');
     await assertFails(
@@ -216,7 +293,7 @@ describe('cotizaciones/privado/margen (hallazgo H2: el beneficio no debe ser leg
         id_mecanico: UIDS.taller1,
         id_taller: UIDS.taller1,
         items: [{ material: 'Diagnostico', cantidad: 1, costo: 15 }],
-        estado: 'pendiente',
+        estado: 'draft',
       }),
     );
   });
@@ -241,7 +318,7 @@ describe('cotizaciones/privado/margen (hallazgo H2: el beneficio no debe ser leg
         id_taller: UIDS.taller1,
         id_vehiculo: 'vehiculo-borrado',
         items: [],
-        estado: 'pendiente',
+        estado: 'draft',
       }),
     );
   });
@@ -267,8 +344,9 @@ describe('cotizaciones/privado/margen (hallazgo H2: el beneficio no debe ser leg
 // {id_mecanico: self, id_propietario: SELF, id_vehiculo: <vehiculo ajeno>,
 // estado: 'pendiente'} y luego, con la rama DEL PROPIETARIO de `update` (ya
 // blindada por rol+valor), aceptarsela el mismo — dos escrituras hasta
-// 'aceptada'. Eso es justo lo que `existeCotizacionAceptada`
-// (iniciarReparacionPorVehiculo.js:47-56) busca.
+// 'aceptada' — una prueba de consentimiento del propietario fabricada sin el.
+// (En su dia era ademas lo que buscaba el gate del callable de apertura
+// manual, retirado en FUNC-02.)
 describe('cotizaciones create (FIX 1: ataque de auto-aceptacion en dos escrituras)', () => {
   const seedVehiculoAjeno = async () =>
     seed(env, async (s) => {
@@ -289,7 +367,7 @@ describe('cotizaciones create (FIX 1: ataque de auto-aceptacion en dos escritura
         id_vehiculo: 'v-victima',
         id_taller: UIDS.taller1,
         items: [],
-        estado: 'pendiente',
+        estado: 'draft',
       }),
     );
   });
@@ -304,7 +382,7 @@ describe('cotizaciones create (FIX 1: ataque de auto-aceptacion en dos escritura
         id_vehiculo: 'v-victima',
         id_taller: UIDS.taller1,
         items: [],
-        estado: 'pendiente',
+        estado: 'draft',
       }),
     );
   });
@@ -319,7 +397,7 @@ describe('cotizaciones create (FIX 1: ataque de auto-aceptacion en dos escritura
         id_vehiculo: 'v-victima',
         id_taller: UIDS.taller2, // taller ajeno
         items: [],
-        estado: 'pendiente',
+        estado: 'draft',
       }),
     );
   });
@@ -334,7 +412,7 @@ describe('cotizaciones create (FIX 1: ataque de auto-aceptacion en dos escritura
         id_vehiculo: 'v-victima',
         id_taller: UIDS.taller1,
         items: [],
-        estado: 'pendiente',
+        estado: 'draft',
       }),
     );
   });
@@ -351,7 +429,7 @@ describe('cotizaciones create (FIX 1: ataque de auto-aceptacion en dos escritura
         id_vehiculo: 'v-victima',
         id_taller: UIDS.taller1, // uid del DUEÑO, no del empleado
         items: [],
-        estado: 'pendiente',
+        estado: 'draft',
       }),
     );
   });
@@ -367,7 +445,7 @@ describe('cotizaciones create (FIX 1: ataque de auto-aceptacion en dos escritura
         id_taller: UIDS.taller1,
         id_reserva: 'r1',
         items: [],
-        estado: 'pendiente',
+        estado: 'draft',
       }),
     );
   });
@@ -388,7 +466,7 @@ describe('cotizaciones create (FIX 1: ataque de auto-aceptacion en dos escritura
         id_vehiculo: 'v-propio',
         id_taller: UIDS.taller1,
         items: [],
-        estado: 'pendiente',
+        estado: 'draft',
       }),
     );
   });
@@ -432,6 +510,7 @@ describe('cotizaciones: la cotizacion es del TALLER, no del operario (ronda 4)',
         items: [{ material: 'Aceite', cantidad: 1, costo: 20 }],
         estado: 'aceptada',
       });
+      await s.collection('cotizaciones').doc('c2').collection('privado').doc('margen').set({ beneficios: [8] });
     });
     const db = await withRole(env, UIDS.taller1, 'Taller');
     await assertSucceeds(

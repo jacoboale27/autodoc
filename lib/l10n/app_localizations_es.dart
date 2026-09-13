@@ -141,13 +141,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get authOpenLinkOnRegister =>
-      'Abre el enlace del correo para activar tu cuenta. Puedes continuar mientras tanto.';
+      'Abre el enlace del correo y vuelve para verificar tu cuenta antes de continuar.';
 
   @override
   String get authUnderstood => 'Entendido';
-
-  @override
-  String get authContinueWithoutVerify => 'Continuar sin verificar';
 
   @override
   String get authResendEmail => 'Reenviar correo';
@@ -1123,6 +1120,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get tallerVerifDescartar => 'Descartar';
 
   @override
+  String tallerVerifFormatoNoPermitido(String formatos) {
+    return 'Ese archivo no vale para este documento. Formatos aceptados: $formatos.';
+  }
+
+  @override
   String chatOpeningSection(String label) {
     return 'Abriendo sección de $label...';
   }
@@ -1172,6 +1174,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String chatReservationSuccess(String status) {
     return 'Reserva $status exitosamente';
   }
+
+  @override
+  String get chatReservationFailed =>
+      'No se pudo crear la cita. Intentalo de nuevo.';
 
   @override
   String get chatReservationDetail => 'Detalle de Cita';
@@ -1331,4 +1337,118 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get chatCancelledStatus => 'Cancelada';
+
+  @override
+  String get securityInvitationReady => 'Invitación lista';
+
+  @override
+  String get securityInvitationSent => 'Invitación enviada';
+
+  @override
+  String get securityDeliverLink =>
+      'Entrega este enlace al destinatario de forma privada para que configure su contraseña. No se envía correo automáticamente.';
+
+  @override
+  String get securityRequestPending =>
+      'Solicitud creada. Entrega el código al destinatario para que acepte.';
+
+  @override
+  String get securityDeliverCode =>
+      'Entrega este código en privado al correo indicado. Caduca en 24 horas. El destinatario debe aceptarlo desde Compartir vehículo con su correo verificado.';
+
+  @override
+  String get securityRequestError =>
+      'No se pudo completar la solicitud. Verifica tu correo y el código, o inténtalo más tarde.';
+
+  @override
+  String get securityInvitationCode => 'Código de invitación recibido';
+
+  @override
+  String get securityAcceptInvitation => 'Aceptar acceso al vehículo';
+
+  @override
+  String get securityAccessAccepted =>
+      'Invitación aceptada. Actualiza tu lista de vehículos.';
+
+  @override
+  String get securityUnnamed => 'Sin nombre';
+
+  @override
+  String get securityShareVehicle => 'Compartir vehículo';
+
+  @override
+  String get securityEmailHint => 'Correo del destinatario';
+
+  @override
+  String get securityRequestAccess => 'Crear solicitud';
+
+  @override
+  String get securityPeopleWithAccess => 'PERSONAS CON ACCESO';
+
+  @override
+  String get securityOnlyYou => 'Solo tú tienes acceso';
+
+  @override
+  String get securityRevoke => 'Revocar acceso';
+
+  @override
+  String get securityInvalidEmail => 'Ingresa un correo válido';
+
+  @override
+  String get securityAccessRevoked => 'Acceso revocado';
+
+  @override
+  String get startupErrorTitle => 'No pudimos iniciar AutoDoc';
+
+  @override
+  String get startupErrorBody =>
+      'No fue posible conectar con nuestros servicios. Revisa tu conexión e intenta de nuevo. Si el problema continúa, contacta al administrador de la aplicación.';
+
+  @override
+  String get startupErrorRetry => 'Intentar de nuevo';
+
+  @override
+  String get startupErrorRetryFailed =>
+      'Seguimos sin poder conectar. Inténtalo de nuevo en unos momentos.';
+
+  @override
+  String get notFoundTitle => 'No encontramos esta página';
+
+  @override
+  String get notFoundBody =>
+      'La dirección que abriste no existe o cambió de lugar.';
+
+  @override
+  String get notFoundGoHome => 'Ir al inicio';
+
+  @override
+  String get notFoundGoBack => 'Volver';
+
+  @override
+  String bandejaTruncada(int tope) {
+    return 'Se muestran las $tope conversaciones con actividad mas reciente. Hay mas hilos que no caben aqui.';
+  }
+
+  @override
+  String hiloTruncado(int tope) {
+    return 'Se muestran los $tope mensajes mas recientes. Los anteriores no estan cargados.';
+  }
+
+  @override
+  String get errorDatosTitulo => 'No pudimos cargar esta informacion';
+
+  @override
+  String get errorDatosPermiso =>
+      'No tienes acceso a esta informacion. Si crees que deberia estar disponible, vuelve a iniciar sesion.';
+
+  @override
+  String get errorDatosConexion =>
+      'No pudimos conectar con el servidor. Revisa tu conexion e intentalo de nuevo.';
+
+  @override
+  String get errorDatosGenerico =>
+      'Algo salio mal al cargar esta informacion. Intentalo de nuevo en un momento.';
+
+  @override
+  String get errorReintentar => 'Reintentar';
 }

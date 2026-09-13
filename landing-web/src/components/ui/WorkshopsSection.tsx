@@ -1,9 +1,18 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { aparicion, useMovimientoReducido } from "@/lib/movimiento";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { MapPin, Star, ShieldCheck, Calendar, FileSpreadsheet, CheckCircle2, AlertCircle } from "lucide-react";
+import { enviarSolicitud } from "@/lib/solicitudes";
+
+// Lectura publica del directorio (`allow read: if true` en /talleres). Se deja
+// configurable para que la suite E2E pueda apuntarla al emulador: un test que
+// lee de produccion no esta aislado por mucho que solo lea.
+const REST_FIRESTORE =
+  process.env.NEXT_PUBLIC_FIRESTORE_REST ||
+  "https://firestore.googleapis.com/v1/projects/autodoc-6ef5a/databases/(default)/documents";
 
 interface Workshop {
   id: string;
@@ -13,8 +22,32 @@ interface Workshop {
   rating: number;
 }
 
+type FirestoreNumberValue = {
+  doubleValue?: string | number;
+  integerValue?: string | number;
+};
+
+interface WorkshopDocument {
+  name: string;
+  fields?: {
+    nombre?: { stringValue?: string };
+    especialidad?: { stringValue?: string };
+    ubicacion_municipio?: { stringValue?: string };
+    estado?: { stringValue?: string };
+    calificacion_promedio?: FirestoreNumberValue;
+  };
+}
+
+export function normalizarCalificacion(
+  campo: FirestoreNumberValue | undefined,
+): number {
+  const valor = Number(campo?.doubleValue ?? campo?.integerValue);
+  return Number.isFinite(valor) ? valor : 5;
+}
+
 export default function WorkshopsSection() {
   const t = useTranslations();
+  const reducido = useMovimientoReducido();
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,6 +58,9 @@ export default function WorkshopsSection() {
   const [formPhone, setFormPhone] = useState("");
   const [formLocation, setFormLocation] = useState("");
   const [formSpecialty, setFormSpecialty] = useState("Mecánica General");
+  // Campo trampa, igual que en ContactForm: el endpoint responde exito sin
+  // guardar nada cuando llega relleno.
+  const [honeypot, setHoneypot] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -33,16 +69,14 @@ export default function WorkshopsSection() {
   useEffect(() => {
     async function fetchWorkshops() {
       try {
-        const response = await fetch(
-          "https://firestore.googleapis.com/v1/projects/autodoc-6ef5a/databases/(default)/documents/talleres"
-        );
+        const response = await fetch(`${REST_FIRESTORE}/talleres`);
         const data = await response.json();
         
         if (data.documents) {
           const parsed = data.documents
-            .map((doc: any) => {
+            .map((doc: WorkshopDocument): Workshop | null => {
               const fields = doc.fields;
-              const id = doc.name.split("/").pop();
+              const id = doc.name.split("/").pop()!;
               const estado = fields?.estado?.stringValue || 'aprobado';
               if (estado !== 'aprobado') return null;
 
@@ -51,10 +85,10 @@ export default function WorkshopsSection() {
                 name: fields?.nombre?.stringValue || "Taller Mecánico",
                 specialty: fields?.especialidad?.stringValue || "Mecánica General",
                 location: fields?.ubicacion_municipio?.stringValue || "Ciudad",
-                rating: fields?.calificacion_promedio?.doubleValue || fields?.calificacion_promedio?.integerValue || 5.0,
+                rating: normalizarCalificacion(fields?.calificacion_promedio),
               };
             })
-            .filter(Boolean);
+            .filter((workshop: Workshop | null): workshop is Workshop => workshop !== null);
           
           setWorkshops(parsed.slice(0, 3));
         }
@@ -79,41 +113,37 @@ export default function WorkshopsSection() {
 
     setSubmitting(true);
 
-    try {
-      const payload = {
-        fields: {
-          nombre: { stringValue: formName.trim() },
-          representante: { stringValue: formRep.trim() },
-          correo: { stringValue: formEmail.trim() },
-          telefono: { stringValue: formPhone.trim() },
-          ubicacion_municipio: { stringValue: formLocation.trim() },
-          especialidad: { stringValue: formSpecialty },
-          estado: { stringValue: "pendiente" },
-          origen: { stringValue: "landing_web" },
-          fecha_solicitud: { timestampValue: new Date().toISOString() },
-        },
-      };
+    // Antes esto era un POST sin autenticar a la REST API de Firestore contra
+    // /talleres. La regla de esa coleccion es `allow create: if isAdmin()`, o
+    // sea que el envio se denegaba SIEMPRE y el taller veia el error generico:
+    // un formulario completo, con estado de exito que nunca se alcanzaba. Y de
+    // haber pasado habria sido peor —un alta anonima directa en el directorio
+    // publico—. Ahora va al endpoint, que valida, limita y deja la solicitud en
+    // un buzon que un administrador revisa.
+    const r = await enviarSolicitud("afiliacion", {
+      nombre: formName.trim(),
+      representante: formRep.trim(),
+      correo: formEmail.trim(),
+      telefono: formPhone.trim(),
+      ubicacion: formLocation.trim(),
+      especialidad: formSpecialty,
+      sitio_web: honeypot,
+    });
+    setSubmitting(false);
 
-      const res = await fetch(
-        "https://firestore.googleapis.com/v1/projects/autodoc-6ef5a/databases/(default)/documents/talleres",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
-
-      if (!res.ok) {
-        throw new Error("Error al guardar en Firestore");
-      }
-
+    if (r.ok) {
       setSubmitted(true);
-    } catch (err) {
-      console.error("Error submitting workshop application", err);
-      setErrorMessage(t("formGenericError"));
-    } finally {
-      setSubmitting(false);
+      return;
     }
+    if (r.motivo === "limite") {
+      setErrorMessage(t("formRateError"));
+      return;
+    }
+    if (r.motivo === "invalido") {
+      setErrorMessage(t("formRequiredError"));
+      return;
+    }
+    setErrorMessage(t("formNetworkError"));
   };
 
   return (
@@ -123,9 +153,12 @@ export default function WorkshopsSection() {
         {/* Dynamic Workshops Grid */}
         <div className="mb-20">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            data-testid="workshops-titulo"
+            {...aparicion(reducido, {
+              initial: { opacity: 0, y: 20 },
+              whileInView: { opacity: 1, y: 0 },
+              viewport: { once: true },
+            })}
             className="text-center mb-12"
           >
             <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl mb-4">
@@ -145,9 +178,11 @@ export default function WorkshopsSection() {
               {workshops.map((workshop, idx) => (
                 <motion.div
                   key={workshop.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
+                  {...aparicion(reducido, {
+                    initial: { opacity: 0, y: 20 },
+                    whileInView: { opacity: 1, y: 0 },
+                    viewport: { once: true },
+                  })}
                   transition={{ delay: idx * 0.1 }}
                   className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow"
                 >
@@ -159,7 +194,7 @@ export default function WorkshopsSection() {
                       <MapPin className="w-4 h-4 mr-1 text-[#522C81] dark:text-purple-400" />
                       {workshop.location}
                     </div>
-                    <div className="flex items-center text-amber-500 font-bold">
+                    <div className="flex items-center text-amber-700 dark:text-amber-500 font-bold">
                       <Star className="w-4 h-4 mr-1 fill-current" />
                       {workshop.rating.toFixed(1)}
                     </div>
@@ -212,9 +247,11 @@ export default function WorkshopsSection() {
 
         {/* Affiliation Registration Form Section */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          {...aparicion(reducido, {
+            initial: { opacity: 0, y: 30 },
+            whileInView: { opacity: 1, y: 0 },
+            viewport: { once: true },
+          })}
           transition={{ duration: 0.8 }}
           className="mx-auto max-w-3xl bg-slate-50 dark:bg-slate-800/60 rounded-3xl p-8 sm:p-12 border border-slate-200 dark:border-slate-700 shadow-xl"
         >
@@ -222,19 +259,17 @@ export default function WorkshopsSection() {
             <h3 className="text-2xl font-extrabold text-slate-900 dark:text-white sm:text-3xl mb-2">
               {t("formTitle")}
             </h3>
-            <p className="text-slate-600 dark:text-slate-300 text-sm">
-              Completa el formulario y un administrador validará tu información para otorgarte el sello de Taller Verificado.
-            </p>
+            <p className="text-slate-600 dark:text-slate-300 text-sm">{t("formSubtitle")}</p>
           </div>
 
           {submitted ? (
-            <div className="text-center py-8">
+            <div className="text-center py-8" role="status" data-testid="afiliacion-exito">
               <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
               <h4 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{t("formSuccessTitle")}</h4>
               <p className="text-slate-600 dark:text-slate-300">{t("formSuccessDesc")}</p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6" noValidate data-testid="afiliacion-form">
               {errorMessage && (
                 <div className="flex items-center space-x-2 text-rose-500 bg-rose-500/10 border border-rose-500/20 p-4 rounded-xl text-sm">
                   <AlertCircle className="w-5 h-5 flex-shrink-0" />
@@ -244,12 +279,13 @@ export default function WorkshopsSection() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  <label htmlFor="afiliacion-nombre" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
                     {t("formWorkshopName")} *
                   </label>
                   <input
                     type="text"
                     required
+                    id="afiliacion-nombre"
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
                     placeholder="e.g. AutoFix San Salvador"
@@ -258,11 +294,12 @@ export default function WorkshopsSection() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  <label htmlFor="afiliacion-representante" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
                     {t("formRepName")}
                   </label>
                   <input
                     type="text"
+                    id="afiliacion-representante"
                     value={formRep}
                     onChange={(e) => setFormRep(e.target.value)}
                     placeholder="e.g. Ing. Roberto Gómez"
@@ -273,12 +310,13 @@ export default function WorkshopsSection() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  <label htmlFor="afiliacion-correo" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
                     {t("formEmail")} *
                   </label>
                   <input
                     type="email"
                     required
+                    id="afiliacion-correo"
                     value={formEmail}
                     onChange={(e) => setFormEmail(e.target.value)}
                     placeholder="contacto@taller.com"
@@ -287,12 +325,13 @@ export default function WorkshopsSection() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  <label htmlFor="afiliacion-telefono" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
                     {t("formPhone")} *
                   </label>
                   <input
                     type="tel"
                     required
+                    id="afiliacion-telefono"
                     value={formPhone}
                     onChange={(e) => setFormPhone(e.target.value)}
                     placeholder="e.g. +503 7777-8888"
@@ -303,12 +342,13 @@ export default function WorkshopsSection() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  <label htmlFor="afiliacion-ubicacion" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
                     {t("formLocation")} *
                   </label>
                   <input
                     type="text"
                     required
+                    id="afiliacion-ubicacion"
                     value={formLocation}
                     onChange={(e) => setFormLocation(e.target.value)}
                     placeholder="San Salvador"
@@ -317,10 +357,11 @@ export default function WorkshopsSection() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  <label htmlFor="afiliacion-especialidad" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
                     {t("formSpecialty")}
                   </label>
                   <select
+                    id="afiliacion-especialidad"
                     value={formSpecialty}
                     onChange={(e) => setFormSpecialty(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#522C81]"
@@ -332,6 +373,19 @@ export default function WorkshopsSection() {
                     <option value="Enderezado y Pintura">Enderezado y Pintura</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="absolute left-[-9999px] top-auto w-px h-px overflow-hidden" aria-hidden="true">
+                <label htmlFor="afiliacion-sitio-web">No rellenar</label>
+                <input
+                  type="text"
+                  id="afiliacion-sitio-web"
+                  name="sitio_web"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={honeypot}
+                  onChange={(e) => setHoneypot(e.target.value)}
+                />
               </div>
 
               <button

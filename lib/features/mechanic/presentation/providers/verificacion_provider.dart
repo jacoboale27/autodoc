@@ -5,6 +5,7 @@ import 'package:autodoc/core/models/estado_verificacion.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/models/verificacion_taller_model.dart';
 import 'package:autodoc/features/mechanic/data/services/verificacion_service.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 /// Estado de la pantalla de verificacion del taller.
 ///
@@ -45,7 +46,7 @@ class VerificacionProvider extends ChangeNotifier {
     try {
       _expediente = await _service.obtener(tallerId);
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
     } finally {
       _cargando = false;
       notifyListeners();
@@ -193,7 +194,7 @@ class VerificacionProvider extends ChangeNotifier {
       }
     }
 
-    return '$prefijo Error inesperado: $e';
+    return '$prefijo Intentalo de nuevo en un momento.';
   }
 
   void limpiarError() {

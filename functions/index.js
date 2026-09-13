@@ -1,14 +1,16 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const firestore = require('@google-cloud/firestore');
 admin.initializeApp();
 
 const { abrirTicketDeReparacion, ErrorAutorizacionPermanente,
   ErrorTicketNoAplicable, ESTADOS_TICKET_CERRADO } = require('./src/aceptarCotizacion');
-const { ErrorRecepcion, debeRevocarVinculo, revocarVinculo,
-  recibirTicketYVincular } = require('./src/vinculoTaller');
-const { verificarAperturaManual } = require('./src/iniciarReparacionPorVehiculo');
+const { ErrorRecepcion, recibirTicketYVincular,
+  revocarVinculoAlCerrar } = require('./src/vinculoTaller');
 const { sincronizarReservaAlCotizar } = require('./src/sincronizarReservaAlCotizar');
+const {
+  DIAS_CADUCIDAD_VINCULO,
+  caducarVinculosInactivos,
+} = require('./src/caducarVinculos');
 const {
   subconjuntoPublicoCliente,
   compartenConversacion,
@@ -16,6 +18,19 @@ const {
 } = require('./src/obtenerPerfilPublico');
 const { listarEmpleadosPublicos } = require('./src/obtenerEmpleadosPublicos');
 const { CAMPO_MIGRACION, esMigracion } = require('./src/migracion');
+const { cerrarTicketsDeVehiculo } = require('./src/cerrarTicketsDeVehiculo');
+const { notificarAlertasVencidas } = require('./src/alertasVencidas');
+const { exportarFirestore } = require('./src/exportacionFirestore');
+const { exigirAppCheck } = require('./src/appCheck');
+const { enviarRecordatoriosDeReserva } = require('./src/recordatoriosReserva');
+const { borrarFotosDeResenia } = require('./src/fotosDeResenia');
+// El FieldValue tiene que salir del MISMO modulo que la instancia de Firestore.
+// Observado en el emulador de Functions: `admin.firestore.FieldValue` llega
+// undefined, y el de `@google-cloud/firestore` (que este package.json declara
+// aparte, por lo que es OTRA copia) hace que Firestore rechace el centinela con
+// "Couldn't serialize object of type ServerTimestampTransform". El punto de
+// entrada modular de firebase-admin devuelve el bueno en los dos entornos.
+const { FieldValue } = require('firebase-admin/firestore');
 
 const db = admin.firestore();
 const messaging = admin.messaging();
@@ -77,100 +92,29 @@ async function deleteQueryBatch(db, query, resolve, reject) {
  * 1. Scheduled function to check alerts (alertas) daily.
  * Notifies the user if an alert is expiring in 7 days or less, or already expired.
  */
-exports.checkAlertsDaily = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
-  const now = new Date();
-  const futureDate = new Date();
-  futureDate.setDate(now.getDate() + 7);
-
-  const limit = 500;
-  let lastDoc = null;
-  
-  const vehiculosCache = {};
-  const usuariosCache = {};
-
+exports.checkAlertsDaily = functions.runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .pubsub.schedule('0 9 * * *')
+  .timeZone('America/Bogota')
+  .onRun(async () => {
+  // OPS-01: la logica vive en `src/alertasVencidas.js` para poder ejercerla
+  // con fixtures. Aqui solo queda el enganche del scheduler.
   try {
-    while (true) {
-      let q = db.collection('alertas')
-        .where('estado', '==', 'Pendiente')
-        .orderBy(admin.firestore.FieldPath.documentId())
-        .limit(limit);
-      if (lastDoc) {
-        q = q.startAfter(lastDoc);
-      }
-      const alertasSnapshot = await q.get();
-      if (alertasSnapshot.empty) break;
-
-      for (const doc of alertasSnapshot.docs) {
-        const alerta = doc.data();
-        let fechaLimite;
-        
-        if (alerta.fecha_limite && alerta.fecha_limite.toDate) {
-          fechaLimite = alerta.fecha_limite.toDate();
-        } else if (typeof alerta.fecha_limite === 'string') {
-          fechaLimite = new Date(alerta.fecha_limite);
-        } else {
-          continue; // No valid date
-        }
-
-        if (fechaLimite <= futureDate) {
-          // Find the vehicle owner
-          const vehiculoId = alerta.id_vehiculo;
-          if (!vehiculoId) continue;
-
-          if (!vehiculosCache[vehiculoId]) {
-            const vehiculoDoc = await db.collection('vehiculos').doc(vehiculoId).get();
-            vehiculosCache[vehiculoId] = vehiculoDoc.exists ? vehiculoDoc.data() : null;
-          }
-          const vehiculoData = vehiculosCache[vehiculoId];
-          if (!vehiculoData) continue;
-
-          const ownerId = vehiculoData.id_propietario;
-          if (!ownerId) continue;
-
-          if (!usuariosCache[ownerId]) {
-            const userDoc = await db.collection('usuarios').doc(ownerId).get();
-            usuariosCache[ownerId] = userDoc.exists ? userDoc.data() : null;
-          }
-          const userData = usuariosCache[ownerId];
-          if (!userData) continue;
-
-          const fcmToken = userData.fcmToken;
-          if (!fcmToken) continue;
-
-          const isExpired = fechaLimite < now;
-          const title = isExpired ? '¡Alerta Vencida!' : 'Alerta por Vencer';
-          const body = isExpired 
-              ? `La alerta de ${alerta.tipo_alerta} para tu vehículo ${vehiculoData.placa} ya venció.`
-              : `La alerta de ${alerta.tipo_alerta} para tu vehículo ${vehiculoData.placa} está por vencer.`;
-
-          await messaging.send({
-            token: fcmToken,
-            notification: {
-              title: title,
-              body: body,
-            },
-            data: {
-              type: 'alerta',
-              alertaId: doc.id,
-              vehiculoId: vehiculoId
-            }
-          });
-
-          // Persist in notification center
-          await writeNotification(ownerId, {
-            tipo: 'alerta',
-            titulo: title,
-            body: body,
-            deepLink: '/alerts',
-            metadata: { alertaId: doc.id, vehiculoId: vehiculoId },
-          });
-        }
-      }
-
-      lastDoc = alertasSnapshot.docs[alertasSnapshot.docs.length - 1];
-    }
+    const resumen = await notificarAlertasVencidas(db, messaging, {
+      escribirNotificacion: writeNotification,
+    });
+    console.log('checkAlertsDaily:', JSON.stringify(resumen));
+    return resumen;
   } catch (error) {
+    // Se relanza para que la corrida quede marcada como fallida y sea
+    // visible. La version anterior se lo tragaba con un console.error, asi
+    // que un barrido roto era indistinguible de un dia sin alertas.
+    //
+    // OJO: relanzar da VISIBILIDAD, no reintento. No hay `failurePolicy` ni
+    // `retryConfig` configurados. Aqui seria seguro anadirlo —`ultimo_aviso`
+    // hace el barrido idempotente— pero se deja fuera para no cambiar dos
+    // cosas a la vez.
     console.error('Error checking alerts:', error);
+    throw error;
   }
 });
 
@@ -630,93 +574,6 @@ exports.notifyOnReservationStatusChange = functions.firestore
   });
 
 /**
- * Helper: crea (o reutiliza, si ya existe uno para el mismo vehiculo+taller)
- * el ticket Kanban de reparación y notifica al propietario. Corre siempre
- * con Admin SDK porque necesita leer `vehiculos/{id}` (placa, id_propietario)
- * sin las restricciones de `talleres_vinculados` que aplican al cliente (ver
- * firestore.rules match /vehiculos) — ni el trigger de cotización ni el
- * callable de "Buscar Vehículo" pueden resolver esos datos del lado cliente
- * sin reabrir el bug de permission-denied que originó este helper.
- *
- * Devuelve `{ idReparacion, creado }` o `null` si el vehículo no existe.
- */
-async function crearOReutilizarTicketReparacion({ idVehiculo, idTaller }) {
-  const existente = await db.collection('reparaciones')
-    .where('id_vehiculo', '==', idVehiculo)
-    .where('id_taller', '==', idTaller)
-    .limit(20)
-    .get();
-  // RONDA 4: solo se reutiliza un ticket ABIERTO. Con `limit(1)` sin filtro,
-  // este helper devolvia cualquiera — incluido uno `cancelado`, que
-  // `recibirVehiculo` rechaza por diseño ("hace falta una cotizacion nueva"):
-  // el callable respondia con exito, la pantalla de servicio abria ese ticket
-  // muerto y recibir el vehiculo fallaba sin explicacion. Misma definicion de
-  // "cerrado" que `ESTADOS_TICKET_CERRADO` en src/aceptarCotizacion.js y que
-  // `estadosReparacionCerrados` en el cliente, para que las tres coincidan.
-  const abierto = existente.docs.find(
-    (doc) => !ESTADOS_TICKET_CERRADO.includes((doc.data().estado || 'recibido').toString())
-  );
-  if (abierto) {
-    return { idReparacion: abierto.id, creado: false };
-  }
-
-  const vehiculoDoc = await db.collection('vehiculos').doc(idVehiculo).get();
-  if (!vehiculoDoc.exists) return null;
-  const placa = vehiculoDoc.data().placa || '';
-  const propietarioId = vehiculoDoc.data().id_propietario;
-  if (!propietarioId) return null;
-
-  const ahora = admin.firestore.FieldValue.serverTimestamp();
-  const reparacionRef = db.collection('reparaciones').doc();
-  // Ronda 3: el ticket y el vinculo se escriben juntos, igual que en
-  // `abrirTicketDeReparacion`. `talleres_vinculados` ya no es una
-  // precondicion para abrir el ticket (era circular), pero sigue siendo lo
-  // que hace legible `vehiculos/{id}` para el taller en firestore.rules: sin
-  // esta escritura el ticket nace y la pantalla que lo abre no puede cargar
-  // el vehiculo.
-  const lote = db.batch();
-  lote.set(reparacionRef, {
-    id_vehiculo: idVehiculo,
-    id_taller: idTaller,
-    id_propietario: propietarioId,
-    placa: placa,
-    estado: 'recibido',
-    historial_estados: [{ estado: 'recibido', timestamp: new Date() }],
-    fecha_creacion: ahora,
-    fecha_actualizacion: ahora,
-  });
-  lote.update(vehiculoDoc.ref, {
-    talleres_vinculados: admin.firestore.FieldValue.arrayUnion(idTaller),
-  });
-  await lote.commit();
-
-  const userDoc = await db.collection('usuarios').doc(propietarioId).get();
-  const fcmToken = userDoc.exists ? userDoc.data().fcmToken : null;
-  const title = 'Tu vehículo ya está en seguimiento';
-  const body = `${placa}: se abrió el ticket de servicio en el taller.`;
-  if (fcmToken) {
-    try {
-      await messaging.send({
-        token: fcmToken,
-        notification: { title, body },
-        data: { type: 'reparacion', reparacionId: reparacionRef.id },
-      });
-    } catch (fcmError) {
-      console.error('Error sending FCM reparacion-created push:', fcmError);
-    }
-  }
-  await writeNotification(propietarioId, {
-    tipo: 'reparacion',
-    titulo: title,
-    body,
-    deepLink: `/vehicle_profile/${idVehiculo}`,
-    metadata: { reparacionId: reparacionRef.id, estado: 'recibido' },
-  });
-
-  return { idReparacion: reparacionRef.id, creado: true, placa, propietarioId };
-}
-
-/**
  * Verifica que quien llama pueda actuar en nombre de `tallerId`: o es el
  * propio taller, o es un empleado suyo (usuarios/{uid}.id_taller_propietario
  * == tallerId). Espejo en Admin SDK de `actuaPorTaller()` en firestore.rules.
@@ -734,10 +591,11 @@ async function actuaPorTaller(callerUid, tallerId) {
  *
  * Ya NO abre el ticket de Reparaciones: eso lo hace `onCotizacionAceptada`
  * (A4b) para TODA cotización aceptada, tenga o no reserva detrás, y en el
- * estado `pendiente_recepcion`. Si esta función siguiera llamando a
- * `crearOReutilizarTicketReparacion`, cada aceptación con cita abriría dos
- * tickets para el mismo vehículo (uno aquí en 'recibido' y otro allí), que es
- * exactamente el "vehículo recibido sin que nadie lo reciba" que A3 prohíbe.
+ * estado `pendiente_recepcion`. FUNC-02 retiró el helper gemelo
+ * (`crearOReutilizarTicketReparacion`), que abría el ticket directamente en
+ * 'recibido': mientras existió, esta función podía abrir un segundo ticket
+ * para el mismo vehículo y darlo por recibido sin que nadie lo recibiera,
+ * que es exactamente lo que A3 prohíbe.
  */
 exports.sincronizarReservaYReparacionAlCotizar = functions.firestore
   .document('cotizaciones/{cotizacionId}')
@@ -799,23 +657,22 @@ exports.onCotizacionAceptada = functions
   .firestore.document('cotizaciones/{cotizacionId}')
   .onUpdate(async (change, context) => {
     try {
-      const idTicket = await abrirTicketDeReparacion(db, {
+      const abierto = await abrirTicketDeReparacion(db, {
         cotizacionId: context.params.cotizacionId,
         antes: change.before.data() || {},
         despues: change.after.data() || {},
         ahora: new Date(),
       });
-      // RONDA 4: avisar al cliente. El camino gemelo
-      // (`crearOReutilizarTicketReparacion`, usado por el callable de "Buscar
-      // Vehiculo") si notificaba al abrir el ticket, pero ESTE — que desde
-      // A4b abre practicamente todos — no notificaba nada, y
+      // RONDA 4: avisar al cliente. El camino gemelo (el callable de "Buscar
+      // Vehiculo", retirado en FUNC-02) si notificaba al abrir el ticket,
+      // pero ESTE — que ya abre TODOS — no notificaba nada, y
       // `notifyOnReparacionStatusChange` es un onUpdate, asi que la creacion
       // tampoco lo despertaba. El cliente aceptaba la cotizacion y no volvia
       // a saber nada del servicio hasta que el taller moviera el ticket a
       // mano. Va aqui y no dentro de `abrirTicketDeReparacion` para que esa
       // funcion siga siendo pura y testeable sin messaging.
-      if (idTicket) {
-        await notificarTicketAbierto(idTicket);
+      if (abierto.id) {
+        await notificarTicketAbierto(abierto.id, abierto.ticket);
       }
     } catch (error) {
       if (
@@ -869,11 +726,23 @@ exports.onCotizacionAceptada = functions
  * `failurePolicy` activo el trigger se reintentaria en bucle por un fallo de
  * FCM, sin que ningun reintento pudiera crear nada nuevo).
  */
-async function notificarTicketAbierto(idReparacion) {
+/** Respaldo de `notificarTicketAbierto` cuando el llamador no trae el ticket. */
+async function leerTicket(idReparacion) {
+  const snap = await db.collection('reparaciones').doc(idReparacion).get();
+  return snap.exists ? snap.data() : null;
+}
+
+async function notificarTicketAbierto(idReparacion, ticket) {
   try {
-    const snap = await db.collection('reparaciones').doc(idReparacion).get();
-    if (!snap.exists) return;
-    const { id_propietario: propietarioId, id_vehiculo: idVehiculo, placa } = snap.data();
+    // `ticket` llega de quien acaba de escribirlo. Antes esto releia el
+    // documento recien creado para sacar tres campos que el llamador ya tenia
+    // en memoria — una lectura por cotizacion aceptada — y encima comprobaba
+    // `if (!snap.exists) return`, que no podia ser cierto: se acababa de
+    // crear. Se conserva la relectura solo como camino de respaldo por si
+    // algun llamador futuro no trae el documento.
+    const datos = ticket || (await leerTicket(idReparacion));
+    if (!datos) return;
+    const { id_propietario: propietarioId, id_vehiculo: idVehiculo, placa } = datos;
     if (!propietarioId) return;
 
     const title = 'Tu servicio ya está agendado';
@@ -906,63 +775,6 @@ async function notificarTicketAbierto(idReparacion) {
 }
 
 /**
- * 5a3. Callable: abre (o reutiliza) el ticket Kanban de reparación para un
- * vehículo encontrado por placa desde "Buscar Vehículo"
- * (VehicleSearchScreen -> InitiateServiceScreen). Existe porque
- * `buscarVehiculoPorPlaca` deliberadamente NO devuelve `id_propietario` al
- * cliente (ver ese callable) para no exponer al dueño a cualquier mecánico
- * que busque una placa — pero `reparaciones` sí necesita ese campo para
- * crearse. En vez de relajar esa protección, la creación del ticket se hace
- * aquí, del lado servidor, donde sí se puede leer el vehículo completo.
- *
- * Corre con Admin SDK, así que `firestore.rules` (que en /reparaciones tiene
- * `allow create: if false` desde A4b) no lo alcanza. Hallazgo 1 de la
- * revisión de la Tarea 4: antes de `verificarAperturaManual` este callable
- * era la única puerta server-side que quedaba abierta para abrir un ticket
- * sin vínculo con el vehículo y sin cotización aceptada — justo lo que A3
- * prohíbe. Ver `./src/iniciarReparacionPorVehiculo.js`.
- */
-exports.iniciarReparacionPorVehiculo = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
-  }
-
-  const callerDoc = await db.collection('usuarios').doc(context.auth.uid).get();
-  const rol = callerDoc.exists ? callerDoc.data().rol : null;
-  if (!['Mecanico', 'Taller'].includes(rol)) {
-    throw new functions.https.HttpsError(
-      'permission-denied',
-      'Solo mecánicos pueden abrir tickets de reparación.'
-    );
-  }
-
-  const idVehiculo = data && data.id_vehiculo ? String(data.id_vehiculo) : '';
-  const idTaller = data && data.id_taller ? String(data.id_taller) : '';
-  if (!idVehiculo || !idTaller) {
-    throw new functions.https.HttpsError('invalid-argument', 'Faltan id_vehiculo o id_taller.');
-  }
-
-  const puedeActuar = await actuaPorTaller(context.auth.uid, idTaller);
-  if (!puedeActuar) {
-    throw new functions.https.HttpsError(
-      'permission-denied',
-      'No puedes abrir tickets en nombre de ese taller.'
-    );
-  }
-
-  const verificacion = await verificarAperturaManual(db, { idVehiculo, idTaller });
-  if (!verificacion.ok) {
-    throw new functions.https.HttpsError(verificacion.code, verificacion.message);
-  }
-
-  const resultado = await crearOReutilizarTicketReparacion({ idVehiculo, idTaller });
-  if (!resultado) {
-    throw new functions.https.HttpsError('not-found', 'Vehículo no encontrado.');
-  }
-  return { id_reparacion: resultado.idReparacion };
-});
-
-/**
  * 5a4. Callable: recibe el vehiculo de un ticket.
  *
  * Mueve el ticket de `pendiente_recepcion` a `recibido` Y otorga el vinculo
@@ -978,12 +790,17 @@ exports.iniciarReparacionPorVehiculo = functions.https.onCall(async (data, conte
  * inmediatamente despues para seguir trabajando.
  *
  * Corre con Admin SDK, asi que `firestore.rules` no lo alcanza: la
- * autorizacion se replica a mano aqui con `actuaPorTaller`, igual que en
- * `iniciarReparacionPorVehiculo` (ver el hallazgo 1 de la revision de la
- * Tarea 4). Sin ese chequeo, cualquier mecanico podria recibir el ticket de
- * otro taller y otorgarse acceso al coche de un desconocido.
+ * autorizacion se replica a mano con `actuaPorTaller`, que se le pasa a
+ * `recibirTicketYVincular` para que decida dentro de la transaccion, sobre el
+ * mismo snapshot del ticket que se va a escribir. Sin ese chequeo,
+ * cualquier mecanico podria recibir el ticket de otro taller y otorgarse
+ * acceso al coche de un desconocido. Desde FUNC-02 este es el UNICO callable
+ * que escribe sobre /reparaciones: el `allow create: if false` de las reglas
+ * no protege a los callables, asi que cualquiera que se añada sobre esta
+ * coleccion tiene que replicar la autorizacion aqui a mano, igual que este.
  */
 exports.recibirVehiculoDelTicket = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'recibirVehiculoDelTicket');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -993,26 +810,32 @@ exports.recibirVehiculoDelTicket = functions.https.onCall(async (data, context) 
     throw new functions.https.HttpsError('invalid-argument', 'Falta id_reparacion.');
   }
 
-  const ticketSnap = await db.collection('reparaciones').doc(idReparacion).get();
-  if (!ticketSnap.exists) {
-    throw new functions.https.HttpsError('not-found', 'Este ticket de servicio ya no existe.');
-  }
-
-  const puedeActuar = await actuaPorTaller(
-    context.auth.uid,
-    (ticketSnap.data().id_taller || '').toString()
-  );
-  if (!puedeActuar) {
-    throw new functions.https.HttpsError(
-      'permission-denied',
-      'Este ticket no es de tu taller.'
-    );
-  }
-
   try {
+    // La autorizacion viaja DENTRO de la transaccion, sobre el mismo snapshot
+    // del ticket que decide la escritura. Antes este callable leia
+    // `reparaciones/{id}` para comprobar `actuaPorTaller` y
+    // `recibirTicketYVincular` lo volvia a leer para escribir: una lectura de
+    // mas en cada recepcion y, peor, dos snapshots distintos — entre los dos,
+    // `id_taller` o `estado` podian cambiar y se autorizaba sobre el viejo.
+    //
+    // El documento del llamante se lee UNA vez por invocacion, no una por
+    // intento: el cuerpo de una transaccion se reejecuta si algo de lo leido
+    // cambio, y sin esta cache cada reintento pagaba otra lectura de
+    // `usuarios/{uid}` y otro viaje de red DENTRO de la ventana de bloqueo
+    // sobre el ticket y el vehiculo. Se guarda la promesa, no el resultado,
+    // para que dos reintentos solapados compartan la misma lectura. El
+    // cortocircuito de `actuaPorTaller` se conserva: un taller que actua por
+    // si mismo no lee nada.
+    let llamante;
     const resultado = await recibirTicketYVincular(db, {
       idReparacion,
       ahora: new Date(),
+      autorizar: async (idTaller) => {
+        if (context.auth.uid === idTaller) return true;
+        llamante ||= db.collection('usuarios').doc(context.auth.uid).get();
+        const doc = await llamante;
+        return doc.exists && doc.data().id_taller_propietario === idTaller;
+      },
     });
     return { recibido_ahora: resultado.recibidoAhora };
   } catch (error) {
@@ -1048,24 +871,60 @@ exports.revocarVinculoAlCerrarTicket = functions.firestore
     // determinista y con `arrayRemove`; dejar que ademas dispare este trigger
     // solo anade una carrera sobre los mismos documentos de `vehiculos`.
     if (esMigracion(despues)) return null;
-    if (!debeRevocarVinculo(antes, despues)) return null;
 
-    try {
-      await revocarVinculo(db, {
-        idVehiculo: (despues.id_vehiculo || '').toString(),
-        idTaller: (despues.id_taller || '').toString(),
-      });
-    } catch (error) {
-      // No relanzar: el ticket ya esta cerrado y el servicio registrado. Un
-      // fallo aqui deja un vinculo de mas, que es el estado que habia ANTES
-      // de la Ronda 5 — molesto, no peligroso — mientras que relanzar sin
-      // `failurePolicy` no reintenta nada y solo ensucia las metricas.
+    const { resultado, error } = await revocarVinculoAlCerrar(db, {
+      antes,
+      despues,
+      ref: change.after.ref,
+    });
+    if (error) {
+      // Sigue sin relanzarse: el ticket ya esta cerrado y el servicio
+      // registrado, y relanzar sin `failurePolicy` no reintenta nada, solo
+      // ensucia las metricas. Lo que cambia es que el fallo ya no vive solo
+      // en este log: `revocarVinculoAlCerrar` deja marca en el ticket, asi
+      // que el vinculo que sobrevivio al cierre es consultable y la siguiente
+      // escritura sobre ese ticket lo reintenta.
       console.error(
         `revocarVinculoAlCerrarTicket: no se pudo revocar el vinculo del ` +
-          `ticket ${context.params.reparacionId}:`,
+          `ticket ${context.params.reparacionId} (${resultado}):`,
         error
       );
     }
+    return null;
+  });
+
+/**
+ * 5a6. La posesion del coche caduca sola.
+ *
+ * El vinculo taller-vehiculo se otorga al recibir el coche y se revoca al
+ * cerrarse el ticket, pero **nadie caducaba la posesion**: un taller que
+ * simplemente no moviera el ticket a `entregado` conservaba el acceso a la
+ * ficha del coche, su galeria, sus alertas y el historial que escribieron
+ * otros talleres, indefinidamente. El cierre dependia de su buena voluntad.
+ *
+ * Lo que caduca es el ACCESO, no el ticket: el ticket sigue abierto y en su
+ * estado, porque es trabajo del taller y no le toca a una funcion programada
+ * darlo por terminado ni inventarse una fecha de entrega. Es reversible sin
+ * que nadie intervenga — `recibirVehiculoDelTicket` reasegura el vinculo
+ * mientras el ticket no este cerrado, y la pantalla de servicio ya ofrece ese
+ * reintento —, asi que una reparacion larga de verdad se recupera con un
+ * toque.
+ *
+ * Residual 7.2 de FUNC-02. La logica vive en `src/caducarVinculos.js` para
+ * poder probarla sin firebase-functions.
+ */
+exports.caducarVinculosDeTalleresInactivos = functions.pubsub
+  .schedule('every 24 hours')
+  .onRun(async () => {
+    const { revisados, caducados, fallidos } = await caducarVinculosInactivos(
+      db,
+      { ahora: new Date() }
+    );
+    console.log(
+      `caducarVinculosDeTalleresInactivos: ${revisados} tickets sin actividad ` +
+        `en ${DIAS_CADUCIDAD_VINCULO} dias, ${caducados} vinculos caducados, ` +
+        `${fallidos} fallidos.`
+    );
     return null;
   });
 
@@ -1160,79 +1019,28 @@ exports.notifyOnReparacionStatusChange = functions.firestore
  * 6. Scheduled function to send reservation reminders daily.
  * Notifies the owner and mechanic if they have an approved reservation for the next day.
  */
-exports.sendReservationReminders = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const dateString = tomorrow.toISOString().split('T')[0]; // 'YYYY-MM-DD'
-
-  const limit = 500;
-  let lastDoc = null;
-
-  const usuariosCache = {};
-
+exports.sendReservationReminders = functions.runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .pubsub.schedule('0 9 * * *')
+  .timeZone('America/Bogota')
+  .onRun(async () => {
+  // OPS-01: la logica vive en `src/recordatoriosReserva.js` para poder
+  // ejercerla con fixtures. Aqui solo queda el enganche del scheduler.
   try {
-    while (true) {
-      let q = db.collection('reservas')
-        .where('estado', '==', 'confirmada')
-        .orderBy(admin.firestore.FieldPath.documentId())
-        .limit(limit);
-      if (lastDoc) {
-        q = q.startAfter(lastDoc);
-      }
-      const reservasSnapshot = await q.get();
-      if (reservasSnapshot.empty) break;
-
-      for (const doc of reservasSnapshot.docs) {
-        const reserva = doc.data();
-
-        const fechaPropuesta = reserva.fecha_hora_propuesta && reserva.fecha_hora_propuesta.toDate
-          ? reserva.fecha_hora_propuesta.toDate()
-          : null;
-        if (!fechaPropuesta) continue;
-        const fechaPropuestaString = fechaPropuesta.toISOString().split('T')[0];
-        if (fechaPropuestaString !== dateString) continue;
-
-        // Notify Owner
-        if (reserva.id_propietario) {
-          if (!(reserva.id_propietario in usuariosCache)) {
-            const ownerDoc = await db.collection('usuarios').doc(reserva.id_propietario).get();
-            usuariosCache[reserva.id_propietario] = ownerDoc.exists ? ownerDoc.data() : null;
-          }
-          const ownerData = usuariosCache[reserva.id_propietario];
-          if (ownerData && ownerData.fcmToken) {
-            await messaging.send({
-              token: ownerData.fcmToken,
-              notification: {
-                title: 'Recordatorio de Cita',
-                body: 'Tienes una cita programada para mañana a la hora acordada.'
-              }
-            });
-          }
-        }
-
-        // Notify Mechanic
-        if (reserva.id_mecanico) {
-          if (!(reserva.id_mecanico in usuariosCache)) {
-            const mechanicDoc = await db.collection('usuarios').doc(reserva.id_mecanico).get();
-            usuariosCache[reserva.id_mecanico] = mechanicDoc.exists ? mechanicDoc.data() : null;
-          }
-          const mechanicData = usuariosCache[reserva.id_mecanico];
-          if (mechanicData && mechanicData.fcmToken) {
-            await messaging.send({
-              token: mechanicData.fcmToken,
-              notification: {
-                title: 'Recordatorio de Cita',
-                body: 'Tienes una cita programada para mañana con el vehículo del cliente.'
-              }
-            });
-          }
-        }
-      }
-
-      lastDoc = reservasSnapshot.docs[reservasSnapshot.docs.length - 1];
-    }
+    const resumen = await enviarRecordatoriosDeReserva(db, messaging);
+    console.log('sendReservationReminders:', JSON.stringify(resumen));
+    return resumen;
   } catch (error) {
+    // Se relanza a proposito: la version anterior se lo tragaba con un
+    // console.error, asi que un barrido roto no se distinguia de un dia sin
+    // citas.
+    //
+    // OJO: relanzar da VISIBILIDAD, no reintento, y aqui es mejor asi. A
+    // diferencia del barrido de alertas, el recordatorio NO tiene marca de
+    // idempotencia: si la corrida muere en la reserva 900, un reintento
+    // reenviaria los 900 recordatorios ya entregados. Configurar reintento
+    // exige antes una marca por reserva.
     console.error('Error in sendReservationReminders:', error);
+    throw error;
   }
 });
 
@@ -1322,31 +1130,10 @@ exports.onVehicleDelete = functions.firestore.document('vehiculos/{vehicleId}').
     // no una novedad que notificarle a un propietario que acaba de borrar el
     // vehiculo a proposito.
     try {
-      const abiertos = await db
-        .collection('reparaciones')
-        .where('id_vehiculo', '==', vehicleId)
-        .get();
-      const cerrables = abiertos.docs.filter(
-        (d) => !ESTADOS_TICKET_CERRADO.includes((d.data().estado || 'recibido').toString())
-      );
-      for (let i = 0; i < cerrables.length; i += 400) {
-        const lote = db.batch();
-        for (const d of cerrables.slice(i, i + 400)) {
-          lote.update(d.ref, {
-            estado: 'cancelado',
-            [CAMPO_MIGRACION]: true,
-            historial_estados: admin.firestore.FieldValue.arrayUnion({
-              estado: 'cancelado',
-              timestamp: new Date(),
-            }),
-            fecha_actualizacion: new Date(),
-          });
-        }
-        await lote.commit();
-      }
-      if (cerrables.length > 0) {
+      const cerrados = await cerrarTicketsDeVehiculo(db, { vehicleId });
+      if (cerrados > 0) {
         console.log(
-          `Closed ${cerrables.length} open reparaciones for deleted vehicle ${vehicleId}.`
+          `Closed ${cerrados} open reparaciones for deleted vehicle ${vehicleId}.`
         );
       }
     } catch (e) {
@@ -1372,19 +1159,25 @@ exports.onVehicleDelete = functions.firestore.document('vehiculos/{vehicleId}').
  * 8. Scheduled function for automated Firestore backup (C-03).
  * Runs every 24 hours to export the database to Google Cloud Storage.
  */
-exports.scheduledFirestoreExport = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
-  const projectId = process.env.GCP_PROJECT || process.env.GCLOUD_PROJECT;
+exports.scheduledFirestoreExport = functions.runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .pubsub.schedule('every 24 hours')
+  .onRun(async () => {
+  // Se requiere aqui y no al principio del archivo: es una libreria pesada
+  // (gRPC y protos) que solo usa esta funcion, una vez al dia, y a nivel de
+  // modulo la pagaba el arranque en frio de las ~30 funciones del entrypoint.
+  const firestore = require('@google-cloud/firestore');
   const client = new firestore.v1.FirestoreAdminClient();
-  const databaseName = client.databasePath(projectId, '(default)');
-  const bucket = 'gs://' + projectId + '-backups';
 
   try {
-    const [response] = await client.exportDocuments({
-      name: databaseName,
-      outputUriPrefix: bucket,
+    // OPS-01: la logica vive en `src/exportacionFirestore.js`. El bucket se
+    // puede fijar por entorno para que staging y produccion no compartan
+    // destino, igual que ya pasa con las claves.
+    const respuesta = await exportarFirestore(client, {
+      projectId: process.env.GCP_PROJECT || process.env.GCLOUD_PROJECT,
+      bucket: process.env.FIRESTORE_BACKUP_BUCKET,
     });
-    console.log(`Export operation initiated: ${response.name}`);
-    return response;
+    console.log(`Export operation initiated: ${respuesta.name}`);
+    return respuesta;
   } catch (error) {
     console.error('Error exporting Firestore database:', error);
     throw error;
@@ -1449,6 +1242,43 @@ exports.aggregateRatings = functions.firestore
   });
 
 /**
+ * 9 bis. Al borrarse una resenia, sus fotos se van con ella.
+ *
+ * Residual de FUNC-01, que cerro la EDICION (conservar/anadir/quitar, con el
+ * huerfano borrado tras confirmar Firestore) y dejo el borrado del documento
+ * sin limpiar nada. Se remitio a OPS-01 y OPS-01 cerro sin recogerlo.
+ *
+ * Va como trigger y no en el cliente porque son dos caminos y **uno de ellos
+ * no pasa por la app**: `deleteUserData` barre las resenias del usuario en
+ * lotes de 500 al borrarse la cuenta. Un trigger `onDelete` cubre los dos por
+ * construccion, y ademas es el unico que tiene permiso — `storage.rules` deja
+ * borrar al autor, pero en el borrado de cuenta ya no hay autor que firme.
+ *
+ * Es aparte de `aggregateRatings` (que es un `onWrite` y ya contempla el
+ * borrado para la media) a proposito: mezclarlos ataria el recalculo de la
+ * calificacion al exito de un borrado en Storage, que es justo lo que no debe
+ * pasar.
+ *
+ * La logica vive en `src/fotosDeResenia.js` para poder probarla sin
+ * firebase-functions, como el resto del modulo.
+ */
+exports.borrarFotosAlEliminarResenia = functions.firestore
+  .document('resenias/{reseniaId}')
+  .onDelete(async (snap, context) => {
+    const { borradas, fallidas } = await borrarFotosDeResenia(
+      storage.bucket(),
+      snap.data() || {}
+    );
+    if (fallidas > 0) {
+      console.warn(
+        `borrarFotosAlEliminarResenia: ${context.params.reseniaId} dejo ` +
+        `${fallidas} foto(s) sin borrar (${borradas} borradas).`
+      );
+    }
+    return null;
+  });
+
+/**
  * 10. Callable: search a vehicle by plate for mechanics onboarding a
  * walk-in customer they have no prior service relationship with.
  *
@@ -1457,6 +1287,7 @@ exports.aggregateRatings = functions.firestore
  * stay protected by firestore.rules (owner, admin, or talleres_vinculados).
  */
 exports.buscarVehiculoPorPlaca = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'buscarVehiculoPorPlaca');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1508,6 +1339,7 @@ exports.buscarVehiculoPorPlaca = functions.https.onCall(async (data, context) =>
  * server-side (no confia en una lista que mande el cliente).
  */
 exports.obtenerUsuariosCompartidos = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'obtenerUsuariosCompartidos');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1568,6 +1400,7 @@ exports.obtenerUsuariosCompartidos = functions.https.onCall(async (data, context
  * ningun round-trip a Cloud Functions.
  */
 exports.obtenerPerfilPublico = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'obtenerPerfilPublico');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1643,6 +1476,7 @@ exports.obtenerPerfilPublico = functions.https.onCall(async (data, context) => {
  * llega hasta aqui.
  */
 exports.obtenerEmpleadosPublicos = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'obtenerEmpleadosPublicos');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1656,70 +1490,78 @@ exports.obtenerEmpleadosPublicos = functions.https.onCall(async (data, context) 
   return { empleados };
 });
 
-/**
- * 12. Callable: busca un propietario por correo para compartir un vehiculo.
- *
- * Igual que buscarVehiculoPorPlaca, resuelve del lado del servidor lo que
- * 'usuarios' ya no expone al cliente.
- *
- * Lo que el gate de "vehicleId + soy su propietario" SI protege: exige que
- * quien llama tenga una cuenta real con rol Propietario y sea dueno de ALGUN
- * vehiculo, y solo devuelve cuentas con rol 'Propietario' (nunca expone
- * mecanicos/admins por correo).
- *
- * Lo que el gate NO protege (hallazgo Important, revision de la 2a ronda de
- * Fase C): 'vehiculos' create solo exige id_propietario == auth.uid
- * (firestore.rules), asi que cualquier cuenta Propietario puede crearse un
- * vehiculo desechable en un solo write y usarlo para pasar este chequeo. En
- * la practica esta funcion es, para cualquier cuenta Propietario, un oraculo
- * correo -> (uid, nombre_completo) sobre toda la poblacion de propietarios,
- * sin limite de tasa. No es una regresion respecto al estado anterior a la
- * Fase C (antes el cliente podia consultar 'usuarios' por correo
- * directamente), pero SI reabre parcialmente lo que la Tarea 8 buscaba
- * cerrar. Deliberadamente NO se agrega aqui un rate-limiter ad-hoc: el
- * cierre real de este vector depende de App Check (Fase E, Tarea 14 del
- * plan), que verifica que la llamada viene de la app real y no de un script,
- * y es donde corresponde resolverlo sin duplicar infraestructura fragil.
- */
+/** Requests never resolve the target email. The owner delivers the code manually. */
 exports.buscarPropietarioPorCorreo = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  exigirAppCheck(context, 'buscarPropietarioPorCorreo');
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+  await consumirIntentoCompartir(context.auth.uid);
+  const vehicleId = typeof data?.vehicleId === 'string' ? data.vehicleId : '';
+  const correo = typeof data?.correo === 'string' ? data.correo.trim().toLowerCase() : '';
+  if (!vehicleId || vehicleId.includes('/') || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo) || correo.length > 254) {
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid invitation.');
   }
+  const uid = context.auth.uid;
+  const codigoInvitacion = require('crypto').randomBytes(32).toString('hex');
+  const ref = db.collection('solicitudesCompartir').doc(hashInvitacion(codigoInvitacion));
+  await db.runTransaction(async tx => {
+    const vehicle = await tx.get(db.collection('vehiculos').doc(vehicleId));
+    const user = await tx.get(db.collection('usuarios').doc(uid));
+    if (!vehicle.exists || vehicle.data().id_propietario !== uid || !user.exists || user.data().rol !== 'Propietario') {
+      throw new functions.https.HttpsError('permission-denied', 'Owner required.');
+    }
+    tx.set(ref, { vehicleId, emisor: uid, correoHash: hashInvitacion(correo),
+      creado: Date.now(), expira: Date.now() + 86400000, estado: 'pendiente' });
+  });
+  return { estado: 'pendiente', codigoInvitacion };
+});
 
-  const vehicleId = data && data.vehicleId ? String(data.vehicleId) : '';
-  const correo = (data && data.correo ? String(data.correo) : '').trim().toLowerCase();
-  if (!vehicleId || !correo) {
-    throw new functions.https.HttpsError('invalid-argument', 'Debes indicar el vehiculo y el correo.');
+function hashInvitacion(value) {
+  return require('crypto').createHash('sha256').update(value).digest('hex');
+}
+
+// Server-only collection, transaction serializes attempts across instances.
+async function consumirIntentoCompartir(uid) {
+  const ref = db.collection('limitesCompartir').doc(uid);
+  await db.runTransaction(async tx => {
+    const snap = await tx.get(ref);
+    const now = Date.now();
+    const previous = snap.exists ? snap.data() : {};
+    const current = previous.expira > now ? previous : { intentos: 0, expira: now + 3600000 };
+    if (current.intentos >= 10) throw new functions.https.HttpsError('resource-exhausted', 'Try later.');
+    tx.set(ref, { intentos: current.intentos + 1, expira: current.expira });
+  });
+}
+
+exports.aceptarInvitacionVehiculo = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'aceptarInvitacionVehiculo');
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+  await consumirIntentoCompartir(context.auth.uid);
+  const codigo = data?.codigoInvitacion;
+  if (typeof codigo !== 'string' || !/^[a-f0-9]{64}$/.test(codigo)) {
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid invitation.');
   }
-
-  const vehiculoDoc = await db.collection('vehiculos').doc(vehicleId).get();
-  if (!vehiculoDoc.exists) {
-    throw new functions.https.HttpsError('not-found', 'Vehículo no encontrado.');
-  }
-  if (vehiculoDoc.data().id_propietario !== context.auth.uid) {
-    throw new functions.https.HttpsError(
-      'permission-denied',
-      'Solo el propietario del vehículo puede compartirlo.'
-    );
-  }
-
-  const snapshot = await db
-    .collection('usuarios')
-    .where('correo', '==', correo)
-    .limit(1)
-    .get();
-
-  if (snapshot.empty) return null;
-
-  const doc = snapshot.docs[0];
-  const d = doc.data();
-  if (d.rol !== 'Propietario') return null;
-
-  return {
-    uid: doc.id,
-    correo: d.correo || correo,
-    nombre: d.nombre_completo || 'Sin nombre',
-  };
+  const user = await admin.auth().getUser(context.auth.uid);
+  if (!user.emailVerified || !user.email) throw new functions.https.HttpsError('permission-denied', 'Verified email required.');
+  const ref = db.collection('solicitudesCompartir').doc(hashInvitacion(codigo));
+  await db.runTransaction(async tx => {
+    const snap = await tx.get(ref);
+    if (!snap.exists || snap.data().estado !== 'pendiente' || snap.data().expira <= Date.now()) {
+      throw new functions.https.HttpsError('failed-precondition', 'Invitation unavailable.');
+    }
+    const invitation = snap.data();
+    if (invitation.correoHash !== hashInvitacion(user.email.trim().toLowerCase())) {
+      throw new functions.https.HttpsError('permission-denied', 'Recipient required.');
+    }
+    const recipient = await tx.get(db.collection('usuarios').doc(context.auth.uid));
+    const vehicleRef = db.collection('vehiculos').doc(invitation.vehicleId);
+    const vehicle = await tx.get(vehicleRef);
+    if (!recipient.exists || recipient.data().rol !== 'Propietario' || !vehicle.exists || vehicle.data().id_propietario !== invitation.emisor) {
+      throw new functions.https.HttpsError('failed-precondition', 'Invitation unavailable.');
+    }
+    tx.update(vehicleRef, { shared_with: [...new Set([...(vehicle.data().shared_with || []), context.auth.uid])] });
+    tx.update(ref, { estado: 'aceptada' });
+  });
+  return { estado: 'aceptada' };
 });
 
 /**
@@ -1733,6 +1575,7 @@ exports.buscarPropietarioPorCorreo = functions.https.onCall(async (data, context
  * el rol Taller ni reasignar su vinculo a otro taller.
  */
 exports.crearEmpleadoTaller = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'crearEmpleadoTaller');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1905,6 +1748,7 @@ exports.crearEmpleadoTaller = functions.https.onCall(async (data, context) => {
  *    'usuarios'.
  */
 exports.desactivarEmpleadoTaller = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'desactivarEmpleadoTaller');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -1978,12 +1822,6 @@ async function assertSuperUser(uid) {
   }
 }
 
-// Contraseña temporal fija para cuentas creadas manualmente por un
-// Superusuario (decisión de producto: nunca pedirle al Superusuario que
-// escriba/transmita una contraseña específica por usuario). El nuevo
-// usuario debe cambiarla desde "Olvidé mi contraseña" en su primer login.
-const SUPERUSER_TEMP_PASSWORD = 'AutoDoc2026*';
-
 /**
  * Crea una cuenta (Auth + Firestore) en nombre de un Superusuario sin que
  * este pierda su propia sesión: FirebaseAuth.createUserWithEmailAndPassword
@@ -1994,6 +1832,7 @@ const SUPERUSER_TEMP_PASSWORD = 'AutoDoc2026*';
  * Firestore falla, se borra el usuario de Auth para no dejarlo huérfano.
  */
 exports.superUserCreateAccount = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'superUserCreateAccount');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -2016,7 +1855,6 @@ exports.superUserCreateAccount = functions.https.onCall(async (data, context) =>
   try {
     userRecord = await admin.auth().createUser({
       email: correo,
-      password: SUPERUSER_TEMP_PASSWORD,
       displayName: nombreCompleto,
     });
   } catch (err) {
@@ -2026,7 +1864,12 @@ exports.superUserCreateAccount = functions.https.onCall(async (data, context) =>
     throw new functions.https.HttpsError('invalid-argument', err.message);
   }
 
+  let enlaceInvitacion;
   try {
+    enlaceInvitacion = await admin.auth().generatePasswordResetLink(correo);
+    await db.collection('invitacionesCuenta').doc(userRecord.uid).set({
+      uid: userRecord.uid, emisor: context.auth.uid, creado: Date.now(), estado: 'pendiente',
+    });
     await db.collection('usuarios').doc(userRecord.uid).set({
       id_usuario: userRecord.uid,
       nombre_completo: nombreCompleto,
@@ -2050,7 +1893,40 @@ exports.superUserCreateAccount = functions.https.onCall(async (data, context) =>
     );
   }
 
-  return { idUsuario: userRecord.uid, passwordTemporal: SUPERUSER_TEMP_PASSWORD };
+  return { idUsuario: userRecord.uid, estado: 'pendiente', enlaceInvitacion };
+});
+
+// Password changes invalidate outstanding Auth password-reset codes. Never log the credential.
+exports.superUserRegenerateInvitation = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'superUserRegenerateInvitation');
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+  await assertSuperUser(context.auth.uid);
+  const uid = typeof data?.uid === 'string' ? data.uid : '';
+  if (!uid || uid.includes('/')) throw new functions.https.HttpsError('invalid-argument', 'Invalid uid.');
+  const account = await admin.auth().getUser(uid);
+  const profile = await db.collection('usuarios').doc(uid).get();
+  const invitationRef = db.collection('invitacionesCuenta').doc(uid);
+  const invitation = await invitationRef.get();
+  if (!invitation.exists || !profile.exists || profile.data().rol === 'Superusuario' || account.metadata.lastSignInTime) {
+    throw new functions.https.HttpsError('failed-precondition', 'Account already activated or unavailable.');
+  }
+  await db.runTransaction(async tx => {
+    const current = await tx.get(invitationRef);
+    if (!current.exists || current.data().estado === 'generando') {
+      throw new functions.https.HttpsError('aborted', 'Invitation generation in progress.');
+    }
+    tx.update(invitationRef, { estado: 'generando' });
+  });
+  try {
+    await admin.auth().updateUser(uid, { password: require('crypto').randomBytes(32).toString('base64url') });
+    await admin.auth().revokeRefreshTokens(uid);
+    const enlaceInvitacion = await admin.auth().generatePasswordResetLink(account.email);
+    await invitationRef.update({ estado: 'pendiente', emisor: context.auth.uid, creado: Date.now() });
+    return { estado: 'pendiente', enlaceInvitacion };
+  } catch (_) {
+    await invitationRef.update({ estado: 'fallida' });
+    throw new functions.https.HttpsError('internal', 'Invitation could not be generated.');
+  }
 });
 
 /**
@@ -2062,6 +1938,7 @@ exports.superUserCreateAccount = functions.https.onCall(async (data, context) =>
  * las demás cuentas de máximo privilegio).
  */
 exports.superUserDeleteAccount = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'superUserDeleteAccount');
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
   }
@@ -2096,3 +1973,15 @@ exports.superUserDeleteAccount = functions.https.onCall(async (data, context) =>
 });
 
 exports.publishTallerProfile = require('./src/publishTallerProfile').publishTallerProfile;
+
+// Buzon de los formularios de la landing (UX-01). La landing es un export
+// estatico y no tiene servidor: este es su unico destino real. Ver
+// src/solicitudesLanding.js para el porque del contrato y del limitador.
+exports.recibirSolicitudLanding = functions
+  .runWith({ maxInstances: 10, memory: '128MB', timeoutSeconds: 20 })
+  .https.onRequest(
+  require('./src/solicitudesLanding').crearManejador({
+    db,
+    timestamp: () => FieldValue.serverTimestamp(),
+  })
+);

@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:autodoc/features/splash/presentation/pages/splash_screen.dart';
 import 'package:autodoc/features/onboarding/presentation/pages/onboarding_screen.dart';
 import 'package:autodoc/features/auth/presentation/pages/auth_screen.dart';
+import 'package:autodoc/features/auth/presentation/pages/email_verification_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/dashboard_screen.dart';
 import 'package:autodoc/features/profile/presentation/pages/profile_setup_screen.dart';
 import 'package:autodoc/features/profile/presentation/pages/user_profile_screen.dart';
@@ -52,6 +53,7 @@ import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/notifications_screen.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/widgets/missing_argument_screen.dart';
+import 'package:autodoc/core/widgets/not_found_screen.dart';
 
 CustomTransitionPage<T> buildPageWithFadeThrough<T>({
   required BuildContext context,
@@ -72,7 +74,9 @@ CustomTransitionPage<T> buildPageWithFadeThrough<T>({
 }
 
 /// Routes that don't require authentication
+// Recovery is a dialog on /login; terms open an external public URL.
 const _publicRoutes = <String>{'/', '/login', '/register', '/onboarding'};
+const _unverifiedRoutes = <String>{'/verify_email'};
 
 /// Routes exclusively for Propietario role
 const _ownerRoutes = <String>{
@@ -226,6 +230,7 @@ bool _matchesRouteSet(String path, Set<String> routes) {
 /// directamente.
 String? resolveRedirect({
   required bool isLoggedIn,
+  required bool emailVerified,
   required UserModel? userData,
   required bool isLoading,
   required bool hasAttemptedFetch,
@@ -237,6 +242,12 @@ String? resolveRedirect({
   final isProfileLoading = isLoading || (isLoggedIn && !hasAttemptedFetch);
 
   if (!isLoggedIn && !isPublicRoute) return '/login';
+
+  // This check precedes profile loading and every role/onboarding guard.
+  // Never trust a provider name or a profile field as proof of ownership.
+  if (isLoggedIn && !emailVerified) {
+    return _unverifiedRoutes.contains(currentPath) ? null : '/verify_email';
+  }
 
   // Mientras el perfil se carga no se puede decidir el rol, asi que no se
   // permite montar ninguna ruta protegida: se retiene en el splash. Devolver
@@ -256,7 +267,10 @@ String? resolveRedirect({
     return '/?redirect=${Uri.encodeComponent(currentPath)}';
   }
 
-  if (isLoggedIn && (currentPath == '/login' || currentPath == '/register')) {
+  if (isLoggedIn &&
+      (currentPath == '/login' ||
+          currentPath == '/register' ||
+          currentPath == '/verify_email')) {
     if (userData == null) {
       if (profileError != null) return null;
       return '/profile_setup';
@@ -348,6 +362,7 @@ String? appRouterRedirect(
 
   return resolveRedirect(
     isLoggedIn: authProvider.isLoggedIn,
+    emailVerified: authProvider.user?.emailVerified ?? false,
     userData: userData,
     isLoading: profileProvider.isLoading,
     hasAttemptedFetch: profileProvider.hasAttemptedFetchFor(currentUid),
@@ -369,8 +384,12 @@ GoRouter createAppRouter(
     redirect: (BuildContext context, GoRouterState state) =>
         appRouterRedirect(authProvider, profileProvider, context, state),
     errorBuilder: (context, state) =>
-        const Scaffold(body: Center(child: Text('Página no encontrada (404)'))),
+        NotFoundScreen(attemptedPath: state.uri.path),
     routes: [
+      GoRoute(
+        path: '/verify_email',
+        builder: (context, state) => const EmailVerificationScreen(),
+      ),
       GoRoute(
         path: '/',
         pageBuilder: (context, state) => buildPageWithFadeThrough(
@@ -702,6 +721,18 @@ GoRouter createAppRouter(
       ),
       GoRoute(
         path: '/task_config',
+        // `extra` no viaja en la URL: no sobrevive a una recarga del navegador
+        // ni existe al entrar por enlace directo. El cast de abajo era
+        // incondicional, asi que pulsar F5 en esta pantalla la reventaba con un
+        // TypeError y dejaba a la persona sin salida — el mismo callejon que
+        // UX-02 cerro para el error de arranque y para el 404.
+        //
+        // Sin la tarea no hay nada que configurar, pero si donde elegir otra:
+        // /alerts es justo la pantalla que empuja esta ruta
+        // (alerts_screen.dart:618). Lo vigila
+        // `test/core/router/task_routes_sin_extra_test.dart`.
+        redirect: (context, state) =>
+            state.extra is MaintenanceTask ? null : '/alerts',
         pageBuilder: (context, state) {
           final task = state.extra as MaintenanceTask;
           return buildPageWithFadeThrough(
@@ -713,6 +744,17 @@ GoRouter createAppRouter(
       ),
       GoRoute(
         path: '/task_complete',
+        // Mismo motivo que /task_config, y ademas hay que mirar DENTRO del
+        // mapa: llega con `extra` puesto pero sin sus dos claves y el cast
+        // revienta igual, solo que una linea mas abajo.
+        redirect: (context, state) {
+          final extra = state.extra;
+          if (extra is! Map<String, dynamic>) return '/alerts';
+          if (extra['task'] is! MaintenanceTask || extra['currentKm'] is! int) {
+            return '/alerts';
+          }
+          return null;
+        },
         pageBuilder: (context, state) {
           final data = state.extra as Map<String, dynamic>;
           return buildPageWithFadeThrough(

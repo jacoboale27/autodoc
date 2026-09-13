@@ -21,9 +21,12 @@ const {
 
 function fakeDb(docs = {}) {
   const escrituras = [];
+  /** Claves leidas, en orden. Deja afirmar cuantas lecturas cuesta algo. */
+  const lecturas = [];
   return {
     docs,
     escrituras,
+    lecturas,
     collection(coleccion) {
       return {
         doc(id) {
@@ -31,6 +34,7 @@ function fakeDb(docs = {}) {
           return {
             id,
             async get() {
+              lecturas.push(clave);
               return {
                 exists: Object.prototype.hasOwnProperty.call(docs, clave),
                 data: () => docs[clave],
@@ -60,6 +64,45 @@ describe('sincronizarReservaAlCotizar / reservaPerteneceACotizacion', () => {
       ),
       true
     );
+  });
+
+  it('con el MISMO id_taller no lee `usuarios` ni una vez', async () => {
+    // Residual 7.8 de FUNC-02. `resolverIdTallerPropietario` existe para el
+    // caso en que uno de los dos lados traiga el uid de un EMPLEADO y haya
+    // que subir a su taller dueño. Si las dos cadenas ya son identicas, la
+    // resolucion no puede cambiar el resultado: resolver es una funcion del
+    // uid, asi que resolver dos veces el mismo uid da lo mismo. Se hacian dos
+    // lecturas de `usuarios` en cada cotizacion aceptada o rechazada para
+    // confirmar una igualdad que ya se tenia delante.
+    const db = fakeDb();
+
+    assert.strictEqual(
+      await reservaPerteneceACotizacion(
+        db,
+        { id_propietario: 'cli1', id_taller: 'emp1' },
+        { id_propietario: 'cli1', id_taller: 'emp1' }
+      ),
+      true
+    );
+    assert.deepStrictEqual(db.lecturas, []);
+  });
+
+  it('cuando los talleres difieren, las dos resoluciones van en paralelo', async () => {
+    // Iban en serie: la segunda esperaba a la primera sin necesitarla.
+    const db = fakeDb({
+      'usuarios/emp1': { id_taller_propietario: 't1' },
+      'usuarios/t1': {},
+    });
+
+    assert.strictEqual(
+      await reservaPerteneceACotizacion(
+        db,
+        { id_propietario: 'cli1', id_taller: 'emp1' },
+        { id_propietario: 'cli1', id_taller: 't1' }
+      ),
+      true
+    );
+    assert.strictEqual(db.lecturas.length, 2);
   });
 
   it('NO coincide si el propietario difiere (ataque: reserva de otro cliente)', async () => {

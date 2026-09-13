@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:autodoc/features/mechanic/presentation/widgets/aviso_tablero_truncado.dart';
 import 'package:autodoc/core/models/reparacion_model.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
@@ -11,6 +12,7 @@ import 'package:autodoc/core/widgets/app_empty_state.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/reparacion_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/reparacion_card.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 /// Etiquetas visibles de los estados del tablero, en el mismo orden que
 /// `estadosReparacion`. Pública porque los tests y `ReparacionCard`
@@ -62,12 +64,29 @@ class _ReparacionesKanbanScreenState extends State<ReparacionesKanbanScreen> {
               final windowClass = AppBreakpoints.fromWidth(
                 constraints.maxWidth,
               );
-              return windowClass.isAtLeastExpanded
+              final tablero = windowClass.isAtLeastExpanded
                   ? _ColumnsBoard(
                       provider: provider,
                       available: constraints.maxWidth,
                     )
                   : _TabsBoard(provider: provider);
+              // El stream va acotado (ver `watchReparacionesActivas`): si se
+              // llegó al tope hay tickets vivos que no están en ninguna
+              // columna, y un tablero que se lo calla dice que esos coches no
+              // existen.
+              if (!provider.tableroTruncado) return tablero;
+              return Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.base,
+                ),
+                child: Column(
+                  children: [
+                    const SizedBox(height: AppSpacing.md),
+                    const AvisoTableroTruncado(),
+                    Expanded(child: tablero),
+                  ],
+                ),
+              );
             },
           );
         },
@@ -223,7 +242,10 @@ class _EstadoColumn extends StatelessWidget {
       await provider.cambiarEstado(idReparacion, siguienteEstado);
     } catch (e) {
       if (context.mounted) {
-        UiUtils.showErrorSnackbar(context, 'No se pudo avanzar el ticket: $e');
+        UiUtils.showErrorSnackbar(
+          context,
+          mensajeSeguroDeError(e, accion: 'No se pudo avanzar el ticket'),
+        );
       }
     }
   }

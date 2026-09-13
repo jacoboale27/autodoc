@@ -10,8 +10,13 @@ import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/reviews/data/services/review_service.dart';
 import 'package:autodoc/core/models/review_model.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
-const int _maxFotosResenia = 3;
+/// Sustituye al `ImagePicker()` real. Solo lo usan los tests: no hay forma de
+/// atravesar el canal de plataforma de `image_picker` en un widget test, así
+/// que la selección se saca a un parámetro, igual que
+/// `SelectorDeArchivo` en la pantalla de verificación del taller.
+typedef SelectorDeFotoResenia = Future<XFile?> Function();
 
 /// Muestra un bottom sheet para calificar un taller/mecánico.
 ///
@@ -22,6 +27,8 @@ Future<bool?> showReviewBottomSheet(
   required String tallerId,
   required String tallerNombre,
   required String idServicio,
+  ReviewService? reviewService,
+  SelectorDeFotoResenia? selectorDeFoto,
 }) {
   return showModalBottomSheet<bool>(
     context: context,
@@ -33,6 +40,8 @@ Future<bool?> showReviewBottomSheet(
       tallerId: tallerId,
       tallerNombre: tallerNombre,
       idServicio: idServicio,
+      reviewService: reviewService,
+      selectorDeFoto: selectorDeFoto,
     ),
   );
 }
@@ -41,11 +50,15 @@ class _ReviewSheetContent extends StatefulWidget {
   final String tallerId;
   final String tallerNombre;
   final String idServicio;
+  final ReviewService? reviewService;
+  final SelectorDeFotoResenia? selectorDeFoto;
 
   const _ReviewSheetContent({
     required this.tallerId,
     required this.tallerNombre,
     required this.idServicio,
+    this.reviewService,
+    this.selectorDeFoto,
   });
 
   @override
@@ -53,13 +66,22 @@ class _ReviewSheetContent extends StatefulWidget {
 }
 
 class _ReviewSheetContentState extends State<_ReviewSheetContent> {
-  final _reviewService = ReviewService();
+  late final ReviewService _reviewService =
+      widget.reviewService ?? ReviewService();
   final _comentarioController = TextEditingController();
   int _estrellas = 5;
   bool _isSubmitting = false;
   bool _checking = true;
   bool _canEdit = true;
+
+  /// Fotos que ya están publicadas y el usuario decide mantener. Quitar una de
+  /// aquí es lo que le pide al servicio borrarla de Storage.
+  final List<String> _fotosPublicadas = [];
+
+  /// Fotos elegidas en esta sesión y aún no subidas.
   final List<XFile> _fotosSeleccionadas = [];
+
+  int get _totalFotos => _fotosPublicadas.length + _fotosSeleccionadas.length;
 
   ReviewModel? _existingReview;
 
@@ -86,6 +108,9 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
           if (existing != null) {
             _estrellas = existing.estrellas;
             _comentarioController.text = existing.comentario ?? '';
+            _fotosPublicadas
+              ..clear()
+              ..addAll(existing.fotos);
             if (DateTime.now().difference(existing.fechaResenia).inDays > 7) {
               _canEdit = false;
             }
@@ -98,16 +123,18 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
         setState(() => _checking = false);
         UiUtils.showErrorSnackbar(
           context,
-          'No se pudo verificar tu reseña: ${e.toString().replaceFirst('StateError: ', '')}',
+          mensajeDeReglaDeNegocio(e, accion: 'No se pudo verificar tu reseña'),
         );
       }
     }
   }
 
   Future<void> _pickFoto() async {
-    if (_fotosSeleccionadas.length >= _maxFotosResenia) return;
-    final picker = ImagePicker();
-    final XFile? foto = await picker.pickImage(source: ImageSource.gallery);
+    if (_totalFotos >= ReviewService.maxFotos) return;
+    final seleccionar =
+        widget.selectorDeFoto ??
+        () => ImagePicker().pickImage(source: ImageSource.gallery);
+    final XFile? foto = await seleccionar();
     if (foto != null && mounted) {
       setState(() => _fotosSeleccionadas.add(foto));
     }
@@ -115,6 +142,10 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
 
   void _removeFoto(int index) {
     setState(() => _fotosSeleccionadas.removeAt(index));
+  }
+
+  void _removeFotoPublicada(String url) {
+    setState(() => _fotosPublicadas.remove(url));
   }
 
   @override
@@ -131,11 +162,16 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
     setState(() => _isSubmitting = true);
     try {
       if (_existingReview != null) {
+        // Las fotos viajan explicitamente: `fotosConservadas` es la lista
+        // completa que debe quedar de las ya publicadas, asi que lo que el
+        // usuario quito aqui es lo que el servicio borrara de Storage.
         await _reviewService.updateReview(
           reviewId: _existingReview!.idResenia,
           tallerId: widget.tallerId,
           estrellas: _estrellas,
           comentario: _comentarioController.text,
+          fotosConservadas: List<String>.from(_fotosPublicadas),
+          fotosNuevas: List<XFile>.from(_fotosSeleccionadas),
         );
       } else {
         List<String> fotosUrls = const [];
@@ -163,7 +199,7 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
       if (mounted) {
         UiUtils.showErrorSnackbar(
           context,
-          e.toString().replaceFirst('StateError: ', ''),
+          mensajeDeReglaDeNegocio(e, accion: 'No se pudo publicar tu reseña'),
         );
       }
     } finally {
@@ -227,100 +263,146 @@ class _ReviewSheetContentState extends State<_ReviewSheetContent> {
               ),
             ),
             const SizedBox(height: 16),
-            // El picker de fotos solo aplica al crear una reseña nueva:
-            // _submit() en modo edición (_existingReview != null) llama a
-            // updateReview(), que nunca sube ni envía _fotosSeleccionadas.
-            // Mostrarlo también en edición dejaría al usuario seleccionar
-            // fotos que se descartan en silencio al guardar.
-            if (_existingReview == null)
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (int i = 0; i < _fotosSeleccionadas.length; i++)
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: FutureBuilder<Uint8List>(
-                            future: _fotosSeleccionadas[i].readAsBytes(),
-                            builder: (context, snapshot) {
-                              if (!snapshot.hasData) {
-                                return Container(
-                                  width: 64,
-                                  height: 64,
-                                  color: colors.textSecondary.withValues(
-                                    alpha: 0.1,
-                                  ),
-                                );
-                              }
-                              return Image.memory(
-                                snapshot.data!,
-                                width: 64,
-                                height: 64,
-                                fit: BoxFit.cover,
-                              );
-                            },
-                          ),
-                        ),
-                        Positioned(
-                          top: -8,
-                          right: -8,
-                          child: GestureDetector(
-                            onTap: () => _removeFoto(i),
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
-                                color: colors.error,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.close,
-                                size: 14,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  if (_fotosSeleccionadas.length < _maxFotosResenia)
-                    InkWell(
-                      onTap: _pickFoto,
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: colors.textSecondary.withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.add_a_photo_outlined,
-                              color: colors.textSecondary,
+            // El selector se muestra también al editar: desde FUNC-01,
+            // updateReview() recibe la lista de fotos conservadas y las
+            // nuevas, así que ya no se descarta nada en silencio.
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final url in _fotosPublicadas)
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          url,
+                          key: ValueKey('foto-existente-$url'),
+                          width: 64,
+                          height: 64,
+                          fit: BoxFit.cover,
+                          // Una URL caducada o un objeto ya borrado no debe
+                          // tumbar el sheet entero: se degrada a un hueco.
+                          errorBuilder: (context, _, _) => Container(
+                            width: 64,
+                            height: 64,
+                            color: colors.textSecondary.withValues(alpha: 0.1),
+                            child: Icon(
+                              Icons.broken_image_outlined,
                               size: 20,
+                              color: colors.textSecondary,
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Añadir foto',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: colors.textSecondary,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
+                          ),
                         ),
                       ),
+                      Positioned(
+                        top: -8,
+                        right: -8,
+                        child: GestureDetector(
+                          key: ValueKey('quitar-$url'),
+                          onTap: () => _removeFotoPublicada(url),
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: colors.error,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.close,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                for (int i = 0; i < _fotosSeleccionadas.length; i++)
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: FutureBuilder<Uint8List>(
+                          future: _fotosSeleccionadas[i].readAsBytes(),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) {
+                              return Container(
+                                width: 64,
+                                height: 64,
+                                color: colors.textSecondary.withValues(
+                                  alpha: 0.1,
+                                ),
+                              );
+                            }
+                            return Image.memory(
+                              snapshot.data!,
+                              width: 64,
+                              height: 64,
+                              fit: BoxFit.cover,
+                            );
+                          },
+                        ),
+                      ),
+                      Positioned(
+                        top: -8,
+                        right: -8,
+                        child: GestureDetector(
+                          onTap: () => _removeFoto(i),
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: colors.error,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.close,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                if (_totalFotos < ReviewService.maxFotos)
+                  InkWell(
+                    key: const ValueKey('anadir-foto'),
+                    onTap: _pickFoto,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: colors.textSecondary.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.add_a_photo_outlined,
+                            color: colors.textSecondary,
+                            size: 20,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Añadir foto',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: colors.textSecondary,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
-                ],
-              ),
+                  ),
+              ],
+            ),
             const SizedBox(height: 8),
             TextField(
               controller: _comentarioController,

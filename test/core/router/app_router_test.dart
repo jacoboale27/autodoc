@@ -1,3 +1,4 @@
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart' as firebase_mocks;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +8,8 @@ import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/widgets/missing_argument_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:autodoc/l10n/app_localizations.dart';
+import 'package:autodoc/core/widgets/not_found_screen.dart';
 
 class FakeAuthSessionProvider extends ChangeNotifier
     implements AuthSessionProvider {
@@ -24,7 +27,9 @@ class FakeAuthSessionProvider extends ChangeNotifier
   String get currentUid => _currentUid;
 
   @override
-  User? get user => null;
+  User? get user => isLoggedIn
+      ? firebase_mocks.MockUser(uid: currentUid, isEmailVerified: true)
+      : null;
 
   @override
   String? get error => null;
@@ -215,9 +220,15 @@ void main() {
       initialLocation: '/non_existent_route',
     );
 
-    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpWidget(
+      MaterialApp.router(
+        routerConfig: router,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
+    );
 
-    expect(find.text('Página no encontrada (404)'), findsOneWidget);
+    expect(find.byType(NotFoundScreen), findsOneWidget);
   });
 
   group('resolveRouteChild — guarda de id ausente/vacío (C-03)', () {
@@ -302,11 +313,17 @@ void main() {
         initialLocation: '/vehicle_profile/',
       );
 
-      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpWidget(
+        MaterialApp.router(
+          routerConfig: router,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.byType(Text), findsWidgets);
-      expect(find.text('Página no encontrada (404)'), findsOneWidget);
+      expect(find.byType(NotFoundScreen), findsOneWidget);
     },
   );
 }

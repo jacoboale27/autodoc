@@ -31,4 +31,31 @@ function esMigracion(data) {
   return !!(data && data[CAMPO_MIGRACION] === true);
 }
 
-module.exports = { CAMPO_MIGRACION, esMigracion };
+/**
+ * ¿Este conjunto de cambios necesita llevar el centinela?
+ *
+ * Solo lo necesita el cambio que puede disparar un trigger de `reparaciones`,
+ * y los dos que hay salen por su cuenta cuando el estado no se mueve:
+ * `notifyOnReparacionStatusChange` compara `before.estado === after.estado` y
+ * `debeRevocarVinculo` devuelve `false` si no hubo transicion.
+ *
+ * Que importe es consecuencia de que el centinela sea PEGAJOSO: `esMigracion`
+ * mira el documento resultante, no el delta, y nadie lo borra nunca. Marcar un
+ * ticket VIVO no silencia una escritura, lo silencia para siempre — deja de
+ * notificarle al propietario cada transicion futura y deja de revocar el
+ * vinculo al entregarlo. `backfill_entregado.js` lo estampaba en cada cambio,
+ * y su pasada de `abierto` toca la coleccion entera: lo encontro el gate de
+ * revision de la tanda de gaps 02.
+ *
+ * @param {object} cambio campos que la escritura va a aplicar
+ * @returns {boolean}
+ */
+function cambioNecesitaCentinela(cambio) {
+  if (!cambio) return false;
+  return (
+    Object.prototype.hasOwnProperty.call(cambio, 'estado') ||
+    Object.prototype.hasOwnProperty.call(cambio, 'historial_estados')
+  );
+}
+
+module.exports = { CAMPO_MIGRACION, esMigracion, cambioNecesitaCentinela };

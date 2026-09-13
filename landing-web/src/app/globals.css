@@ -40,3 +40,32 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
+
+/* UX-03: `prefers-reduced-motion`.
+ *
+ * Esto cubre lo que framer-motion no ve: las transiciones y animaciones
+ * declaradas en clases de Tailwind (`transition-all`, `animate-spin`,
+ * `transition-colors`), repartidas por toda la landing.
+ *
+ * No se ponen a `0s` sino a un tiempo inapreciable: una duracion de cero
+ * impide que `transitionend` llegue a dispararse, y hay codigo —propio y de
+ * terceros— que espera ese evento para limpiar estado. `0.01ms` conserva el
+ * evento y elimina el movimiento.
+ *
+ * `scroll-behavior: auto` anula tambien el desplazamiento suave, que es
+ * movimiento aunque no lo parezca: el hero lleva a la seccion de talleres con
+ * `scrollIntoView({ behavior: "smooth" })`. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  html {
+    scroll-behavior: auto !important;
+  }
+}

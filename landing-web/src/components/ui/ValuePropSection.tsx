@@ -2,18 +2,22 @@
 
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
+import { aparicion, useMovimientoReducido } from "@/lib/movimiento";
 
 export default function ValuePropSection() {
   const t = useTranslations();
+  const reducido = useMovimientoReducido();
 
   return (
     <section id="owners" className="relative z-10 w-full bg-white dark:bg-[#0f172a] py-24 transition-colors duration-300">
       <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-16 px-6 lg:flex-row">
         {/* Text Content */}
         <motion.div
-          initial={{ opacity: 0, x: -50 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
+          {...aparicion(reducido, {
+            initial: { opacity: 0, x: -50 },
+            whileInView: { opacity: 1, x: 0 },
+            viewport: { once: true, margin: "-100px" },
+          })}
           transition={{ duration: 0.8 }}
           className="flex-1"
         >
@@ -42,14 +46,16 @@ export default function ValuePropSection() {
 
         {/* Visual Content */}
         <motion.div
-          initial={{ opacity: 0, x: 50 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
+          {...aparicion(reducido, {
+            initial: { opacity: 0, x: 50 },
+            whileInView: { opacity: 1, x: 0 },
+            viewport: { once: true, margin: "-100px" },
+          })}
           transition={{ duration: 0.8, delay: 0.2 }}
           className="relative flex-1"
         >
           <div className="relative h-[400px] w-full overflow-hidden rounded-[2.5rem] border border-slate-200 dark:border-slate-800 lg:h-[600px] shadow-2xl dark:shadow-none">
-            {/* The unsplash image from Flutter value_prop_section.dart */}
+            {/* Decorativa: la propuesta de valor esta descrita en el titulo y texto contiguos. */}
             <div 
               className="absolute inset-0 bg-cover bg-center"
               style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1649769069590-268b0b994462)' }}

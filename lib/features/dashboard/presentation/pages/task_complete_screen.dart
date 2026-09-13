@@ -21,6 +21,7 @@ import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_scaffold.dart';
 import 'package:autodoc/core/widgets/app_section_header.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class TaskCompleteScreen extends StatefulWidget {
   final MaintenanceTask task;
@@ -481,7 +482,7 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
       }
     } catch (e) {
       if (mounted) {
-        UiUtils.showErrorSnackbar(context, 'Error: $e');
+        UiUtils.showErrorSnackbar(context, mensajeSeguroDeError(e));
         setState(() => _isLoading = false);
       }
     }

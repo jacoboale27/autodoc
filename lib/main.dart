@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'core/config/firebase_emulators.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
@@ -90,7 +91,40 @@ Future<void> startPushNotifications({PushNotificationService? push}) {
   return Future<void>.value();
 }
 
-void main() async {
+/// Firebase Core startup, extracted so the failure screen's retry can run the
+/// exact same code path instead of a near-copy of it.
+Future<void> _startFirebaseCore() async {
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    if (e.toString().contains('duplicate-app')) {
+      debugPrint('Firebase ya estaba inicializado (posible Hot Restart).');
+      Firebase.app(); // Asegurarnos de que Dart recupere la instancia
+    } else {
+      rethrow;
+    }
+  }
+}
+
+/// UX-02: what the retry button on [FirebaseInitializationErrorApp] runs.
+///
+/// Probes Firebase first so a still-broken connection reports back as `false`
+/// and the user gets told the attempt failed. Only once Core is up does it
+/// re-run [main], which completes the rest of startup and calls `runApp` with
+/// the real app, replacing the error screen.
+Future<bool> _retryStartup() async {
+  final probe = await FirebaseBootstrap.initialize(_startFirebaseCore);
+  if (!probe.isReady) {
+    debugPrint("=== [AutoDoc Init] Reintento fallido: ${probe.error} ===");
+    return false;
+  }
+  await main();
+  return true;
+}
+
+Future<void> main() async {
   usePathUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -111,30 +145,32 @@ void main() async {
 
   // 1. Inicializar Firebase
   debugPrint("=== [AutoDoc Init] Inicializando Firebase ===");
-  final firebaseResult = await FirebaseBootstrap.initialize(() async {
-    try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-    } catch (e) {
-      if (e.toString().contains('duplicate-app')) {
-        debugPrint('Firebase ya estaba inicializado (posible Hot Restart).');
-        Firebase.app(); // Asegurarnos de que Dart recupere la instancia
-      } else {
-        rethrow;
-      }
-    }
-  });
+  final firebaseResult = await FirebaseBootstrap.initialize(_startFirebaseCore);
   if (!firebaseResult.isReady) {
     debugPrint(
       "=== [AutoDoc Init] ERROR al inicializar Firebase: ${firebaseResult.error} ===",
     );
-    runApp(const FirebaseInitializationErrorApp());
+    runApp(const FirebaseInitializationErrorApp(onRetry: _retryStartup));
     return;
   }
   debugPrint("=== [AutoDoc Init] Firebase inicializado con éxito ===");
 
-  if (kIsWeb && AppSecrets.recaptchaSiteKey.isEmpty) {
+  // 1b. Emuladores locales, si el build lo pidió y lo permite. Va aquí, entre
+  // initializeApp y la primera operación de cualquier SDK: redirigir después
+  // de la primera lectura no tiene efecto y deja la app medio conectada a
+  // producción. No hace nada en un build de release (ver firebase_emulators).
+  await conectarEmuladoresFirebase();
+
+  if (usarEmuladoresFirebase) {
+    // App Check contra emuladores no aporta nada y sí estorba: el provider de
+    // reCAPTCHA Enterprise necesita una site key real y un dominio registrado,
+    // y sin eso no resuelve su token, dejando colgada la primera llamada de
+    // Auth hasta que expira como network-request-failed. Es el mismo modo de
+    // fallo que ya documenta la rama de abajo, pero garantizado.
+    debugPrint(
+      "=== [AutoDoc Init] App Check omitido: corriendo contra emuladores ===",
+    );
+  } else if (kIsWeb && AppSecrets.recaptchaSiteKey.isEmpty) {
     // Sin site key, el provider de reCAPTCHA Enterprise nunca resuelve su
     // token y cualquier llamada a Firebase Auth se queda colgada hasta
     // expirar como network-request-failed. Mejor omitir la activación y

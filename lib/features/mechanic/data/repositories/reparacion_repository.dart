@@ -13,26 +13,6 @@ class ReparacionRepository {
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _functions = functions ?? FirebaseFunctions.instance;
 
-  /// Igual que [iniciarReparacion]/[buscarReparacionActiva] combinados, pero
-  /// vía el callable `iniciarReparacionPorVehiculo` en vez de escribir
-  /// directo a Firestore. Se usa cuando el vehículo viene de "Buscar
-  /// Vehículo" (búsqueda por placa): `buscarVehiculoPorPlaca` no devuelve
-  /// `id_propietario` a propósito (para no exponer al dueño a cualquier
-  /// mecánico que busque una placa, ver ese callable), así que el cliente no
-  /// tiene ese dato para satisfacer la regla de creación de `reparaciones` —
-  /// el callable lo resuelve del lado servidor.
-  @Deprecated('El ticket lo crea onCotizacionAceptada')
-  Future<String> iniciarOReutilizarPorVehiculo({
-    required String idVehiculo,
-    required String idTaller,
-  }) async {
-    final result = await _functions
-        .httpsCallable('iniciarReparacionPorVehiculo')
-        .call({'id_vehiculo': idVehiculo, 'id_taller': idTaller});
-    final data = result.data as Map;
-    return data['id_reparacion'] as String;
-  }
-
   /// Cuántos tickets se traen para elegir el vigente. Un vehículo+taller
   /// legítimo acumula uno por visita, así que 20 cubre de sobra el historial
   /// de un cliente recurrente sin dejar la consulta sin tope.
@@ -54,11 +34,11 @@ class ReparacionRepository {
   /// el coche.
   ///
   /// Se prefiere el ticket ABIERTO más reciente; si todos están cerrados se
-  /// devuelve el más reciente, para no cambiar el comportamiento de los
-  /// llamadores que sí quieren "cualquier ticket existente" (los deprecados,
-  /// y la lista de Mis Servicios, donde un ticket ya entregado sigue siendo
-  /// tocable). El filtro de `cancelado` vive en
-  /// `ReparacionProvider.buscarReparacionActiva`, como hasta ahora.
+  /// devuelve el más reciente, para no cambiar el comportamiento del llamador
+  /// que sí quiere "cualquier ticket existente": la lista de Mis Servicios,
+  /// donde un ticket ya entregado sigue siendo tocable. El filtro de
+  /// `cancelado` vive en `ReparacionProvider.buscarReparacionActiva`, que es
+  /// el único que decide si se puede abrir la pantalla de servicio.
   ///
   /// Se ordena en memoria y no con `orderBy`: añadirlo a una consulta que ya
   /// tiene dos igualdades exige un índice compuesto nuevo, y el tope de
@@ -115,39 +95,6 @@ class ReparacionRepository {
         .get();
     if (!snap.exists || snap.data() == null) return null;
     return ReparacionModel.fromMap(snap.data()!, snap.id);
-  }
-
-  /// Crea un ticket desde el cliente. **Ya no es alcanzable en producción**:
-  /// desde A4b `firestore.rules` cierra `allow create` en `reparaciones` y el
-  /// único creador es la Cloud Function `onCotizacionAceptada`. Se conserva
-  /// porque hay tickets en producción abiertos por esta vía y porque los
-  /// tests la siguen usando para sembrar datos.
-  @Deprecated('El ticket lo crea onCotizacionAceptada')
-  Future<String> iniciarReparacion({
-    required String idVehiculo,
-    required String idTaller,
-    required String idPropietario,
-    required String placa,
-  }) async {
-    final ahora = DateTime.now();
-    final docRef = _firestore
-        .collection(FirestoreCollections.reparaciones)
-        .doc();
-    final model = ReparacionModel(
-      idReparacion: docRef.id,
-      idVehiculo: idVehiculo,
-      idTaller: idTaller,
-      idPropietario: idPropietario,
-      placa: placa,
-      estado: 'recibido',
-      historialEstados: [
-        {'estado': 'recibido', 'timestamp': ahora},
-      ],
-      fechaCreacion: ahora,
-      fechaActualizacion: ahora,
-    );
-    await docRef.set(model.toMap());
-    return docRef.id;
   }
 
   /// Marca que el vehículo llegó físicamente al taller: transición
@@ -264,6 +211,11 @@ class ReparacionRepository {
 
       tx.update(docRef, {
         'estado': nuevoEstado,
+        // Denormalizado para que el tablero pregunte por una igualdad (gap
+        // 9.1). Va SIEMPRE junto al estado y derivado de él: `firestore.rules`
+        // exige que el documento resultante sea coherente, así que un update
+        // que mueva `estado` sin mover esto se deniega.
+        'abierto': ticketAbierto(nuevoEstado),
         'historial_estados': historial,
         'fecha_actualizacion': Timestamp.fromDate(ahora),
       });
@@ -279,19 +231,48 @@ class ReparacionRepository {
   /// tickets cancelados y todos los ya entregados, crecimiento sin techo, y
   /// pagando lecturas por documentos que ninguna de las dos pantallas pinta.
   ///
-  /// Es `whereIn` sobre [estadosReparacion] y no `whereNotIn` sobre
-  /// [estadosReparacionCerrados] a propósito: `whereNotIn` **excluye los
-  /// documentos que no tienen el campo**, así que los tickets anteriores a
-  /// A4b (sin `estado`, nacidos en `recibido`) desaparecerían del tablero en
-  /// silencio. Con `whereIn` esos tickets también quedan fuera, pero eso es
-  /// justo lo que el backfill de `functions/backfill_entregado.js`
-  /// arregla escribiéndoles `estado: 'recibido'` — hay que correrlo ANTES de
-  /// desplegar esta versión.
+  /// El filtro es la **igualdad** `abierto == true`, y no el `whereIn` sobre
+  /// [estadosReparacion] que tuvo hasta el gap 9.1. La diferencia no es de
+  /// estilo: Firestore ejecuta un `in` como N subconsultas y aplica el
+  /// `limit` **a cada una** antes de fusionar, así que el `whereIn` de cinco
+  /// estados con `limit(200)` leía hasta 1000 documentos para devolver 200 —
+  /// el tope acotaba documentos, no lecturas. Una igualdad lee exactamente el
+  /// tope.
+  ///
+  /// El precio es un campo denormalizado que hay que mantener coherente; quién
+  /// lo escribe y quién lo ata está en [ticketAbierto]. Y trae la misma
+  /// precondición que el `whereIn` y que el `orderBy`: **una igualdad sobre un
+  /// campo ausente no devuelve nada**, así que los tickets anteriores a este
+  /// cambio no aparecerían hasta que `backfill_entregado.js` les escriba
+  /// `abierto`. Correrlo ANTES de desplegar no es opcional.
+  ///
+  /// **Va acotado** (residual 7.6 de FUNC-02). Sin `limit` este stream traía
+  /// el conjunto entero en cada `attach` del listener, y su tamaño no depende
+  /// del uso normal sino de que el taller cierre sus tickets: un ticket que
+  /// nunca pasa a `entregado` se queda aquí para siempre (residual 7.2). El
+  /// tope acota el coste sin depender de esa disciplina.
+  ///
+  /// El `orderBy` es parte del tope, no un adorno: recortar sin ordenar deja
+  /// fuera tickets **arbitrarios**, porque sin `orderBy` el orden es por
+  /// `__name__`, o sea por un id aleatorio. Ordenando por actividad, lo que
+  /// cae fuera es lo más rancio, que es lo que un tablero puede permitirse
+  /// perder de vista. Y que se haya llegado al tope se anuncia: ver
+  /// `ReparacionProvider.tableroTruncado`.
+  ///
+  /// Ese `orderBy` añade una segunda precondición al mismo backfill: excluye
+  /// los documentos sin `fecha_actualizacion`, y los tickets anteriores a A4b
+  /// pueden no tenerla. `backfill_entregado.js` se la escribe (pasada 1), con
+  /// el valor tolerante que ya usaba para decidir la antigüedad — así el
+  /// ticket conserva el momento real de su última actividad, no el de la
+  /// migración. **Correr el backfill antes de desplegar esta versión no es
+  /// opcional**, exactamente igual que para el `whereIn` de arriba.
   Stream<List<ReparacionModel>> watchReparacionesActivas(String idTaller) {
     return _firestore
         .collection(FirestoreCollections.reparaciones)
         .where('id_taller', isEqualTo: idTaller)
-        .where('estado', whereIn: estadosReparacion)
+        .where('abierto', isEqualTo: true)
+        .orderBy('fecha_actualizacion', descending: true)
+        .limit(maxTicketsTablero)
         .snapshots()
         .map(
           (snap) => snap.docs

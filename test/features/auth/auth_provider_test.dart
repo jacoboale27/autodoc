@@ -4,6 +4,18 @@ import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
 import '../../helpers/test_helpers.mocks.dart';
 
+// UX-04: estos cinco casos lanzaban una **cadena suelta** (`thenThrow('email-
+// already-in-use')`) y luego afirmaban que `provider.error` la contenia. Con
+// `_error = e.toString()` eso pasaba siempre, pero no probaba nada del manejo
+// real de errores de Auth: en produccion lo que llega es un
+// `FirebaseAuthException`, y de el se estaba pintando el `[firebase_auth/...]`
+// entero, en ingles, en un SnackBar.
+//
+// Ahora lanzan lo que lanza Firebase y afirman las dos mitades que importan:
+// que el codigo NO sale a la pantalla, y que el mensaje sigue siendo
+// ACCIONABLE. Lo segundo no es adorno — los errores de Auth son los unicos de
+// toda la app que la persona puede resolver por si misma, y taparlos con "algo
+// fallo" habria sido cambiar un defecto por otro.
 void main() {
   late MockAuthService mockAuthService;
   late MockAdminAuthService mockAdminAuthService;
@@ -47,12 +59,14 @@ void main() {
     test('signIn handles generic error correctly', () async {
       when(
         mockAuthService.signInWithEmail('test@test.com', 'password'),
-      ).thenThrow('Auth Error');
+      ).thenThrow(FirebaseAuthException(code: 'invalid-credential'));
 
       await authProvider.signIn('test@test.com', 'password');
 
       expect(authProvider.isLoading, false);
-      expect(authProvider.error, 'Auth Error');
+      expect(authProvider.error, isNot(contains('invalid-credential')));
+      expect(authProvider.error, isNot(contains('firebase_auth')));
+      expect(authProvider.error, contains('contrasena'));
     });
 
     test('signIn with non-email uses admin login path', () async {
@@ -117,12 +131,14 @@ void main() {
     test('register failure returns false', () async {
       when(
         mockAuthService.registerWithEmail('fail@test.com', 'pass'),
-      ).thenThrow('email-already-in-use');
+      ).thenThrow(FirebaseAuthException(code: 'email-already-in-use'));
 
       final result = await authProvider.register('fail@test.com', 'pass');
 
       expect(result, false);
-      expect(authProvider.error, contains('email-already-in-use'));
+      expect(authProvider.error, isNot(contains('email-already-in-use')));
+      // Sigue diciendo QUE hacer: ese correo ya tiene cuenta.
+      expect(authProvider.error, contains('ya tiene una cuenta'));
     });
 
     test('register returns false when user is null', () async {
@@ -154,12 +170,13 @@ void main() {
     test('sendPasswordReset on network error returns false', () async {
       when(
         mockAuthService.sendPasswordReset('test@test.com'),
-      ).thenThrow('network-request-failed');
+      ).thenThrow(FirebaseAuthException(code: 'network-request-failed'));
 
       final result = await authProvider.sendPasswordReset('test@test.com');
 
       expect(result, false);
-      expect(authProvider.error, contains('network-request-failed'));
+      expect(authProvider.error, isNot(contains('network-request-failed')));
+      expect(authProvider.error, contains('conexion'));
     });
   });
 
@@ -176,12 +193,13 @@ void main() {
     test('sendEmailVerification failure returns false with error', () async {
       when(
         mockAuthService.sendEmailVerification(),
-      ).thenThrow('too-many-requests');
+      ).thenThrow(FirebaseAuthException(code: 'too-many-requests'));
 
       final result = await authProvider.sendEmailVerification();
 
       expect(result, false);
-      expect(authProvider.error, contains('too-many-requests'));
+      expect(authProvider.error, isNot(contains('too-many-requests')));
+      expect(authProvider.error, contains('Demasiados intentos'));
     });
 
     test('refreshEmailVerificationStatus calls reloadCurrentUser', () async {
@@ -228,13 +246,16 @@ void main() {
     );
 
     test('signInWithGoogle failure returns false with error', () async {
-      when(mockAuthService.signInWithGoogle()).thenThrow('Google Auth Error');
+      when(
+        mockAuthService.signInWithGoogle(),
+      ).thenThrow(FirebaseAuthException(code: 'popup-closed-by-user'));
 
       final result = await authProvider.signInWithGoogle();
 
       expect(result, false);
       expect(authProvider.isLoading, false);
-      expect(authProvider.error, 'Google Auth Error');
+      expect(authProvider.error, isNotNull);
+      expect(authProvider.error, isNot(contains('popup-closed-by-user')));
       verify(mockAuthService.signInWithGoogle()).called(1);
     });
   });

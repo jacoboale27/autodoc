@@ -86,6 +86,29 @@ class ErrorTicketNoAplicable extends Error {}
 const ESTADOS_TICKET_CERRADO = ['cancelado', 'entregado'];
 
 /**
+ * ¿Este estado deja el ticket ABIERTO, o sea en alguna columna del tablero?
+ *
+ * Es la definicion del booleano `abierto` que el ticket lleva denormalizado
+ * desde el gap 9.1: el tablero consultaba `estado whereIn [5 estados]`, y
+ * Firestore ejecuta un `in` como N subconsultas aplicando el `limit` a CADA
+ * una, asi que leia hasta 1000 documentos para devolver 200. Una igualdad lee
+ * exactamente el tope.
+ *
+ * Espejo de `ticketAbierto` en lib/core/models/reparacion_model.dart y de la
+ * funcion del mismo nombre en firestore.rules. Las tres copias tienen que
+ * decir lo mismo.
+ *
+ * Los tickets anteriores a A4b no traen `estado` y nacian en 'recibido':
+ * cuentan como abiertos, igual que en las otras dos copias.
+ *
+ * @param {?string} estado
+ * @returns {boolean}
+ */
+function ticketAbierto(estado) {
+  return !ESTADOS_TICKET_CERRADO.includes((estado || 'recibido').toString());
+}
+
+/**
  * Estados en los que el coche esta FISICAMENTE en el taller: los unicos en
  * los que el vinculo `vehiculos.talleres_vinculados` esta justificado.
  *
@@ -173,6 +196,10 @@ function construirTicketReparacion({ cotizacionId, cotizacion, vehiculo, idTalle
     id_propietario: idPropietario,
     placa: datosVehiculo.placa || cotizacion.placa || '',
     estado: 'pendiente_recepcion',
+    // Denormalizado para que el tablero pregunte por una igualdad (gap 9.1).
+    // Un ticket que naciera sin el campo no aparece en el tablero: una
+    // igualdad sobre un campo ausente no devuelve nada.
+    abierto: ticketAbierto('pendiente_recepcion'),
     historial_estados: [{ estado: 'pendiente_recepcion', timestamp: ahora }],
     fecha_creacion: ahora,
     fecha_actualizacion: ahora,
@@ -244,17 +271,90 @@ async function resolverIdTallerPropietario(db, idTaller) {
   return propietario || idTaller;
 }
 
+/**
+ * ¿Hay ya un ticket ABIERTO para este vehiculo en este taller?
+ *
+ * Va en DOS tramos, y los dos hacen falta.
+ *
+ * **Tramo 1 — la pregunta directa.** `estado not-in ESTADOS_TICKET_CERRADO`
+ * con `limit(1)`: si existe un ticket abierto, Firestore devuelve uno y se
+ * acabo. Una lectura, y el resultado no depende de cuantos tickets cerrados
+ * haya acumulado el cliente.
+ *
+ * Ese ultimo punto es el arreglo (residual 7.3 de FUNC-02). La version
+ * anterior traia hasta `LIMITE_DEDUP_TICKETS_ABIERTOS` documentos SIN filtro
+ * de estado y descartaba los cerrados en memoria. Como una consulta sin
+ * `orderBy` ordena por `__name__`, a un cliente recurrente le bastaba con
+ * acumular 20 tickets cerrados cuyo id ordenara antes que el abierto para que
+ * el abierto quedara fuera de la ventana: el dedup no lo veia y se abria un
+ * SEGUNDO ticket paralelo para la misma visita — el hallazgo 2 otra vez, esta
+ * vez por volumen. 20 tickets es un ticket por visita: pocos años del mismo
+ * coche en el mismo taller.
+ *
+ * **Tramo 2 — los tickets legados, y es BEST-EFFORT.** Firestore indexa por
+ * campo, asi que un documento sin `estado` no aparece en ninguna consulta que
+ * filtre por `estado`; tampoco en un `not-in` ("no esta en la lista" no
+ * incluye "no existe"). Los tickets anteriores a A4b no traen el campo y
+ * nacian ya en `recibido`, o sea ABIERTOS. Si el tramo 1 fuera todo, esos
+ * tickets pasarian de contar a ser invisibles y el dedup abriria duplicados
+ * justo sobre los datos mas viejos del sistema, asi que el barrido acotado de
+ * antes se conserva: corre solo cuando el tramo 1 no encontro nada, y solo
+ * busca documentos SIN `estado`.
+ *
+ * Lo que NO hace, y conviene no confundirlo: este tramo sigue siendo
+ * `limit(LIMITE_DEDUP_TICKETS_ABIERTOS)` sin `orderBy`, o sea ordenado por
+ * `__name__`. Arrastra intacta la misma ventana que el tramo 1 elimina — un
+ * par vehiculo+taller con mas de 20 tickets cuyo legado ordene por id despues
+ * de los 20 primeros sigue siendo invisible. No es un descuido: la unica
+ * consulta que veria a esos documentos seria "campo ausente", que Firestore no
+ * ofrece. **El cierre real es el backfill**, que ya es prerrequisito duro de
+ * despliegue por otras dos razones (ver `backfill_entregado.js`). Cuando haya
+ * corrido, ningun ticket carece de `estado` y este tramo no encuentra nada
+ * nunca: entonces se puede retirar y ahorrar sus lecturas.
+ *
+ * Coste: 1 lectura cuando hay ticket abierto (el caso que aborta la apertura)
+ * y 1 + N cuando no lo hay, contra las N de siempre. `backfill_entregado.js`
+ * (pasada 1) escribe el estado que a esos tickets les faltaba; en cuanto haya
+ * corrido, el tramo 2 no encuentra nada nunca y puede retirarse.
+ *
+ * Indice: `reparaciones (id_vehiculo ASC, id_taller ASC, estado ASC)`. El
+ * `not-in` cuenta como desigualdad, asi que `estado` tiene que ser el ultimo
+ * campo — que es justo como queda.
+ *
+ * @param {FirebaseFirestore.Firestore} db
+ * @param {{idVehiculo: string, idTaller: string}} args
+ * @returns {Promise<boolean>}
+ */
+/**
+ * "No se abrio ningun ticket", con la MISMA forma que el caso de exito.
+ *
+ * `abrirTicketDeReparacion` devolvia `null` en estos caminos y el id a secas
+ * en el otro. Al pasar a devolver tambien el documento escrito (residual 7.8),
+ * dos formas distintas obligarian a cada llamador a comprobar antes de
+ * desestructurar. Una sola forma, con `id` en `null`, dice lo mismo sin esa
+ * trampa.
+ */
+function sinTicket() {
+  return { id: null, ticket: null };
+}
+
 async function existeTicketAbiertoParaVehiculo(db, { idVehiculo, idTaller }) {
-  const snap = await db
+  const abiertos = await db
+    .collection('reparaciones')
+    .where('id_vehiculo', '==', idVehiculo)
+    .where('id_taller', '==', idTaller)
+    .where('estado', 'not-in', ESTADOS_TICKET_CERRADO)
+    .limit(1)
+    .get();
+  if (!abiertos.empty) return true;
+
+  const legados = await db
     .collection('reparaciones')
     .where('id_vehiculo', '==', idVehiculo)
     .where('id_taller', '==', idTaller)
     .limit(LIMITE_DEDUP_TICKETS_ABIERTOS)
     .get();
-  return snap.docs.some((doc) => {
-    const estado = (doc.data().estado || 'recibido').toString();
-    return !ESTADOS_TICKET_CERRADO.includes(estado);
-  });
+  return legados.docs.some((doc) => doc.data().estado === undefined);
 }
 
 /**
@@ -292,14 +392,14 @@ function vehiculoDelClienteDeLaCotizacion(vehiculo, cotizacion) {
  * @returns {Promise<?string>}
  */
 async function abrirTicketDeReparacion(db, { cotizacionId, antes, despues, ahora }) {
-  if (!debeAbrirTicket(antes, despues)) return null;
+  if (!debeAbrirTicket(antes, despues)) return sinTicket();
 
   const ref = db.collection('reparaciones').doc(idTicketDeCotizacion(cotizacionId));
   // Idempotencia: el id ya garantiza que un reintento no duplica el ticket,
   // pero ademas no se reescribe si existe, para no arrastrar de vuelta a
   // `pendiente_recepcion` un ticket que el taller ya haya movido.
   const existente = await ref.get();
-  if (existente.exists) return null;
+  if (existente.exists) return sinTicket();
 
   // FIX 2 (Ronda 2): resolver id_taller al uid del DUEÑO. Los creadores de
   // `cotizaciones` anteriores a ese fix escribian el uid de la SESION, que
@@ -322,7 +422,7 @@ async function abrirTicketDeReparacion(db, { cotizacionId, antes, despues, ahora
       idVehiculo: despues.id_vehiculo,
       idTaller: idTallerResuelto,
     });
-    if (yaAbierto) return null;
+    if (yaAbierto) return sinTicket();
   }
 
   let vehiculo = null;
@@ -422,13 +522,19 @@ async function abrirTicketDeReparacion(db, { cotizacionId, antes, despues, ahora
   // el vehiculo es un callable server-side que otorga el vinculo en la misma
   // escritura atomica.
   await ref.set(ticket);
-  return ref.id;
+  // Devuelve tambien el documento escrito, no solo su id. `notificarTicketAbierto`
+  // lo RELEIA de Firestore para sacar `placa`, `id_propietario` e `id_vehiculo`
+  // — una lectura por cada cotizacion aceptada, del documento que se acababa
+  // de escribir aqui mismo, con un `if (!snap.exists) return` que no podia ser
+  // cierto (residual 7.8 de FUNC-02).
+  return { id: ref.id, ticket };
 }
 
 module.exports = {
   PREFIJO_TICKET,
   ESTADOS_TICKET_CERRADO,
   ESTADOS_VEHICULO_EN_TALLER,
+  ticketAbierto,
   ErrorAutorizacionPermanente,
   ErrorTicketNoAplicable,
   idTicketDeCotizacion,

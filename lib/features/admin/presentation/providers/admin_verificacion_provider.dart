@@ -6,6 +6,7 @@ import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/models/verificacion_taller_model.dart';
 import 'package:autodoc/features/mechanic/data/services/verificacion_service.dart';
 import 'package:autodoc/features/profile/data/services/user_service.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 /// Bandeja de expedientes de verificación para el administrador.
 ///
@@ -92,7 +93,7 @@ class AdminVerificacionProvider extends ChangeNotifier {
         unawaited(_hidratarIdentidades(expedientes));
       },
       onError: (Object e) {
-        _error = e.toString();
+        _error = mensajeSeguroDeError(e);
         _cargando = false;
         notifyListeners();
       },

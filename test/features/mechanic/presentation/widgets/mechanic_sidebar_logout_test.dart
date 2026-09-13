@@ -118,6 +118,9 @@ void main() {
       'id_propietario': 'owner-1',
       'placa': 'ABC-123',
       'estado': 'recibido',
+      // Gap 9.1: el tablero consulta `abierto == true`, y una igualdad sobre
+      // un campo ausente no devuelve nada.
+      'abierto': true,
       'fecha_creacion': Timestamp.fromDate(DateTime(2026, 1, 1)),
       'fecha_actualizacion': Timestamp.fromDate(DateTime(2026, 1, 1)),
     });

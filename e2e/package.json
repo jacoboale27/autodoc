@@ -3,10 +3,15 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "build:web": "node scripts/build-web.js",
+    "seed": "node scripts/seed-emulators.js",
     "test": "playwright test",
-    "report": "node scripts/generate_report.js"
+    "report": "node scripts/generate_report.js",
+    "build:landing": "node scripts/build-landing.js",
+    "test:landing": "playwright test --config playwright.landing.config.js"
   },
   "devDependencies": {
-    "@playwright/test": "^1.40.1"
+    "@playwright/test": "^1.40.1",
+    "firebase-admin": "^12.7.0"
   }
 }

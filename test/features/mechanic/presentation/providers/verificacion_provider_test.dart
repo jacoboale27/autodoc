@@ -258,8 +258,14 @@ void main() {
     test('un error que no es de Firebase no se disfraza de red', () async {
       final error = await errorAlSubir(StateError('boom'));
 
-      expect(error, contains('boom'));
+      // UX-04: el texto del error ya no sale —'boom' era el detalle tecnico—
+      // pero lo que este caso vigila de verdad sigue en pie: un fallo que no es
+      // de red no puede disfrazarse de corte de conexion y mandar a la persona
+      // a revisar el wifi.
+      expect(error, isNot(contains('boom')));
       expect(error, isNot(contains('conexión')));
+      expect(error, isNot(contains('conexion')));
+      expect(error, isNotEmpty);
     });
   });
 

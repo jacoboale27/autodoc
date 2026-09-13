@@ -24,6 +24,7 @@ import 'package:intl/intl.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
 import 'package:go_router/go_router.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class ReservaDetailScreen extends StatefulWidget {
   final String reservaId;
@@ -74,10 +75,7 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
       }
     } catch (e) {
       if (mounted) {
-        UiUtils.showErrorSnackbar(
-          context,
-          context.l10n.adminError(e.toString()),
-        );
+        UiUtils.showErrorSnackbar(context, mensajeSeguroDeError(e));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

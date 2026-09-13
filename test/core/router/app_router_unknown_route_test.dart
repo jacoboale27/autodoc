@@ -1,3 +1,4 @@
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart' as firebase_mocks;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -5,6 +6,8 @@ import 'package:autodoc/core/router/app_router.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/models/user_model.dart';
+import 'package:autodoc/l10n/app_localizations.dart';
+import 'package:autodoc/core/widgets/not_found_screen.dart';
 
 /// Minimal fakes mirroring the ones in app_router_test.dart, kept local so
 /// this regression test has no cross-file dependency.
@@ -24,7 +27,9 @@ class _FakeAuthSessionProvider extends ChangeNotifier
   String get currentUid => _currentUid;
 
   @override
-  User? get user => null;
+  User? get user => isLoggedIn
+      ? firebase_mocks.MockUser(uid: currentUid, isEmailVerified: true)
+      : null;
 
   @override
   String? get error => null;
@@ -110,10 +115,16 @@ void main() {
       initialLocation: '/directorio', // the wrong path TestSprite used
     );
 
-    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpWidget(
+      MaterialApp.router(
+        routerConfig: router,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
+    );
     await tester.pumpAndSettle();
 
-    expect(find.text('Página no encontrada (404)'), findsOneWidget);
+    expect(find.byType(NotFoundScreen), findsOneWidget);
   });
 
   test('the real app router has /workshop_directory registered but not '

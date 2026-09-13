@@ -12,6 +12,7 @@ import 'package:autodoc/core/widgets/app_grid.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/catalogo_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 /// Pantalla de gestión del catálogo rápido de servicios/repuestos de un
 /// taller (`talleres/{idTaller}/catalogo_servicios`, Task 9). Permite
@@ -70,7 +71,7 @@ class _NuevoItemDialogState extends State<_NuevoItemDialog> {
         FocusManager.instance.primaryFocus?.unfocus();
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ).showSnackBar(SnackBar(content: Text(mensajeSeguroDeError(e))));
       }
     }
   }
@@ -187,7 +188,7 @@ class _CatalogoServiciosScreenState extends State<CatalogoServiciosScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ).showSnackBar(SnackBar(content: Text(mensajeSeguroDeError(e))));
       }
     }
   }

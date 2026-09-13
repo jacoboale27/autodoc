@@ -11,6 +11,8 @@ import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_empty_state.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_user_avatar.dart';
+import 'package:autodoc/core/widgets/aviso_lista_truncada.dart';
+import 'package:autodoc/features/chat/data/models/conversacion_model.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:autodoc/core/utils/l10n_extension.dart';
@@ -103,131 +105,144 @@ class _ConversacionesListScreenState extends State<ConversacionesListScreen> {
                 // del router.
                 action: isMecanico ? null : const _BuscarTallerButton(),
               )
-            : ListView.separated(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                itemCount: chatProvider.conversaciones.length,
-                separatorBuilder: (context, index) => Divider(
-                  color: colors.outline.withValues(alpha: 0.4),
-                  height: 1,
-                ),
-                itemBuilder: (context, index) {
-                  final conv = chatProvider.conversaciones[index];
-                  final noLeidos = isMecanico
-                      ? conv.noLeidosMecanico
-                      : conv.noLeidosPropietario;
-
-                  // Por ahora usamos nombres genéricos
-                  final targetName = isMecanico
-                      ? conv.nombrePropietario
-                      : conv.nombreMecanico;
-                  // Denormalizada en el documento al crear la conversación
-                  // (ChatProvider.iniciarOCrearConversacion): una lectura
-                  // por fila en cada rebuild de esta lista sería un costo
-                  // por conversación que no existe hoy. Nula en cualquier
-                  // conversación anterior a este cambio; AppUserAvatar cae
-                  // a la inicial en ese caso.
-                  final targetFoto = isMecanico
-                      ? conv.fotoPropietario
-                      : conv.fotoMecanico;
-
-                  return ListTile(
-                    onTap: () {
-                      if (noLeidos > 0) {
-                        chatProvider.marcarComoLeidos(
-                          conv.id,
-                          isMecanico,
-                          userSession.userData?.idUsuario ?? '',
-                        );
-                      }
-                      // `go` y no `push`: con `push` se abria la conversacion
-                      // pero la barra de direcciones seguia diciendo
-                      // /chat_list (hallazgo §2.14; go_router
-                      // match.dart:621-632 copia `matches` y conserva `uri`),
-                      // asi que un F5 devolvia a la lista y la conversacion
-                      // no se podia enlazar ni compartir. El boton de volver
-                      // de ChatScreen navega explicitamente a /chat_list,
-                      // porque `go` deja la pila sin nada que desapilar.
-                      context.go('/chat/${conv.id}');
-                    },
-                    contentPadding: const EdgeInsets.symmetric(
-                      vertical: 8,
-                      horizontal: 8,
-                    ),
-                    leading: AppUserAvatar(
-                      urlFoto: targetFoto,
-                      nombre: targetName,
-                      radius: 28,
-                    ),
-                    title: Text(
-                      targetName,
-                      style: AppTextStyles.titleMedium.copyWith(
-                        fontWeight: noLeidos > 0
-                            ? FontWeight.bold
-                            : FontWeight.w600,
-                      ),
-                    ),
-                    subtitle: Text(
-                      conv.ultimoMensaje,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: noLeidos > 0
-                            ? colors.textPrimary
-                            : colors.textSecondary,
-                        fontWeight: noLeidos > 0
-                            ? FontWeight.w600
-                            : FontWeight.normal,
-                      ),
-                    ),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          timeago.format(conv.ultimoMensajeTs, locale: 'es'),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: noLeidos > 0
-                                ? colors.primary
-                                : colors.textSecondary,
-                            fontWeight: noLeidos > 0
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
+            : Column(
+                children: [
+                  // El tope de la bandeja (gap 9.2) no puede ser silencioso:
+                  // una conversación que falta se lee igual que una que no
+                  // existe.
+                  if (chatProvider.bandejaTruncada)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                      child: AvisoListaTruncada(
+                        mensaje: context.l10n.bandejaTruncada(
+                          maxConversacionesBandeja,
                         ),
-                        if (noLeidos > 0)
-                          Semantics(
-                            container: true,
-                            excludeSemantics: true,
-                            label: '$noLeidos mensajes sin leer',
-                            child: Container(
-                              margin: const EdgeInsets.only(top: 4),
-                              padding: const EdgeInsets.all(6),
-                              constraints: const BoxConstraints(minWidth: 24),
-                              decoration: BoxDecoration(
-                                color: colors.primary,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Text(
-                                noLeidos.toString(),
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: colors.onPrimary,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
+                      ),
                     ),
-                  );
-                },
+                  Expanded(child: _lista(context, chatProvider, isMecanico)),
+                ],
               ),
       ),
+    );
+  }
+
+  Widget _lista(
+    BuildContext context,
+    ChatProvider chatProvider,
+    bool isMecanico,
+  ) {
+    final colors = context.appColors;
+    final userSession = context.watch<UserProfileProvider>();
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: chatProvider.conversaciones.length,
+      separatorBuilder: (context, index) =>
+          Divider(color: colors.outline.withValues(alpha: 0.4), height: 1),
+      itemBuilder: (context, index) {
+        final conv = chatProvider.conversaciones[index];
+        final noLeidos = isMecanico
+            ? conv.noLeidosMecanico
+            : conv.noLeidosPropietario;
+
+        // Por ahora usamos nombres genéricos
+        final targetName = isMecanico
+            ? conv.nombrePropietario
+            : conv.nombreMecanico;
+        // Denormalizada en el documento al crear la conversación
+        // (ChatProvider.iniciarOCrearConversacion): una lectura
+        // por fila en cada rebuild de esta lista sería un costo
+        // por conversación que no existe hoy. Nula en cualquier
+        // conversación anterior a este cambio; AppUserAvatar cae
+        // a la inicial en ese caso.
+        final targetFoto = isMecanico
+            ? conv.fotoPropietario
+            : conv.fotoMecanico;
+
+        return ListTile(
+          onTap: () {
+            if (noLeidos > 0) {
+              chatProvider.marcarComoLeidos(
+                conv.id,
+                isMecanico,
+                userSession.userData?.idUsuario ?? '',
+              );
+            }
+            // `go` y no `push`: con `push` se abria la conversacion
+            // pero la barra de direcciones seguia diciendo
+            // /chat_list (hallazgo §2.14; go_router
+            // match.dart:621-632 copia `matches` y conserva `uri`),
+            // asi que un F5 devolvia a la lista y la conversacion
+            // no se podia enlazar ni compartir. El boton de volver
+            // de ChatScreen navega explicitamente a /chat_list,
+            // porque `go` deja la pila sin nada que desapilar.
+            context.go('/chat/${conv.id}');
+          },
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 8,
+            horizontal: 8,
+          ),
+          leading: AppUserAvatar(
+            urlFoto: targetFoto,
+            nombre: targetName,
+            radius: 28,
+          ),
+          title: Text(
+            targetName,
+            style: AppTextStyles.titleMedium.copyWith(
+              fontWeight: noLeidos > 0 ? FontWeight.bold : FontWeight.w600,
+            ),
+          ),
+          subtitle: Text(
+            conv.ultimoMensaje,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: noLeidos > 0 ? colors.textPrimary : colors.textSecondary,
+              fontWeight: noLeidos > 0 ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                timeago.format(conv.ultimoMensajeTs, locale: 'es'),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: noLeidos > 0 ? colors.primary : colors.textSecondary,
+                  fontWeight: noLeidos > 0
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                ),
+              ),
+              if (noLeidos > 0)
+                Semantics(
+                  container: true,
+                  excludeSemantics: true,
+                  label: '$noLeidos mensajes sin leer',
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.all(6),
+                    constraints: const BoxConstraints(minWidth: 24),
+                    decoration: BoxDecoration(
+                      color: colors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      noLeidos.toString(),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: colors.onPrimary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

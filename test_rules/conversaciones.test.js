@@ -29,7 +29,19 @@ beforeEach(async () => {
 });
 
 describe('conversaciones create (hallazgo C2: la relacion que el callable confia era auto-fabricable)', () => {
+  // El taller tiene que existir y estar aprobado: desde H-01, abrir chat como
+  // propietario exige que el `id_mecanico` nombrado sea un taller de verdad
+  // (antes valia cualquier uid, y por ahi entraba el ataque en dos pasos
+  // contra /reservas). El chat se inicia desde el directorio, que solo lista
+  // talleres aprobados, asi que esto es la forma real y no un apano.
+  const sembrarTallerAprobado = () => seed(env, async (s) => {
+    await s.collection('usuarios').doc(UIDS.taller1).set({
+      id_usuario: UIDS.taller1, rol: 'Taller', estado: 'aprobado',
+    });
+  });
+
   test('el propietario SI puede crear una conversacion sobre si mismo (inicia el chat desde el directorio)', async () => {
+    await sembrarTallerAprobado();
     const db = await withRole(env, UIDS.owner1, 'Propietario');
     await assertSucceeds(
       db.collection('conversaciones').doc('conv1').set({

@@ -19,9 +19,8 @@ const { esMecanico } = require('./publishTallerProfile');
  * que un documento publico estatico no puede expresar.
  *
  * `db` se inyecta (no se lee `admin.firestore()` aqui dentro) por el mismo
- * motivo que en `iniciarReparacionPorVehiculo.js`: leer esa propiedad
- * dispara `ensureApp()`, lo que hace hostil stubbearla desde tests sin
- * emulador.
+ * motivo que en `aceptarCotizacion.js`: leer esa propiedad dispara
+ * `ensureApp()`, lo que hace hostil stubbearla desde tests sin emulador.
  */
 
 /**

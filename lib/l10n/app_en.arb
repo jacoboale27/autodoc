@@ -45,9 +45,8 @@
   "authSentLinkTo": "We sent a verification link to:",
   "authAccountNotVerified": "Your account is not verified yet. Check the email sent to:",
   "authOpenLinkThenVerify": "Open the link in the email and then press \"I already verified\" to continue.",
-  "authOpenLinkOnRegister": "Open the link in the email to activate your account. You can continue in the meantime.",
+  "authOpenLinkOnRegister": "Open the email link and return to verify your account before continuing.",
   "authUnderstood": "Understood",
-  "authContinueWithoutVerify": "Continue without verifying",
   "authResendEmail": "Resend email",
   "authEmailResent": "Verification email resent.",
   "authResendError": "Could not resend.",
@@ -615,6 +614,14 @@
   "tallerVerifSubiendo": "Uploading the file…",
   "tallerVerifPendienteBloqueado": "Your request is already under review: you can't upload this selection now. You can discard it.",
   "tallerVerifDescartar": "Discard",
+  "tallerVerifFormatoNoPermitido": "That file doesn't work for this document. Accepted formats: {formatos}.",
+  "@tallerVerifFormatoNoPermitido": {
+    "placeholders": {
+      "formatos": {
+        "type": "String"
+      }
+    }
+  },
   "chatOpeningSection": "Opening {label} section...",
   "@chatOpeningSection": {
     "placeholders": {
@@ -654,6 +661,7 @@
       }
     }
   },
+  "chatReservationFailed": "The appointment could not be created. Please try again.",
   "chatReservationDetail": "Appointment Detail",
   "coreAppTitle": "AutoDoc Workshop",
   "chatViewFullHistory": "View Full History",
@@ -718,5 +726,93 @@
   },
   "chatCancelAppointment": "Cancel Appointment",
   "chatConfirmCancelAppointment": "Are you sure you want to cancel this appointment? It will be recorded that you cancelled it.",
-  "chatCancelledStatus": "Cancelled"
+  "chatCancelledStatus": "Cancelled",
+  "securityInvitationReady": "Invitation ready",
+  "securityInvitationSent": "Invitation sent",
+  "securityDeliverLink": "Deliver this link privately to the recipient to set their password. Email is not sent automatically.",
+  "securityRequestPending": "Request created. Give the code to the recipient for acceptance.",
+  "securityDeliverCode": "Deliver this code privately to the specified email. It expires in 24 hours. The recipient must accept it in Share vehicle with their verified email.",
+  "securityRequestError": "Could not complete the request. Check your verified email and code, or try again later.",
+  "securityInvitationCode": "Received invitation code",
+  "securityAcceptInvitation": "Accept vehicle access",
+  "securityAccessAccepted": "Invitation accepted. Refresh your vehicle list.",
+  "securityUnnamed": "Unnamed",
+  "securityShareVehicle": "Share vehicle",
+  "securityEmailHint": "Recipient email",
+  "securityRequestAccess": "Create request",
+  "securityPeopleWithAccess": "PEOPLE WITH ACCESS",
+  "securityOnlyYou": "Only you have access",
+  "securityRevoke": "Revoke access",
+  "securityInvalidEmail": "Enter a valid email",
+  "securityAccessRevoked": "Access revoked",
+  "startupErrorTitle": "We couldn't start AutoDoc",
+  "@startupErrorTitle": {
+    "description": "Title of the screen that replaces the app when Firebase Core fails to start"
+  },
+  "startupErrorBody": "We couldn't reach our services. Check your connection and try again. If the problem persists, contact the app administrator.",
+  "@startupErrorBody": {
+    "description": "User-facing explanation of the startup failure, with no internal diagnostics"
+  },
+  "startupErrorRetry": "Try again",
+  "@startupErrorRetry": {
+    "description": "Button that retries Firebase startup"
+  },
+  "startupErrorRetryFailed": "We still couldn't connect. Please try again in a moment.",
+  "@startupErrorRetryFailed": {
+    "description": "Notice shown when the startup retry fails as well"
+  },
+  "notFoundTitle": "We couldn't find this page",
+  "@notFoundTitle": {
+    "description": "Title of the router 404 screen"
+  },
+  "notFoundBody": "The address you opened doesn't exist or has moved.",
+  "@notFoundBody": {
+    "description": "Explanation shown on the 404 screen"
+  },
+  "notFoundGoHome": "Go to home",
+  "@notFoundGoHome": {
+    "description": "Button returning the user to the app root from the 404 screen"
+  },
+  "notFoundGoBack": "Go back",
+  "@notFoundGoBack": {
+    "description": "Button returning the user to the previous screen from the 404"
+  },
+  "bandejaTruncada": "Showing the {tope} conversations with the most recent activity. There are more threads that do not fit here.",
+  "@bandejaTruncada": {
+    "description": "Notice that the chat inbox hit its cap and some conversations are not listed",
+    "placeholders": {
+      "tope": {
+        "type": "int"
+      }
+    }
+  },
+  "hiloTruncado": "Showing the {tope} most recent messages. Older ones are not loaded.",
+  "@hiloTruncado": {
+    "description": "Notice that the chat thread hit its cap and older messages were not loaded",
+    "placeholders": {
+      "tope": {
+        "type": "int"
+      }
+    }
+  },
+  "errorDatosTitulo": "We couldn't load this information",
+  "@errorDatosTitulo": {
+    "description": "Title of the error state on a screen that queries data (UX-04)"
+  },
+  "errorDatosPermiso": "You don't have access to this information. If you think you should, sign in again.",
+  "@errorDatosPermiso": {
+    "description": "Error message when the backend denies access (permission-denied / unauthorized)"
+  },
+  "errorDatosConexion": "We couldn't reach the server. Check your connection and try again.",
+  "@errorDatosConexion": {
+    "description": "Error message for network or service unavailable"
+  },
+  "errorDatosGenerico": "Something went wrong loading this information. Try again in a moment.",
+  "@errorDatosGenerico": {
+    "description": "Default error message, with no technical detail"
+  },
+  "errorReintentar": "Retry",
+  "@errorReintentar": {
+    "description": "Action to retry a failed query"
+  }
 }

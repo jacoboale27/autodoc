@@ -6,7 +6,6 @@ import { getMessages, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { Analytics } from "@vercel/analytics/react";
 
 export const dynamicParams = false;
 
@@ -79,7 +78,7 @@ export default async function RootLayout({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  if (!routing.locales.includes(locale as any)) {
+  if (!routing.locales.some((admitido) => admitido === locale)) {
     notFound();
   }
   
@@ -129,7 +128,6 @@ export default async function RootLayout({
             {children}
           </ThemeProvider>
         </NextIntlClientProvider>
-        <Analytics />
       </body>
     </html>
   );

@@ -10,14 +10,8 @@ import 'package:autodoc/core/utils/role_utils.dart';
 /// navegación de propietario). Ahora los tres delegan aquí.
 void main() {
   group('appRoleOf', () {
-    test('reconoce las dos formas de una cuenta de taller', () {
-      for (final rol in [
-        'Mecanico',
-        'mecanico',
-        'MECANICO',
-        'Taller',
-        'taller',
-      ]) {
+    test('reconoce las dos formas canonicas de una cuenta de taller', () {
+      for (final rol in ['Mecanico', 'Taller']) {
         expect(
           appRoleOf(rol),
           AppRole.mechanic,
@@ -26,19 +20,52 @@ void main() {
       }
     });
 
-    test('tolera acentos', () {
-      // 'Mecánico' con tilde es como lo teclea cualquiera y como puede haber
-      // quedado en cuentas creadas desde el panel de administración. Antes caía
-      // al default y la cuenta se comportaba como propietario.
-      expect(appRoleOf('Mecánico'), AppRole.mechanic);
-      expect(appRoleOf('mecánico'), AppRole.mechanic);
-    });
+    test(
+      'reconoce las tres formas canonicas de una cuenta de administración',
+      () {
+        for (final rol in ['admin', 'Administrador', 'Superusuario']) {
+          expect(appRoleOf(rol), AppRole.admin, reason: rol);
+        }
+      },
+    );
 
-    test('reconoce las tres formas de una cuenta de administración', () {
-      for (final rol in ['admin', 'Administrador', 'Superusuario']) {
-        expect(appRoleOf(rol), AppRole.admin, reason: rol);
-      }
-    });
+    test(
+      'ROLE-01: NO tolera variantes de caja/acento — firestore.rules compara '
+      'literales exactos (isAdmin(): [Administrador, admin, Superusuario]; '
+      'isMecanico(): rol in [Mecanico, Taller]). Antes appRoleOf normalizaba '
+      'a minusculas y sin acentos, así que una cuenta guardada como '
+      "'mecanico' o 'Mecánico' se veía como mecánico en la UI mientras "
+      'firestore.rules la trataba como sin rol (falla cerrado, pero es una '
+      'divergencia de contrato). Ahora cualquier variante no canónica cae a '
+      'owner, igual que lo haría el backend.',
+      () {
+        for (final rol in [
+          'mecanico',
+          'MECANICO',
+          'Mecánico',
+          'mecánico',
+          'taller',
+          'TALLER',
+          'administrador',
+          'ADMINISTRADOR',
+          'superusuario',
+          'SUPERUSUARIO',
+          'Súperusuario',
+          ' Mecanico',
+          'Mecanico ',
+          'Admin',
+          'ADMIN',
+        ]) {
+          expect(
+            appRoleOf(rol),
+            AppRole.owner,
+            reason:
+                '"$rol" no es un literal exacto de firestore.rules: debe '
+                'caer a owner (fails closed), no a mechanic/admin',
+          );
+        }
+      },
+    );
 
     test('propietario y cualquier valor desconocido caen en owner', () {
       for (final rol in [

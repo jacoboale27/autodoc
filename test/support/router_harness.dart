@@ -1,3 +1,4 @@
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart' as firebase_mocks;
 // test/support/router_harness.dart
 //
 // Monta la app con su **enrutador real** (`createAppRouter`) en una ubicacion
@@ -52,7 +53,9 @@ class FakeRouterAuthSession extends ChangeNotifier
   String get currentUid => isLoggedIn ? uid : '';
 
   @override
-  User? get user => null;
+  User? get user => isLoggedIn
+      ? firebase_mocks.MockUser(uid: currentUid, isEmailVerified: true)
+      : null;
 
   @override
   String? get error => null;

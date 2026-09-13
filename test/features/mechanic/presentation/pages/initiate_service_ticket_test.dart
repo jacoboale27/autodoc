@@ -1,6 +1,7 @@
 // test/features/mechanic/presentation/pages/initiate_service_ticket_test.dart
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_core_platform_interface/test.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
@@ -50,6 +51,7 @@ void main() {
       InitiateServiceScreen(
         reparacionId: 'r1',
         vehiculoPrecargado: _vehiculoFake(),
+        firestore: FakeFirebaseFirestore(),
       ),
       width: 1024,
       location: '/initiate_service/r1',
@@ -95,14 +97,6 @@ void main() {
 
     expect(repo.llamadasRecibir, 1);
     expect(
-      repo.llamadasIniciar,
-      0,
-      reason:
-          'desde A4b el ticket lo abre onCotizacionAceptada: la pantalla no '
-          'puede crear ninguno (firestore.rules ya lo prohíbe, así que '
-          'hacerlo sería un permission-denied en producción)',
-    );
-    expect(
       find.text('Vehículo recibido: ya aparece en Reparaciones.'),
       findsOneWidget,
     );
@@ -122,7 +116,9 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(repo.llamadasIniciar, 0);
+    // Que el intento SI se hizo importa: sin esta afirmacion, una pantalla
+    // que no llamara a nada y pintara el error por su cuenta pasaria igual.
+    expect(repo.llamadasRecibir, 1);
     expect(find.text(mensaje), findsOneWidget);
     expect(
       find.text('Vehículo recibido: ya aparece en Reparaciones.'),

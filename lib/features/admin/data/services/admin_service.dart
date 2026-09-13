@@ -414,8 +414,8 @@ class AdminService {
   // --- SUPERUSUARIO ---
 
   /// Crea una cuenta vía la Cloud Function `superUserCreateAccount` (Admin
-  /// SDK, no cierra la sesión del Superusuario que llama). Devuelve la
-  /// contraseña temporal genérica asignada, para mostrarla en la UI.
+  /// SDK, no cierra la sesión del Superusuario que llama). Devuelve el
+  /// enlace de primera configuracion para entrega manual, sin persistirlo.
   Future<String> crearUsuarioComoSuperUser({
     required String nombreCompleto,
     required String correo,
@@ -427,7 +427,7 @@ class AdminService {
       'correo': correo,
       'rol': rol,
     });
-    return result.data['passwordTemporal'] as String;
+    return result.data['enlaceInvitacion'] as String;
   }
 
   /// Elimina una cuenta de forma permanente vía la Cloud Function

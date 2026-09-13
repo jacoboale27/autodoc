@@ -15,16 +15,98 @@
       ]
     },
     {
-      "collectionGroup": "conversaciones",
+      "collectionGroup": "servicios",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "id_propietario",
+          "fieldPath": "id_vehiculo",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "id_mecanico",
+          "fieldPath": "fecha",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "talleres",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "estado",
           "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "calificacion_promedio",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "reparaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "id_taller",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "abierto",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fecha_actualizacion",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "reparaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "id_vehiculo",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "id_taller",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "estado",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "reparaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "vinculo_activo",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fecha_actualizacion",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "cotizaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "id_vehiculo",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "estado",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fecha",
+          "order": "DESCENDING"
         }
       ]
     },
@@ -33,7 +115,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "id_mecanico",
+          "fieldPath": "id_propietario",
           "order": "ASCENDING"
         },
         {
@@ -47,7 +129,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "id_propietario",
+          "fieldPath": "id_mecanico",
           "order": "ASCENDING"
         },
         {
@@ -65,15 +147,19 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "timestamp",
-          "order": "DESCENDING"
+          "fieldPath": "estado",
+          "order": "ASCENDING"
         }
       ]
     },
     {
-      "collectionGroup": "historial_mantenimientos",
+      "collectionGroup": "servicios",
       "queryScope": "COLLECTION",
       "fields": [
+        {
+          "fieldPath": "id_vehiculo",
+          "order": "ASCENDING"
+        },
         {
           "fieldPath": "id_taller",
           "order": "ASCENDING"
@@ -85,52 +171,25 @@
       ]
     },
     {
-      "collectionGroup": "Servicios",
+      "collectionGroup": "reservas",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "id_vehiculo",
+          "fieldPath": "estado",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "fecha",
-          "order": "DESCENDING"
+          "fieldPath": "fecha_hora_propuesta",
+          "order": "ASCENDING"
         }
-      ]
-    },
-    {
-      "collectionGroup": "talleres",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "estado", "order": "ASCENDING" },
-        { "fieldPath": "calificacion_promedio", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "reparaciones",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "id_vehiculo", "order": "ASCENDING" },
-        { "fieldPath": "id_taller", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "reparaciones",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "id_taller", "order": "ASCENDING" },
-        { "fieldPath": "estado", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "cotizaciones",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "id_vehiculo", "order": "ASCENDING" },
-        { "fieldPath": "id_taller", "order": "ASCENDING" },
-        { "fieldPath": "estado", "order": "ASCENDING" }
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {
+      "collectionGroup": "solicitudes_landing",
+      "fieldPath": "mensaje",
+      "indexes": []
+    }
+  ]
 }

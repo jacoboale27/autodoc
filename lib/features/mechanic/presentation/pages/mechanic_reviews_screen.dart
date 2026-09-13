@@ -19,6 +19,7 @@ import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold
 import 'package:autodoc/features/reviews/data/services/review_service.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/widgets/translated_text.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class MechanicReviewsScreen extends StatefulWidget {
   final FirebaseFirestore? firestore;
@@ -252,7 +253,11 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No se pudo reportar la reseña: $e')),
+          SnackBar(
+            content: Text(
+              mensajeSeguroDeError(e, accion: 'No se pudo reportar la reseña'),
+            ),
+          ),
         );
       }
     }
@@ -310,7 +315,7 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        ).showSnackBar(SnackBar(content: Text(mensajeDeReglaDeNegocio(e))));
       }
     }
   }

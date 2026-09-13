@@ -205,16 +205,101 @@ describe('datos legitimamente publicos', () => {
     );
   });
 
-  test('el autor SI puede actualizar fotos', async () => {
+  // `resenias` es de lectura ANONIMA, asi que una URL escrita por el cliente
+  // la descarga el navegador de cada visitante del directorio. Estos casos
+  // existen desde FUNC-01, que es cuando el cliente empezo a reescribir la
+  // lista `fotos` completa en un update.
+  const urlDeStorage = (idServicio, archivo) =>
+    'https://firebasestorage.googleapis.com/v0/b/autodoc-test.appspot.com/o/' +
+    `resenia_fotos%2F${idServicio}%2F${archivo}?alt=media&token=abc`;
+
+  const seedResenia = (extra = {}) => seed(env, async (s) => {
+    await s.collection('resenias').doc('r1').set({
+      id_resenia: 'r1', id_usuario: UIDS.owner1, id_taller: UIDS.taller1,
+      id_servicio: 's1', estrellas: 3, comentario: 'inicial', fotos: [],
+      ...extra,
+    });
+  });
+
+  test('el autor SI puede actualizar fotos con URLs de su propio servicio', async () => {
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await seedResenia();
+    await assertSucceeds(
+      db.collection('resenias').doc('r1').update({
+        fotos: [urlDeStorage('s1', 'a.jpg'), urlDeStorage('s1', 'b.jpg')],
+      }),
+    );
+  });
+
+  test('el autor NO puede apuntar fotos a un servidor externo', async () => {
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await seedResenia();
+    await assertFails(
+      db.collection('resenias').doc('r1').update({
+        fotos: ['https://atacante.tld/px.png?r=r1'],
+      }),
+    );
+  });
+
+  test('el autor NO puede apuntar fotos a la carpeta de otro servicio', async () => {
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await seedResenia();
+    await assertFails(
+      db.collection('resenias').doc('r1').update({
+        fotos: [urlDeStorage('s2', 'ajena.jpg')],
+      }),
+    );
+  });
+
+  test('el autor NO puede dejar mas de 3 fotos en un documento publico', async () => {
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await seedResenia();
+    await assertFails(
+      db.collection('resenias').doc('r1').update({
+        fotos: [
+          urlDeStorage('s1', 'a.jpg'), urlDeStorage('s1', 'b.jpg'),
+          urlDeStorage('s1', 'c.jpg'), urlDeStorage('s1', 'd.jpg'),
+        ],
+      }),
+    );
+  });
+
+  // Sin este caso, endurecer `fotos` dejaria ineditables las resenias ya
+  // publicadas con URLs que no pasan el filtro nuevo.
+  test('editar solo el texto sigue permitido aunque la resenia tenga fotos heredadas', async () => {
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await seedResenia({ fotos: ['https://example.com/heredada.jpg'] });
+    await assertSucceeds(
+      db.collection('resenias').doc('r1').update({ comentario: 'editado' }),
+    );
+  });
+
+  test('no se puede CREAR una resenia con una foto externa', async () => {
     const db = await withRole(env, UIDS.owner1, 'Propietario');
     await seed(env, async (s) => {
-      await s.collection('resenias').doc('r1').set({
-        id_resenia: 'r1', id_usuario: UIDS.owner1, id_taller: UIDS.taller1, estrellas: 3,
-        comentario: 'inicial',
+      await s.collection('vehiculos').doc('v1').set({
+        id_vehiculo: 'v1', id_propietario: UIDS.owner1, marca: 'Test',
+      });
+      await s.collection('servicios').doc('s1').set({
+        id_servicio: 's1', id_vehiculo: 'v1', id_taller: UIDS.taller1,
       });
     });
-    await assertSucceeds(
-      db.collection('resenias').doc('r1').update({ fotos: ['https://example.com/foto.jpg'] }),
+    await assertFails(
+      db.collection('resenias').add({
+        id_usuario: UIDS.owner1, id_taller: UIDS.taller1, estrellas: 5,
+        comentario: 'buen servicio', id_servicio: 's1',
+        fotos: ['https://atacante.tld/px.png'],
+      }),
+    );
+  });
+
+  test('el taller NO puede tocar fotos via respuesta_taller', async () => {
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await seedResenia({ fotos: [urlDeStorage('s1', 'a.jpg')] });
+    await assertFails(
+      db.collection('resenias').doc('r1').update({
+        respuesta_taller: { texto: 'gracias' }, fotos: [],
+      }),
     );
   });
 

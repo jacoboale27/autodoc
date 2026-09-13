@@ -9,6 +9,7 @@ import '../../data/models/conversacion_model.dart';
 import '../../data/models/mensaje_model.dart';
 import '../../data/models/cotizacion_model.dart';
 import '../../data/repositories/chat_repository.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class ChatProvider extends ChangeNotifier {
   final ChatRepository _chatRepository;
@@ -19,8 +20,23 @@ class ChatProvider extends ChangeNotifier {
   List<ConversacionModel> _conversaciones = [];
   List<ConversacionModel> get conversaciones => _conversaciones;
 
+  /// `true` cuando la bandeja llegó al tope de [maxConversacionesBandeja] y
+  /// por tanto hay conversaciones que NO se están mostrando.
+  ///
+  /// Se deriva de haber recibido exactamente el tope: es lo único que el
+  /// cliente puede saber sin pagar otra consulta. Puede dar un falso positivo
+  /// con justo 100 conversaciones y ni una más — un precio ridículo comparado
+  /// con recortar en silencio.
+  bool get bandejaTruncada =>
+      _conversaciones.length >= maxConversacionesBandeja;
+
   List<MensajeModel> _mensajesActuales = [];
   List<MensajeModel> get mensajesActuales => _mensajesActuales;
+
+  /// `true` cuando el hilo llegó al tope de [maxMensajesHilo]: hay mensajes
+  /// MÁS ANTIGUOS que no se están mostrando. Los recientes están todos, que es
+  /// de qué lado tiene que caer el recorte.
+  bool get hiloTruncado => _mensajesActuales.length >= maxMensajesHilo;
 
   StreamSubscription? _conversacionesSub;
   StreamSubscription? _mensajesSub;
@@ -86,7 +102,7 @@ class ChatProvider extends ChangeNotifier {
             notifyListeners();
           },
           onError: (e) {
-            _error = e.toString();
+            _error = mensajeSeguroDeError(e);
             _conversacionesCargadas = true;
             notifyListeners();
           },
@@ -143,7 +159,7 @@ class ChatProvider extends ChangeNotifier {
             notifyListeners();
           },
           onError: (e) {
-            _error = e.toString();
+            _error = mensajeSeguroDeError(e);
             _isLoading = false;
             notifyListeners();
           },
@@ -196,7 +212,7 @@ class ChatProvider extends ChangeNotifier {
       notifyListeners();
       return id;
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       _isLoading = false;
       notifyListeners();
       return '';
@@ -233,7 +249,7 @@ class ChatProvider extends ChangeNotifier {
         isMecanicoRemitente: isMecanicoRemitente,
       );
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       notifyListeners();
     }
   }
@@ -250,7 +266,7 @@ class ChatProvider extends ChangeNotifier {
         currentUserId,
       );
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       notifyListeners();
     }
   }
@@ -267,7 +283,7 @@ class ChatProvider extends ChangeNotifier {
         metadata,
       );
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       notifyListeners();
     }
   }
@@ -276,7 +292,7 @@ class ChatProvider extends ChangeNotifier {
     try {
       return await _chatRepository.crearCotizacion(cotizacion);
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       notifyListeners();
       return null;
     }
@@ -325,7 +341,7 @@ class ChatProvider extends ChangeNotifier {
     try {
       await _chatRepository.actualizarEstadoCotizacion(id, estado);
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       notifyListeners();
     }
   }
@@ -353,7 +369,7 @@ class ChatProvider extends ChangeNotifier {
       notifyListeners();
       return url;
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       _isLoading = false;
       notifyListeners();
       return null;
@@ -380,7 +396,7 @@ class ChatProvider extends ChangeNotifier {
       notifyListeners();
       return url;
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       _isLoading = false;
       notifyListeners();
       return null;
@@ -403,7 +419,7 @@ class ChatProvider extends ChangeNotifier {
       );
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       notifyListeners();
       return false;
     }
@@ -419,7 +435,7 @@ class ChatProvider extends ChangeNotifier {
       await _chatRepository.deleteMensaje(conversacionId, mensajeId);
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       notifyListeners();
       return false;
     }
@@ -432,7 +448,7 @@ class ChatProvider extends ChangeNotifier {
     try {
       await _chatRepository.setTypingStatus(conversacionId, typingUserId);
     } catch (e) {
-      _error = e.toString();
+      _error = mensajeSeguroDeError(e);
       notifyListeners();
     }
   }
