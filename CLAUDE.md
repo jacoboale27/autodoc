@@ -18,6 +18,44 @@ exige— y FINAL-01. Las tandas de drenaje de gaps están cerradas: `fix/gaps-02
 (residuales de FUNC-02), `fix/gaps-03` (accesibilidad de la landing que dejó UX-03) y
 **`fix/gaps-04`** (lo que quedaba abierto antes de H-01, cerrada el 2026-09-13).
 
+### Incidente de despliegue del 2026-09-13 — el bundle de E2E llego a produccion
+
+Se desplego a hosting el artefacto de `e2e/scripts/build-web.js`. Es **el mismo defecto que
+`firebase_emulators.dart` documenta como imposible**, llegando por el lado que sus candados no
+cubren:
+
+- Los dos candados son `_flagEmuladores && !kReleaseMode`. El build de E2E es **`--profile`**,
+  donde `kReleaseMode` es `false`, asi que **los dos se abren**. La app publicada llamo a
+  `useAuthEmulator()` y el SDK pinto «Running in emulator mode. Do not use with production
+  credentials» a todo visitante, con Auth/Firestore/Storage apuntando al `localhost` **del
+  visitante**.
+- **No hubo fuga de datos** — no se puede leer produccion desde ahi, las claves del shim son
+  falsas y el shim ni se ejecuta (se autodesactiva por hostname). Fue una **caida total de
+  disponibilidad** de la web, no una brecha.
+- **Ninguna suite podia verlo, y esa es la leccion.** `analyze`, `flutter test`, reglas y las dos
+  suites de Playwright miran el **codigo fuente**, y el codigo fuente estaba bien. El defecto
+  vivia en el **artefacto** (`build/web`, no versionado) y en que `firebase deploy --only hosting`
+  publica ese directorio **sin mirarlo**. Un artefacto contaminado era indistinguible de uno
+  limpio para todas las puertas que el repo tenia.
+- **Cerrado con una guarda `predeploy`** en `firebase.json` (objetivo `app`):
+  `scripts/verificar_bundle_web.js`. Comprueba la condicion peligrosa y no un sintoma — que
+  `main.dart.js` **no** contenga el rastro de `firebase_emulators.dart`, que en un build
+  `--release` desaparece entero por tree-shaking. Verificada en los dos sentidos: aborta sobre el
+  bundle que se desplego y pasa sobre uno limpio.
+- **Centinela nuevo** `test/despliegue_web_protegido_test.dart`: rompe si alguien quita el
+  `predeploy` o lo apunta a otro sitio.
+- **`flutter clean` no es opcional** antes de un build de produccion: sin el, el `index.html`
+  inyectado por el pipeline de E2E sobrevive al siguiente build.
+
+**Y un detalle de configuracion que muerde:** `.firebaserc` tiene `"default": "autodoc-staging"`,
+asi que **todo `firebase deploy` sin `--project` va a staging**. Usa siempre `--project production`
+(alias de `autodoc-6ef5a`) o `--project staging`, nunca el implicito.
+
+**Pendiente 0 del runbook, resuelto el 2026-09-13:** `functions/contar_talleres_sin_estado.js`
+(nuevo) conto **cero** usuarios con rol `Mecanico`/`Taller` sin `estado` valido, asi que las
+reglas de H-01 no dejan a nadie fuera. El script no tiene `--apply` a proposito, y **`src/aprobarTodosTalleres.js` y `src/backfillEstadoMecanicos.js` NO son la respuesta**: escriben
+`estado: 'aprobado'` a todos y anularian justo el agujero que H-01 cierra.
+
 ### H-01 está cerrada (2026-09-13, `hardening/h-01`)
 
 Hardening, QA destructivo, matriz de evidencia y **segunda auditoría adversarial desde cero**.

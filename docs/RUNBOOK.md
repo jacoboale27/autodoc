@@ -45,7 +45,9 @@ devuelve nada.
 1. Contar, contra el proyecto real y **antes** de desplegar:
 
    ```
-   node scripts/contar_talleres_sin_estado.js    # o una consulta equivalente en la consola
+   cd functions
+   node contar_talleres_sin_estado.js           # cuenta y lista; no escribe nada
+   node contar_talleres_sin_estado.js --csv    # la lista completa, para decidir una a una
    ```
 
    Lo que hay que saber es cuántos documentos de `usuarios` cumplen

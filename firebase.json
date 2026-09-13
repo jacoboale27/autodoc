@@ -13,6 +13,9 @@
     {
       "target": "app",
       "public": "build/web",
+      "predeploy": [
+        "node scripts/verificar_bundle_web.js"
+      ],
       "ignore": [
         "firebase.json",
         "**/.*",

@@ -98,3 +98,8 @@ functions/seed_testsprite_staging.js
 .superpowers/
 .playwright-cli/
 audit-*.yml
+
+# Salida de scripts/contar_talleres_sin_estado.js --csv: lleva correos y
+# nombres de usuarios reales. Nunca se versiona.
+functions/talleres_a_revisar.csv
+*.csv

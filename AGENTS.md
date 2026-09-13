@@ -101,6 +101,23 @@ exige— y FINAL-01. Las tandas de drenaje de gaps están cerradas: `fix/gaps-02
 (residuales de FUNC-02), `fix/gaps-03` (accesibilidad de la landing que dejó UX-03) y
 **`fix/gaps-04`** (lo que quedaba abierto antes de H-01, cerrada el 2026-09-13).
 
+### Incidente de despliegue del 2026-09-13 — nunca publiques `build/web` sin verificarlo
+
+Se desplego a hosting el artefacto de E2E (`e2e/scripts/build-web.js`). Ese build es
+**`--profile`**, y los candados de `lib/core/config/firebase_emulators.dart` son
+`_flagEmuladores && !kReleaseMode`: en profile **los dos se abren**. La web publicada apunto
+Auth/Firestore/Storage al `localhost` del visitante y mostro el cartel «Running in emulator
+mode». Caida total de disponibilidad; sin fuga de datos.
+
+**Lo que hay que retener:** ninguna suite del repo podia verlo porque todas miran el **codigo
+fuente**, que estaba bien. El defecto vivia en el **artefacto**, que no se versiona. Hay ahora una
+guarda `predeploy` en `firebase.json` (`scripts/verificar_bundle_web.js`) y un centinela
+(`test/despliegue_web_protegido_test.dart`) que impide quitarla. Antes de un build de produccion,
+`flutter clean` **no es opcional**.
+
+**`.firebaserc` tiene `"default": "autodoc-staging"`**: todo `firebase deploy` sin `--project` va
+a staging. Usa siempre el alias explicito.
+
 ### H-01 está cerrada (2026-09-13, `hardening/h-01`)
 
 Hardening, QA destructivo, matriz de evidencia y **segunda auditoría adversarial desde cero**.
