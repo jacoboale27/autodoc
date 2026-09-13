@@ -2222,6 +2222,12 @@ abstract class AppLocalizations {
   /// **'Reservation {status} successfully'**
   String chatReservationSuccess(String status);
 
+  /// No description provided for @chatReservationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The appointment could not be created. Please try again.'**
+  String get chatReservationFailed;
+
   /// No description provided for @chatReservationDetail.
   ///
   /// In en, this message translates to:

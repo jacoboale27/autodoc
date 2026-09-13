@@ -658,6 +658,7 @@
       }
     }
   },
+  "chatReservationFailed": "No se pudo crear la cita. Intentalo de nuevo.",
   "chatReservationDetail": "Detalle de Cita",
   "coreAppTitle": "AutoDoc Taller",
   "chatViewFullHistory": "Ver Historial Completo",
