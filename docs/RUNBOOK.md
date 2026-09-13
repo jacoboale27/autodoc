@@ -21,6 +21,48 @@ Debe ejecutarla una persona con esas credenciales.
 > Google Cloud Console que esa clave **no está expuesta**, así que esta
 > acción se descarta — no requiere rotación.
 
+### Pendiente 0 — ANTES de desplegar las reglas de H-01: contar talleres sin `estado`
+
+**Bloqueante.** H-01 endurece dos sitios que antes miraban solo el `rol`:
+
+- `storage.rules` → `isVinculadoAlVehiculo()` pasa a exigir taller **aprobado**. Afecta a
+  `facturas/{vehicleId}` y a la galería `vehiculos/{vehicleId}/**`.
+- `firestore.rules` → abrir una conversación como propietario exige que el `id_mecanico`
+  nombrado sea un taller aprobado.
+
+Ambas resuelven el estado con `.get('estado', 'pendiente')`. O sea: **un usuario con rol
+`Mecanico` o `Taller` al que le falte el campo `estado`, o lo tenga con un valor heredado
+fuera de `['aprobado','activo']`, pierde de golpe** el acceso a las facturas y a la galería de
+los vehículos a los que está vinculado, y deja de poder recibir chats nuevos de propietarios.
+
+Ninguna suite puede avisar de esto: `test_rules/storage.test.js:17` siembra siempre
+`estado: 'activo'` y las suites nuevas siembran el caso a propósito. Es el mismo tipo de
+trampa que el backfill de `abierto` en `fix/gaps-02` — una igualdad sobre un campo ausente no
+devuelve nada.
+
+**Qué hacer, en este orden:**
+
+1. Contar, contra el proyecto real y **antes** de desplegar:
+
+   ```
+   node scripts/contar_talleres_sin_estado.js    # o una consulta equivalente en la consola
+   ```
+
+   Lo que hay que saber es cuántos documentos de `usuarios` cumplen
+   `rol in ['Mecanico','Taller']` **y** (`estado` ausente **o** `estado` fuera de
+   `['aprobado','activo']`).
+
+2. Si el resultado es **cero**, desplegar reglas y app juntas. No hace falta nada más.
+
+3. Si es **distinto de cero**, hay que decidir documento a documento antes de desplegar: los
+   que estén operativos necesitan `estado: 'aprobado'`; los que estén realmente pendientes o
+   suspendidos **deben** perder el acceso, que es justo el defecto que H-01 cierra. No hagas un
+   backfill ciego a `'aprobado'`: convertiría el arreglo en su contrario.
+
+**El expediente de verificación no se ve afectado**, y es deliberado: `verificaciones/{tallerId}`
+sigue usando el `isMecanico()` laxo de `storage.rules`, porque un taller sube su NIT y sus fotos
+precisamente cuando todavía no está aprobado.
+
 ### Pendiente 1 — Crear el proyecto de staging (Step 1 del brief)
 
 ```bash

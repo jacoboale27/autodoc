@@ -11,9 +11,9 @@ reales, y no se ha ejecutado ningún `firebase deploy`.
 | Gate | Comando | Resultado |
 |---|---|---|
 | Análisis estático | `flutter analyze` | `No issues found!`, exit 0 |
-| Unitarias y de widget | `flutter test` | **1225 / 1225**, `All tests passed!` |
+| Unitarias y de widget | `flutter test` | **1227 / 1227**, `All tests passed!` |
 | Cloud Functions | `cd functions && npm test` | **276 passing**, exit 0 |
-| Reglas de Firestore y Storage | `cd test_rules && npm test` | **454 / 454**, 26 suites, exit 0 |
+| Reglas de Firestore y Storage | `cd test_rules && npm test` | **465 / 465**, 28 suites, exit 0 |
 | Build de la landing | `cd e2e && npm run build:landing` | exit 0 |
 | E2E de la landing | `cd e2e && npm run test:landing` | **42 / 42**, exit 0 |
 | E2E de la app | `cd e2e && npx playwright test --workers=1` | **37 / 37**, exit 0, **cero `fixme`** |
@@ -188,10 +188,50 @@ un archivo, una de cada dos pasadas moría en `esperarAppLista` a los 120 s: cad
 CanvasKit más persistencia offline y degrada el emulador. Agrupar bajó de 2,9 min a 54 s y
 quitó la intermitencia. Es la guía que `CLAUDE.md` ya daba.
 
+## 4 bis. La ronda de revisión de reglas, y por qué era obligatoria
+
+Los dos arreglos de reglas que salieron de la segunda auditoría (§2 de
+`docs/AUDITORIA_CREA_J_2026_v2.md`) pasaron por el gate de `firestore-rules-reviewer` antes de
+darse por cerrados. **Encontró que uno de los dos no cerraba nada.**
+
+### El arreglo de reservas solo encarecía el ataque
+
+Atar la cita a su conversación daba por buena una relación que **el propio atacante podía
+fabricarse**: el `allow create` de `/conversaciones` tenía una rama —la del propietario— que no
+comprobaba nada sobre `id_mecanico`. Así que el ataque seguía siendo posible con **una escritura
+más**: primero la conversación nombrando a la víctima de mecánico, después la cita.
+
+Lo que hace esto instructivo: la rama del mecánico **sí** estaba cerrada, desde la Ronda 3. La
+simétrica llevaba abierta desde entonces, y mi arreglo se apoyó justo en ella llamándola «una
+relación de fiar». Lo era en la mitad que el atacante no usa.
+
+**Cerrado de verdad:** un propietario solo puede abrir chat con un **taller aprobado**, con un
+helper nuevo `esMecanicoAprobado(uid)` que mira a la contraparte y no al llamante. Cubierto por
+tres casos más en `reservas_relacion_previa.test.js`, incluido el ataque completo en dos pasos,
+verificados en rojo antes de tocar la regla.
+
+Puso rojos cinco tests cuyas siembras creaban conversaciones con un `id_mecanico` que nunca se
+sembraba como usuario. Su propio nombre —«inicia el chat desde el directorio»— dice que la forma
+real es otra: el directorio solo lista talleres aprobados. Se corrigieron las siembras.
+
+### Lo que el revisor vio y ninguna suite podía ver
+
+- **`.data.id_propietario` sobre un documento al que le falte el campo no devuelve null: lanza.**
+  Aquí fallaba cerrado, que es la dirección buena, pero por accidente. Ahora usa
+  `.get('id_propietario', '')`, así que el motivo es «no coincide» y no un error del motor.
+- **El riesgo de despliegue**, que es el más caro de todos y no es un defecto de regla:
+  `esTallerAprobado` resuelve con `.get('estado', 'pendiente')`, así que **cualquier taller de
+  producción sin ese campo pierde de golpe las facturas y la galería**. Ninguna suite puede
+  avisarlo, porque todas siembran `estado`. Es **Pendiente 0 de `docs/RUNBOOK.md`**, bloqueante
+  antes de desplegar, y explícitamente **no** un backfill ciego a `'aprobado'`: eso convertiría
+  el arreglo en su contrario.
+
 ## 5. Estado de la rama
 
 Los ocho gates de §1 están corridos y en verde sobre el árbol final. `flutter test` pasó de
-1221 a **1225**: dos casos del id vacío de reserva y dos del centinela de salidas de sesión.
+1221 a **1227** y las reglas de 454 en 26 suites a **465 en 28**: los casos del id vacío de
+reserva, el centinela de salidas de sesión, las dos rutas de tarea sin `extra`, el taller
+suspendido y la relación previa de las citas.
 
 **Una nota sobre cómo se leyó ese número.** La primera corrida salió `+1223 -1` y la tarea de
 fondo reportó exit 0 — porque el comando terminaba en un `echo`, así que el código de salida
@@ -212,5 +252,10 @@ Pendiente: la segunda auditoría adversarial (§7 del plan) y el informe
 | 4 | `chat_screen.dart:525` tiene un literal en español sin traducir (`'No se pudo eliminar el mensaje.'`) | No es una fuga de error técnico —lo que cerró UX-03— sino una cadena sin ARB. Hay que barrer si hay más antes de arreglar una sola |
 | 5 | Los comentarios de `playwright.config.js:45` y `playwright.landing.config.js:38` afirman que **esperar al hub garantiza que Firestore responda**, que es justo lo contrario de lo que el proyecto aprendió | El defecto real está cerrado: la espera de verdad vive en `global-setup.js`, que espera a Firestore y a Auth directamente. Queda el comentario, que invita a «simplificar» el global-setup mañana. **Se corrige en esta misma rama** |
 | 6 | La nota de `e2e/tests/helpers.js` dice que la app «no emite ni un `aria-label`» | Quedó obsoleta: los `<input>` sí los emiten, y de ahí salió la aserción del §4. **Se corrige en esta misma rama** |
+
+| 7 | **`/reservas` no ata `id_taller`.** El `create` fija bien quién va en `id_propietario` e `id_mecanico` —la conversación los pinea—, pero el `id_taller` es libre: un cliente puede crear una cita legítima con su mecánico y apuntar ese campo a un taller de terceros. Cualquier panel o consulta que agrupe por ahí se contamina | Del gate de revisión. Ninguna suite lo mira porque el único creador de `lib/` siempre escribe el valor correcto. Cerrarlo es otro predicado en la misma regla, pero quiero ver primero qué consume ese campo antes de fijarlo |
+| 8 | **Un taller vinculado y aprobado puede ESCRIBIR facturas sobre un vehículo ajeno sin ningún ticket abierto**: el vínculo basta (`storage.rules`, bloque `facturas/`) | Del gate de revisión, fuera del diff de H-01. Lectura y escritura están igualadas y no deberían: leer el histórico es razonable con el vínculo; escribir debería exigir trabajo en curso |
+| 9 | `esTallerAprobado(uid)` **parece general pero su `isAuthenticated()` mira siempre al llamante**, así que invocarla con un uid ajeno daría un resultado que no significa lo que aparenta | Hoy no hay ningún call site así —los tres pasan el uid del llamante o del propio taller—, pero es una trampa esperando. O se documenta en la función o se le quita el parámetro |
+| 10 | La nota de la regla de reservas afirma que «en `lib/` hay un único creador de reservas». Es cierto hoy, y **no lo vigila ningún centinela** | Es exactamente el tipo de invariante que FUNC-02 vio caducar. La seguridad de la regla NO depende de ello —la regla exige la relación venga quien venga—, así que es deuda de documentación, no de autorización |
 
 Siguen abiertos los quince de `GAPS-04-drenaje.md` §7, sin cambios.

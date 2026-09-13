@@ -721,6 +721,18 @@ GoRouter createAppRouter(
       ),
       GoRoute(
         path: '/task_config',
+        // `extra` no viaja en la URL: no sobrevive a una recarga del navegador
+        // ni existe al entrar por enlace directo. El cast de abajo era
+        // incondicional, asi que pulsar F5 en esta pantalla la reventaba con un
+        // TypeError y dejaba a la persona sin salida — el mismo callejon que
+        // UX-02 cerro para el error de arranque y para el 404.
+        //
+        // Sin la tarea no hay nada que configurar, pero si donde elegir otra:
+        // /alerts es justo la pantalla que empuja esta ruta
+        // (alerts_screen.dart:618). Lo vigila
+        // `test/core/router/task_routes_sin_extra_test.dart`.
+        redirect: (context, state) =>
+            state.extra is MaintenanceTask ? null : '/alerts',
         pageBuilder: (context, state) {
           final task = state.extra as MaintenanceTask;
           return buildPageWithFadeThrough(
@@ -732,6 +744,17 @@ GoRouter createAppRouter(
       ),
       GoRoute(
         path: '/task_complete',
+        // Mismo motivo que /task_config, y ademas hay que mirar DENTRO del
+        // mapa: llega con `extra` puesto pero sin sus dos claves y el cast
+        // revienta igual, solo que una linea mas abajo.
+        redirect: (context, state) {
+          final extra = state.extra;
+          if (extra is! Map<String, dynamic>) return '/alerts';
+          if (extra['task'] is! MaintenanceTask || extra['currentKm'] is! int) {
+            return '/alerts';
+          }
+          return null;
+        },
         pageBuilder: (context, state) {
           final data = state.extra as Map<String, dynamic>;
           return buildPageWithFadeThrough(

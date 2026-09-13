@@ -82,9 +82,22 @@ service firebase.storage {
         request.resource.contentType.matches('audio/(mp4|aac|m4a|mpeg)');
     }
 
-    // Mecanico cuyo taller esta vinculado al vehiculo.
+    // Mecanico APROBADO cuyo taller esta vinculado al vehiculo.
+    //
+    // Usa `esTallerAprobado()` y no `isMecanico()`, que en este archivo mira
+    // `rol` pero no `estado`. Con el laxo, un taller que ya estaba en
+    // `talleres_vinculados` y despues perdia la habilitacion conservaba las
+    // facturas del vehiculo —leerlas y escribirlas— mientras firestore.rules
+    // se las denegaba por la misma operacion. La asimetria de isMecanico()
+    // esta documentada arriba, pero la razon que da cubre el expediente de
+    // verificacion (linea ~244), que se sube con la cuenta sin aprobar a
+    // proposito; no cubre los documentos de un vehiculo ajeno.
+    //
+    // Lo vigila `test_rules/storage_taller_suspendido.test.js`. No lo veia
+    // ninguna suite porque `storage.test.js:17` siembra siempre
+    // `estado: 'activo'`.
     function isVinculadoAlVehiculo(vehicleId) {
-      return isMecanico() &&
+      return esTallerAprobado(request.auth.uid) &&
         firestore.exists(/databases/(default)/documents/vehiculos/$(vehicleId)) &&
         firestore.get(/databases/(default)/documents/vehiculos/$(vehicleId))
           .data.get('talleres_vinculados', []).hasAny([request.auth.uid]);

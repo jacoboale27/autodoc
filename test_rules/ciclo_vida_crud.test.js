@@ -54,7 +54,19 @@ describe('ciclo de vida: vehiculos', () => {
 });
 
 describe('ciclo de vida: conversaciones y mensajes (el chat)', () => {
+  // El taller tiene que existir y estar aprobado: desde H-01, abrir chat como
+  // propietario exige que el `id_mecanico` nombrado sea un taller de verdad
+  // (antes valia cualquier uid, y por ahi entraba el ataque en dos pasos
+  // contra /reservas). El chat se inicia desde el directorio, que solo lista
+  // talleres aprobados, asi que esto es la forma real y no un apano.
+  const sembrarTallerAprobado = () => seed(env, async (s) => {
+    await s.collection('usuarios').doc(UIDS.taller1).set({
+      id_usuario: UIDS.taller1, rol: 'Taller', estado: 'aprobado',
+    });
+  });
+
   const abrirChat = async () => {
+    await sembrarTallerAprobado();
     const db = await withRole(env, UIDS.owner1, 'Propietario');
     await assertSucceeds(db.collection('conversaciones').doc('c1').set({
       id_propietario: UIDS.owner1, id_mecanico: UIDS.taller1, id_taller: UIDS.taller1,
@@ -189,10 +201,25 @@ describe('ciclo de vida: cotizaciones', () => {
 
 describe('ciclo de vida: reservas', () => {
   test('create, relectura, reprogramacion, relectura; delete denegado a todos', async () => {
+    // Una cita nace DENTRO de una conversacion (H-01): la regla exige que la
+    // conversacion exista y que sus dos participantes sean los mismos que
+    // nombra la cita. Esta siembra no lo hacia, o sea modelaba una forma que
+    // `ReservaModel.toMap()` no genera nunca — siempre escribe
+    // `id_conversacion`, y en `lib/` solo hay un creador de reservas. Se
+    // corrige la siembra, no la regla.
+    await seed(env, async (s) => {
+      await s.collection('conversaciones').doc('c1').set({
+        id_conversacion: 'c1',
+        id_propietario: UIDS.owner1,
+        id_mecanico: UIDS.taller1,
+        ultimo_mensaje_ts: new Date(),
+      });
+    });
     const db = await withRole(env, UIDS.owner1, 'Propietario');
     const ref = db.collection('reservas').doc('r1');
 
     await assertSucceeds(ref.set({
+      id_conversacion: 'c1',
       id_propietario: UIDS.owner1, id_mecanico: UIDS.taller1, id_vehiculo: 'v1',
       estado: 'pendiente', id_proponente: UIDS.owner1, fecha_hora_propuesta: 'lunes 10:00',
     }));
