@@ -65,6 +65,41 @@ devuelve nada.
 sigue usando el `isMecanico()` laxo de `storage.rules`, porque un taller sube su NIT y sus fotos
 precisamente cuando todavía no está aprobado.
 
+### Pendiente 0bis — Politicas TTL de Firestore (DOS, y una llevaba perdida desde UX-01)
+
+**Firestore no configura TTL desde `firestore.indexes.json`.** Va por consola o por `gcloud`, y
+por eso estos pasos se pierden: no hay ningun archivo del repo que los declare y ningun test que
+los eche de menos.
+
+**Y una ya se perdio.** La politica de `solicitudes_landing_control` se decidio en UX-01 y quedo
+anotada **solo** en `docs/evidencia/UX-01-contacto-y-ctas.md`, nunca en este runbook. Es
+literalmente el patron que el propio proyecto lleva cuatro tandas escribiendo: remitir un paso a
+otro documento no lo cierra. Aqui quedan las dos.
+
+| Coleccion | Campo | Por que |
+|---|---|---|
+| `solicitudes_landing_control` | `expira_en` | Un documento por IP del limitador de la landing. Sin TTL no se purga nunca. |
+| `tokens_historial` | `purgar_en` | Un documento por pase de historial emitido (INNO-01). Guarda `{id_vehiculo, id_propietario}` — o sea un mapa de quien tiene que coche— en una coleccion que **nadie puede leer** y que por tanto nadie va a auditar. |
+
+```bash
+gcloud firestore fields ttls update expira_en   --collection-group=solicitudes_landing_control --enable-ttl --project=<projectId>
+
+gcloud firestore fields ttls update purgar_en   --collection-group=tokens_historial --enable-ttl --project=<projectId>
+```
+
+**El campo tiene que ser `Timestamp`, no milisegundos.** Con un numero la politica se crea sin
+error y no borra nada jamas. Por eso `tokens_historial` guarda **dos** campos de tiempo:
+`expira_en` en epoch ms (que es lo que compara el callable con `Date.now()`) y `purgar_en` como
+`Date`, 48 h despues. Ese margen tampoco es cosmetico: si el TTL borrase justo al vencer, un pase
+caducado pasaria de decir «ya caduco» a «no existe». Ningun test puede verlo — el emulador no
+ejecuta politicas TTL.
+
+Verificar despues de crearlas:
+
+```bash
+gcloud firestore fields ttls list --project=<projectId>
+```
+
 ### Pendiente 1 — Crear el proyecto de staging (Step 1 del brief)
 
 ```bash

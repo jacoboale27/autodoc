@@ -1751,5 +1751,25 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // INNO-01 — pases temporales de historial por QR.
+    //
+    // Cerrada a TODO cliente, en los dos sentidos, y las dos mitades importan:
+    //
+    // - Sin `read` no se puede canjear un pase leyendo el documento por su id,
+    //   ni —sobre todo— LISTAR la coleccion para barrer los pases vivos de
+    //   otros. Un pase es un secreto portador: quien lo tiene, entra.
+    // - Sin `write` no se puede fabricar un pase para un vehiculo ajeno, ni
+    //   estirarle el `expira_en` a uno propio ya caducado, ni des-revocar uno
+    //   que el propietario ya anulo.
+    //
+    // Los tres callables (`crearPaseHistorial`, `leerPaseHistorial`,
+    // `revocarPaseHistorial`) corren con Admin SDK y no pasan por aqui, que es
+    // justo el motivo de que la funcionalidad sea un callable y no una regla:
+    // una regla no puede recibir el token como parametro, asi que autorizar con
+    // el obligaria a ponerlo en la ruta y dejaria rastro enumerable.
+    match /tokens_historial/{token} {
+      allow read, write: if false;
+    }
+
   }
 }

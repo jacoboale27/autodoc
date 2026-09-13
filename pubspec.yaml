@@ -88,6 +88,7 @@ dependencies:
   firebase_app_check: ^0.4.5+2
   record: ^6.1.1
   audioplayers: ^6.1.0
+  qr_flutter: ^4.1.0
 
 flutter_native_splash:
   color: "#522C81"

@@ -1985,3 +1985,73 @@ exports.recibirSolicitudLanding = functions
     timestamp: () => FieldValue.serverTimestamp(),
   })
 );
+
+/**
+ * INNO-01: pase temporal de historial por QR.
+ *
+ * Tres callables sobre `src/historialCompartido.js`, que es donde vive la
+ * logica y los porques. Aqui solo queda el pegamento: App Check, sesion,
+ * reloj del servidor y traduccion del codigo de error a HttpsError.
+ *
+ * `Date.now()` se pasa desde aqui y NUNCA llega del cliente: si el llamante
+ * pudiera aportar la hora, el vencimiento del pase seria decorativo.
+ */
+const historialCompartido = require('./src/historialCompartido');
+
+function traducirFallo(e) {
+  if (e && e.codigo) {
+    return new functions.https.HttpsError(e.codigo, e.message.split(': ').slice(1).join(': '));
+  }
+  return e;
+}
+
+exports.crearPaseHistorial = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'crearPaseHistorial');
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  }
+  try {
+    return await historialCompartido.crearTokenHistorial({
+      db,
+      uid: context.auth.uid,
+      idVehiculo: data && data.id_vehiculo ? String(data.id_vehiculo) : '',
+      ahora: Date.now(),
+    });
+  } catch (e) {
+    throw traducirFallo(e);
+  }
+});
+
+exports.leerPaseHistorial = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'leerPaseHistorial');
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  }
+  try {
+    return await historialCompartido.leerHistorialPorToken({
+      db,
+      uid: context.auth.uid,
+      token: data && data.token ? String(data.token) : '',
+      ahora: Date.now(),
+    });
+  } catch (e) {
+    throw traducirFallo(e);
+  }
+});
+
+exports.revocarPaseHistorial = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'revocarPaseHistorial');
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  }
+  try {
+    await historialCompartido.revocarTokenHistorial({
+      db,
+      uid: context.auth.uid,
+      token: data && data.token ? String(data.token) : '',
+    });
+    return { ok: true };
+  } catch (e) {
+    throw traducirFallo(e);
+  }
+});

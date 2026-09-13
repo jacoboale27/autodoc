@@ -334,6 +334,23 @@ const _inventario = <_Consulta>[
     // existido jamás, todos los días.
     origen: 'functions/src/recordatoriosReserva.js:86',
   ),
+  _Consulta(
+    coleccion: 'servicios',
+    igualdades: ['id_vehiculo'],
+    orden: 'fecha',
+    descendente: true,
+    // INNO-01: el pase temporal de historial por QR. Reutiliza el MISMO indice
+    // que el historial del propietario, asi que no crea ninguno.
+    //
+    // Entra igualmente al inventario, y la razon es el escarmiento de GAPS-04:
+    // al retirar `streamReservasUsuario` el centinela se llevaba de paso un
+    // tercer indice de `reservas` que usa el recordatorio de citas, o sea el
+    // SERVIDOR. Si manana alguien retira las consultas de historial de `lib/`,
+    // sin esta entrada este indice se marcaria huerfano y se borraria — y el
+    // canje del pase moriria en produccion con `failed-precondition`, que es
+    // justo el fallo que los emuladores no pueden ver.
+    origen: 'functions/src/historialCompartido.js:160',
+  ),
 ];
 
 /// Índices que no sirven a ninguna consulta del inventario y aun así se
@@ -353,7 +370,15 @@ const _orderByEsperados = 16;
 /// `vinculo_revocacion_pendiente` (gap 9.6). Es una **sola igualdad**, asi que
 /// el indice automatico la sirve y no anade compuesto; por eso sube el contador
 /// y no el inventario.
-const _whereServidorEsperados = 27;
+/// 28 desde INNO-01: `leerHistorialPorToken` consulta `servicios` por
+/// `id_vehiculo` con `orderBy('fecha','desc')`. El indice compuesto que
+/// necesita YA existe —es el mismo que sirve al historial del propietario— asi
+/// que aqui no nace ninguno; pero la consulta si entra al inventario, para que
+/// ese indice no se marque huerfano el dia que alguien retire las consultas de
+/// historial de `lib/`. Ese fallo exacto ya paso una vez con `reservas` en
+/// GAPS-04: vaciar `lib/` de consultas a una coleccion no significa que la
+/// coleccion se quede sin consultas.
+const _whereServidorEsperados = 28;
 
 class _Consulta {
   const _Consulta({
