@@ -94,7 +94,7 @@ Definition of Done al final, evidencia base en `docs/AUDITORIA_CREA_J_2026_CODEX
 **no repetir la auditoria antes de implementar**.
 
 **Estado a 2026-09-13 — 17 tareas cerradas y verificadas:** SEC-01, SEC-02, SEC-03, DATA-01,
-VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01, FUNC-02, UX-03 / UX-04 y
+VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01, FUNC-02, UX-03 / UX-04,
 **SEC-04 / OPS-01** y **H-01**.
 **Siguiente por orden §12: INNO-01** —solo si el mock judge lo
 exige— y FINAL-01. Las tandas de drenaje de gaps están cerradas: `fix/gaps-02`
