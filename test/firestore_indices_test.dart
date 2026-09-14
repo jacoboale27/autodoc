@@ -378,7 +378,14 @@ const _orderByEsperados = 16;
 /// historial de `lib/`. Ese fallo exacto ya paso una vez con `reservas` en
 /// GAPS-04: vaciar `lib/` de consultas a una coleccion no significa que la
 /// coleccion se quede sin consultas.
-const _whereServidorEsperados = 28;
+/// 31 desde GAPS-05: `crearTokenHistorial` busca un pase vivo antes de acunar
+/// otro (gaps 1 y 2 de INNO-01) con tres igualdades — `id_vehiculo`,
+/// `id_propietario` y `revocado`. **No anaden inventario y no crean indice**, y
+/// esa es justo la razon de escribir la consulta asi: Firestore sirve las
+/// consultas de igualdades puras con los indices automaticos, y por eso el
+/// vencimiento y el cupo se filtran en codigo en vez de con un rango. Mismo
+/// criterio que la consulta de `vinculo_revocacion_pendiente` anotada arriba.
+const _whereServidorEsperados = 31;
 
 class _Consulta {
   const _Consulta({

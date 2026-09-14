@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/utils/mensaje_de_error.dart';
 import '../providers/auth_provider.dart';
 
 /// All navigation decisions remain in the router, including leaving this gate.
@@ -16,7 +17,24 @@ class EmailVerificationScreen extends StatefulWidget {
 class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   bool _busy = false;
 
-  Future<void> _run(Future<String?> Function() action) async {
+  /// Ejecuta una de las tres acciones del gate y avisa si falla.
+  ///
+  /// **[siFalla] es obligatorio por lo que costo no tenerlo.** Este helper lo
+  /// comparten las tres acciones de la pantalla —«ya verifique», «reenviar
+  /// correo» y «cerrar sesion»— y su `catch` pintaba SIEMPRE «no se pudo
+  /// enviar el correo». O sea que un cierre de sesion que fallara dejaba a la
+  /// persona en el gate creyendo que el problema era el envio del correo, y
+  /// buscando en su bandeja de entrada un correo que nadie habia intentado
+  /// mandar. Lo destapo H-01 persiguiendo otra cosa.
+  ///
+  /// Y la excepcion ya no se pierde: el `catch (_)` no dejaba ni rastro. Se
+  /// registra con `mensajeDeError`, que manda el objeto entero al log —donde
+  /// puede verlo quien depura— y no lo ensena. Es la regla de UX-04: el
+  /// detalle tecnico no se borra, se MUEVE.
+  Future<void> _run(
+    Future<String?> Function() action, {
+    required String siFalla,
+  }) async {
     if (_busy) return;
     setState(() => _busy = true);
     try {
@@ -26,11 +44,12 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text(message)));
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.authSendEmailError)),
-        );
+        mensajeDeError(context.l10n, e);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(siFalla)));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -78,7 +97,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                                       session.user?.emailVerified == true
                                   ? null
                                   : l10n.authVerificationNotDetected;
-                            }),
+                            }, siFalla: l10n.authRefreshError),
                       child: Text(l10n.authAlreadyVerified),
                     ),
                     TextButton(
@@ -89,7 +108,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                               return sent
                                   ? l10n.authEmailResent
                                   : l10n.authResendError;
-                            }),
+                            }, siFalla: l10n.authSendEmailError),
                       child: Text(l10n.authResendEmail),
                     ),
                     TextButton(
@@ -98,7 +117,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                           : () => _run(() async {
                               await auth.signOut();
                               return null;
-                            }),
+                            }, siFalla: l10n.authSignOutError),
                       child: Text(l10n.upSignOut),
                     ),
                     if (_busy) const Center(child: CircularProgressIndicator()),

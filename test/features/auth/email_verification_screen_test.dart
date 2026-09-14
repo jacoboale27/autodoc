@@ -177,6 +177,32 @@ void main() {
     expect(location(), '/login');
   });
 
+  testWidgets('un cierre de sesion que falla NO dice que fallo el correo', (
+    tester,
+  ) async {
+    // GAPS-05, gap 3-bis de H-01: las tres acciones del gate comparten
+    // `_run`, y su `catch (_)` pintaba SIEMPRE «no se pudo enviar el correo».
+    // Un cierre de sesion fallido dejaba a la persona buscando en su bandeja
+    // de entrada un correo que nadie habia intentado mandar.
+    when(
+      service.signOut(),
+    ).thenThrow(FirebaseAuthException(code: 'network-request-failed'));
+    await pumpGate(tester);
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(EmailVerificationScreen)),
+    )!;
+
+    await tester.tap(find.text(l10n.upSignOut));
+    await tester.pumpAndSettle();
+
+    expect(find.text(l10n.authSignOutError), findsOneWidget);
+    expect(
+      find.text(l10n.authSendEmailError),
+      findsNothing,
+      reason: 'el mensaje del correo no puede aparecer al cerrar sesion',
+    );
+    expect(location(), '/verify_email');
+  });
   for (final hasProfile in [false, true]) {
     testWidgets('awaits reload then routes with hasProfile=$hasProfile', (
       tester,

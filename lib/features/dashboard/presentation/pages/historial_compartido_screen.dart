@@ -179,6 +179,22 @@ class _HistorialCompartidoScreenState extends State<HistorialCompartidoScreen> {
               color: colors.textSecondary,
             ),
           ),
+          // GAPS-05, gap 5 de INNO-01: el servidor devuelve `expira_en` en el
+          // canje y la pantalla lo ignoraba, asi que quien escanea no sabia si
+          // le daba tiempo a repasar el historial.
+          //
+          // Se pinta la HORA y no una cuenta atras: un `Timer.periodic` aqui
+          // obligaria a todos los tests de esta pantalla a dejar de usar
+          // `pumpAndSettle` —la trampa que ya documenta la pantalla de
+          // emision— y el dato que de verdad hace falta, hasta cuando puedo
+          // mirar, se da igual de bien.
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            context.l10n.paseLectorCaduca(DateFormat.Hm().format(h.expiraEn)),
+            style: AppTextStyles.bodySmall.copyWith(
+              color: colors.textSecondary,
+            ),
+          ),
         ],
       ),
     );

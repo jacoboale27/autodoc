@@ -944,5 +944,22 @@
   "tallerSinResenias": "This workshop has no reviews yet.",
   "@tallerSinResenias": {
     "description": "Estado vacio de la lista de resenas de un taller"
+  },
+  "paseLectorCaduca": "This pass expires at {hora}",
+  "@paseLectorCaduca": {
+    "description": "Aviso al lector de hasta cuando puede consultar el historial compartido (INNO-01 gap 5)",
+    "placeholders": {
+      "hora": {
+        "type": "String"
+      }
+    }
+  },
+  "authSignOutError": "We couldn't sign you out. Check your connection and try again.",
+  "@authSignOutError": {
+    "description": "Fallo al cerrar sesion desde el gate de verificacion de correo (GAPS-05)"
+  },
+  "authRefreshError": "We couldn't check your verification. Try again in a moment.",
+  "@authRefreshError": {
+    "description": "Fallo al recargar el estado de verificacion del usuario"
   }
 }

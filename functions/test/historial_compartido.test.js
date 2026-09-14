@@ -174,6 +174,118 @@ describe('historial compartido por QR temporal (INNO-01)', () => {
     });
   });
 
+  // GAPS-05 — gaps 1 y 2 de INNO-01, cerrados por el mismo cambio.
+  //
+  // La pantalla emite al abrirse, asi que cada visita a /compartir_historial
+  // acunaba un pase nuevo: entrar y salir en bucle escribia documentos sin
+  // tope (gap 2). Y como el boton de revocar solo existe en la pantalla que
+  // emitio ESE pase, salir de ella dejaba el pase vivo y ya sin ninguna via
+  // para anularlo (gap 1) — 15 minutos de acceso al historial que su dueno no
+  // podia cortar.
+  //
+  // Reutilizar el pase vivo del mismo vehiculo cierra los dos: no nace un
+  // documento por visita, y volver a la pantalla devuelve EL MISMO pase, con
+  // su boton de revocar.
+  //
+  // La consulta es de igualdades puras a proposito (sin `orderBy`, sin rango):
+  // Firestore sirve eso con los indices automaticos, asi que no anade un
+  // compuesto. El vencimiento y el cupo se comprueban en codigo.
+  describe('crearTokenHistorial: reutiliza el pase vivo', () => {
+    const conVehiculo = () =>
+      hacerDb({ vehiculos: { v1: { id_propietario: 'dueno' } } });
+
+    const emitir = (db, extra = {}) =>
+      crearTokenHistorial({
+        db,
+        uid: 'dueno',
+        idVehiculo: 'v1',
+        ahora: AHORA,
+        ...extra,
+      });
+
+    it('emitir dos veces seguidas devuelve el MISMO pase', async () => {
+      const db = conVehiculo();
+      const primero = await emitir(db, { generarId: () => 'tok-1' });
+      const segundo = await emitir(db, { generarId: () => 'tok-2' });
+
+      assert.strictEqual(segundo.token, primero.token);
+      assert.strictEqual(
+        Object.keys(db._datos.tokens_historial).length,
+        1,
+        'una segunda visita a la pantalla no puede acunar un documento nuevo',
+      );
+    });
+
+    it('si el pase vivo se reutiliza, conserva su vencimiento original', async () => {
+      // Renovarlo al reutilizar convertiria la reutilizacion en una forma de
+      // extender el pase indefinidamente con solo reabrir la pantalla, que es
+      // justo lo que la vigencia corta viene a impedir.
+      const db = conVehiculo();
+      const primero = await emitir(db, { generarId: () => 'tok-1' });
+      const segundo = await crearTokenHistorial({
+        db,
+        uid: 'dueno',
+        idVehiculo: 'v1',
+        ahora: AHORA + 60 * 1000,
+        generarId: () => 'tok-2',
+      });
+      assert.strictEqual(segundo.expira_en, primero.expira_en);
+    });
+
+    it('un pase REVOCADO no se reutiliza', async () => {
+      const db = conVehiculo();
+      await emitir(db, { generarId: () => 'tok-1' });
+      db._datos.tokens_historial['tok-1'].revocado = true;
+
+      const segundo = await emitir(db, { generarId: () => 'tok-2' });
+      assert.strictEqual(segundo.token, 'tok-2');
+    });
+
+    it('un pase CADUCADO no se reutiliza', async () => {
+      const db = conVehiculo();
+      await emitir(db, { generarId: () => 'tok-1' });
+
+      const segundo = await crearTokenHistorial({
+        db,
+        uid: 'dueno',
+        idVehiculo: 'v1',
+        ahora: AHORA + (VIGENCIA_MINUTOS + 1) * 60 * 1000,
+        generarId: () => 'tok-2',
+      });
+      assert.strictEqual(segundo.token, 'tok-2');
+    });
+
+    it('un pase con el cupo de canjes AGOTADO no se reutiliza', async () => {
+      // Devolverlo seria peor que no reutilizar nada: la pantalla pintaria un
+      // QR que solo puede responder `resource-exhausted`.
+      const db = conVehiculo();
+      await emitir(db, { generarId: () => 'tok-1' });
+      db._datos.tokens_historial['tok-1'].canjes = MAX_CANJES;
+
+      const segundo = await emitir(db, { generarId: () => 'tok-2' });
+      assert.strictEqual(segundo.token, 'tok-2');
+    });
+
+    it('el pase vivo de OTRO vehiculo no se reutiliza', async () => {
+      const db = hacerDb({
+        vehiculos: {
+          v1: { id_propietario: 'dueno' },
+          v2: { id_propietario: 'dueno' },
+        },
+      });
+      await emitir(db, { generarId: () => 'tok-v1' });
+
+      const otro = await crearTokenHistorial({
+        db,
+        uid: 'dueno',
+        idVehiculo: 'v2',
+        ahora: AHORA,
+        generarId: () => 'tok-v2',
+      });
+      assert.strictEqual(otro.token, 'tok-v2');
+    });
+  });
+
   describe('crearTokenHistorial', () => {
     it('el dueno del vehiculo obtiene un token con vencimiento', async () => {
       const db = hacerDb({ vehiculos: { v1: { id_propietario: 'dueno' } } });

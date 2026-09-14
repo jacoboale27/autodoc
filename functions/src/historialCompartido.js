@@ -70,6 +70,18 @@ const MAX_CANJES = 20;
  */
 const MARGEN_PURGA_MS = 48 * 60 * 60 * 1000;
 
+/**
+ * Cuantos pases se miran al buscar uno reutilizable.
+ *
+ * No es el numero de pases que puede haber, es el coste que se acepta pagar
+ * por la busqueda. Con la reutilizacion puesta, lo normal es que haya 0 o 1
+ * por vehiculo; los demas serian revocados o caducados de las ultimas 48 h
+ * (lo que tarda el TTL en purgarlos). Si no cabe ninguno vivo en la ventana,
+ * se acuna uno nuevo — o sea se degrada al comportamiento anterior, nunca a un
+ * fallo.
+ */
+const MAX_PASES_INSPECCIONADOS = 10;
+
 /** Centinela que `firestore.rules:729` exige para un servicio del propietario. */
 const TALLER_MANUAL = 'Manual (Propietario)';
 
@@ -176,6 +188,51 @@ async function crearTokenHistorial({ db, uid, idVehiculo, ahora, generarId }) {
       'permission-denied',
       'Solo el propietario puede compartir el historial de su vehiculo.',
     );
+  }
+
+  // GAPS-05 — se REUTILIZA el pase vivo de este vehiculo en vez de acunar otro.
+  // Cierra los gaps 1 y 2 de INNO-01 con el mismo cambio:
+  //
+  //   - La pantalla emite al abrirse, asi que cada visita escribia un
+  //     documento: entrar y salir en bucle no tenia tope ninguno (gap 2).
+  //   - El boton de revocar solo existe en la pantalla que emitio ESE pase, asi
+  //     que salir de ella dejaba el pase vivo y sin ninguna via para anularlo
+  //     (gap 1). Devolviendo el mismo, volver a la pantalla vuelve a poner el
+  //     boton delante.
+  //
+  // La consulta es de IGUALDADES PURAS a proposito —sin `orderBy` y sin
+  // rango—: Firestore sirve eso con los indices automaticos, asi que no anade
+  // ningun indice compuesto que desplegar. El vencimiento y el cupo se
+  // comprueban aqui, sobre los pocos documentos que quedan tras el filtro.
+  //
+  // El `limit` acota el coste; si por lo que sea hubiera mas pases de los que
+  // caben, lo peor que pasa es que se acune uno nuevo, que es el
+  // comportamiento anterior.
+  const vivos = await db
+    .collection('tokens_historial')
+    .where('id_vehiculo', '==', idVehiculo)
+    .where('id_propietario', '==', uid)
+    .where('revocado', '==', false)
+    .limit(MAX_PASES_INSPECCIONADOS)
+    .get();
+
+  for (const doc of vivos.docs) {
+    const t = doc.data();
+    // Las tres condiciones que hacen util un pase. Devolver uno agotado o
+    // caducado seria peor que no reutilizar nada: la pantalla pintaria un QR
+    // que solo puede fallar.
+    const vigente = typeof t.expira_en === 'number' && ahora <= t.expira_en;
+    const conCupo = (typeof t.canjes === 'number' ? t.canjes : 0) < MAX_CANJES;
+    if (vigente && conCupo) {
+      // NO se renueva `expira_en`: refrescarlo al reutilizar convertiria
+      // reabrir la pantalla en una forma de extender el pase indefinidamente,
+      // que es justo lo que la vigencia corta viene a impedir.
+      return {
+        token: doc.id,
+        expira_en: t.expira_en,
+        vigencia_minutos: VIGENCIA_MINUTOS,
+      };
+    }
   }
 
   const token = (generarId || generarTokenAleatorio)();

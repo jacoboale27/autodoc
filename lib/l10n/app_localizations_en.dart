@@ -1544,4 +1544,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tallerSinResenias => 'This workshop has no reviews yet.';
+
+  @override
+  String paseLectorCaduca(String hora) {
+    return 'This pass expires at $hora';
+  }
+
+  @override
+  String get authSignOutError =>
+      'We couldn\'t sign you out. Check your connection and try again.';
+
+  @override
+  String get authRefreshError =>
+      'We couldn\'t check your verification. Try again in a moment.';
 }

@@ -122,6 +122,22 @@ void main() {
     );
   });
 
+  testWidgets('dice hasta cuando sirve el pase', (tester) async {
+    // GAPS-05, gap 5 de INNO-01: el servidor manda `expira_en` en el canje
+    // y la pantalla lo tiraba. Quien escanea no sabia si le daba tiempo a
+    // repasar el historial antes de que el QR dejara de servir.
+    final falso = LectorFalso(
+      datos: {
+        ..._respuesta(),
+        'expira_en': DateTime(2026, 9, 14, 18, 45).millisecondsSinceEpoch,
+      },
+    );
+    await tester.pumpWidget(envolver(falso.servicio));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('18:45'), findsOneWidget);
+  });
+
   testWidgets('avisa de que el pase no trae importes', (tester) async {
     await tester.pumpWidget(envolver(LectorFalso().servicio));
     await tester.pumpAndSettle();

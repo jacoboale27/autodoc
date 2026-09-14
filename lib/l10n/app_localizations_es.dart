@@ -1553,4 +1553,17 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get tallerSinResenias => 'Aun no hay resenas para este taller.';
+
+  @override
+  String paseLectorCaduca(String hora) {
+    return 'Este pase caduca a las $hora';
+  }
+
+  @override
+  String get authSignOutError =>
+      'No pudimos cerrar tu sesion. Revisa tu conexion e intentalo de nuevo.';
+
+  @override
+  String get authRefreshError =>
+      'No pudimos comprobar tu verificacion. Intentalo de nuevo en un momento.';
 }

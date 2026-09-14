@@ -2905,6 +2905,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This workshop has no reviews yet.'**
   String get tallerSinResenias;
+
+  /// Aviso al lector de hasta cuando puede consultar el historial compartido (INNO-01 gap 5)
+  ///
+  /// In en, this message translates to:
+  /// **'This pass expires at {hora}'**
+  String paseLectorCaduca(String hora);
+
+  /// Fallo al cerrar sesion desde el gate de verificacion de correo (GAPS-05)
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t sign you out. Check your connection and try again.'**
+  String get authSignOutError;
+
+  /// Fallo al recargar el estado de verificacion del usuario
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t check your verification. Try again in a moment.'**
+  String get authRefreshError;
 }
 
 class _AppLocalizationsDelegate
