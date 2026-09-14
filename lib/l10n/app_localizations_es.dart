@@ -1451,4 +1451,88 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get errorReintentar => 'Reintentar';
+
+  @override
+  String get paseTitulo => 'Compartir historial';
+
+  @override
+  String get paseIntro =>
+      'Quien escanee este codigo vera que mantenimientos tiene el vehiculo y cuando. No vera importes ni facturas, y el pase caduca solo.';
+
+  @override
+  String paseCaducaEn(String tiempo) {
+    return 'Caduca en $tiempo';
+  }
+
+  @override
+  String get paseCaducado =>
+      'Este pase ya caduco. Genera otro para seguir compartiendo.';
+
+  @override
+  String get paseRevocar => 'Revocar ahora';
+
+  @override
+  String get paseRevocado => 'Pase revocado. Ya no se puede usar.';
+
+  @override
+  String get paseGenerarOtro => 'Generar otro pase';
+
+  @override
+  String get paseTokenEtiqueta => 'Si no puede escanear, comparte este codigo:';
+
+  @override
+  String get paseErrorEmitir => 'No pudimos generar el pase.';
+
+  @override
+  String get histCompartirAccion => 'Compartir historial';
+
+  @override
+  String get paseLectorTitulo => 'Historial compartido';
+
+  @override
+  String paseLectorKilometraje(int km) {
+    return 'Kilometraje actual: $km km';
+  }
+
+  @override
+  String get paseLectorSinServicios =>
+      'Este vehiculo no tiene mantenimientos registrados en AutoDoc.';
+
+  @override
+  String get paseLectorPorTaller => 'Registrado por un taller';
+
+  @override
+  String get paseLectorAutoDeclarado => 'Declarado por el propietario';
+
+  @override
+  String get paseLectorAvisoAutoDeclarado =>
+      'AutoDoc no puede verificar los mantenimientos que declara el propietario.';
+
+  @override
+  String get paseLectorSinImportes =>
+      'Este pase no incluye importes ni facturas.';
+
+  @override
+  String get paseLectorCaducado =>
+      'Este pase ya caduco. Pide uno nuevo al propietario.';
+
+  @override
+  String get paseLectorRevocado => 'El propietario revoco este pase.';
+
+  @override
+  String get paseLectorAgotado =>
+      'Este pase se uso demasiadas veces. Pide uno nuevo al propietario.';
+
+  @override
+  String get paseLectorNoExiste => 'Este pase no existe o ya caduco.';
+
+  @override
+  String get paseLectorInvalido =>
+      'Ese codigo no es un pase de historial de AutoDoc.';
+
+  @override
+  String get paseCopiarCodigo => 'Copiar codigo';
+
+  @override
+  String get paseCodigoCopiado => 'Codigo copiado';
 }

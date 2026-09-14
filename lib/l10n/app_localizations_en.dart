@@ -1443,4 +1443,87 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorReintentar => 'Retry';
+
+  @override
+  String get paseTitulo => 'Share history';
+
+  @override
+  String get paseIntro =>
+      'Whoever scans this code will see what maintenance the vehicle has had and when. They will not see amounts or invoices, and the pass expires on its own.';
+
+  @override
+  String paseCaducaEn(String tiempo) {
+    return 'Expires in $tiempo';
+  }
+
+  @override
+  String get paseCaducado =>
+      'This pass has expired. Generate another one to keep sharing.';
+
+  @override
+  String get paseRevocar => 'Revoke now';
+
+  @override
+  String get paseRevocado => 'Pass revoked. It can no longer be used.';
+
+  @override
+  String get paseGenerarOtro => 'Generate another pass';
+
+  @override
+  String get paseTokenEtiqueta => 'If they cannot scan, share this code:';
+
+  @override
+  String get paseErrorEmitir => 'We could not generate the pass.';
+
+  @override
+  String get histCompartirAccion => 'Share history';
+
+  @override
+  String get paseLectorTitulo => 'Shared history';
+
+  @override
+  String paseLectorKilometraje(int km) {
+    return 'Current mileage: $km km';
+  }
+
+  @override
+  String get paseLectorSinServicios =>
+      'This vehicle has no maintenance recorded in AutoDoc.';
+
+  @override
+  String get paseLectorPorTaller => 'Recorded by a workshop';
+
+  @override
+  String get paseLectorAutoDeclarado => 'Declared by the owner';
+
+  @override
+  String get paseLectorAvisoAutoDeclarado =>
+      'AutoDoc cannot verify maintenance declared by the owner.';
+
+  @override
+  String get paseLectorSinImportes =>
+      'This pass does not include amounts or invoices.';
+
+  @override
+  String get paseLectorCaducado =>
+      'This pass has expired. Ask the owner for a new one.';
+
+  @override
+  String get paseLectorRevocado => 'The owner revoked this pass.';
+
+  @override
+  String get paseLectorAgotado =>
+      'This pass has been used too many times. Ask the owner for a new one.';
+
+  @override
+  String get paseLectorNoExiste => 'This pass does not exist or has expired.';
+
+  @override
+  String get paseLectorInvalido => 'That code is not an AutoDoc history pass.';
+
+  @override
+  String get paseCopiarCodigo => 'Copy code';
+
+  @override
+  String get paseCodigoCopiado => 'Code copied';
 }

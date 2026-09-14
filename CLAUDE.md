@@ -10,13 +10,64 @@ Evidencia base: `docs/AUDITORIA_CREA_J_2026_CODEX.md` y `docs/AUDITORIA_CREA_J_2
 (dos auditorías independientes, ambas 64/100 por rutas distintas). **No repitas la auditoría
 antes de implementar**; el plan lo prohíbe.
 
-**Estado a 2026-09-13 — 17 tareas cerradas y verificadas:** SEC-01, SEC-02, SEC-03, DATA-01,
+**Estado a 2026-09-13 — 18 tareas cerradas y verificadas:** SEC-01, SEC-02, SEC-03, DATA-01,
 VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01, FUNC-02, UX-03 / UX-04,
-**SEC-04 / OPS-01** y **H-01**.
-**Siguiente por orden §12: INNO-01** —solo si el mock judge lo
-exige— y FINAL-01. Las tandas de drenaje de gaps están cerradas: `fix/gaps-02`
-(residuales de FUNC-02), `fix/gaps-03` (accesibilidad de la landing que dejó UX-03) y
-**`fix/gaps-04`** (lo que quedaba abierto antes de H-01, cerrada el 2026-09-13).
+**SEC-04 / OPS-01**, **H-01** e **INNO-01**.
+**Solo queda FINAL-01** (la evaluación simulada final). Las tandas de drenaje de gaps están
+cerradas: `fix/gaps-02` (residuales de FUNC-02), `fix/gaps-03` (accesibilidad de la landing que
+dejó UX-03) y **`fix/gaps-04`** (lo que quedaba abierto antes de H-01, cerrada el 2026-09-13).
+
+### INNO-01 está cerrada (2026-09-13) — el pase de historial ya es un flujo, no solo un backend
+
+El commit `67c1a3a` dejó los tres callables, las reglas y el cliente Dart; el juez de
+`docs/AUDITORIA_CREA_J_2026_FINAL.md` dio **18/20** en creatividad con una razón literal: «no
+hay pantalla de emisión/lectura, integración con el escáner ni prueba Playwright». Esta tanda
+cierra eso. Evidencia en `docs/evidencia/INNO-01-pase-de-historial.md`. Lo que hay que saber
+sin leerla:
+
+- **La demo E2E encontró tres defectos que ninguna suite de widgets podía ver.** El peor:
+  **`context.push` no mueve la URL** en go_router 17 (`RouteMatchList.push()` conserva el `uri`
+  anterior — la «causa B» que `url_sigue_a_la_navegacion_test.dart` ya tenía documentada), así
+  que el pase no sobrevivía a un F5. Los otros dos: un `SelectableText` que Flutter web expone
+  como `textbox [disabled]` —o sea, un lector de pantalla lo anuncia como campo de formulario
+  deshabilitado en vez de como texto— y unos tokens de fixture que **no eran hexadecimales**
+  (`'b2caduca'`, `'c3revoca'`: `u` y `v`), con lo que el servidor los rechazaba por la forma
+  antes de mirar la caducidad y parecía que la pantalla mapeaba mal los errores.
+- **LA APP DEL BUNDLE E2E SE RENDERIZA EN INGLÉS, y no estaba anotado en ninguna parte.**
+  Chromium arranca con el locale del sistema y Flutter resuelve `AppLocalizations` con
+  `navigator.language`. Lo que esconde la trampa es que los rótulos que NO pasan por el ARB
+  —«Garaje», «Talleres», «Fechas»— siguen en español, y son justo los que usan los specs
+  viejos. Síntoma: «no encuentro el botón» con el botón delante. El `error-context.md` de
+  Playwright trae el snapshot de accesibilidad y ahí se lee el rótulo real.
+- **La suite E2E arranca ahora también el emulador de Functions** (`auth,firestore,storage,
+  functions`) y `global-setup.js` espera a su puerto: es el más lento de los cuatro, y sin esa
+  espera el primer canje fallaría con `internal` y se leería como un defecto de la pantalla.
+  `firebase_emulators.dart` cablea `useFunctionsEmulator` bajo los mismos dos candados.
+- **El mapeo de errores de UX-04 NO sirve para el pase, y usarlo habría mentido:**
+  `mensajeDeError` manda `deadline-exceeded` a «revisa tu conexión» y `permission-denied` a
+  «vuelve a iniciar sesión», cuando significan *caducó* y *el propietario lo revocó*. Hay un
+  mapeo propio (`mensajeDePaseHistorial`) y `paseMereceReintento`, que **retira el botón de
+  reintentar** donde no puede funcionar nunca.
+- **El reloj de la pantalla de emisión es inyectable porque si no, ningún test ve el
+  vencimiento:** `tester.pump(Duration)` avanza el reloj FALSO del binding y `DateTime.now()`
+  lee el de verdad, así que una pantalla que se negara a retirar un QR muerto pasaría cualquier
+  suite. Y con la cuenta atrás viva **`pumpAndSettle` no se puede usar**: un `Timer.periodic`
+  nunca deja de haber trabajo pendiente.
+- **La distinción de lo auto-declarado es la funcionalidad.** `firestore.rules:728-729` deja al
+  propietario registrar servicios con `id_taller == 'Manual (Propietario)'`, así que un vendedor
+  puede escribirse el historial entero. Se pinta con icono, texto y color distintos —no solo
+  color— y con un aviso de que AutoDoc no los verifica.
+
+**Cifras al día del árbol (2026-09-13, con INNO-01):** `flutter analyze` limpio, `flutter test`
+**1267 / 1267**, Functions **296**, reglas **476 / 476** en 29 suites, E2E de la app **41 / 41**
+en serie y cero `fixme`, puertos libres al salir. La E2E de la landing sigue en **42 / 42**; no
+se relanzó porque esta tanda no toca `landing-web/`.
+
+**Quedan seis gaps anotados** en el §7 de esa evidencia. El de más peso: **un pase deja de ser
+revocable en cuanto se sale de la pantalla** — `revocarPaseHistorial` funciona, pero la única
+vía para llegar a él es el botón de la pantalla que emitió *ese* pase, y listar «mis pases
+vivos» exige un callable nuevo porque `tokens_historial` está cerrada a todo cliente. Le sigue
+que `crearPaseHistorial` no tiene límite por usuario y la pantalla emite al abrirse.
 
 ### Incidente de despliegue del 2026-09-13 — el bundle de E2E llego a produccion
 

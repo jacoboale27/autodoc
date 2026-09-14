@@ -40,7 +40,11 @@ module.exports = defineConfig({
       // `emulators:start` y no `exec`: los emuladores tienen que seguir vivos
       // durante toda la suite, no envolver un unico comando.
       command:
-        'npx firebase emulators:start --only auth,firestore,storage --project autodoc-e2e',
+        // `functions` entro con INNO-01: el pase temporal de historial vive
+        // entero en tres callables, asi que sin este emulador la demo no puede
+        // existir. Es el mas lento en arrancar de los cuatro — `global-setup.js`
+        // espera tambien a su puerto (5001), no solo a Firestore y Auth.
+        'npx firebase emulators:start --only auth,firestore,storage,functions --project autodoc-e2e',
       cwd: '..',
       // El hub de emuladores. Playwright espera a este puerto solo para no
       // seguir adelante con el proceso muerto: el hub abre ANTES que Firestore

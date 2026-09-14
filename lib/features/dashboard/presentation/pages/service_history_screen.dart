@@ -77,6 +77,22 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
             fontSize: Responsive.fontSize(context, 18),
           ),
         ),
+        actions: [
+          // INNO-01. La entrada vive aqui y no en la ficha del vehiculo porque
+          // esto es lo que se comparte: el historial que la persona esta
+          // mirando, no el coche.
+          IconButton(
+            icon: Icon(Icons.qr_code_2, color: colors.primary),
+            tooltip: context.l10n.histCompartirAccion,
+            // `go` y no `push`: en go_router 17 `push` conserva el `uri`
+            // anterior (`RouteMatchList.push()`, causa B de
+            // `url_sigue_a_la_navegacion_test.dart`), asi que la barra de
+            // direcciones se quedaria en `/service_history` y un F5 devolveria
+            // al historial perdiendo el pase. Lo destapo la demo E2E.
+            onPressed: () =>
+                context.go('/compartir_historial/${widget.vehiculoId}'),
+          ),
+        ],
       ),
       body: Column(
         children: [

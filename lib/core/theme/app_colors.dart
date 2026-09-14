@@ -196,4 +196,22 @@ class AppPalette {
   static const Color darkShimmerHighlight = Color(0xFF334155);
   static const Color darkScrim = Color(0xFF0F172A);
   static const Color darkOnScrim = Colors.white;
+
+  /// Par fijo del QR del pase de historial (INNO-01). **No sigue el tema, y
+  /// esa es la razón de que exista.**
+  ///
+  /// Un código QR no es una superficie de la interfaz: es una imagen que tiene
+  /// que leer una cámara, y los lectores esperan módulos oscuros sobre fondo
+  /// claro con el contraste máximo. Pintarlo con los tokens del tema lo dejaría
+  /// ilegible en modo oscuro —módulos claros sobre fondo oscuro— y la
+  /// funcionalidad entera dejaría de funcionar sin que ninguna prueba de
+  /// contraste de la app se quejara, porque para WCAG ese par sigue siendo
+  /// perfecto.
+  ///
+  /// Va aquí, y no como literal en la pantalla, porque este fichero es el sitio
+  /// declarado del repo para los literales de color (`kExemptFiles` de
+  /// `test/core/theme/no_hardcoded_colors_test.dart`): así el centinela sigue
+  /// vigilando el resto de la pantalla.
+  static const Color qrModulo = Color(0xFF000000);
+  static const Color qrFondo = Color(0xFFFFFFFF);
 }

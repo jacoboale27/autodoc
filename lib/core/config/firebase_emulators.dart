@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
@@ -35,11 +36,18 @@ const String _hostEmuladores = String.fromEnvironment(
 const int _puertoAuth = 9099;
 const int _puertoFirestore = 8080;
 const int _puertoStorage = 9199;
+const int _puertoFunctions = 5001;
 
 /// `true` sólo si se pidió el modo emulador Y el build lo permite.
 bool get usarEmuladoresFirebase => _flagEmuladores && !kReleaseMode;
 
-/// Conecta Auth, Firestore y Storage a los emuladores locales.
+/// Conecta Auth, Firestore, Storage y Functions a los emuladores locales.
+///
+/// Functions se anadio con INNO-01: el pase temporal de historial vive entero
+/// en tres callables, asi que sin este cableado la demo E2E hablaria con las
+/// funciones de PRODUCCION desde una suite que se cree aislada — o, con las
+/// claves falsas del bundle de E2E, no hablaria con nada y el fallo se leeria
+/// como un defecto de la pantalla.
 ///
 /// Debe llamarse después de `Firebase.initializeApp()` y antes de la primera
 /// operación contra cualquiera de los tres SDK.
@@ -55,10 +63,15 @@ Future<void> conectarEmuladoresFirebase() async {
     _hostEmuladores,
     _puertoStorage,
   );
+  FirebaseFunctions.instance.useFunctionsEmulator(
+    _hostEmuladores,
+    _puertoFunctions,
+  );
 
   debugPrint(
     '=== [AutoDoc Init] EMULADORES: Auth :$_puertoAuth, '
-    'Firestore :$_puertoFirestore, Storage :$_puertoStorage '
-    'en $_hostEmuladores — NO se esta usando produccion ===',
+    'Firestore :$_puertoFirestore, Storage :$_puertoStorage, '
+    'Functions :$_puertoFunctions en $_hostEmuladores '
+    '— NO se esta usando produccion ===',
   );
 }

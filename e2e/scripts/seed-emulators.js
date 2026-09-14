@@ -159,6 +159,37 @@ async function main() {
     talleres_conocidos: [],
   });
 
+  // INNO-01: dos servicios sobre el vehiculo de A, y los dos hacen falta.
+  //
+  // El pase de historial proyecta `auto_declarado`, que sale de si `id_taller`
+  // es el centinela `'Manual (Propietario)'`. Sembrar solo uno de los dos
+  // dejaria la demo E2E afirmando media cosa: con solo el del taller no se ve
+  // que lo auto-declarado se marca distinto, y sin el del taller no se ve que
+  // lo que un taller registro NO se marca. La distincion es la premisa entera
+  // de la funcionalidad —si un vendedor puede escribirse el historial y sale
+  // igual de respaldado, el QR deja de probar nada—, asi que el par es lo
+  // minimo para que la suite la ejerza.
+  await db.collection('servicios').doc('e2e-servicio-taller').set({
+    id_vehiculo: 'e2e-vehiculo-a',
+    id_propietario: ACTORES.propietarioA.uid,
+    id_taller: ACTORES.tallerA.uid,
+    tipo_servicio: 'Cambio de aceite',
+    descripcion: 'Aceite sintetico 5W30 y filtro',
+    kilometraje_servicio: 40000,
+    costo: 250000,
+    fecha: new Date('2026-03-01T15:00:00Z'),
+  });
+  await db.collection('servicios').doc('e2e-servicio-manual').set({
+    id_vehiculo: 'e2e-vehiculo-a',
+    id_propietario: ACTORES.propietarioA.uid,
+    id_taller: 'Manual (Propietario)',
+    tipo_servicio: 'Rotacion de llantas',
+    descripcion: 'Hecho en casa',
+    kilometraje_servicio: 38000,
+    costo: 0,
+    fecha: new Date('2026-01-15T15:00:00Z'),
+  });
+
   // Ficha publica del taller aprobado, que es lo que alimenta el directorio.
   await db.collection('talleres').doc(ACTORES.tallerA.uid).set({
     id_taller: ACTORES.tallerA.uid,

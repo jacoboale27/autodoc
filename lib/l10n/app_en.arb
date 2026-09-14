@@ -814,5 +814,111 @@
   "errorReintentar": "Retry",
   "@errorReintentar": {
     "description": "Action to retry a failed query"
+  },
+  "paseTitulo": "Share history",
+  "@paseTitulo": {
+    "description": "Titulo de la pantalla donde el propietario emite un pase temporal de historial (INNO-01)"
+  },
+  "paseIntro": "Whoever scans this code will see what maintenance the vehicle has had and when. They will not see amounts or invoices, and the pass expires on its own.",
+  "@paseIntro": {
+    "description": "Explicacion de que ve y que no ve quien escanea el pase"
+  },
+  "paseCaducaEn": "Expires in {tiempo}",
+  "@paseCaducaEn": {
+    "description": "Cuenta atras del pase",
+    "placeholders": {
+      "tiempo": {
+        "type": "String"
+      }
+    }
+  },
+  "paseCaducado": "This pass has expired. Generate another one to keep sharing.",
+  "@paseCaducado": {
+    "description": "Estado del pase cuando vence la cuenta atras"
+  },
+  "paseRevocar": "Revoke now",
+  "@paseRevocar": {
+    "description": "Accion para anular un pase antes de que caduque"
+  },
+  "paseRevocado": "Pass revoked. It can no longer be used.",
+  "@paseRevocado": {
+    "description": "Estado del pase despues de revocarlo"
+  },
+  "paseGenerarOtro": "Generate another pass",
+  "@paseGenerarOtro": {
+    "description": "Accion para emitir un pase nuevo cuando el anterior caduco o se revoco"
+  },
+  "paseTokenEtiqueta": "If they cannot scan, share this code:",
+  "@paseTokenEtiqueta": {
+    "description": "Alternativa textual al QR"
+  },
+  "paseErrorEmitir": "We could not generate the pass.",
+  "@paseErrorEmitir": {
+    "description": "Accion que fallo al emitir un pase"
+  },
+  "histCompartirAccion": "Share history",
+  "@histCompartirAccion": {
+    "description": "Boton del historial de servicios que lleva a emitir un pase (INNO-01)"
+  },
+  "paseLectorTitulo": "Shared history",
+  "@paseLectorTitulo": {
+    "description": "Titulo de la pantalla que ve quien escanea el pase"
+  },
+  "paseLectorKilometraje": "Current mileage: {km} km",
+  "@paseLectorKilometraje": {
+    "description": "Kilometraje del vehiculo compartido",
+    "placeholders": {
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "paseLectorSinServicios": "This vehicle has no maintenance recorded in AutoDoc.",
+  "@paseLectorSinServicios": {
+    "description": "Estado vacio del historial compartido"
+  },
+  "paseLectorPorTaller": "Recorded by a workshop",
+  "@paseLectorPorTaller": {
+    "description": "Etiqueta de un servicio que registro un taller"
+  },
+  "paseLectorAutoDeclarado": "Declared by the owner",
+  "@paseLectorAutoDeclarado": {
+    "description": "Etiqueta de un servicio que registro el propio propietario y que AutoDoc no puede verificar"
+  },
+  "paseLectorAvisoAutoDeclarado": "AutoDoc cannot verify maintenance declared by the owner.",
+  "@paseLectorAvisoAutoDeclarado": {
+    "description": "Aviso que acompana a los servicios auto-declarados"
+  },
+  "paseLectorSinImportes": "This pass does not include amounts or invoices.",
+  "@paseLectorSinImportes": {
+    "description": "Aviso de que la proyeccion del pase deja fuera lo economico"
+  },
+  "paseLectorCaducado": "This pass has expired. Ask the owner for a new one.",
+  "@paseLectorCaducado": {
+    "description": "Error: el pase vencio"
+  },
+  "paseLectorRevocado": "The owner revoked this pass.",
+  "@paseLectorRevocado": {
+    "description": "Error: el pase fue revocado"
+  },
+  "paseLectorAgotado": "This pass has been used too many times. Ask the owner for a new one.",
+  "@paseLectorAgotado": {
+    "description": "Error: el pase agoto su cupo de canjes"
+  },
+  "paseLectorNoExiste": "This pass does not exist or has expired.",
+  "@paseLectorNoExiste": {
+    "description": "Error: el pase no se encuentra"
+  },
+  "paseLectorInvalido": "That code is not an AutoDoc history pass.",
+  "@paseLectorInvalido": {
+    "description": "Error: el codigo escaneado no tiene la forma de un pase"
+  },
+  "paseCopiarCodigo": "Copy code",
+  "@paseCopiarCodigo": {
+    "description": "Accion para copiar al portapapeles el codigo del pase (INNO-01)"
+  },
+  "paseCodigoCopiado": "Code copied",
+  "@paseCodigoCopiado": {
+    "description": "Aviso de que el codigo del pase se copio al portapapeles"
   }
 }

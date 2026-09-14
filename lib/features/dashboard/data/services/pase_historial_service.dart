@@ -195,3 +195,25 @@ class ServicioCompartido {
     );
   }
 }
+
+/// Ruta a la que lleva un codigo escaneado, o `null` si no es un pase.
+///
+/// **Existe como funcion pura para que la pueda ejercer un test.** La decision
+/// natural seria escribirla dentro del `onDetect` de `MobileScanner`, y ahi no
+/// la puede ver ninguna suite: no hay camara en un test de widgets. El unico
+/// escaner de la app (`vehicle_search_screen.dart`) interpreta cualquier
+/// `rawValue` como una placa, asi que sin esta bifurcacion un pase escaneado
+/// acabaria buscando el vehiculo de placa `autodoc://historial/a3f9...` y
+/// diciendo "no encontrado" — el fallo se leeria como que el coche no existe,
+/// que es justo el diagnostico equivocado.
+///
+/// El token se escapa con [Uri.encodeComponent] aunque un token legitimo sea
+/// 64 hex y no tenga nada que escapar: lo que entra aqui es lo que alguien
+/// haya impreso en un QR. Una barra sin escapar parte la ruta en dos segmentos
+/// y `/historial_compartido/:token` deja de casar — pantalla desconocida en
+/// vez del mensaje "ese codigo no es un pase".
+String? rutaDeEscaneoQr(String? crudo) {
+  final token = tokenDesdePayloadQr(crudo);
+  if (token == null) return null;
+  return '/historial_compartido/${Uri.encodeComponent(token)}';
+}

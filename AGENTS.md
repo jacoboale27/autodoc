@@ -44,6 +44,13 @@ Landing separada en `landing-web/` (Next.js).
   - **El bundle se compila con `--profile`, no con el release por defecto.** En release,
     `kReleaseMode` desactiva el cableado a emuladores y Auth sale al endpoint REAL con las
     claves falsas, muriendo en `auth/api-key-not-valid`.
+  - **La app del bundle E2E se renderiza EN INGLES.** Chromium arranca con el locale del
+    sistema (`en-US`) y Flutter resuelve `AppLocalizations` con `navigator.language`, asi que
+    todo el copy que pasa por el ARB sale en ingles aunque el repo se escriba en espanol. Lo
+    que esconde la trampa es que los rotulos que NO pasan por el ARB —«Garaje», «Talleres»,
+    «Fechas»— siguen en espanol, y son justo los que usan los specs viejos. Sintoma: «no
+    encuentro el boton» con el boton delante. El `error-context.md` de Playwright trae el
+    snapshot de accesibilidad y ahi se lee el rotulo real.
   - **`getByLabel` NO puede funcionar**: la app no emite ni un `aria-label`. Flutter web expone
     la semantica como `<flt-semantics role="button">` con el rotulo como texto — usa
     `getByRole`. Y hace falta un `page.mouse.click(10,10)` para que Flutter construya ese arbol.
@@ -93,13 +100,33 @@ Plan maestro: `docs/superpowers/plans/2026-09-06-remediation-master-plan-crea-j-
 Definition of Done al final, evidencia base en `docs/AUDITORIA_CREA_J_2026_CODEX.md` —
 **no repetir la auditoria antes de implementar**.
 
-**Estado a 2026-09-13 — 17 tareas cerradas y verificadas:** SEC-01, SEC-02, SEC-03, DATA-01,
+**Estado a 2026-09-13 — 18 tareas cerradas y verificadas:** SEC-01, SEC-02, SEC-03, DATA-01,
 VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01, FUNC-02, UX-03 / UX-04,
-**SEC-04 / OPS-01** y **H-01**.
-**Siguiente por orden §12: INNO-01** —solo si el mock judge lo
-exige— y FINAL-01. Las tandas de drenaje de gaps están cerradas: `fix/gaps-02`
+**SEC-04 / OPS-01**, **H-01** e **INNO-01**.
+**Solo queda FINAL-01.** Las tandas de drenaje de gaps están cerradas: `fix/gaps-02`
 (residuales de FUNC-02), `fix/gaps-03` (accesibilidad de la landing que dejó UX-03) y
 **`fix/gaps-04`** (lo que quedaba abierto antes de H-01, cerrada el 2026-09-13).
+
+### INNO-01 (2026-09-13): el pase de historial por QR ya tiene pantallas y demo
+
+El backend (tres callables + reglas) existia desde `67c1a3a` y **no tenia ni un llamador**.
+Ahora hay pantalla de emision (`/compartir_historial/:vehiculoId`, solo propietario), pantalla
+del lector (`/historial_compartido/:token`, **cualquier sesion**, a proposito), el escaner de
+`vehicle_search_screen` bifurca por `rutaDeEscaneoQr()` y hay demo Playwright
+(`e2e/tests/pase-historial.spec.js`). Evidencia: `docs/evidencia/INNO-01-pase-de-historial.md`.
+
+Tres cosas que cuestan tiempo si no se saben:
+
+- **`context.push` NO mueve la URL** en go_router 17: conserva el `uri` anterior. Usa
+  `context.go` o la pantalla no sobrevive a un F5. Ya estaba documentado como «causa B» en
+  `test/core/router/url_sigue_a_la_navegacion_test.dart` y aun asi se volvio a cometer.
+- **`SelectableText` se expone en web como `textbox [disabled]`**: un lector de pantalla no lo
+  lee como texto. Para ensenar un codigo copiable, `Text` + boton de copiar.
+- **La suite E2E arranca ahora tambien el emulador de Functions** y `global-setup.js` espera a
+  su puerto (5001). Es el mas lento de los cuatro.
+
+Cifras al dia: `flutter analyze` limpio, `flutter test` **1267 / 1267**, Functions **296**,
+reglas **476 / 476** en 29 suites, E2E de la app **41 / 41** en serie, puertos libres al salir.
 
 ### Incidente de despliegue del 2026-09-13 — nunca publiques `build/web` sin verificarlo
 

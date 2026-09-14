@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
@@ -22,6 +23,7 @@ import 'package:autodoc/features/mechanic/presentation/providers/reparacion_prov
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 import 'package:autodoc/features/mechanic/presentation/navegacion_vehiculo.dart';
 import 'package:autodoc/core/utils/plate_formatter.dart';
+import 'package:autodoc/features/dashboard/data/services/pase_historial_service.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
 
 class VehicleSearchScreen extends StatefulWidget {
@@ -65,7 +67,23 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
               if (barcodes.isNotEmpty) {
                 final barcode = barcodes.first;
                 if (barcode.rawValue != null) {
+                  // INNO-01: este escaner interpretaba TODO lo que leyera como
+                  // una placa. Un pase de historial acabaria buscando el
+                  // vehiculo de placa `autodoc://historial/a3f9...` y diciendo
+                  // "no encontrado" — el diagnostico equivocado, porque parece
+                  // que falta el coche y lo que pasa es que el codigo era otra
+                  // cosa. La decision vive en `rutaDeEscaneoQr`, fuera de este
+                  // callback, porque aqui dentro no la puede ejercer ningun
+                  // test: no hay camara en una suite de widgets.
+                  final ruta = rutaDeEscaneoQr(barcode.rawValue);
                   Navigator.of(context).pop();
+                  if (ruta != null) {
+                    // `go`, como el resto de la navegacion de esta pantalla:
+                    // `push` conserva el `uri` anterior en go_router 17 y la
+                    // barra se quedaria en `/mechanic_search`.
+                    context.go(ruta);
+                    return;
+                  }
                   _searchController.text = barcode.rawValue!;
                   _handleSearch();
                 }

@@ -36,6 +36,12 @@ module.exports = async () => {
   await Promise.all([
     esperarEmulador('Firestore', 'http://127.0.0.1:8080/'),
     esperarEmulador('Auth', 'http://127.0.0.1:9099/'),
+    // INNO-01: el pase de historial son tres callables, asi que Functions
+    // tambien tiene que estar arriba. Es el emulador mas lento de los cuatro
+    // —carga `functions/index.js` entero con sus triggers— y si la suite
+    // arrancara sin el, el primer canje fallaria con `internal` y se leeria
+    // como un defecto de la pantalla.
+    esperarEmulador('Functions', 'http://127.0.0.1:5001/'),
   ]);
 
   const r = spawnSync(

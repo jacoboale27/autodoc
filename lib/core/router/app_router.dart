@@ -14,6 +14,8 @@ import 'package:autodoc/features/profile/presentation/pages/profile_setup_screen
 import 'package:autodoc/features/profile/presentation/pages/user_profile_screen.dart';
 import 'package:autodoc/features/profile/presentation/pages/public_profile_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/garage_screen.dart';
+import 'package:autodoc/features/dashboard/presentation/pages/compartir_historial_screen.dart';
+import 'package:autodoc/features/dashboard/presentation/pages/historial_compartido_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/service_history_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/alerts_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/workshop_directory_screen.dart';
@@ -87,6 +89,10 @@ const _ownerRoutes = <String>{
   '/vehicle_profile',
   '/alerts',
   '/service_history',
+  // INNO-01: emitir un pase es cosa del propietario, y el servidor lo vuelve
+  // a comprobar. Canjearlo (/historial_compartido) NO esta en ningun conjunto
+  // por rol, a proposito: quien escanea el QR puede ser cualquiera.
+  '/compartir_historial',
 };
 
 /// Rutas por las que un taller AUN NO APROBADO puede moverse.
@@ -514,6 +520,35 @@ GoRouter createAppRouter(
             id: state.pathParameters['vehiculoId'],
             mensajeFaltante: 'No se indicó ningún vehículo.',
             buildScreen: (id) => ServiceHistoryScreen(vehiculoId: id),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/compartir_historial/:vehiculoId',
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: resolveRouteChild(
+            id: state.pathParameters['vehiculoId'],
+            mensajeFaltante: 'No se indicó ningún vehículo.',
+            buildScreen: (id) => CompartirHistorialScreen(vehiculoId: id),
+          ),
+        ),
+      ),
+      // INNO-01. La ruta lleva el token en el path para que el pase se pueda
+      // abrir desde el escaner Y recargando la pagina: `state.extra` no
+      // sobrevive a un F5 —la cicatriz de /task_config en H-01— y un pase que
+      // muere al recargar no serviria para ensenarselo a alguien delante del
+      // coche.
+      GoRoute(
+        path: '/historial_compartido/:token',
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: resolveRouteChild(
+            id: state.pathParameters['token'],
+            mensajeFaltante: 'No se indicó ningún pase.',
+            buildScreen: (id) => HistorialCompartidoScreen(token: id),
           ),
         ),
       ),

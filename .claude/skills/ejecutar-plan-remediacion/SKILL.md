@@ -13,9 +13,18 @@ orquestarlo**.
 ## Estado (actualizar al cerrar cada tarea)
 
 Hechos: **SEC-01, SEC-02, SEC-03, DATA-01, VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02,
-FUNC-01, FUNC-02, UX-03/UX-04 y SEC-04/OPS-01** (a 2026-09-12). Siguiente por orden §12:
-**H-01**, luego INNO-01 —solo si el mock judge lo exige— y FINAL-01. Las dos tandas de
-drenaje estan cerradas: `fix/gaps-02` y `fix/gaps-03`.
+FUNC-01, FUNC-02, UX-03/UX-04, SEC-04/OPS-01, H-01 e INNO-01** (a 2026-09-13). Queda
+**solo FINAL-01**. Las tandas de drenaje estan cerradas: `fix/gaps-02`, `fix/gaps-03` y
+`fix/gaps-04`.
+
+**Leccion de INNO-01, y vale para cualquier tarea que cierre una funcionalidad de UI:** el
+backend del pase estaba entero y probado, y aun asi la funcionalidad no existia — la unica
+referencia a su cliente Dart estaba en su propia declaracion. **Un callable desplegado que
+ninguna pantalla invoca no es una funcionalidad, es codigo**, y ademas es el peor de los dos
+estados: la superficie de ataque ya publicada y el valor todavia no. La demo E2E, que costo
+dos recompilaciones del bundle, encontro **tres defectos que ninguna suite de widgets podia
+ver** — entre ellos que `context.push` no mueve la URL en go_router 17, un defecto que el repo
+YA tenia documentado en `url_sigue_a_la_navegacion_test.dart` y que se volvio a cometer.
 
 **Leccion de SEC-04/OPS-01, y es la que mas vale de esta ronda: un interruptor de consola
 puede mentir sobre lo que cubre.** App Check estaba activado en el cliente desde hacia meses

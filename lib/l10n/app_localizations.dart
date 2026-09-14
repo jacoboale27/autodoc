@@ -2725,6 +2725,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retry'**
   String get errorReintentar;
+
+  /// Titulo de la pantalla donde el propietario emite un pase temporal de historial (INNO-01)
+  ///
+  /// In en, this message translates to:
+  /// **'Share history'**
+  String get paseTitulo;
+
+  /// Explicacion de que ve y que no ve quien escanea el pase
+  ///
+  /// In en, this message translates to:
+  /// **'Whoever scans this code will see what maintenance the vehicle has had and when. They will not see amounts or invoices, and the pass expires on its own.'**
+  String get paseIntro;
+
+  /// Cuenta atras del pase
+  ///
+  /// In en, this message translates to:
+  /// **'Expires in {tiempo}'**
+  String paseCaducaEn(String tiempo);
+
+  /// Estado del pase cuando vence la cuenta atras
+  ///
+  /// In en, this message translates to:
+  /// **'This pass has expired. Generate another one to keep sharing.'**
+  String get paseCaducado;
+
+  /// Accion para anular un pase antes de que caduque
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke now'**
+  String get paseRevocar;
+
+  /// Estado del pase despues de revocarlo
+  ///
+  /// In en, this message translates to:
+  /// **'Pass revoked. It can no longer be used.'**
+  String get paseRevocado;
+
+  /// Accion para emitir un pase nuevo cuando el anterior caduco o se revoco
+  ///
+  /// In en, this message translates to:
+  /// **'Generate another pass'**
+  String get paseGenerarOtro;
+
+  /// Alternativa textual al QR
+  ///
+  /// In en, this message translates to:
+  /// **'If they cannot scan, share this code:'**
+  String get paseTokenEtiqueta;
+
+  /// Accion que fallo al emitir un pase
+  ///
+  /// In en, this message translates to:
+  /// **'We could not generate the pass.'**
+  String get paseErrorEmitir;
+
+  /// Boton del historial de servicios que lleva a emitir un pase (INNO-01)
+  ///
+  /// In en, this message translates to:
+  /// **'Share history'**
+  String get histCompartirAccion;
+
+  /// Titulo de la pantalla que ve quien escanea el pase
+  ///
+  /// In en, this message translates to:
+  /// **'Shared history'**
+  String get paseLectorTitulo;
+
+  /// Kilometraje del vehiculo compartido
+  ///
+  /// In en, this message translates to:
+  /// **'Current mileage: {km} km'**
+  String paseLectorKilometraje(int km);
+
+  /// Estado vacio del historial compartido
+  ///
+  /// In en, this message translates to:
+  /// **'This vehicle has no maintenance recorded in AutoDoc.'**
+  String get paseLectorSinServicios;
+
+  /// Etiqueta de un servicio que registro un taller
+  ///
+  /// In en, this message translates to:
+  /// **'Recorded by a workshop'**
+  String get paseLectorPorTaller;
+
+  /// Etiqueta de un servicio que registro el propio propietario y que AutoDoc no puede verificar
+  ///
+  /// In en, this message translates to:
+  /// **'Declared by the owner'**
+  String get paseLectorAutoDeclarado;
+
+  /// Aviso que acompana a los servicios auto-declarados
+  ///
+  /// In en, this message translates to:
+  /// **'AutoDoc cannot verify maintenance declared by the owner.'**
+  String get paseLectorAvisoAutoDeclarado;
+
+  /// Aviso de que la proyeccion del pase deja fuera lo economico
+  ///
+  /// In en, this message translates to:
+  /// **'This pass does not include amounts or invoices.'**
+  String get paseLectorSinImportes;
+
+  /// Error: el pase vencio
+  ///
+  /// In en, this message translates to:
+  /// **'This pass has expired. Ask the owner for a new one.'**
+  String get paseLectorCaducado;
+
+  /// Error: el pase fue revocado
+  ///
+  /// In en, this message translates to:
+  /// **'The owner revoked this pass.'**
+  String get paseLectorRevocado;
+
+  /// Error: el pase agoto su cupo de canjes
+  ///
+  /// In en, this message translates to:
+  /// **'This pass has been used too many times. Ask the owner for a new one.'**
+  String get paseLectorAgotado;
+
+  /// Error: el pase no se encuentra
+  ///
+  /// In en, this message translates to:
+  /// **'This pass does not exist or has expired.'**
+  String get paseLectorNoExiste;
+
+  /// Error: el codigo escaneado no tiene la forma de un pase
+  ///
+  /// In en, this message translates to:
+  /// **'That code is not an AutoDoc history pass.'**
+  String get paseLectorInvalido;
+
+  /// Accion para copiar al portapapeles el codigo del pase (INNO-01)
+  ///
+  /// In en, this message translates to:
+  /// **'Copy code'**
+  String get paseCopiarCodigo;
+
+  /// Aviso de que el codigo del pase se copio al portapapeles
+  ///
+  /// In en, this message translates to:
+  /// **'Code copied'**
+  String get paseCodigoCopiado;
 }
 
 class _AppLocalizationsDelegate
