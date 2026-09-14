@@ -107,6 +107,24 @@ VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01, FUNC-02, UX-03 / UX-04,
 (residuales de FUNC-02), `fix/gaps-03` (accesibilidad de la landing que dejó UX-03) y
 **`fix/gaps-04`** (lo que quedaba abierto antes de H-01, cerrada el 2026-09-13).
 
+### GAPS-05 (2026-09-14): drenaje de gaps antes de FINAL-01
+
+Cierra 14 de los ~25 gaps abiertos de INNO-01, H-01, GAPS-04 y la auditoria final. Evidencia:
+`docs/evidencia/GAPS-05-drenaje.md`. Cuatro cosas que cuestan tiempo si no se saben:
+
+- **`env.clearStorage()` NO limpia el emulador de Storage** (y el endpoint REST responde 501).
+  Usa `limpiarStorage(env)` de `test_rules/helpers.js`. Ninguna suite podia verlo porque todas
+  las reglas de Storage permitian sobrescribir.
+- **En Storage, una resubida sobre la misma ruta es `create`, no `update`.** Para distinguir
+  «subir» de «reemplazar» usa `resource == null`, nunca el verbo de la regla. Medido en el
+  emulador; contradice la documentacion de Firebase.
+- **Las dos anotaciones P1 de la auditoria estaban mal descritas.** Cuarta ronda seguida: la
+  anotacion sirve para no perder el gap, nunca como diagnostico. Abre el codigo antes de
+  disenar el arreglo.
+- **`ReservaModel` resuelve `idProponente ?? idPropietario`.** Omitirlo no es error de
+  compilacion y hacia nacer las citas con el proponente al reves. Lo vigila
+  `test/reservas_creador_unico_test.dart`.
+
 ### INNO-01 (2026-09-13): el pase de historial por QR ya tiene pantallas y demo
 
 El backend (tres callables + reglas) existia desde `67c1a3a` y **no tenia ni un llamador**.

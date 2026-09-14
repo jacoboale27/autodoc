@@ -249,7 +249,17 @@ test.describe('INNO-01 — pase temporal de historial', () => {
       timeout: 25000,
     });
 
-    const token = (await ultimoPase()).token;
+    // El token se lee DE LA PANTALLA, no de Firestore, y el cambio no es
+    // cosmetico: desde GAPS-05 el servidor REUTILIZA el pase vivo del mismo
+    // vehiculo en vez de acunar otro, asi que «el pase mas reciente de la
+    // coleccion» dejo de significar «el que esta pantalla ensena» — los tests
+    // de arriba siembran pases del mismo vehiculo con `creado_en` posterior.
+    // Preguntarle a la pantalla es ademas lo que el test dice comprobar: que
+    // se revoca EL PASE QUE SE ESTA ENSENANDO.
+    const token = (
+      await page.getByText(/^[0-9a-f]{64}$/).first().textContent()
+    ).trim();
+    expect(token).toMatch(/^[0-9a-f]{64}$/);
 
     await page
       .getByRole('button', { name: 'Revoke now' })

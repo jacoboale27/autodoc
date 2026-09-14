@@ -17,6 +17,51 @@ VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01, FUNC-02, UX-03 / UX-04,
 cerradas: `fix/gaps-02` (residuales de FUNC-02), `fix/gaps-03` (accesibilidad de la landing que
 dejó UX-03) y **`fix/gaps-04`** (lo que quedaba abierto antes de H-01, cerrada el 2026-09-13).
 
+### La tanda GAPS-05 está cerrada (2026-09-14, `fix/gaps-05`) — drenaje previo a FINAL-01
+
+Drena los gaps abiertos de **cuatro** fuentes a la vez (INNO-01 §7, H-01 §6, GAPS-04 §7 y los
+hallazgos del §4 de la auditoría final). Deduplicados son **~25 reales**, no 31: varios estaban
+contados dos veces. **Cerrados 14.** Evidencia en `docs/evidencia/GAPS-05-drenaje.md`. Lo que hay
+que saber sin leerla:
+
+- **Los dos P1 de la auditoría estaban mal descritos, y comprobarlo ERA el trabajo.** Cuarta ronda
+  seguida. El de `reservas.id_taller` era cierto, pero la anotación no decía lo que decide cómo
+  arreglarlo: el único creador escribe **siempre** el mismo valor que `id_mecanico` — el
+  `idTallerEfectivo` es de las **cotizaciones**, otra colección—, así que atarlo a
+  `id_taller_efectivo` (la lectura natural del enunciado) habría roto el flujo entero. Y el de
+  facturas describe el significado que `talleres_vinculados` tenía **antes de la ronda 5**: hoy el
+  vínculo **es** posesión del coche, o sea ya es el «trabajo vigente» que el cargo pedía.
+- **Pero al lado había un agujero real:** `allow write` cubre create, update **y** delete, así que
+  el bloque denegaba borrar una factura y a la vez dejaba **sobrescribirla** a cualquiera con
+  vínculo — que es borrarla con pasos extra.
+- **La condición que separa «subir» de «reemplazar» NO es el verbo.** Storage clasifica una
+  resubida como `create`, no como `update`; medido: con `allow create` a secas los dos casos de
+  sobrescritura seguían pasando. El guard es `resource == null`. Esto contradice la documentación
+  de Firebase, así que la regla está escrita para ser correcta bajo las dos semánticas.
+- **`env.clearStorage()` NO limpia nada, y en silencio** (el endpoint REST del emulador responde
+  501). Nadie podía verlo porque todas las reglas de Storage permitían sobrescribir: subir encima
+  de lo que dejó el test anterior daba el mismo verde. Apareció al mirar `resource == null`, y
+  destapó que **tres tests llevaban tiempo siendo dependientes del orden**. Usa `limpiarStorage()`
+  de `test_rules/helpers.js`.
+- **El gate de revisión encontró un defecto de cliente que nadie había visto: la confirmación de
+  citas estaba invertida.** `ReservaModel` resuelve `idProponente ?? idPropietario` y
+  `chat_screen.dart` no lo pasaba, así que una cita propuesta por el **mecánico** nacía con el uid
+  del propietario. Como confirmar exige `uid != id_proponente`, **el propietario no podía
+  confirmar la cita que le proponían y el mecánico sí podía confirmar la suya.**
+- **Reutilizar el pase de historial vivo cierra dos gaps de INNO-01 con un solo cambio:** no nace
+  un documento por visita a la pantalla (ritmo) y volver a ella vuelve a poner el botón de revocar
+  delante (antes, salir dejaba el pase vivo y sin ninguna vía para anularlo).
+- **El barrido de literales sin traducir dio 76 en 28 ficheros**, repartidos por toda la app y no
+  solo en admin. Se localizaron 12; quedan 64 medidos. No es teórico: la app **se renderiza en
+  inglés** cuando el navegador lo está.
+
+**Quedan 15 gaps abiertos**, en el §5 de esa evidencia. Los de más peso son los mismos que GAPS-04
+ya dimensionó como tanda propia: la denormalización de `avisos_pendientes`, el N+1 de los
+barridos, los siete triggers sin test y los cuatro streams sin cota del panel del mecánico —este
+último **deliberadamente no tocado**, porque los dos KPI de por vida no se pueden acotar sin
+cambiar lo que significan y el ahorro de compartir stream **no se puede medir** (`FakeFirebaseFirestore`
+no cuenta lecturas).
+
 ### INNO-01 está cerrada (2026-09-13) — el pase de historial ya es un flujo, no solo un backend
 
 El commit `67c1a3a` dejó los tres callables, las reglas y el cliente Dart; el juez de

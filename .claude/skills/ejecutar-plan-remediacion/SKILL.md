@@ -14,8 +14,19 @@ orquestarlo**.
 
 Hechos: **SEC-01, SEC-02, SEC-03, DATA-01, VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02,
 FUNC-01, FUNC-02, UX-03/UX-04, SEC-04/OPS-01, H-01 e INNO-01** (a 2026-09-13). Queda
-**solo FINAL-01**. Las tandas de drenaje estan cerradas: `fix/gaps-02`, `fix/gaps-03` y
-`fix/gaps-04`.
+**solo FINAL-01**. Las tandas de drenaje estan cerradas: `fix/gaps-02`, `fix/gaps-03`,
+`fix/gaps-04` y **`fix/gaps-05`** (2026-09-14, el drenaje previo a FINAL-01: 14 de ~25 gaps,
+incluidos los dos P1 de la auditoria).
+
+**Leccion de GAPS-05, y ya van CUATRO rondas con la misma:** las dos anotaciones P1 de la
+auditoria estaban mal descritas, y **comprobarlo era el trabajo**. Una pedia atar un campo a un
+valor que ningun flujo produce —habria roto el flujo entero— y la otra describia el significado
+que un campo tenia dos rondas antes. **La anotacion sirve para no perder el gap, nunca como
+diagnostico: abre el codigo antes de disenar el arreglo.**
+
+Y el gate de revision volvio a encontrar lo que los tests propios no veian, incluido **un defecto
+de cliente que invertia la confirmacion de citas** — el propietario no podia confirmar la cita que
+le proponian y el mecanico si podia confirmar la suya.
 
 **Leccion de INNO-01, y vale para cualquier tarea que cierre una funcionalidad de UI:** el
 backend del pase estaba entero y probado, y aun asi la funcionalidad no existia — la unica
