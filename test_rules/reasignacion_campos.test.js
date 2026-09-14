@@ -286,9 +286,23 @@ describe('la contabilidad del barrido de alertas es del servidor (OPS-01)', () =
       });
     });
     const db = await withRole(env, UIDS.owner1, 'Propietario');
+    // El documento va COMPLETO desde GAPS-05: el `create` exige ahora todas
+    // las claves de `AlertModel.toMap()`, no solo que no sobre ninguna. La
+    // version anterior de esta siembra creaba una alerta sin `titulo`, sin
+    // `prioridad` y sin `fecha_limite` — un documento que la app no produce y
+    // que el barrido diario no sabria tratar.
     await assertSucceeds(
       db.collection('alertas').doc('nueva').set({
-        id_vehiculo: 'v1', estado: 'Pendiente', tipo_alerta: 'soat',
+        id_alerta: 'nueva',
+        id_vehiculo: 'v1',
+        tipo_alerta: 'soat',
+        titulo: 'SOAT por vencer',
+        descripcion: 'vence pronto',
+        fecha_limite: new Date('2026-12-01T00:00:00Z'),
+        kilometraje_objetivo: 40000,
+        estado: 'Pendiente',
+        prioridad: 'high',
+        metadata: { origen: 'manual' },
       }),
     );
   });

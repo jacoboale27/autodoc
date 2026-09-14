@@ -161,7 +161,7 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Completa tu perfil de taller'),
+          title: Text(context.l10n.perfilTallerIncompletoTitulo),
           content: Text(
             'Para poder enviar cotizaciones, primero debes completar en tu '
             'perfil: ${missing.join(', ')}.',
@@ -176,7 +176,7 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
                 Navigator.pop(ctx);
                 context.push('/workshop_settings');
               },
-              child: const Text('Completar perfil'),
+              child: Text(context.l10n.perfilTallerIncompletoAccion),
             ),
           ],
         ),

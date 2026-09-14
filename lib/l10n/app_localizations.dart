@@ -2869,6 +2869,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Code copied'**
   String get paseCodigoCopiado;
+
+  /// Titulo del dialogo que pide completar el perfil antes de operar (GAPS-05)
+  ///
+  /// In en, this message translates to:
+  /// **'Complete your workshop profile'**
+  String get perfilTallerIncompletoTitulo;
+
+  /// Accion que lleva a la pantalla de ajustes del taller
+  ///
+  /// In en, this message translates to:
+  /// **'Complete profile'**
+  String get perfilTallerIncompletoAccion;
+
+  /// Aviso cuando falla el borrado de un mensaje de chat
+  ///
+  /// In en, this message translates to:
+  /// **'The message could not be deleted.'**
+  String get chatMensajeNoEliminado;
+
+  /// Aviso cuando falla el envio de una nota de voz
+  ///
+  /// In en, this message translates to:
+  /// **'The voice note could not be sent.'**
+  String get chatNotaVozNoEnviada;
+
+  /// Aviso cuando falla el envio de un mensaje de chat y se devuelve el texto al compositor
+  ///
+  /// In en, this message translates to:
+  /// **'The message could not be sent.'**
+  String get chatMensajeNoEnviado;
+
+  /// Estado vacio de la lista de resenas de un taller
+  ///
+  /// In en, this message translates to:
+  /// **'This workshop has no reviews yet.'**
+  String get tallerSinResenias;
 }
 
 class _AppLocalizationsDelegate

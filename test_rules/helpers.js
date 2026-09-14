@@ -36,6 +36,35 @@ async function makeEnv() {
   });
 }
 
+/**
+ * Vacia el emulador de Storage de verdad.
+ *
+ * **`env.clearStorage()` NO limpia nada en esta version, y lo hace en
+ * silencio.** Medido: se sube un objeto, se llama a `clearStorage()` y el
+ * objeto sigue ahi. El endpoint REST del emulador
+ * (`DELETE /emulator/v1/projects/{p}/buckets/{b}/objects`) responde 501, o sea
+ * tampoco esta implementado.
+ *
+ * Ninguna suite podia notarlo porque **todas las reglas de Storage permitian
+ * sobrescribir**: subir sobre un objeto que la limpieza deberia haber borrado
+ * daba el mismo verde que subirlo en limpio. Aparecio al cerrar el gap de las
+ * facturas inmutables, cuando la regla empezo a mirar `resource == null`: tres
+ * tests que llevaban tiempo pasando resultaron estar subiendo encima de lo que
+ * habia dejado el test anterior, o sea eran dependientes del orden.
+ *
+ * Se borra listando y eliminando, que es lo unico que el emulador implementa.
+ */
+async function limpiarStorage(env) {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const borrarPrefijo = async (ref) => {
+      const listado = await ref.listAll();
+      await Promise.all(listado.items.map((item) => item.delete()));
+      await Promise.all(listado.prefixes.map(borrarPrefijo));
+    };
+    await borrarPrefijo(ctx.storage().ref());
+  });
+}
+
 // Ejecuta una funcion con las reglas desactivadas, para sembrar datos.
 async function seed(env, fn) {
   await env.withSecurityRulesDisabled(async (ctx) => {
@@ -62,4 +91,4 @@ function anon(env) {
   return env.unauthenticatedContext().firestore();
 }
 
-module.exports = { makeEnv, seed, withRole, anon, UIDS };
+module.exports = { makeEnv, seed, withRole, anon, limpiarStorage, UIDS };

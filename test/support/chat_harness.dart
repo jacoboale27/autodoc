@@ -194,7 +194,7 @@ class FakeChatProvider extends ChangeNotifier implements ChatProvider {
   /// intercepta) y lanzaba `NoSuchMethodError` en cualquier test que
   /// ejercitara el envío real de un mensaje.
   @override
-  Future<void> enviarMensaje({
+  Future<bool> enviarMensaje({
     required String conversacionId,
     required String contenido,
     required String remitenteId,
@@ -206,6 +206,11 @@ class FakeChatProvider extends ChangeNotifier implements ChatProvider {
     int? duracionSegundos,
   }) async {
     llamadas.add('enviarMensaje:$conversacionId:$contenido');
+    // GAPS-05: el contrato devuelve si el mensaje llego al servidor. Este
+    // doble responde `true` porque los tests que lo usan ejercen el camino
+    // feliz; el fallo tiene su propio test en
+    // `test/features/chat/envio_fallido_no_pierde_texto_test.dart`.
+    return true;
   }
 
   /// Sin beneficios por defecto: `CotizacionChatCard._cargarBeneficios()`

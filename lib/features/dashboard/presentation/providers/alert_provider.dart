@@ -438,7 +438,7 @@ class AlertProvider extends ChangeNotifier {
             .ref()
             .child(StoragePaths.facturas)
             .child(task.vehicleId)
-            .child('${DateTime.now().millisecondsSinceEpoch}$extension');
+            .child(InvoiceUploadService.nombreDeArchivo(extension));
         final bytes = await receiptImage.readAsBytes();
         final metadata = SettableMetadata(contentType: contentType);
         await receiptRef.putData(bytes, metadata);
@@ -465,6 +465,21 @@ class AlertProvider extends ChangeNotifier {
         // La factura ya esta en Storage pero el documento que la referencia no
         // llego a existir: sin esta limpieza el archivo queda huerfano en el
         // bucket para siempre, sin ninguna forma de encontrarlo desde la app.
+        //
+        // ⚠️ ESTA LIMPIEZA NO PUEDE FUNCIONAR, y conviene saberlo antes de
+        // confiar en ella: `storage.rules` deja el `delete` de `facturas/`
+        // SOLO a un admin —«las facturas son el rastro documental del
+        // producto»— asi que este `delete()` siempre se deniega y el `catch`
+        // de abajo se lo traga. Tampoco funcionaba antes de GAPS-05: el viejo
+        // `allow write` incluia `esFacturaValida()`, que dereferencia
+        // `request.resource`, y en un delete eso es null.
+        //
+        // O sea que cada `servicios.add()` fallido deja una factura huerfana e
+        // imborrable desde el cliente. Se deja el intento porque no cuesta
+        // nada y documenta la intencion, pero el arreglo de verdad es del
+        // servidor —un trigger con Admin SDK, hermano de
+        // `borrarFotosAlEliminarResenia` (GAPS-04)—. Lo levanto el gate de
+        // revision de GAPS-05 y queda anotado como gap.
         if (receiptRef != null) {
           try {
             await receiptRef.delete();
@@ -606,7 +621,7 @@ class AlertProvider extends ChangeNotifier {
             .ref()
             .child(StoragePaths.facturas)
             .child(vehicleId)
-            .child('${DateTime.now().millisecondsSinceEpoch}$extension');
+            .child(InvoiceUploadService.nombreDeArchivo(extension));
         final bytes = await receiptImage.readAsBytes();
         final metadata = SettableMetadata(contentType: contentType);
         await ref.putData(bytes, metadata);
@@ -715,7 +730,7 @@ class AlertProvider extends ChangeNotifier {
             .ref()
             .child(StoragePaths.facturas)
             .child(vehiculoId)
-            .child('${DateTime.now().millisecondsSinceEpoch}$extension');
+            .child(InvoiceUploadService.nombreDeArchivo(extension));
         final bytes = await receiptImage.readAsBytes();
         final metadata = SettableMetadata(contentType: contentType);
         await receiptRef.putData(bytes, metadata);

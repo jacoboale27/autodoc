@@ -133,3 +133,134 @@ describe('/alertas acota los campos por allowlist, no por denylist', () => {
     );
   });
 });
+
+// GAPS-05 — gap 14 de GAPS-04: el `create` no exigia NINGUN campo.
+//
+// `hasOnly` acota por arriba (nada fuera de la lista) pero no por abajo:
+// admitia cualquier subconjunto, incluido el conjunto vacio. La consecuencia
+// concreta es que `estado` podia no existir, y el barrido diario filtra por
+// `where('estado','==','Pendiente')` (`alertasVencidas.js:97`): una alerta sin
+// ese campo no la ve nunca y no avisa jamas. Es auto-silenciarse —solo afecta
+// a los documentos del propio atacante— pero es irreversible en la practica,
+// porque nadie vuelve a mirar una alerta que no sale en ninguna consulta.
+//
+// Exigir el documento completo es gratis aqui: **en `lib/` no hay ningun
+// creador cliente de `/alertas`**. Se buscaron los cuatro accesos a la
+// coleccion (admin_service.dart:296, vehicle_service.dart:145,
+// alert_provider.dart:55 y :304) y son un `snapshots()`, un borrado en lote,
+// otro `snapshots()` y un `update({'estado': ...})`. Las alertas las crea el
+// servidor con Admin SDK, que no pasa por estas reglas. Y la lista no se puede
+// desincronizar del modelo: `camposDeAlerta()` la cruza con `AlertModel.toMap()`
+// en las dos direcciones el centinela `test/alertas_campos_test.dart`.
+describe('alertas: el create exige el documento entero', () => {
+  test('una alerta SIN estado no se puede crear', async () => {
+    await seedEscenario();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    const sinEstado = { ...CAMPOS_DEL_MODELO, id_alerta: 'a3' };
+    delete sinEstado.estado;
+    await assertFails(db.collection('alertas').doc('a3').set(sinEstado));
+  });
+
+  test('tampoco una a medias, aunque todo lo que traiga este permitido', async () => {
+    await seedEscenario();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('alertas').doc('a4').set({
+        id_alerta: 'a4',
+        id_vehiculo: 'v1',
+        estado: 'Pendiente',
+      }),
+    );
+  });
+
+  test('con `estado` de un tipo que la consulta no puede casar, tampoco', async () => {
+    await seedEscenario();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('alertas').doc('a5').set({
+        ...CAMPOS_DEL_MODELO,
+        id_alerta: 'a5',
+        estado: 42,
+      }),
+    );
+  });
+
+  test('el documento completo del modelo SI se crea', async () => {
+    await seedEscenario();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertSucceeds(
+      db.collection('alertas').doc('a6').set({
+        ...CAMPOS_DEL_MODELO,
+        id_alerta: 'a6',
+      }),
+    );
+  });
+
+  test('y `estado` no se puede BORRAR despues con FieldValue.delete()', async () => {
+    // El otro extremo del mismo agujero: cerrar el create y dejar el update
+    // abierto deja llegar al mismo sitio en dos pasos. Es la leccion de
+    // `abierto` en GAPS-02, que se podia borrar aunque no se pudiera falsear.
+    await seedEscenario();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    const { deleteField } = require('firebase/firestore');
+    await assertFails(
+      db.collection('alertas').doc('a1').update({ estado: deleteField() }),
+    );
+  });
+});
+
+// GAPS-05, del gate de revision — `hasAll` cerro UNA de las tres formas de
+// dejar una alerta fuera del barrido. Las otras dos:
+//
+//   a) `estado` con un VALOR que la consulta no casa. El filtro es
+//      `where('estado','==','Pendiente')`, asi que nacer 'Completada' es tan
+//      invisible como nacer sin el campo. `estado is string` ataba el tipo y
+//      no el valor.
+//   b) `fecha_limite` corrupta. El barrido tiene un SEGUNDO filtro dentro del
+//      bucle (`leerFechaLimite` -> `resumen.ilegibles`), y ese campo si es
+//      mutable: un update que lo deje en un string saca la alerta del aviso
+//      para siempre dejandola `Pendiente`. Es el mismo agujero por el campo de
+//      al lado.
+//
+// `null` SI es legitimo y por eso no se prohibe: `AlertModel.toMap()` escribe
+// `fecha_limite: null` cuando no hay fecha. Una alerta sin fecha es silenciosa
+// por diseno; lo que no puede es serlo por confusion de tipo.
+describe('alertas: las otras dos vias de auto-silenciado', () => {
+  test('no se puede nacer con un estado que el barrido no casa', async () => {
+    await seedEscenario();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('alertas').doc('a7').set({
+        ...CAMPOS_DEL_MODELO,
+        id_alerta: 'a7',
+        estado: 'Completada',
+      }),
+    );
+  });
+
+  test('ni corromper el tipo de fecha_limite en un update', async () => {
+    await seedEscenario();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('alertas').doc('a1').update({ fecha_limite: 'el martes' }),
+    );
+  });
+
+  test('pero dejarla en null SI vale: es una alerta sin fecha', async () => {
+    await seedEscenario();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertSucceeds(
+      db.collection('alertas').doc('a1').update({ fecha_limite: null }),
+    );
+  });
+
+  test('y cambiarla a otra fecha tambien', async () => {
+    await seedEscenario();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertSucceeds(
+      db.collection('alertas').doc('a1').update({
+        fecha_limite: new Date('2027-01-01T00:00:00Z'),
+      }),
+    );
+  });
+});

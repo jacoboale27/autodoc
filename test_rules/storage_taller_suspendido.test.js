@@ -1,10 +1,10 @@
 const { assertFails, assertSucceeds } = require('@firebase/rules-unit-testing');
-const { makeEnv, seed, UIDS } = require('./helpers');
+const { makeEnv, seed, UIDS, limpiarStorage } = require('./helpers');
 
 let env;
 beforeAll(async () => { env = await makeEnv(); }, 30000);
 afterAll(async () => { await env.cleanup(); });
-beforeEach(async () => { await env.clearStorage(); await env.clearFirestore(); }, 30000);
+beforeEach(async () => { await limpiarStorage(env); await env.clearFirestore(); }, 30000);
 
 const imagen = (kb) => Buffer.alloc(kb * 1024, 1);
 const META_JPEG = { contentType: 'image/jpeg' };

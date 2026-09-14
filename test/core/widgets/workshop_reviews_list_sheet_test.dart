@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:autodoc/core/models/review_model.dart';
 import 'package:autodoc/core/theme/app_theme.dart';
 import 'package:autodoc/core/widgets/workshop_reviews_list_sheet.dart';
+import 'package:autodoc/l10n/app_localizations.dart';
 import 'package:autodoc/features/reviews/data/services/review_service.dart';
 
 class _FakeReviewService implements ReviewService {
@@ -36,6 +38,16 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light,
+        // GAPS-05: el estado vacio pasa por el ARB, asi que sin delegates
+        // `context.l10n` es null y la hoja revienta al construirse.
+        locale: const Locale('es'),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
           builder: (context) => ElevatedButton(
             onPressed: () => showWorkshopReviewsSheet(
@@ -65,6 +77,16 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light,
+        // GAPS-05: el estado vacio pasa por el ARB, asi que sin delegates
+        // `context.l10n` es null y la hoja revienta al construirse.
+        locale: const Locale('es'),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
           builder: (context) => ElevatedButton(
             onPressed: () => showWorkshopReviewsSheet(
@@ -82,6 +104,6 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Aún no hay reseñas para este taller.'), findsOneWidget);
+    expect(find.text('Aun no hay resenas para este taller.'), findsOneWidget);
   });
 }

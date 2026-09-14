@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:intl/intl.dart';
 import 'package:autodoc/core/models/review_model.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
@@ -73,9 +74,9 @@ class _WorkshopReviewsSheetContent extends StatelessWidget {
                     }
                     final reviews = snapshot.data!;
                     if (reviews.isEmpty) {
-                      return const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 24),
-                        child: Text('Aún no hay reseñas para este taller.'),
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        child: Text(context.l10n.tallerSinResenias),
                       );
                     }
                     return ListView.separated(

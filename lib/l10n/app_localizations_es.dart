@@ -1535,4 +1535,22 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get paseCodigoCopiado => 'Codigo copiado';
+
+  @override
+  String get perfilTallerIncompletoTitulo => 'Completa tu perfil de taller';
+
+  @override
+  String get perfilTallerIncompletoAccion => 'Completar perfil';
+
+  @override
+  String get chatMensajeNoEliminado => 'No se pudo eliminar el mensaje.';
+
+  @override
+  String get chatNotaVozNoEnviada => 'No se pudo enviar la nota de voz.';
+
+  @override
+  String get chatMensajeNoEnviado => 'No se pudo enviar el mensaje.';
+
+  @override
+  String get tallerSinResenias => 'Aun no hay resenas para este taller.';
 }

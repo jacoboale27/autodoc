@@ -49,11 +49,23 @@ service firebase.storage {
     //
     // Los valores son los mismos que AppEstadoCuenta.aprobados e isMecanico()
     // de firestore.rules; si cambian alli, cambian aqui.
-    function esTallerAprobado(uid) {
+    // GAPS-05: SIN PARAMETRO, a proposito. Antes recibia un `uid` y parecia
+    // una pregunta general («¿es este uid un taller aprobado?»), pero su
+    // primera condicion es `isAuthenticated()`, que mira siempre al LLAMANTE:
+    // invocarla con un uid ajeno devolvia un resultado que no significa lo que
+    // aparenta. No habia ningun call site asi —los tres pasaban el uid del
+    // llamante, y los dos de la galeria ya venian guardados por
+    // `request.auth.uid == tallerId`— pero era una trampa esperando a que
+    // alguien la usara como lo que su firma sugiere.
+    //
+    // Quitar el parametro hace que esa llamada no se pueda escribir. Si alguna
+    // vez hace falta preguntarlo de un tercero, la funcion que haga falta es
+    // otra y no lleva `isAuthenticated()` dentro.
+    function esTallerAprobado() {
       return isAuthenticated() &&
-        firestore.exists(/databases/(default)/documents/usuarios/$(uid)) &&
-        firestore.get(/databases/(default)/documents/usuarios/$(uid)).data.rol in ['Mecanico', 'Taller'] &&
-        firestore.get(/databases/(default)/documents/usuarios/$(uid)).data.get('estado', 'pendiente') in ['aprobado', 'activo'];
+        firestore.exists(/databases/(default)/documents/usuarios/$(request.auth.uid)) &&
+        firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.rol in ['Mecanico', 'Taller'] &&
+        firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.get('estado', 'pendiente') in ['aprobado', 'activo'];
     }
 
     // Toda escritura de imagen: maximo 5 MB y tipo de imagen permitido.
@@ -97,7 +109,7 @@ service firebase.storage {
     // ninguna suite porque `storage.test.js:17` siembra siempre
     // `estado: 'activo'`.
     function isVinculadoAlVehiculo(vehicleId) {
-      return esTallerAprobado(request.auth.uid) &&
+      return esTallerAprobado() &&
         firestore.exists(/databases/(default)/documents/vehiculos/$(vehicleId)) &&
         firestore.get(/databases/(default)/documents/vehiculos/$(vehicleId))
           .data.get('talleres_vinculados', []).hasAny([request.auth.uid]);
@@ -138,9 +150,37 @@ service firebase.storage {
         || isVinculadoAlVehiculo(vehicleId)
         || isAdmin()
       );
-      allow write: if isAuthenticated()
+      // `create` y no `write`, y la diferencia NO es cosmetica: `write` cubre
+      // create, update y delete a la vez. Con `write` aqui, el bloque denegaba
+      // el borrado a todo el que no fuera admin —«las facturas son el rastro
+      // documental del producto»— y a la vez dejaba SOBRESCRIBIR el archivo a
+      // cualquiera con vinculo. Sobrescribir una factura es borrarla con pasos
+      // extra: el rastro se pierde igual y encima queda un documento distinto
+      // con el nombre del viejo.
+      //
+      // Cerrarlo no rompe ningun flujo porque la app nunca sobrescribe: los
+      // nombres son `<epoch-ms><extension>` (`alert_provider.dart:441`
+      // y `:609`), asi que cada subida estrena ruta.
+      // La condicion que separa «subir» de «reemplazar» es `resource == null`
+      // —el objeto todavia no existe— y NO el verbo de la regla. Storage
+      // clasifica una resubida sobre la misma ruta como `create`, no como
+      // `update` (`update` queda para `updateMetadata()`), asi que partir la
+      // regla en `create`/`update` deja el agujero exactamente igual de
+      // abierto. Medido con el emulador: con `allow create` a secas, los dos
+      // casos de sobrescritura seguian pasando.
+      //
+      // Reemplazar una factura existente es una correccion, no una subida: la
+      // hace un admin o no la hace nadie. El dueño del vehiculo tampoco, y es
+      // deliberado — el valor de la factura como prueba viene de que nadie la
+      // pueda cambiar despues, y el dueño es justo quien tiene motivo para
+      // maquillar el historial antes de vender el coche.
+      allow create, update: if isAuthenticated()
         && esFacturaValida()
-        && (isVehicleOwner(vehicleId) || isVinculadoAlVehiculo(vehicleId) || isAdmin());
+        && (
+          isAdmin()
+          || (resource == null
+              && (isVehicleOwner(vehicleId) || isVinculadoAlVehiculo(vehicleId)))
+        );
       // Las facturas son el rastro documental del producto: solo un admin las borra.
       allow delete: if isAdmin();
     }
@@ -293,7 +333,7 @@ service firebase.storage {
 
       allow write: if request.resource != null
         && request.auth.uid == tallerId
-        && esTallerAprobado(tallerId)
+        && esTallerAprobado()
         && esImagenValida()
         && fileName.matches('^(logo|local-[1-5])\\.(jpg|jpeg|png|webp)$');
 
@@ -303,7 +343,7 @@ service firebase.storage {
       // destruye ningun rastro de por que se le aprobo. El admin conserva el
       // borrado para moderar contenido reportado.
       allow delete: if isAdmin() ||
-        (request.auth.uid == tallerId && esTallerAprobado(tallerId));
+        (request.auth.uid == tallerId && esTallerAprobado());
     }
 
     // Reglas para fotos adjuntas a resenias

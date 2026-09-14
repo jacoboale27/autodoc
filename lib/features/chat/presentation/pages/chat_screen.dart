@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:autodoc/core/utils/ui_utils.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import '../widgets/vehiculo_picker.dart';
 
@@ -231,19 +232,47 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  void _enviarMensaje(String userId, bool isMecanico, String receptorId) {
-    if (_controller.text.trim().isEmpty) return;
+  /// Envia el texto del compositor.
+  ///
+  /// El campo se limpia ANTES de que el envio termine, a proposito: es lo que
+  /// hace que el chat se sienta instantaneo y permite encadenar mensajes. Lo
+  /// que faltaba era la otra mitad del trato — **devolver el texto si el envio
+  /// falla**. Antes la llamada iba sin `await`, el provider se tragaba la
+  /// excepcion y la pantalla no pinta su `error` en ninguna parte: un tunel de
+  /// metro se llevaba el mensaje por delante sin un solo aviso.
+  Future<void> _enviarMensaje(
+    String userId,
+    bool isMecanico,
+    String receptorId,
+  ) async {
+    final texto = _controller.text.trim();
+    if (texto.isEmpty) return;
 
-    context.read<ChatProvider>().enviarMensaje(
+    final provider = context.read<ChatProvider>();
+    _controller.clear();
+    _reengancharCompositor();
+
+    final enviado = await provider.enviarMensaje(
       conversacionId: widget.conversacionId,
-      contenido: _controller.text.trim(),
+      contenido: texto,
       remitenteId: userId,
       receptorId: receptorId,
       isMecanicoRemitente: isMecanico,
       tipo: 'texto',
     );
-    _controller.clear();
-    _reengancharCompositor();
+    if (enviado || !mounted) return;
+
+    // Solo se devuelve el texto si el compositor sigue vacio: si la persona ya
+    // empezo a escribir otra cosa mientras el envio fallaba, pisarselo seria
+    // peor que el defecto que esto arregla.
+    if (_controller.text.isEmpty) {
+      _controller.text = texto;
+      _controller.selection = TextSelection.collapsed(offset: texto.length);
+    }
+    UiUtils.showErrorSnackbar(
+      context,
+      provider.error ?? 'No se pudo enviar el mensaje.',
+    );
   }
 
   /// Limpiar el texto no debe costar el foco: sin esto el teclado se cierra en
@@ -344,6 +373,15 @@ class _ChatScreenState extends State<ChatScreen> {
       idMecanico: isMecanico ? userId : receptorId,
       idVehiculo: idVehiculo,
       idTaller: isMecanico ? userId : receptorId,
+      // GAPS-05: pasarlo es OBLIGATORIO. `ReservaModel` lo resuelve con
+      // `idProponente ?? idPropietario`, asi que omitirlo hacia que una cita
+      // propuesta por el MECANICO naciera con el uid del propietario en
+      // `id_proponente`. Y de ese campo depende toda la maquina de
+      // transiciones: confirmar exige `uid != id_proponente`, o sea «no
+      // puedes aceptar tu propia propuesta». El resultado estaba invertido —
+      // el propietario no podia confirmar la cita que le proponian, y el
+      // mecanico si podia confirmar la suya.
+      idProponente: userId,
       fechaHoraPropuesta: fechaHora,
       tipoServicio: 'Cita General',
       estado: 'pendiente',
@@ -391,7 +429,7 @@ class _ChatScreenState extends State<ChatScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Completa tu perfil de taller'),
+        title: Text(context.l10n.perfilTallerIncompletoTitulo),
         content: Text(
           'Para poder enviar cotizaciones, primero debes completar en tu '
           'perfil: ${missing.join(', ')}.',
@@ -406,7 +444,7 @@ class _ChatScreenState extends State<ChatScreen> {
               Navigator.pop(ctx);
               context.push('/workshop_settings');
             },
-            child: const Text('Completar perfil'),
+            child: Text(context.l10n.perfilTallerIncompletoAccion),
           ),
         ],
       ),
@@ -524,7 +562,7 @@ class _ChatScreenState extends State<ChatScreen> {
               if (!borrado && mounted) {
                 messenger.showSnackBar(
                   SnackBar(
-                    content: const Text('No se pudo eliminar el mensaje.'),
+                    content: Text(context.l10n.chatMensajeNoEliminado),
                     backgroundColor: colors.error,
                   ),
                 );
@@ -1277,7 +1315,7 @@ class _ChatScreenState extends State<ChatScreen> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo enviar la nota de voz')),
+        SnackBar(content: Text(context.l10n.chatNotaVozNoEnviada)),
       );
     }
   }

@@ -917,5 +917,29 @@
   "paseCodigoCopiado": "Codigo copiado",
   "@paseCodigoCopiado": {
     "description": "Aviso de que el codigo del pase se copio al portapapeles"
+  },
+  "perfilTallerIncompletoTitulo": "Completa tu perfil de taller",
+  "@perfilTallerIncompletoTitulo": {
+    "description": "Titulo del dialogo que pide completar el perfil antes de operar (GAPS-05)"
+  },
+  "perfilTallerIncompletoAccion": "Completar perfil",
+  "@perfilTallerIncompletoAccion": {
+    "description": "Accion que lleva a la pantalla de ajustes del taller"
+  },
+  "chatMensajeNoEliminado": "No se pudo eliminar el mensaje.",
+  "@chatMensajeNoEliminado": {
+    "description": "Aviso cuando falla el borrado de un mensaje de chat"
+  },
+  "chatNotaVozNoEnviada": "No se pudo enviar la nota de voz.",
+  "@chatNotaVozNoEnviada": {
+    "description": "Aviso cuando falla el envio de una nota de voz"
+  },
+  "chatMensajeNoEnviado": "No se pudo enviar el mensaje.",
+  "@chatMensajeNoEnviado": {
+    "description": "Aviso cuando falla el envio de un mensaje de chat y se devuelve el texto al compositor"
+  },
+  "tallerSinResenias": "Aun no hay resenas para este taller.",
+  "@tallerSinResenias": {
+    "description": "Estado vacio de la lista de resenas de un taller"
   }
 }

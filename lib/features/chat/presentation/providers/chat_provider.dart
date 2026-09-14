@@ -219,7 +219,16 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> enviarMensaje({
+  /// Envia un mensaje. Devuelve `true` si llego al servidor.
+  ///
+  /// **El valor de retorno es la mitad del arreglo, no un detalle.** Antes era
+  /// `Future<void>` y el `catch` de abajo se tragaba la excepcion: la pantalla
+  /// no tenia forma de distinguir un envio correcto de uno fallido, porque
+  /// esperar un `Future<void>` que traga el error completa igual de bien en
+  /// los dos casos. Como ademas `chat_screen.dart` limpia el compositor en la
+  /// linea siguiente al envio, un fallo de red se llevaba el texto por delante
+  /// sin avisar a nadie. Lo levanto H-01 refutando un cargo distinto.
+  Future<bool> enviarMensaje({
     required String conversacionId,
     required String contenido,
     required String remitenteId,
@@ -248,9 +257,11 @@ class ChatProvider extends ChangeNotifier {
         receptorId: receptorId,
         isMecanicoRemitente: isMecanicoRemitente,
       );
+      return true;
     } catch (e) {
-      _error = mensajeSeguroDeError(e);
+      _error = mensajeSeguroDeError(e, accion: 'No se pudo enviar el mensaje');
       notifyListeners();
+      return false;
     }
   }
 

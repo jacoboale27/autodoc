@@ -809,7 +809,7 @@ service cloud.firestore {
       // Va con `keys()` y no con `diff()` porque en un create no hay
       // `resource.data` contra el que comparar.
       //
-      // Y va por ALLOWLIST (`hasOnly`), como /reservas, no por denylist
+      // Y va por ALLOWLIST (`hasOnly`), no por denylist
       // (`hasAny`), que es como estaba. Una denylist enumera lo prohibido, asi
       // que cubre los campos de servidor que existian el dia que se escribio y
       // deja nacer escribible cualquiera posterior. Ahi mismo llego el
@@ -824,7 +824,31 @@ service cloud.firestore {
       allow create: if isAuthenticated() && (
         isVehicleOwner(request.resource.data.id_vehiculo)
         || isAdmin()
-      ) && request.resource.data.keys().hasOnly(camposDeAlerta());
+      //
+      // GAPS-05 anade `hasAll` al `hasOnly`. `hasOnly` acota por ARRIBA (nada
+      // fuera de la lista) y admitia cualquier subconjunto, incluido el vacio:
+      // se podia crear una alerta SIN `estado`, y el barrido diario filtra por
+      // `where('estado','==','Pendiente')` (`alertasVencidas.js:97`), asi que
+      // esa alerta no avisa nunca. Es auto-silenciarse, y es irreversible en la
+      // practica porque nadie vuelve a mirar un documento que no sale en
+      // ninguna consulta.
+      //
+      // Exigir el documento entero no rompe la app: en `lib/` **no hay ningun
+      // creador cliente de /alertas**. Los cuatro accesos a la coleccion son
+      // dos `snapshots()`, un borrado en lote y un `update({'estado': ...})`;
+      // las alertas las crea el servidor con Admin SDK, que no pasa por aqui.
+      //
+      // El tipo de `estado` se ata porque un numero o un booleano no casan con
+      // la igualdad de la consulta: seria el mismo silencio por otra via.
+      //
+      // Y el VALOR de `estado` se pinea al inicial, no solo su tipo: el filtro
+      // del barrido es `== 'Pendiente'`, asi que nacer 'Completada' es tan
+      // invisible como nacer sin el campo. `hasAll` cerraba una de las tres
+      // formas de auto-silenciarse; esta es la segunda. (La tercera va en el
+      // `update`, con `fecha_limite`.)
+      ) && request.resource.data.keys().hasOnly(camposDeAlerta())
+        && request.resource.data.keys().hasAll(camposDeAlerta())
+        && request.resource.data.estado == 'Pendiente';
 
       // Actualización: propietario del vehículo o admin.
       // El acotado va FUERA del paréntesis a propósito, así que ata también a
@@ -857,8 +881,36 @@ service cloud.firestore {
       allow update: if isAuthenticated() && (
         isVehicleOwner(resource.data.id_vehiculo)
         || isAdmin()
+      //
+      // Y `estado` no se puede QUITAR ni cambiar de tipo: cerrar el create y
+      // dejar el update abierto deja llegar al mismo sitio en dos pasos, con un
+      // `FieldValue.delete()`. Es la leccion de `abierto` en GAPS-02 — se podia
+      // borrar aunque no se pudiera falsear.
+      //
+      // Se escribe como «si lo tenia, lo sigue teniendo» y NO como «tiene que
+      // tenerlo», a proposito: exigirlo a secas dejaria sin poder editar —ni
+      // completar— cualquier alerta heredada que naciera sin el campo. Es la
+      // misma trampa que el `orderBy` que excluye documentos sin el campo, y
+      // aqui se puede evitar sin backfill.
       ) && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(camposMutablesDeAlerta());
+             .hasOnly(camposMutablesDeAlerta())
+        && (!('estado' in resource.data)
+            || ('estado' in request.resource.data
+                && request.resource.data.estado is string))
+      //
+      // Y `fecha_limite`, que SI es mutable, no puede quedar en un tipo que el
+      // barrido no sepa leer. El barrido tiene DOS filtros, no uno: el
+      // `where('estado','==','Pendiente')` de la consulta y, dentro del bucle,
+      // `leerFechaLimite()` — lo que no puede parsear lo cuenta como
+      // `ilegibles` y sigue. O sea que dejar ahi una cadena saca la alerta del
+      // aviso para siempre mientras la deja `Pendiente`: el mismo agujero que
+      // `estado`, por el campo de al lado. Lo levanto el gate de revision.
+      //
+      // `null` se admite a proposito: `AlertModel.toMap()` escribe
+      // `fecha_limite: null` cuando no hay fecha. Una alerta sin fecha es
+      // silenciosa POR DISENO; lo que no puede es serlo por confusion de tipo.
+        && (request.resource.data.get('fecha_limite', null) == null
+            || request.resource.data.fecha_limite is timestamp);
 
       // Eliminación: propietario del vehículo o admin
       allow delete: if isAuthenticated() && (
@@ -1220,9 +1272,51 @@ service cloud.firestore {
       // porque `obtenerPerfilPublico` se apoya en que exista. No cambia el
       // contrato de la app: `ReservaModel.toMap()` escribe `id_conversacion`
       // siempre y en `lib/` hay un unico creador de reservas.
+      //
+      // GAPS-05 ata ademas `id_taller`, que hasta aqui era el unico campo de
+      // identidad LIBRE del documento: el `create` pineaba propietario y
+      // mecanico contra la conversacion y luego dejaba apuntar la cita al
+      // taller que se quisiera. Una cita legitima entre dos personas reales
+      // podia contaminar cualquier agrupacion por taller con el id de un
+      // tercero.
+      //
+      // Se ata a `id_mecanico` y no a `id_taller_efectivo` del mecanico
+      // porque eso es lo que la app escribe de verdad: el unico creador de
+      // reservas de `lib/` (`chat_screen.dart:346`) pone
+      // `idTaller: isMecanico ? userId : receptorId`, o sea el mismo valor que
+      // `id_mecanico`. El `idTallerEfectivo` lo usan las COTIZACIONES, que son
+      // otra coleccion. Comprobarlo antes de escribir la regla es lo que
+      // evito atar el campo a un valor que ningun flujo produce.
+      //
+      // Se compara contra `request.resource.data.id_taller` SIN `.get(...)`
+      // con valor por defecto, a proposito: con un defecto, un documento que
+      // omitiera el campo pasaria la comparacion por tautologia — el defecto
+      // exacto que GAPS-02 encontro en `abierto`.
+      //
+      // Del gate de revision de GAPS-05: `id_taller` no era el unico campo de
+      // identidad libre, y el que mas importaba era `id_proponente`, porque de
+      // el depende TODA la maquina de transiciones de abajo (confirmar exige
+      // `uid != id_proponente`). Se pinea al llamante. El cliente se arreglo
+      // ANTES —`chat_screen.dart` no lo pasaba y `ReservaModel` lo resolvia
+      // con `?? idPropietario`, asi que una cita propuesta por el mecanico
+      // nacia con el proponente al reves—; pinear la regla sin arreglar eso
+      // habria roto la mitad del flujo.
+      //
+      // `estado` se pinea a 'pendiente' por la misma razon que /cotizaciones
+      // pinea el suyo a 'draft': nacer en el estado final se salta el `update`
+      // entero, y una cita nacida 'confirmada' entra ademas en el barrido de
+      // recordatorios sin que la contraparte haya aceptado nada.
+      //
+      // `fecha_hora_propuesta` se ata al tipo porque `ReservaModel.fromMap`
+      // hace `as Timestamp` sin `?`: un string ahi revienta el parseo para los
+      // dos participantes y la pantalla no se puede recuperar.
       allow create: if isAuthenticated() &&
         (request.resource.data.id_propietario == request.auth.uid ||
          request.resource.data.id_mecanico == request.auth.uid) &&
+        request.resource.data.id_taller == request.resource.data.id_mecanico &&
+        request.resource.data.id_proponente == request.auth.uid &&
+        request.resource.data.estado == 'pendiente' &&
+        request.resource.data.fecha_hora_propuesta is timestamp &&
         esConversacionDeAmbos(
           request.resource.data.get('id_conversacion', ''),
           request.resource.data.id_propietario,

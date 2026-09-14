@@ -218,19 +218,32 @@ describe('ciclo de vida: reservas', () => {
     const db = await withRole(env, UIDS.owner1, 'Propietario');
     const ref = db.collection('reservas').doc('r1');
 
+    // `id_taller` entra con GAPS-05, que lo ata a `id_mecanico` en el create.
+    // La siembra anterior lo omitia, o sea creaba un documento que la app no
+    // puede producir: `ReservaModel.toMap()` lo escribe siempre y el campo es
+    // `required` en el modelo.
     await assertSucceeds(ref.set({
       id_conversacion: 'c1',
-      id_propietario: UIDS.owner1, id_mecanico: UIDS.taller1, id_vehiculo: 'v1',
-      estado: 'pendiente', id_proponente: UIDS.owner1, fecha_hora_propuesta: 'lunes 10:00',
+      id_propietario: UIDS.owner1, id_mecanico: UIDS.taller1, id_taller: UIDS.taller1,
+      id_vehiculo: 'v1',
+      estado: 'pendiente', id_proponente: UIDS.owner1,
+      // Timestamp y no la cadena 'lunes 10:00' que habia antes: GAPS-05 ata el
+      // tipo en el create, y la siembra anterior escribia un documento que la
+      // app no puede leer — `ReservaModel.fromMap` hace `as Timestamp` sin `?`
+      // y revienta con un string.
+      fecha_hora_propuesta: new Date('2026-10-05T10:00:00Z'),
     }));
     let snap = await assertSucceeds(ref.get());
     expect(snap.data().estado).toBe('pendiente');
 
     await assertSucceeds(ref.update({
-      fecha_hora_propuesta: 'martes 09:00', estado: 'pendiente', id_proponente: UIDS.owner1,
+      fecha_hora_propuesta: new Date('2026-10-06T09:00:00Z'),
+      estado: 'pendiente', id_proponente: UIDS.owner1,
     }));
     snap = await assertSucceeds(ref.get());
-    expect(snap.data().fecha_hora_propuesta).toBe('martes 09:00');
+    expect(snap.data().fecha_hora_propuesta.toDate().toISOString()).toBe(
+      '2026-10-06T09:00:00.000Z',
+    );
 
     await assertFails(ref.delete());
     const admin = await withRole(env, UIDS.admin, 'Administrador');
