@@ -24,6 +24,7 @@ const { exportarFirestore } = require('./src/exportacionFirestore');
 const { exigirAppCheck } = require('./src/appCheck');
 const { enviarRecordatoriosDeReserva } = require('./src/recordatoriosReserva');
 const { borrarFotosDeResenia } = require('./src/fotosDeResenia');
+const { recontarResenias, sembrarAgregado } = require('./src/agregadoResenias');
 // El FieldValue tiene que salir del MISMO modulo que la instancia de Firestore.
 // Observado en el emulador de Functions: `admin.firestore.FieldValue` llega
 // undefined, y el de `@google-cloud/firestore` (que este package.json declara
@@ -1212,19 +1213,15 @@ exports.aggregateRatings = functions.firestore
       // incremental. Se siembra suma_estrellas con un recuento completo,
       // una sola vez; las escrituras futuras ya son incrementales (O(1) en
       // vez de O(n) reseñas del taller).
-      const reseniasSnap = await db.collection('resenias').where('id_taller', '==', tallerId).get();
-      let total = 0;
-      let sum = 0;
-      reseniasSnap.forEach((doc) => {
-        total++;
-        sum += doc.data().estrellas || 0;
-      });
-      await userRef.update({
-        calificacion_promedio: total > 0 ? sum / total : 0,
-        total_resenias: total,
-        suma_estrellas: sum,
-      });
-      return null;
+      //
+      // El recuento va paginado y la siembra es transaccional (gap 5 del §5
+      // de `GAPS-05-drenaje.md`). Y si esta invocacion PIERDE la carrera —el
+      // borrado de cuenta dispara hasta 500 a la vez— no hace `return`: cae
+      // al camino incremental de abajo para aplicar su delta. Descartarlo
+      // era lo que descuadraba el agregado.
+      const conteo = await recontarResenias(db, tallerId);
+      const sembro = await sembrarAgregado(db, userRef, conteo);
+      if (sembro) return null;
     }
 
     await db.runTransaction(async (tx) => {

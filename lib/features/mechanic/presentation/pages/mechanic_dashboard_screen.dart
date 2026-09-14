@@ -23,6 +23,37 @@ import 'package:autodoc/core/providers/language_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 import 'package:fl_chart/fl_chart.dart';
 
+/// Primer día del mes que está cinco meses atrás: el borde de la ventana que
+/// la gráfica de tendencia dibuja desde siempre.
+///
+/// `DateTime(ano, mes - 5)` normaliza solo cuando el mes se sale de 1..12, que
+/// es lo que hace correcto el cruce de fin de año.
+DateTime ventanaDeTendencia(DateTime ahora) =>
+    DateTime(ahora.year, ahora.month - 5);
+
+/// La consulta que alimenta "Tendencia de Ingresos".
+///
+/// Vive fuera del `build` a propósito: lo que distingue esta consulta acotada
+/// de la de antes no se ve en la gráfica —pinta lo mismo—, sino en cuántos
+/// documentos cruzan el cable, y eso solo se puede afirmar sobre la consulta.
+Query<Map<String, dynamic>> consultaDeTendenciaDeIngresos(
+  FirebaseFirestore db,
+  String tallerId,
+  DateTime ahora,
+) {
+  return db
+      .collection(FirestoreCollections.servicios)
+      .where('id_taller', isEqualTo: tallerId)
+      .where(
+        'fecha',
+        isGreaterThanOrEqualTo: Timestamp.fromDate(ventanaDeTendencia(ahora)),
+      )
+      .withConverter<Map<String, dynamic>>(
+        fromFirestore: (snapshot, _) => snapshot.data() ?? <String, dynamic>{},
+        toFirestore: (value, _) => value,
+      );
+}
+
 class MechanicDashboardScreen extends StatefulWidget {
   /// Cliente de Firestore inyectable. Aditivo — la pantalla monta tres
   /// `StreamBuilder` que por defecto tocan `FirebaseFirestore.instance` en
@@ -297,11 +328,12 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
             trailing: Icon(Icons.show_chart, color: colors.success),
           ),
           const SizedBox(height: AppSpacing.xl),
-          StreamBuilder<QuerySnapshot>(
-            stream: _db
-                .collection(FirestoreCollections.servicios)
-                .where('id_taller', isEqualTo: tallerId)
-                .snapshots(),
+          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: consultaDeTendenciaDeIngresos(
+              _db,
+              tallerId,
+              DateTime.now(),
+            ).snapshots(),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
                 return SizedBox(
@@ -322,7 +354,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
 
               // Sumar ingresos
               for (var doc in docs) {
-                final data = doc.data() as Map<String, dynamic>;
+                final data = doc.data();
                 if (data['fecha'] != null) {
                   final fecha = (data['fecha'] as Timestamp).toDate();
                   final key = '${fecha.year}-${fecha.month}';

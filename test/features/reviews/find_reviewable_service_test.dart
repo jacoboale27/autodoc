@@ -136,4 +136,45 @@ void main() {
 
     expect(id, isNull);
   });
+
+  /// Gap 6 del §5 de `GAPS-05-drenaje.md`: con mas de 30 vehiculos, el
+  /// `whereIn` se parte en tandas y el bucle devolvia el primer no resenado de
+  /// la PRIMERA tanda que tuviera alguno — no el mas reciente de todos. Cada
+  /// tanda viene ordenada por fecha, pero entre tandas no hay orden ninguno,
+  /// asi que la funcion ofrecia resenar un servicio viejo teniendo uno nuevo
+  /// sin resenar. Nadie lo veia porque hasta 30 vehiculos solo hay una tanda.
+  test('con mas de 30 vehiculos devuelve el mas reciente GLOBAL', () async {
+    final db = FakeFirebaseFirestore();
+    // 31 vehiculos: ids con cero a la izquierda para que el orden por
+    // `__name__` sea el que se espera y `veh-30` caiga en la segunda tanda.
+    for (var i = 0; i <= 30; i += 1) {
+      await db
+          .collection('vehiculos')
+          .doc('veh-${i.toString().padLeft(2, '0')}')
+          .set({'id_propietario': uid, 'placa': 'ABC$i'});
+    }
+    // El VIEJO va en la primera tanda; el RECIENTE, en la segunda.
+    await db.collection('servicios').doc('elViejo').set({
+      'id_vehiculo': 'veh-00',
+      'id_taller': taller,
+      'fecha': Timestamp.fromDate(DateTime(2026, 1, 2)),
+    });
+    await db.collection('servicios').doc('elReciente').set({
+      'id_vehiculo': 'veh-30',
+      'id_taller': taller,
+      'fecha': Timestamp.fromDate(DateTime(2026, 6, 20)),
+    });
+
+    final id = await ReviewService(
+      firestore: db,
+    ).findReviewableServiceId(uid, taller);
+
+    expect(
+      id,
+      'elReciente',
+      reason:
+          'Devolver el de la primera tanda ofrece resenar lo viejo '
+          'teniendo lo nuevo sin resenar.',
+    );
+  });
 }
