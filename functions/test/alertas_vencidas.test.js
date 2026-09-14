@@ -143,7 +143,11 @@ const escenario = (alerta, extra) =>
   Object.assign(
     {
       'alertas/a1': Object.assign(
-        { estado: 'Pendiente', id_vehiculo: 'v1', tipo_alerta: 'SOAT' },
+        // `avisos_pendientes: true` es como nace una alerta: la regla del
+        // create lo pinea a true, igual que `estado`. Sembrarlo aqui no es
+        // decoracion — sin el, estos once tests se ponen rojos, que es
+        // exactamente lo que le pasaria a produccion sin correr el backfill.
+        { estado: 'Pendiente', id_vehiculo: 'v1', tipo_alerta: 'SOAT', avisos_pendientes: true },
         alerta
       ),
       'vehiculos/v1': { id_propietario: 'p1', placa: 'ABC123' },
@@ -245,6 +249,7 @@ describe('alertasVencidas / notificarAlertasVencidas', () => {
       Object.assign(escenario({ fecha_limite: 'no-es-una-fecha' }), {
         'alertas/a2': {
           estado: 'Pendiente',
+          avisos_pendientes: true,
           id_vehiculo: 'v1',
           tipo_alerta: 'Tecnomecanica',
           fecha_limite: enDias(1),
@@ -320,7 +325,8 @@ describe('alertasVencidas / notificarAlertasVencidas', () => {
                    'usuarios/p1': { fcmToken: 'tok-p1' } };
     for (let i = 1; i <= 5; i += 1) {
       docs[`alertas/a${i}`] = {
-        estado: 'Pendiente', id_vehiculo: 'v1', tipo_alerta: 'SOAT', fecha_limite: enDias(3),
+        estado: 'Pendiente', avisos_pendientes: true, id_vehiculo: 'v1',
+        tipo_alerta: 'SOAT', fecha_limite: enDias(3),
       };
     }
     const db = fakeDb(docs);
@@ -352,6 +358,7 @@ describe('alertasVencidas / notificarAlertasVencidas', () => {
       Object.assign(escenario({ fecha_limite: enDias(3) }), {
         'alertas/a2': {
           estado: 'Pendiente',
+          avisos_pendientes: true,
           id_vehiculo: 'v1',
           tipo_alerta: 'Tecnomecanica',
           fecha_limite: enDias(2),
@@ -380,6 +387,7 @@ describe('alertasVencidas / notificarAlertasVencidas', () => {
       Object.assign(escenario({ fecha_limite: enDias(3) }), {
         'alertas/a2': {
           estado: 'Pendiente',
+          avisos_pendientes: true,
           id_vehiculo: 'v1',
           tipo_alerta: 'Tecnomecanica',
           fecha_limite: enDias(2),
@@ -398,3 +406,103 @@ describe('alertasVencidas / notificarAlertasVencidas', () => {
     assert.strictEqual(db.lecturas, 2, 'el cache no esta funcionando');
   });
 });
+
+describe('alertasVencidas / el barrido no relee lo ya avisado (gap 1)', () => {
+  // El barrido consultaba `estado == 'Pendiente'` a secas y descartaba en
+  // MEMORIA las que ya tenian su escalon anotado. O sea que una alerta vencida
+  // que nadie cierre —y solo el usuario la cierra, a mano— costaba una lectura
+  // cada dia, para siempre. El coste crece con la historia de la cuenta, no
+  // con el trabajo del dia.
+  //
+  // Lo que se denormaliza es el estado TERMINAL, que es uno solo: con
+  // `ultimo_aviso === 'vencida'` ya no queda escalon por delante (`yaSeAviso`
+  // devuelve true para los dos), asi que esa alerta no va a volver a avisar
+  // nunca. `avisos_pendientes` es exactamente esa negacion.
+  //
+  // Las que estan en `por_vencer` SI se siguen releyendo, y es correcto: les
+  // queda el escalon `vencida` por delante, y esa ventana dura como mucho
+  // DIAS_DE_AVISO. Lo que se elimina es la cola infinita, no la de trabajo.
+
+  it('una alerta ya avisada del todo NI SIQUIERA se lee', async () => {
+    const db = fakeDb(
+      escenario({
+        fecha_limite: enDias(-3),
+        ultimo_aviso: 'vencida',
+        avisos_pendientes: false,
+      })
+    );
+    const centro = recolector();
+
+    const r = await notificarAlertasVencidas(db, fakeMessaging(), {
+      ahora: AHORA,
+      escribirNotificacion: centro.escribirNotificacion,
+    });
+
+    // `revisadas` cuenta los documentos que la CONSULTA devolvio. Antes esta
+    // alerta llegaba y se descartaba (`yaAvisadas: 1`); ahora no llega.
+    assert.strictEqual(r.revisadas, 0, 'la consulta no deberia traerla');
+    assert.strictEqual(r.yaAvisadas, 0, 'ya no hace falta descartarla en memoria');
+    assert.strictEqual(r.notificadas, 0);
+  });
+
+  it('avisar el ultimo escalon apaga la bandera en la misma escritura', async () => {
+    const db = fakeDb(
+      escenario({ fecha_limite: enDias(3), ultimo_aviso: 'por_vencer', avisos_pendientes: true })
+    );
+    const centro = recolector();
+    const despues = new Date(AHORA.getTime() + 5 * 86400000);
+
+    const r = await notificarAlertasVencidas(db, fakeMessaging(), {
+      ahora: despues,
+      escribirNotificacion: centro.escribirNotificacion,
+    });
+
+    assert.strictEqual(r.notificadas, 1);
+    assert.strictEqual(db.docs['alertas/a1'].ultimo_aviso, 'vencida');
+    assert.strictEqual(
+      db.docs['alertas/a1'].avisos_pendientes,
+      false,
+      'va en el MISMO update que el escalon: dos escrituras dejarian una ventana ' +
+        'en la que la alerta esta avisada del todo y sigue en la cola'
+    );
+  });
+
+  it('avisar un escalon INTERMEDIO deja la bandera encendida', async () => {
+    // Si se apagara aqui, la alerta saldria de la cola teniendo todavia el
+    // escalon `vencida` por delante y no avisaria nunca de que vencio, que es
+    // el aviso que mas importa.
+    const db = fakeDb(escenario({ fecha_limite: enDias(3), avisos_pendientes: true }));
+    const centro = recolector();
+
+    const r = await notificarAlertasVencidas(db, fakeMessaging(), {
+      ahora: AHORA,
+      escribirNotificacion: centro.escribirNotificacion,
+    });
+
+    assert.strictEqual(r.notificadas, 1);
+    assert.strictEqual(db.docs['alertas/a1'].ultimo_aviso, 'por_vencer');
+    assert.strictEqual(db.docs['alertas/a1'].avisos_pendientes, true);
+  });
+
+  it('una alerta HEREDADA, sin el campo, se queda fuera del barrido', async () => {
+    // Esto NO es el comportamiento deseado: es la razon por la que el backfill
+    // es un paso de runbook BLOQUEANTE y va ANTES de desplegar las funciones.
+    // Una igualdad sobre un campo ausente no devuelve nada, asi que sin el
+    // backfill las alertas de produccion dejan de avisar **en silencio**.
+    // Es la misma trampa que `abierto` en GAPS-02 y que `estado` en H-01, y se
+    // ensaya aqui gratis en vez de en produccion.
+    const heredada = escenario({ fecha_limite: enDias(3) });
+    delete heredada['alertas/a1'].avisos_pendientes;
+    const db = fakeDb(heredada);
+    const centro = recolector();
+
+    const r = await notificarAlertasVencidas(db, fakeMessaging(), {
+      ahora: AHORA,
+      escribirNotificacion: centro.escribirNotificacion,
+    });
+
+    assert.strictEqual(r.revisadas, 0);
+    assert.strictEqual(r.notificadas, 0);
+  });
+});
+

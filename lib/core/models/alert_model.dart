@@ -15,6 +15,14 @@ class AlertModel {
   final AlertPriority prioridad;
   final Map<String, dynamic>? metadata; // Para guardar PSI, etc.
 
+  /// Si al barrido diario le queda algun escalon por avisar de esta alerta.
+  ///
+  /// Lo mantiene el SERVIDOR: nace `true` y `checkAlertsDaily` lo apaga al
+  /// consumir el ultimo escalon. El cliente no puede tocarlo despues del
+  /// create —queda fuera de `camposMutablesDeAlerta()`—, porque poder apagarlo
+  /// es poder silenciarse los avisos para siempre.
+  final bool avisosPendientes;
+
   AlertModel({
     required this.idAlerta,
     required this.idVehiculo,
@@ -26,6 +34,7 @@ class AlertModel {
     this.estado = 'Pendiente',
     this.prioridad = AlertPriority.medium,
     this.metadata,
+    this.avisosPendientes = true,
   });
 
   AlertModel copyWith({
@@ -39,6 +48,7 @@ class AlertModel {
     String? estado,
     AlertPriority? prioridad,
     Map<String, dynamic>? metadata,
+    bool? avisosPendientes,
   }) {
     return AlertModel(
       idAlerta: idAlerta ?? this.idAlerta,
@@ -51,6 +61,7 @@ class AlertModel {
       estado: estado ?? this.estado,
       prioridad: prioridad ?? this.prioridad,
       metadata: metadata ?? this.metadata,
+      avisosPendientes: avisosPendientes ?? this.avisosPendientes,
     );
   }
 
@@ -68,6 +79,15 @@ class AlertModel {
       'estado': estado,
       'prioridad': prioridad.name,
       'metadata': metadata,
+      // Denormalizacion del barrido diario (gap 1 del §5 de
+      // `GAPS-05-drenaje.md`): una alerta nace con avisos por delante, y el
+      // servidor la apaga al consumir su ultimo escalon. La regla del create
+      // lo pinea a `true` igual que `estado`, asi que no se puede nacer ya
+      // silenciado. Va en `toMap()` porque el centinela
+      // `test/alertas_campos_test.dart` exige que el modelo y
+      // `camposDeAlerta()` sean espejo: un campo que este en la regla y no
+      // aqui es un permiso que nadie pidio.
+      'avisos_pendientes': avisosPendientes,
     };
   }
 
@@ -88,6 +108,11 @@ class AlertModel {
       metadata: map['metadata'] != null
           ? Map<String, dynamic>.from(map['metadata'])
           : null,
+      // Una alerta HEREDADA no trae el campo. Se lee como `true` —le
+      // quedan avisos— porque ese es el lado seguro: leerlo como `false`
+      // pintaria en el cliente como ya avisada una alerta que el backfill
+      // todavia no ha tocado.
+      avisosPendientes: map['avisos_pendientes'] as bool? ?? true,
     );
   }
 }

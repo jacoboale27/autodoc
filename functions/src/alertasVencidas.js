@@ -92,9 +92,21 @@ async function notificarAlertasVencidas(db, messaging, opciones = {}) {
   let cursor = null;
 
   for (;;) {
+    // Las DOS igualdades van en el servidor. `avisos_pendientes` es la
+    // negacion denormalizada del estado terminal: false en cuanto la alerta
+    // consumio su ultimo escalon, y entonces ya no va a avisar nunca mas.
+    // Antes esas alertas llegaban igual y se descartaban en memoria, asi que
+    // una alerta vencida que nadie cierre —y solo el usuario la cierra, a
+    // mano— costaba una lectura cada dia para siempre.
+    //
+    // Dos igualdades no necesitan indice compuesto (Firestore las resuelve con
+    // merge join de los indices de campo unico), asi que esto NO es un paso de
+    // despliegue de indices. El backfill si es un paso de runbook, y
+    // bloqueante: una igualdad sobre un campo ausente no devuelve nada.
     let consulta = db
       .collection('alertas')
       .where('estado', '==', 'Pendiente')
+      .where('avisos_pendientes', '==', true)
       .orderBy('__name__')
       .limit(limite);
     if (cursor) consulta = consulta.startAfter(cursor);
@@ -172,7 +184,14 @@ async function notificarAlertasVencidas(db, messaging, opciones = {}) {
     }
 
     try {
-      await doc.ref.update({ ultimo_aviso: escalon, fecha_ultimo_aviso: ahora });
+      // La bandera se apaga en el MISMO update que el escalon. Partirlo en dos
+      // escrituras dejaria una ventana en la que la alerta ya esta avisada del
+      // todo y sigue en la cola — y si la segunda falla, para siempre.
+      await doc.ref.update({
+        ultimo_aviso: escalon,
+        fecha_ultimo_aviso: ahora,
+        avisos_pendientes: !esUltimoEscalon(escalon),
+      });
     } catch (e) {
       // Esta escritura estaba FUERA del try, y eso la volvia una denegacion de
       // servicio disparable por cualquier usuario con una operacion que las
@@ -209,6 +228,16 @@ async function notificarAlertasVencidas(db, messaging, opciones = {}) {
  * `por_vencer` (una alerta vencida que el usuario edite hacia el futuro vuelve
  * a empezar solo si su nuevo escalon esta por delante del anotado).
  */
+/**
+ * Si este escalon es el ultimo, la alerta no volvera a avisar nunca: no queda
+ * ninguno por delante y `yaSeAviso` devolvera true para todos. Se deriva de
+ * ESCALONES en vez de escribir 'vencida' a pelo, para que anadir un escalon
+ * nuevo no deje la bandera apagandose antes de tiempo.
+ */
+function esUltimoEscalon(escalon) {
+  return ESCALONES.indexOf(escalon) === ESCALONES.length - 1;
+}
+
 function yaSeAviso(anotado, escalon) {
   if (!anotado) return false;
   const iAnotado = ESCALONES.indexOf(anotado);
@@ -222,5 +251,6 @@ module.exports = {
   ESCALONES,
   LIMITE_POR_PAGINA,
   estadoDeAviso,
+  esUltimoEscalon,
   notificarAlertasVencidas,
 };

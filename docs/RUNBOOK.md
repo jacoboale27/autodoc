@@ -756,6 +756,37 @@ zona por reserva.
    que está hoy y nada más, así que no le quita ningún aviso a nadie: lo único
    que suprime es la repetición que el usuario ya venía recibiendo.
 
+3. **🔴 BLOQUEANTE — `node backfill_avisos_pendientes.js --apply` ANTES de
+   desplegar las funciones, y DESPUÉS del paso 2.** Es el paso más peligroso
+   de este cajón, porque su modo de fallo es **silencioso y total**.
+
+   `checkAlertsDaily` pasa a consultar `avisos_pendientes == true` en vez de
+   traerse todas las alertas `Pendiente` y descartar en memoria las que ya
+   consumieron su último escalón (gap 1 del §5 de `GAPS-05-drenaje.md`). Una
+   igualdad sobre un campo **ausente no devuelve nada**, y ninguna alerta de
+   producción tiene ese campo: desplegar sin haber corrido el backfill deja la
+   consulta diaria en **cero documentos**, o sea **todas las alertas dejan de
+   avisar**. No hay error, no hay log y ninguna suite puede verlo — el barrido
+   informa de una corrida limpia.
+
+   Es la misma trampa que `abierto` en GAPS-02 (el tablero de todos los
+   talleres salía vacío) y que `estado` en H-01. Aquí se ensayó gratis: al
+   añadir el filtro, **once tests del barrido se pusieron rojos de golpe**
+   porque sus siembras no escribían el campo.
+
+   Va **después** del paso 2 porque deriva de `ultimo_aviso`: al revés, las
+   alertas que aquel marca como `vencida` quedarían con los avisos encendidos y
+   recibirían un aviso de más. Uno, no una cascada.
+
+   El script es dry-run por defecto, es idempotente (salta las que ya tienen el
+   campo) y recorre **todas** las alertas, no solo las `Pendiente`: `estado` es
+   mutable, y una alerta completada que el usuario reabra volvería a la cola
+   sin el campo, invisible para siempre.
+
+   **No hace falta desplegar índices.** Son dos igualdades (`estado` y
+   `avisos_pendientes`), y Firestore las resuelve con merge join de los índices
+   de campo único.
+
 Van al mismo cajón que `SOLICITUDES_LANDING_SALT` (UX-01),
 `firebase functions:delete iniciarReparacionPorVehiculo` (FUNC-02) y
 `node backfill_entregado.js --apply` (GAPS-02).

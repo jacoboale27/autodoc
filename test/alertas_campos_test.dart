@@ -57,9 +57,18 @@ void main() {
     // legitima, el segundo porque la app lo usa como DESTINO de la escritura al
     // completar la alerta, asi que reescribirlo la deja pintada como completada
     // y `Pendiente` en el servidor para siempre.
+    //
+    // `avisos_pendientes` se une a los inmutables en GAPS-05, y por una razon
+    // distinta: no es identidad, es CONTABILIDAD DEL SERVIDOR, como
+    // `ultimo_aviso` y `fecha_ultimo_aviso`. La diferencia con esos dos es que
+    // este si se escribe en el create —el barrido lo consulta con una
+    // igualdad, y una igualdad sobre un campo ausente no devuelve nada—, asi
+    // que tiene que estar en `camposDeAlerta()` y a la vez fuera de los
+    // mutables. Un cliente que pudiera apagarlo se silenciaria los avisos para
+    // siempre, que es justo lo que el create ya impide pineandolo a `true`.
     expect(
       todos.difference(mutables),
-      {'id_vehiculo', 'id_alerta'},
+      {'id_vehiculo', 'id_alerta', 'avisos_pendientes'},
       reason:
           'Cambio el conjunto de campos INMUTABLES de /alertas. Si es a '
           'proposito, actualiza este centinela explicando por que; si no, es '

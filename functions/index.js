@@ -25,6 +25,15 @@ const { exigirAppCheck } = require('./src/appCheck');
 const { enviarRecordatoriosDeReserva } = require('./src/recordatoriosReserva');
 const { borrarFotosDeResenia } = require('./src/fotosDeResenia');
 const { recontarResenias, sembrarAgregado } = require('./src/agregadoResenias');
+const {
+  decidirAvisoKilometraje,
+  decidirSolicitudResenia,
+  decidirMensajeChat,
+  decidirNuevaReserva,
+  decidirCambioReserva,
+  decidirCotizacionAceptada,
+  decidirCambioReparacion,
+} = require('./src/decisionesNotificacion');
 // El FieldValue tiene que salir del MISMO modulo que la instancia de Firestore.
 // Observado en el emulador de Functions: `admin.firestore.FieldValue` llega
 // undefined, y el de `@google-cloud/firestore` (que este package.json declara
@@ -130,14 +139,9 @@ exports.checkMileageOnVehicleUpdate = functions.firestore
     const previousValue = change.before.data();
     const vehicleId = context.params.vehicleId;
 
-    if (newValue.kilometraje_actual === previousValue.kilometraje_actual) {
-      return null; // Mileage hasn't changed
-    }
-
-    const currentKm = newValue.kilometraje_actual || 0;
-    const ownerId = newValue.id_propietario;
-
-    if (!ownerId) return null;
+    const destinatario = decidirAvisoKilometraje(previousValue, newValue);
+    if (!destinatario) return null;
+    const ownerId = destinatario.targetId;
 
     try {
       const mantenimientosSnapshot = await db.collection('mantenimientos')
@@ -151,14 +155,11 @@ exports.checkMileageOnVehicleUpdate = functions.firestore
 
       for (const doc of mantenimientosSnapshot.docs) {
         const task = doc.data();
-        const ultimoKm = task.ultimo_km || 0;
-        const frecuenciaKm = task.frecuencia_km || 0;
+        const decision = decidirAvisoKilometraje(previousValue, newValue, { tarea: task, fcmToken });
+        const { diff } = decision;
 
-        if (frecuenciaKm > 0) {
-          const expectedKm = ultimoKm + frecuenciaKm;
-          const diff = expectedKm - currentKm;
-
-          if (diff <= 500 && diff > 0) {
+        if (decision.push) {
+          if (decision.tipo === 'cercano') {
             // Nearing
             await messaging.send({
               token: fcmToken,
@@ -175,7 +176,7 @@ exports.checkMileageOnVehicleUpdate = functions.firestore
               deepLink: '/garage',
               metadata: { vehicleId, taskId: doc.id },
             });
-          } else if (diff <= 0 && currentKm > ultimoKm) {
+          } else if (decision.tipo === 'requerido') {
             // Exceeded
             await messaging.send({
               token: fcmToken,
@@ -212,7 +213,7 @@ exports.requestReviewOnServiceComplete = functions.firestore
     const tallerId = serviceData.id_taller;
 
     // We do not ask to review if there's no taller ID or if it is the owner manually
-    if (!tallerId || !vehiculoId || tallerId.includes('Manual')) {
+    if (!decidirSolicitudResenia(serviceData).consultarVehiculo) {
       return null;
     }
 
@@ -238,29 +239,21 @@ exports.requestReviewOnServiceComplete = functions.firestore
       // "vehículo ya vinculado a OTRO taller distinto" no puede ocurrir aquí
       // porque firestore.rules:149-159 ya impide crear el `servicios`
       // correspondiente.
-      const talleresVinculados = vehiculoDoc.data().talleres_vinculados || [];
-      const yaVinculado = talleresVinculados.includes(tallerId);
+      const decisionVinculo = decidirSolicitudResenia(serviceData, vehiculoDoc.data());
+      const { yaVinculado } = decisionVinculo;
 
       // Cierre C-1 (revisión adversarial): si ya hay una solicitud pendiente
       // de OTRO taller distinto, NO la pisamos. Sin esto, un atacante podía
       // crear un `servicios` falso justo después de una visita legítima y
       // reemplazar silenciosamente el taller_pendiente_confirmacion real
       // por el suyo, indistinguibles para el propietario en el banner.
-      const pendienteActual = vehiculoDoc.data().taller_pendiente_confirmacion || null;
-      const haySolicitudDeOtroTaller =
-        pendienteActual !== null && pendienteActual !== tallerId;
-
       // Cierre I-1 (revisión adversarial): si el propietario ya rechazó
       // explícitamente a este taller para este vehículo, no se le vuelve a
       // marcar como pendiente. Sin esto, el mismo taller podía reintentar
       // gratis creando otro `servicios` falso inmediatamente después de un
       // rechazo, re-armando el banner indefinidamente y contaminando el
       // historial con un registro de servicio falso por intento.
-      const talleresRechazados = vehiculoDoc.data().talleres_rechazados || [];
-      const yaRechazado = talleresRechazados.includes(tallerId);
-
-      const debeMarcarPendiente =
-        !yaVinculado && !haySolicitudDeOtroTaller && !yaRechazado;
+      const { debeMarcarPendiente } = decisionVinculo;
 
       const vehicleUpdate = {};
       if (yaVinculado) {
@@ -307,13 +300,14 @@ exports.requestReviewOnServiceComplete = functions.firestore
         await vehiculoDoc.ref.update(vehicleUpdate);
       }
 
-      const ownerId = vehiculoDoc.data().id_propietario;
+      const ownerId = decisionVinculo.targetId;
       if (!ownerId) return null;
 
       const userDoc = await db.collection('usuarios').doc(ownerId).get();
       const fcmToken = userDoc.exists ? userDoc.data().fcmToken : null;
 
-      if (!fcmToken) return null;
+      const decision = decidirSolicitudResenia(serviceData, vehiculoDoc.data(), fcmToken);
+      if (!decision.centro) return null;
 
       // Cierre I-3 (revisión adversarial): el push FCM se envía en su
       // propio try/catch para que, si falla (token inválido/expirado, algo
@@ -350,7 +344,7 @@ exports.requestReviewOnServiceComplete = functions.firestore
       // Si corresponde marcar una solicitud pendiente nueva, pide
       // confirmación explícita del propietario antes de otorgar acceso
       // permanente al historial.
-      if (debeMarcarPendiente) {
+      if (decision.confirmacion) {
         try {
           await messaging.send({
             token: fcmToken,
@@ -394,26 +388,17 @@ exports.notifyOnNewChatMessage = functions.firestore
     
     try {
       const convDoc = await db.collection('conversaciones').doc(conversacionId).get();
-      if (!convDoc.exists) return null;
-      
-      const convData = convDoc.data();
+      const convData = convDoc.exists ? convDoc.data() : null;
+      const destinatario = decidirMensajeChat(msgData, convData);
+      if (!destinatario) return null;
       const idRemitente = msgData.id_remitente;
-      
-      // Determinar el id del receptor
-      let receptorId;
-      if (idRemitente === convData.id_mecanico) {
-        receptorId = convData.id_propietario;
-      } else if (idRemitente === convData.id_propietario) {
-        receptorId = convData.id_mecanico;
-      }
-      
-      if (!receptorId) return null;
+      const receptorId = destinatario.targetId;
       
       const userDoc = await db.collection('usuarios').doc(receptorId).get();
       const fcmToken = userDoc.exists ? userDoc.data().fcmToken : null;
       
-      if (!fcmToken) return null;
-      
+      if (!decidirMensajeChat(msgData, convData, fcmToken).centro) return null;
+
       // Definir título y cuerpo basado en el tipo de mensaje
       const remitenteName = idRemitente === convData.id_mecanico ? (convData.nombre_mecanico || 'Mecánico') : (convData.nombre_propietario || 'Propietario');
       
@@ -471,13 +456,14 @@ exports.notifyOnNewReservation = functions.firestore
     const reserva = snap.data();
     
     try {
-      const targetId = reserva.id_mecanico;
-      if (!targetId) return null;
+      const destinatario = decidirNuevaReserva(reserva);
+      if (!destinatario) return null;
+      const { targetId } = destinatario;
 
       const userDoc = await db.collection('usuarios').doc(targetId).get();
       const fcmToken = userDoc.exists ? userDoc.data().fcmToken : null;
 
-      if (!fcmToken) return null;
+      if (!decidirNuevaReserva(reserva, fcmToken).centro) return null;
 
       await messaging.send({
         token: fcmToken,
@@ -519,10 +505,9 @@ exports.notifyOnReservationStatusChange = functions.firestore
     }
 
     try {
-      const isAccepted = newValue.estado === 'confirmada';
-      const isRejected = newValue.estado === 'rechazada';
-
-      if (!isAccepted && !isRejected) return null;
+      const decision = decidirCambioReserva(previousValue, newValue);
+      if (!decision) return null;
+      const { isAccepted } = decision;
 
       const fechaPropuesta = newValue.fecha_hora_propuesta && newValue.fecha_hora_propuesta.toDate
         ? newValue.fecha_hora_propuesta.toDate().toLocaleDateString('es')
@@ -541,12 +526,13 @@ exports.notifyOnReservationStatusChange = functions.firestore
       // codigo anterior asumia que 'el taller' confirmaba y notificaba solo
       // al propietario, quedando mal incluso cuando era el mecanico quien
       // debia enterarse).
-      const recipientIds = [newValue.id_propietario, newValue.id_mecanico].filter(Boolean);
+      const { recipientIds } = decision;
 
       for (const targetId of recipientIds) {
         const userDoc = await db.collection('usuarios').doc(targetId).get();
         const fcmToken = userDoc.exists ? userDoc.data().fcmToken : null;
-        if (fcmToken) {
+        const entrega = decidirCambioReserva(previousValue, newValue, fcmToken);
+        if (entrega.push) {
           await messaging.send({
             token: fcmToken,
             notification: {
@@ -561,13 +547,15 @@ exports.notifyOnReservationStatusChange = functions.firestore
         }
 
         // Persist in notification center
-        await writeNotification(targetId, {
-          tipo: 'reserva',
-          titulo: title,
-          body: body,
-          deepLink: `/reserva_detail/${context.params.reservaId}`,
-          metadata: { reservaId: context.params.reservaId },
-        });
+        if (entrega.centro) {
+          await writeNotification(targetId, {
+            tipo: 'reserva',
+            titulo: title,
+            body: body,
+            deepLink: `/reserva_detail/${context.params.reservaId}`,
+            metadata: { reservaId: context.params.reservaId },
+          });
+        }
       }
     } catch (error) {
       console.error('Error sending reservation notification:', error);
@@ -672,7 +660,7 @@ exports.onCotizacionAceptada = functions
       // a saber nada del servicio hasta que el taller moviera el ticket a
       // mano. Va aqui y no dentro de `abrirTicketDeReparacion` para que esa
       // funcion siga siendo pura y testeable sin messaging.
-      if (abierto.id) {
+      if (decidirCotizacionAceptada(abierto)) {
         await notificarTicketAbierto(abierto.id, abierto.ticket);
       }
     } catch (error) {
@@ -741,10 +729,13 @@ async function notificarTicketAbierto(idReparacion, ticket) {
     // `if (!snap.exists) return`, que no podia ser cierto: se acababa de
     // crear. Se conserva la relectura solo como camino de respaldo por si
     // algun llamador futuro no trae el documento.
-    const datos = ticket || (await leerTicket(idReparacion));
+    const apertura = decidirCotizacionAceptada({ id: idReparacion, ticket });
+    const datos = apertura.leerTicket ? (await leerTicket(idReparacion)) : ticket;
     if (!datos) return;
-    const { id_propietario: propietarioId, id_vehiculo: idVehiculo, placa } = datos;
-    if (!propietarioId) return;
+    const destinatario = decidirCotizacionAceptada({ id: idReparacion, ticket: datos });
+    if (!destinatario.centro) return;
+    const propietarioId = destinatario.targetId;
+    const { id_vehiculo: idVehiculo, placa } = datos;
 
     const title = 'Tu servicio ya está agendado';
     const body = `${placa || 'Tu vehículo'}: el taller abrió el ticket. ` +
@@ -752,7 +743,7 @@ async function notificarTicketAbierto(idReparacion, ticket) {
 
     const userDoc = await db.collection('usuarios').doc(propietarioId).get();
     const fcmToken = userDoc.exists ? userDoc.data().fcmToken : null;
-    if (fcmToken) {
+    if (decidirCotizacionAceptada({ id: idReparacion, ticket: datos }, fcmToken).push) {
       try {
         await messaging.send({
           token: fcmToken,
@@ -948,7 +939,8 @@ exports.notifyOnReparacionStatusChange = functions.firestore
     // reescribe: "PLACA: Entregado" sobre un coche que se llevo hace meses, o
     // "PLACA: Recibido" sobre uno que nunca volvio. Verificado en produccion
     // (una entrega de prueba subio el contador del propietario de 7 a 10).
-    if (esMigracion(after)) {
+    const destinatario = decidirCambioReparacion(before, after);
+    if (!destinatario) {
       return null;
     }
 
@@ -966,8 +958,7 @@ exports.notifyOnReparacionStatusChange = functions.firestore
         cancelado: 'Cancelado',
       };
 
-      const targetId = after.id_propietario;
-      if (!targetId) return null;
+      const { targetId } = destinatario;
 
       const title = 'Actualización de tu vehículo';
       const body = `${after.placa}: ${etiquetas[after.estado] || after.estado}`;
@@ -975,7 +966,8 @@ exports.notifyOnReparacionStatusChange = functions.firestore
       const userDoc = await db.collection('usuarios').doc(targetId).get();
       const fcmToken = userDoc.exists ? userDoc.data().fcmToken : null;
 
-      if (fcmToken) {
+      const entrega = decidirCambioReparacion(before, after, fcmToken);
+      if (entrega.push) {
         // El push FCM va en su propio try/catch (mismo patron que el fix
         // I-3 de arriba, notifyOnServiceComplete): un fallo de
         // messaging.send() (token invalido/expirado, algo rutinario) no
@@ -1002,13 +994,15 @@ exports.notifyOnReparacionStatusChange = functions.firestore
       }
 
       // Persist in notification center
-      await writeNotification(targetId, {
-        tipo: 'reparacion',
-        titulo: title,
-        body: body,
-        deepLink: `/vehicle_profile/${after.id_vehiculo}`,
-        metadata: { reparacionId: context.params.reparacionId, estado: after.estado },
-      });
+      if (entrega.centro) {
+        await writeNotification(targetId, {
+          tipo: 'reparacion',
+          titulo: title,
+          body: body,
+          deepLink: `/vehicle_profile/${after.id_vehiculo}`,
+          metadata: { reparacionId: context.params.reparacionId, estado: after.estado },
+        });
+      }
     } catch (error) {
       console.error('Error sending reparacion notification:', error);
     }

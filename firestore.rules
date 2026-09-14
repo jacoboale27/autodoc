@@ -760,7 +760,7 @@ service cloud.firestore {
       return [
         'id_alerta', 'id_vehiculo', 'tipo_alerta', 'titulo', 'descripcion',
         'fecha_limite', 'kilometraje_objetivo', 'estado', 'prioridad',
-        'metadata'
+        'metadata', 'avisos_pendientes'
       ];
     }
 
@@ -848,7 +848,16 @@ service cloud.firestore {
       // `update`, con `fecha_limite`.)
       ) && request.resource.data.keys().hasOnly(camposDeAlerta())
         && request.resource.data.keys().hasAll(camposDeAlerta())
-        && request.resource.data.estado == 'Pendiente';
+        && request.resource.data.estado == 'Pendiente'
+      //
+      // `avisos_pendientes` se pinea a `true` por el mismo motivo que `estado`,
+      // y es la tercera forma de auto-silenciarse que se cierra. Es la
+      // denormalizacion que el barrido consulta desde GAPS-05
+      // (`alertasVencidas.js`): nacer con `false` deja la alerta fuera de la
+      // consulta diaria desde el minuto uno, igual de invisible que nacer sin
+      // `estado`. El servidor es el unico que puede apagarlo, y solo al
+      // consumir el ultimo escalon.
+        && request.resource.data.avisos_pendientes == true;
 
       // Actualización: propietario del vehículo o admin.
       // El acotado va FUERA del paréntesis a propósito, así que ata también a

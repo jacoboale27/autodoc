@@ -32,6 +32,9 @@ const CAMPOS_DEL_MODELO = {
   // `AlertPriority.name`: 'high' | 'medium' | 'low'.
   prioridad: 'high',
   metadata: { origen: 'manual' },
+  // GAPS-05: la denormalizacion del barrido. Nace `true` y solo el
+  // servidor la apaga.
+  avisos_pendientes: true,
 };
 
 const seedEscenario = async () => {
@@ -45,9 +48,16 @@ const seedEscenario = async () => {
 };
 
 describe('/alertas acota los campos por allowlist, no por denylist', () => {
-  // Los dos rojos que motivan el cambio. Un campo de servidor que todavia no
-  // existe se modela aqui con `avisos_pendientes`, que es justo el que
-  // introduciria la tanda de denormalizacion del barrido de alertas.
+  // Los dos rojos que motivan el cambio, con un campo de servidor que todavia
+  // no existe.
+  //
+  // Antes ese papel lo hacia `avisos_pendientes`, «justo el que introduciria
+  // la tanda de denormalizacion del barrido». GAPS-05 lo introdujo, asi que
+  // dejo de servir: estos tres tests habrian seguido en VERDE, pero por otra
+  // regla —el pin a `true` del create y la allowlist de mutables— en vez de
+  // por el `hasOnly` que dicen cubrir. Verde por el motivo equivocado es
+  // exactamente la enfermedad que este repo lleva cinco tandas persiguiendo,
+  // asi que el marcador vuelve a ser un campo que de verdad no existe.
   test('el propietario NO puede crear una alerta con un campo que el modelo no declara', async () => {
     await seedEscenario();
     const db = await withRole(env, UIDS.owner1, 'Propietario');
@@ -55,7 +65,7 @@ describe('/alertas acota los campos por allowlist, no por denylist', () => {
       db.collection('alertas').doc('a2').set({
         ...CAMPOS_DEL_MODELO,
         id_alerta: 'a2',
-        avisos_pendientes: false,
+        campo_de_servidor_futuro: false,
       }),
     );
   });
@@ -64,7 +74,7 @@ describe('/alertas acota los campos por allowlist, no por denylist', () => {
     await seedEscenario();
     const db = await withRole(env, UIDS.owner1, 'Propietario');
     await assertFails(
-      db.collection('alertas').doc('a1').update({ avisos_pendientes: false }),
+      db.collection('alertas').doc('a1').update({ campo_de_servidor_futuro: false }),
     );
   });
 
@@ -75,7 +85,7 @@ describe('/alertas acota los campos por allowlist, no por denylist', () => {
     await seedEscenario();
     const db = await withRole(env, UIDS.admin, 'Administrador');
     await assertFails(
-      db.collection('alertas').doc('a1').update({ avisos_pendientes: false }),
+      db.collection('alertas').doc('a1').update({ campo_de_servidor_futuro: false }),
     );
   });
 
@@ -264,3 +274,76 @@ describe('alertas: las otras dos vias de auto-silenciado', () => {
     );
   });
 });
+
+describe('alertas: avisos_pendientes es contabilidad del servidor', () => {
+  // Es la denormalizacion que hace que el barrido diario no relea lo ya
+  // avisado (gap 1 del §5 de `GAPS-05-drenaje.md`). Como el barrido consulta
+  // `avisos_pendientes == true`, poder apagarlo es poder silenciarse los
+  // avisos para siempre — y de forma irreversible en la practica, porque un
+  // documento que no sale en ninguna consulta ya no lo mira nadie.
+  //
+  // Es la tercera via de auto-silenciado que se cierra en /alertas, despues de
+  // nacer sin `estado` y de nacer con `estado` equivocado.
+
+  test('no se puede nacer con los avisos ya apagados', async () => {
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('alertas').doc('nueva').set({
+        ...CAMPOS_DEL_MODELO,
+        id_alerta: 'nueva',
+        avisos_pendientes: false,
+      })
+    );
+  });
+
+  test('tampoco se puede nacer SIN el campo', async () => {
+    // Una igualdad sobre un campo ausente no devuelve nada, asi que omitirlo
+    // es exactamente tan invisible como ponerlo a false. Lo cierra `hasAll`.
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    const sinCampo = { ...CAMPOS_DEL_MODELO, id_alerta: 'nueva' };
+    delete sinCampo.avisos_pendientes;
+    await assertFails(db.collection('alertas').doc('nueva').set(sinCampo));
+  });
+
+  test('el propietario NO puede apagarlos despues, en un update', async () => {
+    await seedEscenario();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('alertas').doc('a1').update({ avisos_pendientes: false })
+    );
+  });
+
+  test('ni BORRARLOS con FieldValue.delete()', async () => {
+    // Atar el valor y no la presencia deja pasar el borrado, que es como se
+    // esquivo una regla equivalente en GAPS-02 con `abierto`. Aqui va por
+    // allowlist de `camposMutablesDeAlerta()`, que cierra las dos.
+    await seedEscenario();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('alertas').doc('a1').update({
+        avisos_pendientes: require('firebase/firestore').deleteField(),
+      })
+    );
+  });
+
+  test('el admin TAMPOCO puede apagarlos', async () => {
+    // El acotado va fuera del parentesis, como `id_vehiculo`: una correccion
+    // real de contabilidad se hace con Admin SDK, que no pasa por las reglas.
+    await seedEscenario();
+    const db = await withRole(env, UIDS.admin, 'Administrador');
+    await assertFails(
+      db.collection('alertas').doc('a1').update({ avisos_pendientes: false })
+    );
+  });
+
+  test('y el resto de la alerta se sigue pudiendo editar', async () => {
+    // Que el campo sea inmutable no debe volver la alerta ineditable: si esto
+    // fallara, el acotado estaria cerrando mas de lo que dice.
+    await seedEscenario();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertSucceeds(
+      db.collection('alertas').doc('a1').update({ titulo: 'otro titulo' })
+    );
+  });
+});
+
