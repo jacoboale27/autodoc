@@ -17,6 +17,47 @@ VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01, FUNC-02, UX-03 / UX-04,
 cerradas: `fix/gaps-02` (residuales de FUNC-02), `fix/gaps-03` (accesibilidad de la landing que
 dejó UX-03) y **`fix/gaps-04`** (lo que quedaba abierto antes de H-01, cerrada el 2026-09-13).
 
+### La tanda GAPS-07 esta cerrada (2026-09-15, `fix/gaps-07a`) — el doble envio
+
+Cierra el gap 1 del §4 de GAPS-06: **los 15 grupos de doble envio, los 15**. Evidencia en
+`docs/evidencia/GAPS-07-doble-envio.md`. Lo que hay que saber sin leerla:
+
+- **Los dos mecanismos no son alternativas.** `onPressed: null` (y `AppButton(isLoading: true)`)
+  **solo surte efecto en el frame siguiente**, asi que dos taps en el MISMO frame pasan los dos.
+  En tres grupos lo que atrapo el segundo tap fue el guard de reentrada, no la deshabilitacion.
+  Todo control lleva las dos capas.
+- **El defecto casi nunca es "dos taps en el mismo boton".** En OCHO de los quince el envio esta
+  detras de un dialogo de confirmacion o de pickers, y el dialogo **se cierra al confirmar**: el
+  segundo envio viene de **reabrirlo**. Los tests afirman que el dialogo NO se reabre, que es mas
+  fuerte que un contador en uno. El caso extremo es la cita nueva del chat, con cuatro pasos.
+- **Anadir una bandera destapo tres cosas construidas dentro de `build`,** y esto es lo mas
+  transferible: un `setState` recrea lo que se construye en `build`. El stream de fotos de la
+  galeria, el stream de resenias del panel de mecanico (que **ya volvia la lista a `waiting` al
+  cambiar el orden**, antes de esta tanda) y el `Future` del resumen de gastos del perfil de
+  vehiculo. **Un arreglo de doble envio que no mire eso cambia un defecto por otro peor.**
+- **Un veredicto del anexo era falso:** "aceptar invitacion" de la fila 10 NO es vulnerable — el
+  boton hace `Navigator.pop` inmediato y el segundo tap no se lleva la ruta de debajo. El test
+  escrito para demostrarlo pasa sin arreglo alguno. Sexta ronda seguida.
+- **`AppButton(isLoading: true)` envenena `pumpAndSettle`:** su spinner no deja de animar nunca.
+  Donde hace falta, se usa el efecto secundario — que el rotulo desaparezca ES la prueba.
+- **Una reversion que falla en silencio miente igual que un verde por el motivo equivocado.** Al
+  comprobar el rojo-antes de un guard la reversion no se aplico (el formateo habia cambiado el
+  texto buscado) y el test paso. **Verifica que el rojo-antes revirtio algo de verdad.**
+- **Codex se quedo sin cuota a mitad y los tres workers murieron sin escribir su informe.** Lo que
+  dejaron: 11 ficheros de test que compilaban y reproducian el defecto (17 casos en
+  `Expected 1 / Actual 2`) y **cero implementacion util**. El reconocimiento rinde delegado; la
+  implementacion con TDD no, si la cuota puede cortarse.
+
+**Cifras:** `flutter analyze` limpio, `flutter test` **1301/1301** (base 1278). Functions y reglas
+no se relanzaron: cero cambios en `functions/`, `firestore.rules` y `storage.rules`.
+
+**Tres gaps nuevos** en el §5 de esa evidencia. El de mas peso y probablemente un defecto de
+PRODUCCION: **el dialogo de respuesta a una resenia desborda ~99 000 px** porque `AlertDialog`
+envuelve su contenido en `IntrinsicWidth` y el `SizedBox(width: double.maxFinite)` de
+`AppDialogContent` vuelve absurdo el ancho intrinseco. Es el unico control de los 16 sin test.
+**Y los literales sin traducir siguen sin empezar**: el worker que tenia que remedir los 274
+murio con la cuota y no dejo nada.
+
 ### La tanda GAPS-06 esta cerrada (2026-09-14, `fix/gaps-05`) — segundo drenaje
 
 Drena los 15 gaps que GAPS-05 dejo abiertos. **Cerrados 5** (1, 3, 5, 6 y la mitad

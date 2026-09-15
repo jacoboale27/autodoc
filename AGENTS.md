@@ -107,6 +107,24 @@ VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01, FUNC-02, UX-03 / UX-04,
 (residuales de FUNC-02), `fix/gaps-03` (accesibilidad de la landing que dejó UX-03) y
 **`fix/gaps-04`** (lo que quedaba abierto antes de H-01, cerrada el 2026-09-13).
 
+### GAPS-07 (2026-09-15): el doble envio en formularios, cerrado
+
+Rama `fix/gaps-07a`. Evidencia en `docs/evidencia/GAPS-07-doble-envio.md`. Cierra los 15 grupos
+del anexo de doble envio. Lo imprescindible:
+
+- Todo control protegido lleva DOS capas: guard de reentrada (`if (_flag) return;`) **y**
+  `onPressed: null` / `isLoading`. El segundo solo surte efecto en el frame siguiente.
+- En 8 de los 15 el envio esta detras de un dialogo que se CIERRA al confirmar: el doble envio
+  viene de reabrirlo, no de machacar el boton.
+- Las banderas van por id (`Set<String>`) donde hay filas o varias entidades.
+- Al meter banderas se destaparon tres streams/futures creados en `build` que un `setState`
+  recreaba. Si tocas esto, miralo.
+- `AppButton(isLoading: true)` deja `pumpAndSettle` sin terminar (spinner infinito).
+- `flutter analyze` limpio, `flutter test` 1301/1301. Sin cambios en `functions/` ni en reglas.
+- Gaps nuevos en el §5: el desbordamiento de ~99 000 px del dialogo de respuesta a resenias
+  (probable defecto de produccion, via `IntrinsicWidth` + `AppDialogContent`), la falta de un
+  centinela contra nuevos botones sin proteger, y los literales sin traducir SIN EMPEZAR.
+
 ### GAPS-06 (2026-09-14): segundo drenaje, sobre lo que GAPS-05 dejo abierto
 
 Evidencia en `docs/evidencia/GAPS-06-drenaje.md`. Cerrados 5 de los 15; 2 se quedaron fuera
