@@ -97,6 +97,21 @@ class _ChatScreenState extends State<ChatScreen> {
   Timer? _typingTimer;
   bool _isTyping = false;
 
+  /// El compositor se limpia de forma OPTIMISTA, asi que sin esta bandera la
+  /// persona podia escribir otra cosa y volver a pulsar enviar antes de que el
+  /// primer envio terminara: dos mensajes por una sola intencion.
+  bool _enviandoTexto = false;
+
+  /// Cubre desde que se abre el selector de imagen hasta que termina la subida:
+  /// el selector tarda, y dos aperturas encadenadas subian dos veces.
+  bool _adjuntando = false;
+
+  /// Cubre la escritura de una cita nueva (`solicitarReserva` + la tarjeta en
+  /// el hilo). El flujo son cuatro pasos —hoja, selector de vehiculo, fecha y
+  /// hora—, asi que recorrerlo dos veces es posible: sin esto se creaban DOS
+  /// reservas y dos tarjetas.
+  bool _creandoReserva = false;
+
   // Capturado una vez en initState (con el context aún activo) para poder
   // usarlo en dispose(): en ese punto el propio Element ya está desactivado,
   // así que un context.read<ChatProvider>() ahí lanza "Looking up a
@@ -245,21 +260,28 @@ class _ChatScreenState extends State<ChatScreen> {
     bool isMecanico,
     String receptorId,
   ) async {
+    if (_enviandoTexto) return;
     final texto = _controller.text.trim();
     if (texto.isEmpty) return;
 
     final provider = context.read<ChatProvider>();
     _controller.clear();
     _reengancharCompositor();
+    setState(() => _enviandoTexto = true);
 
-    final enviado = await provider.enviarMensaje(
-      conversacionId: widget.conversacionId,
-      contenido: texto,
-      remitenteId: userId,
-      receptorId: receptorId,
-      isMecanicoRemitente: isMecanico,
-      tipo: 'texto',
-    );
+    final bool enviado;
+    try {
+      enviado = await provider.enviarMensaje(
+        conversacionId: widget.conversacionId,
+        contenido: texto,
+        remitenteId: userId,
+        receptorId: receptorId,
+        isMecanicoRemitente: isMecanico,
+        tipo: 'texto',
+      );
+    } finally {
+      if (mounted) setState(() => _enviandoTexto = false);
+    }
     if (enviado || !mounted) return;
 
     // Solo se devuelve el texto si el compositor sigue vacio: si la persona ya
@@ -304,6 +326,7 @@ class _ChatScreenState extends State<ChatScreen> {
     required bool isMecanico,
     required String receptorId,
   }) {
+    if (_creandoReserva) return;
     // El cliente debe indicar a qué vehículo de su cuenta es el servicio.
     // Usamos el context del propio State (this.context), que se mantiene
     // válido mientras la pantalla de chat siga montada — a diferencia del
@@ -388,6 +411,39 @@ class _ChatScreenState extends State<ChatScreen> {
       fechaCreacion: DateTime.now(),
     );
 
+    // La bandera se enciende justo antes de la primera escritura y no al abrir
+    // la hoja: si cubriera los pickers, cancelar uno dejaria el boton muerto
+    // para siempre. Aqui el `finally` siempre la apaga.
+    if (_creandoReserva) return;
+    setState(() => _creandoReserva = true);
+    try {
+      await _escribirReserva(
+        reserva: reserva,
+        reservaProvider: reservaProvider,
+        provider: provider,
+        userId: userId,
+        isMecanico: isMecanico,
+        receptorId: receptorId,
+        idVehiculo: idVehiculo,
+        fecha: fecha,
+        hora: hora,
+      );
+    } finally {
+      if (mounted) setState(() => _creandoReserva = false);
+    }
+  }
+
+  Future<void> _escribirReserva({
+    required ReservaModel reserva,
+    required ReservaProvider reservaProvider,
+    required ChatProvider provider,
+    required String userId,
+    required bool isMecanico,
+    required String receptorId,
+    required String idVehiculo,
+    required DateTime fecha,
+    required String hora,
+  }) async {
     final reservaId = await reservaProvider.solicitarReserva(reserva);
 
     // `solicitarReserva` devuelve '' cuando la escritura fallo, y guarda el
@@ -836,12 +892,14 @@ class _ChatScreenState extends State<ChatScreen> {
                   IconButton(
                     icon: Icon(Icons.camera_alt, color: colors.primary),
                     tooltip: context.l10n.chatCamera,
-                    onPressed: () => _pickAndSendImage(
-                      userId,
-                      isMecanico,
-                      receptorId,
-                      ImageSource.camera,
-                    ),
+                    onPressed: _adjuntando
+                        ? null
+                        : () => _pickAndSendImage(
+                            userId,
+                            isMecanico,
+                            receptorId,
+                            ImageSource.camera,
+                          ),
                   ),
                   Expanded(
                     child: Container(
@@ -859,8 +917,9 @@ class _ChatScreenState extends State<ChatScreen> {
                           hintText: 'Escribe un mensaje...',
                           border: InputBorder.none,
                         ),
-                        onSubmitted: (_) =>
-                            _enviarMensaje(userId, isMecanico, receptorId),
+                        onSubmitted: (_) => _enviandoTexto
+                            ? null
+                            : _enviarMensaje(userId, isMecanico, receptorId),
                       ),
                     ),
                   ),
@@ -889,8 +948,10 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: IconButton(
                       icon: Icon(Icons.send, color: colors.onPrimary, size: 20),
                       tooltip: 'Enviar',
-                      onPressed: () =>
-                          _enviarMensaje(userId, isMecanico, receptorId),
+                      onPressed: _enviandoTexto
+                          ? null
+                          : () =>
+                                _enviarMensaje(userId, isMecanico, receptorId),
                     ),
                   ),
                 ],
@@ -1074,14 +1135,16 @@ class _ChatScreenState extends State<ChatScreen> {
                 ListTile(
                   leading: Icon(Icons.calendar_month, color: colors.primary),
                   title: Text(context.l10n.chatNewReservation),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _iniciarNuevaReserva(
-                      userId: userId,
-                      isMecanico: isMecanico,
-                      receptorId: receptorId,
-                    );
-                  },
+                  onTap: _creandoReserva
+                      ? null
+                      : () {
+                          Navigator.pop(context);
+                          _iniciarNuevaReserva(
+                            userId: userId,
+                            isMecanico: isMecanico,
+                            receptorId: receptorId,
+                          );
+                        },
                 ),
               if (isMecanico) ...[
                 ListTile(
@@ -1189,6 +1252,23 @@ class _ChatScreenState extends State<ChatScreen> {
   /// escrito en Storage, facturado y legible por la contraparte aunque el
   /// envío se cancelara.
   Future<void> _pickAndSendImage(
+    String userId,
+    bool isMecanico,
+    String receptorId,
+    ImageSource source,
+  ) async {
+    // Guard de reentrada: el selector es lo mas lento de este flujo y el
+    // `onPressed: null` no llega a tiempo para dos taps del mismo frame.
+    if (_adjuntando) return;
+    setState(() => _adjuntando = true);
+    try {
+      await _seleccionarYEnviarImagen(userId, isMecanico, receptorId, source);
+    } finally {
+      if (mounted) setState(() => _adjuntando = false);
+    }
+  }
+
+  Future<void> _seleccionarYEnviarImagen(
     String userId,
     bool isMecanico,
     String receptorId,
@@ -1349,6 +1429,12 @@ class _EditarMensajeDialog extends StatefulWidget {
 class _EditarMensajeDialogState extends State<_EditarMensajeDialog> {
   late final TextEditingController _controller;
 
+  /// `_guardar` cierra el dialogo ANTES de esperar la escritura, asi que
+  /// mientras dura la animacion de salida el boton sigue recibiendo taps: el
+  /// segundo editaba otra vez y hacia un segundo `Navigator.pop`, que se
+  /// llevaba la pantalla de chat.
+  bool _guardando = false;
+
   @override
   void initState() {
     super.initState();
@@ -1362,6 +1448,8 @@ class _EditarMensajeDialogState extends State<_EditarMensajeDialog> {
   }
 
   Future<void> _guardar() async {
+    if (_guardando) return;
+    setState(() => _guardando = true);
     final nuevoTexto = _controller.text.trim();
     final chatProvider = context.read<ChatProvider>();
     final messenger = ScaffoldMessenger.of(context);
@@ -1397,7 +1485,10 @@ class _EditarMensajeDialogState extends State<_EditarMensajeDialog> {
           onPressed: () => Navigator.pop(context),
           child: Text(context.l10n.adminCancel),
         ),
-        TextButton(onPressed: _guardar, child: Text(context.l10n.chatSaveEdit)),
+        TextButton(
+          onPressed: _guardando ? null : _guardar,
+          child: Text(context.l10n.chatSaveEdit),
+        ),
       ],
     );
   }

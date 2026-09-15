@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
+import 'package:provider/single_child_widget.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
@@ -333,6 +334,10 @@ Future<void> pumpChatWidget(
   UserModel? user,
   FakeChatProvider? chatProvider,
   FakeReservaProvider? reservaProvider,
+
+  /// Providers que esta pantalla no necesita siempre (p. ej. VehicleProvider,
+  /// que solo hace falta cuando el test abre el selector de vehiculo).
+  List<SingleChildWidget> extraProviders = const [],
 }) async {
   tester.view.physicalSize = Size(width, height);
   tester.view.devicePixelRatio = 1.0;
@@ -353,6 +358,7 @@ Future<void> pumpChatWidget(
         ChangeNotifierProvider<ReservaProvider>.value(
           value: reservaProvider ?? FakeReservaProvider(),
         ),
+        ...extraProviders,
       ],
       child: MaterialApp(
         theme: brightness == Brightness.dark ? AppTheme.dark : AppTheme.light,
