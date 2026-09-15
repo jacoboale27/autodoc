@@ -198,6 +198,11 @@ class EmpleadosScreen extends StatefulWidget {
 }
 
 class _EmpleadosScreenState extends State<EmpleadosScreen> {
+  /// idEmpleado cuya desactivación está en vuelo. `EmpleadoProvider.isLoading`
+  /// no gobierna el botón de la tarjeta, que es el defecto: la protección va
+  /// donde está el botón, y por empleado, no global.
+  final Set<String> _desactivando = <String>{};
+
   @override
   void initState() {
     super.initState();
@@ -245,6 +250,10 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
       ),
     );
     if (confirm != true || !mounted) return;
+    // El diálogo se cierra al confirmar: sin esta guarda se podía reabrir y
+    // confirmar otra vez mientras la primera desactivación seguía en vuelo.
+    if (_desactivando.contains(empleado.idEmpleado)) return;
+    setState(() => _desactivando.add(empleado.idEmpleado));
 
     try {
       await context.read<EmpleadoProvider>().desactivar(
@@ -261,6 +270,10 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(mensajeSeguroDeError(e))));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _desactivando.remove(empleado.idEmpleado));
       }
     }
   }
@@ -332,6 +345,9 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
                           _EmpleadoCard(
                             empleado: empleado,
                             onDesactivar: () => _confirmarDesactivar(empleado),
+                            desactivando: _desactivando.contains(
+                              empleado.idEmpleado,
+                            ),
                           ),
                       ],
                     ),
@@ -347,7 +363,15 @@ class _EmpleadoCard extends StatelessWidget {
   final EmpleadoModel empleado;
   final VoidCallback onDesactivar;
 
-  const _EmpleadoCard({required this.empleado, required this.onDesactivar});
+  /// Mientras la desactivación de este empleado sigue en vuelo el botón no
+  /// acepta taps, para que no se pueda reabrir el diálogo de confirmación.
+  final bool desactivando;
+
+  const _EmpleadoCard({
+    required this.empleado,
+    required this.onDesactivar,
+    this.desactivando = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -399,7 +423,7 @@ class _EmpleadoCard extends StatelessWidget {
             IconButton(
               icon: Icon(Icons.person_off_outlined, color: colors.error),
               tooltip: 'Desactivar a ${empleado.nombreCompleto}',
-              onPressed: onDesactivar,
+              onPressed: desactivando ? null : onDesactivar,
             ),
         ],
       ),

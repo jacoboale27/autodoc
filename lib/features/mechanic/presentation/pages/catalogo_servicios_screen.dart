@@ -148,6 +148,11 @@ class CatalogoServiciosScreen extends StatefulWidget {
 }
 
 class _CatalogoServiciosScreenState extends State<CatalogoServiciosScreen> {
+  /// idItem cuya eliminación está en vuelo. `CatalogoProvider.isLoading` no
+  /// gobierna el botón de la tarjeta, que es justo el defecto: la protección
+  /// tiene que vivir donde está el botón, y por ítem, no global.
+  final Set<String> _eliminando = <String>{};
+
   @override
   void initState() {
     super.initState();
@@ -176,6 +181,10 @@ class _CatalogoServiciosScreenState extends State<CatalogoServiciosScreen> {
       ),
     );
     if (confirm != true || !mounted) return;
+    // El diálogo se cierra al confirmar: sin esta guarda se podía reabrir y
+    // confirmar otra vez mientras la primera eliminación seguía en vuelo.
+    if (_eliminando.contains(item.idItem)) return;
+    setState(() => _eliminando.add(item.idItem));
 
     try {
       await context.read<CatalogoProvider>().eliminar(item.idItem);
@@ -190,6 +199,8 @@ class _CatalogoServiciosScreenState extends State<CatalogoServiciosScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text(mensajeSeguroDeError(e))));
       }
+    } finally {
+      if (mounted) setState(() => _eliminando.remove(item.idItem));
     }
   }
 
@@ -241,7 +252,11 @@ class _CatalogoServiciosScreenState extends State<CatalogoServiciosScreen> {
                 childAspectRatio: 2.6,
                 children: [
                   for (final item in items)
-                    _CatalogoItemCard(item: item, onEliminar: _eliminar),
+                    _CatalogoItemCard(
+                      item: item,
+                      onEliminar: _eliminar,
+                      eliminando: _eliminando.contains(item.idItem),
+                    ),
                 ],
               ),
             ),
@@ -256,7 +271,15 @@ class _CatalogoItemCard extends StatelessWidget {
   final CatalogoItemModel item;
   final Future<void> Function(CatalogoItemModel) onEliminar;
 
-  const _CatalogoItemCard({required this.item, required this.onEliminar});
+  /// Mientras la eliminación de este ítem sigue en vuelo el botón no acepta
+  /// taps, para que no se pueda reabrir el diálogo de confirmación.
+  final bool eliminando;
+
+  const _CatalogoItemCard({
+    required this.item,
+    required this.onEliminar,
+    this.eliminando = false,
+  });
 
   static final _currencyFormat = NumberFormat.currency(
     locale: 'es',
@@ -305,7 +328,7 @@ class _CatalogoItemCard extends StatelessWidget {
           IconButton(
             icon: Icon(Icons.delete_outline, color: colors.error),
             tooltip: 'Eliminar ${item.nombre} del catálogo',
-            onPressed: () => onEliminar(item),
+            onPressed: eliminando ? null : () => onEliminar(item),
           ),
         ],
       ),

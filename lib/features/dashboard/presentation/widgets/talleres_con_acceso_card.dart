@@ -50,6 +50,10 @@ class TalleresConAccesoCard extends StatefulWidget {
 }
 
 class _TalleresConAccesoCardState extends State<TalleresConAccesoCard> {
+  /// uids cuya revocacion esta en vuelo. Por uid y no una sola bandera: el
+  /// vehiculo puede tener varios talleres y retirar a uno no bloquea a otro.
+  final Set<String> _revocando = <String>{};
+
   /// uid -> nombre ya resuelto. Se cachea en el State y no se vuelve a pedir
   /// en cada rebuild: el widget se reconstruye cada vez que el provider
   /// notifica (p. ej. al revocar), y sin esto cada revocación dispararía una
@@ -128,20 +132,29 @@ class _TalleresConAccesoCardState extends State<TalleresConAccesoCard> {
       ),
     );
     if (confirmado != true || !mounted) return;
+    // El diálogo se cierra al confirmar, así que sin esta guarda el usuario
+    // podía reabrirlo y confirmar otra vez mientras la primera revocación
+    // seguía en vuelo: dos escrituras para la misma decisión.
+    if (_revocando.contains(uid)) return;
+    setState(() => _revocando.add(uid));
 
     final provider = context.read<VehicleProvider>();
-    final ok = await provider.revocarAccesoTaller(
-      widget.vehicle.idVehiculo,
-      uid,
-    );
-    if (!mounted) return;
-    if (ok) {
-      UiUtils.showSuccessSnackbar(context, 'Acceso retirado a $nombre.');
-    } else {
-      UiUtils.showErrorSnackbar(
-        context,
-        provider.error ?? 'No se pudo retirar el acceso.',
+    try {
+      final ok = await provider.revocarAccesoTaller(
+        widget.vehicle.idVehiculo,
+        uid,
       );
+      if (!mounted) return;
+      if (ok) {
+        UiUtils.showSuccessSnackbar(context, 'Acceso retirado a $nombre.');
+      } else {
+        UiUtils.showErrorSnackbar(
+          context,
+          provider.error ?? 'No se pudo retirar el acceso.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _revocando.remove(uid));
     }
   }
 
@@ -200,6 +213,7 @@ class _TalleresConAccesoCardState extends State<TalleresConAccesoCard> {
                       if (i > 0) const Divider(height: AppSpacing.lg),
                       _FilaTaller(
                         nombre: _nombres[talleres[i]] ?? 'Cargando…',
+                        retirando: _revocando.contains(talleres[i]),
                         onRetirar: () => _confirmarRevocar(
                           talleres[i],
                           _nombres[talleres[i]] ?? 'este taller',
@@ -218,7 +232,15 @@ class _FilaTaller extends StatelessWidget {
   final String nombre;
   final VoidCallback onRetirar;
 
-  const _FilaTaller({required this.nombre, required this.onRetirar});
+  /// Mientras la revocación de este taller sigue en vuelo el botón no acepta
+  /// taps, para que no se pueda reabrir el diálogo de confirmación.
+  final bool retirando;
+
+  const _FilaTaller({
+    required this.nombre,
+    required this.onRetirar,
+    this.retirando = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -238,7 +260,10 @@ class _FilaTaller extends StatelessWidget {
           text: 'Retirar',
           type: AppButtonType.text,
           size: AppButtonSize.small,
-          onPressed: onRetirar,
+          // Sin `isLoading`: el spinner de AppButton anima para siempre y
+          // deja a `pumpAndSettle` sin terminar en cualquier test de esta
+          // tarjeta. Deshabilitar el boton ya impide reabrir el dialogo.
+          onPressed: retirando ? null : onRetirar,
           child: Text(
             'Retirar',
             style: AppTextStyles.labelMedium.copyWith(color: colors.error),
