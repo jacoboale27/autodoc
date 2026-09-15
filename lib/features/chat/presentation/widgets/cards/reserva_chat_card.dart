@@ -33,7 +33,7 @@ String? _idDeReserva(Map<String, dynamic> metadata) {
   return crudo;
 }
 
-class ReservaChatCard extends StatelessWidget {
+class ReservaChatCard extends StatefulWidget {
   /// Sentinel usado solo cuando no hay documento vivo del que leer el
   /// `id_proponente` real (mensaje sin `id_reserva`, o documento
   /// borrado/no legible) y el remitente no es el usuario actual: garantiza
@@ -62,27 +62,55 @@ class ReservaChatCard extends StatelessWidget {
     this.firestore,
   });
 
+  @override
+  State<ReservaChatCard> createState() => _ReservaChatCardState();
+}
+
+class _ReservaChatCardState extends State<ReservaChatCard> {
+  // Getters que reenvian al widget: la tarjeta paso a Stateful solo para poder
+  // guardar la bandera de envio, y asi el cuerpo no cambia ni una referencia.
+  Map<String, dynamic> get metadata => widget.metadata;
+  bool get isMe => widget.isMe;
+  String get mensajeId => widget.mensajeId;
+  String get conversacionId => widget.conversacionId;
+  FirebaseFirestore? get firestore => widget.firestore;
+  static const String _sinProponenteEnVivo =
+      ReservaChatCard._sinProponenteEnVivo;
+
+  /// Bloquea las acciones de la cita mientras la anterior sigue en vuelo:
+  /// confirmar una reserva escribe en `reservas` y en los metadatos del
+  /// mensaje, y repetirlo no es un no-op.
+  bool _procesando = false;
+
   Future<void> _actualizar(
     BuildContext context,
     String estado, {
     DateTime? fechaConfirmada,
   }) async {
+    // Guard de reentrada: el `onPressed: null` solo surte efecto en el frame
+    // siguiente, asi que dos taps en el mismo frame pasarian los dos.
+    if (_procesando) return;
+    setState(() => _procesando = true);
     final newMeta = Map<String, dynamic>.from(metadata);
     newMeta['estado'] = estado;
     final provider = context.read<ChatProvider>();
     final reservaProvider = context.read<ReservaProvider>();
-    await provider.actualizarMetadatosMensaje(
-      conversacionId,
-      mensajeId,
-      newMeta,
-    );
-    final reservaId = _idDeReserva(metadata);
-    if (reservaId != null) {
-      await reservaProvider.cambiarEstadoReserva(
-        reservaId,
-        estado,
-        fechaConfirmada: fechaConfirmada,
+    try {
+      await provider.actualizarMetadatosMensaje(
+        conversacionId,
+        mensajeId,
+        newMeta,
       );
+      final reservaId = _idDeReserva(metadata);
+      if (reservaId != null) {
+        await reservaProvider.cambiarEstadoReserva(
+          reservaId,
+          estado,
+          fechaConfirmada: fechaConfirmada,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _procesando = false);
     }
   }
 
@@ -378,7 +406,9 @@ class ReservaChatCard extends StatelessWidget {
                     child: AppButton(
                       text: context.l10n.chatReject,
                       type: AppButtonType.secondary,
-                      onPressed: () => _actualizar(context, 'rechazada'),
+                      onPressed: _procesando
+                          ? null
+                          : () => _actualizar(context, 'rechazada'),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -386,7 +416,8 @@ class ReservaChatCard extends StatelessWidget {
                     child: AppButton(
                       text: 'Cotizar y Aceptar',
                       type: AppButtonType.primary,
-                      onPressed: fecha == null || reservaId == null
+                      onPressed:
+                          fecha == null || reservaId == null || _procesando
                           ? null
                           : () => _cotizarYAceptar(context, reservaId, fecha!),
                     ),
@@ -407,11 +438,13 @@ class ReservaChatCard extends StatelessWidget {
                       child: AppButton(
                         text: context.l10n.chatAccept,
                         type: AppButtonType.secondary,
-                        onPressed: () => _actualizar(
-                          context,
-                          'confirmada',
-                          fechaConfirmada: DateTime.now(),
-                        ),
+                        onPressed: _procesando
+                            ? null
+                            : () => _actualizar(
+                                context,
+                                'confirmada',
+                                fechaConfirmada: DateTime.now(),
+                              ),
                       ),
                     ),
                   if (acciones.puedeAceptar && acciones.puedeRechazar)
@@ -421,7 +454,9 @@ class ReservaChatCard extends StatelessWidget {
                       child: AppButton(
                         text: context.l10n.chatReject,
                         type: AppButtonType.secondary,
-                        onPressed: () => _actualizar(context, 'rechazada'),
+                        onPressed: _procesando
+                            ? null
+                            : () => _actualizar(context, 'rechazada'),
                       ),
                     ),
                 ],

@@ -45,6 +45,11 @@ class CotizacionChatCard extends StatefulWidget {
 
 class _CotizacionChatCardState extends State<CotizacionChatCard> {
   bool _isCheckingReview = false;
+
+  /// Bloquea Aceptar/Rechazar mientras la decision anterior sigue en vuelo.
+  /// Aceptar una cotizacion abre un ticket de reparacion en el servidor, asi
+  /// que repetirla no es un no-op.
+  bool _decidiendo = false;
   List<double>? _beneficios;
 
   String? get _cotizacionId => widget.metadata['id_cotizacion'] as String?;
@@ -71,8 +76,16 @@ class _CotizacionChatCardState extends State<CotizacionChatCard> {
   Future<void> _actualizarEstado(String estado) async {
     final cotizacionId = _cotizacionId;
     if (cotizacionId == null) return;
+    // Guard de reentrada: el `onPressed: null` solo surte efecto en el frame
+    // siguiente, asi que dos taps en el mismo frame pasarian los dos.
+    if (_decidiendo) return;
+    setState(() => _decidiendo = true);
     final chatProvider = context.read<ChatProvider>();
-    await chatProvider.actualizarEstadoCotizacion(cotizacionId, estado);
+    try {
+      await chatProvider.actualizarEstadoCotizacion(cotizacionId, estado);
+    } finally {
+      if (mounted) setState(() => _decidiendo = false);
+    }
 
     // Si esta cotización nació de una cita agendada (id_reserva), la Cloud
     // Function sincronizarReservaYReparacionAlCotizar (functions/index.js)
@@ -190,6 +203,7 @@ class _CotizacionChatCardState extends State<CotizacionChatCard> {
                   as String?,
           isMe: widget.isMe,
           isCheckingReview: _isCheckingReview,
+          decidiendo: _decidiendo,
           onAceptar: () => _actualizarEstado('aceptada'),
           onRechazar: () => _actualizarEstado('rechazada'),
           onCalificar: () => _calificarServicio(context),
@@ -259,6 +273,9 @@ class _CotizacionCardBody extends StatelessWidget {
   final String? errorAperturaTicket;
   final bool isMe;
   final bool isCheckingReview;
+
+  /// Con una decision en vuelo, Aceptar y Rechazar dejan de aceptar taps.
+  final bool decidiendo;
   final VoidCallback onAceptar;
   final VoidCallback onRechazar;
   final VoidCallback onCalificar;
@@ -268,6 +285,7 @@ class _CotizacionCardBody extends StatelessWidget {
     required this.errorAperturaTicket,
     required this.isMe,
     required this.isCheckingReview,
+    this.decidiendo = false,
     required this.onAceptar,
     required this.onRechazar,
     required this.onCalificar,
@@ -449,7 +467,7 @@ class _CotizacionCardBody extends StatelessWidget {
                   child: AppButton(
                     text: context.l10n.chatAccept,
                     type: AppButtonType.primary,
-                    onPressed: onAceptar,
+                    onPressed: decidiendo ? null : onAceptar,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -457,7 +475,7 @@ class _CotizacionCardBody extends StatelessWidget {
                   child: AppButton(
                     text: context.l10n.chatReject,
                     type: AppButtonType.secondary,
-                    onPressed: onRechazar,
+                    onPressed: decidiendo ? null : onRechazar,
                   ),
                 ),
               ],
