@@ -17,6 +17,53 @@ VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01, FUNC-02, UX-03 / UX-04,
 cerradas: `fix/gaps-02` (residuales de FUNC-02), `fix/gaps-03` (accesibilidad de la landing que
 dejó UX-03) y **`fix/gaps-04`** (lo que quedaba abierto antes de H-01, cerrada el 2026-09-13).
 
+### La tanda GAPS-06 esta cerrada (2026-09-14, `fix/gaps-05`) — segundo drenaje
+
+Drena los 15 gaps que GAPS-05 dejo abiertos. **Cerrados 5** (1, 3, 5, 6 y la mitad
+accionable del 4); **2 se quedaron fuera por agotarse la cuota de Codex** (7 y 8), con su
+reconocimiento hecho y guardado en `docs/evidencia/anexos/`. Evidencia en
+`docs/evidencia/GAPS-06-drenaje.md`. Lo que hay que saber sin leerla:
+
+- **El gate tumbo mi propio arreglo, y esta vez el defecto lo meti yo.** GAPS-05 anoto que
+  las 499 invocaciones que pierden la carrera de `aggregateRatings` «descartan su delta».
+  Es al reves: un trigger de Firestore se dispara **despues** del commit, asi que cuando el
+  ganador recuenta, la escritura del perdedor **ya esta en la coleccion**. Sumarla encima la
+  cuenta dos veces —dos resenias de 5 y 3 daban **3 resenias y 11 estrellas**— y no se
+  autocura, porque con `suma_estrellas` definido nadie vuelve a recontar. Lo que si era real
+  y **no estaba anotado**: la siembra no era transaccional.
+- **`/alertas` NO TIENE CREADOR EN NINGUNA PARTE.** Ni `lib/` ni `functions/`;
+  `AlertModel.toMap()` no tiene un solo llamador. Las alertas que ve el usuario son
+  **sinteticas, calculadas en el cliente y nunca persistidas** (de ahi los prefijos `soat_`,
+  `task_`). Lo que el barrido lee en produccion es **dato heredado**. No invalida el
+  arreglo, pero lo reencuadra: no es una cola que crece, es una que no se vacia.
+- **Un marcador de posicion que se vuelve real deja tests verdes por el motivo
+  equivocado.** `alertas_allowlist.test.js` usaba `avisos_pendientes` para modelar «un campo
+  de servidor que todavia no existe». Al existir, tres tests seguian VERDES pero por otra
+  regla en vez de por el `hasOnly` que dicen cubrir.
+- **De los «cuatro streams sin cota» del panel del mecanico, son TRES** —el de servicios
+  recientes ya llevaba `limit(5)`— y solo la grafica de tendencia se puede acotar sin
+  cambiar lo que significa. Dibujaba seis meses descargando la historia entera del taller y
+  tirando el resto **en memoria**, asi que el test no puede afirmar sobre la grafica: sale
+  igual con cota y sin ella. Afirma sobre los documentos que cruzan el cable.
+- **El backfill del gap 1 se ensayo gratis:** al anadir el filtro, **once tests del barrido
+  se pusieron rojos de golpe**. Es lo que le pasaria a produccion sin correrlo — la consulta
+  daria cero documentos y **todas las alertas dejarian de avisar**, sin error ni log.
+  **`node backfill_avisos_pendientes.js --apply` es paso de runbook BLOQUEANTE**, despues de
+  `backfill_ultimo_aviso.js`. No hace falta desplegar indices: son dos igualdades.
+- **Una alerta heredada no se podia completar**, y lo levanto el gate. El guard
+  `fecha_limite is timestamp` mira el documento RESULTANTE, asi que un
+  `update({estado:'Completada'})` sobre una alerta con `fecha_limite` en cadena moria con
+  `permission-denied`: su dueno no podia cerrarla, solo borrarla, mientras el barrido le
+  seguia mandando cada escalon.
+
+**Cifras:** `flutter analyze` limpio, `flutter test` **1278/1278**, Functions **389**,
+reglas **511/511** en 31 suites.
+
+**Quedan 11 gaps abiertos**, en el §4 de esa evidencia. Los dos de mas valor y mas baratos
+son los que la cuota dejo fuera, y **su reconocimiento ya esta pagado**: los quince grupos
+de doble envio (el gap decia cinco) y los literales sin traducir (el gap decia 64 en 24
+ficheros; el barrido da **274 en 58**, y medir bien esa diferencia ES el primer trabajo).
+
 ### La tanda GAPS-05 está cerrada (2026-09-14, `fix/gaps-05`) — drenaje previo a FINAL-01
 
 Drena los gaps abiertos de **cuatro** fuentes a la vez (INNO-01 §7, H-01 §6, GAPS-04 §7 y los

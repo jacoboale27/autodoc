@@ -1209,13 +1209,31 @@ exports.aggregateRatings = functions.firestore
       // vez de O(n) reseñas del taller).
       //
       // El recuento va paginado y la siembra es transaccional (gap 5 del §5
-      // de `GAPS-05-drenaje.md`). Y si esta invocacion PIERDE la carrera —el
-      // borrado de cuenta dispara hasta 500 a la vez— no hace `return`: cae
-      // al camino incremental de abajo para aplicar su delta. Descartarlo
-      // era lo que descuadraba el agregado.
+      // de `GAPS-05-drenaje.md`).
+      //
+      // **Quien pierde la carrera hace `return`, y NO cae al camino
+      // incremental.** El primer intento de esta tanda hacia lo contrario
+      // —«las 499 que pierden descartan su delta»— y el gate de revision
+      // demostro que descartarlo es lo CORRECTO: un trigger de Firestore se
+      // dispara DESPUES del commit, asi que el recuento del ganador ya
+      // incluye la escritura del perdedor. Sumar el delta encima contaba dos
+      // veces, y no se autocuraba: con `suma_estrellas` ya definido nadie
+      // vuelve a recontar nunca. Dos resenias de 5 y 3 daban 3 resenias y
+      // 11 estrellas.
+      //
+      // Lo que si arregla esta tanda es el otro defecto, que era real: la
+      // siembra no era transaccional, asi que las 500 invocaciones escribian
+      // recuentos de instantes distintos y ganaba la ultima en llegar, que no
+      // es la mas reciente. Ahora siembra exactamente una.
+      //
+      // Queda una ventana de SUBCONTEO, mas estrecha y anotada como gap: si
+      // la escritura del perdedor commitea despues de que el ganador empezara
+      // su recuento, no entra en la siembra y su delta se descarta. Cerrarla
+      // exige una marca de agua (comparar `context.timestamp` contra el
+      // instante del recuento), que es diseño propio y no cabe aqui.
       const conteo = await recontarResenias(db, tallerId);
-      const sembro = await sembrarAgregado(db, userRef, conteo);
-      if (sembro) return null;
+      await sembrarAgregado(db, userRef, conteo);
+      return null;
     }
 
     await db.runTransaction(async (tx) => {

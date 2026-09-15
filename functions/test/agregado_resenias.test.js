@@ -182,3 +182,53 @@ describe('agregadoResenias / sembrarAgregado', () => {
     );
   });
 });
+
+describe('agregadoResenias / el perdedor NO suma su delta encima (gate GAPS-05)', () => {
+  // Este test existe por un defecto que introdujo el PRIMER intento de esta
+  // tanda y que destapo el gate de revision, no ninguna suite.
+  //
+  // El razonamiento equivocado era: «las 499 invocaciones que pierden la
+  // carrera descartan su delta, asi que el agregado queda descuadrado». Pero
+  // un trigger de Firestore se dispara DESPUES del commit de la escritura que
+  // lo dispara, asi que cuando el ganador recuenta, la escritura del perdedor
+  // **ya esta en la coleccion**. Sumar el delta encima la cuenta dos veces.
+  //
+  // Y no se autocura: con `suma_estrellas` ya definido nadie vuelve a
+  // recontar nunca, asi que el descuadre es permanente y silencioso.
+  it('dos resenias concurrentes dan el agregado real, no uno inflado', async () => {
+    // A (5 estrellas) y B (3) se crean casi a la vez sobre un taller sin
+    // agregado. Las dos invocaciones ven `suma_estrellas === undefined`.
+    const resenias = [
+      { id: 'A', estrellas: 5 },
+      { id: 'B', estrellas: 3 },
+    ];
+    const doc = { nombre: 'Taller' };
+    const db = {
+      ...fakeDb(resenias),
+      runTransaction: async (fn) =>
+        fn({
+          get: async () => ({ exists: true, data: () => ({ ...doc }) }),
+          update: (_ref, cambios) => Object.assign(doc, cambios),
+        }),
+    };
+    db.collection = fakeDb(resenias).collection;
+    const userRef = {};
+
+    // Invocacion A: recuenta (ve LAS DOS, porque ambas ya commitearon) y gana.
+    const conteoA = await recontarResenias(db, 't1');
+    assert.deepStrictEqual(conteoA, { total: 2, suma: 8 });
+    assert.strictEqual(await sembrarAgregado(db, userRef, conteoA), true);
+
+    // Invocacion B: recuenta lo mismo y PIERDE.
+    const conteoB = await recontarResenias(db, 't1');
+    assert.strictEqual(await sembrarAgregado(db, userRef, conteoB), false);
+
+    // Lo que importa: el agregado es el real. Si B cayera al camino
+    // incremental y sumara su delta (+1 documento, +3 estrellas), esto daria
+    // 3 resenias y 11 estrellas para un taller que tiene 2 y 8.
+    assert.strictEqual(doc.total_resenias, 2);
+    assert.strictEqual(doc.suma_estrellas, 8);
+    assert.strictEqual(doc.calificacion_promedio, 4);
+  });
+});
+

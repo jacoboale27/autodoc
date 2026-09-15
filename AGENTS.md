@@ -107,6 +107,32 @@ VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01, FUNC-02, UX-03 / UX-04,
 (residuales de FUNC-02), `fix/gaps-03` (accesibilidad de la landing que dejó UX-03) y
 **`fix/gaps-04`** (lo que quedaba abierto antes de H-01, cerrada el 2026-09-13).
 
+### GAPS-06 (2026-09-14): segundo drenaje, sobre lo que GAPS-05 dejo abierto
+
+Evidencia en `docs/evidencia/GAPS-06-drenaje.md`. Cerrados 5 de los 15; 2 se quedaron fuera
+por agotarse la cuota de Codex, con el reconocimiento ya pagado y guardado en
+`docs/evidencia/anexos/`. Lo que cuesta tiempo si no se sabe:
+
+- **`/alertas` NO TIENE CREADOR EN NINGUNA PARTE.** Ni `lib/` ni `functions/`;
+  `AlertModel.toMap()` no tiene un solo llamador. Las alertas que ve el usuario son
+  sinteticas, calculadas en el cliente y **nunca persistidas** (prefijos `soat_`, `task_`).
+  Lo que el barrido lee en produccion es dato heredado de una version anterior.
+- **`node backfill_avisos_pendientes.js --apply` es paso de runbook BLOQUEANTE**, y va
+  DESPUES de `backfill_ultimo_aviso.js`. El barrido consulta ahora
+  `avisos_pendientes == true`, y una igualdad sobre un campo AUSENTE no devuelve nada:
+  desplegar sin correrlo deja la consulta en cero documentos y **todas las alertas dejan de
+  avisar, sin error y sin log**. Se ensayo gratis — al anadir el filtro, once tests del
+  barrido se pusieron rojos de golpe. No hace falta desplegar indices: son dos igualdades.
+- **Un trigger de Firestore se dispara DESPUES del commit.** El gate tumbo un arreglo mio
+  por no tenerlo en cuenta: en `aggregateRatings`, quien pierde la carrera de la siembra NO
+  debe aplicar su delta, porque el recuento del ganador **ya lo incluye**. Sumarlo encima
+  contaba dos veces y no se autocuraba.
+- **Si un test usa un campo inexistente como marcador de posicion, el dia que ese campo
+  exista el test sigue VERDE pero prueba otra cosa.** Paso con `avisos_pendientes` en
+  `alertas_allowlist.test.js`.
+- Cifras: `flutter analyze` limpio, `flutter test` **1278/1278**, Functions **389**, reglas
+  **511/511** en 31 suites.
+
 ### GAPS-05 (2026-09-14): drenaje de gaps antes de FINAL-01
 
 Cierra 14 de los ~25 gaps abiertos de INNO-01, H-01, GAPS-04 y la auditoria final. Evidencia:

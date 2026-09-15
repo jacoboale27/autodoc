@@ -169,7 +169,7 @@ class ReviewService {
     );
     for (final candidato in resultados) {
       if (candidato == null) continue;
-      if (mejor == null || _fechaDe(candidato).isAfter(_fechaDe(mejor!))) {
+      if (mejor == null || _fechaDe(candidato).isAfter(_fechaDe(mejor))) {
         mejor = candidato;
       }
     }

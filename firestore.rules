@@ -857,7 +857,16 @@ service cloud.firestore {
       // consulta diaria desde el minuto uno, igual de invisible que nacer sin
       // `estado`. El servidor es el unico que puede apagarlo, y solo al
       // consumir el ultimo escalon.
-        && request.resource.data.avisos_pendientes == true;
+        && request.resource.data.avisos_pendientes == true
+      //
+      // `id_alerta` atado al id del documento. El update ya lo saca de los
+      // mutables porque reescribirlo a un prefijo sintetico (`soat_`, `task_`)
+      // hace que `completeAlert` se salte la escritura en silencio y la alerta
+      // quede pintada como completada y `Pendiente` en el servidor. Ese mismo
+      // estado se alcanzaba **de nacimiento**, porque el create no ataba el
+      // campo. Lo levanto el gate de revision de GAPS-05; cerrarlo es una
+      // linea, y sin ella el acotado del update solo cubre la mitad.
+        && request.resource.data.id_alerta == alertaId;
 
       // Actualización: propietario del vehículo o admin.
       // El acotado va FUERA del paréntesis a propósito, así que ata también a
@@ -918,7 +927,24 @@ service cloud.firestore {
       // `null` se admite a proposito: `AlertModel.toMap()` escribe
       // `fecha_limite: null` cuando no hay fecha. Una alerta sin fecha es
       // silenciosa POR DISENO; lo que no puede es serlo por confusion de tipo.
-        && (request.resource.data.get('fecha_limite', null) == null
+      //
+      // **El guard solo aplica si `fecha_limite` CAMBIA**, y esto lo levanto el
+      // gate de revision de GAPS-05. `request.resource.data` es el documento
+      // RESULTANTE, no lo que cambia: sin la primera clausula, un
+      // `update({'estado':'Completada'})` sobre una alerta HEREDADA cuyo
+      // `fecha_limite` es una cadena ISO moria con `permission-denied`, porque
+      // el valor heredado sobrevive al merge y no es timestamp. O sea que su
+      // dueño no podia cerrarla, solo borrarla, mientras el barrido —que SI
+      // parsea cadenas a proposito (`alertasVencidas.js:24-28`)— le seguia
+      // mandando cada escalon. Cerrar el tipo hacia ineditable justo la alerta
+      // que mas molesta.
+      //
+      // Es el mismo criterio que `fotosBajoServicio` en /resenias (validar solo
+      // si el campo cambia) y el contrario al que se aplico aqui al lado con
+      // `estado` («si lo tenia, lo sigue teniendo»). La diferencia es que
+      // `estado` no tiene valores heredados de otro tipo y `fecha_limite` si.
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['fecha_limite'])
+            || request.resource.data.get('fecha_limite', null) == null
             || request.resource.data.fecha_limite is timestamp);
 
       // Eliminación: propietario del vehículo o admin

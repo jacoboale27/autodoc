@@ -303,6 +303,10 @@ describe('la contabilidad del barrido de alertas es del servidor (OPS-01)', () =
         estado: 'Pendiente',
         prioridad: 'high',
         metadata: { origen: 'manual' },
+        // GAPS-05: el `create` exige tambien la denormalizacion del barrido,
+        // pineada a `true`. Sin ella este control positivo se pone rojo, que
+        // es exactamente lo que le pasaria a un creador que no la escribiera.
+        avisos_pendientes: true,
       }),
     );
   });

@@ -385,7 +385,18 @@ const _orderByEsperados = 16;
 /// consultas de igualdades puras con los indices automaticos, y por eso el
 /// vencimiento y el cupo se filtran en codigo en vez de con un rango. Mismo
 /// criterio que la consulta de `vinculo_revocacion_pendiente` anotada arriba.
-const _whereServidorEsperados = 31;
+// GAPS-05: 31 -> 32. El barrido de alertas (`alertasVencidas.js`) gana un
+// segundo filtro, `avisos_pendientes == true`, que es la denormalizacion que
+// le impide releer cada dia lo que ya aviso.
+//
+// **No necesita indice compuesto, y por eso no se declara ninguno.** Son DOS
+// IGUALDADES mas `orderBy('__name__')`: Firestore las resuelve con merge join
+// de los indices de campo unico, que ya ordenan por `__name__` como segundo
+// termino. Lo que obliga a declarar indice es acumular un `orderBy` sobre otro
+// campo, o mezclar una igualdad con una DESIGUALDAD — que es justo el caso que
+// se le escapo a este centinela con `caducarVinculos.js` y por el que existe
+// este segundo test.
+const _whereServidorEsperados = 32;
 
 class _Consulta {
   const _Consulta({

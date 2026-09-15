@@ -347,3 +347,70 @@ describe('alertas: avisos_pendientes es contabilidad del servidor', () => {
   });
 });
 
+describe('alertas: lo que levanto el gate de revision de GAPS-05', () => {
+  test('una alerta HEREDADA con fecha_limite en cadena SI se puede completar', async () => {
+    // El defecto de usuario mas claro de la tanda, y era invisible: el guard
+    // de tipo miraba `request.resource.data`, o sea el documento RESULTANTE.
+    // En un `update({estado:'Completada'})` el `fecha_limite` heredado
+    // sobrevive al merge, no es timestamp, y la escritura moria con
+    // permission-denied. O sea que el dueño de una alerta heredada no podia
+    // cerrarla —solo borrarla— mientras el barrido, que si parsea cadenas a
+    // proposito, le seguia mandando cada escalon. Cerrar el tipo hacia
+    // ineditable justo la alerta que mas molesta.
+    await seed(env, async (s) => {
+      await s.collection('vehiculos').doc('v1').set({
+        id_vehiculo: 'v1', id_propietario: UIDS.owner1, placa: 'P-1',
+        talleres_vinculados: [],
+      });
+      await s.collection('alertas').doc('a1').set({
+        ...CAMPOS_DEL_MODELO,
+        fecha_limite: '2026-12-01T00:00:00Z',
+      });
+    });
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertSucceeds(
+      db.collection('alertas').doc('a1').update({ estado: 'Completada' }),
+    );
+  });
+
+  test('pero seguir ESCRIBIENDO una cadena en fecha_limite no vale', async () => {
+    // El guard se relaja solo para el valor heredado que no se toca. Si el
+    // update CAMBIA el campo, el tipo se sigue exigiendo: si no, la relajacion
+    // reabriria el agujero entero.
+    await seedEscenario();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('alertas').doc('a1').update({ fecha_limite: 'manana' }),
+    );
+  });
+
+  test('id_alerta tiene que casar con el id del documento', async () => {
+    // El update ya sacaba `id_alerta` de los mutables, porque reescribirlo a un
+    // prefijo sintetico hace que `completeAlert` se salte la escritura en
+    // silencio. Ese mismo estado se alcanzaba de NACIMIENTO.
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      db.collection('alertas').doc('a2').set({
+        ...CAMPOS_DEL_MODELO,
+        id_alerta: 'soat_v1',
+      }),
+    );
+  });
+
+  test('un avisos_pendientes de otro TIPO tampoco cuela', async () => {
+    // La regla es solida por construccion —en el lenguaje de reglas
+    // `"true" == true` es false—, pero sin estos casos, reescribir el pin como
+    // `is bool` dejaria los otros tests en verde y abriria el agujero.
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    for (const valor of ['true', 1]) {
+      await assertFails(
+        db.collection('alertas').doc('a2').set({
+          ...CAMPOS_DEL_MODELO,
+          id_alerta: 'a2',
+          avisos_pendientes: valor,
+        }),
+      );
+    }
+  });
+});
+
