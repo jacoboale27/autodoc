@@ -35,13 +35,15 @@ class _VehicleGalleryWidgetState extends State<VehicleGalleryWidget> {
   /// Bloquea el segundo tap mientras el selector o la subida siguen en vuelo.
   bool _subiendo = false;
 
+  /// Perezoso de verdad: `VehiclePhotoService()` toca
+  /// `FirebaseFirestore.instance` al construirse, asi que crearlo porque falte
+  /// UNO de los dos seams rompia a quien inyectara solo `photos`.
+  VehiclePhotoService get _servicio => _photoService ??= VehiclePhotoService();
+
   @override
   void initState() {
     super.initState();
-    if (widget.photos == null || widget.addPhoto == null) {
-      _photoService = VehiclePhotoService();
-    }
-    _photos = widget.photos ?? _photoService!.streamPhotos(widget.vehicleId);
+    _photos = widget.photos ?? _servicio.streamPhotos(widget.vehicleId);
   }
 
   Future<void> _subirFoto() async {
@@ -65,7 +67,7 @@ class _VehicleGalleryWidgetState extends State<VehicleGalleryWidget> {
         if (widget.addPhoto != null) {
           await widget.addPhoto!(widget.vehicleId, picked);
         } else {
-          await _photoService!.addPhoto(widget.vehicleId, picked);
+          await _servicio.addPhoto(widget.vehicleId, picked);
         }
         messenger.hideCurrentSnackBar();
         messenger.showSnackBar(const SnackBar(content: Text('Foto añadida')));

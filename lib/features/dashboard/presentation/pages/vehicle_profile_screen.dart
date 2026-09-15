@@ -35,15 +35,29 @@ import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
 import 'package:autodoc/features/dashboard/presentation/widgets/talleres_con_acceso_card.dart';
 import 'package:autodoc/core/utils/mensaje_de_error.dart';
+import '../../data/services/vehicle_photo_service.dart';
 
 class VehicleProfileScreen extends StatefulWidget {
   final String vehiculoId;
   final VehicleModel? vehiculoPrecargado;
 
+  /// Inyectable para pruebas de widget. `VehicleService()` toca
+  /// `FirebaseFirestore.instance` en su propio inicializador de campo, y esta
+  /// pantalla lo instancia en tres sitios (el resumen de gastos lo hace en cada
+  /// build), asi que sin esto no se puede montar sin `Firebase.initializeApp()`.
+  /// Mismo precedente que el `firestore` de ReservaDetailScreen y el
+  /// `selectorDeImagen` de ChatScreen.
+  final VehicleService? vehicleService;
+
+  /// Stream de fotos para la galeria; mismo motivo.
+  final Stream<List<VehiclePhotoModel>>? galleryPhotos;
+
   const VehicleProfileScreen({
     super.key,
     required this.vehiculoId,
     this.vehiculoPrecargado,
+    this.vehicleService,
+    this.galleryPhotos,
   });
 
   @override
@@ -51,6 +65,18 @@ class VehicleProfileScreen extends StatefulWidget {
 }
 
 class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
+  VehicleService get _vehicleService =>
+      widget.vehicleService ?? VehicleService();
+
+  /// Bandera de envio del kilometraje, de la nota nueva y de cada una de las
+  /// dos fechas. Las fechas van por clave porque actualizar el SOAT no tiene
+  /// por que bloquear la tarjeta de propiedad.
+  final Set<String> _fechasEnCurso = <String>{};
+
+  /// El FutureBuilder del resumen creaba un Future NUEVO en cada build, asi que
+  /// cada setState relanzaba la consulta. Con banderas de envio hay mas builds.
+  Future<Map<String, dynamic>>? _resumenDeGastos;
+
   VehicleModel? _currentVehicle;
   bool _cargando = false;
   String? _errorCarga;
@@ -144,6 +170,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                     VehicleGalleryWidget(
                       vehicleId: vehicle.idVehiculo,
                       colors: colors,
+                      photos: widget.galleryPhotos,
                     ),
                     const SizedBox(height: AppSpacing.xxl),
                     _buildDocumentationStatus(vehicle, colors),
@@ -369,7 +396,9 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
 
   Widget _buildExpenseSummary(VehicleModel vehicle, AppColors colors) {
     return FutureBuilder<Map<String, dynamic>>(
-      future: VehicleService().getExpenseSummary(vehicle.idVehiculo),
+      future: _resumenDeGastos ??= _vehicleService.getExpenseSummary(
+        vehicle.idVehiculo,
+      ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -491,47 +520,57 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
           trailing: IconButton(
             icon: Icon(Icons.add, color: colors.primary),
             onPressed: () {
+              // El estado de envio vive en el StatefulBuilder porque el
+              // dialogo no pertenece al arbol de esta pantalla.
+              var guardandoNota = false;
               showDialog(
                 context: context,
                 builder: (ctx) {
                   final controller = TextEditingController();
-                  return AlertDialog(
-                    title: const Text('Nueva Nota'),
-                    content: AppTextField(
-                      controller: controller,
-                      label: 'Nota',
-                      hintText: 'Escribe tu nota aquí...',
-                      maxLines: 3,
+                  return StatefulBuilder(
+                    builder: (ctx, setDialogState) => AlertDialog(
+                      title: const Text('Nueva Nota'),
+                      content: AppTextField(
+                        controller: controller,
+                        label: 'Nota',
+                        hintText: 'Escribe tu nota aquí...',
+                        maxLines: 3,
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Cancelar'),
+                        ),
+                        TextButton(
+                          onPressed: guardandoNota
+                              ? null
+                              : () async {
+                                  if (guardandoNota) return;
+                                  final text = controller.text.trim();
+                                  if (text.isNotEmpty) {
+                                    final uid = context
+                                        .read<AuthSessionProvider>()
+                                        .user
+                                        ?.uid;
+                                    final provider = context
+                                        .read<VehicleProvider>();
+                                    setDialogState(() => guardandoNota = true);
+                                    await _vehicleService.addNote(
+                                      vehicle.idVehiculo,
+                                      text,
+                                    );
+                                    if (uid != null) {
+                                      provider.fetchVehicles(uid);
+                                    }
+                                  }
+                                  if (ctx.mounted) {
+                                    Navigator.pop(ctx);
+                                  }
+                                },
+                          child: const Text('Guardar'),
+                        ),
+                      ],
                     ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Cancelar'),
-                      ),
-                      TextButton(
-                        onPressed: () async {
-                          final text = controller.text.trim();
-                          if (text.isNotEmpty) {
-                            final uid = context
-                                .read<AuthSessionProvider>()
-                                .user
-                                ?.uid;
-                            final provider = context.read<VehicleProvider>();
-                            await VehicleService().addNote(
-                              vehicle.idVehiculo,
-                              text,
-                            );
-                            if (uid != null) {
-                              provider.fetchVehicles(uid);
-                            }
-                          }
-                          if (ctx.mounted) {
-                            Navigator.pop(ctx);
-                          }
-                        },
-                        child: const Text('Guardar'),
-                      ),
-                    ],
                   );
                 },
               );
@@ -617,7 +656,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
         // widget is still part of the tree".
         setState(() => _notasEliminandose.add(nota));
         try {
-          await VehicleService().removeNote(vehicle.idVehiculo, nota);
+          await _vehicleService.removeNote(vehicle.idVehiculo, nota);
           if (uid != null) await provider.fetchVehicles(uid);
           if (mounted) setState(() => _notasEliminandose.remove(nota));
         } catch (e) {
@@ -682,14 +721,18 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
           context.l10n.vpCirculationCard,
           vehicle.vencimientoTarjeta,
           colors,
-          () => _showUpdateDateDialog(context, vehicle, true),
+          _fechasEnCurso.contains('tarjeta')
+              ? null
+              : () => _showUpdateDateDialog(context, vehicle, true),
         ),
         const SizedBox(height: AppSpacing.md),
         _buildDocumentationStatusItem(
           context.l10n.vpSoatInsurance,
           vehicle.vencimientoSoat,
           colors,
-          () => _showUpdateDateDialog(context, vehicle, false),
+          _fechasEnCurso.contains('soat')
+              ? null
+              : () => _showUpdateDateDialog(context, vehicle, false),
         ),
       ],
     );
@@ -699,7 +742,9 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     String title,
     DateTime? expiryDate,
     AppColors colors,
-    VoidCallback onUpdate,
+    // Nullable: con la actualizacion de esa fecha en vuelo el boton se
+    // deshabilita, y `AppButton.onPressed` ya acepta null.
+    VoidCallback? onUpdate,
   ) {
     if (expiryDate == null) {
       return _buildStatusAlert(
@@ -808,6 +853,10 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     VehicleModel vehicle,
     bool isTarjeta,
   ) async {
+    // Guard de reentrada: entre el tap y la escritura media un date picker, asi
+    // que deshabilitar el boton no llega a tiempo para dos taps seguidos.
+    final clave = isTarjeta ? 'tarjeta' : 'soat';
+    if (_fechasEnCurso.contains(clave)) return;
     final vehicleProvider = context.read<VehicleProvider>();
     final l10n = context.l10n;
 
@@ -826,7 +875,13 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
           ? vehicle.copyWith(vencimientoTarjeta: pickedDate)
           : vehicle.copyWith(vencimientoSoat: pickedDate);
 
-      final success = await vehicleProvider.updateVehicle(updatedVehicle);
+      setState(() => _fechasEnCurso.add(clave));
+      final bool success;
+      try {
+        success = await vehicleProvider.updateVehicle(updatedVehicle);
+      } finally {
+        if (mounted) setState(() => _fechasEnCurso.remove(clave));
+      }
 
       if (!context.mounted) return;
       if (success) {
@@ -939,100 +994,116 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     );
     final formKey = GlobalKey<FormState>();
 
+    // El estado de envio vive en el StatefulBuilder: el dialogo no pertenece al
+    // arbol de esta pantalla.
+    var guardandoKm = false;
+
+    // El provider se resuelve AQUI y no dentro del builder: el contexto de un
+    // dialogo cuelga del Navigator, que puede estar por encima del
+    // MultiProvider, y entonces `read` dentro del dialogo no lo encuentra.
+    final vehicleProvider = context.read<VehicleProvider>();
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: colors.surface,
-        title: Text(
-          context.l10n.vpUpdateMileage,
-          style: AppTextStyles.titleMedium.copyWith(
-            fontWeight: FontWeight.bold,
-            color: colors.textPrimary,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          backgroundColor: colors.surface,
+          title: Text(
+            context.l10n.vpUpdateMileage,
+            style: AppTextStyles.titleMedium.copyWith(
+              fontWeight: FontWeight.bold,
+              color: colors.textPrimary,
+            ),
           ),
-        ),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                context.l10n.vpEnterNewMileage(
-                  vehicle.kilometrajeActual.toString(),
-                ),
-                style: TextStyle(fontSize: 13, color: colors.textSecondary),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: controller,
-                keyboardType: TextInputType.number,
-                autofocus: true,
-                decoration: InputDecoration(
-                  labelText: context.l10n.vpNewMileageLabel,
-                  labelStyle: TextStyle(color: colors.textSecondary),
-                  suffixText: context.l10n.vpKm,
-                  suffixStyle: TextStyle(color: colors.textSecondary),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  context.l10n.vpEnterNewMileage(
+                    vehicle.kilometrajeActual.toString(),
                   ),
-                  prefixIcon: Icon(Icons.speed, color: colors.primary),
+                  style: TextStyle(fontSize: 13, color: colors.textSecondary),
                 ),
-                style: TextStyle(color: colors.textPrimary),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return context.l10n.vpEnterValue;
-                  }
-                  final newMileage = int.tryParse(value);
-                  if (newMileage == null) {
-                    return context.l10n.vpEnterValidNumber;
-                  }
-                  if (newMileage <= vehicle.kilometrajeActual) {
-                    return context.l10n.vpMustBeGreaterThan(
-                      vehicle.kilometrajeActual.toString(),
-                    );
-                  }
-                  return null;
-                },
-              ),
-            ],
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: controller,
+                  keyboardType: TextInputType.number,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.vpNewMileageLabel,
+                    labelStyle: TextStyle(color: colors.textSecondary),
+                    suffixText: context.l10n.vpKm,
+                    suffixStyle: TextStyle(color: colors.textSecondary),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: Icon(Icons.speed, color: colors.primary),
+                  ),
+                  style: TextStyle(color: colors.textPrimary),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return context.l10n.vpEnterValue;
+                    }
+                    final newMileage = int.tryParse(value);
+                    if (newMileage == null) {
+                      return context.l10n.vpEnterValidNumber;
+                    }
+                    if (newMileage <= vehicle.kilometrajeActual) {
+                      return context.l10n.vpMustBeGreaterThan(
+                        vehicle.kilometrajeActual.toString(),
+                      );
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => context.pop(),
-            child: Text(context.l10n.alertsCancel),
-          ),
-          AppButton(
-            text: context.l10n.vpSave,
-            onPressed: () async {
-              if (formKey.currentState!.validate()) {
-                final newMileage = int.parse(controller.text);
-                final updatedVehicle = vehicle.copyWith(
-                  kilometrajeActual: newMileage,
-                );
+          actions: [
+            TextButton(
+              onPressed: () => context.pop(),
+              child: Text(context.l10n.alertsCancel),
+            ),
+            AppButton(
+              text: context.l10n.vpSave,
+              isLoading: guardandoKm,
+              onPressed: () async {
+                if (guardandoKm) return;
+                if (formKey.currentState!.validate()) {
+                  final newMileage = int.parse(controller.text);
+                  final updatedVehicle = vehicle.copyWith(
+                    kilometrajeActual: newMileage,
+                  );
 
-                final vehicleProvider = context.read<VehicleProvider>();
-                final success = await vehicleProvider.updateVehicle(
-                  updatedVehicle,
-                );
+                  setDialogState(() => guardandoKm = true);
+                  final success = await vehicleProvider.updateVehicle(
+                    updatedVehicle,
+                  );
+                  if (context.mounted) {
+                    setDialogState(() => guardandoKm = false);
+                  }
 
-                if (context.mounted) {
-                  if (success) {
-                    context.pop();
-                    UiUtils.showSuccessSnackbar(
-                      context,
-                      context.l10n.vpMileageUpdatedSuccess,
-                    );
-                  } else {
-                    UiUtils.showErrorSnackbar(
-                      context,
-                      vehicleProvider.error ?? context.l10n.vpUpdateError,
-                    );
+                  if (context.mounted) {
+                    if (success) {
+                      context.pop();
+                      UiUtils.showSuccessSnackbar(
+                        context,
+                        context.l10n.vpMileageUpdatedSuccess,
+                      );
+                    } else {
+                      UiUtils.showErrorSnackbar(
+                        context,
+                        vehicleProvider.error ?? context.l10n.vpUpdateError,
+                      );
+                    }
                   }
                 }
-              }
-            },
-          ),
-        ],
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
