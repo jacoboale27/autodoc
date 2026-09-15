@@ -32,6 +32,9 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
+  /// Bloquea el boton de Google mientras su flujo sigue en vuelo: `AuthProvider.isLoading` solo gobierna el de entrar con email.
+  bool _entrandoConGoogle = false;
+
   late bool _isLoginMode;
   bool _rememberMe = false;
   final _emailController = TextEditingController();
@@ -571,15 +574,25 @@ class _AuthScreenState extends State<AuthScreen> {
       type: AppButtonType.secondary,
       size: AppButtonSize.large,
       semanticLabel: context.l10n.authGoogleLogin,
+      isLoading: _entrandoConGoogle,
       icon: Icon(Icons.g_mobiledata, size: 24, color: colors.textPrimary),
       onPressed: () async {
-        final success = await authProvider.signInWithGoogle();
-        if (success && mounted) {
-          HapticFeedback.lightImpact();
-          // The central router reacts to the Firebase session.
-        } else if (mounted && authProvider.error != null) {
-          HapticFeedback.heavyImpact();
-          UiUtils.showErrorSnackbar(context, authProvider.error!);
+        // `AuthProvider.isLoading` no gobierna este boton (solo el de entrar
+        // con email), asi que hasta ahora dos taps abrian dos veces el flujo
+        // de Google. El guard de reentrada atrapa los del mismo frame.
+        if (_entrandoConGoogle) return;
+        setState(() => _entrandoConGoogle = true);
+        try {
+          final success = await authProvider.signInWithGoogle();
+          if (success && mounted) {
+            HapticFeedback.lightImpact();
+            // The central router reacts to the Firebase session.
+          } else if (mounted && authProvider.error != null) {
+            HapticFeedback.heavyImpact();
+            UiUtils.showErrorSnackbar(context, authProvider.error!);
+          }
+        } finally {
+          if (mounted) setState(() => _entrandoConGoogle = false);
         }
       },
     );
@@ -594,87 +607,100 @@ class _AuthScreenState extends State<AuthScreen> {
           : '',
     );
 
+    // El estado de envio vive en el StatefulBuilder porque el dialogo no
+    // pertenece al arbol de esta pantalla.
+    var enviandoEnlace = false;
+
     final sent = await showDialog<bool>(
       context: context,
       builder: (ctx) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(
-            context.l10n.authForgotPassTitle,
-            style: AppTextStyles.titleLarge,
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                context.l10n.authForgotPassDesc,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: colors.textSecondary,
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Text(
+              context.l10n.authForgotPassTitle,
+              style: AppTextStyles.titleLarge,
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.l10n.authForgotPassDesc,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: colors.textSecondary,
+                  ),
                 ),
+                const SizedBox(height: 16),
+                AppTextField(
+                  controller: resetEmailController,
+                  label: context.l10n.authEmailLabel,
+                  keyboardType: TextInputType.emailAddress,
+                  prefixIcon: const Icon(Icons.mail_outline),
+                  autofillHints: const [AutofillHints.email],
+                ),
+              ],
+            ),
+            actions: [
+              AppButton(
+                text: context.l10n.authCancel,
+                type: AppButtonType.text,
+                size: AppButtonSize.small,
+                onPressed: () => Navigator.pop(ctx, false),
               ),
-              const SizedBox(height: 16),
-              AppTextField(
-                controller: resetEmailController,
-                label: context.l10n.authEmailLabel,
-                keyboardType: TextInputType.emailAddress,
-                prefixIcon: const Icon(Icons.mail_outline),
-                autofillHints: const [AutofillHints.email],
+              AppButton(
+                text: context.l10n.authSendLink,
+                type: AppButtonType.primary,
+                size: AppButtonSize.small,
+                isLoading: enviandoEnlace,
+                onPressed: () async {
+                  if (enviandoEnlace) return;
+                  final email = resetEmailController.text.trim();
+                  if (!_isValidEmail(email)) {
+                    ScaffoldMessenger.of(screenContext).showSnackBar(
+                      SnackBar(content: Text(context.l10n.authInvalidEmail)),
+                    );
+                    return;
+                  }
+                  setDialogState(() => enviandoEnlace = true);
+                  try {
+                    final authProvider = screenContext.read<AuthProvider>();
+                    final success = await authProvider.sendPasswordReset(email);
+                    if (!ctx.mounted) return;
+                    if (success) {
+                      Navigator.pop(ctx, true);
+                    } else {
+                      Navigator.pop(ctx, false);
+                      if (!screenContext.mounted) return;
+                      ScaffoldMessenger.of(screenContext).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            authProvider.error ??
+                                screenContext.l10n.authSendEmailError,
+                          ),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (ctx.mounted) Navigator.pop(ctx, false);
+                    if (screenContext.mounted) {
+                      ScaffoldMessenger.of(screenContext).showSnackBar(
+                        SnackBar(
+                          content: Text(screenContext.l10n.authSendEmailError),
+                        ),
+                      );
+                    }
+                  } finally {
+                    if (ctx.mounted) {
+                      setDialogState(() => enviandoEnlace = false);
+                    }
+                  }
+                },
               ),
             ],
           ),
-          actions: [
-            AppButton(
-              text: context.l10n.authCancel,
-              type: AppButtonType.text,
-              size: AppButtonSize.small,
-              onPressed: () => Navigator.pop(ctx, false),
-            ),
-            AppButton(
-              text: context.l10n.authSendLink,
-              type: AppButtonType.primary,
-              size: AppButtonSize.small,
-              onPressed: () async {
-                final email = resetEmailController.text.trim();
-                if (!_isValidEmail(email)) {
-                  ScaffoldMessenger.of(screenContext).showSnackBar(
-                    SnackBar(content: Text(context.l10n.authInvalidEmail)),
-                  );
-                  return;
-                }
-                try {
-                  final authProvider = screenContext.read<AuthProvider>();
-                  final success = await authProvider.sendPasswordReset(email);
-                  if (!ctx.mounted) return;
-                  if (success) {
-                    Navigator.pop(ctx, true);
-                  } else {
-                    Navigator.pop(ctx, false);
-                    if (!screenContext.mounted) return;
-                    ScaffoldMessenger.of(screenContext).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          authProvider.error ??
-                              screenContext.l10n.authSendEmailError,
-                        ),
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (ctx.mounted) Navigator.pop(ctx, false);
-                  if (screenContext.mounted) {
-                    ScaffoldMessenger.of(screenContext).showSnackBar(
-                      SnackBar(
-                        content: Text(screenContext.l10n.authSendEmailError),
-                      ),
-                    );
-                  }
-                }
-              },
-            ),
-          ],
         );
       },
     );

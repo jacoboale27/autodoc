@@ -58,6 +58,11 @@ class ReservaDetailScreen extends StatefulWidget {
 class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
   bool _isLoading = false;
 
+  /// Bloquea Reprogramar mientras la reprogramacion anterior sigue en vuelo.
+  /// No vale `_isLoading`: ese reemplaza el cuerpo entero por un spinner y solo
+  /// lo usan los cambios de estado, no este flujo.
+  bool _reprogramando = false;
+
   Future<void> _cambiarEstado(String nuevoEstado) async {
     setState(() => _isLoading = true);
     try {
@@ -105,6 +110,9 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
   }
 
   Future<void> _reprogramar(ReservaModel reserva) async {
+    // Guard de reentrada: entre el primer tap y el `onPressed: null` median dos
+    // pickers, asi que sin esto se podia recorrerlos otra vez y escribir dos.
+    if (_reprogramando) return;
     final date = await showDatePicker(
       context: context,
       initialDate: reserva.fechaHoraPropuesta,
@@ -134,19 +142,24 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
     if (currentUserId == null || !mounted) return;
 
     final reservaProvider = context.read<ReservaProvider>();
-    final success = await reservaProvider.reprogramarReserva(
-      reserva.id,
-      nuevaFecha,
-      idProponente: currentUserId,
-    );
-    if (!mounted) return;
-    if (success) {
-      UiUtils.showSuccessSnackbar(context, 'Cita reprogramada.');
-    } else {
-      UiUtils.showErrorSnackbar(
-        context,
-        reservaProvider.error ?? 'No se pudo reprogramar la cita.',
+    setState(() => _reprogramando = true);
+    try {
+      final success = await reservaProvider.reprogramarReserva(
+        reserva.id,
+        nuevaFecha,
+        idProponente: currentUserId,
       );
+      if (!mounted) return;
+      if (success) {
+        UiUtils.showSuccessSnackbar(context, 'Cita reprogramada.');
+      } else {
+        UiUtils.showErrorSnackbar(
+          context,
+          reservaProvider.error ?? 'No se pudo reprogramar la cita.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _reprogramando = false);
     }
   }
 
@@ -474,7 +487,9 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
                             AppButton(
                               text: 'Reprogramar',
                               type: AppButtonType.secondary,
-                              onPressed: () => _reprogramar(reserva),
+                              onPressed: _reprogramando
+                                  ? null
+                                  : () => _reprogramar(reserva),
                               icon: const Icon(Icons.edit_calendar),
                             ),
                             const SizedBox(height: 12),
