@@ -157,7 +157,7 @@ void main() {
               pickerCalls++;
               return image;
             },
-            addPhoto: (_, __) {
+            addPhoto: (_, _) {
               uploadCalls++;
               return pending.future;
             },

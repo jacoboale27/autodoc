@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
-import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/features/dashboard/data/services/vehicle_photo_service.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/vehicle_profile_screen.dart';

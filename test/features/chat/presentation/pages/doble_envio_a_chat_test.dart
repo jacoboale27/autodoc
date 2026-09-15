@@ -1,17 +1,15 @@
 import 'dart:async';
-import 'dart:typed_data';
+import 'package:image_picker/image_picker.dart';
 
-import 'package:autodoc/features/chat/data/models/mensaje_model.dart';
 import 'package:autodoc/features/chat/presentation/pages/chat_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../../../support/chat_harness.dart';
 
 final class _ChatPendiente extends FakeChatProvider {
-  _ChatPendiente({List<MensajeModel>? mensajes})
-    : super(conversaciones: [fakeConversacion()], mensajes: mensajes);
+  _ChatPendiente({super.mensajes})
+    : super(conversaciones: [fakeConversacion()]);
 
   final envioPendiente = Completer<bool>();
   final edicionPendiente = Completer<bool>();
@@ -44,13 +42,6 @@ final class _ChatPendiente extends FakeChatProvider {
     return edicionPendiente.future;
   }
 }
-
-XFile _imagen() => XFile.fromData(
-  Uint8List.fromList(const [0x89, 0x50, 0x4e, 0x47]),
-  name: 'foto.png',
-  path: 'foto.png',
-  mimeType: 'image/png',
-);
 
 void main() {
   Future<void> montar(

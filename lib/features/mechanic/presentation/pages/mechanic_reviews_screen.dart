@@ -24,7 +24,12 @@ import 'package:autodoc/core/utils/mensaje_de_error.dart';
 class MechanicReviewsScreen extends StatefulWidget {
   final FirebaseFirestore? firestore;
 
-  const MechanicReviewsScreen({super.key, this.firestore});
+  /// Inyectable para pruebas: `FakeFirebaseFirestore` resuelve las escrituras de
+  /// inmediato, asi que con solo `firestore` no hay ninguna ventana "en vuelo"
+  /// en la que comprobar el bloqueo del doble envio.
+  final ReviewService? reviewService;
+
+  const MechanicReviewsScreen({super.key, this.firestore, this.reviewService});
 
   @override
   State<MechanicReviewsScreen> createState() => _MechanicReviewsScreenState();
@@ -34,10 +39,31 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
   ReviewSortOrder _orden = ReviewSortOrder.recientes;
   late final ReviewService _reviewService;
 
+  /// Acciones en vuelo, por resenia y por tipo (`reportar:` o `responder:` mas
+  /// el id). Por clave y no una sola bandera: reportar una resenia no tiene por
+  /// que bloquear la fila de otra, ni responder bloquear reportar.
+  final Set<String> _enCurso = <String>{};
+
+  /// El stream se memoiza por taller. Se creaba dentro de `build`, asi que cada
+  /// rebuild abria uno nuevo y el StreamBuilder volvia a `waiting`: la lista
+  /// entera desaparecia y reaparecia. Ya pasaba al cambiar el orden; con las
+  /// banderas de envio hay mas rebuilds, asi que habia que cerrarlo.
+  Stream<List<ReviewModel>>? _reviews;
+  String? _tallerDelStream;
+
+  Stream<List<ReviewModel>> _streamDe(String tallerId) {
+    if (_reviews == null || _tallerDelStream != tallerId) {
+      _tallerDelStream = tallerId;
+      _reviews = _reviewService.watchReviewsForTaller(tallerId);
+    }
+    return _reviews!;
+  }
+
   @override
   void initState() {
     super.initState();
-    _reviewService = ReviewService(firestore: widget.firestore);
+    _reviewService =
+        widget.reviewService ?? ReviewService(firestore: widget.firestore);
   }
 
   @override
@@ -64,7 +90,7 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
       // lista: es la que el taller puede abrir, ordenar y responder. El
       // promedio se calcula de la misma lista por el mismo motivo.
       body: StreamBuilder<List<ReviewModel>>(
-        stream: _reviewService.watchReviewsForTaller(tallerId),
+        stream: _streamDe(tallerId),
         builder: (context, snapshot) {
           final reviewsSinOrdenar = snapshot.data ?? [];
           final cargando = snapshot.connectionState == ConnectionState.waiting;
@@ -197,6 +223,12 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
                               for (final r in reviews)
                                 _ReviewCard(
                                   review: r,
+                                  reportando: _enCurso.contains(
+                                    'reportar:${r.idResenia}',
+                                  ),
+                                  respondiendo: _enCurso.contains(
+                                    'responder:${r.idResenia}',
+                                  ),
                                   onReportar: () => _reportar(context, r),
                                   onResponder: () =>
                                       _mostrarDialogoResponder(context, r),
@@ -242,6 +274,11 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
       ),
     );
     if (confirm != true) return;
+    // El dialogo se cierra al confirmar: sin esta guarda se podia reabrir y
+    // reportar otra vez la misma resenia mientras la primera seguia en vuelo.
+    final clave = 'reportar:${review.idResenia}';
+    if (_enCurso.contains(clave)) return;
+    setState(() => _enCurso.add(clave));
 
     try {
       await _reviewService.reportReview(review.idResenia);
@@ -260,6 +297,8 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
           ),
         );
       }
+    } finally {
+      if (mounted) setState(() => _enCurso.remove(clave));
     }
   }
 
@@ -299,6 +338,9 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
     controller.dispose();
 
     if (texto == null || texto.trim().isEmpty) return;
+    final clave = 'responder:${review.idResenia}';
+    if (_enCurso.contains(clave)) return;
+    setState(() => _enCurso.add(clave));
 
     try {
       await _reviewService.responderResenia(
@@ -317,6 +359,8 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text(mensajeDeReglaDeNegocio(e))));
       }
+    } finally {
+      if (mounted) setState(() => _enCurso.remove(clave));
     }
   }
 }
@@ -365,10 +409,16 @@ class _ReviewCard extends StatelessWidget {
   final VoidCallback onReportar;
   final VoidCallback onResponder;
 
+  /// Con la accion de esta resenia en vuelo su control deja de aceptar taps.
+  final bool reportando;
+  final bool respondiendo;
+
   const _ReviewCard({
     required this.review,
     required this.onReportar,
     required this.onResponder,
+    this.reportando = false,
+    this.respondiendo = false,
   });
 
   @override
@@ -413,7 +463,7 @@ class _ReviewCard extends StatelessWidget {
                         visualDensity: VisualDensity.compact,
                         constraints: const BoxConstraints(),
                         padding: const EdgeInsets.only(left: 8),
-                        onPressed: onReportar,
+                        onPressed: reportando ? null : onReportar,
                       ),
                     if (r.isReported)
                       Padding(
@@ -497,7 +547,7 @@ class _ReviewCard extends StatelessWidget {
                   type: AppButtonType.text,
                   size: AppButtonSize.small,
                   icon: const Icon(Icons.reply),
-                  onPressed: onResponder,
+                  onPressed: respondiendo ? null : onResponder,
                 ),
               ),
           ],
