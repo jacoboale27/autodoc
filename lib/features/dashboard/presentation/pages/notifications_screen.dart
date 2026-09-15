@@ -36,8 +36,30 @@ String normalizeDeepLink(AppNotification notif) {
   return deepLink!;
 }
 
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  /// Bloquea el segundo tap de "marcar todo como leido" mientras el primero
+  /// sigue en vuelo: el batch escribe en Firestore y repetirlo duplica trabajo.
+  bool _marcandoTodo = false;
+
+  Future<void> _marcarTodo(
+    NotificationCenterProvider provider,
+    String userId,
+  ) async {
+    if (_marcandoTodo) return;
+    setState(() => _marcandoTodo = true);
+    try {
+      await provider.markAllAsRead(userId);
+    } finally {
+      if (mounted) setState(() => _marcandoTodo = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +98,9 @@ class NotificationsScreen extends StatelessWidget {
             IconButton(
               icon: Icon(Icons.done_all_rounded, color: colors.primary),
               tooltip: l10n.markAllRead,
-              onPressed: () => notifProvider.markAllAsRead(userId),
+              onPressed: _marcandoTodo
+                  ? null
+                  : () => _marcarTodo(notifProvider, userId),
             ),
         ],
       ),

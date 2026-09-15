@@ -12,7 +12,10 @@ import 'package:autodoc/core/widgets/app_snackbar.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
 
 /// Also available from the dashboard before the recipient owns any vehicle.
-Future<void> showVehicleInvitationAcceptance(BuildContext context) async {
+Future<void> showVehicleInvitationAcceptance(
+  BuildContext context, {
+  Future<void> Function(String code)? acceptInvitation,
+}) async {
   final l10n = AppLocalizations.of(context)!;
   var enteredCode = '';
   final code = await showDialog<String>(
@@ -33,9 +36,13 @@ Future<void> showVehicleInvitationAcceptance(BuildContext context) async {
   );
   if (code == null || !context.mounted) return;
   try {
-    await FirebaseFunctions.instance
-        .httpsCallable('aceptarInvitacionVehiculo')
-        .call({'codigoInvitacion': code});
+    if (acceptInvitation != null) {
+      await acceptInvitation(code);
+    } else {
+      await FirebaseFunctions.instance
+          .httpsCallable('aceptarInvitacionVehiculo')
+          .call({'codigoInvitacion': code});
+    }
     if (context.mounted) AppSnackbar.show(context, l10n.securityAccessAccepted);
   } catch (_) {
     if (context.mounted) AppSnackbar.show(context, l10n.securityRequestError);
@@ -45,10 +52,14 @@ Future<void> showVehicleInvitationAcceptance(BuildContext context) async {
 class ShareVehicleSheet extends StatefulWidget {
   final VehicleModel vehicle;
   final Function(VehicleModel) onUpdated;
+  final Future<List<Map<String, String>>> Function()? loadSharedUsers;
+  final Future<void> Function(String uid)? revokeAccess;
   const ShareVehicleSheet({
     super.key,
     required this.vehicle,
     required this.onUpdated,
+    this.loadSharedUsers,
+    this.revokeAccess,
   });
 
   @override
@@ -57,13 +68,17 @@ class ShareVehicleSheet extends StatefulWidget {
 
 class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
   final _emailController = TextEditingController();
-  final _firestore = FirebaseFirestore.instance;
-  final _functions = FirebaseFunctions.instance;
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
+  FirebaseFunctions get _functions => FirebaseFunctions.instance;
   bool _isLoading = false;
   final _codeController = TextEditingController();
   String? _invitationCode;
   AppLocalizations get l10n => AppLocalizations.of(context)!;
   List<Map<String, String>> _sharedUsers = []; // {uid, email, name}
+
+  /// uids cuya revocacion esta en vuelo. Por uid y no una sola bandera: revocar
+  /// a un usuario no tiene por que bloquear la fila de otro.
+  final Set<String> _revocando = <String>{};
 
   @override
   void initState() {
@@ -78,6 +93,11 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
   // verifica server-side que el llamante es el propietario del vehiculo.
   Future<void> _loadSharedUsers() async {
     try {
+      if (widget.loadSharedUsers != null) {
+        final users = await widget.loadSharedUsers!();
+        if (mounted) setState(() => _sharedUsers = users);
+        return;
+      }
       final result = await _functions
           .httpsCallable('obtenerUsuariosCompartidos')
           .call({'vehicleId': widget.vehicle.idVehiculo});
@@ -308,7 +328,9 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
                         color: colors.error.withValues(alpha: 0.8),
                         size: 18,
                       ),
-                      onPressed: () => _removeUser(user['uid']!),
+                      onPressed: _revocando.contains(user['uid'])
+                          ? null
+                          : () => _removeUser(user['uid']!),
                       tooltip: l10n.securityRevoke,
                     ),
                   ],
@@ -364,13 +386,21 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
   }
 
   Future<void> _removeUser(String uid) async {
+    // Guard de reentrada: el `onPressed: null` de arriba solo surte efecto en el
+    // frame siguiente, asi que dos taps en el mismo frame llegarian los dos.
+    if (_revocando.contains(uid)) return;
+    setState(() => _revocando.add(uid));
     try {
-      await _firestore
-          .collection(FirestoreCollections.vehiculos)
-          .doc(widget.vehicle.idVehiculo)
-          .update({
-            'shared_with': FieldValue.arrayRemove([uid]),
-          });
+      if (widget.revokeAccess != null) {
+        await widget.revokeAccess!(uid);
+      } else {
+        await _firestore
+            .collection(FirestoreCollections.vehiculos)
+            .doc(widget.vehicle.idVehiculo)
+            .update({
+              'shared_with': FieldValue.arrayRemove([uid]),
+            });
+      }
 
       final newShared = widget.vehicle.sharedWith
           .where((u) => u != uid)
@@ -381,6 +411,8 @@ class _ShareVehicleSheetState extends State<ShareVehicleSheet> {
       _showSnack(l10n.securityAccessRevoked);
     } catch (e) {
       _showSnack(l10n.securityRequestError);
+    } finally {
+      if (mounted) setState(() => _revocando.remove(uid));
     }
   }
 

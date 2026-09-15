@@ -778,50 +778,67 @@ class _AlertsScreenState extends State<AlertsScreen> {
       text: vehicle.kilometrajeActual.toString(),
     );
 
+    // El estado de envio vive en un StatefulBuilder porque el dialogo no
+    // pertenece al arbol de esta pantalla: sin el no hay donde guardar la
+    // bandera que bloquea el segundo tap de Guardar.
+    var guardando = false;
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          context.l10n.alertsUpdateMileage,
-          style: AppTextStyles.titleMedium.copyWith(
-            fontWeight: FontWeight.bold,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-        ),
-        content: AppTextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          label: context.l10n.alertsNewMileage,
-          suffixText: context.l10n.vpKm,
-        ),
-        actions: [
-          AppButton(
-            onPressed: () => Navigator.pop(ctx),
-            text: context.l10n.alertsCancel,
-            type: AppButtonType.text,
+          title: Text(
+            context.l10n.alertsUpdateMileage,
+            style: AppTextStyles.titleMedium.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          AppButton(
-            onPressed: () async {
-              final newKm = int.tryParse(controller.text);
-              if (newKm != null && newKm >= vehicle.kilometrajeActual) {
-                await vehicleProvider.updateVehicleMileage(
-                  vehicle.idVehiculo,
-                  newKm,
-                );
-                if (ctx.mounted) {
-                  // Use fetchAlertsForVehicles (not the single-vehicle
-                  // fetchAlerts) so we don't collapse the app-wide merged
-                  // alert list back down to just this vehicle.
-                  context.read<AlertProvider>().fetchAlertsForVehicles(
-                    vehicleProvider.vehicles,
+          content: AppTextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            label: context.l10n.alertsNewMileage,
+            suffixText: context.l10n.vpKm,
+          ),
+          actions: [
+            AppButton(
+              onPressed: guardando ? null : () => Navigator.pop(ctx),
+              text: context.l10n.alertsCancel,
+              type: AppButtonType.text,
+            ),
+            AppButton(
+              isLoading: guardando,
+              onPressed: () async {
+                // Guard de reentrada: `isLoading` solo surte efecto en el frame
+                // siguiente, asi que dos taps en el mismo frame pasarian ambos.
+                if (guardando) return;
+                final newKm = int.tryParse(controller.text);
+                if (newKm == null || newKm < vehicle.kilometrajeActual) return;
+                setDialogState(() => guardando = true);
+                try {
+                  await vehicleProvider.updateVehicleMileage(
+                    vehicle.idVehiculo,
+                    newKm,
                   );
-                  Navigator.pop(ctx);
+                  if (ctx.mounted) {
+                    // Use fetchAlertsForVehicles (not the single-vehicle
+                    // fetchAlerts) so we don't collapse the app-wide merged
+                    // alert list back down to just this vehicle.
+                    context.read<AlertProvider>().fetchAlertsForVehicles(
+                      vehicleProvider.vehicles,
+                    );
+                    Navigator.pop(ctx);
+                  }
+                } finally {
+                  if (ctx.mounted) setDialogState(() => guardando = false);
                 }
-              }
-            },
-            text: context.l10n.alertsSave,
-          ),
-        ],
+              },
+              text: context.l10n.alertsSave,
+            ),
+          ],
+        ),
       ),
     );
   }

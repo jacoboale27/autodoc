@@ -5,19 +5,88 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../data/services/vehicle_photo_service.dart';
 import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
-class VehicleGalleryWidget extends StatelessWidget {
+class VehicleGalleryWidget extends StatefulWidget {
   final String vehicleId;
   final AppColors colors;
+  final Stream<List<VehiclePhotoModel>>? photos;
+  final Future<XFile?> Function()? pickPhoto;
+  final Future<void> Function(String vehicleId, XFile photo)? addPhoto;
 
   const VehicleGalleryWidget({
     super.key,
     required this.vehicleId,
     required this.colors,
+    this.photos,
+    this.pickPhoto,
+    this.addPhoto,
   });
 
   @override
+  State<VehicleGalleryWidget> createState() => _VehicleGalleryWidgetState();
+}
+
+class _VehicleGalleryWidgetState extends State<VehicleGalleryWidget> {
+  /// Deja de estar montado el servicio en cada `build`: al convertir el widget
+  /// en Stateful para bloquear el doble envio, un `setState` habria recreado el
+  /// stream y re-suscrito la galeria en cada subida.
+  VehiclePhotoService? _photoService;
+  late final Stream<List<VehiclePhotoModel>> _photos;
+
+  /// Bloquea el segundo tap mientras el selector o la subida siguen en vuelo.
+  bool _subiendo = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.photos == null || widget.addPhoto == null) {
+      _photoService = VehiclePhotoService();
+    }
+    _photos = widget.photos ?? _photoService!.streamPhotos(widget.vehicleId);
+  }
+
+  Future<void> _subirFoto() async {
+    if (_subiendo) return;
+    setState(() => _subiendo = true);
+    try {
+      final picked = widget.pickPhoto != null
+          ? await widget.pickPhoto!()
+          : await ImagePicker().pickImage(
+              source: ImageSource.gallery,
+              imageQuality: 70,
+            );
+      if (picked == null) return;
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.showSnackBar(const SnackBar(content: Text('Subiendo foto...')));
+      // Sin este try/catch la excepcion se perdia y el snackbar
+      // "Subiendo foto..." se quedaba colgado: el usuario no tenia
+      // forma de saber que la subida habia fallado.
+      try {
+        if (widget.addPhoto != null) {
+          await widget.addPhoto!(widget.vehicleId, picked);
+        } else {
+          await _photoService!.addPhoto(widget.vehicleId, picked);
+        }
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(const SnackBar(content: Text('Foto añadida')));
+      } catch (e) {
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              mensajeSeguroDeError(e, accion: 'No se pudo subir la foto'),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _subiendo = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final photoService = VehiclePhotoService();
+    final colors = widget.colors;
 
     return Padding(
       // El gutter horizontal lo pone AppPageBody en VehicleProfileScreen
@@ -42,46 +111,12 @@ class VehicleGalleryWidget extends StatelessWidget {
               ),
               IconButton(
                 icon: Icon(Icons.add_a_photo, color: colors.primary),
-                onPressed: () async {
-                  final picker = ImagePicker();
-                  final picked = await picker.pickImage(
-                    source: ImageSource.gallery,
-                    imageQuality: 70,
-                  );
-                  if (picked == null) return;
-                  if (!context.mounted) return;
-                  final messenger = ScaffoldMessenger.of(context);
-                  messenger.showSnackBar(
-                    const SnackBar(content: Text('Subiendo foto...')),
-                  );
-                  // Sin este try/catch la excepción se perdía y el snackbar
-                  // "Subiendo foto..." se quedaba colgado: el usuario no tenía
-                  // forma de saber que la subida había fallado.
-                  try {
-                    await photoService.addPhoto(vehicleId, picked);
-                    messenger.hideCurrentSnackBar();
-                    messenger.showSnackBar(
-                      const SnackBar(content: Text('Foto añadida')),
-                    );
-                  } catch (e) {
-                    messenger.hideCurrentSnackBar();
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          mensajeSeguroDeError(
-                            e,
-                            accion: 'No se pudo subir la foto',
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-                },
+                onPressed: _subiendo ? null : _subirFoto,
               ),
             ],
           ),
           StreamBuilder<List<VehiclePhotoModel>>(
-            stream: photoService.streamPhotos(vehicleId),
+            stream: _photos,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -112,7 +147,7 @@ class VehicleGalleryWidget extends StatelessWidget {
                         MaterialPageRoute(
                           builder: (_) => FullScreenImageViewer(
                             foto: foto,
-                            vehicleId: vehicleId,
+                            vehicleId: widget.vehicleId,
                           ),
                         ),
                       );
