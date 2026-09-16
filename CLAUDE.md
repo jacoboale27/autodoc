@@ -767,7 +767,7 @@ sigue pendiente y se retoma cuando el plan de remediación cierre.
 
 ## Flujo de trabajo obligatorio para cada petición
 
-1. **Contexto del proyecto**: usa **graphify** (`/graphify`, o las skills `graphify` instaladas) como fuente principal de contexto del código — grafo de conocimiento ya construido en `graphify-out/graph.json` (7802 nodos, 12106 edges). Si el grafo no responde lo suficiente, complementa buscando directamente en el código (Grep/Glob/Read).
+1. **Contexto del proyecto**: usa **graphify** (`/graphify`, o las skills `graphify` instaladas) como fuente principal de contexto del código — grafo de conocimiento ya construido en `graphify-out/graph.json` (9457 nodos, 14617 edges, 493 comunidades; reindexado el 2026-09-16). Si el grafo no responde lo suficiente, complementa buscando directamente en el código (Grep/Glob/Read).
 2. **Superpowers**: usa las skills de `superpowers` (brainstorming, TDD, debugging sistemático, subagent-driven development, code review) según corresponda al tipo de tarea.
 3. **find-skills**: antes de improvisar una solución, usa `find-skills` para revisar si ya existe una skill relevante instalada o disponible en las marketplaces configuradas.
 

@@ -10,9 +10,6 @@ import 'package:flutter/widgets.dart';
 /// No existe ninguna constante `easeIn`: una curva que arranca lenta retrasa el
 /// movimiento justo en el instante en que el usuario está mirando, y hace que
 /// la interfaz se sienta lenta aunque dure lo mismo.
-///
-/// Las duraciones "generales" de transición de página siguen viviendo en
-/// [AppTransitions]; aquí vive todo lo que responde a una interacción.
 class AppMotion {
   AppMotion._();
 
