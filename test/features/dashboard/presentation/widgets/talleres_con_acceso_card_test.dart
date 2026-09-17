@@ -31,10 +31,7 @@ VehicleModel vehiculoCon(List<String> talleres) => VehicleModel(
 /// Provider que registra las revocaciones en vez de tocar Firestore.
 class _SpyVehicleProvider extends VehicleProvider {
   _SpyVehicleProvider({this.exito = true})
-    : super(
-        vehicleService: MockVehicleService(),
-        imageService: MockVehicleImageService(),
-      );
+    : super(vehicleService: MockVehicleService());
 
   final bool exito;
   final List<({String vehiculo, String taller})> revocaciones = [];

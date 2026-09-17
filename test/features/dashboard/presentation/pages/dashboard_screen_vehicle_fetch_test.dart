@@ -58,11 +58,7 @@ class _SpyVehicleProvider extends VehicleProvider {
   int fetchCallCount = 0;
   String? lastOwnerId;
 
-  _SpyVehicleProvider()
-    : super(
-        vehicleService: MockVehicleService(),
-        imageService: MockVehicleImageService(),
-      );
+  _SpyVehicleProvider() : super(vehicleService: MockVehicleService());
 
   @override
   Future<void> fetchVehicles(String ownerId) async {

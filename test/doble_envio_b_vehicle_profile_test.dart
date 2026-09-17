@@ -15,11 +15,7 @@ import 'helpers/test_helpers.mocks.dart';
 import 'support/responsive_harness.dart';
 
 class _ActualizacionesPendientes extends VehicleProvider {
-  _ActualizacionesPendientes()
-    : super(
-        vehicleService: MockVehicleService(),
-        imageService: MockVehicleImageService(),
-      );
+  _ActualizacionesPendientes() : super(vehicleService: MockVehicleService());
 
   Completer<bool> pendiente = Completer<bool>();
   final actualizaciones = <VehicleModel>[];

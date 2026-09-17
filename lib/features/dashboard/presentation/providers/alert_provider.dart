@@ -41,7 +41,54 @@ class AlertProvider extends ChangeNotifier {
     _maintenanceTasks = [];
     _error = null;
     _isLoading = false;
+    _huellaCargada = null;
+    _huellaEnCurso = null;
+    _cargaEnCurso = null;
     notifyListeners();
+  }
+
+  /// Huella del ultimo juego de vehiculos consultado, y la consulta en vuelo
+  /// si la hay. Los usa [asegurarAlertasCargadas].
+  String? _huellaCargada;
+  String? _huellaEnCurso;
+  Future<void>? _cargaEnCurso;
+
+  static String _huella(List<VehicleModel> vehiculos) =>
+      (vehiculos.map((v) => v.idVehiculo).toList()..sort()).join(',');
+
+  /// Calcula las alertas de [vehiculos] solo si no estan ya calculadas.
+  ///
+  /// Hermano de `VehicleProvider.asegurarVehiculosCargados`, y por el mismo
+  /// motivo: `/alerts` no pedia sus datos, los leia. Con un F5 encima de esa
+  /// ruta el provider esta recien construido y la pantalla salia vacia.
+  ///
+  /// La huella son los IDs, no el contenido de los vehiculos. Es deliberado
+  /// y tiene un limite que conviene conocer: si cambia el odometro de un
+  /// coche sin cambiar la lista, este metodo NO recalcula. No lo hace peor
+  /// que antes —quien actualiza el odometro pasa por pantallas que llaman a
+  /// [fetchAlerts] o [fetchAlertsForVehicles] directamente— y a cambio evita
+  /// releer todo el garaje en cada navegacion.
+  Future<void> asegurarAlertasCargadas(List<VehicleModel> vehiculos) {
+    final huella = _huella(vehiculos);
+    if (_huellaCargada == huella) return Future.value();
+
+    final enCurso = _cargaEnCurso;
+    if (enCurso != null && _huellaEnCurso == huella) return enCurso;
+
+    // Se memoriza el INTENTO, no el exito. Ver el mismo razonamiento en
+    // `VehicleProvider.asegurarVehiculosCargados`: memorizar solo el exito
+    // convierte un fallo persistente en un bucle de lecturas, porque el
+    // `notifyListeners` del fallo reconstruye la pantalla que vuelve a pedir.
+    _huellaEnCurso = huella;
+    _huellaCargada = huella;
+    final futuro = fetchAlertsForVehicles(vehiculos).whenComplete(() {
+      if (_huellaEnCurso == huella) {
+        _huellaEnCurso = null;
+        _cargaEnCurso = null;
+      }
+    });
+    _cargaEnCurso = futuro;
+    return futuro;
   }
 
   Future<void> fetchAlerts(String vehicleId, VehicleModel vehicle) async {

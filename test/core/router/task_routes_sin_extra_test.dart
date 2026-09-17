@@ -7,6 +7,11 @@ import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/l10n/app_localizations.dart';
+import 'package:provider/provider.dart';
+import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
+import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
+import '../../helpers/test_helpers.mocks.dart';
+import '../../support/vehicle_fixtures.dart';
 
 /// Las rutas `/task_config` y `/task_complete` leen `state.extra` con un cast
 /// INCONDICIONAL (`state.extra as MaintenanceTask`). `extra` no sobrevive a una
@@ -124,11 +129,33 @@ void main() {
         initialLocation: ruta,
       );
 
+      // Los providers de la app van por encima, aunque este test mire el
+      // router: `/alerts` —la ruta a la que se redirige— pide sus propios
+      // datos desde `asegurarDatosDelGaraje`, y sin `UserProfileProvider` eso
+      // lanza dentro de un post-frame callback, o sea un error asincrono que
+      // ningun `takeException` recoge. Montar el arbol como la app lo monta es
+      // ademas lo que este harness deberia haber hecho siempre.
       await tester.pumpWidget(
-        MaterialApp.router(
-          routerConfig: router,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<UserProfileProvider>.value(
+              value: buildProfileProvider(),
+            ),
+            ChangeNotifierProvider<VehicleProvider>.value(
+              value: fakeVehicleProvider(),
+            ),
+            ChangeNotifierProvider<AlertProvider>(
+              create: (_) => AlertProvider(
+                firestore: MockFirebaseFirestore(),
+                storage: MockFirebaseStorage(),
+              ),
+            ),
+          ],
+          child: MaterialApp.router(
+            routerConfig: router,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+          ),
         ),
       );
       await tester.pumpAndSettle();
@@ -139,9 +166,20 @@ void main() {
       // excepciones probaria la pobreza del harness y no la del router. Se
       // afirma en cambio que la excepcion, si la hay, no menciona el cast, que
       // es el defecto que este test existe para vigilar.
-      final excepcion = tester.takeException();
+      // Se VACIAN todas, no solo la primera. `/alerts` en este harness lanza
+      // ya mas de una —el null check de siempre y, desde que la pantalla pide
+      // sus propios datos, un ProviderNotFound por el UserProfileProvider que
+      // aqui no existe—, y una excepcion sin recoger tumba el test por si
+      // sola. Lo que se vigila es que NINGUNA sea el cast.
+      final excepciones = <String>[];
+      for (;;) {
+        final e = tester.takeException();
+        if (e == null) break;
+        excepciones.add(e.toString());
+      }
+      final excepcion = excepciones.join(' | ');
       expect(
-        excepcion?.toString() ?? '',
+        excepcion,
         isNot(contains('MaintenanceTask')),
         reason:
             'Recargar la pagina estando en $ruta pierde `extra`, y el cast '
@@ -149,7 +187,7 @@ void main() {
             'pantalla rota de la que no podia salir.',
       );
       expect(
-        excepcion?.toString() ?? '',
+        excepcion,
         isNot(contains("Map<String, dynamic>")),
         reason: 'Mismo cast, en /task_complete.',
       );

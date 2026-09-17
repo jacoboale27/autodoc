@@ -306,36 +306,10 @@ class _MechanicReviewsScreenState extends State<MechanicReviewsScreen> {
     BuildContext context,
     ReviewModel review,
   ) async {
-    final controller = TextEditingController();
     final texto = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Responder a la reseña'),
-        content: AppDialogContent(
-          child: AppTextField(
-            controller: controller,
-            maxLines: 3,
-            maxLength: 300,
-            hintText: 'Ej. Gracias por tu confianza...',
-            label: 'Respuesta',
-          ),
-        ),
-        actions: [
-          AppButton(
-            text: 'Cancelar',
-            type: AppButtonType.text,
-            size: AppButtonSize.small,
-            onPressed: () => Navigator.pop(context),
-          ),
-          AppButton(
-            text: 'Publicar',
-            size: AppButtonSize.small,
-            onPressed: () => Navigator.pop(context, controller.text),
-          ),
-        ],
-      ),
+      builder: (context) => const _DialogoResponder(),
     );
-    controller.dispose();
 
     if (texto == null || texto.trim().isEmpty) return;
     final clave = 'responder:${review.idResenia}';
@@ -627,6 +601,71 @@ class _DistribucionResenias extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Diálogo de respuesta a una reseña.
+///
+/// Es un widget con estado propio por una razón concreta, no por estilo: el
+/// `TextEditingController` tiene que morir DESPUÉS de que su campo salga del
+/// árbol, y `showDialog` devuelve en cuanto se llama a `Navigator.pop`, con la
+/// ruta todavía montada y animando la salida. La versión anterior creaba el
+/// controlador en el método y lo desechaba en la línea siguiente al `await`,
+/// así que el `TextField` aún vivo lo volvía a usar en el primer rebuild:
+///
+///   A TextEditingController was used after being disposed.
+///
+/// Y esa excepción no se quedaba sola. Se encadenaba por todo el subárbol del
+/// diálogo hasta reventar el layout con un «RenderFlex overflowed by 99292
+/// pixels on the bottom», que es lo que GAPS-07 anotó como un desbordamiento
+/// de `AppDialogContent`. No lo era: `AppDialogContent` mide bien a 360 y a
+/// 1200 px. El desbordamiento era el SÍNTOMA del controlador desechado.
+///
+/// Con el controlador dentro del `State` lo destruye el framework cuando
+/// desmonta el diálogo, que es el único momento en que se puede.
+class _DialogoResponder extends StatefulWidget {
+  const _DialogoResponder();
+
+  @override
+  State<_DialogoResponder> createState() => _DialogoResponderState();
+}
+
+class _DialogoResponderState extends State<_DialogoResponder> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Responder a la reseña'),
+      content: AppDialogContent(
+        child: AppTextField(
+          controller: _controller,
+          maxLines: 3,
+          maxLength: 300,
+          hintText: 'Ej. Gracias por tu confianza...',
+          label: 'Respuesta',
+        ),
+      ),
+      actions: [
+        AppButton(
+          text: 'Cancelar',
+          type: AppButtonType.text,
+          size: AppButtonSize.small,
+          onPressed: () => Navigator.pop(context),
+        ),
+        AppButton(
+          text: 'Publicar',
+          size: AppButtonSize.small,
+          onPressed: () => Navigator.pop(context, _controller.text),
+        ),
+      ],
     );
   }
 }

@@ -56,8 +56,7 @@ for clave in \
   FIREBASE_DATABASE_URL \
   FIREBASE_MEASUREMENT_ID \
   GOOGLE_MAPS_API_KEY_ANDROID \
-  RECAPTCHA_SITE_KEY \
-  VEHICLE_IMAGE_API_KEY; do
+  RECAPTCHA_SITE_KEY; do
   poner "$clave" "$(leer "$ENV_FILE" "$clave")"
 done
 

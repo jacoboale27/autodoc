@@ -4,31 +4,30 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _i4;
-import 'dart:typed_data' as _i19;
+import 'dart:typed_data' as _i18;
 
 import 'package:autodoc/core/models/user_model.dart' as _i12;
 import 'package:autodoc/core/models/vehicle_model.dart' as _i14;
-import 'package:autodoc/core/services/vehicle_image_service.dart' as _i15;
 import 'package:autodoc/features/admin/data/services/admin_auth_service.dart'
     as _i11;
 import 'package:autodoc/features/auth/data/services/auth_service.dart' as _i10;
 import 'package:autodoc/features/dashboard/data/services/vehicle_service.dart'
     as _i13;
 import 'package:autodoc/features/profile/data/services/user_service.dart'
-    as _i17;
+    as _i15;
 import 'package:cloud_firestore/cloud_firestore.dart' as _i3;
 import 'package:cloud_functions/cloud_functions.dart' as _i9;
 import 'package:cloud_functions_platform_interface/cloud_functions_platform_interface.dart'
     as _i8;
 import 'package:firebase_auth/firebase_auth.dart' as _i7;
 import 'package:firebase_core/firebase_core.dart' as _i2;
-import 'package:firebase_messaging/firebase_messaging.dart' as _i20;
+import 'package:firebase_messaging/firebase_messaging.dart' as _i19;
 import 'package:firebase_messaging_platform_interface/firebase_messaging_platform_interface.dart'
     as _i6;
 import 'package:firebase_storage/firebase_storage.dart' as _i5;
-import 'package:image_picker/image_picker.dart' as _i18;
+import 'package:image_picker/image_picker.dart' as _i16;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i16;
+import 'package:mockito/src/dummies.dart' as _i17;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -424,6 +423,15 @@ class MockVehicleService extends _i1.Mock implements _i13.VehicleService {
           as _i4.Future<void>);
 
   @override
+  _i4.Future<void> revocarAccesoTaller(String? vehiculoId, String? tallerId) =>
+      (super.noSuchMethod(
+            Invocation.method(#revocarAccesoTaller, [vehiculoId, tallerId]),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
   _i4.Future<void> deleteVehicle(String? vehicleId) =>
       (super.noSuchMethod(
             Invocation.method(#deleteVehicle, [vehicleId]),
@@ -436,6 +444,14 @@ class MockVehicleService extends _i1.Mock implements _i13.VehicleService {
   _i4.Future<_i14.VehicleModel?> getVehicleByPlate(String? plate) =>
       (super.noSuchMethod(
             Invocation.method(#getVehicleByPlate, [plate]),
+            returnValue: _i4.Future<_i14.VehicleModel?>.value(),
+          )
+          as _i4.Future<_i14.VehicleModel?>);
+
+  @override
+  _i4.Future<_i14.VehicleModel?> getVehicleById(String? vehiculoId) =>
+      (super.noSuchMethod(
+            Invocation.method(#getVehicleById, [vehiculoId]),
             returnValue: _i4.Future<_i14.VehicleModel?>.value(),
           )
           as _i4.Future<_i14.VehicleModel?>);
@@ -487,51 +503,10 @@ class MockVehicleService extends _i1.Mock implements _i13.VehicleService {
           as _i4.Future<Map<String, dynamic>?>);
 }
 
-/// A class which mocks [VehicleImageService].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockVehicleImageService extends _i1.Mock
-    implements _i15.VehicleImageService {
-  MockVehicleImageService() {
-    _i1.throwOnMissingStub(this);
-  }
-
-  @override
-  _i4.Future<String> getVehicleImage({
-    required String? vehicleId,
-    required String? brand,
-    required String? model,
-    required int? year,
-    required String? color,
-  }) =>
-      (super.noSuchMethod(
-            Invocation.method(#getVehicleImage, [], {
-              #vehicleId: vehicleId,
-              #brand: brand,
-              #model: model,
-              #year: year,
-              #color: color,
-            }),
-            returnValue: _i4.Future<String>.value(
-              _i16.dummyValue<String>(
-                this,
-                Invocation.method(#getVehicleImage, [], {
-                  #vehicleId: vehicleId,
-                  #brand: brand,
-                  #model: model,
-                  #year: year,
-                  #color: color,
-                }),
-              ),
-            ),
-          )
-          as _i4.Future<String>);
-}
-
 /// A class which mocks [UserService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockUserService extends _i1.Mock implements _i17.UserService {
+class MockUserService extends _i1.Mock implements _i15.UserService {
   MockUserService() {
     _i1.throwOnMissingStub(this);
   }
@@ -565,12 +540,12 @@ class MockUserService extends _i1.Mock implements _i17.UserService {
   @override
   _i4.Future<String> uploadProfilePhoto(
     String? userId,
-    _i18.XFile? imageFile,
+    _i16.XFile? imageFile,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#uploadProfilePhoto, [userId, imageFile]),
             returnValue: _i4.Future<String>.value(
-              _i16.dummyValue<String>(
+              _i17.dummyValue<String>(
                 this,
                 Invocation.method(#uploadProfilePhoto, [userId, imageFile]),
               ),
@@ -623,7 +598,7 @@ class MockFirebaseFirestore extends _i1.Mock implements _i3.FirebaseFirestore {
   String get databaseId =>
       (super.noSuchMethod(
             Invocation.getter(#databaseId),
-            returnValue: _i16.dummyValue<String>(
+            returnValue: _i17.dummyValue<String>(
               this,
               Invocation.getter(#databaseId),
             ),
@@ -689,7 +664,7 @@ class MockFirebaseFirestore extends _i1.Mock implements _i3.FirebaseFirestore {
           as _i4.Future<void>);
 
   @override
-  _i3.LoadBundleTask loadBundle(_i19.Uint8List? bundle) =>
+  _i3.LoadBundleTask loadBundle(_i18.Uint8List? bundle) =>
       (super.noSuchMethod(
             Invocation.method(#loadBundle, [bundle]),
             returnValue: _FakeLoadBundleTask_4(
@@ -830,8 +805,8 @@ class MockFirebaseFirestore extends _i1.Mock implements _i3.FirebaseFirestore {
               {#timeout: timeout, #maxAttempts: maxAttempts},
             ),
             returnValue:
-                _i16.ifNotNull(
-                  _i16.dummyValueOrNull<T>(
+                _i17.ifNotNull(
+                  _i17.dummyValueOrNull<T>(
                     this,
                     Invocation.method(
                       #runTransaction,
@@ -917,7 +892,7 @@ class MockFirebaseStorage extends _i1.Mock implements _i5.FirebaseStorage {
   String get bucket =>
       (super.noSuchMethod(
             Invocation.getter(#bucket),
-            returnValue: _i16.dummyValue<String>(
+            returnValue: _i17.dummyValue<String>(
               this,
               Invocation.getter(#bucket),
             ),
@@ -1032,7 +1007,7 @@ class MockFirebaseStorage extends _i1.Mock implements _i5.FirebaseStorage {
 /// A class which mocks [FirebaseMessaging].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockFirebaseMessaging extends _i1.Mock implements _i20.FirebaseMessaging {
+class MockFirebaseMessaging extends _i1.Mock implements _i19.FirebaseMessaging {
   MockFirebaseMessaging() {
     _i1.throwOnMissingStub(this);
   }
@@ -1609,7 +1584,7 @@ class MockFirebaseAuth extends _i1.Mock implements _i7.FirebaseAuth {
       (super.noSuchMethod(
             Invocation.method(#verifyPasswordResetCode, [code]),
             returnValue: _i4.Future<String>.value(
-              _i16.dummyValue<String>(
+              _i17.dummyValue<String>(
                 this,
                 Invocation.method(#verifyPasswordResetCode, [code]),
               ),
@@ -1746,7 +1721,7 @@ class MockUser extends _i1.Mock implements _i7.User {
   String get uid =>
       (super.noSuchMethod(
             Invocation.getter(#uid),
-            returnValue: _i16.dummyValue<String>(this, Invocation.getter(#uid)),
+            returnValue: _i17.dummyValue<String>(this, Invocation.getter(#uid)),
           )
           as String);
 
@@ -2026,7 +2001,7 @@ class MockCollectionReference<T extends Object?> extends _i1.Mock
   String get id =>
       (super.noSuchMethod(
             Invocation.getter(#id),
-            returnValue: _i16.dummyValue<String>(this, Invocation.getter(#id)),
+            returnValue: _i17.dummyValue<String>(this, Invocation.getter(#id)),
           )
           as String);
 
@@ -2034,7 +2009,7 @@ class MockCollectionReference<T extends Object?> extends _i1.Mock
   String get path =>
       (super.noSuchMethod(
             Invocation.getter(#path),
-            returnValue: _i16.dummyValue<String>(
+            returnValue: _i17.dummyValue<String>(
               this,
               Invocation.getter(#path),
             ),
@@ -2452,7 +2427,7 @@ class MockDocumentReference<T extends Object?> extends _i1.Mock
   String get id =>
       (super.noSuchMethod(
             Invocation.getter(#id),
-            returnValue: _i16.dummyValue<String>(this, Invocation.getter(#id)),
+            returnValue: _i17.dummyValue<String>(this, Invocation.getter(#id)),
           )
           as String);
 
@@ -2471,7 +2446,7 @@ class MockDocumentReference<T extends Object?> extends _i1.Mock
   String get path =>
       (super.noSuchMethod(
             Invocation.getter(#path),
-            returnValue: _i16.dummyValue<String>(
+            returnValue: _i17.dummyValue<String>(
               this,
               Invocation.getter(#path),
             ),
@@ -2991,7 +2966,7 @@ class MockQueryDocumentSnapshot<T extends Object?> extends _i1.Mock
   String get id =>
       (super.noSuchMethod(
             Invocation.getter(#id),
-            returnValue: _i16.dummyValue<String>(this, Invocation.getter(#id)),
+            returnValue: _i17.dummyValue<String>(this, Invocation.getter(#id)),
           )
           as String);
 
@@ -3026,7 +3001,7 @@ class MockQueryDocumentSnapshot<T extends Object?> extends _i1.Mock
   T data() =>
       (super.noSuchMethod(
             Invocation.method(#data, []),
-            returnValue: _i16.dummyValue<T>(this, Invocation.method(#data, [])),
+            returnValue: _i17.dummyValue<T>(this, Invocation.method(#data, [])),
           )
           as T);
 

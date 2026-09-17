@@ -43,9 +43,10 @@ class AppSecrets {
   static String get googleMapsApiKey =>
       const String.fromEnvironment('GOOGLE_MAPS_API_KEY', defaultValue: '');
 
-  // SearchAPI.io (engine google_images) — fotos de vehiculos estilo concesionario
-  static String get vehicleImageApiKey =>
-      const String.fromEnvironment('VEHICLE_IMAGE_API_KEY', defaultValue: '');
+  // Aqui vivia `vehicleImageApiKey` (SearchAPI.io, engine `google_images`).
+  // Retirada el 2026-09-17 junto con `VehicleImageService`: rellenaba
+  // `vehiculos.foto_url` con enlaces a fotos de terceros raspadas de Google
+  // Imagenes. Ver el comentario de `VehicleProvider.addVehicle`.
 
   // Google Sign-In (web)
   static String get googleSignInClientIdWeb => const String.fromEnvironment(

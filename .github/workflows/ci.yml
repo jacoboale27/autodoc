@@ -198,7 +198,6 @@ jobs:
             --dart-define=FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }} \
             --dart-define=FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }} \
             --dart-define=GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }} \
-            --dart-define=VEHICLE_IMAGE_API_KEY=${{ secrets.VEHICLE_IMAGE_API_KEY }}
 
   # ─────────────────────────────────────────
   # Deploy to Staging (on merge to staging branch)
@@ -306,7 +305,6 @@ jobs:
             --dart-define=FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }} \
             --dart-define=FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }} \
             --dart-define=GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }} \
-            --dart-define=VEHICLE_IMAGE_API_KEY=${{ secrets.VEHICLE_IMAGE_API_KEY }}
 
       - name: Install Cloud Functions dependencies
         # Mismo motivo que en deploy_production: sin functions/node_modules el CLI
@@ -458,7 +456,6 @@ jobs:
             --dart-define=FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }} \
             --dart-define=FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }} \
             --dart-define=GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }} \
-            --dart-define=VEHICLE_IMAGE_API_KEY=${{ secrets.VEHICLE_IMAGE_API_KEY }}
 
       - name: Deploy Firestore Rules & Indexes to Production
         run: firebase deploy --only firestore --project ${{ secrets.FIREBASE_PROJECT_PROD }}
@@ -727,7 +724,6 @@ jobs:
             --dart-define=FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }} \
             --dart-define=GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY_ANDROID || secrets.GOOGLE_MAPS_API_KEY }} \
             --dart-define=ANDROID_CERT_SHA1=${{ env.ANDROID_CERT_SHA1 }} \
-            --dart-define=VEHICLE_IMAGE_API_KEY=${{ secrets.VEHICLE_IMAGE_API_KEY }}
 
       - name: Verify APK signature
         if: steps.firma.outputs.ready == 'true'
@@ -781,7 +777,6 @@ jobs:
             --dart-define=FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }} \
             --dart-define=GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY_ANDROID || secrets.GOOGLE_MAPS_API_KEY }} \
             --dart-define=ANDROID_CERT_SHA1=${{ env.ANDROID_CERT_SHA1 }} \
-            --dart-define=VEHICLE_IMAGE_API_KEY=${{ secrets.VEHICLE_IMAGE_API_KEY }}
 
       - name: Verify App Bundle signature
         if: steps.firma.outputs.ready == 'true'

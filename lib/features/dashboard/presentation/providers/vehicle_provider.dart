@@ -1,19 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../../../core/models/vehicle_model.dart';
-import '../../../../core/services/vehicle_image_service.dart';
 import '../../data/services/vehicle_service.dart';
 import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class VehicleProvider with ChangeNotifier {
   final VehicleService _vehicleService;
-  final VehicleImageService _imageService;
 
-  VehicleProvider({
-    VehicleService? vehicleService,
-    VehicleImageService? imageService,
-  }) : _vehicleService = vehicleService ?? VehicleService(),
-       _imageService = imageService ?? VehicleImageService() {
+  VehicleProvider({VehicleService? vehicleService})
+    : _vehicleService = vehicleService ?? VehicleService() {
     _initCache();
   }
 
@@ -103,6 +98,61 @@ class VehicleProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// uid cuyo garaje ya esta en memoria, y la carga en vuelo si la hay.
+  ///
+  /// Los usa [asegurarVehiculosCargados]; ver alli por que existen.
+  String? _cargadoPara;
+  String? _ownerEnCurso;
+  Future<void>? _cargaEnCurso;
+
+  /// Carga el garaje de [ownerId] solo si nadie lo ha cargado ya.
+  ///
+  /// Existe porque `/garage` y `/alerts` no cargaban nada: se limitaban a
+  /// LEER `vehicles` y `selectedVehicle`, y el unico sitio que llamaba a
+  /// [fetchVehicles] al entrar era el dashboard. Mientras se navegue por las
+  /// pestañas eso funciona —se pasa por el dashboard primero—, pero un F5 o
+  /// un enlace directo monta la pantalla con el provider recien construido:
+  /// el garaje salia con «No tienes vehiculos» teniendo tres, y las alertas
+  /// con «Selecciona un vehiculo primero». Es la misma familia que el F5 de
+  /// `/task_config` que cerro H-01.
+  ///
+  /// El memo NO esta dentro de [fetchVehicles] a proposito. Ahi tambien se
+  /// marca, para que venir del dashboard no cueste una segunda lectura, pero
+  /// si el memo VIVIERA solo ahi cualquier subclase que sobreescriba
+  /// `fetchVehicles` sin llamar a `super` —los espias de los tests lo
+  /// hacen— dejaria este metodo sin memoria y recargando en cada entrada.
+  ///
+  /// Se memoriza el INTENTO, no el exito, y eso importa. La primera version
+  /// solo marcaba el memo cuando `_error` era null, con la idea razonable de
+  /// que un fallo se debe poder reintentar. En un widget test se vio lo que
+  /// eso significa de verdad: `fetchVehicles` termina con `notifyListeners()`,
+  /// un `context.watch` reconstruye la pantalla, `didChangeDependencies`
+  /// vuelve a correr y llama otra vez aqui — y como el fallo no se habia
+  /// memorizado, se pedia de nuevo. Bucle infinito de lecturas contra
+  /// Firestore mientras el error persista, que es justo cuando el backend
+  /// menos lo aguanta.
+  ///
+  /// Reintentar sigue siendo posible, pero tiene que pedirlo algo: una
+  /// llamada directa a [fetchVehicles] —el dashboard hace una en cada
+  /// entrada— o un cambio de sesion, que pasa por [clearVehicles].
+  Future<void> asegurarVehiculosCargados(String ownerId) {
+    if (_cargadoPara == ownerId) return Future.value();
+
+    final enCurso = _cargaEnCurso;
+    if (enCurso != null && _ownerEnCurso == ownerId) return enCurso;
+
+    _ownerEnCurso = ownerId;
+    _cargadoPara = ownerId;
+    final futuro = fetchVehicles(ownerId).whenComplete(() {
+      if (_ownerEnCurso == ownerId) {
+        _ownerEnCurso = null;
+        _cargaEnCurso = null;
+      }
+    });
+    _cargaEnCurso = futuro;
+    return futuro;
+  }
+
   Future<void> fetchVehicles(String ownerId) async {
     _setLoading(true);
     _setError(null);
@@ -132,6 +182,7 @@ class VehicleProvider with ChangeNotifier {
 
       await _cacheVehicles(_vehicles);
 
+      _cargadoPara = ownerId;
       _setLoading(false);
     } catch (e) {
       final cached = await _loadCachedVehicles();
@@ -163,17 +214,28 @@ class VehicleProvider with ChangeNotifier {
         await _demoteCurrentPrimary(vehicle.idPropietario);
       }
 
-      // Obtener imagen automáticamente antes de guardar
-      final imageUrl = await _imageService.getVehicleImage(
-        vehicleId: vehicle.idVehiculo,
-        brand: vehicle.marca ?? '',
-        model: vehicle.modelo ?? '',
-        year: vehicle.anio ?? 0,
-        color: vehicle.color ?? '',
-      );
-
-      vehicle = vehicle.copyWith(fotoUrl: imageUrl);
-
+      // Un vehiculo nace SIN foto, y el placeholder neutro de
+      // `VehicleImageWidget` cubre ese hueco.
+      //
+      // Aqui habia una llamada a `VehicleImageService`, que buscaba en
+      // SearchAPI.io (engine `google_images`) una foto "estilo concesionario"
+      // de la marca y el modelo y guardaba ESE enlace en `foto_url`. Retirada,
+      // por dos motivos que se refuerzan:
+      //
+      //  - Propiedad intelectual: lo que devolvia eran fotos de terceros
+      //    raspadas de Google Imagenes (catalogos de concesionario, bancos de
+      //    imagen), servidas desde el CDN de su dueño. AutoDoc no tiene
+      //    licencia sobre ninguna, y las pintaba como si fueran el coche de la
+      //    persona.
+      //  - Privacidad, y es el mismo agujero que FUNC-01 cerro en
+      //    `resenias.fotos`: `foto_url` la lee todo el que puede ver la ficha
+      //    del vehiculo —el taller vinculado, la vista publica, quien reciba
+      //    un pase de historial—, asi que un enlace a un servidor ajeno le
+      //    entrega a ese tercero la IP y el User-Agent de cada visitante.
+      //
+      // Quien quiera la foto de su coche la sube: `VehiclePhotoService` ya
+      // existe y escribe en `vehiculos/{id}/fotos/` de nuestro propio Storage.
+      // `firestore.rules` exige ahora que `foto_url` salga de ahi.
       await _vehicleService.addVehicle(vehicle);
       await fetchVehicles(vehicle.idPropietario);
       _setLoading(false);
@@ -417,6 +479,12 @@ class VehicleProvider with ChangeNotifier {
   void clearVehicles() {
     _vehicles = [];
     _selectedVehicle = null;
+    // Sin esto, el siguiente usuario que entre sin recargar la pagina se
+    // encontraria el memo del anterior y `asegurarVehiculosCargados` no
+    // pediria nada.
+    _cargadoPara = null;
+    _ownerEnCurso = null;
+    _cargaEnCurso = null;
     _recentSearches.clear();
     _error = null;
     _isLoading = false;
