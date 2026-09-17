@@ -747,6 +747,83 @@ jobs:
           fi
           echo "✅ APK firmado con la keystore de release ($(du -h "$APK" | cut -f1))"
 
+      # ─────────────────────────────────────────
+      # App Bundle para Google Play
+      # ─────────────────────────────────────────
+      - name: Build release App Bundle (Play)
+        if: steps.firma.outputs.ready == 'true'
+        # Play NO acepta APK para apps nuevas: exige Android App Bundle. El APK
+        # de arriba se queda porque es lo que se adjunta a la GitHub Release y lo
+        # que la gente puede instalar a mano; el .aab existe solo para subirlo a
+        # Play Console, asi que no se publica como release (ver mas abajo).
+        #
+        # --build-number: Play rechaza un bundle cuyo versionCode ya se subio,
+        # incluso si se borro del borrador. pubspec.yaml esta clavado en +1, asi
+        # que sin esto la segunda subida seria imposible sin editar el fichero a
+        # mano en cada release. github.run_number es monotono y no se repite.
+        #
+        # Solo lo lleva el bundle, no el APK: el tag y el nombre del asset de la
+        # GitHub Release se derivan de pubspec.yaml, y pasarle el run_number al
+        # APK dejaria el tag anunciando una version que el APK no tiene dentro.
+        env:
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY_ANDROID || secrets.GOOGLE_MAPS_API_KEY }}
+        run: |
+          flutter build appbundle --release \
+            --build-number=${{ github.run_number }} \
+            --dart-define=FLAVOR=prod \
+            --dart-define=RECAPTCHA_SITE_KEY=${{ secrets.RECAPTCHA_SITE_KEY }} \
+            --dart-define=FIREBASE_ANDROID_API_KEY=${{ secrets.FIREBASE_ANDROID_API_KEY }} \
+            --dart-define=FIREBASE_APP_ID_ANDROID=${{ secrets.FIREBASE_APP_ID_ANDROID }} \
+            --dart-define=FIREBASE_MESSAGING_SENDER_ID=${{ secrets.FIREBASE_MESSAGING_SENDER_ID }} \
+            --dart-define=FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }} \
+            --dart-define=FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }} \
+            --dart-define=FIREBASE_DATABASE_URL=${{ secrets.FIREBASE_DATABASE_URL }} \
+            --dart-define=FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }} \
+            --dart-define=GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY_ANDROID || secrets.GOOGLE_MAPS_API_KEY }} \
+            --dart-define=ANDROID_CERT_SHA1=${{ env.ANDROID_CERT_SHA1 }} \
+            --dart-define=VEHICLE_IMAGE_API_KEY=${{ secrets.VEHICLE_IMAGE_API_KEY }}
+
+      - name: Verify App Bundle signature
+        if: steps.firma.outputs.ready == 'true'
+        # apksigner NO sabe leer un .aab: muere con
+        #   ApkFormatException: Missing AndroidManifest.xml
+        # porque un bundle guarda el manifest compilado en base/manifest/ y no
+        # en la raiz. La firma de un bundle es firma de JAR, y eso lo lee
+        # keytool -printcert -jarfile.
+        #
+        # Las dos direcciones verificadas en local sobre un bundle real (65 MB,
+        # firmado con una keystore desechable):
+        #   - keytool imprime el certificado del firmante y el guard NO dispara;
+        #   - el CN de la debug keystore es "C=US, O=Android, CN=Android Debug",
+        #     asi que el patron de abajo SI la atrapa.
+        #
+        # El motivo de comprobarlo es el mismo que en el APK y aqui duele mas:
+        # Play rechaza de plano un bundle firmado con la clave de debug, pero
+        # solo despues de subirlo, y el error de la consola no dice cual es la
+        # causa.
+        run: |
+          AAB=build/app/outputs/bundle/release/app-release.aab
+          test -s "$AAB" || { echo "❌ No se genero el App Bundle"; exit 1; }
+          keytool -printcert -jarfile "$AAB" | tee /tmp/aab-cert.txt
+          if grep -qi 'CN=Android Debug' /tmp/aab-cert.txt; then
+            echo "❌ El App Bundle quedo firmado con la clave de DEBUG, no con la de release"
+            exit 1
+          fi
+          echo "✅ App Bundle firmado con la keystore de release ($(du -h "$AAB" | cut -f1))"
+
+      - name: Upload App Bundle artifact
+        if: steps.firma.outputs.ready == 'true'
+        # El .aab NO va a la GitHub Release a proposito: no se puede instalar en
+        # un telefono, asi que adjuntarlo junto al APK solo confundiria a quien
+        # entre a descargar la app. Va como artefacto del run, que es de donde se
+        # baja para subirlo a Play Console.
+        uses: actions/upload-artifact@v4
+        with:
+          name: autodoc-playstore-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+          retention-days: 90
+          if-no-files-found: error
+
       - name: Publish GitHub Release
         if: steps.firma.outputs.ready == 'true'
         env:
