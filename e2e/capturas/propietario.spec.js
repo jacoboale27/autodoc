@@ -14,7 +14,7 @@
 // cayeran por timeout. Se navega con `goto` entre pantalla y pantalla dentro
 // de la misma sesion.
 
-const { test } = require('@playwright/test');
+const { test, expect } = require('@playwright/test');
 const {
   ACTORES,
   abrirApp,
@@ -73,11 +73,23 @@ test('capturas del propietario', async ({ page }) => {
   // ── 05 · Alertas ───────────────────────────────────────────────────────
   // "Me avisa antes de la multa". El SOAT del vehiculo 1 vence dentro de 12
   // dias en el seed justamente para que aqui haya algo que fotografiar.
+  //
+  // La pantalla pinta «Selecciona un vehículo primero» mientras
+  // `vehicleProvider.selectedVehicle` sea null (alerts_screen.dart:64). No
+  // deberia pasar —el provider autoselecciona el vehiculo principal, y el seed
+  // marca la Hilux como tal (vehicle_provider.dart:49)—, pero si la navegacion
+  // directa a /alerts gana la carrera a la carga de vehiculos, la captura
+  // saldria con ese cartel y sin una sola alerta. Se afirma en NEGATIVO porque
+  // es el unico modo de fallo que produce una pantalla bonita y vacia.
   await page.goto('/alerts');
   await comprobarPantalla(page, {
     enEspanol: ['Alertas'],
     conDatos: [],
   });
+  await expect(
+    page.getByText('Selecciona un vehículo primero'),
+    'La pantalla de alertas se quedo sin vehiculo seleccionado.',
+  ).toHaveCount(0);
   await capturar(page, 5, 'alertas');
 
   // ── 06 · Inicio ────────────────────────────────────────────────────────
