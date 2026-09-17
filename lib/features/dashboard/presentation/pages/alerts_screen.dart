@@ -313,7 +313,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
               _buildSectionHeader(
                 criticalStyle,
                 context.l10n.alertsPendingCount(
-                  (criticalTasks.length + highAlerts.length).toString(),
+                  criticalTasks.length + highAlerts.length,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -339,7 +339,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
               _buildSectionHeader(
                 preventiveStyle,
                 context.l10n.alertsEventsCount(
-                  (preventiveTasks.length + medAlerts.length).toString(),
+                  preventiveTasks.length + medAlerts.length,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),

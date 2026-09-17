@@ -100,10 +100,10 @@
   "dashMaintWarning": "Mantenimiento próximo — revisa las alertas",
   "dashMaintOptimal": "Vehículo en buen estado",
   "dashMaintStatusLabel": "Estado de Mantenimiento",
-  "dashNoVehicles": "No hay vehiculos registrados",
+  "dashNoVehicles": "No hay vehículos registrados",
   "dashNoVehiclesDesc": "Añade tu primer vehículo para empezar a controlar su mantenimiento y estado.",
   "dashRegisterVehicle": "Registrar Vehículo",
-  "dashMainVehicle": "VEHICULO PRINCIPAL",
+  "dashMainVehicle": "VEHÍCULO PRINCIPAL",
   "dashLicensePlate": "Placa: {placa}",
   "@dashLicensePlate": {
     "placeholders": {
@@ -115,7 +115,7 @@
   "dashMileage": "KILOMETRAJE",
   "dashKm": "km",
   "dashViewVehicleState": "Ver Estado del Vehículo",
-  "dashAddVehicleError": "Error al agregar vehiculo",
+  "dashAddVehicleError": "Error al agregar vehículo",
   "dashActiveAlerts": "Alertas Activas",
   "dashViewAll": "Ver Todas",
   "dashNoAlertsPending": "¡Excelente! No tienes alertas pendientes.",
@@ -148,7 +148,7 @@
     }
   },
   "garageMakePrimaryError": "No se pudo establecer el vehículo principal",
-  "garageAddVehicleError": "Error al agregar vehiculo",
+  "garageAddVehicleError": "Error al agregar vehículo",
   "vpProfileTitle": "Perfil del Vehículo",
   "vpShareVehicle": "Compartir Vehículo",
   "vpDeleteVehicle": "Eliminar Vehículo",
@@ -237,20 +237,20 @@
   "alertsAllGood": "¡Todo al día!",
   "alertsNoAlertsInCategory": "No hay alertas en esta categoría.",
   "alertsHighPriority": "Prioridad Alta",
-  "alertsPendingCount": "{count} pendientes",
+  "alertsPendingCount": "{count, plural, =1{1 pendiente} other{{count} pendientes}}",
   "@alertsPendingCount": {
     "placeholders": {
       "count": {
-        "type": "String"
+        "type": "int"
       }
     }
   },
   "alertsUpcomingExpirations": "Próximos Vencimientos",
-  "alertsEventsCount": "{count} eventos",
+  "alertsEventsCount": "{count, plural, =1{1 evento} other{{count} eventos}}",
   "@alertsEventsCount": {
     "placeholders": {
       "count": {
-        "type": "String"
+        "type": "int"
       }
     }
   },
@@ -658,7 +658,7 @@
       }
     }
   },
-  "chatReservationFailed": "No se pudo crear la cita. Intentalo de nuevo.",
+  "chatReservationFailed": "No se pudo crear la cita. Inténtalo de nuevo.",
   "chatReservationDetail": "Detalle de Cita",
   "coreAppTitle": "AutoDoc Taller",
   "chatViewFullHistory": "Ver Historial Completo",
@@ -774,7 +774,7 @@
   "@notFoundGoBack": {
     "description": "Boton que vuelve a la pantalla anterior desde el 404"
   },
-  "bandejaTruncada": "Se muestran las {tope} conversaciones con actividad mas reciente. Hay mas hilos que no caben aqui.",
+  "bandejaTruncada": "Se muestran las {tope} conversaciones con actividad más reciente. Hay mas hilos que no caben aquí.",
   "@bandejaTruncada": {
     "description": "Aviso de que la bandeja de chat llego a su tope y hay conversaciones que no se listan",
     "placeholders": {
@@ -783,7 +783,7 @@
       }
     }
   },
-  "hiloTruncado": "Se muestran los {tope} mensajes mas recientes. Los anteriores no estan cargados.",
+  "hiloTruncado": "Se muestran los {tope} mensajes más recientes. Los anteriores no están cargados.",
   "@hiloTruncado": {
     "description": "Aviso de que el hilo de chat llego a su tope y los mensajes mas antiguos no se cargaron",
     "placeholders": {
@@ -792,19 +792,19 @@
       }
     }
   },
-  "errorDatosTitulo": "No pudimos cargar esta informacion",
+  "errorDatosTitulo": "No pudimos cargar esta información",
   "@errorDatosTitulo": {
     "description": "Titulo del estado de error de una pantalla que consulta datos (UX-04)"
   },
-  "errorDatosPermiso": "No tienes acceso a esta informacion. Si crees que deberia estar disponible, vuelve a iniciar sesion.",
+  "errorDatosPermiso": "No tienes acceso a esta información. Si crees que debería estar disponible, vuelve a iniciar sesión.",
   "@errorDatosPermiso": {
     "description": "Mensaje de error cuando el backend deniega el acceso (permission-denied / unauthorized)"
   },
-  "errorDatosConexion": "No pudimos conectar con el servidor. Revisa tu conexion e intentalo de nuevo.",
+  "errorDatosConexion": "No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.",
   "@errorDatosConexion": {
     "description": "Mensaje de error de red o servicio no disponible"
   },
-  "errorDatosGenerico": "Algo salio mal al cargar esta informacion. Intentalo de nuevo en un momento.",
+  "errorDatosGenerico": "Algo salió mal al cargar esta información. Inténtalo de nuevo en un momento.",
   "@errorDatosGenerico": {
     "description": "Mensaje de error por defecto, sin detalle tecnico"
   },
@@ -816,7 +816,7 @@
   "@paseTitulo": {
     "description": "Titulo de la pantalla donde el propietario emite un pase temporal de historial (INNO-01)"
   },
-  "paseIntro": "Quien escanee este codigo vera que mantenimientos tiene el vehiculo y cuando. No vera importes ni facturas, y el pase caduca solo.",
+  "paseIntro": "Quien escanee este código verá que mantenimientos tiene el vehículo y cuando. No verá importes ni facturas, y el pase caduca solo.",
   "@paseIntro": {
     "description": "Explicacion de que ve y que no ve quien escanea el pase"
   },
@@ -845,7 +845,7 @@
   "@paseGenerarOtro": {
     "description": "Accion para emitir un pase nuevo cuando el anterior caduco o se revoco"
   },
-  "paseTokenEtiqueta": "Si no puede escanear, comparte este codigo:",
+  "paseTokenEtiqueta": "Si no puede escanear, comparte este código:",
   "@paseTokenEtiqueta": {
     "description": "Alternativa textual al QR"
   },
@@ -870,7 +870,7 @@
       }
     }
   },
-  "paseLectorSinServicios": "Este vehiculo no tiene mantenimientos registrados en AutoDoc.",
+  "paseLectorSinServicios": "Este vehículo no tiene mantenimientos registrados en AutoDoc.",
   "@paseLectorSinServicios": {
     "description": "Estado vacio del historial compartido"
   },
@@ -906,15 +906,15 @@
   "@paseLectorNoExiste": {
     "description": "Error: el pase no se encuentra"
   },
-  "paseLectorInvalido": "Ese codigo no es un pase de historial de AutoDoc.",
+  "paseLectorInvalido": "Ese código no es un pase de historial de AutoDoc.",
   "@paseLectorInvalido": {
     "description": "Error: el codigo escaneado no tiene la forma de un pase"
   },
-  "paseCopiarCodigo": "Copiar codigo",
+  "paseCopiarCodigo": "Copiar código",
   "@paseCopiarCodigo": {
     "description": "Accion para copiar al portapapeles el codigo del pase (INNO-01)"
   },
-  "paseCodigoCopiado": "Codigo copiado",
+  "paseCodigoCopiado": "Código copiado",
   "@paseCodigoCopiado": {
     "description": "Aviso de que el codigo del pase se copio al portapapeles"
   },
@@ -951,11 +951,11 @@
       }
     }
   },
-  "authSignOutError": "No pudimos cerrar tu sesion. Revisa tu conexion e intentalo de nuevo.",
+  "authSignOutError": "No pudimos cerrar tu sesión. Revisa tu conexión e inténtalo de nuevo.",
   "@authSignOutError": {
     "description": "Fallo al cerrar sesion desde el gate de verificacion de correo (GAPS-05)"
   },
-  "authRefreshError": "No pudimos comprobar tu verificacion. Intentalo de nuevo en un momento.",
+  "authRefreshError": "No pudimos comprobar tu verificación. Inténtalo de nuevo en un momento.",
   "@authRefreshError": {
     "description": "Fallo al recargar el estado de verificacion del usuario"
   }

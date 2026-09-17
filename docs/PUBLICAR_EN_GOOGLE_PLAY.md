@@ -331,6 +331,35 @@ cronológico.
 Las 3 y 7 son las que diferencian a AutoDoc de un cuaderno de notas. Si solo
 hubiera presupuesto para cuatro capturas, serían 1, 2, 3 y 4.
 
+### La foto del vehículo: por qué NO se usan las de SearchAPI
+
+La primera tanda de capturas salió con un **Mercedes-Benz sedán plateado bajo el
+rótulo «Toyota Hilux»**. Era `assets/images/default_vehicle.jpg`, el placeholder
+que se pinta cuando un vehículo no tiene `foto_url`.
+
+Se arregló sustituyendo ese asset por una **silueta geométrica neutra** (sin
+marca, sin modelo, 18 KB frente a los 395 KB del render fotográfico). Eso cierra
+además un defecto de producción: cualquier usuario cuya búsqueda de imagen
+fallara veía un Mercedes etiquetado como su coche.
+
+**Lo que NO se hizo, a propósito: rellenar `foto_url` con lo que devuelve
+SearchAPI.io.** La clave funciona —200, CORS abierto, 100 resultados— pero lo
+que devuelve son **fotos de terceros raspadas de Google Imágenes**: en la
+consulta de prueba, imágenes de Arnold Clark Leasing servidas desde
+`cdn.imagin.studio`. Publicar una captura con una foto comercial ajena en la
+ficha de Play es riesgo de retirada por propiedad intelectual, y no es un riesgo
+que valga la pena por una foto de coche.
+
+Si quieres fotos reales en las capturas 1 y 6, la vía limpia es sembrar
+`foto_url` en `seed-vitrina.js` con **imágenes sobre las que tengas derechos**.
+El widget ya acepta rutas `assets/…` además de URLs
+(`vehicle_image_widget.dart:30`), así que basta con meterlas en el bundle.
+
+> Nota aparte: que la app rellene el historial de sus usuarios con imágenes
+> raspadas de Google es una decisión de producto anterior a esta tanda y con el
+> mismo problema de fondo. No se toca aquí, pero conviene mirarla antes de
+> crecer.
+
 ### Sobre los marcos de dispositivo
 
 Play NO exige marco de teléfono, y las capturas a sangre (sin marco) rinden mejor

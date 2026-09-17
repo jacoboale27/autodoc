@@ -1091,8 +1091,8 @@ abstract class AppLocalizations {
   /// No description provided for @alertsPendingCount.
   ///
   /// In en, this message translates to:
-  /// **'{count} pending'**
-  String alertsPendingCount(String count);
+  /// **'{count, plural, =1{1 pending} other{{count} pending}}'**
+  String alertsPendingCount(int count);
 
   /// No description provided for @alertsUpcomingExpirations.
   ///
@@ -1103,8 +1103,8 @@ abstract class AppLocalizations {
   /// No description provided for @alertsEventsCount.
   ///
   /// In en, this message translates to:
-  /// **'{count} events'**
-  String alertsEventsCount(String count);
+  /// **'{count, plural, =1{1 event} other{{count} events}}'**
+  String alertsEventsCount(int count);
 
   /// No description provided for @alertsSuggestions.
   ///
