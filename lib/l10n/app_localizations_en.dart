@@ -1569,4 +1569,7 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get authRefreshError =>
       'We couldn\'t check your verification. Try again in a moment.';
+
+  @override
+  String get mechanicDashboardTitle => 'Workshop dashboard';
 }

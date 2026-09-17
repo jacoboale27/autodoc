@@ -25,10 +25,14 @@ test('capturas del taller', async ({ page }) => {
   // El otro lado del mercado.
   await page.goto('/mechanic_dashboard');
   await comprobarPantalla(page, {
-    enEspanol: ['Taller'],
-    conDatos: [],
+    enEspanol: ['Panel del taller'],
+    // El nombre del taller confirma que el perfil cargo, y «Ingresos» que los
+    // KPI ya estan calculados. El seed data el servicio mas reciente DENTRO
+    // del mes en curso a proposito: con todo a 34 dias o mas, este panel salia
+    // con «$0.00» y un «-100.0%» en rojo, o sea un taller que parece arruinado.
+    conDatos: ['Talleres La Ceiba', 'Ingresos'],
   });
-  await capturar(page, 7, 'panel-mecanico');
+  await capturar(page, 7, 'panel-mecanico', ['Talleres La Ceiba', 'Ingresos']);
 
   // ── 08 · Reseñas del taller ────────────────────────────────────────────
   // Confianza. La vitrina siembra dos resenias CON TEXTO y una de ellas con
@@ -44,5 +48,5 @@ test('capturas del taller', async ({ page }) => {
     enEspanol: [],
     conDatos: ['Me explicaron el presupuesto'],
   });
-  await capturar(page, 8, 'resenias');
+  await capturar(page, 8, 'resenias', ['Me explicaron el presupuesto']);
 });

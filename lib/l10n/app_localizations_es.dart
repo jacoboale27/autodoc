@@ -1469,7 +1469,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get paseIntro =>
-      'Quien escanee este código verá que mantenimientos tiene el vehículo y cuando. No verá importes ni facturas, y el pase caduca solo.';
+      'Quien escanee este código verá qué mantenimientos tiene el vehículo y cuándo. No verá importes ni facturas, y el pase caduca solo.';
 
   @override
   String paseCaducaEn(String tiempo) {
@@ -1578,4 +1578,7 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get authRefreshError =>
       'No pudimos comprobar tu verificación. Inténtalo de nuevo en un momento.';
+
+  @override
+  String get mechanicDashboardTitle => 'Panel del taller';
 }

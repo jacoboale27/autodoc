@@ -2923,6 +2923,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'We couldn\'t check your verification. Try again in a moment.'**
   String get authRefreshError;
+
+  /// Titulo del panel del taller (barra superior y menu lateral).
+  ///
+  /// In en, this message translates to:
+  /// **'Workshop dashboard'**
+  String get mechanicDashboardTitle;
 }
 
 class _AppLocalizationsDelegate

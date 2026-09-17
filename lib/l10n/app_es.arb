@@ -816,7 +816,7 @@
   "@paseTitulo": {
     "description": "Titulo de la pantalla donde el propietario emite un pase temporal de historial (INNO-01)"
   },
-  "paseIntro": "Quien escanee este código verá que mantenimientos tiene el vehículo y cuando. No verá importes ni facturas, y el pase caduca solo.",
+  "paseIntro": "Quien escanee este código verá qué mantenimientos tiene el vehículo y cuándo. No verá importes ni facturas, y el pase caduca solo.",
   "@paseIntro": {
     "description": "Explicacion de que ve y que no ve quien escanea el pase"
   },
@@ -958,5 +958,9 @@
   "authRefreshError": "No pudimos comprobar tu verificación. Inténtalo de nuevo en un momento.",
   "@authRefreshError": {
     "description": "Fallo al recargar el estado de verificacion del usuario"
+  },
+  "mechanicDashboardTitle": "Panel del taller",
+  "@mechanicDashboardTitle": {
+    "description": "Titulo del panel del taller (barra superior y menu lateral)."
   }
 }

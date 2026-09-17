@@ -47,6 +47,26 @@ const CLAVE = 'vitrina-password-123';
 
 /** Días atrás desde hoy, como Date. */
 const hace = (dias) => new Date(Date.now() - dias * 24 * 60 * 60 * 1000);
+
+/**
+ * Como `hace`, pero sin salirse NUNCA del mes en curso.
+ *
+ * El panel del taller pinta «Ingresos (Mes)» y su variación contra el mes
+ * anterior. Con el servicio mas reciente a 34 dias, el mes en curso salia
+ * vacio y la captura mostraba **$0.00 con un −100.0% en rojo**: un taller que
+ * parece arruinado, que es lo contrario de lo que la ficha tiene que decir.
+ *
+ * El recorte importa porque la fecha se calcula el dia que se corre el seed:
+ * «hace 5 dias» cae en el mes anterior si hoy es dia 3, y entonces la captura
+ * saldria bien o mal segun el dia del mes. Esto lo hace determinista.
+ */
+const esteMes = (dias) => {
+  const objetivo = hace(dias);
+  const primeroDelMes = new Date();
+  primeroDelMes.setDate(1);
+  primeroDelMes.setHours(12, 0, 0, 0);
+  return objetivo < primeroDelMes ? primeroDelMes : objetivo;
+};
 /** Días adelante desde hoy, como Date. */
 const dentroDe = (dias) => new Date(Date.now() + dias * 24 * 60 * 60 * 1000);
 
@@ -226,7 +246,10 @@ async function main() {
       desc: 'Aceite sintético 5W-30, filtro de aceite y filtro de aire.',
       km: 65000,
       costo: 78.5,
-      dias: 34,
+      // Dentro del mes en curso, para que «Ingresos (Mes)» del panel del
+      // taller no salga en 0. Ver `esteMes` arriba.
+      dias: 5,
+      esteMes: true,
       taller: ACTORES.taller.uid,
     },
     {
@@ -286,7 +309,7 @@ async function main() {
       descripcion: s.desc,
       kilometraje_servicio: s.km,
       costo: s.costo,
-      fecha: hace(s.dias),
+      fecha: s.esteMes ? esteMes(s.dias) : hace(s.dias),
     });
   }
 

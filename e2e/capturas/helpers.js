@@ -124,6 +124,42 @@ function visible(page, texto) {
 }
 
 /**
+ * Espera a que los textos clave lleven un rato SEGUIDO en pantalla.
+ *
+ * `comprobarPantalla` mira un instante; la captura ocurre en otro. En medio
+ * cabe una recarga, y eso no es teorico: la pantalla de alertas rendereaba su
+ * contenido —la asercion lo encontraba y pasaba— y acto seguido
+ * `alertProvider.isLoading` volvia a true, asi que el PNG salia con los cuatro
+ * esqueletos de carga puestos. Dos corridas seguidas.
+ *
+ * Por eso no basta con afirmar y disparar: hay que exigir que el contenido
+ * siga ahi despues de un rato, que es lo que distingue «ya cargo» de «cargo y
+ * se volvio a ir». Si desaparece, se reinicia la cuenta.
+ */
+async function esperarEstable(page, textos, { estableMs = 1500, limiteMs = 30000 } = {}) {
+  if (textos.length === 0) return;
+  const limite = Date.now() + limiteMs;
+  let desde = null;
+
+  while (Date.now() < limite) {
+    const todos = await Promise.all(
+      textos.map((t) => visible(page, t).isVisible().catch(() => false)),
+    );
+    if (todos.every(Boolean)) {
+      desde ??= Date.now();
+      if (Date.now() - desde >= estableMs) return;
+    } else {
+      desde = null; // se fue: vuelta a empezar
+    }
+    await page.waitForTimeout(150);
+  }
+  throw new Error(
+    `La pantalla no se estabilizo en ${limiteMs} ms con [${textos.join(', ')}] ` +
+      'visibles a la vez. Probablemente se esta recargando en bucle.',
+  );
+}
+
+/**
  * Deja el PNG en capturas/out/NN-nombre.png.
  *
  * El `waitForTimeout` es deliberado y no se puede sustituir por
@@ -131,7 +167,7 @@ function visible(page, texto) {
  * animaciones de entrada de Flutter, y una captura tomada a mitad de un fundido
  * sale translucida. `pumpAndSettle` no existe aqui — eso es del lado Dart.
  */
-async function capturar(page, orden, nombre) {
+async function capturar(page, orden, nombre, textosClave = []) {
   // Aparta el raton antes de disparar. Sin esto, la pestaña que se acaba de
   // pulsar se queda en hover y Flutter pinta su tooltip —un recuadro gris con
   // «Garaje, tus vehículos registrados»— FLOTANDO sobre la captura. Salio en
@@ -141,6 +177,7 @@ async function capturar(page, orden, nombre) {
   // (5, 5) es esquina vacia; el tooltip necesita ademas un momento para
   // desvanecerse, que lo cubre la espera de abajo.
   await page.mouse.move(5, 5);
+  await esperarEstable(page, textosClave);
   await page.waitForTimeout(1200);
   const archivo = path.join(
     DIR_SALIDA,

@@ -961,5 +961,9 @@
   "authRefreshError": "We couldn't check your verification. Try again in a moment.",
   "@authRefreshError": {
     "description": "Fallo al recargar el estado de verificacion del usuario"
+  },
+  "mechanicDashboardTitle": "Workshop dashboard",
+  "@mechanicDashboardTitle": {
+    "description": "Titulo del panel del taller (barra superior y menu lateral)."
   }
 }

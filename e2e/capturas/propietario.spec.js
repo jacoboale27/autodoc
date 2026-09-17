@@ -50,9 +50,11 @@ test('capturas del propietario', async ({ page }) => {
   await page.goto('/dashboard');
   await comprobarPantalla(page, {
     enEspanol: ['Alertas Activas'],
-    conDatos: [],
+    // Un dato real, no solo el rotulo: sin esto la captura puede salir con el
+    // vehiculo aun cargando y el test pasaria igual.
+    conDatos: ['Toyota Hilux'],
   });
-  await capturar(page, 6, 'inicio');
+  await capturar(page, 6, 'inicio', ['Toyota Hilux']);
 
   // ── 01 · Garaje ────────────────────────────────────────────────────────
   // "Todos mis carros en un sitio". Es la que se entiende sin leer.
@@ -62,7 +64,7 @@ test('capturas del propietario', async ({ page }) => {
     enEspanol: ['Mis Vehículos'],
     conDatos: ['Hilux'],
   });
-  await capturar(page, 1, 'garaje');
+  await capturar(page, 1, 'garaje', ['Mis Vehículos', 'Hilux']);
 
   // ── 04 · Directorio de talleres ────────────────────────────────────────
   // Que exista una red, no una app vacia. Por eso la vitrina siembra DOS
@@ -72,7 +74,7 @@ test('capturas del propietario', async ({ page }) => {
     enEspanol: ['Talleres'],
     conDatos: ['La Ceiba'],
   });
-  await capturar(page, 4, 'directorio-talleres');
+  await capturar(page, 4, 'directorio-talleres', ['La Ceiba']);
 
   // ── 05 · Alertas ───────────────────────────────────────────────────────
   // "Me avisa antes de la multa". El SOAT del vehiculo 1 vence dentro de 12
@@ -85,14 +87,19 @@ test('capturas del propietario', async ({ page }) => {
   await page.getByRole('button', { name: 'Ver Todas' }).click();
   await comprobarPantalla(page, {
     enEspanol: ['Alertas'],
-    conDatos: [],
+    // «Seguro por vencer» lo calcula la app a partir del `vencimiento_soat`
+    // sembrado a 12 dias. Afirmarlo obliga a esperar a que las alertas esten
+    // CALCULADAS: con `conDatos: []` la captura salio con los esqueletos de
+    // carga puestos y el test paso — el PNG bonito y vacio que este helper
+    // existe para impedir, colandose por una asercion que deje yo floja.
+    conDatos: ['Seguro por vencer'],
   });
-  // En negativo: es el unico modo de fallo que produce un PNG bonito y vacio.
+  // En negativo: el otro modo de fallo que produce un PNG bonito y vacio.
   await expect(
     page.getByText('Selecciona un vehículo primero'),
     'La pantalla de alertas se quedo sin vehiculo seleccionado.',
   ).toHaveCount(0);
-  await capturar(page, 5, 'alertas');
+  await capturar(page, 5, 'alertas', ['Seguro por vencer']);
 
   // ── 02 · Historial de servicios ────────────────────────────────────────
   // El corazon del producto. Seis servicios sembrados para que se lea como un
@@ -105,7 +112,7 @@ test('capturas del propietario', async ({ page }) => {
     enEspanol: ['Historial de Servicios'],
     conDatos: ['Cambio de aceite'],
   });
-  await capturar(page, 2, 'historial');
+  await capturar(page, 2, 'historial', ['Cambio de aceite']);
 
   // ── 03 · Pase de historial (QR) ────────────────────────────────────────
   // El diferenciador, y la escena del video elegido ("el carro que cuenta su
@@ -119,5 +126,5 @@ test('capturas del propietario', async ({ page }) => {
     enEspanol: ['Compartir historial'],
     conDatos: ['Caduca en'],
   });
-  await capturar(page, 3, 'pase-historial');
+  await capturar(page, 3, 'pase-historial', ['Caduca en']);
 });

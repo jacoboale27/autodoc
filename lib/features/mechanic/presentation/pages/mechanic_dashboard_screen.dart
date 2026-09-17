@@ -22,6 +22,7 @@ import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/providers/language_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 /// Primer día del mes que está cinco meses atrás: el borde de la ventana que
 /// la gráfica de tendencia dibuja desde siempre.
@@ -84,7 +85,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
     final mechanicName = userData.nombreCompleto;
 
     return MechanicScaffold(
-      title: 'Dashboard',
+      title: context.l10n.mechanicDashboardTitle,
       actions: const [
         _TemaIdiomaActions(),
         SizedBox(width: AppSpacing.base),
