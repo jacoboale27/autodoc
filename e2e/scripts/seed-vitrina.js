@@ -348,7 +348,16 @@ async function main() {
       + 'cuando estuvo lista.',
     fecha_resenia: hace(160),
     fotos: [],
-    respuesta_taller: '¡Gracias Karla! Nos vemos en el siguiente servicio.',
+    // OJO: `respuesta_taller` es un MAPA {texto, fecha}, no una cadena
+    // (review_model.dart:66). Y el modo de fallo es silencioso: `parseRespuesta`
+    // devuelve null ante cualquier cosa que no sea un Map
+    // (review_model.dart:77), asi que una cadena no revienta — simplemente
+    // desaparece, y la captura sale sin la respuesta del taller sin que nada
+    // avise.
+    respuesta_taller: {
+      texto: '¡Gracias Karla! Nos vemos en el siguiente servicio.',
+      fecha: hace(158),
+    },
     is_reported: false,
   });
 

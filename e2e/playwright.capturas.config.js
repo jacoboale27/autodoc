@@ -52,10 +52,18 @@ module.exports = defineConfig({
 
     // ── Tamaño de telefono ────────────────────────────────────────────────
     //
-    // 412x915 es un Pixel moderno. Con deviceScaleFactor 3 el PNG sale a
-    // 1236x2745, que entra holgado en el rango de Play (320-3840 px, ratio
-    // entre 16:9 y 9:16 — este es 1:2.22) y se ve nitido en pantallas densas.
-    viewport: { width: 412, height: 915 },
+    // 360x640 @3x = 1080x1920, que es EXACTAMENTE el tamaño que Google
+    // recomienda para capturas de telefono, y exactamente 9:16.
+    //
+    // El primer intento fue 412x915 @3x (un Pixel moderno) = 1236x2745. Se
+    // salia: Play exige que **el lado largo no supere el doble del corto**, y
+    // 2745/1236 = 2.22. Los telefonos actuales son mas altos que 2:1, asi que
+    // un viewport "realista" produce una captura que la consola RECHAZA — es
+    // una trampa facil de repetir.
+    //
+    // 360 dp de ancho no es un apaño: es el ancho logico mas comun de Android,
+    // asi que la app tiene que verse bien ahi de todas formas.
+    viewport: { width: 360, height: 640 },
     deviceScaleFactor: 3,
     isMobile: true,
     hasTouch: true,

@@ -84,16 +84,43 @@ async function entrarComo(page, actor) {
 async function comprobarPantalla(page, { enEspanol, conDatos }) {
   for (const texto of enEspanol) {
     await expect(
-      page.getByText(texto, { exact: false }).first(),
+      visible(page, texto),
       `Rotulo en español ausente: "${texto}". ¿Se renderizo en ingles?`,
     ).toBeVisible({ timeout: 30000 });
   }
   for (const texto of conDatos) {
     await expect(
-      page.getByText(texto, { exact: false }).first(),
+      visible(page, texto),
       `Dato de vitrina ausente: "${texto}". ¿Fallo la siembra?`,
     ).toBeVisible({ timeout: 30000 });
   }
+}
+
+/**
+ * Localiza un texto mire donde mire Flutter web: como nodo de texto O como
+ * parte de un `aria-label`.
+ *
+ * `getByText` a secas NO basta, y el modo de fallo enseña a desconfiar de el:
+ * la pantalla del directorio de talleres pintaba «Talleres La Ceiba» sin
+ * problema, pero Flutter mete la TARJETA ENTERA en un solo `<flt-semantics
+ * role="button">` cuyo rotulo concatena todo:
+ *
+ *   button "Talleres La Ceiba 4.8 de 5 estrellas 4.8 Especialidad: ... Contactar"
+ *
+ * Ese rotulo viaja en el `aria-label` del elemento, no como texto del DOM, asi
+ * que `getByText('La Ceiba')` no encuentra nada mientras el ojo lo lee
+ * perfectamente en la captura. Es la misma familia de trampa que documenta
+ * CLAUDE.md para `getByLabel` y el `errorText` de los formularios: en Flutter
+ * web, lo que se ve y lo que es un nodo de texto no coinciden.
+ *
+ * La union cubre los dos casos sin tener que adivinar cual aplica en cada
+ * pantalla, que es justo lo que no se puede saber sin mirar el arbol.
+ */
+function visible(page, texto) {
+  return page
+    .getByText(texto, { exact: false })
+    .or(page.locator(`[aria-label*=${JSON.stringify(texto)}]`))
+    .first();
 }
 
 /**
@@ -105,6 +132,15 @@ async function comprobarPantalla(page, { enEspanol, conDatos }) {
  * sale translucida. `pumpAndSettle` no existe aqui — eso es del lado Dart.
  */
 async function capturar(page, orden, nombre) {
+  // Aparta el raton antes de disparar. Sin esto, la pestaña que se acaba de
+  // pulsar se queda en hover y Flutter pinta su tooltip —un recuadro gris con
+  // «Garaje, tus vehículos registrados»— FLOTANDO sobre la captura. Salio en
+  // 01-garaje.png de la tercera corrida: la captura pasa todas las
+  // afirmaciones y es inservible para la ficha.
+  //
+  // (5, 5) es esquina vacia; el tooltip necesita ademas un momento para
+  // desvanecerse, que lo cubre la espera de abajo.
+  await page.mouse.move(5, 5);
   await page.waitForTimeout(1200);
   const archivo = path.join(
     DIR_SALIDA,

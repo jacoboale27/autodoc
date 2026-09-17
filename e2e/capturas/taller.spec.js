@@ -34,10 +34,15 @@ test('capturas del taller', async ({ page }) => {
   // Confianza. La vitrina siembra dos resenias CON TEXTO y una de ellas con
   // respuesta del taller: cinco estrellas sin comentario se leen como
   // sembradas, que es justo lo que esta captura tiene que desmentir.
+  //
+  // Se afirma sobre el COMENTARIO, no sobre el nombre del autor: `ReviewModel`
+  // no tiene campo de nombre (solo `idUsuario`), asi que la tarjeta no lo
+  // pinta. Afirmar «Ricardo» aqui era esperar un dato que la pantalla no
+  // muestra, y habria fallado cada corrida.
   await page.goto('/mechanic_reviews');
   await comprobarPantalla(page, {
     enEspanol: [],
-    conDatos: ['Ricardo'],
+    conDatos: ['Me explicaron el presupuesto'],
   });
   await capturar(page, 8, 'resenias');
 });

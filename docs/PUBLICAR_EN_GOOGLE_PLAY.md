@@ -263,17 +263,53 @@ semántica y `getByRole` no encuentra nada. Para capturas además hay que dejar
 asentar las animaciones — y `pumpAndSettle` no aplica aquí, es
 `await page.waitForTimeout(…)` o esperar a un elemento concreto.
 
-**4. El tamaño tiene que ser de teléfono, no de escritorio.**
+**4. El tamaño tiene que ser de teléfono — pero NO el de un teléfono real.**
+
+Ésta es la trampa menos evidente de las cuatro, y cayó en la primera corrida.
+Play exige que cada lado esté entre 320 y 3840 px **y que el lado largo no
+supere el doble del corto**. Los teléfonos actuales son más altos que 2:1, así
+que un viewport "realista" produce capturas que la consola **rechaza**:
+
+| Viewport | @3x | Ratio | Play |
+|---|---|---|---|
+| 412 × 915 (Pixel moderno) | 1236 × 2745 | 1:2.22 | **rechazada** |
+| 360 × 640 | **1080 × 1920** | 1:1.78 | correcta, y es el tamaño recomendado |
 
 ```js
-viewport: { width: 412, height: 915 },
-deviceScaleFactor: 3,   // -> PNG de 1236 x 2745, dentro del rango de Play
+viewport: { width: 360, height: 640 },
+deviceScaleFactor: 3,   // -> 1080 x 1920, exactamente 9:16
 isMobile: true,
 hasTouch: true,
 ```
 
-Play acepta de 320 a 3840 px con ratio entre 16:9 y 9:16. 1236×2745 entra holgado
-y se ve nítido en pantallas densas.
+360 dp de ancho no es un apaño: es el ancho lógico más común de Android, así que
+la app tiene que verse bien ahí de todas formas.
+
+**5. Media app no carga sus propios datos, y `goto` la deja vacía.**
+
+`page.goto` recarga la página entera, o sea reinicia la app y vacía los
+providers. Y hay pantallas que dependen de que otra las haya llenado:
+
+| Pantalla | ¿Se carga sola? |
+|---|---|
+| `/service_history/:id` | Sí — `StreamBuilder` propio sobre Firestore |
+| `/compartir_historial/:id` | Sí — emite en `initState` |
+| `/mechanic_reviews`, `/mechanic_dashboard` | Sí |
+| **`/garage`** | **No** — solo lee `vehicleProvider.vehicles` |
+| **`/alerts`** | **No** — depende de `vehicleProvider.selectedVehicle` |
+
+El único sitio que llama a `fetchVehicles` al entrar es el dashboard
+(`dashboard_screen.dart:54`). Medido: un `goto('/garage')` en frío da «No tienes
+vehículos en tu garaje» con tres vehículos sembrados.
+
+La suite lo esquiva entrando una vez por `/dashboard` y navegando **dentro** de
+la app (pestañas) para esas dos, y dejando `goto` solo para las autónomas.
+
+> **Esto es además un defecto de producción, no un artefacto del test.**
+> Cualquiera que entre a `/garage` por un enlace directo, o que pulse **F5**
+> estando ahí, ve el garaje vacío teniendo coches. Es la misma familia que el
+> crash de `/task_config` al recargar que levantó H-01. No lo arregla esta
+> tanda; queda anotado.
 
 ### Las 8 capturas, en orden de ficha
 
