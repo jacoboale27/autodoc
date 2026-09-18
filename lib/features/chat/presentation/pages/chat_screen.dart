@@ -40,6 +40,8 @@ import 'package:autodoc/features/chat/presentation/providers/reserva_provider.da
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/utils/mechanic_profile_utils.dart';
 import 'package:autodoc/core/models/user_model.dart';
+import 'package:autodoc/core/models/galeria_taller.dart';
+import 'package:autodoc/config/secrets.dart';
 import 'package:autodoc/features/profile/data/services/public_profile_service.dart';
 import 'package:autodoc/features/chat/presentation/widgets/adjunto_preview_sheet.dart';
 import 'package:autodoc/features/mechanic/data/services/verificacion_service.dart';
@@ -711,8 +713,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               if (realName?.isNotEmpty == true) {
                 finalName = realName!;
               }
-              fotoUrl =
-                  (data?['foto_perfil_url'] ?? data?['foto_url']) as String?;
+              // Un taller se ve con su logo (observaciones del 2026-09-18,
+              // captura 3); un cliente, con su foto de perfil.
+              fotoUrl = !isMecanico && data != null
+                  ? GaleriaTaller.imagenDelTaller(
+                      bucket: AppSecrets.firebaseStorageBucket,
+                      idTaller: receptorId,
+                      datos: data,
+                    )
+                  : (data?['foto_perfil_url'] ?? data?['foto_url']) as String?;
             }
             final estaEscribiendo =
                 conversacion != null && conversacion.typingId == receptorId;

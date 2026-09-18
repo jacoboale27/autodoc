@@ -336,4 +336,77 @@ void main() {
       },
     );
   });
+
+  group('observaciones 2026-09-18 (captura 3): el logo del taller', () {
+    testWidgets('el avatar es el logo del taller, no la inicial del nombre', (
+      tester,
+    ) async {
+      final firestore = FakeFirebaseFirestore();
+      await firestore.collection('talleres').doc('mec5').set({
+        'nombre': 'Lionel Messi',
+        'especialidad': 'Mecánica General',
+        'galeria': ['logo.webp'],
+      });
+
+      await pumpEntry(
+        tester,
+        PublicProfileScreen(
+          userId: 'mec5',
+          firestore: firestore,
+          publicProfileService: PublicProfileService(
+            firestore: firestore,
+            obtenerEmpleadosPublicos: (_) async => const [],
+          ),
+          storageBucket: 'bucket-de-prueba.appspot.com',
+        ),
+        profile: FakeUserProfileProvider(
+          userData: testUser(rol: 'Propietario'),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final avatar = tester.widget<AppUserAvatar>(
+        find.byKey(const Key('perfil_publico_avatar')),
+      );
+      expect(avatar.urlFoto, isNotNull);
+      expect(avatar.urlFoto, contains('talleres_fotos'));
+      expect(avatar.urlFoto, contains('logo.webp'));
+      // Con solo el logo, ya no se repite abajo como "galería".
+      expect(find.byKey(const Key('perfil_publico_galeria')), findsNothing);
+    });
+
+    testWidgets('sin logo, el avatar sigue siendo la foto de perfil', (
+      tester,
+    ) async {
+      final firestore = FakeFirebaseFirestore();
+      await firestore.collection('talleres').doc('mec6').set({
+        'nombre': 'Taller Sin Logo',
+        'foto_perfil_url': 'https://x/taller.jpg',
+      });
+
+      await pumpEntry(
+        tester,
+        PublicProfileScreen(
+          userId: 'mec6',
+          firestore: firestore,
+          publicProfileService: PublicProfileService(
+            firestore: firestore,
+            obtenerEmpleadosPublicos: (_) async => const [],
+          ),
+          storageBucket: 'bucket-de-prueba.appspot.com',
+        ),
+        profile: FakeUserProfileProvider(
+          userData: testUser(rol: 'Propietario'),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final avatar = tester.widget<AppUserAvatar>(
+        find.byKey(const Key('perfil_publico_avatar')),
+      );
+      expect(avatar.urlFoto, 'https://x/taller.jpg');
+    });
+  });
 }

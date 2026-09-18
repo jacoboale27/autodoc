@@ -127,6 +127,31 @@ class GaleriaTaller {
     return 'https://firebasestorage.googleapis.com/v0/b/$bucket/o/$ruta?alt=media';
   }
 
+  /// La imagen que representa al taller: su **logo** si lo subió y, si no, su
+  /// foto de perfil. [datos] es el documento público `talleres/{uid}`.
+  ///
+  /// Observaciones del 2026-09-18 (captura 3): el perfil del taller pintaba la
+  /// inicial del nombre ("L") aunque el taller tuviera logo, y el logo solo
+  /// aparecía abajo, en la galería. El directorio ya daba prioridad al logo;
+  /// esto lo reutiliza para el perfil y la cabecera del chat.
+  static String? imagenDelTaller({
+    required String bucket,
+    required String idTaller,
+    required Map<String, dynamic> datos,
+  }) {
+    final logo = GaleriaTaller.fromLista(datos['galeria']).archivoLogo;
+    if (logo != null) {
+      final url = urlDe(
+        bucket: bucket,
+        idTaller: idTaller,
+        nombreArchivo: logo,
+      );
+      if (url != null) return url;
+    }
+    final foto = datos['foto_perfil_url'] ?? datos['foto_url'];
+    return foto is String && foto.isNotEmpty ? foto : null;
+  }
+
   /// Lee la lista tal cual viene de Firestore, descartando lo que no case.
   ///
   /// Descartar en silencio y no lanzar es deliberado: esta lista llega tambien

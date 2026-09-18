@@ -170,6 +170,21 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
               rutaVuelta: '/chat_list',
             );
           }
+          final bucket =
+              widget.storageBucket ?? AppSecrets.firebaseStorageBucket;
+          // Observaciones del 2026-09-18 (captura 3): el taller se representa
+          // con su LOGO, no con la inicial de su nombre. Antes el logo solo
+          // salía abajo, en la galería, y el avatar decía "L".
+          final logo = perfil.esMecanico ? perfil.galeria.archivoLogo : null;
+          final urlAvatar =
+              (logo == null
+                  ? null
+                  : GaleriaTaller.urlDe(
+                      bucket: bucket,
+                      idTaller: widget.userId,
+                      nombreArchivo: logo,
+                    )) ??
+              perfil.fotoUrl;
           return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
             child: AppPageBody(
@@ -177,7 +192,8 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
               child: Column(
                 children: [
                   AppUserAvatar(
-                    urlFoto: perfil.fotoUrl,
+                    key: const Key('perfil_publico_avatar'),
+                    urlFoto: urlAvatar,
                     nombre: perfil.nombre,
                     radius: 48,
                   ),
@@ -194,9 +210,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                       perfil: perfil,
                       colors: colors,
                       uid: widget.userId,
-                      storageBucket:
-                          widget.storageBucket ??
-                          AppSecrets.firebaseStorageBucket,
+                      storageBucket: bucket,
                     )
                   else
                     _ClienteDetalle(perfil: perfil, colors: colors),
@@ -310,8 +324,8 @@ class _MecanicoDetalle extends StatelessWidget {
           const SizedBox(height: AppSpacing.xl),
           _UbicacionSection(perfil: perfil, colors: colors),
         ],
-        if (perfil.galeria.archivoLogo != null ||
-            perfil.galeria.archivosDelLocal.isNotEmpty) ...[
+        // El logo ya es el avatar de arriba: aquí solo las fotos del local.
+        if (perfil.galeria.archivosDelLocal.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.xl),
           _GaleriaSection(
             uid: uid,
@@ -408,10 +422,7 @@ class _GaleriaSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final archivos = [
-      if (galeria.archivoLogo != null) galeria.archivoLogo!,
-      ...galeria.archivosDelLocal,
-    ];
+    final archivos = galeria.archivosDelLocal;
     final urls = archivos
         .map(
           (a) => GaleriaTaller.urlDe(
