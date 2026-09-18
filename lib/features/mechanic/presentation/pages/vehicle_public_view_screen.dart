@@ -13,14 +13,26 @@ import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/missing_argument_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
+import 'package:autodoc/core/utils/mechanic_profile_utils.dart';
+import 'package:autodoc/core/utils/ui_utils.dart';
+import 'package:autodoc/core/widgets/app_button.dart';
+import 'package:autodoc/features/chat/data/models/reserva_model.dart';
+import 'package:autodoc/features/chat/data/models/vehiculo_cotizado.dart';
+import 'package:autodoc/features/chat/presentation/pages/nueva_cotizacion_screen.dart';
+import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
+import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
 
 /// Ficha pública de un vehículo para un mecánico **sin** ticket de reparación
-/// aceptado (A3/B2): solo nombre, placa, kilometraje e imagen. Ninguna
-/// acción — ni "Recibir vehículo", ni "Iniciar servicio", ni historial —
-/// porque nada de eso debería ser posible sin que el propietario haya
-/// aceptado una cotización primero.
+/// aceptado (A3/B2): solo nombre, placa, kilometraje e imagen. Ni "Recibir
+/// vehículo", ni "Iniciar servicio", ni historial — nada de eso es posible
+/// sin que el propietario haya aceptado una cotización primero.
+///
+/// La única acción es **cotizar**, y solo si el propietario ya agendó una cita
+/// con este taller para este coche (observaciones del 2026-09-18: primero la
+/// reserva, luego la cotización, y al aceptarla se desbloquea lo demás).
 ///
 /// `abrirVehiculoComoMecanico` (`navegacion_vehiculo.dart`) es el único
 /// lugar que decide traer al mecánico aquí en vez de a
@@ -59,6 +71,19 @@ class _VehiclePublicViewScreenState extends State<VehiclePublicViewScreen> {
   /// tablero, donde aparecerá).
   bool? _hayCotizacionAceptada;
 
+  /// La cita vigente del propietario con este taller para este coche, si la
+  /// hay. Es lo que desbloquea cotizar desde aquí (observaciones del
+  /// 2026-09-18): «si antes no recibió una reserva no debería de aparecer
+  /// otra cosa que no sea el nombre del vehículo, la placa, el kilometraje y
+  /// las imágenes», y con la reserva, primero se llena la cotización y luego
+  /// se manda al dueño. Recibir el coche sigue exigiendo que el dueño ACEPTE
+  /// esa cotización (el ticket lo abre `onCotizacionAceptada`).
+  ReservaModel? _reserva;
+
+  /// `true` tras enviar la cotización desde esta pantalla, para cambiar el
+  /// aviso a "esperando respuesta" en vez de volver a ofrecer cotizar.
+  bool _cotizacionEnviada = false;
+
   @override
   void initState() {
     super.initState();
@@ -67,7 +92,95 @@ class _VehiclePublicViewScreenState extends State<VehiclePublicViewScreen> {
       _cargarVehiculo();
     } else {
       _comprobarCotizacionAceptada();
+      _buscarReserva();
     }
+  }
+
+  /// Un fallo aquí deja la pantalla como estaba antes: solo la ficha pública.
+  Future<void> _buscarReserva() async {
+    final vehiculo = _vehiculo;
+    if (vehiculo == null) return;
+    final uid = context.read<UserProfileProvider>().userData?.idUsuario ?? '';
+    if (uid.isEmpty) return;
+    try {
+      final reserva = await context
+          .read<ReservaProvider>()
+          .reservaVigenteParaVehiculo(
+            idMecanico: uid,
+            idVehiculo: vehiculo.idVehiculo,
+          );
+      if (!mounted) return;
+      setState(() => _reserva = reserva);
+    } catch (e) {
+      debugPrint('No se pudo comprobar la cita del vehículo: $e');
+    }
+  }
+
+  Future<void> _cotizar() async {
+    final vehiculo = _vehiculo;
+    final reserva = _reserva;
+    if (vehiculo == null || reserva == null) return;
+    final mecanico = context.read<UserProfileProvider>().userData;
+    final userId = mecanico?.idUsuario;
+    if (userId == null) return;
+    if (!isMechanicProfileComplete(mecanico)) {
+      UiUtils.showErrorSnackbar(
+        context,
+        'Para enviar cotizaciones primero completa en tu perfil: '
+        '${missingMechanicProfileFields(mecanico).join(', ')}.',
+      );
+      return;
+    }
+    final chatProvider = context.read<ChatProvider>();
+    final reservaProvider = context.read<ReservaProvider>();
+
+    final enviado = await abrirNuevaCotizacion(
+      context,
+      vehiculo: VehiculoCotizado.desdeVehiculo(vehiculo),
+      initialFecha: reserva.fechaHoraPropuesta,
+      subtitle: 'Estás cotizando la cita que agendó el propietario.',
+      onEnviar: (borrador) async {
+        final ok = await chatProvider.enviarCotizacion(
+          cotizacion: borrador.toCotizacion(
+            idPropietario: reserva.idPropietario,
+            idMecanico: userId,
+            idVehiculo: vehiculo.idVehiculo,
+            idTaller: mecanico?.idTallerEfectivo ?? userId,
+            idReserva: reserva.id,
+          ),
+          conversacionId: reserva.idConversacion,
+          contenido: 'He enviado una cotización para tu cita solicitada.',
+          remitenteId: userId,
+          receptorId: reserva.idPropietario,
+          isMecanicoRemitente: true,
+        );
+        if (!ok) {
+          if (mounted) {
+            UiUtils.showErrorSnackbar(
+              context,
+              chatProvider.error ?? 'No se pudo enviar la cotización.',
+            );
+          }
+          return false;
+        }
+        // Igual que "Cotizar y Aceptar" en el chat: una cita pendiente pasa a
+        // cotizada. Una ya confirmada no se toca.
+        if (reserva.estado == 'pendiente') {
+          await reservaProvider.cambiarEstadoReserva(
+            reserva.id,
+            'cotizada',
+            fechaConfirmada: borrador.fechaPropuesta,
+          );
+        }
+        return true;
+      },
+    );
+    if (!enviado || !mounted) return;
+    setState(() => _cotizacionEnviada = true);
+    UiUtils.showSuccessSnackbar(
+      context,
+      'Cotización enviada al propietario. Revísala en el chat.',
+    );
   }
 
   /// Se filtra por `id_taller`, no por `id_mecanico == uid`.
@@ -136,6 +249,7 @@ class _VehiclePublicViewScreenState extends State<VehiclePublicViewScreen> {
         _cargando = false;
       });
       _comprobarCotizacionAceptada();
+      _buscarReserva();
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -222,10 +336,19 @@ class _VehiclePublicViewScreenState extends State<VehiclePublicViewScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xl),
-                _AvisoDeBloqueo(
-                  colors: colors,
-                  hayCotizacionAceptada: _hayCotizacionAceptada,
-                ),
+                if (_hayCotizacionAceptada != true && _reserva != null)
+                  _AvisoCita(
+                    colors: colors,
+                    reserva: _reserva!,
+                    cotizacionEnviada:
+                        _cotizacionEnviada || _reserva!.estado == 'cotizada',
+                    onCotizar: _cotizar,
+                  )
+                else
+                  _AvisoDeBloqueo(
+                    colors: colors,
+                    hayCotizacionAceptada: _hayCotizacionAceptada,
+                  ),
               ],
             ),
           ),
@@ -259,8 +382,10 @@ class _AvisoDeBloqueo extends StatelessWidget {
               'aceptarse la cotización y aparece en Reparaciones, en '
               '"Por recibir". Si no aparece ahí, no lo recibas desde aquí: '
               'avisa al soporte con la placa.'
-        : 'Necesitas una cotización aceptada por el propietario para '
-              'trabajar en este vehículo.';
+        : 'Este vehículo todavía no tiene una cita contigo. Cuando el '
+              'propietario agende una cita desde el chat y elija este '
+              'vehículo, podrás enviarle tu cotización desde aquí; al '
+              'aceptarla, el vehículo aparecerá en Reparaciones.';
 
     return Container(
       width: double.infinity,
@@ -302,6 +427,86 @@ class _AvisoDeBloqueo extends StatelessWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Hay una cita vigente del propietario con este taller para este coche: ya
+/// se puede cotizar. Recibir el coche sigue esperando a que el propietario
+/// acepte la cotización.
+class _AvisoCita extends StatelessWidget {
+  final AppColors colors;
+  final ReservaModel reserva;
+  final bool cotizacionEnviada;
+  final VoidCallback onCotizar;
+
+  const _AvisoCita({
+    required this.colors,
+    required this.reserva,
+    required this.cotizacionEnviada,
+    required this.onCotizar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fecha = DateFormat(
+      "d 'de' MMMM, h:mm a",
+      'es',
+    ).format(reserva.fechaHoraPropuesta);
+    final texto = cotizacionEnviada
+        ? 'Ya le enviaste una cotización para la cita del $fecha. Cuando el '
+              'propietario la acepte, el vehículo aparecerá en Reparaciones '
+              'para que lo recibas.'
+        : 'El propietario agendó una cita para el $fecha. Prepara tu '
+              'cotización y envíasela: cuando la acepte, el vehículo '
+              'aparecerá en Reparaciones.';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.base),
+      decoration: BoxDecoration(
+        color: colors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: colors.primary.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.event_available, color: colors.primary),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  texto,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: colors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppButton(
+            key: const Key('vehiculo_publico_crear_cotizacion'),
+            text: cotizacionEnviada
+                ? 'Enviar otra cotización'
+                : 'Crear cotización',
+            type: cotizacionEnviada
+                ? AppButtonType.secondary
+                : AppButtonType.primary,
+            icon: const Icon(Icons.request_quote_outlined),
+            onPressed: onCotizar,
+          ),
+          if (reserva.idConversacion.isNotEmpty)
+            TextButton.icon(
+              onPressed: () => context.go('/chat/${reserva.idConversacion}'),
+              icon: const Icon(Icons.chat_bubble_outline, size: 18),
+              label: const Text('Ir al chat con el propietario'),
+            ),
         ],
       ),
     );
