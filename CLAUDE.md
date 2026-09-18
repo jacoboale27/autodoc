@@ -17,6 +17,33 @@ VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01, FUNC-02, UX-03 / UX-04,
 cerradas: `fix/gaps-02` (residuales de FUNC-02), `fix/gaps-03` (accesibilidad de la landing que
 dejó UX-03) y **`fix/gaps-04`** (lo que quedaba abierto antes de H-01, cerrada el 2026-09-13).
 
+### Observaciones de uso real del 2026-09-18 (rama `fix/observaciones-2026-09-18`)
+
+Segunda ronda del PDF de chele moskar / chele alonzo + el Inge. Las páginas 1–2 eran el
+backlog ya cerrado el 2026-09-04/05 (plan `2026-09-04-observaciones-colaboradores.md`); lo
+nuevo eran las capturas 3–6 y los puntos que ese plan dejó fuera. Lo que hay que saber:
+
+- **La cotización del chat nacía sin coche** (capturas 4–5): "Cotizar y Aceptar" tomaba
+  `id_vehiculo` de la CONVERSACIÓN, vacía cuando el chat se abrió desde el directorio. El
+  coche sale ahora de la cita; `onCotizacionAceptada` lo recupera de `id_reserva` si falta
+  (misma pareja propietario/taller) y lo escribe de vuelta. **Paso de despliegue:**
+  `firebase deploy --only functions:onCotizacionAceptada --project production`, y después
+  `node backfill_tickets_cotizaciones_aceptadas.js` (dry-run, luego `--apply`) para abrir los
+  tickets de las cotizaciones ya atascadas.
+- **Una sola pantalla de cotización** (`NuevaCotizacionScreen`, captura 6) para chat, cita y
+  Buscar Vehículo: dos columnas, catálogo, mano de obra y día/hora. `CotizacionModel.total`
+  incluye `mano_de_obra`. La cita guarda `vehiculo_resumen` porque el taller no puede leer
+  `vehiculos/{id}` hasta recibir el coche.
+- **Buscar Vehículo cotiza si hay cita vigente** del propietario con el taller; sin cita, solo
+  la ficha pública. Recibir sigue exigiendo la cotización ACEPTADA.
+- **Checks automáticos:** `ChatProvider.abrirConversacion` marca vistos los mensajes que llegan
+  con el chat abierto (pausado en segundo plano). **Aviso en pantalla** de mensajes nuevos
+  (`AvisoMensajesNuevos`, en el `builder` de `MaterialApp.router`: está sobre el `Navigator`,
+  sin `Overlay` — nada de `Tooltip` ahí) e insignia de no leídos en la navegación.
+- **Tres puntos, responder y reenviar** en cada mensaje (`respuesta_a`, `reenviado`; el
+  adapter de Hive se tocó a mano: campos 11 y 12). **Logo del taller** como avatar.
+- Sin cambios en `firestore.rules`, `storage.rules` ni índices.
+
 ### La tanda GAPS-07 esta cerrada (2026-09-15, `fix/gaps-07a`) — el doble envio
 
 Cierra el gap 1 del §4 de GAPS-06: **los 15 grupos de doble envio, los 15**. Evidencia en
