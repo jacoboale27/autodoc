@@ -19,6 +19,13 @@ class ReservaModel {
   final bool recordatorioEnviado1h;
   final DateTime fechaCreacion;
 
+  /// Nombre, placa, kilometraje y foto del coche, copiados por el cliente al
+  /// agendar (ver `VehiculoCotizado`). El taller no puede leer
+  /// `vehiculos/{id}` hasta recibirlo, y sin esto su pantalla de cotización
+  /// solo podría decir «Vehículo del cliente». Las citas anteriores no lo
+  /// traen.
+  final Map<String, dynamic>? vehiculoResumen;
+
   ReservaModel({
     required this.id,
     required this.idConversacion,
@@ -36,6 +43,7 @@ class ReservaModel {
     this.recordatorioEnviado24h = false,
     this.recordatorioEnviado1h = false,
     required this.fechaCreacion,
+    this.vehiculoResumen,
   }) : idProponente = idProponente ?? idPropietario;
 
   factory ReservaModel.fromMap(Map<String, dynamic> map, String id) {
@@ -58,6 +66,9 @@ class ReservaModel {
       recordatorioEnviado1h: map['recordatorio_enviado_1h'] ?? false,
       fechaCreacion:
           (map['fecha_creacion'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      vehiculoResumen: map['vehiculo_resumen'] is Map
+          ? Map<String, dynamic>.from(map['vehiculo_resumen'] as Map)
+          : null,
     );
   }
 
@@ -79,6 +90,8 @@ class ReservaModel {
       'recordatorio_enviado_24h': recordatorioEnviado24h,
       'recordatorio_enviado_1h': recordatorioEnviado1h,
       'fecha_creacion': Timestamp.fromDate(fechaCreacion),
+      if (vehiculoResumen != null && vehiculoResumen!.isNotEmpty)
+        'vehiculo_resumen': vehiculoResumen,
     };
   }
 
@@ -119,6 +132,7 @@ class ReservaModel {
       recordatorioEnviado1h:
           recordatorioEnviado1h ?? this.recordatorioEnviado1h,
       fechaCreacion: fechaCreacion ?? this.fechaCreacion,
+      vehiculoResumen: vehiculoResumen,
     );
   }
 }

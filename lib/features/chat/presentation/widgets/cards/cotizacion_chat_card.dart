@@ -369,6 +369,25 @@ class _CotizacionCardBody extends StatelessWidget {
               ),
             ),
           ),
+          if ((cotizacion.manoDeObra ?? 0) > 0)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text('Mano de obra', style: TextStyle(fontSize: 13)),
+                  ),
+                  Text(
+                    '\$${cotizacion.manoDeObra!.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 6),
           Divider(height: 1, color: colors.outline.withValues(alpha: 0.4)),
           const SizedBox(height: 12),

@@ -10,7 +10,8 @@ import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_empty_state.dart';
 import 'package:autodoc/core/widgets/app_status_badge.dart';
 import 'package:autodoc/features/chat/data/models/reserva_model.dart';
-import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
+import 'package:autodoc/features/chat/data/models/vehiculo_cotizado.dart';
+import 'package:autodoc/features/chat/presentation/pages/nueva_cotizacion_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
@@ -19,7 +20,6 @@ import 'package:autodoc/core/utils/role_utils.dart';
 import 'package:autodoc/core/utils/mechanic_profile_utils.dart';
 import 'package:autodoc/core/utils/reserva_acciones.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
-import 'package:autodoc/features/chat/presentation/widgets/cotizacion_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
@@ -163,6 +163,16 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
     }
   }
 
+  /// «Toyota Corolla • P123-456» cuando la cita trae el resumen del coche;
+  /// el id crudo solo en citas anteriores a ese resumen.
+  String _textoVehiculo(ReservaModel reserva) {
+    if (reserva.idVehiculo.isEmpty) return 'No especificado';
+    final resumen = reserva.vehiculoResumen;
+    if (resumen == null || resumen.isEmpty) return reserva.idVehiculo;
+    final v = VehiculoCotizado.desdeResumen(reserva.idVehiculo, resumen);
+    return [v.nombre, if (v.placa != null) v.placa!].join(' • ');
+  }
+
   Future<void> _cotizar(ReservaModel reserva) async {
     final mechanicUser = context.read<UserProfileProvider>().userData;
     final userId = mechanicUser?.idUsuario;
@@ -200,67 +210,59 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
     final chatProvider = context.read<ChatProvider>();
     final reservaProvider = context.read<ReservaProvider>();
 
-    await showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => CotizacionPicker(
-        initialFecha: reserva.fechaHoraPropuesta,
-        subtitle: 'Estás cotizando la cita que propuso el cliente.',
-        onConfirm: (items, fechaPropuesta) async {
-          final cotizacion = CotizacionModel(
-            id: '',
+    final enviado = await abrirNuevaCotizacion(
+      context,
+      vehiculo: reserva.idVehiculo.isEmpty
+          ? null
+          : VehiculoCotizado.desdeResumen(
+              reserva.idVehiculo,
+              reserva.vehiculoResumen,
+            ),
+      initialFecha: reserva.fechaHoraPropuesta,
+      subtitle: 'Estás cotizando la cita que propuso el cliente.',
+      onEnviar: (borrador) async {
+        final ok = await chatProvider.enviarCotizacion(
+          cotizacion: borrador.toCotizacion(
             idPropietario: reserva.idPropietario,
             idMecanico: userId,
-            idVehiculo: reserva.idVehiculo.isNotEmpty
-                ? reserva.idVehiculo
-                : null,
+            idVehiculo: reserva.idVehiculo,
             // Ronda 2 (FIX 2): idTallerEfectivo, no userId — ver el mismo
             // comentario en chat_screen.dart.
             idTaller: mechanicUser?.idTallerEfectivo ?? userId,
             idReserva: reserva.id,
-            items: items,
-            fechaPropuesta: fechaPropuesta,
-            fecha: DateTime.now(),
-          );
-
-          final ok = await chatProvider.enviarCotizacion(
-            cotizacion: cotizacion,
-            conversacionId: reserva.idConversacion,
-            contenido: 'He enviado una cotización para tu cita solicitada.',
-            remitenteId: userId,
-            receptorId: reserva.idPropietario,
-            isMecanicoRemitente: true,
-          );
-          if (!ok) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    chatProvider.error ?? 'No se pudo enviar la cotización.',
-                  ),
-                ),
-              );
-            }
-            return;
-          }
-
-          await reservaProvider.cambiarEstadoReserva(
-            reserva.id,
-            'cotizada',
-            fechaConfirmada: fechaPropuesta,
-          );
-
+          ),
+          conversacionId: reserva.idConversacion,
+          contenido: 'He enviado una cotización para tu cita solicitada.',
+          remitenteId: userId,
+          receptorId: reserva.idPropietario,
+          isMecanicoRemitente: true,
+        );
+        if (!ok) {
           if (mounted) {
-            UiUtils.showSuccessSnackbar(
+            UiUtils.showErrorSnackbar(
               context,
-              'Cotización enviada. Revísala en el chat.',
+              chatProvider.error ?? 'No se pudo enviar la cotización.',
             );
-            Navigator.pop(context);
           }
-        },
-      ),
+          return false;
+        }
+
+        await reservaProvider.cambiarEstadoReserva(
+          reserva.id,
+          'cotizada',
+          fechaConfirmada: borrador.fechaPropuesta,
+        );
+        return true;
+      },
     );
+
+    if (enviado && mounted) {
+      UiUtils.showSuccessSnackbar(
+        context,
+        'Cotización enviada. Revísala en el chat.',
+      );
+      if (context.canPop()) context.pop();
+    }
   }
 
   @override
@@ -448,9 +450,7 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                reserva.idVehiculo.isNotEmpty
-                                    ? reserva.idVehiculo
-                                    : 'No especificado',
+                                _textoVehiculo(reserva),
                                 style: AppTextStyles.titleMedium.copyWith(
                                   fontWeight: FontWeight.bold,
                                 ),

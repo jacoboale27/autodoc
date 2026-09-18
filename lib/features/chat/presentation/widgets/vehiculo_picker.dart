@@ -83,6 +83,12 @@ class VehiculoPicker extends StatelessWidget {
                             'modelo': vehicle.modelo ?? '',
                             'anio': vehicle.anio,
                             'placa': vehicle.placa,
+                            // El taller no puede leer la ficha del coche hasta
+                            // recibirlo: la cita lleva este resumen para que
+                            // su cotización pueda mostrar el vehículo.
+                            'kilometraje': vehicle.kilometrajeActual,
+                            if (vehicle.fotoUrl != null)
+                              'foto_url': vehicle.fotoUrl,
                           });
                           Navigator.pop(context);
                         }

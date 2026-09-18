@@ -80,7 +80,30 @@ class CotizacionModel {
 
   /// Total que paga el cliente (sin incluir el beneficio del mecánico aparte;
   /// el beneficio ya está reflejado en el costo de cada renglón).
-  double get total => items.fold(0.0, (acc, i) => acc + i.subtotal);
+  ///
+  /// Incluye la mano de obra: desde las observaciones del 2026-09-18 la
+  /// cotización del chat es la misma que la de Buscar Vehículo, que siempre
+  /// la cobró aparte de los materiales. Las cotizaciones anteriores no traen
+  /// `mano_de_obra` y su total no cambia.
+  double get total =>
+      items.fold(0.0, (acc, i) => acc + i.subtotal) + (manoDeObra ?? 0);
+
+  /// Los renglones con la forma que espera el registro de servicio
+  /// (`AlertProvider.tallerUpdateService`): así, al cerrar el servicio de una
+  /// cotización aprobada, el historial del cliente muestra el mismo desglose
+  /// que aceptó en vez de quedarse sin materiales.
+  static List<Map<String, dynamic>> materialesDesdeItems(
+    List<CotizacionItem> items,
+  ) => items
+      .where((i) => i.material.trim().isNotEmpty)
+      .map(
+        (i) => {
+          'nombre': i.material,
+          'cantidad': i.cantidad,
+          'precioUnitario': i.costo,
+        },
+      )
+      .toList();
 
   factory CotizacionModel.fromMap(Map<String, dynamic> map, String documentId) {
     final rawItems = map['items'] as List? ?? const [];

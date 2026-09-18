@@ -33,8 +33,8 @@ import 'package:autodoc/features/chat/presentation/widgets/cards/audio_chat_card
 import 'package:autodoc/features/chat/presentation/widgets/voice_record_button.dart';
 import 'package:autodoc/core/widgets/aviso_lista_truncada.dart';
 import 'package:autodoc/features/chat/data/models/mensaje_model.dart';
-import 'package:autodoc/features/chat/presentation/widgets/cotizacion_picker.dart';
-import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
+import 'package:autodoc/features/chat/presentation/pages/nueva_cotizacion_screen.dart';
+import 'package:autodoc/features/chat/data/models/vehiculo_cotizado.dart';
 import 'package:autodoc/features/chat/data/models/reserva_model.dart';
 import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
@@ -338,7 +338,11 @@ class _ChatScreenState extends State<ChatScreen> {
       builder: (ctx) => VehiculoPicker(
         userId: userId,
         onSelected: (vehiculoData) {
-          final idVehiculo = vehiculoData['vehiculo_id'] ?? '';
+          final String idVehiculo = vehiculoData['vehiculo_id'] ?? '';
+          final resumen = VehiculoCotizado.desdeResumen(
+            idVehiculo,
+            vehiculoData,
+          ).toResumen();
           // VehiculoPicker se cierra a sí mismo justo después de llamar a
           // onSelected; esperamos a que termine ese frame antes de abrir el
           // siguiente selector, para no pelear con ese cierre.
@@ -349,6 +353,7 @@ class _ChatScreenState extends State<ChatScreen> {
               isMecanico: isMecanico,
               receptorId: receptorId,
               idVehiculo: idVehiculo,
+              vehiculoResumen: resumen,
             );
           });
         },
@@ -361,6 +366,7 @@ class _ChatScreenState extends State<ChatScreen> {
     required bool isMecanico,
     required String receptorId,
     required String idVehiculo,
+    Map<String, dynamic>? vehiculoResumen,
   }) async {
     final date = await showDatePicker(
       context: context,
@@ -409,6 +415,7 @@ class _ChatScreenState extends State<ChatScreen> {
       tipoServicio: 'Cita General',
       estado: 'pendiente',
       fechaCreacion: DateTime.now(),
+      vehiculoResumen: vehiculoResumen,
     );
 
     // La bandera se enciende justo antes de la primera escritura y no al abrir
@@ -425,6 +432,7 @@ class _ChatScreenState extends State<ChatScreen> {
         isMecanico: isMecanico,
         receptorId: receptorId,
         idVehiculo: idVehiculo,
+        vehiculoResumen: vehiculoResumen,
         fecha: fecha,
         hora: hora,
       );
@@ -441,6 +449,7 @@ class _ChatScreenState extends State<ChatScreen> {
     required bool isMecanico,
     required String receptorId,
     required String idVehiculo,
+    Map<String, dynamic>? vehiculoResumen,
     required DateTime fecha,
     required String hora,
   }) async {
@@ -475,6 +484,8 @@ class _ChatScreenState extends State<ChatScreen> {
         'fecha': fecha.toIso8601String(),
         'hora': hora,
         'id_vehiculo': idVehiculo,
+        if (vehiculoResumen != null && vehiculoResumen.isNotEmpty)
+          'vehiculo': vehiculoResumen,
         'estado': 'pendiente',
       },
     );
@@ -1152,74 +1163,10 @@ class _ChatScreenState extends State<ChatScreen> {
                   title: Text(context.l10n.chatSendQuote),
                   onTap: () {
                     Navigator.pop(context);
-                    final mechanicUser = context
-                        .read<UserProfileProvider>()
-                        .userData;
-                    if (!isMechanicProfileComplete(mechanicUser)) {
-                      _showProfileIncompleteDialog(context, mechanicUser);
-                      return;
-                    }
-                    showModalBottomSheet(
-                      context: context,
-                      backgroundColor: Colors.transparent,
-                      isScrollControlled: true,
-                      builder: (context) => CotizacionPicker(
-                        onConfirm: (items, fechaPropuesta) async {
-                          final provider = context.read<ChatProvider>();
-
-                          // Guardar cotización en la base de datos
-                          final cotizacion = CotizacionModel(
-                            id: '',
-                            idPropietario: receptorId,
-                            idMecanico: userId,
-                            // Cadena vacia -> null, igual que ya hace
-                            // reserva_detail_screen.dart:205. `toMap()` omite
-                            // la clave cuando es null, pero la EMITE cuando es
-                            // '', y entonces la regla de `create` entra en la
-                            // rama del vehiculo y evalua
-                            // exists(/vehiculos/$('')), que es una ruta
-                            // invalida: vuelve el `permission-denied` pelado
-                            // que el guarda con exists() venia a quitar.
-                            idVehiculo: () {
-                              final id = provider.conversaciones
-                                  .where((c) => c.id == widget.conversacionId)
-                                  .firstOrNull
-                                  ?.idVehiculo;
-                              return (id == null || id.isEmpty) ? null : id;
-                            }(),
-                            // Ronda 2 (FIX 2): idTallerEfectivo, no userId. Un
-                            // empleado que envia la cotizacion tiene su propio
-                            // uid en userId, pero `vehiculos.talleres_vinculados`
-                            // guarda siempre el uid del DUEÑO — escribir userId
-                            // aqui hacia que `onCotizacionAceptada` no
-                            // encontrara vinculo y no abriera ticket al aceptar.
-                            idTaller: mechanicUser?.idTallerEfectivo ?? userId,
-                            items: items,
-                            fechaPropuesta: fechaPropuesta,
-                            fecha: DateTime.now(),
-                          );
-
-                          final ok = await provider.enviarCotizacion(
-                            cotizacion: cotizacion,
-                            conversacionId: widget.conversacionId,
-                            contenido:
-                                'He creado una nueva cotización para tu vehículo.',
-                            remitenteId: userId,
-                            receptorId: receptorId,
-                            isMecanicoRemitente: isMecanico,
-                          );
-                          if (!ok && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  provider.error ??
-                                      'No se pudo enviar la cotización.',
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                      ),
+                    _cotizarDesdeChat(
+                      userId: userId,
+                      isMecanico: isMecanico,
+                      receptorId: receptorId,
                     );
                   },
                 ),
@@ -1227,6 +1174,84 @@ class _ChatScreenState extends State<ChatScreen> {
             ],
           ),
         );
+      },
+    );
+  }
+
+  /// Cotización enviada desde el menú de adjuntos del chat.
+  ///
+  /// Usa la misma pantalla que Buscar Vehículo y que la cita
+  /// (`NuevaCotizacionScreen`), y ancla la cotización al coche del hilo
+  /// ([vehiculoParaCotizarEnChat]). Sin coche no se abre: una cotización sin
+  /// vehículo se podía aceptar pero nunca abría ticket (capturas 4 y 5 de las
+  /// observaciones del 2026-09-18), así que se le explica al taller qué falta
+  /// en vez de dejarle enviar algo que no va a llegar a ninguna parte.
+  Future<void> _cotizarDesdeChat({
+    required String userId,
+    required bool isMecanico,
+    required String receptorId,
+  }) async {
+    final mechanicUser = context.read<UserProfileProvider>().userData;
+    if (!isMechanicProfileComplete(mechanicUser)) {
+      _showProfileIncompleteDialog(context, mechanicUser);
+      return;
+    }
+    final provider = context.read<ChatProvider>();
+    final conversacion = provider.conversaciones
+        .where((c) => c.id == widget.conversacionId)
+        .firstOrNull;
+    final vehiculo = vehiculoParaCotizarEnChat(
+      idVehiculoConversacion: conversacion?.idVehiculo,
+      mensajesRecientesPrimero: provider.mensajesActuales,
+    );
+    if (vehiculo == null) {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Aún no hay un vehículo para cotizar'),
+          content: const Text(
+            'Para cotizar, el cliente primero debe agendar una cita desde '
+            'este chat y elegir su vehículo. Cuando la cita llegue, podrás '
+            'cotizarla con "Cotizar y Aceptar" o desde este mismo menú.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Entendido'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    await abrirNuevaCotizacion(
+      context,
+      vehiculo: vehiculo,
+      onEnviar: (borrador) async {
+        final ok = await provider.enviarCotizacion(
+          cotizacion: borrador.toCotizacion(
+            idPropietario: receptorId,
+            idMecanico: userId,
+            idVehiculo: vehiculo.idVehiculo,
+            // Ronda 2 (FIX 2): idTallerEfectivo, no userId. Un empleado que
+            // envia la cotizacion tiene su propio uid en userId, pero
+            // `vehiculos.talleres_vinculados` guarda siempre el uid del DUEÑO.
+            idTaller: mechanicUser?.idTallerEfectivo ?? userId,
+          ),
+          conversacionId: widget.conversacionId,
+          contenido: 'He creado una nueva cotización para tu vehículo.',
+          remitenteId: userId,
+          receptorId: receptorId,
+          isMecanicoRemitente: isMecanico,
+        );
+        if (!ok && mounted) {
+          UiUtils.showErrorSnackbar(
+            context,
+            provider.error ?? 'No se pudo enviar la cotización.',
+          );
+        }
+        return ok;
       },
     );
   }

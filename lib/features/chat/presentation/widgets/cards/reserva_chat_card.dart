@@ -13,8 +13,8 @@ import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/utils/role_utils.dart';
 import 'package:autodoc/core/utils/mechanic_profile_utils.dart';
 import 'package:autodoc/core/utils/reserva_acciones.dart';
-import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
-import 'package:autodoc/features/chat/presentation/widgets/cotizacion_picker.dart';
+import 'package:autodoc/features/chat/data/models/vehiculo_cotizado.dart';
+import 'package:autodoc/features/chat/presentation/pages/nueva_cotizacion_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 
@@ -169,57 +169,71 @@ class _ReservaChatCardState extends State<ReservaChatCard> {
     final receptorId = conversacion?.idPropietario;
     if (receptorId == null || receptorId.isEmpty) return;
 
-    await showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => CotizacionPicker(
-        initialFecha: fecha,
-        subtitle: 'Estás cotizando la cita que propuso el cliente.',
-        onConfirm: (items, fechaPropuesta) async {
-          final cotizacion = CotizacionModel(
-            id: '',
+    // El coche es el que el cliente eligió AL AGENDAR esta cita, no el de la
+    // conversación. Tomarlo de la conversación era el defecto de las capturas
+    // 4 y 5 (observaciones del 2026-09-18): un chat abierto desde el
+    // directorio de talleres no tiene coche, la cotización nacía sin
+    // `id_vehiculo` y al aceptarla no se abría ningún ticket.
+    final String idVehiculo = [
+      reserva?.idVehiculo,
+      metadata['id_vehiculo'] as String?,
+      conversacion?.idVehiculo,
+    ].whereType<String>().firstWhere((id) => id.isNotEmpty, orElse: () => '');
+    final resumenMensaje = metadata['vehiculo'];
+    final vehiculo = idVehiculo.isEmpty
+        ? null
+        : VehiculoCotizado.desdeResumen(
+            idVehiculo,
+            reserva?.vehiculoResumen ??
+                (resumenMensaje is Map
+                    ? Map<String, dynamic>.from(resumenMensaje)
+                    : null),
+          );
+
+    await abrirNuevaCotizacion(
+      context,
+      vehiculo: vehiculo,
+      initialFecha: fecha,
+      subtitle: 'Estás cotizando la cita que propuso el cliente.',
+      onEnviar: (borrador) async {
+        final ok = await chatProvider.enviarCotizacion(
+          cotizacion: borrador.toCotizacion(
             idPropietario: receptorId,
             idMecanico: userId,
-            idVehiculo: conversacion?.idVehiculo,
+            idVehiculo: idVehiculo,
             // Ronda 2 (FIX 2): idTallerEfectivo, no userId — ver el mismo
             // comentario en chat_screen.dart.
             idTaller: mechanicUser?.idTallerEfectivo ?? userId,
             idReserva: reservaId,
-            items: items,
-            fechaPropuesta: fechaPropuesta,
-            fecha: DateTime.now(),
-          );
-
-          final ok = await chatProvider.enviarCotizacion(
-            cotizacion: cotizacion,
-            conversacionId: conversacionId,
-            contenido: 'He enviado una cotización para tu cita solicitada.',
-            remitenteId: userId,
-            receptorId: receptorId,
-            isMecanicoRemitente: true,
-          );
-          if (!ok) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    chatProvider.error ?? 'No se pudo enviar la cotización.',
-                  ),
+          ),
+          conversacionId: conversacionId,
+          contenido: 'He enviado una cotización para tu cita solicitada.',
+          remitenteId: userId,
+          receptorId: receptorId,
+          isMecanicoRemitente: true,
+        );
+        if (!ok) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  chatProvider.error ?? 'No se pudo enviar la cotización.',
                 ),
-              );
-            }
-            return;
+              ),
+            );
           }
+          return false;
+        }
 
-          if (!context.mounted) return;
+        if (context.mounted) {
           await _actualizar(
             context,
             'cotizada',
-            fechaConfirmada: fechaPropuesta,
+            fechaConfirmada: borrador.fechaPropuesta,
           );
-        },
-      ),
+        }
+        return true;
+      },
     );
   }
 
