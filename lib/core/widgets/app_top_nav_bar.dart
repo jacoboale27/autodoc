@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/widgets/navigation/app_nav_destination.dart';
 import 'package:autodoc/l10n/app_localizations.dart';
+import 'package:autodoc/features/chat/presentation/widgets/aviso_mensajes_nuevos.dart';
 
 class AppTopNavBar extends StatelessWidget {
   const AppTopNavBar({super.key});
@@ -77,6 +78,7 @@ class AppTopNavBar extends StatelessWidget {
                   children: [
                     for (final destination in AppNavDestinations.owner)
                       _TopNavLink(
+                        route: destination.route,
                         title: destination.label,
                         icon: destination.icon,
                         semanticLabel: destination.semanticLabel,
@@ -256,6 +258,7 @@ class AppTopNavBar extends StatelessWidget {
 }
 
 class _TopNavLink extends StatelessWidget {
+  final String route;
   final String title;
   final IconData icon;
   final String semanticLabel;
@@ -263,6 +266,7 @@ class _TopNavLink extends StatelessWidget {
   final VoidCallback onTap;
 
   const _TopNavLink({
+    required this.route,
     required this.title,
     required this.icon,
     required this.semanticLabel,
@@ -288,7 +292,14 @@ class _TopNavLink extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(icon, color: color, size: Responsive.iconSize(context, 18)),
+              IconoConMensajesSinLeer(
+                route: route,
+                icono: Icon(
+                  icon,
+                  color: color,
+                  size: Responsive.iconSize(context, 18),
+                ),
+              ),
               SizedBox(width: Responsive.padding(context, 8)),
               Text(
                 title,

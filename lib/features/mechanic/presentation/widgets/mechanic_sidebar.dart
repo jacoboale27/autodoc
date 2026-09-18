@@ -10,6 +10,7 @@ import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/features/chat/presentation/widgets/aviso_mensajes_nuevos.dart';
 
 class MechanicSidebar extends StatelessWidget {
   const MechanicSidebar({super.key});
@@ -154,6 +155,7 @@ class MechanicSidebar extends StatelessWidget {
                     label: 'Mensajes',
                     isActive: currentPath == '/chat_list',
                     colors: colors,
+                    route: '/chat_list',
                     onTap: () => _navigate(context, '/chat_list'),
                   ),
                   if (!esSubCuentaEmpleado)
@@ -217,6 +219,7 @@ class MechanicSidebar extends StatelessWidget {
     required AppColors colors,
     required VoidCallback onTap,
     bool isDestructive = false,
+    String? route,
   }) {
     final activeColor = isDestructive ? colors.error : colors.primary;
     final iconColor = isDestructive
@@ -245,7 +248,12 @@ class MechanicSidebar extends StatelessWidget {
             : null,
       ),
       child: ListTile(
-        leading: Icon(icon, color: iconColor),
+        leading: route == null
+            ? Icon(icon, color: iconColor)
+            : IconoConMensajesSinLeer(
+                route: route,
+                icono: Icon(icon, color: iconColor),
+              ),
         title: Text(
           label,
           style: AppTextStyles.bodyMedium.copyWith(

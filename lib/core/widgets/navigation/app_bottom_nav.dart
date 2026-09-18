@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/navigation/app_nav_destination.dart';
+import 'package:autodoc/features/chat/presentation/widgets/aviso_mensajes_nuevos.dart';
 
 /// Navegación principal en `WindowClass.compact`.
 ///
@@ -34,8 +35,16 @@ class AppBottomNav extends StatelessWidget {
       destinations: [
         for (final destination in destinations)
           NavigationDestination(
-            icon: Icon(destination.icon, color: colors.textSecondary),
-            selectedIcon: Icon(destination.selectedIcon, color: colors.primary),
+            // Chat lleva el número de mensajes sin leer (observaciones del
+            // 2026-09-18: avisar en pantalla de los mensajes nuevos).
+            icon: IconoConMensajesSinLeer(
+              route: destination.route,
+              icono: Icon(destination.icon, color: colors.textSecondary),
+            ),
+            selectedIcon: IconoConMensajesSinLeer(
+              route: destination.route,
+              icono: Icon(destination.selectedIcon, color: colors.primary),
+            ),
             label: destination.label,
             tooltip: destination.semanticLabel,
           ),

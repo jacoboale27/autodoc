@@ -5,6 +5,7 @@ import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_sidebar.dart';
+import 'package:autodoc/features/chat/presentation/widgets/aviso_mensajes_nuevos.dart';
 
 /// Shell único del rol taller.
 ///
@@ -61,6 +62,21 @@ class MechanicScaffold extends StatelessWidget {
               backgroundColor: colors.surface,
               elevation: 0,
               iconTheme: IconThemeData(color: colors.primary),
+              // En móvil "Mensajes" vive dentro del cajón: sin la insignia en
+              // el botón que lo abre, un mensaje nuevo no se vería hasta
+              // abrirlo (observaciones del 2026-09-18).
+              leading: Builder(
+                builder: (context) => IconButton(
+                  icon: const IconoConMensajesSinLeer(
+                    route: '/chat_list',
+                    icono: Icon(Icons.menu),
+                  ),
+                  tooltip: MaterialLocalizations.of(
+                    context,
+                  ).openAppDrawerTooltip,
+                  onPressed: () => Scaffold.of(context).openDrawer(),
+                ),
+              ),
               title: Text(
                 title,
                 style: AppTextStyles.titleMedium.copyWith(

@@ -163,11 +163,34 @@ class ChatProvider extends ChangeNotifier {
     _lectorConversacionId = null;
     _lectorUid = null;
     _lecturaEnPausa = false;
+    _bandejaDe = null;
+    _bandejaComoMecanico = null;
     notifyListeners();
+  }
+
+  /// Para quién está abierta la suscripción de la bandeja (ver
+  /// [inicializarConversacionesSiHaceFalta]).
+  String? _bandejaDe;
+  bool? _bandejaComoMecanico;
+
+  /// Abre la bandeja solo si no está ya abierta para este usuario y rol.
+  ///
+  /// La usa el aviso de mensajes nuevos, que vive en toda la app: sin esta
+  /// guarda, cada reconstrucción volvería a suscribirse y la bandeja
+  /// parpadearía al estado de carga.
+  void inicializarConversacionesSiHaceFalta(String userId, bool isMecanico) {
+    if (_conversacionesSub != null &&
+        _bandejaDe == userId &&
+        _bandejaComoMecanico == isMecanico) {
+      return;
+    }
+    inicializarConversaciones(userId, isMecanico);
   }
 
   void inicializarConversaciones(String userId, bool isMecanico) {
     _conversacionesSub?.cancel();
+    _bandejaDe = userId;
+    _bandejaComoMecanico = isMecanico;
     _error = null;
     _conversacionesCargadas = false;
     _conversacionesSub = _chatRepository
