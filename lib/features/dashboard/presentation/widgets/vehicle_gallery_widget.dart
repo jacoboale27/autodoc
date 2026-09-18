@@ -12,6 +12,18 @@ class VehicleGalleryWidget extends StatefulWidget {
   final Future<XFile?> Function()? pickPhoto;
   final Future<void> Function(String vehicleId, XFile photo)? addPhoto;
 
+  /// `foto_url` del vehiculo, para marcar cual de las fotos es la portada.
+  ///
+  /// Sin esta marca el usuario no tiene forma de saber cual de las cinco es la
+  /// que se ve en su garaje, y "usar como principal" se convierte en un boton
+  /// que no se sabe si hace falta pulsar.
+  final String? fotoPrincipal;
+
+  /// Se llama cuando la portada cambia (al subir la primera foto, al elegir
+  /// otra o al borrar la que lo era). Quien monta la galeria es responsable de
+  /// refrescar el provider: el garaje y el panel leen `foto_url` de ahi.
+  final VoidCallback? onPortadaCambiada;
+
   const VehicleGalleryWidget({
     super.key,
     required this.vehicleId,
@@ -19,6 +31,8 @@ class VehicleGalleryWidget extends StatefulWidget {
     this.photos,
     this.pickPhoto,
     this.addPhoto,
+    this.fotoPrincipal,
+    this.onPortadaCambiada,
   });
 
   @override
@@ -71,6 +85,9 @@ class _VehicleGalleryWidgetState extends State<VehicleGalleryWidget> {
         }
         messenger.hideCurrentSnackBar();
         messenger.showSnackBar(const SnackBar(content: Text('Foto añadida')));
+        // La primera foto asciende sola a portada (VehiclePhotoService
+        // .registrarFoto), asi que el garaje tiene que enterarse.
+        widget.onPortadaCambiada?.call();
       } catch (e) {
         messenger.hideCurrentSnackBar();
         messenger.showSnackBar(
@@ -142,6 +159,7 @@ class _VehicleGalleryWidgetState extends State<VehicleGalleryWidget> {
                 itemCount: fotos.length,
                 itemBuilder: (context, index) {
                   final foto = fotos[index];
+                  final esPortada = foto.url == widget.fotoPrincipal;
                   return GestureDetector(
                     onTap: () {
                       Navigator.push(
@@ -150,15 +168,46 @@ class _VehicleGalleryWidgetState extends State<VehicleGalleryWidget> {
                           builder: (_) => FullScreenImageViewer(
                             foto: foto,
                             vehicleId: widget.vehicleId,
+                            esPortada: esPortada,
+                            servicio: _servicio,
+                            onPortadaCambiada: widget.onPortadaCambiada,
                           ),
                         ),
                       );
                     },
-                    child: Hero(
-                      tag: foto.id,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(foto.url, fit: BoxFit.cover),
+                    child: Semantics(
+                      label: esPortada
+                          ? 'Foto principal del vehículo'
+                          : 'Foto de la galería',
+                      image: true,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Hero(
+                            tag: foto.id,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(foto.url, fit: BoxFit.cover),
+                            ),
+                          ),
+                          if (esPortada)
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: colors.primary,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.star,
+                                  size: 14,
+                                  color: colors.surface,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   );
@@ -176,11 +225,74 @@ class FullScreenImageViewer extends StatelessWidget {
   final VehiclePhotoModel foto;
   final String vehicleId;
 
+  /// Si esta foto ya es la que representa al vehiculo. Cuando lo es, la accion
+  /// de portada no se pinta: un boton que no hace nada es peor que no tenerlo.
+  final bool esPortada;
+
+  /// Inyectable, y lo usa la galeria para pasarle el SUYO. Antes esta clase
+  /// construia un `VehiclePhotoService()` propio dentro del onPressed, que es
+  /// lo que impedia probarla sin Firebase.
+  final VehiclePhotoService? servicio;
+
+  final VoidCallback? onPortadaCambiada;
+
   const FullScreenImageViewer({
     super.key,
     required this.foto,
     required this.vehicleId,
+    this.esPortada = false,
+    this.servicio,
+    this.onPortadaCambiada,
   });
+
+  VehiclePhotoService get _servicio => servicio ?? VehiclePhotoService();
+
+  Future<void> _hacerPortada(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    try {
+      await _servicio.usarComoPrincipal(vehicleId, foto.url);
+      onPortadaCambiada?.call();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Ya es la foto de tu vehículo')),
+      );
+      navigator.pop();
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            mensajeSeguroDeError(e, accion: 'No se pudo cambiar la foto'),
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _borrar(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar foto'),
+        content: const Text('¿Estás seguro de eliminar esta foto?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    if (context.mounted) Navigator.pop(context); // cierra el pantalla completa
+    await _servicio.deletePhoto(vehicleId, foto.id, foto.url);
+    // Borrar la portada asciende otra (o deja el placeholder), asi que el
+    // garaje tiene que releer igual que al elegirla.
+    onPortadaCambiada?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -191,40 +303,16 @@ class FullScreenImageViewer extends StatelessWidget {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
+          if (!esPortada)
+            IconButton(
+              icon: const Icon(Icons.star_outline, color: Colors.white),
+              tooltip: 'Usar como foto del vehículo',
+              onPressed: () => _hacerPortada(context),
+            ),
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.white),
-            onPressed: () async {
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Eliminar foto'),
-                  content: const Text('¿Estás seguro de eliminar esta foto?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('Cancelar'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: const Text(
-                        'Eliminar',
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-              if (confirm == true) {
-                if (context.mounted) {
-                  Navigator.pop(context); // close full screen
-                }
-                await VehiclePhotoService().deletePhoto(
-                  vehicleId,
-                  foto.id,
-                  foto.url,
-                );
-              }
-            },
+            tooltip: 'Eliminar foto',
+            onPressed: () => _borrar(context),
           ),
         ],
       ),

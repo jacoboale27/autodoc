@@ -362,7 +362,11 @@ const _huerfanosConocidos = <String>[];
 /// 16: sube a 17 con el `orderBy` que `findReviewableServiceId` baja al
 /// servidor (gap 7.4) y vuelve a 16 al retirarse `streamReservasUsuario`
 /// (gap 7.2). Ambos de GAPS-02.
-const _orderByEsperados = 16;
+/// 17 desde GAPS-08: `VehiclePhotoService.deletePhoto` busca la foto más
+/// reciente que queda para ascenderla a portada. NO necesita índice
+/// declarado —es un `orderBy` de un solo campo sin `where`, y ésos Firestore
+/// los tiene automáticos—, así que solo ajusta el contador.
+const _orderByEsperados = 17;
 
 /// Cuántos `.where(` hay hoy en `functions/index.js` y `functions/src/`. Ver el
 /// cuarto test.

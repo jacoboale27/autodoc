@@ -187,13 +187,64 @@ ahí desde que existe la galería.
 
 ---
 
+## 4. La foto la pone ahora su dueño
+
+Retirar el relleno automático dejó a **todos los coches con la silueta**, y eso no es
+aceptable en una app cuya pantalla principal es un garaje. La pieza que faltaba no era
+subir fotos —`VehiclePhotoService` ya lo hacía— sino **la relación entre la galería y
+`foto_url`**: eran dos cosas separadas que nadie conectaba.
+
+Ahora la foto del vehículo **es una de las de su galería**:
+
+- **La primera foto que se sube asciende sola a portada.** Sin esto, el caso normal —un
+  coche sin ninguna foto— seguía viéndose con la silueta *después* de subirla, que es
+  justo el síntoma. A partir de la segunda hay que elegir: sustituirla en cada subida
+  haría imposible tener una galería sin cambiar la portada cada vez.
+- **La ruta del asset no cuenta como foto.** Hay vehículos en producción con
+  `assets/images/default_vehicle.jpg` guardado en `foto_url` como si fuera una URL,
+  porque es lo que el buscador retirado escribía cuando no encontraba nada. Tratarla como
+  una foto de verdad los habría dejado sin ninguna vía para adoptar la primera que suba
+  su dueño, o sea con la silueta **para siempre**.
+- **La portada se marca en la galería** y se cambia desde el visor a pantalla completa.
+  La acción no se pinta sobre la que ya lo es: un botón que no cambia nada es peor que no
+  tenerlo.
+- **Borrar la portada asciende otra**, o deja el placeholder si no quedan. Sin eso,
+  `foto_url` quedaba apuntando a un objeto borrado: `VehicleImageWidget` lo tapa con su
+  `errorWidget`, pero la vista pública del taller usa `Image.network` a pelo y se queda
+  cargando para siempre.
+- **La ficha del vehículo invita a llenar el hueco.** La galería está más abajo, fuera de
+  pantalla en un teléfono, así que el sitio donde se nota la falta es también donde tiene
+  que estar la invitación. Lleva el guard de doble envío de GAPS-07, con las dos capas.
+
+Tres cosas del camino:
+
+**El centinela de índices lo vio.** `deletePhoto` busca la foto más reciente que queda
+para ascenderla, y eso es un `.orderBy(` nuevo en `lib/`:
+`firestore_indices_test.dart` cuenta esas apariciones precisamente para que el inventario
+no se quede atrás en silencio. No necesita índice declarado —un `orderBy` de un solo campo
+sin `where` lo tiene Firestore automático—, así que solo se ajusta el contador, pero la
+decisión queda tomada a la vista en vez de por omisión.
+
+**`Image.network` sale a la red en un widget test** y revienta con `statusCode: 400`, y la
+excepción la lanza el servicio de imágenes, no el widget: el test falla por algo que no
+estaba probando. Helper nuevo `test/support/imagenes_de_red.dart`. El PNG que devuelve
+tiene que ser **decodificable de verdad**; con bytes cualesquiera el códec falla y el
+síntoma es idéntico al que se venía a evitar.
+
+**`VehiclePhotoService` no era inyectable** (tocaba `FirebaseFirestore.instance` y
+`FirebaseStorage.instance` en sus inicializadores de campo), así que nada de esto tenía
+test. Ahora acepta los dos, y la subida y el borrado de bytes son *seams* que un test
+sobreescribe: lo que decide algo es la lógica de portada, no mover bytes.
+
+---
+
 ## Gaps que esta tanda deja abiertos
 
-1. **Nadie puede poner la foto de su coche desde la app.** La foto la sube ahora su dueño
-   —`VehiclePhotoService` ya existe y escribe en `vehiculos/{id}/fotos/`—, pero **la
-   galería y `foto_url` son dos cosas separadas** y nada conecta la una con la otra.
-   Mientras eso no exista, todos los vehículos se ven con la silueta. Es el precio de
-   retirar el relleno automático, y es trabajo de producto, no de arreglo.
+1. **Un vehículo recién creado sigue naciendo sin foto.** El formulario de alta es un
+   asistente de varios pasos y añadirle un paso de foto es un cambio de producto, no un
+   arreglo; además Storage exige que el vehículo **exista** antes de aceptar la subida
+   (`isVehicleOwner` lee el documento), así que tendría que ir después de crearlo. Hoy el
+   dueño la pone desde la ficha, que es donde se nota el hueco.
 2. **La clave de SearchAPI.io sigue viva.** Ya no la usa nadie en el repo, pero hay que
    borrarla del panel de searchapi.io y de los secretos de GitHub. Está además en el `.env`
    local, que un hook impide editar.
