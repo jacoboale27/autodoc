@@ -89,7 +89,7 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _inputFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
@@ -176,6 +176,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _chatProvider = context.read<ChatProvider>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -227,6 +228,20 @@ class _ChatScreenState extends State<ChatScreen> {
     final isMecanico = isMechanicRole(user.rol);
     _chatProvider.inicializarMensajes(widget.conversacionId);
     _chatProvider.marcarComoLeidos(widget.conversacionId, isMecanico, userId);
+    // Mientras esta pantalla siga abierta, lo que llegue del otro se marca
+    // como visto al instante (los "checks" ya no esperan a recargar).
+    _chatProvider.abrirConversacion(
+      widget.conversacionId,
+      lectorId: userId,
+      lectorEsMecanico: isMecanico,
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // En segundo plano (o con la pestaña del navegador oculta) nadie está
+    // leyendo: no se dan por vistos los mensajes que lleguen.
+    _chatProvider.pausarLectura(state != AppLifecycleState.resumed);
   }
 
   void _onUserProfilePendienteChanged() {
@@ -238,6 +253,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _chatProvider.cerrarConversacion(widget.conversacionId);
     _userSessionPendiente?.removeListener(_onUserProfilePendienteChanged);
     _typingTimer?.cancel();
     _chatProvider.setTypingStatus(widget.conversacionId, null);

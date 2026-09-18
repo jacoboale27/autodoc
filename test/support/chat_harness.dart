@@ -181,6 +181,26 @@ class FakeChatProvider extends ChangeNotifier implements ChatProvider {
   void inicializarConversaciones(String userId, bool isMecanico) =>
       llamadas.add('inicializarConversaciones:$userId:$isMecanico');
   @override
+  String? conversacionAbierta;
+  @override
+  void abrirConversacion(
+    String conversacionId, {
+    required String lectorId,
+    required bool lectorEsMecanico,
+  }) {
+    conversacionAbierta = conversacionId;
+    llamadas.add('abrirConversacion:$conversacionId:$lectorId');
+  }
+
+  @override
+  void cerrarConversacion(String conversacionId) {
+    if (conversacionAbierta == conversacionId) conversacionAbierta = null;
+    llamadas.add('cerrarConversacion:$conversacionId');
+  }
+
+  @override
+  void pausarLectura(bool enPausa) => llamadas.add('pausarLectura:$enPausa');
+  @override
   Future<void> marcarComoLeidos(
     String conversacionId,
     bool isMecanico,
