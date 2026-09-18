@@ -13,8 +13,8 @@ import '../../../../support/chat_harness.dart';
 /// Copiar siempre; Borrar solo en el mensaje propio y no borrado. Editar se
 /// cubre en `chat_screen_editar_mensaje_test.dart` (Tarea 11b).
 ///
-/// 11c (responder/reenviar) queda fuera de esta ronda a propósito — no se
-/// prueba ni se implementa.
+/// Responder, reenviar y los tres puntos llegaron con las observaciones del
+/// 2026-09-18: ver `chat_screen_responder_reenviar_test.dart`.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setupFirebaseCoreMocks();
@@ -226,36 +226,39 @@ void main() {
   // mensaje no tiene NINGUNA accion (no es propio, asi que tampoco Editar ni
   // Borrar). Abrir el sheet igualmente mostraba una franja vacia que el
   // usuario solo podia cerrar. No debe abrirse nada.
-  testWidgets(
-    'sobre un audio de la contraparte no se abre ningun menu (no hay acciones)',
-    (tester) async {
-      await Firebase.initializeApp();
-      final chatProvider = FakeChatProvider(
-        conversaciones: [fakeConversacion()],
-        mensajes: [
-          fakeMensaje(
-            id: 'm1',
-            idRemitente: 'm1',
-            contenido: 'Nota de voz',
-            tipo: 'audio',
-          ),
-        ],
-      );
-      await pumpChatWidget(
-        tester,
-        const ChatScreen(conversacionId: 'c1'),
-        width: 375,
-        user: fakeChatUser(),
-        chatProvider: chatProvider,
-      );
+  testWidgets('sobre un audio de la contraparte solo se ofrece Responder', (
+    tester,
+  ) async {
+    await Firebase.initializeApp();
+    final chatProvider = FakeChatProvider(
+      conversaciones: [fakeConversacion()],
+      mensajes: [
+        fakeMensaje(
+          id: 'm1',
+          idRemitente: 'm1',
+          contenido: 'Nota de voz',
+          tipo: 'audio',
+        ),
+      ],
+    );
+    await pumpChatWidget(
+      tester,
+      const ChatScreen(conversacionId: 'c1'),
+      width: 375,
+      user: fakeChatUser(),
+      chatProvider: chatProvider,
+    );
 
-      await tester.longPress(find.byType(AudioChatCard));
-      await tester.pumpAndSettle();
+    await tester.longPress(find.byType(AudioChatCard));
+    await tester.pumpAndSettle();
 
-      expect(find.byType(BottomSheet), findsNothing);
-      expect(find.byKey(const Key('menu_mensaje_copiar')), findsNothing);
-      expect(find.byKey(const Key('menu_mensaje_editar')), findsNothing);
-      expect(find.byKey(const Key('menu_mensaje_borrar')), findsNothing);
-    },
-  );
+    // Antes de las observaciones del 2026-09-18 no habia NINGUNA accion
+    // sobre un audio ajeno y no se abria nada. Responder aplica a
+    // cualquier mensaje vivo; copiar/editar/borrar/reenviar siguen fuera.
+    expect(find.byKey(const Key('menu_mensaje_responder')), findsOneWidget);
+    expect(find.byKey(const Key('menu_mensaje_reenviar')), findsNothing);
+    expect(find.byKey(const Key('menu_mensaje_copiar')), findsNothing);
+    expect(find.byKey(const Key('menu_mensaje_editar')), findsNothing);
+    expect(find.byKey(const Key('menu_mensaje_borrar')), findsNothing);
+  });
 }

@@ -342,6 +342,8 @@ class ChatProvider extends ChangeNotifier {
     Map<String, dynamic>? metadata,
     String? urlArchivo,
     int? duracionSegundos,
+    Map<String, dynamic>? respuestaA,
+    bool reenviado = false,
   }) async {
     try {
       final mensaje = MensajeModel(
@@ -353,6 +355,8 @@ class ChatProvider extends ChangeNotifier {
         timestamp: DateTime.now(),
         urlArchivo: urlArchivo,
         duracionSegundos: duracionSegundos,
+        respuestaA: respuestaA,
+        reenviado: reenviado,
       );
 
       await _chatRepository.enviarMensaje(

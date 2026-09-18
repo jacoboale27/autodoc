@@ -75,6 +75,18 @@ class MensajeModel {
   @HiveField(10)
   final bool editado;
 
+  /// Mensaje al que este responde (observaciones del 2026-09-18: "responder"
+  /// en el menú del mensaje). Copia lo justo para pintar la cita sin otra
+  /// lectura: `id`, `id_remitente`, `tipo` y un extracto de `contenido`. Es
+  /// una copia a propósito: si el original se borra o se edita después, la
+  /// respuesta sigue diciendo a qué contestaba.
+  @HiveField(11)
+  final Map<String, dynamic>? respuestaA;
+
+  /// El mensaje se reenvió desde otra conversación ("reenviar" en el menú).
+  @HiveField(12)
+  final bool reenviado;
+
   MensajeModel({
     required this.id,
     required this.idRemitente,
@@ -87,6 +99,8 @@ class MensajeModel {
     this.isDeleted = false,
     this.duracionSegundos,
     this.editado = false,
+    this.respuestaA,
+    this.reenviado = false,
   });
 
   factory MensajeModel.fromMap(Map<String, dynamic> map, String id) {
@@ -104,6 +118,10 @@ class MensajeModel {
       isDeleted: map['is_deleted'] ?? false,
       duracionSegundos: (map['duracion_segundos'] as num?)?.toInt(),
       editado: map['editado'] ?? false,
+      respuestaA: map['respuesta_a'] is Map
+          ? Map<String, dynamic>.from(map['respuesta_a'] as Map)
+          : null,
+      reenviado: map['reenviado'] == true,
     );
   }
 
@@ -119,6 +137,8 @@ class MensajeModel {
       'is_deleted': isDeleted,
       if (duracionSegundos != null) 'duracion_segundos': duracionSegundos,
       'editado': editado,
+      if (respuestaA != null) 'respuesta_a': respuestaA,
+      if (reenviado) 'reenviado': true,
     };
   }
 }

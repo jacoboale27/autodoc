@@ -27,6 +27,8 @@ final class _ChatPendiente extends FakeChatProvider {
     Map<String, dynamic>? metadata,
     String? urlArchivo,
     int? duracionSegundos,
+    Map<String, dynamic>? respuestaA,
+    bool reenviado = false,
   }) {
     envios++;
     return envioPendiente.future;

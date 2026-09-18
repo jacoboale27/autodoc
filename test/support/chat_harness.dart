@@ -80,6 +80,13 @@ class FakeUserProfileProvider extends ChangeNotifier
 /// fallo de compilación si se declara `@override`, no un fallo silencioso en
 /// runtime.
 class FakeChatProvider extends ChangeNotifier implements ChatProvider {
+  /// Lo que llevó el último `enviarMensaje` (responder/reenviar, observaciones
+  /// del 2026-09-18).
+  Map<String, dynamic>? ultimaRespuestaA;
+  bool ultimoReenviado = false;
+  String? ultimoTipo;
+  String? ultimaUrlArchivo;
+
   FakeChatProvider({
     List<ConversacionModel>? conversaciones,
     List<MensajeModel>? mensajes,
@@ -234,8 +241,14 @@ class FakeChatProvider extends ChangeNotifier implements ChatProvider {
     Map<String, dynamic>? metadata,
     String? urlArchivo,
     int? duracionSegundos,
+    Map<String, dynamic>? respuestaA,
+    bool reenviado = false,
   }) async {
     llamadas.add('enviarMensaje:$conversacionId:$contenido');
+    ultimaRespuestaA = respuestaA;
+    ultimoReenviado = reenviado;
+    ultimoTipo = tipo;
+    ultimaUrlArchivo = urlArchivo;
     // GAPS-05: el contrato devuelve si el mensaje llego al servidor. Este
     // doble responde `true` porque los tests que lo usan ejercen el camino
     // feliz; el fallo tiene su propio test en

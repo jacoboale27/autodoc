@@ -33,6 +33,7 @@ import 'package:autodoc/features/chat/presentation/widgets/cards/audio_chat_card
 import 'package:autodoc/features/chat/presentation/widgets/voice_record_button.dart';
 import 'package:autodoc/core/widgets/aviso_lista_truncada.dart';
 import 'package:autodoc/features/chat/data/models/mensaje_model.dart';
+import 'package:autodoc/features/chat/data/models/conversacion_model.dart';
 import 'package:autodoc/features/chat/presentation/pages/nueva_cotizacion_screen.dart';
 import 'package:autodoc/features/chat/data/models/vehiculo_cotizado.dart';
 import 'package:autodoc/features/chat/data/models/reserva_model.dart';
@@ -113,6 +114,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   /// hora—, asi que recorrerlo dos veces es posible: sin esto se creaban DOS
   /// reservas y dos tarjetas.
   bool _creandoReserva = false;
+
+  /// Mensaje al que se está respondiendo (barra encima del compositor).
+  MensajeModel? _respondiendoA;
+
+  /// Guard de reentrada del reenvío (hoja de destinos + escritura).
+  bool _reenviando = false;
 
   // Capturado una vez en initState (con el context aún activo) para poder
   // usarlo en dispose(): en ese punto el propio Element ya está desactivado,
@@ -284,9 +291,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     if (texto.isEmpty) return;
 
     final provider = context.read<ChatProvider>();
+    final respuesta = _respondiendoA;
     _controller.clear();
     _reengancharCompositor();
-    setState(() => _enviandoTexto = true);
+    setState(() {
+      _enviandoTexto = true;
+      _respondiendoA = null;
+    });
 
     final bool enviado;
     try {
@@ -297,6 +308,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         receptorId: receptorId,
         isMecanicoRemitente: isMecanico,
         tipo: 'texto',
+        respuestaA: respuesta == null ? null : resumenParaResponder(respuesta),
       );
     } finally {
       if (mounted) setState(() => _enviandoTexto = false);
@@ -309,6 +321,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     if (_controller.text.isEmpty) {
       _controller.text = texto;
       _controller.selection = TextSelection.collapsed(offset: texto.length);
+      if (respuesta != null && _respondiendoA == null) {
+        setState(() => _respondiendoA = respuesta);
+      }
     }
     UiUtils.showErrorSnackbar(
       context,
@@ -541,7 +556,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   /// mensaje ofrece Copiar siempre, y — solo para el mensaje propio, no
   /// borrado — Editar (solo texto) y Borrar. Reply/reenviar quedan fuera de
   /// esta ronda (11c, explícitamente pospuesto en el plan).
-  void _abrirMenuMensaje(MensajeModel msg, bool isMe) {
+  /// Qué ofrece el menú de un mensaje. Vive aparte de `_abrirMenuMensaje`
+  /// para que el botón de los tres puntos pueda saber si hay algo que ofrecer
+  /// sin abrir el menú.
+  ({bool responder, bool reenviar, bool copiar, bool editar, bool borrar})
+  _accionesDe(MensajeModel msg, bool isMe) {
     // R10 (revision C4b): antes se ofrecia Copiar sobre cualquier tipo de
     // mensaje. `msg.contenido` en 'imagen'/'audio' es un placeholder interno
     // ('📷 Imagen adjunta', '🎤 Nota de voz'), no texto que el usuario haya
@@ -551,18 +570,59 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     // muestra `msg.contenido` como el propio texto visible de la burbuja
     // (incluido el tombstone de un mensaje borrado, que sigue siendo
     // 'texto' y sigue siendo lo que se ve en pantalla).
-    final puedeCopiar = msg.tipo == 'texto';
-    final puedeEditar = isMe && !msg.isDeleted && msg.tipo == 'texto';
-    final puedeBorrar = isMe && !msg.isDeleted;
-    // Sin ninguna accion disponible (p.ej. un audio o una tarjeta de la
+    return (
+      // Observaciones del 2026-09-18: responder y reenviar, además de las tres
+      // de C4. Se responde a cualquier mensaje vivo; se reenvía solo lo que es
+      // contenido (texto, foto): reenviar una cotización o una cita a otro
+      // cliente crearía una tarjeta que apunta a un documento ajeno.
+      responder: !msg.isDeleted,
+      reenviar: !msg.isDeleted && (msg.tipo == 'texto' || msg.tipo == 'imagen'),
+      copiar: msg.tipo == 'texto',
+      editar: isMe && !msg.isDeleted && msg.tipo == 'texto',
+      borrar: isMe && !msg.isDeleted,
+    );
+  }
+
+  bool _tieneAcciones(MensajeModel msg, bool isMe) {
+    final a = _accionesDe(msg, isMe);
+    return a.responder || a.reenviar || a.copiar || a.editar || a.borrar;
+  }
+
+  void _abrirMenuMensaje(MensajeModel msg, bool isMe) {
+    final acciones = _accionesDe(msg, isMe);
+    final puedeCopiar = acciones.copiar;
+    final puedeEditar = acciones.editar;
+    final puedeBorrar = acciones.borrar;
+    // Sin ninguna accion disponible (p.ej. un mensaje borrado de la
     // contraparte) no se abre nada: un sheet vacio solo obliga a cerrarlo.
-    if (!puedeCopiar && !puedeEditar && !puedeBorrar) return;
+    if (!_tieneAcciones(msg, isMe)) return;
     showModalBottomSheet(
       context: context,
       builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (acciones.responder)
+              ListTile(
+                key: const Key('menu_mensaje_responder'),
+                leading: const Icon(Icons.reply),
+                title: const Text('Responder'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  setState(() => _respondiendoA = msg);
+                  _inputFocusNode.requestFocus();
+                },
+              ),
+            if (acciones.reenviar)
+              ListTile(
+                key: const Key('menu_mensaje_reenviar'),
+                leading: const Icon(Icons.forward),
+                title: const Text('Reenviar'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _reenviarMensaje(msg);
+                },
+              ),
             if (puedeCopiar)
               ListTile(
                 key: const Key('menu_mensaje_copiar'),
@@ -600,6 +660,104 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         ),
       ),
     );
+  }
+
+  /// Reenvía un texto o una foto a otra conversación del usuario.
+  Future<void> _reenviarMensaje(MensajeModel msg) async {
+    if (_reenviando) return;
+    final chat = context.read<ChatProvider>();
+    final usuario = context.read<UserProfileProvider>().userData;
+    if (usuario == null) return;
+    final isMecanico = isMechanicRole(usuario.rol);
+    String nombreDe(ConversacionModel c) =>
+        isMecanico ? c.nombrePropietario : c.nombreMecanico;
+
+    final destinos = chat.conversaciones
+        .where((c) => c.id != widget.conversacionId)
+        .toList();
+    if (destinos.isEmpty) {
+      UiUtils.showErrorSnackbar(
+        context,
+        'No tienes otras conversaciones a las que reenviar este mensaje.',
+      );
+      return;
+    }
+
+    final destino = await showModalBottomSheet<ConversacionModel>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.7,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                child: Text(
+                  'Reenviar a…',
+                  style: AppTextStyles.titleMedium.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    for (final c in destinos)
+                      ListTile(
+                        key: Key('reenviar_a_${c.id}'),
+                        leading: AppUserAvatar(
+                          urlFoto: isMecanico
+                              ? c.fotoPropietario
+                              : c.fotoMecanico,
+                          nombre: nombreDe(c),
+                        ),
+                        title: Text(nombreDe(c)),
+                        onTap: () => Navigator.pop(ctx, c),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (destino == null || !mounted) return;
+
+    setState(() => _reenviando = true);
+    final bool ok;
+    try {
+      ok = await chat.enviarMensaje(
+        conversacionId: destino.id,
+        contenido: msg.contenido,
+        remitenteId: usuario.idUsuario,
+        receptorId: isMecanico ? destino.idPropietario : destino.idMecanico,
+        isMecanicoRemitente: isMecanico,
+        tipo: msg.tipo,
+        urlArchivo: msg.urlArchivo,
+        reenviado: true,
+      );
+    } finally {
+      if (mounted) setState(() => _reenviando = false);
+    }
+    if (!mounted) return;
+    if (ok) {
+      UiUtils.showSuccessSnackbar(
+        context,
+        'Mensaje reenviado a ${nombreDe(destino)}.',
+      );
+    } else {
+      UiUtils.showErrorSnackbar(
+        context,
+        chat.error ?? 'No se pudo reenviar el mensaje.',
+      );
+    }
   }
 
   void _copiarMensaje(MensajeModel msg) {
@@ -855,8 +1013,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                           alignment: isMe
                               ? Alignment.centerRight
                               : Alignment.centerLeft,
-                          child: GestureDetector(
-                            onLongPress: () => _abrirMenuMensaje(msg, isMe),
+                          child: _ConOpcionesDeMensaje(
+                            isMe: isMe,
+                            mostrar: _tieneAcciones(msg, isMe),
+                            onOpciones: () => _abrirMenuMensaje(msg, isMe),
                             child: ChatBubble(
                               isMe: isMe,
                               isDeleted: msg.isDeleted,
@@ -875,7 +1035,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                               // pantalla.
                               semanticLabel:
                                   (msg.tipo == 'texto' || msg.isDeleted)
-                                  ? '$nombreAutor: ${msg.contenido}'
+                                  ? [
+                                      if (msg.reenviado && !msg.isDeleted)
+                                        'Reenviado.',
+                                      if (msg.respuestaA != null &&
+                                          !msg.isDeleted)
+                                        'En respuesta a: '
+                                            '${msg.respuestaA!['contenido'] ?? ''}.',
+                                      '$nombreAutor: ${msg.contenido}',
+                                    ].join(' ')
                                   : null,
                               footer: _footerDe(msg, isMe),
                               child: _buildMessageContent(
@@ -883,6 +1051,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                 isMe,
                                 colors,
                                 conversacion?.idMecanico ?? '',
+                                userId: userId,
+                                nombreContraparte: targetName,
                               ),
                             ),
                           ),
@@ -894,6 +1064,19 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             ),
           ),
 
+          if (_respondiendoA != null)
+            AppPageBody(
+              maxWidth: AppBreakpoints.maxContentWidth,
+              child: _BarraRespondiendo(
+                autor: _respondiendoA!.idRemitente == userId
+                    ? 'Tú'
+                    : targetName,
+                texto: resumenParaResponder(
+                  _respondiendoA!,
+                )['contenido'].toString(),
+                onCancelar: () => setState(() => _respondiendoA = null),
+              ),
+            ),
           // Input Bar
           AppPageBody(
             maxWidth: AppBreakpoints.maxContentWidth,
@@ -1037,8 +1220,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     MensajeModel msg,
     bool isMe,
     AppColors colors,
-    String tallerId,
-  ) {
+    String tallerId, {
+    String userId = '',
+    String nombreContraparte = '',
+  }) {
     // Antes de mirar el tipo. `deleteMensaje` es un borrado suave: marca
     // `is_deleted` y sustituye `contenido`, pero NO toca `tipo` ni
     // `url_archivo`. Sin este corte, borrar una imagen o un audio caia igual
@@ -1070,6 +1255,34 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       );
     }
 
+    final contenido = _contenidoPorTipo(msg, isMe, colors, tallerId);
+    final respuesta = msg.respuestaA;
+    if (respuesta == null && !msg.reenviado) return contenido;
+    final autorCitado = respuesta?['id_remitente'] == userId
+        ? 'Tú'
+        : nombreContraparte;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (msg.reenviado) _EtiquetaReenviado(isMe: isMe),
+        if (respuesta != null)
+          _CitaRespuesta(
+            autor: autorCitado,
+            texto: (respuesta['contenido'] ?? '').toString(),
+            isMe: isMe,
+          ),
+        contenido,
+      ],
+    );
+  }
+
+  Widget _contenidoPorTipo(
+    MensajeModel msg,
+    bool isMe,
+    AppColors colors,
+    String tallerId,
+  ) {
     switch (msg.tipo) {
       case 'vehiculo_card':
         return VehiculoChatCard(metadata: msg.metadata ?? {}, isMe: isMe);
@@ -1541,6 +1754,230 @@ class _EditarMensajeDialogState extends State<_EditarMensajeDialog> {
           child: Text(context.l10n.chatSaveEdit),
         ),
       ],
+    );
+  }
+}
+
+/// Lo que una respuesta guarda del mensaje al que contesta (observaciones del
+/// 2026-09-18). Un extracto y no el mensaje entero: basta para la cita, y un
+/// texto largo copiado en cada respuesta solo engordaría el hilo.
+@visibleForTesting
+Map<String, dynamic> resumenParaResponder(MensajeModel msg) {
+  final String extracto = switch (msg.tipo) {
+    'imagen' => '📷 Foto',
+    'audio' => '🎤 Nota de voz',
+    'cotizacion_card' => 'Cotización',
+    'reserva_card' => 'Cita',
+    'review_card' => 'Reseña',
+    'vehiculo_card' => 'Vehículo',
+    'historial' => 'Historial',
+    _ =>
+      msg.contenido.length > 120
+          ? '${msg.contenido.substring(0, 120)}…'
+          : msg.contenido,
+  };
+  return {
+    'id': msg.id,
+    'id_remitente': msg.idRemitente,
+    'tipo': msg.tipo,
+    'contenido': extracto,
+  };
+}
+
+/// Los tres puntos de cada mensaje (observaciones del 2026-09-18: «en el
+/// mensaje aparezcan los 3 puntitos»). Mantener presionado sigue abriendo el
+/// mismo menú; los puntos existen porque en la web —y para quien no conoce el
+/// gesto— mantener presionado no se descubre.
+class _ConOpcionesDeMensaje extends StatelessWidget {
+  final bool isMe;
+  final bool mostrar;
+  final VoidCallback onOpciones;
+  final Widget child;
+
+  const _ConOpcionesDeMensaje({
+    required this.isMe,
+    required this.mostrar,
+    required this.onOpciones,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final burbuja = GestureDetector(
+      onLongPress: mostrar ? onOpciones : null,
+      child: child,
+    );
+    if (!mostrar) return burbuja;
+    final puntos = IconButton(
+      key: const Key('mensaje_opciones'),
+      icon: Icon(
+        Icons.more_vert,
+        size: 18,
+        color: context.appColors.textSecondary,
+      ),
+      tooltip: 'Opciones del mensaje',
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      onPressed: onOpciones,
+    );
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (isMe) puntos,
+        Flexible(child: burbuja),
+        if (!isMe) puntos,
+      ],
+    );
+  }
+}
+
+/// Cita del mensaje al que se responde, dentro de la burbuja.
+class _CitaRespuesta extends StatelessWidget {
+  final String autor;
+  final String texto;
+  final bool isMe;
+
+  const _CitaRespuesta({
+    required this.autor,
+    required this.texto,
+    required this.isMe,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    // Sobre la burbuja propia (fondo primary) todo va en onPrimary; sobre la
+    // ajena, en los tokens de texto — ver la nota de ChatBubble sobre no
+    // pintar superficies propias encima de la burbuja.
+    final acento = isMe ? colors.onPrimary : colors.primary;
+    final textoColor = isMe
+        ? colors.onPrimary.withValues(alpha: 0.85)
+        : colors.textSecondary;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+      decoration: BoxDecoration(
+        color: acento.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border(left: BorderSide(color: acento, width: 3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            autor,
+            style: TextStyle(
+              color: acento,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            texto,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: textoColor, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EtiquetaReenviado extends StatelessWidget {
+  final bool isMe;
+
+  const _EtiquetaReenviado({required this.isMe});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final color = isMe
+        ? colors.onPrimary.withValues(alpha: 0.8)
+        : colors.textSecondary;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.forward, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            'Reenviado',
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Respondiendo a …" encima del compositor, con la X para cancelar.
+class _BarraRespondiendo extends StatelessWidget {
+  final String autor;
+  final String texto;
+  final VoidCallback onCancelar;
+
+  const _BarraRespondiendo({
+    required this.autor,
+    required this.texto,
+    required this.onCancelar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    return Container(
+      key: const Key('barra_respondiendo'),
+      padding: const EdgeInsets.fromLTRB(16, 8, 4, 8),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainer,
+        border: Border(
+          top: BorderSide(color: colors.outline.withValues(alpha: 0.4)),
+          left: BorderSide(color: colors.primary, width: 4),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.reply, size: 18, color: colors.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Respondiendo a $autor',
+                  style: AppTextStyles.labelMedium.copyWith(
+                    color: colors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  texto,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            key: const Key('cancelar_respuesta'),
+            icon: Icon(Icons.close, size: 18, color: colors.textSecondary),
+            tooltip: 'Cancelar respuesta',
+            onPressed: onCancelar,
+          ),
+        ],
+      ),
     );
   }
 }
