@@ -28,13 +28,15 @@ class MensajeModelAdapter extends TypeAdapter<MensajeModel> {
       isDeleted: fields[8] as bool,
       duracionSegundos: fields[9] as int?,
       editado: fields[10] == null ? false : fields[10] as bool,
+      respuestaA: (fields[11] as Map?)?.cast<String, dynamic>(),
+      reenviado: fields[12] == null ? false : fields[12] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, MensajeModel obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -56,7 +58,11 @@ class MensajeModelAdapter extends TypeAdapter<MensajeModel> {
       ..writeByte(9)
       ..write(obj.duracionSegundos)
       ..writeByte(10)
-      ..write(obj.editado);
+      ..write(obj.editado)
+      ..writeByte(11)
+      ..write(obj.respuestaA)
+      ..writeByte(12)
+      ..write(obj.reenviado);
   }
 
   @override

@@ -40,6 +40,7 @@ import 'package:autodoc/features/admin/presentation/providers/admin_dashboard_pr
 import 'package:autodoc/core/services/notification_service.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
+import 'package:autodoc/features/chat/presentation/widgets/aviso_mensajes_nuevos.dart';
 import 'package:autodoc/core/providers/notification_center_provider.dart';
 import 'package:autodoc/features/chat/data/models/mensaje_model.dart';
 
@@ -280,6 +281,15 @@ Future<void> main() async {
 
   debugPrint("=== [AutoDoc Init] Inicialización completa. Lanzando runApp ===");
 
+  // El tema se lee ANTES de pintar: sin esperar, quien eligió un tema distinto
+  // del de su dispositivo vería el otro durante el primer frame. La espera va
+  // acotada para que un almacenamiento lento no retrase el arranque.
+  final themeProvider = ThemeProvider();
+  await themeProvider.listo.timeout(
+    const Duration(seconds: 2),
+    onTimeout: () {},
+  );
+
   // Crear providers base
   final authSessionProvider = AuthSessionProvider();
   final userProfileProvider = UserProfileProvider();
@@ -306,7 +316,7 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider.value(value: authSessionProvider),
@@ -412,9 +422,15 @@ class _MyAppState extends State<MyApp> {
       themeMode: themeProvider.themeMode,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      // Sin builder: los breakpoints los define AppBreakpoints y los consume
-      // cada pantalla vía LayoutBuilder. Un wrapper global de breakpoints
-      // creaba una segunda escala que contradecía a la primera.
+      // Los breakpoints NO van aquí: los define AppBreakpoints y los consume
+      // cada pantalla vía LayoutBuilder (un wrapper global de breakpoints
+      // creaba una segunda escala que contradecía a la primera). El builder
+      // solo monta el aviso de mensajes nuevos, que tiene que estar en todas
+      // las pantallas (observaciones del 2026-09-18, Inge).
+      builder: (context, child) => AvisoMensajesNuevos(
+        onAbrirConversacion: (id) => _router.go('/chat/$id'),
+        child: child ?? const SizedBox.shrink(),
+      ),
     );
   }
 }

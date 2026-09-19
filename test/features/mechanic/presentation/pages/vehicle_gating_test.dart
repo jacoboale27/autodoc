@@ -6,6 +6,7 @@
 // la tarjeta de vehiculo del chat deben decidir esto exactamente igual,
 // porque ya paso una vez que solo una de las dos entradas se corrigio.
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_core_platform_interface/test.dart';
@@ -15,6 +16,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:autodoc/core/models/reparacion_model.dart';
+import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/core/providers/language_provider.dart';
 import 'package:autodoc/core/providers/notification_center_provider.dart';
@@ -24,6 +26,11 @@ import 'package:autodoc/core/theme/app_theme.dart';
 import 'package:autodoc/core/widgets/missing_argument_screen.dart';
 import 'package:autodoc/l10n/app_localizations.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/features/chat/data/repositories/chat_repository.dart';
+import 'package:autodoc/features/chat/data/repositories/reserva_repository.dart';
+import 'package:autodoc/features/chat/presentation/pages/nueva_cotizacion_screen.dart';
+import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
+import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cards/vehiculo_chat_card.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
@@ -64,7 +71,9 @@ class _FakeVehicleProviderConPlaca extends FakeVehicleProvider {
 /// falta para comprobar a qué pantalla se llega). [chatHome], si se da,
 /// reemplaza `/mechanic_search` como pantalla inicial: lo usa el test del
 /// chat para arrancar en la tarjeta de vehículo en vez del buscador.
-GoRouter _router({Widget? chatHome}) => GoRouter(
+/// [firestore] es de donde el perfil del vehículo lee las cotizaciones y los
+/// servicios del taller.
+GoRouter _router({Widget? chatHome, FirebaseFirestore? firestore}) => GoRouter(
   initialLocation: chatHome != null ? '/chat_test' : '/mechanic_search',
   routes: [
     if (chatHome != null)
@@ -109,6 +118,7 @@ GoRouter _router({Widget? chatHome}) => GoRouter(
                 )
               : VehiclePublicViewScreen(
                   vehiculoId: id,
+                  firestore: firestore ?? FakeFirebaseFirestore(),
                   vehiculoPrecargado: state.extra is VehicleModel
                       ? state.extra as VehicleModel
                       : null,
@@ -131,14 +141,28 @@ GoRouter _router({Widget? chatHome}) => GoRouter(
 Widget _appDeGating({
   required GoRouter router,
   required ReparacionProvider reparacionProvider,
+  FakeFirebaseFirestore? firestoreCitas,
+  UserModel? usuario,
 }) {
+  final citas = firestoreCitas ?? FakeFirebaseFirestore();
   return MultiProvider(
     providers: [
+      // Observaciones del 2026-09-18: la ficha pública busca la cita vigente
+      // del propietario (desbloquea cotizar) y cotizar escribe en el chat.
+      ChangeNotifierProvider<ReservaProvider>(
+        create: (_) =>
+            ReservaProvider(repository: ReservaRepository(firestore: citas)),
+      ),
+      ChangeNotifierProvider<ChatProvider>(
+        create: (_) =>
+            ChatProvider(repository: ChatRepository(firestore: citas)),
+      ),
       ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ChangeNotifierProvider(create: (_) => LanguageProvider()),
       ChangeNotifierProvider(create: (_) => AuthProvider()),
       ChangeNotifierProvider<UserProfileProvider>(
-        create: (_) => FakeUserProfileProvider(user: fakeTaller(id: 't1')),
+        create: (_) =>
+            FakeUserProfileProvider(user: usuario ?? fakeTaller(id: 't1')),
       ),
       ChangeNotifierProvider<VehicleProvider>(
         create: (_) => _FakeVehicleProviderConPlaca(_vehiculoFake()),
@@ -173,17 +197,23 @@ Widget _appDeGating({
 Future<GoRouter> _pumpBuscarVehiculo(
   WidgetTester tester, {
   required String? reparacionActivaId,
+  FakeFirebaseFirestore? firestoreCitas,
+  UserModel? usuario,
+  ReparacionProvider? reparacionProvider,
 }) async {
   if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp();
   }
-  final router = _router();
+  final datos = firestoreCitas ?? FakeFirebaseFirestore();
+  final router = _router(firestore: datos);
   await tester.pumpWidget(
     _appDeGating(
       router: router,
-      reparacionProvider: FakeReparacionProvider(
-        reparacionActivaId: reparacionActivaId,
-      ),
+      reparacionProvider:
+          reparacionProvider ??
+          FakeReparacionProvider(reparacionActivaId: reparacionActivaId),
+      firestoreCitas: datos,
+      usuario: usuario,
     ),
   );
   await tester.pump();
@@ -223,7 +253,7 @@ Future<GoRouter> _pumpBuscarVehiculoConTicketReal(
         ).toMap(),
       );
 
-  final router = _router();
+  final router = _router(firestore: firestore);
   await tester.pumpWidget(
     _appDeGating(
       router: router,
@@ -311,10 +341,19 @@ void main() {
   testWidgets('con reparacion en pendiente_recepcion, se desbloquea recibir', (
     tester,
   ) async {
+    // Observaciones del 2026-09-19: buscar la placa lleva al PERFIL del
+    // vehículo, y desde el servicio en curso se llega a recibirlo.
     final router = await _pumpBuscarVehiculo(tester, reparacionActivaId: 'r1');
 
     await tester.enterText(find.byType(TextField), 'P123456');
     await tester.tap(find.text('BUSCAR AUTO'));
+    await tester.pumpAndSettle();
+
+    expect(router.state.uri.toString(), '/vehiculo_publico/v1');
+    expect(find.text('Perfil del vehículo'), findsOneWidget);
+    expect(find.text('Por recibir'), findsOneWidget);
+
+    await tester.tap(find.text('Recibir vehículo'));
     await tester.pumpAndSettle();
 
     expect(find.byType(InitiateServiceScreen), findsOneWidget);
@@ -358,6 +397,12 @@ void main() {
       expect(find.byType(VehiclePublicViewScreen), findsOneWidget);
       expect(find.byType(InitiateServiceScreen), findsNothing);
       expect(router.state.uri.toString(), '/vehiculo_publico/v1');
+      expect(
+        find.text('Recibir vehículo'),
+        findsNothing,
+        reason: 'un ticket cancelado no da acceso a ningún servicio',
+      );
+      expect(find.text('Continuar servicio'), findsNothing);
     },
   );
 
@@ -377,8 +422,105 @@ void main() {
       await tester.tap(find.text('BUSCAR AUTO'));
       await tester.pumpAndSettle();
 
+      expect(router.state.uri.toString(), '/vehiculo_publico/v1');
+      await tester.tap(find.text('Continuar servicio'));
+      await tester.pumpAndSettle();
+
       expect(find.byType(InitiateServiceScreen), findsOneWidget);
       expect(router.state.uri.toString(), '/initiate_service/r1');
     },
   );
+
+  group('observaciones 2026-09-18: cotizar desde Buscar Vehículo', () {
+    Future<FakeFirebaseFirestore> conCita(String estado) async {
+      final db = FakeFirebaseFirestore();
+      await db.collection('reservas').doc('r1').set({
+        'id_conversacion': 'conv1',
+        'id_propietario': 'p1',
+        'id_mecanico': 't1',
+        'id_taller': 't1',
+        'id_vehiculo': 'v1',
+        'id_proponente': 'p1',
+        'estado': estado,
+        'tipo_servicio': 'Cita General',
+        'fecha_hora_propuesta': Timestamp.fromDate(
+          DateTime(2030, 9, 30, 9, 20),
+        ),
+        'fecha_creacion': Timestamp.fromDate(DateTime(2026, 9, 18)),
+      });
+      return db;
+    }
+
+    Future<void> buscar(WidgetTester tester) async {
+      await tester.enterText(find.byType(TextField), 'P123456');
+      await tester.tap(find.text('BUSCAR AUTO'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('sin cita, solo la ficha pública: no se puede cotizar', (
+      tester,
+    ) async {
+      await _pumpBuscarVehiculo(tester, reparacionActivaId: null);
+      await buscar(tester);
+
+      expect(find.byType(VehiclePublicViewScreen), findsOneWidget);
+      expect(find.text('Crear cotización'), findsNothing);
+      expect(
+        find.textContaining('todavía no tiene una cita contigo'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('con una cita pendiente, se puede preparar la cotización', (
+      tester,
+    ) async {
+      // Un taller con el perfil completo: cotizar lo exige (ubicación,
+      // especialidad...), igual que desde el chat.
+      final completo = UserModel(
+        idUsuario: 't1',
+        nombreCompleto: 'Taller Escobar',
+        correo: 'taller@example.com',
+        rol: 'Mecanico',
+        fechaRegistro: DateTime(2026, 1, 1),
+        estado: 'activo',
+        especialidad: 'Mecánica General',
+        departamento: 'San Salvador',
+        municipio: 'San Salvador',
+        latitud: 13.69,
+        longitud: -89.19,
+      );
+      await _pumpBuscarVehiculo(
+        tester,
+        reparacionActivaId: null,
+        firestoreCitas: await conCita('pendiente'),
+        usuario: completo,
+      );
+      await buscar(tester);
+
+      expect(find.text('Crear cotización'), findsOneWidget);
+      expect(
+        find.text('Recibir vehículo'),
+        findsNothing,
+        reason: 'recibir sigue exigiendo que el dueño ACEPTE la cotización',
+      );
+
+      await tester.ensureVisible(find.text('Crear cotización'));
+      await tester.tap(find.text('Crear cotización'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(NuevaCotizacionScreen), findsOneWidget);
+      expect(find.text('Toyota Corolla'), findsOneWidget);
+    });
+
+    testWidgets('una cita rechazada no desbloquea nada', (tester) async {
+      await _pumpBuscarVehiculo(
+        tester,
+        reparacionActivaId: null,
+        firestoreCitas: await conCita('rechazada'),
+      );
+      await buscar(tester);
+
+      expect(find.text('Crear cotización'), findsNothing);
+    });
+  });
 }

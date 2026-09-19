@@ -110,6 +110,38 @@ describe('publishTallerProfile / construirPerfilPublico', () => {
     });
   });
 
+  describe('contacto (observaciones del 2026-09-19)', () => {
+    it('publica el telefono y el municipio que la pantalla dice publicos', () => {
+      const perfil = construirPerfilPublico(
+        'uid-taller',
+        usuarioTaller({ telefono: '+503 7788-9901', municipio: 'San Salvador Centro' }),
+        { GeoPoint: FakeGeoPoint },
+      );
+      assert.strictEqual(perfil.telefono, '+503 7788-9901');
+      assert.strictEqual(perfil.municipio, 'San Salvador Centro');
+    });
+
+    for (const estado of ['pendiente', 'rechazado', 'suspendido', undefined]) {
+      it(`un taller ${estado} no publica telefono, direccion ni coordenadas`, () => {
+        const perfil = construirPerfilPublico(
+          'uid-taller',
+          usuarioTaller({
+            estado,
+            telefono: '+503 7788-9901',
+            direccion: 'Calle Principal #123',
+            latitud: 13.69,
+            longitud: -89.19,
+          }),
+          { GeoPoint: FakeGeoPoint },
+        );
+        assert.strictEqual(perfil.telefono, undefined);
+        assert.strictEqual(perfil.direccion, undefined);
+        assert.strictEqual(perfil.ubicacion, undefined);
+        assert.ok(perfil.nombre, 'la ficha sigue existiendo');
+      });
+    }
+  });
+
   describe('ubicacion', () => {
     it('construye un GeoPoint con lat/lng numericos', () => {
       const perfil = construirPerfilPublico(

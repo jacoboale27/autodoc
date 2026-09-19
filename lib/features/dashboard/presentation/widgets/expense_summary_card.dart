@@ -33,6 +33,9 @@ class ExpenseSummaryCard extends StatelessWidget {
     }).toList();
 
     return AppCard(
+      // Sin el margen por defecto de AppCard: el perfil del vehículo alinea
+      // todas sus secciones al mismo borde (AppPageBody pone el gutter).
+      margin: EdgeInsets.zero,
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

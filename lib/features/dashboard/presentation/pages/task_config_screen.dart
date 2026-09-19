@@ -17,6 +17,7 @@ import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
 import 'package:autodoc/core/utils/mensaje_de_error.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 
 class TaskConfigScreen extends StatefulWidget {
   final MaintenanceTask task;
@@ -80,6 +81,7 @@ class _TaskConfigScreenState extends State<TaskConfigScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
+        actions: const [AccionesDeCabecera()],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),

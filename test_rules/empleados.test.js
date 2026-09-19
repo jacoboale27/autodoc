@@ -1,5 +1,5 @@
 const { assertFails, assertSucceeds } = require('@firebase/rules-unit-testing');
-const { makeEnv, seed, withRole, UIDS } = require('./helpers');
+const { makeEnv, seed, withRole, anon, UIDS } = require('./helpers');
 
 let env;
 beforeAll(async () => { env = await makeEnv(); });
@@ -196,5 +196,108 @@ describe('talleres/{tallerId}/empleados', () => {
         activo: true,
       }),
     );
+  });
+});
+
+// Observaciones del 2026-09-19: invitar como empleado a alguien que ya tiene
+// cuenta. Las invitaciones viven en su propia subcoleccion y solo las
+// escriben las Cloud Functions (Admin SDK).
+describe('talleres/{tallerId}/invitaciones', () => {
+  const sembrarInvitacion = () =>
+    seed(env, async (s) => {
+      await s
+        .collection('talleres').doc(UIDS.taller1)
+        .collection('invitaciones').doc(UIDS.owner1)
+        .set({
+          id_taller: UIDS.taller1,
+          id_invitado: UIDS.owner1,
+          nombre_completo: 'Oscar Isaac',
+          correo: 'oscar@x.com',
+          rol: 'Mecanico',
+          estado: 'pendiente',
+        });
+    });
+  const invitacion = (db) =>
+    db.collection('talleres').doc(UIDS.taller1).collection('invitaciones').doc(UIDS.owner1);
+
+  test('el taller ve sus invitaciones pendientes', async () => {
+    await sembrarInvitacion();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertSucceeds(
+      db.collection('talleres').doc(UIDS.taller1).collection('invitaciones').get(),
+    );
+  });
+
+  test('la persona invitada NO lee el documento: todo le llega en la notificacion', async () => {
+    // Con correo sin verificar, "la persona invitada" puede ser un impostor
+    // que registro el correo de otro: leeria el telefono que tecleo el taller.
+    await sembrarInvitacion();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(invitacion(db).get());
+  });
+
+  test('nadie mas las ve', async () => {
+    await sembrarInvitacion();
+    const otroTaller = await withRole(env, UIDS.taller2, 'Taller');
+    await assertFails(
+      otroTaller.collection('talleres').doc(UIDS.taller1).collection('invitaciones').get(),
+    );
+    const otroCliente = await withRole(env, UIDS.owner2, 'Propietario');
+    await assertFails(invitacion(otroCliente).get());
+  });
+
+  test('ni un empleado del propio taller ni alguien sin sesion las ven', async () => {
+    await sembrarInvitacion();
+    const empleado = await withRole(env, UIDS.empleado1, 'Taller', {
+      id_taller_propietario: UIDS.taller1,
+    });
+    await assertFails(
+      empleado.collection('talleres').doc(UIDS.taller1).collection('invitaciones').get(),
+    );
+    await assertFails(invitacion(empleado).get());
+    await assertFails(invitacion(anon(env)).get());
+  });
+
+  test('solo el taller dueno la retira: ni otro taller ni un empleado', async () => {
+    await sembrarInvitacion();
+    const otroTaller = await withRole(env, UIDS.taller2, 'Taller');
+    await assertFails(invitacion(otroTaller).delete());
+    const empleado = await withRole(env, UIDS.empleado1, 'Taller', {
+      id_taller_propietario: UIDS.taller1,
+    });
+    await assertFails(invitacion(empleado).delete());
+  });
+
+  test('la persona no puede fabricarse una invitacion para unirse a un taller', async () => {
+    // Es el camino de escalada: `responderInvitacionEmpleo` solo comprueba que
+    // la invitacion exista y este pendiente.
+    const invitada = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertFails(
+      invitacion(invitada).set({
+        id_taller: UIDS.taller1,
+        id_invitado: UIDS.owner1,
+        estado: 'pendiente',
+        rol: 'Mecanico',
+      }),
+    );
+  });
+
+  test('el taller puede retirar una invitacion', async () => {
+    await sembrarInvitacion();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertSucceeds(invitacion(db).delete());
+  });
+
+  test('nadie la crea ni la modifica desde el cliente: ni el taller ni la invitada', async () => {
+    const taller = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      invitacion(taller).set({ id_taller: UIDS.taller1, estado: 'pendiente' }),
+    );
+    await sembrarInvitacion();
+    const invitada = await withRole(env, UIDS.owner1, 'Propietario');
+    // Aceptar "a mano" no puede ser escribir aqui: eso lo hace el callable,
+    // que comprueba todo lo demas.
+    await assertFails(invitacion(invitada).update({ estado: 'aceptada' }));
+    await assertFails(invitacion(invitada).delete());
   });
 });

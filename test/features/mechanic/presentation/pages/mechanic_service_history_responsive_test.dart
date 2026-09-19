@@ -50,7 +50,10 @@ void main() {
     final firestore = await seedServicios();
     await pumpHistorial(tester, width: 1440, firestore: firestore);
 
-    expect(find.byType(AppGrid), findsOneWidget);
+    // Ya no es un `AppGrid` de proporción fija (estiraba cada tarjeta a lo
+    // alto en escritorio, observaciones del 2026-09-19): dos columnas, cada
+    // fila con la altura de su contenido.
+    expect(find.byType(AppGrid), findsNothing);
     final lefts = tester
         .widgetList<Text>(find.textContaining('Cambio de aceite'))
         .map((t) => tester.getTopLeft(find.text(t.data!)).dx)

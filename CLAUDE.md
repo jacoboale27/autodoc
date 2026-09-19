@@ -17,6 +17,134 @@ VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01, FUNC-02, UX-03 / UX-04,
 cerradas: `fix/gaps-02` (residuales de FUNC-02), `fix/gaps-03` (accesibilidad de la landing que
 dejó UX-03) y **`fix/gaps-04`** (lo que quedaba abierto antes de H-01, cerrada el 2026-09-13).
 
+### Observaciones de uso real del 2026-09-18 (rama `fix/observaciones-2026-09-18`)
+
+Segunda ronda del PDF de chele moskar / chele alonzo + el Inge. Las páginas 1–2 eran el
+backlog ya cerrado el 2026-09-04/05 (plan `2026-09-04-observaciones-colaboradores.md`); lo
+nuevo eran las capturas 3–6 y los puntos que ese plan dejó fuera. Lo que hay que saber:
+
+- **La cotización del chat nacía sin coche** (capturas 4–5): "Cotizar y Aceptar" tomaba
+  `id_vehiculo` de la CONVERSACIÓN, vacía cuando el chat se abrió desde el directorio. El
+  coche sale ahora de la cita; `onCotizacionAceptada` lo recupera de `id_reserva` si falta
+  (misma pareja propietario/taller) y lo escribe de vuelta. **Paso de despliegue:**
+  `firebase deploy --only functions:onCotizacionAceptada --project production`, y después
+  `node backfill_tickets_cotizaciones_aceptadas.js` (dry-run, luego `--apply`) para abrir los
+  tickets de las cotizaciones ya atascadas. **Hecho el 2026-09-18:** la función ya está
+  desplegada en producción, y una simulación fiel (la misma `abrirTicketDeReparacion` con las
+  escrituras interceptadas) dio **0 tickets recuperables** de 26: 19 sin coche ni cita, 10 con
+  el coche ya borrado —5 de ellas con la cita borrada también, incluida la de la captura— y 1
+  que ya tenía ticket abierto. **El dry-run del script engaña:** solo mira si existe
+  `cot_<id>` y dice "abriría" de todo lo demás. No se corrió `--apply`: no habría abierto nada
+  y solo habría reescrito el aviso rojo en cotizaciones viejas.
+- **Una sola pantalla de cotización** (`NuevaCotizacionScreen`, captura 6) para chat, cita y
+  Buscar Vehículo: dos columnas, catálogo, mano de obra y día/hora. `CotizacionModel.total`
+  incluye `mano_de_obra`. La cita guarda `vehiculo_resumen` porque el taller no puede leer
+  `vehiculos/{id}` hasta recibir el coche.
+- **Buscar Vehículo cotiza si hay cita vigente** del propietario con el taller; sin cita, solo
+  la ficha pública. Recibir sigue exigiendo la cotización ACEPTADA.
+- **Checks automáticos:** `ChatProvider.abrirConversacion` marca vistos los mensajes que llegan
+  con el chat abierto (pausado en segundo plano). **Aviso en pantalla** de mensajes nuevos
+  (`AvisoMensajesNuevos`, en el `builder` de `MaterialApp.router`: está sobre el `Navigator`,
+  sin `Overlay` — nada de `Tooltip` ahí) e insignia de no leídos en la navegación.
+- **Tres puntos, responder y reenviar** en cada mensaje (`respuesta_a`, `reenviado`; el
+  adapter de Hive se tocó a mano: campos 11 y 12). **Logo del taller** como avatar.
+- Sin cambios en `firestore.rules`, `storage.rules` ni índices.
+
+### Observaciones del 2026-09-19 (misma rama) — los seis puntos de Oscar
+
+La lista vive en la sesión del 2026-09-19 (se cortó por cuota y se retomó). Lo que hay que saber:
+
+- **Buscar Vehículo abre el PERFIL del coche** (`VehiclePublicViewScreen`): datos, servicio en
+  curso, cotizaciones y servicios de ESTE taller, y «Nueva cotización». `buscarVehiculoPorPlaca`
+  acepta ahora `idVehiculo` (recargar la página) y devuelve `foto_url`; mismos campos, nada nuevo
+  abierto. **El campo «Beneficio» ya no está** en `NuevaCotizacionScreen` (hacía lo mismo que la
+  mano de obra); `privado/margen` sigue viajando en ceros porque las reglas lo exigen.
+- **Tema, idioma y campana en todas las pantallas** (`AccionesDeCabecera`, más el avatar del
+  propietario). Un centinela (`acciones_de_cabecera_test.dart`) rompe si una pantalla no lo
+  lleva. El tema arranca en `ThemeMode.system`, se guarda al cambiarlo y `main` lo lee ANTES de
+  pintar (sin destello del otro tema).
+- **«Mis Servicios» solo leía `servicios`** (trabajos ya registrados), así que ni una cotización
+  rechazada ni una aceptada en proceso podían salir nunca. Ahora junta cotizaciones y servicios
+  del taller por pestañas (todos, en proceso, pendientes, finalizados, rechazados). **Índice nuevo**
+  `cotizaciones (id_taller, fecha DESC)`; se retira `(id_vehiculo, estado, fecha DESC)`, que ya no
+  usa nadie.
+- **«No se pudo comprobar si el cliente aprobó la cotización»**: la consulta no filtraba por
+  taller y las reglas la rechazaban entera (`permission-denied`). Ahora filtra por taller y suma
+  TODAS las aceptadas.
+- **Invitar como empleado a quien ya tiene cuenta** (`functions/src/empleadosTaller.js`): ex
+  empleado del taller → se reactiva; propietario → se le INVITA y acepta él desde Notificaciones
+  (`responderInvitacionEmpleo`); de otro taller o admin → se dice por qué. Aceptar exige correo
+  verificado y **que la cuenta no tenga vehículos** (un taller no puede verlos). La invitación
+  guarda el nombre que tecleó el taller, **nunca el del perfil**: el taller lee sus invitaciones
+  y si no se podía averiguar el nombre del dueño de cualquier correo. Reglas nuevas:
+  `talleres/{id}/invitaciones/{uid}` (solo Admin SDK escribe; solo el taller dueño lee).
+- **Los dos revisores de gate tumbaron la primera versión, con el mismo bloqueante:** la
+  reactivación de un ex empleado le ponía la contraseña que tecleara el taller, y con las
+  invitaciones eso ya no era «una cuenta del taller»: desactivar a quien entró por invitación y
+  volver a darlo de alta era **quedarse con su cuenta personal**. Ahora `empleados/{uid}` guarda
+  `origen: 'invitacion'` y esas cuentas se reabren con SU contraseña; y solo se reactiva lo que
+  desactivó el taller (`activo: false`), nunca una suspensión de administración. De paso:
+  aceptar va en transacción que relee invitación y perfil (una invitación retirada, o aceptar
+  la de dos talleres a la vez, dejaba la cuenta dentro), un solo mensaje para las cuentas que no
+  pueden unirse (antes revelaba si el correo era de admin), no se invita a correos sin verificar
+  ni se re-avisa con una invitación viva, el cambio de rol deja rastro en `admin_logs`, «Mis
+  Servicios» suma las pendientes/aceptadas viejas que el tope de 200 dejaba fuera,
+  `marcarFinalizadas` va en un lote y `buscarVehiculoPorPlaca` exige también `estado` aprobado.
+- **Gaps que quedan anotados:** sin cupo de invitaciones por taller (un taller puede probar
+  correos a ritmo libre), las invitaciones caducadas no se borran solas (la pantalla las oculta;
+  una política TTL sobre `expira` lo cerraría) y `vehiculos.foto_url` es una URL libre del
+  cliente que el taller carga al abrir la ficha (heredado: ya pasaba con `vehiculo_resumen`).
+- **Diseño de escritorio:** la causa de las «tarjetas deformes» era `AppGrid` con
+  `childAspectRatio`: el alto crece con el ancho. `AppGrid` tiene ahora `mainAxisExtent` (alto
+  fijo, escalado con el texto del sistema) y `sizeToContent` (cada tarjeta a su alto, con `Wrap`).
+  El perfil del coche va a dos columnas en escritorio; alertas e historial miden por contenido.
+  Para revisar diseño sin tocar producción se renderizó cada pantalla con `matchesGoldenFile` +
+  `--update-goldens` y las fuentes de `material_fonts` registradas con los nombres que usa
+  `google_fonts` (`Inter_700`…); **las fuentes se cargan en `setUpAll`**, dentro de `testWidgets`
+  la E/S real se cuelga.
+- **Despliegue:** la CI lo hace todo al fusionar a `main`. Conviene adelantar
+  `firebase deploy --only firestore:indexes --project production`: el índice nuevo tarda unos
+  minutos en construirse y «Mis Servicios» falla hasta entonces.
+
+### Segunda lista del 2026-09-19 (misma rama) — reseñas, tareas, catálogo, vehículos, mapa, perfil
+
+- **Un servicio escribía un `servicios` POR TAREA marcada**, cada uno con el importe entero (3
+  tareas de $588 = tres servicios de $588, tres reseñas, tres avisos). Ahora
+  `AlertProvider.tallerCerrarServicio` escribe UNO; las tareas son opcionales (plegadas en
+  «Mantenimiento del cliente») y solo reinician el calendario de mantenimiento.
+- **Reseñas:** solo se reseña el servicio **más reciente** con un taller y solo si no tiene
+  reseña (`ReviewService.findReviewableServiceId`); antes, reseñado el último se ofrecía el
+  anterior, sin fin. En el chat hay **una** opción (`AvisoReseniaChat`, sobre la barra de
+  escribir); las tarjetas de cotización y la solicitud del taller ya no traen botón. La
+  solicitud del taller fallaba porque buscaba la conversación de ESE coche y, sin ella,
+  intentaba crear otra (las reglas no dejan al taller): ahora usa la que haya y, si no hay, lo
+  dice. **Los empleados no pueden leer ni escribir conversaciones** (reglas: `id_mecanico ==
+  uid`), así que a ellos no se les ofrece.
+- **El mapa del taller no se movía, y eran dos causas.** (1) Estaba en un `AlertDialog`: con
+  `ensureSemantics()` en web (`main.dart`), la capa de accesibilidad del diálogo queda en el DOM
+  encima de la vista de plataforma y se come los clics. Reproducido en el navegador con el mismo
+  `GoogleMap`: en diálogo no se mueve, en página sí → `SelectorUbicacionTallerScreen` a pantalla
+  completa. **Cualquier `GoogleMap` dentro de un diálogo tendrá el mismo problema.** (2) La clave
+  de Maps del `.env` local está **vencida** (`ExpiredKeyMapError`): hay que renovarla en Google
+  Cloud y en el secreto de la CI.
+- **Catálogo de mano de obra con precio estimado** (`precio` = desde, `precio_max` = hasta) y un
+  botón que carga 18 servicios comunes con rangos para El Salvador. Al cotizar entra como
+  renglón «X (mano de obra)» con el «desde».
+- **Tipos de vehículo:** primer paso del alta (`TipoVehiculo`: automóvil, camioneta, moto,
+  camión, microbús, autobús) con marcas frecuentes por tipo (aunque NHTSA no las tenga), modelos
+  filtrados por `vehicletype` y placa por defecto. Placas nuevas `MB` y `AB`; `normalizarPlaca`
+  prueba primero el prefijo más largo. Se guarda `vehiculos.tipo_vehiculo`.
+- **Perfil del taller como página de empresa:** banner (hueco nuevo `banner` de la galería;
+  `storage.rules` y el tope de `galeria` pasan a 7), logo encima, «Llamar» y «Cómo llegar», y
+  todas las secciones siempre visibles. `publishTallerProfile` publica ahora `telefono` y
+  `municipio`, que la pantalla de ajustes ya presentaba como públicos y nunca se publicaban.
+  **El gate de reglas paró la primera versión:** `talleres` es de lectura anónima para la
+  colección entera (la landing la baja por REST y filtra en el navegador), así que el teléfono
+  de cada solicitante, rechazado o suspendido quedaba público. Ahora `telefono`, `direccion` y
+  las coordenadas solo se proyectan con `estado` aprobado/activo; al aprobar, el propio trigger
+  los publica. **Despliega `storage.rules` con la app o antes**: una app vieja descarta el
+  archivo `banner` al leer la galería y lo quita en su siguiente guardado.
+
 ### La tanda GAPS-07 esta cerrada (2026-09-15, `fix/gaps-07a`) — el doble envio
 
 Cierra el gap 1 del §4 de GAPS-06: **los 15 grupos de doble envio, los 15**. Evidencia en

@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:autodoc/features/chat/presentation/widgets/aviso_resenia_chat.dart';
+import 'package:autodoc/features/reviews/data/services/review_service.dart';
 import 'package:autodoc/core/utils/role_utils.dart';
 import 'dart:io';
 import 'dart:typed_data';
@@ -33,17 +35,21 @@ import 'package:autodoc/features/chat/presentation/widgets/cards/audio_chat_card
 import 'package:autodoc/features/chat/presentation/widgets/voice_record_button.dart';
 import 'package:autodoc/core/widgets/aviso_lista_truncada.dart';
 import 'package:autodoc/features/chat/data/models/mensaje_model.dart';
-import 'package:autodoc/features/chat/presentation/widgets/cotizacion_picker.dart';
-import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
+import 'package:autodoc/features/chat/data/models/conversacion_model.dart';
+import 'package:autodoc/features/chat/presentation/pages/nueva_cotizacion_screen.dart';
+import 'package:autodoc/features/chat/data/models/vehiculo_cotizado.dart';
 import 'package:autodoc/features/chat/data/models/reserva_model.dart';
 import 'package:autodoc/features/chat/presentation/providers/reserva_provider.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/utils/mechanic_profile_utils.dart';
 import 'package:autodoc/core/models/user_model.dart';
+import 'package:autodoc/core/models/galeria_taller.dart';
+import 'package:autodoc/config/secrets.dart';
 import 'package:autodoc/features/profile/data/services/public_profile_service.dart';
 import 'package:autodoc/features/chat/presentation/widgets/adjunto_preview_sheet.dart';
 import 'package:autodoc/features/mechanic/data/services/verificacion_service.dart';
 import 'package:go_router/go_router.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 
 /// Firma del selector de imagen, con el origen (`gallery`/`camera`) ya
 /// resuelto por quien llama. Misma costura que `SelectorDeArchivo` en
@@ -89,7 +95,7 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _inputFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
@@ -111,6 +117,12 @@ class _ChatScreenState extends State<ChatScreen> {
   /// hora—, asi que recorrerlo dos veces es posible: sin esto se creaban DOS
   /// reservas y dos tarjetas.
   bool _creandoReserva = false;
+
+  /// Mensaje al que se está respondiendo (barra encima del compositor).
+  MensajeModel? _respondiendoA;
+
+  /// Guard de reentrada del reenvío (hoja de destinos + escritura).
+  bool _reenviando = false;
 
   // Capturado una vez en initState (con el context aún activo) para poder
   // usarlo en dispose(): en ese punto el propio Element ya está desactivado,
@@ -176,6 +188,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _chatProvider = context.read<ChatProvider>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -227,6 +240,20 @@ class _ChatScreenState extends State<ChatScreen> {
     final isMecanico = isMechanicRole(user.rol);
     _chatProvider.inicializarMensajes(widget.conversacionId);
     _chatProvider.marcarComoLeidos(widget.conversacionId, isMecanico, userId);
+    // Mientras esta pantalla siga abierta, lo que llegue del otro se marca
+    // como visto al instante (los "checks" ya no esperan a recargar).
+    _chatProvider.abrirConversacion(
+      widget.conversacionId,
+      lectorId: userId,
+      lectorEsMecanico: isMecanico,
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // En segundo plano (o con la pestaña del navegador oculta) nadie está
+    // leyendo: no se dan por vistos los mensajes que lleguen.
+    _chatProvider.pausarLectura(state != AppLifecycleState.resumed);
   }
 
   void _onUserProfilePendienteChanged() {
@@ -238,6 +265,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _chatProvider.cerrarConversacion(widget.conversacionId);
     _userSessionPendiente?.removeListener(_onUserProfilePendienteChanged);
     _typingTimer?.cancel();
     _chatProvider.setTypingStatus(widget.conversacionId, null);
@@ -265,9 +294,13 @@ class _ChatScreenState extends State<ChatScreen> {
     if (texto.isEmpty) return;
 
     final provider = context.read<ChatProvider>();
+    final respuesta = _respondiendoA;
     _controller.clear();
     _reengancharCompositor();
-    setState(() => _enviandoTexto = true);
+    setState(() {
+      _enviandoTexto = true;
+      _respondiendoA = null;
+    });
 
     final bool enviado;
     try {
@@ -278,6 +311,7 @@ class _ChatScreenState extends State<ChatScreen> {
         receptorId: receptorId,
         isMecanicoRemitente: isMecanico,
         tipo: 'texto',
+        respuestaA: respuesta == null ? null : resumenParaResponder(respuesta),
       );
     } finally {
       if (mounted) setState(() => _enviandoTexto = false);
@@ -290,6 +324,9 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_controller.text.isEmpty) {
       _controller.text = texto;
       _controller.selection = TextSelection.collapsed(offset: texto.length);
+      if (respuesta != null && _respondiendoA == null) {
+        setState(() => _respondiendoA = respuesta);
+      }
     }
     UiUtils.showErrorSnackbar(
       context,
@@ -338,7 +375,11 @@ class _ChatScreenState extends State<ChatScreen> {
       builder: (ctx) => VehiculoPicker(
         userId: userId,
         onSelected: (vehiculoData) {
-          final idVehiculo = vehiculoData['vehiculo_id'] ?? '';
+          final String idVehiculo = vehiculoData['vehiculo_id'] ?? '';
+          final resumen = VehiculoCotizado.desdeResumen(
+            idVehiculo,
+            vehiculoData,
+          ).toResumen();
           // VehiculoPicker se cierra a sí mismo justo después de llamar a
           // onSelected; esperamos a que termine ese frame antes de abrir el
           // siguiente selector, para no pelear con ese cierre.
@@ -349,6 +390,7 @@ class _ChatScreenState extends State<ChatScreen> {
               isMecanico: isMecanico,
               receptorId: receptorId,
               idVehiculo: idVehiculo,
+              vehiculoResumen: resumen,
             );
           });
         },
@@ -361,6 +403,7 @@ class _ChatScreenState extends State<ChatScreen> {
     required bool isMecanico,
     required String receptorId,
     required String idVehiculo,
+    Map<String, dynamic>? vehiculoResumen,
   }) async {
     final date = await showDatePicker(
       context: context,
@@ -409,6 +452,7 @@ class _ChatScreenState extends State<ChatScreen> {
       tipoServicio: 'Cita General',
       estado: 'pendiente',
       fechaCreacion: DateTime.now(),
+      vehiculoResumen: vehiculoResumen,
     );
 
     // La bandera se enciende justo antes de la primera escritura y no al abrir
@@ -425,6 +469,7 @@ class _ChatScreenState extends State<ChatScreen> {
         isMecanico: isMecanico,
         receptorId: receptorId,
         idVehiculo: idVehiculo,
+        vehiculoResumen: vehiculoResumen,
         fecha: fecha,
         hora: hora,
       );
@@ -441,6 +486,7 @@ class _ChatScreenState extends State<ChatScreen> {
     required bool isMecanico,
     required String receptorId,
     required String idVehiculo,
+    Map<String, dynamic>? vehiculoResumen,
     required DateTime fecha,
     required String hora,
   }) async {
@@ -475,6 +521,8 @@ class _ChatScreenState extends State<ChatScreen> {
         'fecha': fecha.toIso8601String(),
         'hora': hora,
         'id_vehiculo': idVehiculo,
+        if (vehiculoResumen != null && vehiculoResumen.isNotEmpty)
+          'vehiculo': vehiculoResumen,
         'estado': 'pendiente',
       },
     );
@@ -511,7 +559,11 @@ class _ChatScreenState extends State<ChatScreen> {
   /// mensaje ofrece Copiar siempre, y — solo para el mensaje propio, no
   /// borrado — Editar (solo texto) y Borrar. Reply/reenviar quedan fuera de
   /// esta ronda (11c, explícitamente pospuesto en el plan).
-  void _abrirMenuMensaje(MensajeModel msg, bool isMe) {
+  /// Qué ofrece el menú de un mensaje. Vive aparte de `_abrirMenuMensaje`
+  /// para que el botón de los tres puntos pueda saber si hay algo que ofrecer
+  /// sin abrir el menú.
+  ({bool responder, bool reenviar, bool copiar, bool editar, bool borrar})
+  _accionesDe(MensajeModel msg, bool isMe) {
     // R10 (revision C4b): antes se ofrecia Copiar sobre cualquier tipo de
     // mensaje. `msg.contenido` en 'imagen'/'audio' es un placeholder interno
     // ('📷 Imagen adjunta', '🎤 Nota de voz'), no texto que el usuario haya
@@ -521,18 +573,59 @@ class _ChatScreenState extends State<ChatScreen> {
     // muestra `msg.contenido` como el propio texto visible de la burbuja
     // (incluido el tombstone de un mensaje borrado, que sigue siendo
     // 'texto' y sigue siendo lo que se ve en pantalla).
-    final puedeCopiar = msg.tipo == 'texto';
-    final puedeEditar = isMe && !msg.isDeleted && msg.tipo == 'texto';
-    final puedeBorrar = isMe && !msg.isDeleted;
-    // Sin ninguna accion disponible (p.ej. un audio o una tarjeta de la
+    return (
+      // Observaciones del 2026-09-18: responder y reenviar, además de las tres
+      // de C4. Se responde a cualquier mensaje vivo; se reenvía solo lo que es
+      // contenido (texto, foto): reenviar una cotización o una cita a otro
+      // cliente crearía una tarjeta que apunta a un documento ajeno.
+      responder: !msg.isDeleted,
+      reenviar: !msg.isDeleted && (msg.tipo == 'texto' || msg.tipo == 'imagen'),
+      copiar: msg.tipo == 'texto',
+      editar: isMe && !msg.isDeleted && msg.tipo == 'texto',
+      borrar: isMe && !msg.isDeleted,
+    );
+  }
+
+  bool _tieneAcciones(MensajeModel msg, bool isMe) {
+    final a = _accionesDe(msg, isMe);
+    return a.responder || a.reenviar || a.copiar || a.editar || a.borrar;
+  }
+
+  void _abrirMenuMensaje(MensajeModel msg, bool isMe) {
+    final acciones = _accionesDe(msg, isMe);
+    final puedeCopiar = acciones.copiar;
+    final puedeEditar = acciones.editar;
+    final puedeBorrar = acciones.borrar;
+    // Sin ninguna accion disponible (p.ej. un mensaje borrado de la
     // contraparte) no se abre nada: un sheet vacio solo obliga a cerrarlo.
-    if (!puedeCopiar && !puedeEditar && !puedeBorrar) return;
+    if (!_tieneAcciones(msg, isMe)) return;
     showModalBottomSheet(
       context: context,
       builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (acciones.responder)
+              ListTile(
+                key: const Key('menu_mensaje_responder'),
+                leading: const Icon(Icons.reply),
+                title: const Text('Responder'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  setState(() => _respondiendoA = msg);
+                  _inputFocusNode.requestFocus();
+                },
+              ),
+            if (acciones.reenviar)
+              ListTile(
+                key: const Key('menu_mensaje_reenviar'),
+                leading: const Icon(Icons.forward),
+                title: const Text('Reenviar'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _reenviarMensaje(msg);
+                },
+              ),
             if (puedeCopiar)
               ListTile(
                 key: const Key('menu_mensaje_copiar'),
@@ -570,6 +663,104 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
       ),
     );
+  }
+
+  /// Reenvía un texto o una foto a otra conversación del usuario.
+  Future<void> _reenviarMensaje(MensajeModel msg) async {
+    if (_reenviando) return;
+    final chat = context.read<ChatProvider>();
+    final usuario = context.read<UserProfileProvider>().userData;
+    if (usuario == null) return;
+    final isMecanico = isMechanicRole(usuario.rol);
+    String nombreDe(ConversacionModel c) =>
+        isMecanico ? c.nombrePropietario : c.nombreMecanico;
+
+    final destinos = chat.conversaciones
+        .where((c) => c.id != widget.conversacionId)
+        .toList();
+    if (destinos.isEmpty) {
+      UiUtils.showErrorSnackbar(
+        context,
+        'No tienes otras conversaciones a las que reenviar este mensaje.',
+      );
+      return;
+    }
+
+    final destino = await showModalBottomSheet<ConversacionModel>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.7,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                child: Text(
+                  'Reenviar a…',
+                  style: AppTextStyles.titleMedium.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    for (final c in destinos)
+                      ListTile(
+                        key: Key('reenviar_a_${c.id}'),
+                        leading: AppUserAvatar(
+                          urlFoto: isMecanico
+                              ? c.fotoPropietario
+                              : c.fotoMecanico,
+                          nombre: nombreDe(c),
+                        ),
+                        title: Text(nombreDe(c)),
+                        onTap: () => Navigator.pop(ctx, c),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (destino == null || !mounted) return;
+
+    setState(() => _reenviando = true);
+    final bool ok;
+    try {
+      ok = await chat.enviarMensaje(
+        conversacionId: destino.id,
+        contenido: msg.contenido,
+        remitenteId: usuario.idUsuario,
+        receptorId: isMecanico ? destino.idPropietario : destino.idMecanico,
+        isMecanicoRemitente: isMecanico,
+        tipo: msg.tipo,
+        urlArchivo: msg.urlArchivo,
+        reenviado: true,
+      );
+    } finally {
+      if (mounted) setState(() => _reenviando = false);
+    }
+    if (!mounted) return;
+    if (ok) {
+      UiUtils.showSuccessSnackbar(
+        context,
+        'Mensaje reenviado a ${nombreDe(destino)}.',
+      );
+    } else {
+      UiUtils.showErrorSnackbar(
+        context,
+        chat.error ?? 'No se pudo reenviar el mensaje.',
+      );
+    }
   }
 
   void _copiarMensaje(MensajeModel msg) {
@@ -683,8 +874,15 @@ class _ChatScreenState extends State<ChatScreen> {
               if (realName?.isNotEmpty == true) {
                 finalName = realName!;
               }
-              fotoUrl =
-                  (data?['foto_perfil_url'] ?? data?['foto_url']) as String?;
+              // Un taller se ve con su logo (observaciones del 2026-09-18,
+              // captura 3); un cliente, con su foto de perfil.
+              fotoUrl = !isMecanico && data != null
+                  ? GaleriaTaller.imagenDelTaller(
+                      bucket: AppSecrets.firebaseStorageBucket,
+                      idTaller: receptorId,
+                      datos: data,
+                    )
+                  : (data?['foto_perfil_url'] ?? data?['foto_url']) as String?;
             }
             final estaEscribiendo =
                 conversacion != null && conversacion.typingId == receptorId;
@@ -765,6 +963,7 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         backgroundColor: isDark ? colors.surfaceContainer : colors.surface,
         elevation: 1,
+        actions: const [AccionesDeCabecera()],
       ),
       body: Column(
         children: [
@@ -818,8 +1017,10 @@ class _ChatScreenState extends State<ChatScreen> {
                           alignment: isMe
                               ? Alignment.centerRight
                               : Alignment.centerLeft,
-                          child: GestureDetector(
-                            onLongPress: () => _abrirMenuMensaje(msg, isMe),
+                          child: _ConOpcionesDeMensaje(
+                            isMe: isMe,
+                            mostrar: _tieneAcciones(msg, isMe),
+                            onOpciones: () => _abrirMenuMensaje(msg, isMe),
                             child: ChatBubble(
                               isMe: isMe,
                               isDeleted: msg.isDeleted,
@@ -838,7 +1039,15 @@ class _ChatScreenState extends State<ChatScreen> {
                               // pantalla.
                               semanticLabel:
                                   (msg.tipo == 'texto' || msg.isDeleted)
-                                  ? '$nombreAutor: ${msg.contenido}'
+                                  ? [
+                                      if (msg.reenviado && !msg.isDeleted)
+                                        'Reenviado.',
+                                      if (msg.respuestaA != null &&
+                                          !msg.isDeleted)
+                                        'En respuesta a: '
+                                            '${msg.respuestaA!['contenido'] ?? ''}.',
+                                      '$nombreAutor: ${msg.contenido}',
+                                    ].join(' ')
                                   : null,
                               footer: _footerDe(msg, isMe),
                               child: _buildMessageContent(
@@ -846,6 +1055,8 @@ class _ChatScreenState extends State<ChatScreen> {
                                 isMe,
                                 colors,
                                 conversacion?.idMecanico ?? '',
+                                userId: userId,
+                                nombreContraparte: targetName,
                               ),
                             ),
                           ),
@@ -857,6 +1068,39 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
 
+          // La única forma de reseñar al taller desde el chat (observaciones
+          // del 2026-09-19): antes cada cotización finalizada traía su botón.
+          if (!isMecanico &&
+              conversacion != null &&
+              conversacion.idPropietario == userId &&
+              (conversacion.idTaller ?? conversacion.idMecanico).isNotEmpty)
+            AppPageBody(
+              maxWidth: AppBreakpoints.maxContentWidth,
+              child: AvisoReseniaChat(
+                userId: userId,
+                tallerId: conversacion.idTaller ?? conversacion.idMecanico,
+                tallerNombre: conversacion.nombreMecanico,
+                revision: chatProvider.mensajesActuales.length,
+                buscarResenable: widget.firestore == null
+                    ? null
+                    : ReviewService(
+                        firestore: widget.firestore,
+                      ).findReviewableServiceId,
+              ),
+            ),
+          if (_respondiendoA != null)
+            AppPageBody(
+              maxWidth: AppBreakpoints.maxContentWidth,
+              child: _BarraRespondiendo(
+                autor: _respondiendoA!.idRemitente == userId
+                    ? 'Tú'
+                    : targetName,
+                texto: resumenParaResponder(
+                  _respondiendoA!,
+                )['contenido'].toString(),
+                onCancelar: () => setState(() => _respondiendoA = null),
+              ),
+            ),
           // Input Bar
           AppPageBody(
             maxWidth: AppBreakpoints.maxContentWidth,
@@ -1000,8 +1244,10 @@ class _ChatScreenState extends State<ChatScreen> {
     MensajeModel msg,
     bool isMe,
     AppColors colors,
-    String tallerId,
-  ) {
+    String tallerId, {
+    String userId = '',
+    String nombreContraparte = '',
+  }) {
     // Antes de mirar el tipo. `deleteMensaje` es un borrado suave: marca
     // `is_deleted` y sustituye `contenido`, pero NO toca `tipo` ni
     // `url_archivo`. Sin este corte, borrar una imagen o un audio caia igual
@@ -1033,6 +1279,34 @@ class _ChatScreenState extends State<ChatScreen> {
       );
     }
 
+    final contenido = _contenidoPorTipo(msg, isMe, colors, tallerId);
+    final respuesta = msg.respuestaA;
+    if (respuesta == null && !msg.reenviado) return contenido;
+    final autorCitado = respuesta?['id_remitente'] == userId
+        ? 'Tú'
+        : nombreContraparte;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (msg.reenviado) _EtiquetaReenviado(isMe: isMe),
+        if (respuesta != null)
+          _CitaRespuesta(
+            autor: autorCitado,
+            texto: (respuesta['contenido'] ?? '').toString(),
+            isMe: isMe,
+          ),
+        contenido,
+      ],
+    );
+  }
+
+  Widget _contenidoPorTipo(
+    MensajeModel msg,
+    bool isMe,
+    AppColors colors,
+    String tallerId,
+  ) {
     switch (msg.tipo) {
       case 'vehiculo_card':
         return VehiculoChatCard(metadata: msg.metadata ?? {}, isMe: isMe);
@@ -1152,74 +1426,10 @@ class _ChatScreenState extends State<ChatScreen> {
                   title: Text(context.l10n.chatSendQuote),
                   onTap: () {
                     Navigator.pop(context);
-                    final mechanicUser = context
-                        .read<UserProfileProvider>()
-                        .userData;
-                    if (!isMechanicProfileComplete(mechanicUser)) {
-                      _showProfileIncompleteDialog(context, mechanicUser);
-                      return;
-                    }
-                    showModalBottomSheet(
-                      context: context,
-                      backgroundColor: Colors.transparent,
-                      isScrollControlled: true,
-                      builder: (context) => CotizacionPicker(
-                        onConfirm: (items, fechaPropuesta) async {
-                          final provider = context.read<ChatProvider>();
-
-                          // Guardar cotización en la base de datos
-                          final cotizacion = CotizacionModel(
-                            id: '',
-                            idPropietario: receptorId,
-                            idMecanico: userId,
-                            // Cadena vacia -> null, igual que ya hace
-                            // reserva_detail_screen.dart:205. `toMap()` omite
-                            // la clave cuando es null, pero la EMITE cuando es
-                            // '', y entonces la regla de `create` entra en la
-                            // rama del vehiculo y evalua
-                            // exists(/vehiculos/$('')), que es una ruta
-                            // invalida: vuelve el `permission-denied` pelado
-                            // que el guarda con exists() venia a quitar.
-                            idVehiculo: () {
-                              final id = provider.conversaciones
-                                  .where((c) => c.id == widget.conversacionId)
-                                  .firstOrNull
-                                  ?.idVehiculo;
-                              return (id == null || id.isEmpty) ? null : id;
-                            }(),
-                            // Ronda 2 (FIX 2): idTallerEfectivo, no userId. Un
-                            // empleado que envia la cotizacion tiene su propio
-                            // uid en userId, pero `vehiculos.talleres_vinculados`
-                            // guarda siempre el uid del DUEÑO — escribir userId
-                            // aqui hacia que `onCotizacionAceptada` no
-                            // encontrara vinculo y no abriera ticket al aceptar.
-                            idTaller: mechanicUser?.idTallerEfectivo ?? userId,
-                            items: items,
-                            fechaPropuesta: fechaPropuesta,
-                            fecha: DateTime.now(),
-                          );
-
-                          final ok = await provider.enviarCotizacion(
-                            cotizacion: cotizacion,
-                            conversacionId: widget.conversacionId,
-                            contenido:
-                                'He creado una nueva cotización para tu vehículo.',
-                            remitenteId: userId,
-                            receptorId: receptorId,
-                            isMecanicoRemitente: isMecanico,
-                          );
-                          if (!ok && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  provider.error ??
-                                      'No se pudo enviar la cotización.',
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                      ),
+                    _cotizarDesdeChat(
+                      userId: userId,
+                      isMecanico: isMecanico,
+                      receptorId: receptorId,
                     );
                   },
                 ),
@@ -1227,6 +1437,84 @@ class _ChatScreenState extends State<ChatScreen> {
             ],
           ),
         );
+      },
+    );
+  }
+
+  /// Cotización enviada desde el menú de adjuntos del chat.
+  ///
+  /// Usa la misma pantalla que Buscar Vehículo y que la cita
+  /// (`NuevaCotizacionScreen`), y ancla la cotización al coche del hilo
+  /// ([vehiculoParaCotizarEnChat]). Sin coche no se abre: una cotización sin
+  /// vehículo se podía aceptar pero nunca abría ticket (capturas 4 y 5 de las
+  /// observaciones del 2026-09-18), así que se le explica al taller qué falta
+  /// en vez de dejarle enviar algo que no va a llegar a ninguna parte.
+  Future<void> _cotizarDesdeChat({
+    required String userId,
+    required bool isMecanico,
+    required String receptorId,
+  }) async {
+    final mechanicUser = context.read<UserProfileProvider>().userData;
+    if (!isMechanicProfileComplete(mechanicUser)) {
+      _showProfileIncompleteDialog(context, mechanicUser);
+      return;
+    }
+    final provider = context.read<ChatProvider>();
+    final conversacion = provider.conversaciones
+        .where((c) => c.id == widget.conversacionId)
+        .firstOrNull;
+    final vehiculo = vehiculoParaCotizarEnChat(
+      idVehiculoConversacion: conversacion?.idVehiculo,
+      mensajesRecientesPrimero: provider.mensajesActuales,
+    );
+    if (vehiculo == null) {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Aún no hay un vehículo para cotizar'),
+          content: const Text(
+            'Para cotizar, el cliente primero debe agendar una cita desde '
+            'este chat y elegir su vehículo. Cuando la cita llegue, podrás '
+            'cotizarla con "Cotizar y Aceptar" o desde este mismo menú.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Entendido'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    await abrirNuevaCotizacion(
+      context,
+      vehiculo: vehiculo,
+      onEnviar: (borrador) async {
+        final ok = await provider.enviarCotizacion(
+          cotizacion: borrador.toCotizacion(
+            idPropietario: receptorId,
+            idMecanico: userId,
+            idVehiculo: vehiculo.idVehiculo,
+            // Ronda 2 (FIX 2): idTallerEfectivo, no userId. Un empleado que
+            // envia la cotizacion tiene su propio uid en userId, pero
+            // `vehiculos.talleres_vinculados` guarda siempre el uid del DUEÑO.
+            idTaller: mechanicUser?.idTallerEfectivo ?? userId,
+          ),
+          conversacionId: widget.conversacionId,
+          contenido: 'He creado una nueva cotización para tu vehículo.',
+          remitenteId: userId,
+          receptorId: receptorId,
+          isMecanicoRemitente: isMecanico,
+        );
+        if (!ok && mounted) {
+          UiUtils.showErrorSnackbar(
+            context,
+            provider.error ?? 'No se pudo enviar la cotización.',
+          );
+        }
+        return ok;
       },
     );
   }
@@ -1490,6 +1778,230 @@ class _EditarMensajeDialogState extends State<_EditarMensajeDialog> {
           child: Text(context.l10n.chatSaveEdit),
         ),
       ],
+    );
+  }
+}
+
+/// Lo que una respuesta guarda del mensaje al que contesta (observaciones del
+/// 2026-09-18). Un extracto y no el mensaje entero: basta para la cita, y un
+/// texto largo copiado en cada respuesta solo engordaría el hilo.
+@visibleForTesting
+Map<String, dynamic> resumenParaResponder(MensajeModel msg) {
+  final String extracto = switch (msg.tipo) {
+    'imagen' => '📷 Foto',
+    'audio' => '🎤 Nota de voz',
+    'cotizacion_card' => 'Cotización',
+    'reserva_card' => 'Cita',
+    'review_card' => 'Reseña',
+    'vehiculo_card' => 'Vehículo',
+    'historial' => 'Historial',
+    _ =>
+      msg.contenido.length > 120
+          ? '${msg.contenido.substring(0, 120)}…'
+          : msg.contenido,
+  };
+  return {
+    'id': msg.id,
+    'id_remitente': msg.idRemitente,
+    'tipo': msg.tipo,
+    'contenido': extracto,
+  };
+}
+
+/// Los tres puntos de cada mensaje (observaciones del 2026-09-18: «en el
+/// mensaje aparezcan los 3 puntitos»). Mantener presionado sigue abriendo el
+/// mismo menú; los puntos existen porque en la web —y para quien no conoce el
+/// gesto— mantener presionado no se descubre.
+class _ConOpcionesDeMensaje extends StatelessWidget {
+  final bool isMe;
+  final bool mostrar;
+  final VoidCallback onOpciones;
+  final Widget child;
+
+  const _ConOpcionesDeMensaje({
+    required this.isMe,
+    required this.mostrar,
+    required this.onOpciones,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final burbuja = GestureDetector(
+      onLongPress: mostrar ? onOpciones : null,
+      child: child,
+    );
+    if (!mostrar) return burbuja;
+    final puntos = IconButton(
+      key: const Key('mensaje_opciones'),
+      icon: Icon(
+        Icons.more_vert,
+        size: 18,
+        color: context.appColors.textSecondary,
+      ),
+      tooltip: 'Opciones del mensaje',
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      onPressed: onOpciones,
+    );
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (isMe) puntos,
+        Flexible(child: burbuja),
+        if (!isMe) puntos,
+      ],
+    );
+  }
+}
+
+/// Cita del mensaje al que se responde, dentro de la burbuja.
+class _CitaRespuesta extends StatelessWidget {
+  final String autor;
+  final String texto;
+  final bool isMe;
+
+  const _CitaRespuesta({
+    required this.autor,
+    required this.texto,
+    required this.isMe,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    // Sobre la burbuja propia (fondo primary) todo va en onPrimary; sobre la
+    // ajena, en los tokens de texto — ver la nota de ChatBubble sobre no
+    // pintar superficies propias encima de la burbuja.
+    final acento = isMe ? colors.onPrimary : colors.primary;
+    final textoColor = isMe
+        ? colors.onPrimary.withValues(alpha: 0.85)
+        : colors.textSecondary;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+      decoration: BoxDecoration(
+        color: acento.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border(left: BorderSide(color: acento, width: 3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            autor,
+            style: TextStyle(
+              color: acento,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            texto,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: textoColor, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EtiquetaReenviado extends StatelessWidget {
+  final bool isMe;
+
+  const _EtiquetaReenviado({required this.isMe});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final color = isMe
+        ? colors.onPrimary.withValues(alpha: 0.8)
+        : colors.textSecondary;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.forward, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            'Reenviado',
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Respondiendo a …" encima del compositor, con la X para cancelar.
+class _BarraRespondiendo extends StatelessWidget {
+  final String autor;
+  final String texto;
+  final VoidCallback onCancelar;
+
+  const _BarraRespondiendo({
+    required this.autor,
+    required this.texto,
+    required this.onCancelar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    return Container(
+      key: const Key('barra_respondiendo'),
+      padding: const EdgeInsets.fromLTRB(16, 8, 4, 8),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainer,
+        border: Border(
+          top: BorderSide(color: colors.outline.withValues(alpha: 0.4)),
+          left: BorderSide(color: colors.primary, width: 4),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.reply, size: 18, color: colors.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Respondiendo a $autor',
+                  style: AppTextStyles.labelMedium.copyWith(
+                    color: colors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  texto,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            key: const Key('cancelar_respuesta'),
+            icon: Icon(Icons.close, size: 18, color: colors.textSecondary),
+            tooltip: 'Cancelar respuesta',
+            onPressed: onCancelar,
+          ),
+        ],
+      ),
     );
   }
 }

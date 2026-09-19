@@ -3,6 +3,9 @@ import 'dart:io';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
+import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/widgets/app_grid.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/models/alert_model.dart';
 import 'package:autodoc/core/models/maintenance_task_model.dart';
@@ -227,7 +230,29 @@ void main() {
     tester,
   ) async {
     await pumpScreen(tester, 1440);
-    expect(find.byType(GridView), findsWidgets);
+    final rejillas = tester.widgetList<AppGrid>(find.byType(AppGrid));
+    expect(rejillas, isNotEmpty);
+    expect(
+      rejillas.map((g) => g.columnsFor(WindowClass.large)),
+      everyElement(2),
+    );
+  });
+
+  // Observaciones del 2026-09-19: con `childAspectRatio: 1.5` una alerta de
+  // dos líneas medía 370 px de alto en escritorio, casi toda vacía.
+  testWidgets('en escritorio cada alerta mide lo que su contenido', (
+    tester,
+  ) async {
+    await pumpScreen(tester, 1440);
+    final tarjetas = find.descendant(
+      of: find.byType(AppGrid),
+      matching: find.byType(AppCard),
+    );
+    expect(tarjetas, findsWidgets);
+    for (final tarjeta in tarjetas.evaluate()) {
+      final alto = (tarjeta.renderObject! as RenderBox).size.height;
+      expect(alto, lessThan(220), reason: 'tarjeta de $alto px');
+    }
   });
 
   testWidgets('no desborda en ningún ancho de auditoría, en ambos temas', (

@@ -18,6 +18,26 @@ class AppGrid extends StatelessWidget {
   final double spacing;
   final double childAspectRatio;
 
+  /// Alto fijo de cada fila, en vez de [childAspectRatio].
+  ///
+  /// Observaciones del 2026-09-19 («en computadora las tarjetas del perfil del
+  /// carro se ven deformes, todo grande»): con una proporción fija el alto de
+  /// la celda crece con su ancho, así que una tarjeta de tres líneas de texto
+  /// que a 375 px medía 120 de alto pasaba de 240 en escritorio, casi toda
+  /// vacía. Una tarjeta cuyo contenido no crece con el ancho debe usar esto.
+  ///
+  /// Se escala con el tamaño de texto del sistema: un alto fijo pensado para
+  /// el texto al 100 % recortaría el contenido con el texto agrandado.
+  final double? mainAxisExtent;
+
+  /// Cada tarjeta mide lo que su contenido, en vez de todas el mismo alto.
+  ///
+  /// Para tarjetas cuyo contenido cambia de una a otra (alertas con o sin
+  /// barra de progreso, servicios con o sin reseña): ni una proporción ni un
+  /// alto fijo les sirven, y con `childAspectRatio` la de dos líneas quedaba
+  /// en una caja de 400 px. Ignora [childAspectRatio] y [mainAxisExtent].
+  final bool sizeToContent;
+
   const AppGrid({
     super.key,
     required this.children,
@@ -27,6 +47,8 @@ class AppGrid extends StatelessWidget {
     this.largeColumns = 4,
     this.spacing = AppSpacing.base,
     this.childAspectRatio = 1.0,
+    this.mainAxisExtent,
+    this.sizeToContent = false,
   });
 
   /// Columnas declaradas para [windowClass]. Público para poder testearlo sin
@@ -43,15 +65,45 @@ class AppGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        return GridView.count(
-          crossAxisCount: columnsFor(
-            AppBreakpoints.fromWidth(constraints.maxWidth),
-          ),
+        final columnas = columnsFor(
+          AppBreakpoints.fromWidth(constraints.maxWidth),
+        );
+        if (sizeToContent) {
+          // Wrap con ancho de columna calculado: cada fila toma la altura de
+          // sus hijos. Se redondea hacia abajo para que la suma de anchos no
+          // supere el disponible por un error de coma flotante y el Wrap
+          // parta la fila antes de tiempo.
+          final ancho =
+              ((constraints.maxWidth - spacing * (columnas - 1)) / columnas)
+                  .floorToDouble();
+          // SizedBox con el ancho entero: dentro de un `Center` (AppPageBody)
+          // el Wrap se encogería a su contenido y una sola tarjeta saldría
+          // centrada en vez de en la primera columna.
+          return SizedBox(
+            width: constraints.maxWidth,
+            child: Wrap(
+              spacing: spacing,
+              runSpacing: spacing,
+              children: [
+                for (final child in children)
+                  SizedBox(width: ancho, child: child),
+              ],
+            ),
+          );
+        }
+        final alto = mainAxisExtent;
+        return GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: spacing,
-          crossAxisSpacing: spacing,
-          childAspectRatio: childAspectRatio,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columnas,
+            mainAxisSpacing: spacing,
+            crossAxisSpacing: spacing,
+            childAspectRatio: childAspectRatio,
+            mainAxisExtent: alto == null
+                ? null
+                : MediaQuery.textScalerOf(context).scale(alto),
+          ),
           children: children,
         );
       },

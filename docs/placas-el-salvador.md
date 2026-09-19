@@ -23,8 +23,11 @@ De los confirmados: **`P` = particular**, `A` = alquiler, `AB` = autobús,
 `C` = camión/carga, `M` = motocicleta, `CD` = cuerpo diplomático,
 `CC` = cuerpo consular.
 
-> **AutoDoc cubre hoy cuatro tipos:** `P` particular, `M` moto, `C` carga y
-> `A` alquiler. Se eligen con un selector en el formulario de registro.
+> **AutoDoc cubre hoy seis tipos:** `P` particular, `M` moto, `C` carga,
+> `A` alquiler y, desde el 2026-09-19, `MB` microbús y `AB` autobús. El
+> formulario de registro pregunta primero el **tipo de vehículo** (automóvil,
+> camioneta, motocicleta, camión, microbús, autobús), que fija la placa por
+> defecto; el selector de placa sigue ahí para cambiarla.
 
 ### El correlativo: esquema de 2011 (numérico)
 
@@ -69,7 +72,7 @@ esquemas conviven en la calle.
 `lib/core/utils/plate_formatter.dart`:
 
 ```
-^[PMCA][0-9A-F]{1,3}-[0-9A-F]{3}$
+^(MB|AB|[PMCA])[0-9A-F]{1,3}-[0-9A-F]{3}$
 ```
 
 - Letra del tipo de vehículo: `P`, `M`, `C` o `A`. En el registro la elige el
@@ -93,10 +96,14 @@ Decisiones que conviene no perder de vista:
   particular si no reconoce ninguna. Con `A` y `C` la lectura es ambigua y se
   resuelve **a favor del prefijo**, porque quien busca teclea la placa tal
   como está estampada, con su letra delante.
-- **Los prefijos de dos letras quedan fuera de alcance y son ambiguos.** Una
-  placa de autobús `AB12-345` es indistinguible de una de alquiler con
-  correlativo `B12345`, así que el validador la acepta. Se prefiere colar una
-  placa rara antes que rechazar una legítima.
+- **Los prefijos de dos letras son ambiguos, y se resuelven por el más
+  largo.** `MB12-345` podría ser una moto con correlativo `B12345`; al
+  buscar, `normalizarPlaca` prueba primero `MB` y `AB`. La cadena canónica es
+  la misma de las dos formas (el guion se cuenta desde la derecha): lo único
+  que cambia es cuántos caracteres caben en el correlativo. Los de dos letras
+  que AutoDoc no registra (`CD`, `CC`...) se siguen aceptando como el tipo de
+  su primera letra: se prefiere colar una placa rara antes que rechazar una
+  legítima.
 - **Los ceros a la izquierda se respetan tal cual, ni se rellenan ni se
   recortan.** `P001-00A` y `P1-00A` se guardan como placas distintas, porque
   en el esquema alfanumérico el cero forma parte de lo estampado. La app
@@ -127,8 +134,7 @@ La corrección de los que resulten ser apaños se hace a mano.
 ## Pendientes / decisiones de producto
 
 1. **Quedan tipos sin cubrir.** De los ~19 que existen, AutoDoc registra
-   cuatro. Faltan autobús (`AB`), diplomático (`CD`), consular (`CC`) y el
-   resto; los de dos letras además chocan con la ambigüedad descrita arriba.
+   seis. Faltan diplomático (`CD`), consular (`CC`) y el resto.
 2. **No está confirmado que los cuatro tipos compartan la misma forma de
    correlativo.** Se aplica la misma regla permisiva a todos, a falta de
    fuentes sobre motos, carga y alquiler. La única referencia histórica

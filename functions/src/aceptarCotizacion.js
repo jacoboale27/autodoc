@@ -380,6 +380,47 @@ function vehiculoDelClienteDeLaCotizacion(vehiculo, cotizacion) {
 }
 
 /**
+ * Vehiculo de una cotizacion que no lo trae, recuperado de la reserva que
+ * cotiza.
+ *
+ * Observaciones del 2026-09-18 (capturas 4 y 5): el cliente agendaba la cita
+ * eligiendo su coche, el taller pulsaba "Cotizar y Aceptar" sobre esa cita, y
+ * la cotizacion nacia SIN `id_vehiculo` — la tarjeta de la reserva lo tomaba
+ * de la conversacion, que no tiene coche cuando el chat se abrio desde el
+ * directorio de talleres. El cliente la aceptaba, este trigger respondia "no
+ * esta asociada a ningun vehiculo" y el taller se quedaba sin ticket y sin
+ * forma de recibir el coche. El cliente ya esta corregido; esto cubre las
+ * versiones de la app web que sigan en cache y cualquier otro creador que
+ * olvide el campo, porque la reserva SI sabe de que coche se trata.
+ *
+ * Solo se acepta el coche de una reserva entre las MISMAS partes (mismo
+ * propietario, mismo taller). No es la frontera de seguridad —esa sigue
+ * siendo `vehiculoDelClienteDeLaCotizacion`, mas abajo—, pero evita tomar el
+ * coche de una cita que no tiene nada que ver con esta cotizacion.
+ *
+ * @param {FirebaseFirestore.Firestore} db
+ * @param {object} cotizacion documento de la cotizacion ya aceptada
+ * @param {string} idTallerResuelto uid del dueño del taller
+ * @returns {Promise<string>} el id del vehiculo, o '' si no hay de donde sacarlo
+ */
+async function idVehiculoDeLaReserva(db, cotizacion, idTallerResuelto) {
+  const idReserva = cotizacion.id_reserva;
+  if (!idReserva) return '';
+  const snap = await db.collection('reservas').doc(idReserva).get();
+  if (!snap.exists) return '';
+  const reserva = snap.data() || {};
+  const mismoPropietario =
+    (reserva.id_propietario || '') !== '' &&
+    reserva.id_propietario === cotizacion.id_propietario;
+  const idTallerReserva = reserva.id_taller || reserva.id_mecanico || '';
+  const mismoTaller =
+    idTallerReserva !== '' &&
+    (idTallerReserva === idTallerResuelto || idTallerReserva === cotizacion.id_mecanico);
+  if (!mismoPropietario || !mismoTaller) return '';
+  return reserva.id_vehiculo || '';
+}
+
+/**
  * Abre el ticket de reparacion para una cotizacion recien aceptada.
  *
  * Devuelve el id del ticket creado, o `null` si no habia nada que crear
@@ -413,6 +454,19 @@ async function abrirTicketDeReparacion(db, { cotizacionId, antes, despues, ahora
   // abierto para ese mismo coche y abria un segundo ticket paralelo — el caso
   // exacto que `existeTicketAbiertoParaVehiculo` existe para impedir.
   const idTallerResuelto = await resolverIdTallerPropietario(db, despues.id_taller);
+
+  // Cotizacion sin coche pero ligada a una cita: el coche sale de la cita (ver
+  // `idVehiculoDeLaReserva`). Se trabaja sobre una copia para que todo lo de
+  // abajo —dedup, lectura del vehiculo, autorizacion y ticket— vea el mismo
+  // documento que vera la app una vez escrito el campo de vuelta.
+  let vehiculoRecuperado = false;
+  if (!despues.id_vehiculo) {
+    const idRecuperado = await idVehiculoDeLaReserva(db, despues, idTallerResuelto);
+    if (idRecuperado) {
+      despues = Object.assign({}, despues, { id_vehiculo: idRecuperado });
+      vehiculoRecuperado = true;
+    }
+  }
 
   // Hallazgo 2: dedup por vehiculo+taller, no solo por cotizacion. Si ya hay
   // una visita en curso para este vehiculo en este taller, esta aceptacion
@@ -522,6 +576,18 @@ async function abrirTicketDeReparacion(db, { cotizacionId, antes, despues, ahora
   // el vehiculo es un callable server-side que otorga el vinculo en la misma
   // escritura atomica.
   await ref.set(ticket);
+  // Si el coche se recupero de la cita, se deja escrito en la cotizacion:
+  // `InitiateServiceScreen` busca la cotizacion aceptada POR `id_vehiculo`
+  // para precargar el importe aprobado, y sin el campo le pediria al taller
+  // teclear a mano lo que el cliente ya acepto. Los dos triggers de
+  // `cotizaciones` solo reaccionan a cambios de `estado`, asi que esta
+  // escritura no los vuelve a disparar en falso.
+  if (vehiculoRecuperado) {
+    await db
+      .collection('cotizaciones')
+      .doc(cotizacionId)
+      .set({ id_vehiculo: despues.id_vehiculo }, { merge: true });
+  }
   // Devuelve tambien el documento escrito, no solo su id. `notificarTicketAbierto`
   // lo RELEIA de Firestore para sacar `placa`, `id_propietario` e `id_vehiculo`
   // — una lectura por cada cotizacion aceptada, del documento que se acababa
@@ -543,5 +609,6 @@ module.exports = {
   vehiculoDelClienteDeLaCotizacion,
   existeTicketAbiertoParaVehiculo,
   resolverIdTallerPropietario,
+  idVehiculoDeLaReserva,
   abrirTicketDeReparacion,
 };

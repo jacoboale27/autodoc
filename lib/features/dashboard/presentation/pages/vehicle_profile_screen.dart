@@ -15,6 +15,7 @@ import '../widgets/license_plate_widget.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_severity.dart';
@@ -29,7 +30,6 @@ import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/widgets/missing_argument_screen.dart';
 import '../widgets/share_vehicle_sheet.dart';
-import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
@@ -154,41 +154,113 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
             child: SingleChildScrollView(
               padding: const EdgeInsets.only(bottom: AppSpacing.xxxl * 2),
               child: AppPageBody(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeroImage(vehicle, colors),
-                    const SizedBox(height: AppSpacing.base),
-                    _buildVehicleIdentity(vehicle, colors),
-                    const SizedBox(height: AppSpacing.base),
-                    _buildExpenseSummary(vehicle, colors),
-                    const SizedBox(height: AppSpacing.base),
-                    _buildTechnicalDetails(vehicle, colors),
-                    const SizedBox(height: AppSpacing.xxl),
-                    _buildNotesSection(vehicle, colors),
-                    const SizedBox(height: AppSpacing.xxl),
-                    VehicleGalleryWidget(
-                      vehicleId: vehicle.idVehiculo,
-                      colors: colors,
-                      photos: widget.galleryPhotos,
-                    ),
-                    const SizedBox(height: AppSpacing.xxl),
-                    _buildDocumentationStatus(vehicle, colors),
-                    const SizedBox(height: AppSpacing.xxl),
-                    // Quién puede ver esta ficha, y el botón para retirarlo.
-                    // Va aquí, junto a la documentación y antes de las
-                    // acciones rápidas, porque es información sobre el
-                    // vehículo y no una acción sobre él.
-                    TalleresConAccesoCard(vehicle: vehicle),
-                    const SizedBox(height: AppSpacing.xxl),
-                    _buildQuickActions(vehicle, colors),
-                  ],
+                // Se decide por el ancho del contenido y no por `MediaQuery`,
+                // igual que `AppGrid`: es lo que de verdad cabe.
+                child: LayoutBuilder(
+                  builder: (context, constraints) =>
+                      AppBreakpoints.fromWidth(
+                        constraints.maxWidth,
+                      ).isAtLeastExpanded
+                      ? _buildLayoutAncho(vehicle, colors)
+                      : _buildLayoutCompacto(vehicle, colors),
                 ),
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  /// Teléfono y tablet en vertical: una sola columna.
+  Widget _buildLayoutCompacto(VehicleModel vehicle, AppColors colors) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildHeroImage(vehicle, colors),
+        const SizedBox(height: AppSpacing.base),
+        _buildVehicleIdentity(vehicle, colors),
+        const SizedBox(height: AppSpacing.base),
+        _buildExpenseSummary(vehicle, colors),
+        const SizedBox(height: AppSpacing.base),
+        _buildTechnicalDetails(vehicle, colors),
+        const SizedBox(height: AppSpacing.xxl),
+        _buildNotesSection(vehicle, colors),
+        const SizedBox(height: AppSpacing.xxl),
+        _buildGallery(vehicle, colors),
+        const SizedBox(height: AppSpacing.xxl),
+        _buildDocumentationStatus(vehicle, colors),
+        const SizedBox(height: AppSpacing.xxl),
+        // Quién puede ver esta ficha, y el botón para retirarlo. Va aquí,
+        // junto a la documentación y antes de las acciones rápidas, porque es
+        // información sobre el vehículo y no una acción sobre él.
+        TalleresConAccesoCard(vehicle: vehicle),
+        const SizedBox(height: AppSpacing.xxl),
+        _buildQuickActions(vehicle, colors),
+      ],
+    );
+  }
+
+  /// Escritorio (observaciones del 2026-09-19: «en computadora las tarjetas
+  /// del carro se ven deformes, todo grande»).
+  ///
+  /// Apilado a lo ancho, la foto en 16:9 ocupaba más de 600 px de alto y cada
+  /// dato (año, color…) una tarjeta de 250 px casi vacía, así que el perfil
+  /// eran tres pantallas de scroll. Aquí la foto y la ficha van lado a lado,
+  /// y lo que es estado del vehículo (documentos y talleres con acceso) se
+  /// reparte en dos columnas.
+  Widget _buildLayoutAncho(VehicleModel vehicle, AppColors colors) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          key: const Key('perfil_vehiculo_cabecera_ancha'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 6,
+              child: _buildHeroImage(vehicle, colors, aspectRatio: 3 / 2),
+            ),
+            const SizedBox(width: AppSpacing.xl),
+            Expanded(
+              flex: 5,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildVehicleIdentity(vehicle, colors),
+                  const SizedBox(height: AppSpacing.lg),
+                  _buildTechnicalDetails(vehicle, colors),
+                  const SizedBox(height: AppSpacing.xl),
+                  _buildQuickActions(vehicle, colors),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        _buildExpenseSummary(vehicle, colors),
+        const SizedBox(height: AppSpacing.xxl),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: _buildDocumentationStatus(vehicle, colors)),
+            const SizedBox(width: AppSpacing.xl),
+            Expanded(child: TalleresConAccesoCard(vehicle: vehicle)),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xxl),
+        _buildNotesSection(vehicle, colors),
+        const SizedBox(height: AppSpacing.xxl),
+        _buildGallery(vehicle, colors),
+      ],
+    );
+  }
+
+  Widget _buildGallery(VehicleModel vehicle, AppColors colors) {
+    return VehicleGalleryWidget(
+      vehicleId: vehicle.idVehiculo,
+      colors: colors,
+      photos: widget.galleryPhotos,
     );
   }
 
@@ -217,18 +289,26 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                 size: 20,
               ),
             ),
+            // Con tema, idioma, campana y avatar a la derecha (observaciones
+            // del 2026-09-19) el título no cabe en un teléfono: ahí se omite,
+            // porque la ficha ya abre con la marca y el modelo del coche.
             Expanded(
-              child: Text(
-                context.l10n.vpProfileTitle,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.titleLarge.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colors.textPrimary,
-                ),
+              child: LayoutBuilder(
+                builder: (context, constraints) => constraints.maxWidth < 160
+                    ? const SizedBox.shrink()
+                    : Text(
+                        context.l10n.vpProfileTitle,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.titleLarge.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colors.textPrimary,
+                        ),
+                      ),
               ),
             ),
+            const AccionesDeCabecera(),
             PopupMenuButton<String>(
               icon: Icon(Icons.more_horiz, color: colors.primary, size: 24),
               onSelected: (value) {
@@ -284,14 +364,18 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     );
   }
 
-  Widget _buildHeroImage(VehicleModel vehicle, AppColors colors) {
+  Widget _buildHeroImage(
+    VehicleModel vehicle,
+    AppColors colors, {
+    double aspectRatio = 16 / 9,
+  }) {
     return AppCard(
       margin: EdgeInsets.zero,
       padding: EdgeInsets.zero,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppRadius.lg),
         child: AspectRatio(
-          aspectRatio: 16 / 9,
+          aspectRatio: aspectRatio,
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -412,13 +496,17 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
   }
 
   Widget _buildTechnicalDetails(VehicleModel vehicle, AppColors colors) {
+    // Alto fijo y no proporción: el contenido de cada tarjeta (icono, rótulo
+    // y valor) no crece con el ancho, y con `childAspectRatio` cada una
+    // medía 250 px de alto en escritorio.
     return AppGrid(
+      key: const Key('perfil_vehiculo_datos'),
       compactColumns: 2,
-      mediumColumns: 2,
-      expandedColumns: 3,
+      mediumColumns: 4,
+      expandedColumns: 4,
       largeColumns: 4,
-      spacing: AppSpacing.base,
-      childAspectRatio: 1.35,
+      spacing: AppSpacing.md,
+      mainAxisExtent: 72,
       children: [
         _buildDetailItem(
           Icons.calendar_today,
@@ -457,56 +545,61 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     VoidCallback? onTap,
   }) {
     return AppCard(
-      padding: EdgeInsets.zero,
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       onTap: onTap,
       semanticLabel: onTap == null ? null : '$label: $value',
-      child: Padding(
-        padding: EdgeInsets.all(Responsive.padding(context, 12)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: colors.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: colors.primary, size: 18),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  icon,
-                  color: colors.primary,
-                  size: Responsive.iconSize(context, 20),
-                ),
-                if (onTap != null)
-                  Icon(
-                    Icons.edit,
-                    color: colors.primary.withValues(alpha: 0.5),
-                    size: Responsive.iconSize(context, 14),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.labelSmall.copyWith(
+                    color: colors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                    height: 1.2,
                   ),
+                ),
+                const SizedBox(height: AppSpacing.xs / 2),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colors.textPrimary,
+                    height: 1.2,
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.labelSmall.copyWith(
-                color: colors.textSecondary,
-                fontWeight: FontWeight.w500,
-                height: 1.2,
-              ),
+          ),
+          if (onTap != null)
+            Icon(
+              Icons.edit,
+              color: colors.primary.withValues(alpha: 0.5),
+              size: 16,
             ),
-            const SizedBox(height: AppSpacing.xs / 2),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.bodyMedium.copyWith(
-                fontWeight: FontWeight.bold,
-                color: colors.textPrimary,
-                height: 1.2,
-              ),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -799,6 +892,7 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     VoidCallback? onActionPressed,
   }) {
     return AppCard(
+      margin: EdgeInsets.zero,
       padding: const EdgeInsets.all(AppSpacing.base),
       child: Row(
         children: [
@@ -834,11 +928,16 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
           ),
           if (actionLabel != null)
             Flexible(
-              child: AppButton(
-                text: actionLabel,
-                size: AppButtonSize.small,
-                onPressed: onActionPressed,
-                type: AppButtonType.primary,
+              // Tope de ancho: AppButton ocupa todo el que le den, y en
+              // escritorio el botón se estiraba a media tarjeta.
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 140),
+                child: AppButton(
+                  text: actionLabel,
+                  size: AppButtonSize.small,
+                  onPressed: onActionPressed,
+                  type: AppButtonType.primary,
+                ),
               ),
             )
           else if (isVerified)

@@ -11,7 +11,6 @@ import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_empty_state.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
-import 'package:autodoc/core/widgets/notification_bell_button.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
@@ -110,11 +109,10 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
       if (vehicle != null) {
         vehicleProvider.addRecentSearch(vehicle);
         if (mounted) {
-          // A3/B2: buscar una placa es una consulta, no autoriza nada.
-          // `abrirVehiculoComoMecanico` decide si hay un ticket aceptado
-          // (va a `InitiateServiceScreen`) o no (va a la ficha pública) —
-          // mismo punto de decisión que `_abrirVehiculo`, para que las dos
-          // entradas de esta pantalla nunca diverjan.
+          // A3/B2: buscar una placa es una consulta, no autoriza nada. Lleva
+          // al perfil del vehículo, que según la relación del coche con el
+          // taller enseña solo la ficha pública o el perfil completo con el
+          // acceso al servicio en curso (observaciones del 2026-09-19).
           await _abrirVehiculo(vehicle);
         }
       } else {
@@ -141,11 +139,10 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
     final tallerId =
         context.read<UserProfileProvider>().userData?.idTallerEfectivo ?? '';
     if (!mounted) return;
-    // `abrirVehiculoComoMecanico` es el único punto de decisión (Tarea 5,
-    // A3/B2): sin ticket aceptado para este vehículo+taller, lleva a la
-    // ficha pública; con uno, a `InitiateServiceScreen`. Ya usa `go` por
-    // dentro (mismo motivo de siempre: la URL debe seguir a la pantalla para
-    // que un F5 no deje al taller a medias).
+    // Buscar una placa lleva al perfil del vehículo, que decide qué enseñar
+    // según la relación del coche con el taller (A3/B2 y observaciones del
+    // 2026-09-19). `abrirVehiculoComoMecanico` usa `go` por dentro: la URL
+    // debe seguir a la pantalla para que un F5 no deje al taller a medias.
     await abrirVehiculoComoMecanico(context, vehicle, tallerId);
   }
 
@@ -156,8 +153,8 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
   /// este ticket, y `abrirVehiculoComoMecanico` navegaría en silencio al
   /// ticket (o ficha pública) de ESE otro vehículo, sin ningún error visible
   /// — `idVehiculo` es la clave exacta que ya trae el ticket, sin esa
-  /// ambigüedad. Se reutiliza `_abrirVehiculo` después para no abrir un
-  /// segundo camino de navegación.
+  /// ambigüedad. Con el vehículo resuelto se va directo al servicio del
+  /// ticket.
   Future<void> _abrirVehiculoDesdeReparacion(ReparacionModel reparacion) async {
     final vehicleProvider = context.read<VehicleProvider>();
     VehicleModel? vehicle;
@@ -195,7 +192,10 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
       );
       return;
     }
-    await _abrirVehiculo(vehicle);
+    // Una fila de "Mis Servicios" es un ticket abierto: se va directo al
+    // servicio, no al perfil del coche (que es a donde lleva buscar la
+    // placa, observaciones del 2026-09-19).
+    context.go('/initiate_service/${reparacion.idReparacion}', extra: vehicle);
   }
 
   /// Explica por qué una fila de "Mis Servicios" no lleva a ninguna parte.
@@ -267,7 +267,6 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
   Widget build(BuildContext context) {
     return MechanicScaffold(
       title: 'Buscar Vehículo',
-      actions: const [NotificationBellButton()],
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
         child: AppPageBody(

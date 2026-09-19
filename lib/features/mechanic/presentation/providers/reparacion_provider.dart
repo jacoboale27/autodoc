@@ -91,6 +91,21 @@ class ReparacionProvider extends ChangeNotifier {
     required String idVehiculo,
     required String idTaller,
   }) async {
+    final ticket = await buscarTicketVigente(
+      idVehiculo: idVehiculo,
+      idTaller: idTaller,
+    );
+    return ticket?.idReparacion;
+  }
+
+  /// Igual que [buscarReparacionActiva], pero devuelve el ticket entero: el
+  /// perfil del vehículo (observaciones del 2026-09-19) enseña en qué punto
+  /// está el servicio en curso ("Por recibir", "En revisión"...), no solo si
+  /// existe.
+  Future<ReparacionModel?> buscarTicketVigente({
+    required String idVehiculo,
+    required String idTaller,
+  }) async {
     final idReparacion = await _repository.buscarReparacionActiva(
       idVehiculo: idVehiculo,
       idTaller: idTaller,
@@ -101,7 +116,7 @@ class ReparacionProvider extends ChangeNotifier {
         estadosReparacionCerrados.contains(reparacion.estado)) {
       return null;
     }
-    return idReparacion;
+    return reparacion;
   }
 
   /// Marca la llegada física del vehículo para un ticket ya conocido. Desde

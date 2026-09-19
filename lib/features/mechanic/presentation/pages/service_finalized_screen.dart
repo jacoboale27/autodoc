@@ -11,8 +11,8 @@ import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
-import 'package:autodoc/features/profile/data/services/user_service.dart';
 import 'package:autodoc/core/utils/mensaje_de_error.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 
 /// Datos que necesita [ServiceFinalizedScreen], pasados via `state.extra` de
 /// go_router (no caben en la URL: son varios campos ya resueltos por
@@ -65,6 +65,11 @@ class _ServiceFinalizedScreenState extends State<ServiceFinalizedScreen> {
   bool _enviandoResenia = false;
   bool _reseniaSolicitada = false;
 
+  /// Un empleado no puede leer ni escribir las conversaciones del taller
+  /// (`firestore.rules`, `conversaciones`: solo `id_mecanico == uid`).
+  bool get _esEmpleado =>
+      context.read<UserProfileProvider>().userData?.idTallerPropietario != null;
+
   Future<void> _solicitarResenia() async {
     final userSession = context.read<UserProfileProvider>();
     final tallerUid = userSession.userData?.idUsuario;
@@ -75,23 +80,27 @@ class _ServiceFinalizedScreenState extends State<ServiceFinalizedScreen> {
       final chatProvider = context.read<ChatProvider>();
       final args = widget.args;
 
-      final propietario = await UserService().getUserData(args.idPropietario);
-
-      final conversacionId = await chatProvider.iniciarOCrearConversacion(
+      // Observaciones del 2026-09-19 («No se pudo enviar la solicitud de
+      // reseña»): antes se buscaba la conversación de ESTE vehículo y, si no
+      // la había —lo normal cuando el cliente escribió desde el directorio,
+      // sin coche—, se intentaba CREAR una, que las reglas no dejan al
+      // taller. Ahora vale cualquier conversación con ese cliente, y si no
+      // hay ninguna se dice, en vez de fallar.
+      final conversacionId = await chatProvider.conversacionExistente(
         idPropietario: args.idPropietario,
         idMecanico: tallerUid,
-        nombrePropietario: propietario?.nombreCompleto ?? 'Propietario',
-        nombreMecanico: args.tallerNombre,
-        idVehiculo: args.idVehiculo,
-        idTaller: args.tallerId,
-        fotoPropietario: propietario?.fotoPerfilUrl,
-        fotoMecanico: userSession.userData?.fotoPerfilUrl,
       );
-      if (conversacionId.isEmpty) {
-        throw StateError('No se pudo abrir la conversación.');
+      if (!mounted) return;
+      if (conversacionId == null) {
+        UiUtils.showErrorSnackbar(
+          context,
+          'Este cliente todavía no tiene un chat contigo. Podrá reseñar el '
+          'servicio desde su historial.',
+        );
+        return;
       }
 
-      await chatProvider.enviarMensaje(
+      final enviado = await chatProvider.enviarMensaje(
         conversacionId: conversacionId,
         contenido: 'Servicio finalizado',
         remitenteId: tallerUid,
@@ -100,6 +109,11 @@ class _ServiceFinalizedScreenState extends State<ServiceFinalizedScreen> {
         tipo: 'review_card',
         metadata: {'tallerNombre': args.tallerNombre, 'estado': 'pendiente'},
       );
+      // `enviarMensaje` avisa del fallo devolviendo false, no lanzando: sin
+      // mirarlo, un envío fallido decía «Le pedimos al propietario...».
+      if (!enviado) {
+        throw StateError('No se pudo enviar el mensaje.');
+      }
 
       if (!mounted) return;
       setState(() => _reseniaSolicitada = true);
@@ -128,6 +142,14 @@ class _ServiceFinalizedScreenState extends State<ServiceFinalizedScreen> {
 
     return Scaffold(
       backgroundColor: colors.surface,
+      // Sin título ni flecha (la salida son los botones de abajo): solo las
+      // acciones comunes de la cabecera, como en el resto de pantallas.
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: colors.surface,
+        elevation: 0,
+        actions: const [AccionesDeCabecera()],
+      ),
       body: SafeArea(
         child: AppPageBody(
           child: Center(
@@ -176,21 +198,32 @@ class _ServiceFinalizedScreenState extends State<ServiceFinalizedScreen> {
                             ],
                           ),
                           const SizedBox(height: AppSpacing.md),
-                          SizedBox(
-                            width: double.infinity,
-                            child: AppButton(
-                              text: _reseniaSolicitada
-                                  ? 'Solicitud enviada'
-                                  : 'Enviar solicitud de reseña',
-                              icon: _reseniaSolicitada
-                                  ? const Icon(Icons.check, size: 18)
-                                  : null,
-                              isLoading: _enviandoResenia,
-                              onPressed: _reseniaSolicitada
-                                  ? null
-                                  : _solicitarResenia,
+                          if (_esEmpleado)
+                            Text(
+                              'Las conversaciones con clientes son de la '
+                              'cuenta del taller. El cliente verá igualmente '
+                              'la opción de reseñar en su chat.',
+                              key: const Key('resenia_solo_taller'),
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: colors.textSecondary,
+                              ),
+                            )
+                          else
+                            SizedBox(
+                              width: double.infinity,
+                              child: AppButton(
+                                text: _reseniaSolicitada
+                                    ? 'Solicitud enviada'
+                                    : 'Enviar solicitud de reseña',
+                                icon: _reseniaSolicitada
+                                    ? const Icon(Icons.check, size: 18)
+                                    : null,
+                                isLoading: _enviandoResenia,
+                                onPressed: _reseniaSolicitada
+                                    ? null
+                                    : _solicitarResenia,
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ),

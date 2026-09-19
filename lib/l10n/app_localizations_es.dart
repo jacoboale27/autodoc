@@ -908,6 +908,37 @@ class AppLocalizationsEs extends AppLocalizations {
   String get addVehiclePlateTypeAlquiler => 'Alquiler';
 
   @override
+  String get addVehiclePlateTypeMicrobus => 'Microbús';
+
+  @override
+  String get addVehiclePlateTypeAutobus => 'Autobús';
+
+  @override
+  String get addVehicleType => 'Tipo de vehículo';
+
+  @override
+  String get addVehicleTypeSubtitle =>
+      '¿Qué vas a registrar? Así te mostramos sus marcas y su tipo de placa.';
+
+  @override
+  String get tipoVehiculoAutomovil => 'Automóvil';
+
+  @override
+  String get tipoVehiculoCamioneta => 'Camioneta / Pick-up';
+
+  @override
+  String get tipoVehiculoMotocicleta => 'Motocicleta';
+
+  @override
+  String get tipoVehiculoCamion => 'Camión';
+
+  @override
+  String get tipoVehiculoMicrobus => 'Microbús';
+
+  @override
+  String get tipoVehiculoAutobus => 'Autobús';
+
+  @override
   String get addVehiclePlate => 'Número de Placa';
 
   @override

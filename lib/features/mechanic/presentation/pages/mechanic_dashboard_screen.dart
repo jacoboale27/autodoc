@@ -11,15 +11,12 @@ import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_grid.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_section_header.dart';
-import 'package:autodoc/core/widgets/notification_bell_button.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:intl/intl.dart';
 import 'package:autodoc/core/utils/responsive.dart';
-import 'package:autodoc/core/providers/theme_provider.dart';
-import 'package:autodoc/core/providers/language_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 import 'package:fl_chart/fl_chart.dart';
 
@@ -85,11 +82,6 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
 
     return MechanicScaffold(
       title: 'Dashboard',
-      actions: const [
-        _TemaIdiomaActions(),
-        SizedBox(width: AppSpacing.base),
-        NotificationBellButton(),
-      ],
       body: SingleChildScrollView(
         child: AppPageBody(
           child: Padding(
@@ -567,50 +559,6 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
 /// Conmutadores de tema e idioma. Estaban escritos dos veces —una en el
 /// `AppBar` de teléfono y otra en la barra de escritorio— con distinto color
 /// cada uno. `MechanicScaffold` los pinta en la barra que corresponda.
-class _TemaIdiomaActions extends StatelessWidget {
-  const _TemaIdiomaActions();
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.appColors;
-
-    return Consumer2<ThemeProvider, LanguageProvider>(
-      builder: (context, themeProvider, languageProvider, _) {
-        final isDark = themeProvider.isDarkMode;
-        final isEnglish = languageProvider.currentLocale.languageCode == 'en';
-
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              tooltip: isDark
-                  ? 'Cambiar a modo claro'
-                  : 'Cambiar a modo oscuro',
-              icon: Icon(
-                isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-                color: colors.primary,
-              ),
-              onPressed: themeProvider.toggleTheme,
-            ),
-            IconButton(
-              tooltip: isEnglish ? 'Cambiar a español' : 'Switch to English',
-              onPressed: () =>
-                  languageProvider.changeLanguage(isEnglish ? 'es' : 'en'),
-              icon: Text(
-                isEnglish ? 'EN' : 'ES',
-                style: AppTextStyles.labelLarge.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colors.primary,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
 /// Tarjeta de un KPI del dashboard. `AppGrid` decide su celda; la tarjeta
 /// solo rellena el espacio que recibe — antes un `SizedBox(width: ...)`
 /// interno duplicaba el ancho que ya fijaba el `Wrap` externo (más el

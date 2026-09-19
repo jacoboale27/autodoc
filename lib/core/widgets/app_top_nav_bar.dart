@@ -5,13 +5,9 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_shadows.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/utils/responsive.dart';
-import 'package:autodoc/core/providers/theme_provider.dart';
-import 'package:autodoc/core/providers/language_provider.dart';
-import 'package:autodoc/core/providers/notification_center_provider.dart';
-import 'package:provider/provider.dart';
-import 'package:autodoc/core/providers/user_profile_provider.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 import 'package:autodoc/core/widgets/navigation/app_nav_destination.dart';
-import 'package:autodoc/l10n/app_localizations.dart';
+import 'package:autodoc/features/chat/presentation/widgets/aviso_mensajes_nuevos.dart';
 
 class AppTopNavBar extends StatelessWidget {
   const AppTopNavBar({super.key});
@@ -19,7 +15,6 @@ class AppTopNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final l10n = AppLocalizations.of(context)!;
     final currentPath = GoRouterState.of(context).uri.path;
 
     return Container(
@@ -77,6 +72,7 @@ class AppTopNavBar extends StatelessWidget {
                   children: [
                     for (final destination in AppNavDestinations.owner)
                       _TopNavLink(
+                        route: destination.route,
                         title: destination.label,
                         icon: destination.icon,
                         semanticLabel: destination.semanticLabel,
@@ -89,166 +85,9 @@ class AppTopNavBar extends StatelessWidget {
             ),
           ),
 
-          // Theme & Language Toggles
-          Consumer2<ThemeProvider, LanguageProvider>(
-            builder: (context, themeProvider, languageProvider, _) {
-              // isDarkMode (no `themeMode == dark`) resuelve tambien
-              // ThemeMode.system contra el brillo real de la plataforma.
-              final isDark = themeProvider.isDarkMode;
-              final isEnglish =
-                  languageProvider.currentLocale.languageCode == 'en';
-              return Row(
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      isDark
-                          ? Icons.light_mode_outlined
-                          : Icons.dark_mode_outlined,
-                      color: colors.textSecondary,
-                    ),
-                    onPressed: themeProvider.toggleTheme,
-                    tooltip: l10n.topNavThemeTooltip,
-                  ),
-                  SizedBox(width: Responsive.padding(context, 8)),
-                  // Solo `button: true`: el `Tooltip` de dentro ya publica
-                  // el nombre en el campo `tooltip` del nodo, y anadir un
-                  // `label` con la MISMA cadena la hace sonar dos veces
-                  // (etiqueta duplicada del §2.13). Lo que el envoltorio si
-                  // aporta es el rol: `InkWell` no marca `isButton`, a
-                  // diferencia del `IconButton` del tema.
-                  Semantics(
-                    button: true,
-                    child: InkWell(
-                      onTap: () {
-                        languageProvider.changeLanguage(
-                          isEnglish ? 'es' : 'en',
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(8),
-                      child: Tooltip(
-                        message: l10n.topNavLanguageTooltip,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: colors.outline.withValues(alpha: 0.5),
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            isEnglish ? 'EN' : 'ES',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: colors.textSecondary,
-                              fontSize: Responsive.fontSize(context, 12),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: Responsive.padding(context, 16)),
-                ],
-              );
-            },
-          ),
-
-          // Notification Bell with Badge
-          Consumer<NotificationCenterProvider>(
-            builder: (context, notifProvider, _) {
-              return Stack(
-                children: [
-                  // Sin envoltorio `Semantics`: el `IconButton` ya publica
-                  // isButton, la accion de tap y su nombre (via `tooltip`).
-                  // El envoltorio solo anadia un nodo padre SIN acciones con
-                  // la misma cadena: dos paradas seguidas que dicen lo mismo.
-                  IconButton(
-                    icon: Icon(
-                      notifProvider.hasUnread
-                          ? Icons.notifications_active_rounded
-                          : Icons.notifications_none_rounded,
-                      color: notifProvider.hasUnread
-                          ? colors.primary
-                          : colors.textSecondary,
-                    ),
-                    onPressed: () => context.push('/notifications'),
-                    tooltip: l10n.notifications,
-                  ),
-                  if (notifProvider.hasUnread)
-                    Positioned(
-                      right: 6,
-                      top: 6,
-                      child: Semantics(
-                        label:
-                            '${notifProvider.unreadCount} notificaciones sin leer',
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: colors.error,
-                            shape: BoxShape.circle,
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 18,
-                            minHeight: 18,
-                          ),
-                          child: Text(
-                            notifProvider.unreadCount > 9
-                                ? '9+'
-                                : '${notifProvider.unreadCount}',
-                            style: AppTextStyles.labelSmall.copyWith(
-                              color: colors.onPrimary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-          SizedBox(width: Responsive.padding(context, 8)),
-
-          // Profile Action
-          Consumer<UserProfileProvider>(
-            builder: (context, userSession, _) {
-              final user = userSession.userData;
-              // Mismo caso que el selector de idioma: el `Tooltip` ya
-              // nombra el control y el `InkWell` no aporta el rol de boton,
-              // asi que el envoltorio se queda solo con `button: true`.
-              return Semantics(
-                button: true,
-                child: Tooltip(
-                  message: l10n.topNavAccountTooltip,
-                  child: InkWell(
-                    onTap: () => context.push('/user_profile'),
-                    borderRadius: BorderRadius.circular(999),
-                    child: CircleAvatar(
-                      radius: Responsive.size(context, 16),
-                      backgroundColor: colors.primary,
-                      backgroundImage: user?.fotoPerfilUrl != null
-                          ? NetworkImage(user!.fotoPerfilUrl!)
-                          : null,
-                      child: user?.fotoPerfilUrl == null
-                          ? Text(
-                              user?.nombreCompleto.isNotEmpty == true
-                                  ? user!.nombreCompleto[0].toUpperCase()
-                                  : 'U',
-                              style: AppTextStyles.bodySmall.copyWith(
-                                color: colors.surface,
-                              ),
-                            )
-                          : null,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
+          // Tema, idioma, campana y avatar: los mismos controles que llevan
+          // todas las demás pantallas (`AccionesDeCabecera`).
+          const AccionesDeCabecera(mostrarAvatar: true),
         ],
       ),
     );
@@ -256,6 +95,7 @@ class AppTopNavBar extends StatelessWidget {
 }
 
 class _TopNavLink extends StatelessWidget {
+  final String route;
   final String title;
   final IconData icon;
   final String semanticLabel;
@@ -263,6 +103,7 @@ class _TopNavLink extends StatelessWidget {
   final VoidCallback onTap;
 
   const _TopNavLink({
+    required this.route,
     required this.title,
     required this.icon,
     required this.semanticLabel,
@@ -288,7 +129,14 @@ class _TopNavLink extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(icon, color: color, size: Responsive.iconSize(context, 18)),
+              IconoConMensajesSinLeer(
+                route: route,
+                icono: Icon(
+                  icon,
+                  color: color,
+                  size: Responsive.iconSize(context, 18),
+                ),
+              ),
               SizedBox(width: Responsive.padding(context, 8)),
               Text(
                 title,

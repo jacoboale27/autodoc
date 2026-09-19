@@ -134,8 +134,11 @@ class _VehicleGalleryWidgetState extends State<VehicleGalleryWidget> {
               return GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
+                // Por ancho máximo de miniatura y no 3 columnas fijas: en
+                // escritorio cada foto medía casi 400 px de lado (observaciones
+                // del 2026-09-19). En un teléfono siguen saliendo 3.
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 160,
                   crossAxisSpacing: 8,
                   mainAxisSpacing: 8,
                 ),
