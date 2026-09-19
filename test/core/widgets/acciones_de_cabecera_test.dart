@@ -165,6 +165,9 @@ void main() {
       'admin_resenias_screen.dart': 'panel de administración',
       'admin_logs_screen.dart': 'panel de administración',
       'admin_seed_screen.dart': 'panel de administración',
+      // Pantalla modal de un solo propósito (elegir un punto en el mapa), con
+      // su propio botón Confirmar arriba a la derecha.
+      'selector_ubicacion_taller_screen.dart': 'selector modal del mapa',
     };
 
     final sinAcciones = <String>[];

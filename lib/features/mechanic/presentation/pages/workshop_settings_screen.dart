@@ -13,10 +13,10 @@ import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
-import 'package:autodoc/core/widgets/app_dialog_content.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_section_header.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
+import 'package:autodoc/features/mechanic/presentation/pages/selector_ubicacion_taller_screen.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
@@ -297,82 +297,21 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
     }
   }
 
-  void _abrirSelectorMapa() {
-    final colors = context.appColors;
-    LatLng? selectedLatLng = _latitude != null && _longitude != null
-        ? LatLng(_latitude!, _longitude!)
-        : const LatLng(13.6929, -89.2182); // San Salvador, El Salvador
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        LatLng markerPos = selectedLatLng;
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: colors.surfaceContainer,
-              title: Text(
-                'Toca en tu ubicación exacta',
-                style: AppTextStyles.titleSmall.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colors.textPrimary,
-                ),
-              ),
-              content: AppDialogContent(
-                maxWidth: 640,
-                child: SizedBox(
-                  height: AppBreakpoints.of(context).isCompact ? 280 : 400,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    child: Semantics(
-                      label:
-                          'Mapa para elegir la ubicación del taller. Toca para marcar el punto.',
-                      child: GoogleMap(
-                        initialCameraPosition: CameraPosition(
-                          target: markerPos,
-                          zoom: 14,
-                        ),
-                        onTap: (latLng) {
-                          setDialogState(() {
-                            markerPos = latLng;
-                          });
-                        },
-                        markers: {
-                          Marker(
-                            markerId: const MarkerId('workshop_selected'),
-                            position: markerPos,
-                          ),
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              actions: [
-                AppButton(
-                  text: 'Cancelar',
-                  type: AppButtonType.text,
-                  size: AppButtonSize.small,
-                  onPressed: () => Navigator.pop(ctx),
-                ),
-                AppButton(
-                  text: 'Confirmar',
-                  size: AppButtonSize.small,
-                  onPressed: () {
-                    setState(() {
-                      _latitude = markerPos.latitude;
-                      _longitude = markerPos.longitude;
-                      _errorUbicacion = null;
-                    });
-                    Navigator.pop(ctx);
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      },
+  /// Abre el mapa a pantalla completa (ver `SelectorUbicacionTallerScreen`:
+  /// dentro de un diálogo el mapa no se podía mover en la web).
+  Future<void> _abrirSelectorMapa() async {
+    final elegido = await elegirUbicacionDelTaller(
+      context,
+      inicial: _latitude != null && _longitude != null
+          ? LatLng(_latitude!, _longitude!)
+          : null,
     );
+    if (elegido == null || !mounted) return;
+    setState(() {
+      _latitude = elegido.latitude;
+      _longitude = elegido.longitude;
+      _errorUbicacion = null;
+    });
   }
 }
 
