@@ -18,6 +18,7 @@ class CatalogoRepository {
     required String idTaller,
     required String nombre,
     required double precio,
+    double? precioMax,
   }) async {
     final docRef = await _catalogoRef(idTaller).add(
       CatalogoItemModel(
@@ -25,9 +26,22 @@ class CatalogoRepository {
         idTaller: idTaller,
         nombre: nombre,
         precio: precio,
+        precioMax: precioMax,
       ).toMap(),
     );
     return docRef.id;
+  }
+
+  /// Agrega varios de una vez, en un lote: todos o ninguno.
+  Future<void> agregarVarios(
+    String idTaller,
+    Iterable<CatalogoItemModel> items,
+  ) async {
+    final lote = _firestore.batch();
+    for (final item in items) {
+      lote.set(_catalogoRef(idTaller).doc(), item.toMap());
+    }
+    await lote.commit();
   }
 
   Stream<List<CatalogoItemModel>> watchCatalogo(String idTaller) {

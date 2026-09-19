@@ -1,4 +1,5 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:autodoc/core/models/catalogo_item_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:autodoc/features/mechanic/data/repositories/catalogo_repository.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/catalogo_provider.dart';
@@ -117,4 +118,49 @@ void main() {
       expect(provider.items, isEmpty);
     },
   );
+
+  // Observaciones del 2026-09-19: el catálogo es de mano de obra con precio
+  // estimado, y trae servicios comunes para no empezar vacío.
+  group('catálogo de mano de obra', () {
+    test('guarda el rango «desde – hasta»', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = CatalogoProvider(
+        repository: CatalogoRepository(firestore: firestore),
+      );
+      provider.watchTaller('t1');
+      await provider.agregar('Alineación', 15, precioMax: 25);
+      await Future<void>.delayed(Duration.zero);
+
+      final item = provider.items.single;
+      expect(item.precio, 15);
+      expect(item.precioMax, 25);
+      expect(item.rangoTexto, '\$15.00 – \$25.00');
+    });
+
+    test('los servicios comunes se agregan una sola vez', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = CatalogoProvider(
+        repository: CatalogoRepository(firestore: firestore),
+      );
+      provider.watchTaller('t1');
+      await provider.agregar('alineación', 18);
+      await Future<void>.delayed(Duration.zero);
+
+      final agregados = await provider.cargarServiciosComunes();
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        agregados,
+        serviciosComunesManoDeObra.length - 1,
+        reason: 'la alineación ya estaba (sin distinguir mayúsculas)',
+      );
+      expect(await provider.cargarServiciosComunes(), 0);
+      expect(provider.items, hasLength(serviciosComunesManoDeObra.length));
+      expect(
+        provider.items.every(
+          (i) => i.precioMax == null || i.precioMax! >= i.precio,
+        ),
+        isTrue,
+      );
+    });
+  });
 }

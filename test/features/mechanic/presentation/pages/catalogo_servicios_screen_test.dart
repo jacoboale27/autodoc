@@ -82,10 +82,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Find the price TextFormField by its labelText
-    final priceFieldFinder = find.widgetWithText(
-      TextFormField,
-      'Precio unitario',
-    );
+    final priceFieldFinder = find.widgetWithText(TextFormField, 'Desde (USD)');
     expect(priceFieldFinder, findsOneWidget);
 
     // Get the TextEditingController from the TextFormField
@@ -172,10 +169,7 @@ void main() {
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
 
-    final priceFieldFinder = find.widgetWithText(
-      TextFormField,
-      'Precio unitario',
-    );
+    final priceFieldFinder = find.widgetWithText(TextFormField, 'Desde (USD)');
 
     TextEditingController? priceController;
     for (final element in priceFieldFinder.evaluate()) {

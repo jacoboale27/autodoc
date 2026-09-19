@@ -41,12 +41,14 @@ class _NuevoItemDialogState extends State<_NuevoItemDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nombreController = TextEditingController();
   final _precioController = TextEditingController();
+  final _precioMaxController = TextEditingController();
   bool _isLoading = false;
 
   @override
   void dispose() {
     _nombreController.dispose();
     _precioController.dispose();
+    _precioMaxController.dispose();
     super.dispose();
   }
 
@@ -57,8 +59,9 @@ class _NuevoItemDialogState extends State<_NuevoItemDialog> {
     setState(() => _isLoading = true);
     final nombre = _nombreController.text.trim();
     final precio = double.tryParse(_precioController.text.trim()) ?? 0;
+    final precioMax = double.tryParse(_precioMaxController.text.trim());
     try {
-      await widget.provider.agregar(nombre, precio);
+      await widget.provider.agregar(nombre, precio, precioMax: precioMax);
       if (mounted) {
         Navigator.pop(context);
       }
@@ -80,7 +83,7 @@ class _NuevoItemDialogState extends State<_NuevoItemDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       scrollable: true,
-      title: const Text('Nuevo ítem del catálogo'),
+      title: const Text('Nuevo servicio'),
       content: SizedBox(
         width: 380,
         child: Form(
@@ -92,7 +95,8 @@ class _NuevoItemDialogState extends State<_NuevoItemDialog> {
               TextFormField(
                 controller: _nombreController,
                 decoration: const InputDecoration(
-                  labelText: 'Nombre del servicio o repuesto',
+                  labelText: 'Servicio (mano de obra)',
+                  hintText: 'Ej.: Cambio de pastillas de freno',
                 ),
                 validator: (v) =>
                     (v == null || v.trim().isEmpty) ? 'Requerido' : null,
@@ -104,11 +108,38 @@ class _NuevoItemDialogState extends State<_NuevoItemDialog> {
                   decimal: true,
                 ),
                 inputFormatters: montoInputFormatters,
-                decoration: const InputDecoration(labelText: 'Precio unitario'),
+                decoration: const InputDecoration(
+                  labelText: 'Desde (USD)',
+                  helperText:
+                      'Lo que cuesta la mano de obra en lo más sencillo',
+                ),
                 validator: (v) {
                   final precio = double.tryParse(v?.trim() ?? '');
                   if (precio == null || precio <= 0) {
                     return 'Precio inválido';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                key: const Key('catalogo_precio_max'),
+                controller: _precioMaxController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: montoInputFormatters,
+                decoration: const InputDecoration(
+                  labelText: 'Hasta (USD, opcional)',
+                  helperText: 'Para un vehículo grande o un trabajo complicado',
+                ),
+                validator: (v) {
+                  final texto = v?.trim() ?? '';
+                  if (texto.isEmpty) return null;
+                  final hasta = double.tryParse(texto);
+                  final desde = double.tryParse(_precioController.text.trim());
+                  if (hasta == null || (desde != null && hasta < desde)) {
+                    return 'Debe ser mayor o igual que «Desde»';
                   }
                   return null;
                 },
@@ -204,6 +235,31 @@ class _CatalogoServiciosScreenState extends State<CatalogoServiciosScreen> {
     }
   }
 
+  bool _cargandoComunes = false;
+
+  Future<void> _cargarComunes() async {
+    if (_cargandoComunes) return;
+    setState(() => _cargandoComunes = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final n = await context.read<CatalogoProvider>().cargarServiciosComunes();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            n == 0
+                ? 'Ya tienes todos los servicios comunes.'
+                : 'Se agregaron $n servicios con precios estimados. '
+                      'Ajústalos a tu taller.',
+          ),
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(mensajeSeguroDeError(e))));
+    } finally {
+      if (mounted) setState(() => _cargandoComunes = false);
+    }
+  }
+
   Future<void> _mostrarDialogoAgregar(BuildContext context) async {
     final provider = context.read<CatalogoProvider>();
     await showDialog(
@@ -215,48 +271,75 @@ class _CatalogoServiciosScreenState extends State<CatalogoServiciosScreen> {
   @override
   Widget build(BuildContext context) {
     return MechanicScaffold(
-      title: 'Catálogo de Servicios',
+      title: 'Catálogo de mano de obra',
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _mostrarDialogoAgregar(context),
         icon: const Icon(Icons.add),
-        label: const Text('Nuevo Ítem'),
+        label: const Text('Nuevo servicio'),
       ),
       body: Consumer<CatalogoProvider>(
         builder: (context, provider, _) {
           final items = provider.items;
+          final cargarComunes = OutlinedButton.icon(
+            key: const Key('catalogo_cargar_comunes'),
+            onPressed: _cargandoComunes ? null : _cargarComunes,
+            icon: const Icon(Icons.playlist_add),
+            label: const Text('Agregar servicios comunes'),
+          );
           if (items.isEmpty) {
-            return const AppEmptyState(
-              title: 'Aún no tienes ítems en tu catálogo',
-              description:
-                  'Agrega servicios y repuestos frecuentes para añadirlos '
-                  'con un clic al facturar.',
-              icon: Icons.inventory_2_outlined,
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Flexible(
+                  child: AppEmptyState(
+                    title: 'Aún no tienes servicios en tu catálogo',
+                    description:
+                        'Pon el precio estimado de la mano de obra de lo que '
+                        'haces más seguido. Los repuestos van aparte en cada '
+                        'cotización.',
+                    icon: Icons.inventory_2_outlined,
+                  ),
+                ),
+                cargarComunes,
+                const SizedBox(height: AppSpacing.xxl),
+              ],
             );
           }
 
           return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
             child: AppPageBody(
-              child: AppGrid(
-                compactColumns: 1,
-                mediumColumns: 2,
-                expandedColumns: 2,
-                largeColumns: 3,
-                spacing: AppSpacing.base,
-                // Las columnas van de 288 px (compact a 320) a ~360 px
-                // (large con maxContentWidth 1200 y 3 columnas). Con 2.6 la
-                // altura mínima resultante (a 320 px) es de ~111 px, por
-                // encima de los ~97 que necesitan dos líneas de nombre
-                // (bodyLarge) más el precio (bodyMedium) y el padding del
-                // AppCard.
-                childAspectRatio: 2.6,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final item in items)
-                    _CatalogoItemCard(
-                      item: item,
-                      onEliminar: _eliminar,
-                      eliminando: _eliminando.contains(item.idItem),
+                  Text(
+                    'Precios estimados de mano de obra, para cualquier '
+                    'vehículo. Al cotizar se agregan con un clic y los '
+                    'repuestos van aparte. Los clientes los ven en tu perfil.',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: context.appColors.textSecondary,
                     ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  cargarComunes,
+                  const SizedBox(height: AppSpacing.lg),
+                  AppGrid(
+                    compactColumns: 1,
+                    mediumColumns: 2,
+                    expandedColumns: 2,
+                    largeColumns: 3,
+                    spacing: AppSpacing.base,
+                    // Cada tarjeta a su alto (observaciones del 2026-09-19).
+                    sizeToContent: true,
+                    children: [
+                      for (final item in items)
+                        _CatalogoItemCard(
+                          item: item,
+                          onEliminar: _eliminar,
+                          eliminando: _eliminando.contains(item.idItem),
+                        ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -316,10 +399,19 @@ class _CatalogoItemCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  _currencyFormat.format(item.precio),
+                  item.precioMax != null && item.precioMax! > item.precio
+                      ? '${_currencyFormat.format(item.precio)} – '
+                            '${_currencyFormat.format(item.precioMax)}'
+                      : _currencyFormat.format(item.precio),
                   style: AppTextStyles.bodyMedium.copyWith(
                     fontWeight: FontWeight.bold,
                     color: colors.primary,
+                  ),
+                ),
+                Text(
+                  'Mano de obra estimada',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: colors.textSecondary,
                   ),
                 ),
               ],

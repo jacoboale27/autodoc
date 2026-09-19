@@ -203,7 +203,9 @@ void main() {
             )
             .controller!
             .text,
-        'Bujía',
+        // El catálogo es de mano de obra (observaciones del 2026-09-19): el
+        // renglón lo dice para que no se confunda con un repuesto.
+        'Bujía (mano de obra)',
       );
       expect(
         tester

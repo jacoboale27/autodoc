@@ -297,7 +297,7 @@ class _NuevaCotizacionScreenState extends State<NuevaCotizacionScreen> {
                         ),
                         title: Text(item.nombre),
                         trailing: Text(
-                          '\$${item.precio.toStringAsFixed(2)}',
+                          item.rangoTexto,
                           style: AppTextStyles.titleSmall.copyWith(
                             color: colors.primary,
                           ),
@@ -328,7 +328,10 @@ class _NuevaCotizacionScreenState extends State<NuevaCotizacionScreen> {
         fila = _FilaCotizacion();
         _filas.add(fila);
       }
-      fila.item.nombreController.text = item.nombre;
+      // Es mano de obra (observaciones del 2026-09-19): se dice en el
+      // renglón para que el cliente no lo confunda con un repuesto. Se
+      // cotiza el «desde»; el taller lo ajusta si el trabajo es mayor.
+      fila.item.nombreController.text = '${item.nombre} (mano de obra)';
       fila.item.costoController.text = item.precio.toStringAsFixed(2);
       _errorImporte = null;
     });

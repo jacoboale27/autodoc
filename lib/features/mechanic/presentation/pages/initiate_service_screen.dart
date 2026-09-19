@@ -1370,7 +1370,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                             ),
                           ),
                           trailing: Text(
-                            '\$${item.precio.toStringAsFixed(2)}',
+                            item.rangoTexto,
                             style: AppTextStyles.titleSmall.copyWith(
                               color: colors.primary,
                             ),
@@ -1395,7 +1395,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   ) {
     setState(() {
       final row = CotizacionItemRowControllers();
-      row.nombreController.text = item.nombre;
+      row.nombreController.text = '${item.nombre} (mano de obra)';
       row.costoController.text = item.precio.toStringAsFixed(2);
       _materialRows.add(row);
       _updateTotalCost();
