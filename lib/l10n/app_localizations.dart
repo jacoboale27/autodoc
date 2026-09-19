@@ -1748,6 +1748,66 @@ abstract class AppLocalizations {
   /// **'Rental'**
   String get addVehiclePlateTypeAlquiler;
 
+  /// No description provided for @addVehiclePlateTypeMicrobus.
+  ///
+  /// In en, this message translates to:
+  /// **'Minibus'**
+  String get addVehiclePlateTypeMicrobus;
+
+  /// No description provided for @addVehiclePlateTypeAutobus.
+  ///
+  /// In en, this message translates to:
+  /// **'Bus'**
+  String get addVehiclePlateTypeAutobus;
+
+  /// No description provided for @addVehicleType.
+  ///
+  /// In en, this message translates to:
+  /// **'Vehicle type'**
+  String get addVehicleType;
+
+  /// No description provided for @addVehicleTypeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What are you registering? We will show its brands and plate type.'**
+  String get addVehicleTypeSubtitle;
+
+  /// No description provided for @tipoVehiculoAutomovil.
+  ///
+  /// In en, this message translates to:
+  /// **'Car'**
+  String get tipoVehiculoAutomovil;
+
+  /// No description provided for @tipoVehiculoCamioneta.
+  ///
+  /// In en, this message translates to:
+  /// **'SUV / Pickup'**
+  String get tipoVehiculoCamioneta;
+
+  /// No description provided for @tipoVehiculoMotocicleta.
+  ///
+  /// In en, this message translates to:
+  /// **'Motorcycle'**
+  String get tipoVehiculoMotocicleta;
+
+  /// No description provided for @tipoVehiculoCamion.
+  ///
+  /// In en, this message translates to:
+  /// **'Truck'**
+  String get tipoVehiculoCamion;
+
+  /// No description provided for @tipoVehiculoMicrobus.
+  ///
+  /// In en, this message translates to:
+  /// **'Minibus'**
+  String get tipoVehiculoMicrobus;
+
+  /// No description provided for @tipoVehiculoAutobus.
+  ///
+  /// In en, this message translates to:
+  /// **'Bus'**
+  String get tipoVehiculoAutobus;
+
   /// No description provided for @addVehiclePlate.
   ///
   /// In en, this message translates to:

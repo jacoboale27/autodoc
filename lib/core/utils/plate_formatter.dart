@@ -3,13 +3,17 @@ import 'package:flutter/services.dart';
 /// Tipos de placa que AutoDoc sabe registrar, con la letra que el VMT usa
 /// para cada uno.
 ///
-/// En El Salvador hay unos 19 tipos (autobús `AB`, cuerpo diplomático `CD`,
-/// consular `CC`, etc.); estos cuatro son los que cubre la app.
+/// En El Salvador hay unos 19 tipos (cuerpo diplomático `CD`, consular
+/// `CC`, etc.); estos seis son los que cubre la app. Microbús (`MB`) y
+/// autobús (`AB`) se añadieron el 2026-09-19: «no tenemos para moto, camiones,
+/// microbuses ... son vehículos que se reciben en los talleres día a día».
 enum TipoPlaca {
   particular('P'),
   moto('M'),
   carga('C'),
-  alquiler('A');
+  alquiler('A'),
+  microbus('MB'),
+  autobus('AB');
 
   const TipoPlaca(this.prefijo);
 
@@ -54,7 +58,7 @@ class PlateFormatter extends TextInputFormatter {
     // hexadecimales válidos dentro del correlativo, así que un filtro se
     // comería la letra buena. Por eso se recorta solo el primer carácter.
     if (text.startsWith(tipo.prefijo)) {
-      text = text.substring(1);
+      text = text.substring(tipo.prefijo.length);
     }
 
     final formatted = componerPlaca(tipo, text);
@@ -107,7 +111,13 @@ String componerPlaca(TipoPlaca tipo, String correlativo) {
 /// imprime rellenado a tres posiciones.
 String normalizarPlaca(String input) {
   final texto = input.trim().toUpperCase();
-  final tipo = TipoPlaca.values.firstWhere(
+  // El prefijo más largo primero: `MB12-345` es de microbús, no una moto con
+  // correlativo `B12345`. Da la misma cadena canónica (el guion se cuenta
+  // desde la derecha), pero con `MB` caben los seis caracteres del
+  // correlativo.
+  final porLargo = [...TipoPlaca.values]
+    ..sort((a, b) => b.prefijo.length.compareTo(a.prefijo.length));
+  final tipo = porLargo.firstWhere(
     (t) => texto.startsWith(t.prefijo),
     orElse: () => TipoPlaca.particular,
   );
@@ -125,7 +135,7 @@ String normalizarPlaca(String input) {
 /// Patrón completo de una placa válida: la letra del tipo, de 1 a 3
 /// caracteres hexadecimales, guion, y 3 caracteres hexadecimales más.
 final RegExp placaElSalvadorPattern = RegExp(
-  r'^[PMCA][0-9A-F]{1,3}-[0-9A-F]{3}$',
+  r'^(MB|AB|[PMCA])[0-9A-F]{1,3}-[0-9A-F]{3}$',
 );
 
 /// Validador de formulario para el campo de placa. Devuelve `null` si es

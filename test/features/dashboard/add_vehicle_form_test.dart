@@ -33,11 +33,23 @@ Widget _wrap(Widget child) {
 /// step (index 2, the one that hosts the plate `Form`) by using the manual
 /// "no lo encuentro" entry path for both brand and model, which does not
 /// depend on the (faked, empty) NHTSA lookup results.
-Future<void> _advanceToDetailsStep(WidgetTester tester) async {
+Future<void> _advanceToDetailsStep(
+  WidgetTester tester, {
+  String tipo = 'automovil',
+}) async {
   await tester.pumpAndSettle();
 
-  // Brand step: with no makes returned, only the "not found" tile shows.
-  expect(find.text('No encuentro mi marca...'), findsOneWidget);
+  // Observaciones del 2026-09-19: lo primero es el tipo de vehículo.
+  await tester.tap(find.byKey(Key('tipo_vehiculo_$tipo')));
+  await tester.pumpAndSettle();
+
+  // Brand step: las marcas frecuentes del tipo van primero; el "not found"
+  // queda al final de la lista.
+  await tester.scrollUntilVisible(
+    find.text('No encuentro mi marca...'),
+    200,
+    scrollable: find.byType(Scrollable).last,
+  );
   await tester.tap(find.text('No encuentro mi marca...'));
   await tester.pumpAndSettle();
 
@@ -308,6 +320,93 @@ void main() {
       await tester.tap(find.text('Alquiler'));
       await tester.pump();
       expect(find.text('A12-345'), findsOneWidget);
+    }, _emptyResultsClientFactory);
+  });
+
+  testWidgets(
+    'elegir Motocicleta ofrece sus marcas, pone placa M y lo guarda',
+    (tester) async {
+      tester.view.physicalSize = const Size(1000, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      VehicleModel? finishedVehicle;
+      await http.runWithClient(() async {
+        await tester.pumpWidget(
+          _wrap(
+            AddVehicleForm(
+              onFinish: (v) async => finishedVehicle = v,
+              primaryColor: Colors.blue,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('tipo_vehiculo_motocicleta')));
+        await tester.pumpAndSettle();
+        // Aunque NHTSA no devuelva nada, las marcas de motos del país salen.
+        expect(find.text('Italika'), findsOneWidget);
+        expect(find.text('Yamaha'), findsOneWidget);
+
+        // Volver y seguir por el camino manual hasta los detalles.
+        await tester.tap(find.byIcon(Icons.arrow_back_ios_new_rounded));
+        await tester.pumpAndSettle();
+        await _advanceToDetailsStep(tester, tipo: 'motocicleta');
+
+        await tester.enterText(find.byType(TextFormField).at(0), '12345');
+        await tester.pump();
+        expect(
+          find.text('M12-345'),
+          findsOneWidget,
+          reason: 'placa M por defecto',
+        );
+        await _fillYear(tester, '2026');
+        await tester.enterText(find.byType(TextFormField).at(1), 'Rojo');
+        await tester.enterText(find.byType(TextFormField).at(2), '1500');
+        await tester.pump();
+        await tester.tap(find.text('Finalizar Registro'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Ir al Dashboard'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+
+        expect(finishedVehicle!.placa, 'M12-345');
+        expect(finishedVehicle!.tipoVehiculo, 'motocicleta');
+      }, _emptyResultsClientFactory);
+    },
+  );
+
+  testWidgets('un microbús se registra con placa MB', (tester) async {
+    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    VehicleModel? finishedVehicle;
+    await http.runWithClient(() async {
+      await tester.pumpWidget(
+        _wrap(
+          AddVehicleForm(
+            onFinish: (v) async => finishedVehicle = v,
+            primaryColor: Colors.blue,
+          ),
+        ),
+      );
+      await _advanceToDetailsStep(tester, tipo: 'microbus');
+      await tester.enterText(find.byType(TextFormField).at(0), '123456');
+      await _fillYear(tester, '2026');
+      await tester.enterText(find.byType(TextFormField).at(1), 'Blanco');
+      await tester.enterText(find.byType(TextFormField).at(2), '90000');
+      await tester.pump();
+      await tester.tap(find.text('Finalizar Registro'));
+      await tester.pumpAndSettle();
+      expect(find.text('¡Vehículo Registrado!'), findsOneWidget);
+      await tester.tap(find.text('Ir al Dashboard'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(finishedVehicle!.placa, 'MB123-456');
+      expect(finishedVehicle!.tipoVehiculo, 'microbus');
     }, _emptyResultsClientFactory);
   });
 }

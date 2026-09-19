@@ -49,7 +49,9 @@ const APPLY = process.argv.includes('--apply');
 const BATCH_SIZE = 400; // límite de Firestore es 500 escrituras/batch
 
 // Tipos de placa que cubre AutoDoc, con la letra que usa el VMT.
-const PREFIJOS = ['P', 'M', 'C', 'A'];
+// Los de dos letras primero: `MB12-345` es de microbus, no una moto con
+// correlativo `B12345` (microbus `MB` y autobus `AB`, 2026-09-19).
+const PREFIJOS = ['MB', 'AB', 'P', 'M', 'C', 'A'];
 
 // Espejo de normalizarPlaca en lib/core/utils/plate_formatter.dart:
 // mayúsculas, se respeta el prefijo que traiga el texto (P particular,
@@ -66,7 +68,7 @@ const PREFIJOS = ['P', 'M', 'C', 'A'];
 function normalizarPlaca(input) {
   const texto = String(input || '').trim().toUpperCase();
   const prefijo = PREFIJOS.find((pre) => texto.startsWith(pre)) || 'P';
-  let text = texto.startsWith(prefijo) ? texto.slice(1) : texto;
+  let text = texto.startsWith(prefijo) ? texto.slice(prefijo.length) : texto;
   text = text.replace(/[^0-9A-F]/g, '');
   if (text.length > 6) {
     text = text.slice(0, 6);
@@ -79,7 +81,7 @@ function normalizarPlaca(input) {
 }
 
 // Letra de tipo + correlativo de 1-3 hex + guion + 3 hex.
-const PLACA_VALIDA = /^[PMCA][0-9A-F]{1,3}-[0-9A-F]{3}$/;
+const PLACA_VALIDA = /^(MB|AB|[PMCA])[0-9A-F]{1,3}-[0-9A-F]{3}$/;
 
 // Correlativo que empieza por cero. No se puede corregir automáticamente:
 // "P012-345" puede ser una placa legítima del esquema alfanumérico (que sí

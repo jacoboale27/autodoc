@@ -189,16 +189,18 @@ void main() {
 
     test('el validador rechaza lo que no encaja en ningún tipo cubierto', () {
       expect(validarPlacaElSalvador('X12-345'), isNotNull);
-      // A + "B123": cuatro caracteres en el primer grupo, uno de más.
-      expect(validarPlacaElSalvador('AB123-456'), isNotNull);
+      // P + "B123": cuatro caracteres en el primer grupo, uno de más. (Antes
+      // el ejemplo era `AB123-456`, que desde el 2026-09-19 es una placa de
+      // autobús válida.)
+      expect(validarPlacaElSalvador('PB123-456'), isNotNull);
     });
 
     test('los prefijos de dos letras quedan ambiguos y se aceptan como del '
         'tipo de su primera letra', () {
-      // "AB12-345" (autobús) es indistinguible de una placa de alquiler
-      // cuyo correlativo sea "B12345", porque B es un dígito hexadecimal
-      // válido. Con la regla permisiva que acordamos, se acepta: preferimos
-      // colar una placa rara antes que rechazar una legítima.
+      // "AB12-345" es de autobús desde el 2026-09-19 (antes se aceptaba
+      // como alquiler con correlativo "B12345"). "CD12-345" (diplomático)
+      // sigue sin tipo propio: se acepta como carga con correlativo "D12345";
+      // preferimos colar una placa rara antes que rechazar una legítima.
       expect(validarPlacaElSalvador('AB12-345'), isNull);
       expect(validarPlacaElSalvador('CD12-345'), isNull);
     });
@@ -237,6 +239,32 @@ void main() {
 
     test('una placa de alquiler cuyo correlativo empieza por A sobrevive', () {
       expect(normalizarPlaca('AA12345'), 'AA12-345');
+    });
+  });
+
+  // Observaciones del 2026-09-19: microbuses y autobuses también llegan a los
+  // talleres.
+  group('microbús (MB) y autobús (AB)', () {
+    test('el formateador compone y recorta el prefijo de dos letras', () {
+      const f = PlateFormatter(tipo: TipoPlaca.microbus);
+      final r = f.formatEditUpdate(
+        TextEditingValue.empty,
+        const TextEditingValue(text: 'mb123456'),
+      );
+      expect(r.text, 'MB123-456');
+      expect(componerPlaca(TipoPlaca.autobus, '1234'), 'AB1-234');
+    });
+
+    test('normalizarPlaca reconoce MB y AB por el prefijo más largo', () {
+      expect(normalizarPlaca('MB123456'), 'MB123-456');
+      expect(normalizarPlaca('ab 12 345'), 'AB12-345');
+      expect(normalizarPlaca('M12345'), 'M12-345');
+    });
+
+    test('el validador acepta MB y AB', () {
+      expect(validarPlacaElSalvador('MB123-456'), isNull);
+      expect(validarPlacaElSalvador('AB1-234'), isNull);
+      expect(validarPlacaElSalvador('XB1-234'), isNotNull);
     });
   });
 }

@@ -29,6 +29,10 @@ class VehicleModel {
   // pendientes, para cerrar el reintento gratis.
   final List<String> talleresRechazados;
 
+  /// `TipoVehiculo.id` (automovil, camioneta, motocicleta, camion, microbus,
+  /// autobus). `null` en los registrados antes del 2026-09-19.
+  final String? tipoVehiculo;
+
   VehicleModel({
     required this.idVehiculo,
     required this.idPropietario,
@@ -49,6 +53,7 @@ class VehicleModel {
     this.tallerPendienteNombre,
     this.tallerPendienteServicioId,
     this.talleresRechazados = const [],
+    this.tipoVehiculo,
   });
 
   VehicleModel copyWith({
@@ -71,6 +76,7 @@ class VehicleModel {
     String? tallerPendienteNombre,
     String? tallerPendienteServicioId,
     List<String>? talleresRechazados,
+    String? tipoVehiculo,
   }) {
     return VehicleModel(
       idVehiculo: idVehiculo ?? this.idVehiculo,
@@ -95,6 +101,7 @@ class VehicleModel {
       tallerPendienteServicioId:
           tallerPendienteServicioId ?? this.tallerPendienteServicioId,
       talleresRechazados: talleresRechazados ?? this.talleresRechazados,
+      tipoVehiculo: tipoVehiculo ?? this.tipoVehiculo,
     );
   }
 
@@ -130,6 +137,7 @@ class VehicleModel {
       'es_principal': isPrimary,
       'shared_with': sharedWith,
       'notas': notas,
+      if (tipoVehiculo != null) 'tipo_vehiculo': tipoVehiculo,
     };
   }
 
@@ -154,6 +162,7 @@ class VehicleModel {
       'taller_pendiente_nombre': tallerPendienteNombre,
       'taller_pendiente_servicio_id': tallerPendienteServicioId,
       'talleres_rechazados': talleresRechazados,
+      'tipo_vehiculo': tipoVehiculo,
     };
   }
 
@@ -185,6 +194,7 @@ class VehicleModel {
       tallerPendienteNombre: map['taller_pendiente_nombre'],
       tallerPendienteServicioId: map['taller_pendiente_servicio_id'],
       talleresRechazados: List<String>.from(map['talleres_rechazados'] ?? []),
+      tipoVehiculo: map['tipo_vehiculo'] as String?,
     );
   }
 
