@@ -304,7 +304,7 @@ service cloud.firestore {
     function galeriaValida() {
       return !('galeria' in request.resource.data)
         || (request.resource.data.galeria is list
-            && request.resource.data.galeria.size() <= 6);
+            && request.resource.data.galeria.size() <= 7);
     }
 
     // --- REGLAS POR COLECCIÓN ---

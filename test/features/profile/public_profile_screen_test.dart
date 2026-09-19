@@ -409,4 +409,112 @@ void main() {
       expect(avatar.urlFoto, 'https://x/taller.jpg');
     });
   });
+
+  group('observaciones 2026-09-19: perfil de empresa', () {
+    Future<void> montar(
+      WidgetTester tester,
+      Map<String, dynamic> taller, {
+      double width = 375,
+    }) async {
+      final firestore = FakeFirebaseFirestore();
+      await firestore.collection('talleres').doc('mec7').set(taller);
+      await firestore
+          .collection('talleres')
+          .doc('mec7')
+          .collection('catalogo_servicios')
+          .doc('c1')
+          .set({'nombre': 'Alineación', 'precio': 15, 'precio_max': 25});
+      await pumpEntry(
+        tester,
+        PublicProfileScreen(
+          userId: 'mec7',
+          firestore: firestore,
+          publicProfileService: PublicProfileService(
+            firestore: firestore,
+            obtenerEmpleadosPublicos: (_) async => const [],
+          ),
+          storageBucket: 'bucket-de-prueba.appspot.com',
+        ),
+        width: width,
+        profile: FakeUserProfileProvider(
+          userData: testUser(rol: 'Propietario'),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+    }
+
+    testWidgets('no desborda en ningún ancho, con datos largos', (
+      tester,
+    ) async {
+      for (final width in [320.0, 375.0, 768.0, 1024.0, 1440.0]) {
+        await montar(tester, {
+          'nombre': 'Taller Mecánico Hermanos Escobar y Asociados',
+          'especialidad': 'Mecánica General y Sistemas Eléctricos',
+          'telefono': '+503 7788-9901',
+          'municipio': 'San Salvador Centro',
+          'departamento': 'San Salvador',
+          'direccion': 'Calle Principal #123, Colonia Escalón',
+          'galeria': ['logo.webp', 'banner.jpg', 'local-1.jpg'],
+          'ubicacion': const GeoPoint(13.69, -89.19),
+          'calificacion_promedio': 4.5,
+          'total_resenias': 12,
+        }, width: width);
+        expect(tester.takeException(), isNull, reason: 'a $width px');
+      }
+    });
+
+    testWidgets('todas las secciones se ven, aunque estén vacías', (
+      tester,
+    ) async {
+      await montar(tester, {'nombre': 'Taller Nuevo'});
+      for (final titulo in [
+        'Contacto y ubicación',
+        'Fotos del local',
+        'Servicios y precios estimados',
+        'Equipo',
+        'Reseñas',
+      ]) {
+        expect(find.text(titulo), findsOneWidget, reason: titulo);
+      }
+      expect(find.text('Sin teléfono publicado'), findsOneWidget);
+      expect(find.text('Este taller aún no tiene reseñas.'), findsOneWidget);
+      expect(
+        find.text('Este taller aún no ha subido fotos del local.'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('perfil_publico_llamar')), findsNothing);
+    });
+
+    testWidgets('teléfono, municipio, banner y el rango del catálogo', (
+      tester,
+    ) async {
+      await montar(tester, {
+        'nombre': 'Lionel Messi',
+        'especialidad': 'Mecánica General',
+        'telefono': '+503 7788-9901',
+        'municipio': 'San Salvador Centro',
+        'departamento': 'San Salvador',
+        'galeria': ['logo.webp', 'banner.jpg'],
+        'ubicacion': const GeoPoint(13.69, -89.19),
+      });
+
+      expect(find.text('+503 7788-9901'), findsOneWidget);
+      expect(find.byKey(const Key('perfil_publico_llamar')), findsOneWidget);
+      expect(
+        find.byKey(const Key('perfil_publico_como_llegar')),
+        findsOneWidget,
+      );
+      expect(find.text('San Salvador Centro, San Salvador'), findsOneWidget);
+      expect(find.text('\$15.00 – \$25.00'), findsOneWidget);
+
+      final banner = find.descendant(
+        of: find.byKey(const Key('perfil_publico_banner')),
+        matching: find.byType(Image),
+      );
+      expect(banner, findsWidgets, reason: 'el banner se pinta como portada');
+      // El banner no se cuela entre las fotos del local.
+      expect(find.byKey(const Key('perfil_publico_galeria')), findsNothing);
+    });
+  });
 }

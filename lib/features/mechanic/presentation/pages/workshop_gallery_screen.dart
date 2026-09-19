@@ -134,7 +134,9 @@ class _WorkshopGalleryScreenState extends State<WorkshopGalleryScreen> {
                   children: [
                     Text(
                       'Estas fotos son las que ven los clientes en el '
-                      'directorio. El logo es la imagen principal de tu ficha.',
+                      'directorio y en tu perfil. El logo es la imagen '
+                      'principal de tu ficha y el banner, la portada de tu '
+                      'perfil.',
                       style: AppTextStyles.bodyMedium.copyWith(
                         color: colors.textSecondary,
                         height: 1.4,
@@ -143,6 +145,10 @@ class _WorkshopGalleryScreenState extends State<WorkshopGalleryScreen> {
                     const SizedBox(height: AppSpacing.xxl),
 
                     _tarjeta(colors, provider, uid, GaleriaTaller.slotLogo),
+                    const SizedBox(height: AppSpacing.md),
+                    // Observaciones del 2026-09-19: «que parezca que tiene un
+                    // perfil empresarial».
+                    _tarjeta(colors, provider, uid, GaleriaTaller.slotBanner),
                     const SizedBox(height: AppSpacing.xl),
 
                     Text(
@@ -171,6 +177,7 @@ class _WorkshopGalleryScreenState extends State<WorkshopGalleryScreen> {
     String slot,
   ) {
     final esLogo = slot == GaleriaTaller.slotLogo;
+    final esBanner = slot == GaleriaTaller.slotBanner;
     final archivo = provider.galeria.archivoDe(slot);
     final enCurso = provider.slotEnCurso == slot;
     final url = archivo == null
@@ -191,8 +198,10 @@ class _WorkshopGalleryScreenState extends State<WorkshopGalleryScreen> {
       child: Row(
         children: [
           SizedBox(
+            // El banner es apaisado: su vista previa también, con el mismo
+            // ancho que las demás para que la fila quepa en un teléfono.
             width: 96,
-            height: 72,
+            height: esBanner ? 54 : 72,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(AppRadius.md),
               child: url != null
@@ -206,6 +215,8 @@ class _WorkshopGalleryScreenState extends State<WorkshopGalleryScreen> {
                       colors,
                       esLogo
                           ? Icons.storefront_outlined
+                          : esBanner
+                          ? Icons.panorama_outlined
                           : Icons.add_photo_alternate_outlined,
                     ),
             ),
@@ -216,7 +227,11 @@ class _WorkshopGalleryScreenState extends State<WorkshopGalleryScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  esLogo ? 'Logo del taller' : 'Foto ${slot.split('-').last}',
+                  esLogo
+                      ? 'Logo del taller'
+                      : esBanner
+                      ? 'Banner (portada del perfil)'
+                      : 'Foto ${slot.split('-').last}',
                   style: AppTextStyles.titleSmall.copyWith(
                     color: colors.textPrimary,
                   ),
@@ -227,6 +242,8 @@ class _WorkshopGalleryScreenState extends State<WorkshopGalleryScreen> {
                       ? 'Publicada.'
                       : esLogo
                       ? 'Es la imagen principal de tu ficha.'
+                      : esBanner
+                      ? 'Una foto horizontal de tu taller. Opcional.'
                       : 'Opcional.',
                   style: AppTextStyles.bodySmall.copyWith(
                     color: colors.textSecondary,

@@ -1,4 +1,5 @@
-/// Galeria comercial de un taller: su logo y hasta cinco fotos del local.
+/// Galeria comercial de un taller: su logo, su banner (la portada del perfil)
+/// y hasta cinco fotos del local.
 ///
 /// ## Por que aqui NO se guardan URLs
 ///
@@ -25,6 +26,10 @@ class GaleriaTaller {
   /// principal.
   static const String slotLogo = 'logo';
 
+  /// Hueco del banner: la portada del perfil público del taller, como la de
+  /// una página de empresa (observaciones del 2026-09-19).
+  static const String slotBanner = 'banner';
+
   /// Cuantas fotos del local caben, ademas del logo.
   static const int maxFotosLocal = 5;
 
@@ -38,12 +43,13 @@ class GaleriaTaller {
   /// Huecos aceptados, en el orden en que se ofrecen.
   ///
   /// El tope es duro y sale de aqui: las reglas de Storage no pueden CONTAR
-  /// archivos, pero si restringir el nombre, asi que fijar seis nombres es lo
+  /// archivos, pero si restringir el nombre, asi que fijar siete nombres es lo
   /// unico que impide subir objetos ilimitados sin contador ni Cloud Function.
   /// Debe coincidir con el `matches()` del bloque
   /// `talleres_fotos/{tallerId}/{fileName}` de `storage.rules`.
   static List<String> get slotsPermitidos => [
     slotLogo,
+    slotBanner,
     for (var i = 1; i <= maxFotosLocal; i++) 'local-$i',
   ];
 
@@ -61,9 +67,13 @@ class GaleriaTaller {
   /// Nombre de archivo del logo, si el taller subio uno.
   String? get archivoLogo => _buscar(slotLogo);
 
+  /// Nombre de archivo del banner, si el taller subio uno.
+  String? get archivoBanner => _buscar(slotBanner);
+
   /// Fotos del local, sin el logo, en orden.
-  List<String> get archivosDelLocal =>
-      archivos.where((a) => _slotDe(a) != slotLogo).toList(growable: false);
+  List<String> get archivosDelLocal => archivos
+      .where((a) => _slotDe(a) != slotLogo && _slotDe(a) != slotBanner)
+      .toList(growable: false);
 
   /// Huecos que el taller todavia no ha llenado, en orden estable.
   List<String> get slotsLibres {

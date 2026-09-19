@@ -322,10 +322,11 @@ service firebase.storage {
     // una ruta de lectura publica es exactamente lo que la revision viene a
     // autorizar.
     //
-    // Seis nombres fijos, misma razon que en `verificaciones/`: las reglas de
+    // Siete nombres fijos, misma razon que en `verificaciones/`: las reglas de
     // Storage no pueden CONTAR archivos, asi que fijar los nombres es lo unico
-    // que pone un tope duro (aqui, 1 logo + 5 fotos del local) sin contador ni
-    // Cloud Function. Cambiar una foto es sobrescribir su hueco.
+    // que pone un tope duro (aqui, 1 logo + 1 banner + 5 fotos del local) sin
+    // contador ni Cloud Function. Cambiar una foto es sobrescribir su hueco.
+    // El banner (portada del perfil) llego el 2026-09-19.
     //
     // Debe coincidir con GaleriaTaller.slotsPermitidos.
     match /talleres_fotos/{tallerId}/{fileName} {
@@ -335,7 +336,7 @@ service firebase.storage {
         && request.auth.uid == tallerId
         && esTallerAprobado()
         && esImagenValida()
-        && fileName.matches('^(logo|local-[1-5])\\.(jpg|jpeg|png|webp)$');
+        && fileName.matches('^(logo|banner|local-[1-5])\\.(jpg|jpeg|png|webp)$');
 
       // A diferencia de la evidencia de verificacion, que solo borra un admin,
       // aqui el taller SI borra lo suyo: son sus fotos comerciales, quitar la

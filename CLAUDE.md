@@ -106,6 +106,45 @@ La lista vive en la sesión del 2026-09-19 (se cortó por cuota y se retomó). L
   `firebase deploy --only firestore:indexes --project production`: el índice nuevo tarda unos
   minutos en construirse y «Mis Servicios» falla hasta entonces.
 
+### Segunda lista del 2026-09-19 (misma rama) — reseñas, tareas, catálogo, vehículos, mapa, perfil
+
+- **Un servicio escribía un `servicios` POR TAREA marcada**, cada uno con el importe entero (3
+  tareas de $588 = tres servicios de $588, tres reseñas, tres avisos). Ahora
+  `AlertProvider.tallerCerrarServicio` escribe UNO; las tareas son opcionales (plegadas en
+  «Mantenimiento del cliente») y solo reinician el calendario de mantenimiento.
+- **Reseñas:** solo se reseña el servicio **más reciente** con un taller y solo si no tiene
+  reseña (`ReviewService.findReviewableServiceId`); antes, reseñado el último se ofrecía el
+  anterior, sin fin. En el chat hay **una** opción (`AvisoReseniaChat`, sobre la barra de
+  escribir); las tarjetas de cotización y la solicitud del taller ya no traen botón. La
+  solicitud del taller fallaba porque buscaba la conversación de ESE coche y, sin ella,
+  intentaba crear otra (las reglas no dejan al taller): ahora usa la que haya y, si no hay, lo
+  dice. **Los empleados no pueden leer ni escribir conversaciones** (reglas: `id_mecanico ==
+  uid`), así que a ellos no se les ofrece.
+- **El mapa del taller no se movía, y eran dos causas.** (1) Estaba en un `AlertDialog`: con
+  `ensureSemantics()` en web (`main.dart`), la capa de accesibilidad del diálogo queda en el DOM
+  encima de la vista de plataforma y se come los clics. Reproducido en el navegador con el mismo
+  `GoogleMap`: en diálogo no se mueve, en página sí → `SelectorUbicacionTallerScreen` a pantalla
+  completa. **Cualquier `GoogleMap` dentro de un diálogo tendrá el mismo problema.** (2) La clave
+  de Maps del `.env` local está **vencida** (`ExpiredKeyMapError`): hay que renovarla en Google
+  Cloud y en el secreto de la CI.
+- **Catálogo de mano de obra con precio estimado** (`precio` = desde, `precio_max` = hasta) y un
+  botón que carga 18 servicios comunes con rangos para El Salvador. Al cotizar entra como
+  renglón «X (mano de obra)» con el «desde».
+- **Tipos de vehículo:** primer paso del alta (`TipoVehiculo`: automóvil, camioneta, moto,
+  camión, microbús, autobús) con marcas frecuentes por tipo (aunque NHTSA no las tenga), modelos
+  filtrados por `vehicletype` y placa por defecto. Placas nuevas `MB` y `AB`; `normalizarPlaca`
+  prueba primero el prefijo más largo. Se guarda `vehiculos.tipo_vehiculo`.
+- **Perfil del taller como página de empresa:** banner (hueco nuevo `banner` de la galería;
+  `storage.rules` y el tope de `galeria` pasan a 7), logo encima, «Llamar» y «Cómo llegar», y
+  todas las secciones siempre visibles. `publishTallerProfile` publica ahora `telefono` y
+  `municipio`, que la pantalla de ajustes ya presentaba como públicos y nunca se publicaban.
+  **El gate de reglas paró la primera versión:** `talleres` es de lectura anónima para la
+  colección entera (la landing la baja por REST y filtra en el navegador), así que el teléfono
+  de cada solicitante, rechazado o suspendido quedaba público. Ahora `telefono`, `direccion` y
+  las coordenadas solo se proyectan con `estado` aprobado/activo; al aprobar, el propio trigger
+  los publica. **Despliega `storage.rules` con la app o antes**: una app vieja descarta el
+  archivo `banner` al leer la galería y lo quita en su siguiente guardado.
+
 ### La tanda GAPS-07 esta cerrada (2026-09-15, `fix/gaps-07a`) — el doble envio
 
 Cierra el gap 1 del §4 de GAPS-06: **los 15 grupos de doble envio, los 15**. Evidencia en

@@ -601,11 +601,16 @@ describe('storage: galeria comercial del taller', () => {
     );
   });
 
-  test('solo pasan los seis huecos: 1 logo + 5 fotos del local', async () => {
+  test('solo pasan los siete huecos: logo, banner y 5 fotos del local', async () => {
     await seedUsuario(UIDS.taller1, 'Taller');
     const st = env.authenticatedContext(UIDS.taller1).storage();
 
-    for (const nombre of ['local-0.jpg', 'local-6.jpg', 'local-10.jpg', 'otra.jpg', 'logo.pdf', 'logo.jpg.exe']) {
+    // Observaciones del 2026-09-19: el banner, portada del perfil publico.
+    await assertSucceeds(
+      st.ref(`talleres_fotos/${UIDS.taller1}/banner.jpg`).put(imagen(10), META_JPEG),
+    );
+
+    for (const nombre of ['local-0.jpg', 'local-6.jpg', 'local-10.jpg', 'otra.jpg', 'logo.pdf', 'logo.jpg.exe', 'banner.pdf', 'banner-2.jpg']) {
       await assertFails(
         st.ref(`talleres_fotos/${UIDS.taller1}/${nombre}`).put(imagen(10), META_JPEG),
       );
