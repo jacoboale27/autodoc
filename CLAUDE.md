@@ -29,7 +29,13 @@ nuevo eran las capturas 3–6 y los puntos que ese plan dejó fuera. Lo que hay 
   (misma pareja propietario/taller) y lo escribe de vuelta. **Paso de despliegue:**
   `firebase deploy --only functions:onCotizacionAceptada --project production`, y después
   `node backfill_tickets_cotizaciones_aceptadas.js` (dry-run, luego `--apply`) para abrir los
-  tickets de las cotizaciones ya atascadas.
+  tickets de las cotizaciones ya atascadas. **Hecho el 2026-09-18:** la función ya está
+  desplegada en producción, y una simulación fiel (la misma `abrirTicketDeReparacion` con las
+  escrituras interceptadas) dio **0 tickets recuperables** de 26: 19 sin coche ni cita, 10 con
+  el coche ya borrado —5 de ellas con la cita borrada también, incluida la de la captura— y 1
+  que ya tenía ticket abierto. **El dry-run del script engaña:** solo mira si existe
+  `cot_<id>` y dice "abriría" de todo lo demás. No se corrió `--apply`: no habría abierto nada
+  y solo habría reescrito el aviso rojo en cotizaciones viejas.
 - **Una sola pantalla de cotización** (`NuevaCotizacionScreen`, captura 6) para chat, cita y
   Buscar Vehículo: dos columnas, catálogo, mano de obra y día/hora. `CotizacionModel.total`
   incluye `mano_de_obra`. La cita guarda `vehiculo_resumen` porque el taller no puede leer
