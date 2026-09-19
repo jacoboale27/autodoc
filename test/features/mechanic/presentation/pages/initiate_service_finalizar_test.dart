@@ -3,8 +3,8 @@
 // Cerrar un servicio cuando el vehiculo NO tiene tareas de mantenimiento
 // configuradas. La propia pantalla promete, en ese caso, que "Puedes cerrar
 // el servicio igualmente: quedara registrado en el historial"
-// (_buildMaintenanceTasks), y `requiereTareaSeleccionada` deja pasar el
-// submit sin ninguna casilla marcada.
+// (_buildMaintenanceTasks), y desde el 2026-09-19 ninguna tarea es obligatoria:
+// se cierra sin marcar ninguna casilla.
 //
 // Los dos tests de aqui cubren lo que esa promesa implica: que el servicio
 // se escriba, y que la pantalla tenga a donde ir despues.

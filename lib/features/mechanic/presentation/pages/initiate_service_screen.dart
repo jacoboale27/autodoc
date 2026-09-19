@@ -555,21 +555,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       return;
     }
 
-    final tareasDisponibles = context
-        .read<AlertProvider>()
-        .maintenanceTasks
-        .length;
-    if (requiereTareaSeleccionada(
-      tareasDisponibles: tareasDisponibles,
-      tareasMarcadas: _completedTaskIds.length,
-    )) {
-      HapticFeedback.heavyImpact();
-      UiUtils.showErrorSnackbar(
-        context,
-        'Selecciona al menos una tarea realizada',
-      );
-      return;
-    }
+    // Las tareas de mantenimiento ya NO se exigen (observaciones del
+    // 2026-09-19): lo que se hizo y se cobra es lo de la cotización. Marcar
+    // una solo pone al día el calendario de mantenimiento del cliente.
 
     // Sin cotización aprobada, los materiales son filas editables en línea
     // (Task 7/B1): validar aquí es lo que impide que una fila con nombre
@@ -610,37 +598,20 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           ? _materialesAprobados
           : _materialesDesdeFilas();
 
-      if (_completedTaskIds.isEmpty) {
-        // Sin tareas de mantenimiento configuradas, el bucle de abajo no daba
-        // ni una vuelta: no se escribia NADA y aun asi la pantalla decia
-        // "Servicio registrado exitosamente". No es un caso raro — es el que
-        // `requiereTareaSeleccionada` deja pasar a proposito, y el que el
-        // texto de la pantalla promete que "quedara registrado en el
-        // historial".
-        await alertProvider.tallerRegistrarServicioSinTarea(
-          vehiculoId: _vehiculo!.idVehiculo,
-          nuevoKilometraje: nuevoKm,
-          tallerId: tallerId,
-          descripcion: _notesController.text,
-          costo: costoDouble,
-          manoDeObra: manoDeObraDouble,
-          materiales: materialesList,
-          receiptImage: _invoiceImage,
-        );
-      } else {
-        for (var taskId in _completedTaskIds) {
-          await alertProvider.tallerUpdateService(
-            taskId: taskId,
-            nuevoKilometraje: nuevoKm,
-            tallerId: tallerId,
-            descripcion: _notesController.text,
-            costo: costoDouble,
-            manoDeObra: manoDeObraDouble,
-            materiales: materialesList,
-            receiptImage: _invoiceImage,
-          );
-        }
-      }
+      // UN servicio por cierre, marque las tareas que marque: antes cada
+      // tarea marcada escribía su propio `servicios` con el importe entero.
+      final tareasSinActualizar = await alertProvider.tallerCerrarServicio(
+        vehiculoId: _vehiculo!.idVehiculo,
+        nuevoKilometraje: nuevoKm,
+        tallerId: tallerId,
+        descripcion: _notesController.text,
+        costo: costoDouble,
+        manoDeObra: manoDeObraDouble,
+        materiales: materialesList,
+        receiptImage: _invoiceImage,
+        tareasRealizadas: _completedTaskIds,
+        tipoServicio: _tituloDelServicio(alertProvider),
+      );
 
       await alertProvider.fetchAlerts(_vehiculo!.idVehiculo, _vehiculo!);
 
@@ -689,6 +660,13 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
 
       if (mounted) {
         HapticFeedback.lightImpact();
+        if (tareasSinActualizar > 0) {
+          UiUtils.showErrorSnackbar(
+            context,
+            'Servicio registrado, pero no se pudo poner al día '
+            '$tareasSinActualizar tarea(s) de mantenimiento del cliente.',
+          );
+        }
         if (kanbanUpdateFailed) {
           UiUtils.showErrorSnackbar(
             context,
@@ -825,12 +803,13 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
               const SizedBox(height: AppSpacing.md),
               _buildAlertsList(alertProvider, colors),
               const SizedBox(height: AppSpacing.xl),
-              const AppSectionHeader(
-                title: 'Tareas a realizar',
-                uppercase: true,
+              // Opcional y plegada (observaciones del 2026-09-19): lo que se
+              // hace lo dice la cotización. Solo sirve para que las alertas
+              // de mantenimiento del cliente se reinicien.
+              _SeccionTareasOpcional(
+                marcadas: _completedTaskIds.length,
+                child: _buildMaintenanceTasks(alertProvider, colors),
               ),
-              const SizedBox(height: AppSpacing.md),
-              _buildMaintenanceTasks(alertProvider, colors),
             ];
 
             final derecha = <Widget>[
@@ -1492,6 +1471,25 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
     );
   }
 
+  /// Cómo sale el servicio en los historiales: las tareas marcadas, o si no
+  /// hay, lo que se cotizó; sin nada de eso, `null` (y `AlertProvider` pone
+  /// «Servicio General»).
+  String? _tituloDelServicio(AlertProvider provider) {
+    final nombresTareas = provider.maintenanceTasks
+        .where((t) => _completedTaskIds.contains(t.id))
+        .map((t) => t.nombre)
+        .toList();
+    if (nombresTareas.isNotEmpty) return nombresTareas.join(', ');
+    final cotizado = _cotizacionesAprobadas
+        .expand((c) => c.items.map((i) => i.material.trim()))
+        .where((m) => m.isNotEmpty)
+        .toSet()
+        .toList();
+    if (cotizado.isEmpty) return null;
+    final titulo = cotizado.take(3).join(', ');
+    return cotizado.length > 3 ? '$titulo y más' : titulo;
+  }
+
   Widget _buildMaintenanceTasks(AlertProvider provider, AppColors colors) {
     if (provider.isLoading) {
       return Center(child: CircularProgressIndicator(color: colors.primary));
@@ -1728,20 +1726,77 @@ class _BoxedField extends StatelessWidget {
   }
 }
 
-/// Decide si hay que exigir al mecanico marcar una tarea antes de cerrar el
-/// servicio.
+/// Las tareas de mantenimiento del cliente, plegadas y opcionales.
 ///
-/// Hasta 2026-08-28 el guard era `_completedTaskIds.isEmpty` a secas, sin
-/// mirar si habia tareas que marcar. Cuando el vehiculo no tenia ninguna
-/// configurada, la pantalla pintaba "No hay tareas configuradas para este
-/// vehiculo" (sin casillas) y el submit respondia "Selecciona al menos una
-/// tarea realizada": un callejon sin salida con el parte entero relleno.
-bool requiereTareaSeleccionada({
-  required int tareasDisponibles,
-  required int tareasMarcadas,
-}) {
-  if (tareasDisponibles == 0) return false;
-  return tareasMarcadas == 0;
+/// Observaciones del 2026-09-19: «si o si hay que seleccionar una tarea ...
+/// cuando no debería de ser así porque la tarea ya la asigno yo en las
+/// especificaciones de la cotización». Siguen aquí porque marcar una reinicia
+/// la alerta de mantenimiento del cliente, pero ya no se exige ninguna.
+class _SeccionTareasOpcional extends StatefulWidget {
+  final int marcadas;
+  final Widget child;
+
+  const _SeccionTareasOpcional({required this.marcadas, required this.child});
+
+  @override
+  State<_SeccionTareasOpcional> createState() => _SeccionTareasOpcionalState();
+}
+
+class _SeccionTareasOpcionalState extends State<_SeccionTareasOpcional> {
+  bool _abierta = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          key: const Key('tareas_opcionales_toggle'),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          onTap: () => setState(() => _abierta = !_abierta),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.marcadas == 0
+                            ? 'MANTENIMIENTO DEL CLIENTE (OPCIONAL)'
+                            : 'MANTENIMIENTO DEL CLIENTE · ${widget.marcadas} '
+                                  'MARCADA${widget.marcadas == 1 ? '' : 'S'}',
+                        style: AppTextStyles.labelMedium.copyWith(
+                          color: colors.textSecondary,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Marca lo que coincida con sus tareas para reiniciar '
+                        'sus alertas. No es obligatorio.',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  _abierta ? Icons.expand_less : Icons.expand_more,
+                  color: colors.textSecondary,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_abierta) ...[const SizedBox(height: AppSpacing.md), widget.child],
+      ],
+    );
+  }
 }
 
 /// Lo que ve el mecánico cuando el ticket todavía espera el coche.
