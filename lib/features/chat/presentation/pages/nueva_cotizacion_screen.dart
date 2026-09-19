@@ -20,20 +20,23 @@ import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
 import 'package:autodoc/features/chat/data/models/vehiculo_cotizado.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cotizacion_form.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/catalogo_provider.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 
 /// Lo que el taller rellenó en [NuevaCotizacionScreen]. Cada llamador le pone
 /// encima las partes (propietario, taller, cita) con [toCotizacion].
 class CotizacionBorrador {
-  /// Renglones con su beneficio (el beneficio viaja al documento privado
-  /// `privado/margen`, nunca al que lee el cliente: ver `CotizacionModel`).
   final List<CotizacionItem> items;
   final double manoDeObra;
   final DateTime fechaPropuesta;
+
+  /// El coche que se cotiza, para dejar su resumen en la cotización.
+  final VehiculoCotizado? vehiculo;
 
   const CotizacionBorrador({
     required this.items,
     required this.manoDeObra,
     required this.fechaPropuesta,
+    this.vehiculo,
   });
 
   double get total =>
@@ -63,6 +66,7 @@ class CotizacionBorrador {
       fecha: DateTime.now(),
       manoDeObra: manoDeObra > 0 ? manoDeObra : null,
       materiales: CotizacionModel.materialesDesdeItems(items),
+      vehiculoResumen: vehiculo?.toResumen(),
     );
   }
 }
@@ -93,14 +97,17 @@ Future<bool> abrirNuevaCotizacion(
   return enviado ?? false;
 }
 
+/// Un renglón de la cotización.
+///
+/// Ya no lleva «Beneficio ($) — solo tú lo ves» (observaciones del
+/// 2026-09-19): hacía lo mismo que la mano de obra, que es donde el taller
+/// cobra su trabajo. El renglón viaja con beneficio 0, y el documento privado
+/// `privado/margen` se sigue escribiendo igual (con ceros): las reglas de
+/// `/cotizaciones` exigen ese contrato para publicar la cotización.
 class _FilaCotizacion {
   final item = CotizacionItemRowControllers();
-  final beneficioController = TextEditingController(text: '0');
 
-  void dispose() {
-    item.dispose();
-    beneficioController.dispose();
-  }
+  void dispose() => item.dispose();
 
   bool get vacia =>
       item.nombreController.text.trim().isEmpty &&
@@ -110,7 +117,6 @@ class _FilaCotizacion {
     material: item.nombreController.text.trim(),
     cantidad: item.cantidad,
     costo: item.costo,
-    beneficio: double.tryParse(beneficioController.text.trim()) ?? 0,
   );
 }
 
@@ -124,7 +130,7 @@ class _FilaCotizacion {
 /// fuera igual a la de Buscar Vehículo, **con día y hora del servicio**. Esta
 /// pantalla toma el esquema de `InitiateServiceScreen` —vehículo a la
 /// izquierda, importes a la derecha, en una columna en móvil— y le añade la
-/// fecha, el beneficio por renglón (que solo ve el taller) y el catálogo.
+/// fecha y el catálogo.
 class NuevaCotizacionScreen extends StatefulWidget {
   final VehiculoCotizado? vehiculo;
   final Future<bool> Function(CotizacionBorrador borrador) onEnviar;
@@ -349,6 +355,7 @@ class _NuevaCotizacionScreenState extends State<NuevaCotizacionScreen> {
       items: _filas.map((f) => f.toItem()).toList(),
       manoDeObra: _manoDeObra,
       fechaPropuesta: _fecha!,
+      vehiculo: widget.vehiculo,
     );
     var enviado = false;
     try {
@@ -388,6 +395,7 @@ class _NuevaCotizacionScreenState extends State<NuevaCotizacionScreen> {
         backgroundColor: colors.surfaceContainer,
         foregroundColor: colors.primary,
         elevation: 0,
+        actions: const [AccionesDeCabecera()],
       ),
       body: Form(
         key: _formKey,
@@ -455,26 +463,6 @@ class _NuevaCotizacionScreenState extends State<NuevaCotizacionScreen> {
                   onAddRow: _enviando ? null : _agregarFila,
                   onRemoveRow: _quitarFila,
                   onChanged: _refrescar,
-                  trailingBuilder: (context, i) => TextFormField(
-                    key: Key('cotizacion_item_beneficio_$i'),
-                    controller: _filas[i].beneficioController,
-                    decoration: InputDecoration(
-                      labelText: 'Beneficio (\$) — solo tú lo ves',
-                      isDense: true,
-                      prefixIcon: Icon(
-                        Icons.visibility_off_outlined,
-                        size: 18,
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: montoInputFormatters,
-                    validator: (v) => double.tryParse(v?.trim() ?? '0') == null
-                        ? 'Inválido'
-                        : null,
-                  ),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 AppButton(

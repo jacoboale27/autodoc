@@ -71,7 +71,9 @@ class _FakeVehicleProviderConPlaca extends FakeVehicleProvider {
 /// falta para comprobar a qué pantalla se llega). [chatHome], si se da,
 /// reemplaza `/mechanic_search` como pantalla inicial: lo usa el test del
 /// chat para arrancar en la tarjeta de vehículo en vez del buscador.
-GoRouter _router({Widget? chatHome}) => GoRouter(
+/// [firestore] es de donde el perfil del vehículo lee las cotizaciones y los
+/// servicios del taller.
+GoRouter _router({Widget? chatHome, FirebaseFirestore? firestore}) => GoRouter(
   initialLocation: chatHome != null ? '/chat_test' : '/mechanic_search',
   routes: [
     if (chatHome != null)
@@ -116,6 +118,7 @@ GoRouter _router({Widget? chatHome}) => GoRouter(
                 )
               : VehiclePublicViewScreen(
                   vehiculoId: id,
+                  firestore: firestore ?? FakeFirebaseFirestore(),
                   vehiculoPrecargado: state.extra is VehicleModel
                       ? state.extra as VehicleModel
                       : null,
@@ -196,18 +199,20 @@ Future<GoRouter> _pumpBuscarVehiculo(
   required String? reparacionActivaId,
   FakeFirebaseFirestore? firestoreCitas,
   UserModel? usuario,
+  ReparacionProvider? reparacionProvider,
 }) async {
   if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp();
   }
-  final router = _router();
+  final datos = firestoreCitas ?? FakeFirebaseFirestore();
+  final router = _router(firestore: datos);
   await tester.pumpWidget(
     _appDeGating(
       router: router,
-      reparacionProvider: FakeReparacionProvider(
-        reparacionActivaId: reparacionActivaId,
-      ),
-      firestoreCitas: firestoreCitas,
+      reparacionProvider:
+          reparacionProvider ??
+          FakeReparacionProvider(reparacionActivaId: reparacionActivaId),
+      firestoreCitas: datos,
       usuario: usuario,
     ),
   );
@@ -248,7 +253,7 @@ Future<GoRouter> _pumpBuscarVehiculoConTicketReal(
         ).toMap(),
       );
 
-  final router = _router();
+  final router = _router(firestore: firestore);
   await tester.pumpWidget(
     _appDeGating(
       router: router,
@@ -336,10 +341,19 @@ void main() {
   testWidgets('con reparacion en pendiente_recepcion, se desbloquea recibir', (
     tester,
   ) async {
+    // Observaciones del 2026-09-19: buscar la placa lleva al PERFIL del
+    // vehículo, y desde el servicio en curso se llega a recibirlo.
     final router = await _pumpBuscarVehiculo(tester, reparacionActivaId: 'r1');
 
     await tester.enterText(find.byType(TextField), 'P123456');
     await tester.tap(find.text('BUSCAR AUTO'));
+    await tester.pumpAndSettle();
+
+    expect(router.state.uri.toString(), '/vehiculo_publico/v1');
+    expect(find.text('Perfil del vehículo'), findsOneWidget);
+    expect(find.text('Por recibir'), findsOneWidget);
+
+    await tester.tap(find.text('Recibir vehículo'));
     await tester.pumpAndSettle();
 
     expect(find.byType(InitiateServiceScreen), findsOneWidget);
@@ -383,6 +397,12 @@ void main() {
       expect(find.byType(VehiclePublicViewScreen), findsOneWidget);
       expect(find.byType(InitiateServiceScreen), findsNothing);
       expect(router.state.uri.toString(), '/vehiculo_publico/v1');
+      expect(
+        find.text('Recibir vehículo'),
+        findsNothing,
+        reason: 'un ticket cancelado no da acceso a ningún servicio',
+      );
+      expect(find.text('Continuar servicio'), findsNothing);
     },
   );
 
@@ -400,6 +420,10 @@ void main() {
 
       await tester.enterText(find.byType(TextField), 'P123456');
       await tester.tap(find.text('BUSCAR AUTO'));
+      await tester.pumpAndSettle();
+
+      expect(router.state.uri.toString(), '/vehiculo_publico/v1');
+      await tester.tap(find.text('Continuar servicio'));
       await tester.pumpAndSettle();
 
       expect(find.byType(InitiateServiceScreen), findsOneWidget);

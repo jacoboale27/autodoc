@@ -1294,6 +1294,17 @@ exports.borrarFotosAlEliminarResenia = functions.firestore
  * Returns only non-sensitive identifying fields. It intentionally does NOT
  * expose id_propietario or any other owner data — full vehicle documents
  * stay protected by firestore.rules (owner, admin, or talleres_vinculados).
+ *
+ * Observaciones del 2026-09-19:
+ *  - Devuelve tambien `foto_url`. Es la imagen de catalogo del modelo que
+ *    genera `VehicleImageService` al dar de alta el coche (no una foto del
+ *    dueño), y la ficha del taller la pedia desde el 2026-09-18 («el nombre
+ *    del vehiculo, la placa, el kilometraje y las imagenes»).
+ *  - Acepta `idVehiculo` en vez de `placa`. El perfil del vehiculo del taller
+ *    se abre por id (desde "Mis Servicios", o al recargar la pagina, que
+ *    pierde los datos de la busqueda) y el taller no puede leer
+ *    `vehiculos/{id}` hasta que recibe el coche. Devuelve exactamente los
+ *    mismos campos que la busqueda por placa: no abre nada nuevo.
  */
 exports.buscarVehiculoPorPlaca = functions.https.onCall(async (data, context) => {
   exigirAppCheck(context, 'buscarVehiculoPorPlaca');
@@ -1303,7 +1314,11 @@ exports.buscarVehiculoPorPlaca = functions.https.onCall(async (data, context) =>
 
   const callerDoc = await db.collection('usuarios').doc(context.auth.uid).get();
   const rol = callerDoc.exists ? callerDoc.data().rol : null;
-  if (!['Mecanico', 'Taller'].includes(rol)) {
+  // Y el estado, igual que `isMecanico()` en firestore.rules: un taller sin
+  // aprobar o un empleado suspendido (con el token aún vivo) no busca coches.
+  // Revisión del 2026-09-19, al abrir la búsqueda por `idVehiculo`.
+  const estado = callerDoc.exists ? callerDoc.data().estado : null;
+  if (!['Mecanico', 'Taller'].includes(rol) || !['aprobado', 'activo'].includes(estado)) {
     throw new functions.https.HttpsError(
       'permission-denied',
       'Solo mecánicos pueden buscar vehículos por placa.'
@@ -1311,19 +1326,29 @@ exports.buscarVehiculoPorPlaca = functions.https.onCall(async (data, context) =>
   }
 
   const placa = (data && data.placa ? String(data.placa) : '').trim().toUpperCase();
-  if (!placa) {
+  const idVehiculo = (data && data.idVehiculo ? String(data.idVehiculo) : '').trim();
+  if (!placa && !idVehiculo) {
     throw new functions.https.HttpsError('invalid-argument', 'Debes indicar una placa.');
   }
+  // Un id con '/' apuntaria a otra ruta de la base de datos.
+  if (idVehiculo.includes('/')) {
+    throw new functions.https.HttpsError('invalid-argument', 'Vehículo no válido.');
+  }
 
-  const snapshot = await db
-    .collection('vehiculos')
-    .where('placa', '==', placa)
-    .limit(1)
-    .get();
+  let doc;
+  if (idVehiculo) {
+    doc = await db.collection('vehiculos').doc(idVehiculo).get();
+    if (!doc.exists) return null;
+  } else {
+    const snapshot = await db
+      .collection('vehiculos')
+      .where('placa', '==', placa)
+      .limit(1)
+      .get();
+    if (snapshot.empty) return null;
+    doc = snapshot.docs[0];
+  }
 
-  if (snapshot.empty) return null;
-
-  const doc = snapshot.docs[0];
   const v = doc.data();
   return {
     id_vehiculo: doc.id,
@@ -1333,6 +1358,7 @@ exports.buscarVehiculoPorPlaca = functions.https.onCall(async (data, context) =>
     anio: v.anio || null,
     color: v.color || null,
     kilometraje_actual: v.kilometraje_actual || 0,
+    foto_url: v.foto_url || null,
   };
 });
 

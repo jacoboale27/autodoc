@@ -162,6 +162,29 @@ class FakeReparacionProvider extends ChangeNotifier
     required String idTaller,
   }) async => reparacionActivaId;
 
+  /// Estado del ticket que devuelve [buscarTicketVigente].
+  String estadoTicketActivo = 'pendiente_recepcion';
+
+  @override
+  Future<ReparacionModel?> buscarTicketVigente({
+    required String idVehiculo,
+    required String idTaller,
+  }) async {
+    final id = reparacionActivaId;
+    if (id == null) return null;
+    final ahora = DateTime(2026, 9, 19);
+    return ReparacionModel(
+      idReparacion: id,
+      idVehiculo: idVehiculo,
+      idTaller: idTaller,
+      idPropietario: 'p1',
+      placa: 'P123456',
+      estado: estadoTicketActivo,
+      fechaCreacion: ahora,
+      fechaActualizacion: ahora,
+    );
+  }
+
   @override
   Future<bool?> recibirVehiculoPorId(String idReparacion) async {
     llamadasRecibir++;

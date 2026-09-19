@@ -31,6 +31,9 @@ import 'package:autodoc/core/utils/ui_utils.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/service_finalized_screen.dart';
 import 'package:autodoc/core/utils/mensaje_de_error.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
+import 'package:autodoc/features/mechanic/data/repositories/trabajos_taller_repository.dart';
+import 'package:intl/intl.dart';
 
 class InitiateServiceScreen extends StatefulWidget {
   /// Id del ticket de `reparaciones`. Desde la Tarea 5 (A3/B2) es lo que
@@ -64,6 +67,9 @@ class InitiateServiceScreen extends StatefulWidget {
 class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   FirebaseFirestore get _db => widget.firestore ?? FirebaseFirestore.instance;
 
+  TrabajosTallerRepository get _trabajos =>
+      TrabajosTallerRepository(firestore: _db);
+
   VehicleModel? _vehiculo;
   bool _cargando = false;
   String? _errorCarga;
@@ -92,8 +98,34 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   bool _isSaving = false;
   XFile? _invoiceImage;
 
-  bool _hasApprovedQuote = false;
-  CotizacionModel? _approvedQuote;
+  /// Las cotizaciones que el cliente aprobó y que este servicio va a cobrar.
+  ///
+  /// Una lista y no una sola: desde el 2026-09-19 el taller puede mandar una
+  /// cotización extra sobre un coche que ya tiene una aceptada, y las dos van
+  /// a la misma visita (el servidor no abre un segundo ticket mientras haya
+  /// uno abierto). Antes se cogía la más reciente y la otra no se cobraba
+  /// nunca ni se marcaba como `finalizada`.
+  List<CotizacionModel> _cotizacionesAprobadas = const [];
+
+  bool get _hasApprovedQuote => _cotizacionesAprobadas.isNotEmpty;
+
+  double get _totalAprobado =>
+      _cotizacionesAprobadas.fold(0.0, (acc, c) => acc + c.total);
+
+  /// `null` si ninguna cotización cobraba mano de obra aparte.
+  double? get _manoDeObraAprobada {
+    final conMano = _cotizacionesAprobadas.where((c) => c.manoDeObra != null);
+    if (conMano.isEmpty) return null;
+    return conMano.fold<double>(0.0, (acc, c) => acc + c.manoDeObra!);
+  }
+
+  /// El desglose de todas las cotizaciones aprobadas, en el formato que
+  /// espera el registro del servicio. Las cotizaciones anteriores a
+  /// `materiales` lo sacan de sus renglones.
+  List<Map<String, dynamic>> get _materialesAprobados => [
+    for (final c in _cotizacionesAprobadas)
+      ...(c.materiales ?? CotizacionModel.materialesDesdeItems(c.items)),
+  ];
 
   /// `true` cuando la consulta de la cotización aceptada FALLÓ, que no es lo
   /// mismo que no haber encontrado ninguna.
@@ -112,6 +144,13 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   /// (`id_vehiculo`, `estado`, `orderBy fecha DESC`) y su índice no estaba
   /// declarado, así que en producción devolvía `failed-precondition`. Iba en
   /// un `.then(...)` sin `catchError`, o sea que ni se registraba.
+  ///
+  /// Y con el índice ya desplegado seguía fallando SIEMPRE (observaciones del
+  /// 2026-09-19, captura 7): la consulta no filtraba por taller, y las reglas
+  /// de `/cotizaciones` rechazan una consulta que no pueden acotar a lo que
+  /// el que pregunta tiene derecho a leer. Ahora va por
+  /// `TrabajosTallerRepository.cotizacionesAceptadas`, que filtra por
+  /// `id_taller`.
   bool _errorCotizacion = false;
 
   /// `true` una vez que "Recibir vehículo" confirmó la transición en esta
@@ -291,7 +330,8 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   /// llegar aquí. Ya no lo hace (ver comentario más abajo), así que suelta el
   /// spinner en cuanto el vehículo está listo, sin esperar a ninguna
   /// escritura en Firestore.
-  /// Busca la cotización que el cliente ya aceptó para este vehículo.
+  /// Busca las cotizaciones que el cliente ya aceptó para este vehículo en
+  /// este taller.
   ///
   /// Los tres resultados posibles son distintos y la pantalla los distingue:
   /// hay cotización (banner con el importe aprobado), no hay (formulario
@@ -299,36 +339,36 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   /// una falta de índice o un corte de red se arregla solo o con un
   /// despliegue, y no hay razón para obligar a salir y volver a entrar.
   Future<void> _cargarCotizacionAceptada(VehicleModel vehiculo) async {
+    // El taller efectivo (el uid del DUEÑO, también si opera un empleado):
+    // es el `id_taller` con el que se escriben las cotizaciones.
+    final idTaller =
+        context.read<UserProfileProvider>().userData?.idTallerEfectivo ?? '';
     try {
-      final snapshot = await _db
-          .collection('cotizaciones')
-          .where('id_vehiculo', isEqualTo: vehiculo.idVehiculo)
-          .where('estado', isEqualTo: 'aceptada')
-          .orderBy('fecha', descending: true)
-          .limit(1)
-          .get();
+      if (idTaller.isEmpty) {
+        throw StateError('Sin taller en la sesión');
+      }
+      final aprobadas = await _trabajos.cotizacionesAceptadas(
+        idVehiculo: vehiculo.idVehiculo,
+        idTaller: idTaller,
+      );
       if (!mounted) return;
       setState(() {
         _errorCotizacion = false;
-        if (snapshot.docs.isNotEmpty) {
-          _hasApprovedQuote = true;
-          _approvedQuote = CotizacionModel.fromMap(
-            snapshot.docs.first.data(),
-            snapshot.docs.first.id,
-          );
-          _costoController.text = _approvedQuote!.total.toStringAsFixed(2);
+        _cotizacionesAprobadas = aprobadas;
+        if (aprobadas.isNotEmpty) {
+          _costoController.text = _totalAprobado.toStringAsFixed(2);
         }
       });
     } catch (e) {
-      // Se registra a propósito: el caso que motivó esto (índice compuesto sin
-      // declarar) es invisible en los emuladores y solo se manifiesta en
-      // producción, así que el log es la única pista que va a existir.
+      // Se registra a propósito: los dos casos que motivaron esto (un índice
+      // sin declarar y una consulta que las reglas rechazan) son invisibles en
+      // los emuladores y solo se manifiestan en producción, así que el log es
+      // la única pista que va a existir.
       debugPrint('No se pudo comprobar la cotización aceptada: $e');
       if (!mounted) return;
       setState(() {
         _errorCotizacion = true;
-        _hasApprovedQuote = false;
-        _approvedQuote = null;
+        _cotizacionesAprobadas = const [];
       });
     }
   }
@@ -564,10 +604,10 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
 
       final costoDouble = double.tryParse(_costoController.text);
       final manoDeObraDouble = _hasApprovedQuote
-          ? _approvedQuote?.manoDeObra
+          ? _manoDeObraAprobada
           : double.tryParse(_manoDeObraController.text);
       final materialesList = _hasApprovedQuote
-          ? _approvedQuote?.materiales
+          ? _materialesAprobados
           : _materialesDesdeFilas();
 
       if (_completedTaskIds.isEmpty) {
@@ -604,10 +644,13 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
 
       await alertProvider.fetchAlerts(_vehiculo!.idVehiculo, _vehiculo!);
 
-      if (_hasApprovedQuote && _approvedQuote != null) {
-        await _db.collection('cotizaciones').doc(_approvedQuote!.id).update({
-          'estado': 'finalizada',
-        });
+      // TODAS las aprobadas que este servicio cobró, no solo la última: una
+      // que se quedara en `aceptada` volvería a sumarse al siguiente servicio
+      // del mismo coche.
+      if (_hasApprovedQuote) {
+        await _trabajos.marcarFinalizadas(
+          _cotizacionesAprobadas.map((c) => c.id),
+        );
       }
 
       bool kanbanUpdateFailed = false;
@@ -747,6 +790,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
         backgroundColor: colors.surfaceContainer,
         foregroundColor: colors.primary,
         elevation: 0,
+        actions: const [AccionesDeCabecera()],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
@@ -961,21 +1005,65 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
         borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: colors.primary.withValues(alpha: 0.3)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.check_circle, color: colors.primary),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Text(
-              'El cliente aprobó una cotización previa por '
-              '\$${_approvedQuote!.total.toStringAsFixed(2)}. El desglose '
-              'ya está registrado.',
-              style: AppTextStyles.labelLarge.copyWith(
-                color: colors.primary,
-                fontWeight: FontWeight.w600,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.check_circle, color: colors.primary),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  _cotizacionesAprobadas.length == 1
+                      ? 'El cliente aprobó una cotización por '
+                            '\$${_totalAprobado.toStringAsFixed(2)}. El '
+                            'desglose ya está registrado.'
+                      : 'El cliente aprobó ${_cotizacionesAprobadas.length} '
+                            'cotizaciones por \$${_totalAprobado.toStringAsFixed(2)} '
+                            'en total. Este servicio las cobra todas; el '
+                            'desglose ya está registrado.',
+                  style: AppTextStyles.labelLarge.copyWith(
+                    color: colors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
+          if (_cotizacionesAprobadas.length > 1) ...[
+            const SizedBox(height: AppSpacing.sm),
+            for (final c in _cotizacionesAprobadas)
+              Padding(
+                padding: const EdgeInsets.only(
+                  left: AppSpacing.xl + AppSpacing.md,
+                  top: AppSpacing.xs,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${DateFormat('dd/MM/yyyy').format(c.fecha)} · '
+                        '${c.resumen}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(
+                      '\$${c.total.toStringAsFixed(2)}',
+                      style: AppTextStyles.labelMedium.copyWith(
+                        color: colors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ],
       ),
     );
@@ -1694,6 +1782,7 @@ class _PantallaPorRecibir extends StatelessWidget {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/mechanic_reparaciones'),
         ),
+        actions: const [AccionesDeCabecera()],
       ),
       body: AppPageBody(
         child: Column(

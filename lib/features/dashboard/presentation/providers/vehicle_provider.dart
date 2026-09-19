@@ -414,6 +414,14 @@ class VehicleProvider with ChangeNotifier {
     }
   }
 
+  /// La ficha pública de un vehículo por id, la misma que devuelve la
+  /// búsqueda por placa (ver `VehicleService.getPublicVehicleById`). No toca
+  /// `isLoading` ni `error`: la usa el perfil del vehículo del taller como
+  /// respaldo al recargar la página, y no debe repintar a nadie más.
+  /// Relanza si la llamada falla.
+  Future<VehicleModel?> findPublicVehicleById(String idVehiculo) =>
+      _vehicleService.getPublicVehicleById(idVehiculo);
+
   void clearVehicles() {
     _vehicles = [];
     _selectedVehicle = null;

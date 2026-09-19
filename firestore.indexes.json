@@ -93,24 +93,6 @@
       ]
     },
     {
-      "collectionGroup": "cotizaciones",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "id_vehiculo",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "estado",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "fecha",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "conversaciones",
       "queryScope": "COLLECTION",
       "fields": [
@@ -181,6 +163,20 @@
         {
           "fieldPath": "fecha_hora_propuesta",
           "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "cotizaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "id_taller",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fecha",
+          "order": "DESCENDING"
         }
       ]
     }

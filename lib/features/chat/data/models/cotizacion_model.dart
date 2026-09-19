@@ -58,6 +58,14 @@ class CotizacionModel {
   final double? manoDeObra;
   final List<Map<String, dynamic>>? materiales;
 
+  /// Marca, modelo, año y placa del coche cotizado (`VehiculoCotizado.toResumen`).
+  ///
+  /// Observaciones del 2026-09-19: "Mis Servicios" lista las cotizaciones del
+  /// taller y tiene que decir de QUÉ coche es cada una, pero el taller no
+  /// puede leer `vehiculos/{id}` hasta que recibe el coche. Las cotizaciones
+  /// anteriores no lo traen: la lista cae entonces a lo que se cotizó.
+  final Map<String, dynamic>? vehiculoResumen;
+
   CotizacionModel({
     required this.id,
     required this.idPropietario,
@@ -71,6 +79,7 @@ class CotizacionModel {
     required this.fecha,
     this.manoDeObra,
     this.materiales,
+    this.vehiculoResumen,
   });
 
   /// Resumen legible de los materiales/repuestos cotizados.
@@ -124,6 +133,9 @@ class CotizacionModel {
       materiales: map['materiales'] is List
           ? List<Map<String, dynamic>>.from(map['materiales'])
           : null,
+      vehiculoResumen: map['vehiculo_resumen'] is Map
+          ? Map<String, dynamic>.from(map['vehiculo_resumen'] as Map)
+          : null,
     );
   }
 
@@ -143,6 +155,8 @@ class CotizacionModel {
       'fecha': Timestamp.fromDate(fecha),
       if (manoDeObra != null) 'mano_de_obra': manoDeObra,
       if (materiales != null) 'materiales': materiales,
+      if (vehiculoResumen != null && vehiculoResumen!.isNotEmpty)
+        'vehiculo_resumen': vehiculoResumen,
     };
   }
 
@@ -176,6 +190,7 @@ class CotizacionModel {
       fecha: fecha,
       manoDeObra: manoDeObra,
       materiales: materiales,
+      vehiculoResumen: vehiculoResumen,
     );
   }
 }

@@ -167,25 +167,46 @@ class VehicleService {
       final result = await _functions
           .httpsCallable('buscarVehiculoPorPlaca')
           .call({'placa': plate});
-
-      final data = result.data as Map?;
-      if (data == null) return null;
-
-      return VehicleModel(
-        idVehiculo: data['id_vehiculo'] as String,
-        idPropietario: '',
-        placa: data['placa'] as String? ?? plate,
-        marca: data['marca'] as String?,
-        modelo: data['modelo'] as String?,
-        anio: (data['anio'] as num?)?.toInt(),
-        color: data['color'] as String?,
-        kilometrajeActual: (data['kilometraje_actual'] as num?)?.toInt() ?? 0,
-      );
+      return _fichaPublica(result.data as Map?, placaBuscada: plate);
     } on FirebaseFunctionsException catch (e) {
       throw 'Error al buscar vehículo por placa: ${e.message ?? e.code}';
     } catch (e) {
       throw 'Error al buscar vehículo por placa: $e';
     }
+  }
+
+  /// La misma ficha pública que [getVehicleByPlate], pero por id: el perfil
+  /// del vehículo del taller se abre por id (desde "Mis Servicios", o al
+  /// recargar la página) y el taller no puede leer `vehiculos/{id}` hasta
+  /// que recibe el coche. Devuelve `null` si el vehículo no existe.
+  Future<VehicleModel?> getPublicVehicleById(String idVehiculo) async {
+    try {
+      final result = await _functions
+          .httpsCallable('buscarVehiculoPorPlaca')
+          .call({'idVehiculo': idVehiculo});
+      return _fichaPublica(result.data as Map?);
+    } on FirebaseFunctionsException catch (e) {
+      throw 'Error al obtener el vehículo: ${e.message ?? e.code}';
+    }
+  }
+
+  static VehicleModel? _fichaPublica(Map? data, {String placaBuscada = ''}) {
+    if (data == null) return null;
+    final foto = data['foto_url'] as String?;
+    return VehicleModel(
+      idVehiculo: data['id_vehiculo'] as String,
+      idPropietario: '',
+      placa: data['placa'] as String? ?? placaBuscada,
+      marca: data['marca'] as String?,
+      modelo: data['modelo'] as String?,
+      anio: (data['anio'] as num?)?.toInt(),
+      color: data['color'] as String?,
+      kilometrajeActual: (data['kilometraje_actual'] as num?)?.toInt() ?? 0,
+      // Desde el 2026-09-19 la función devuelve también la imagen del
+      // modelo; una versión anterior desplegada no la trae y la ficha se
+      // pinta con la imagen genérica.
+      fotoUrl: foto == null || foto.isEmpty ? null : foto,
+    );
   }
 
   /// Lee el vehículo completo por id. A diferencia de [getVehicleByPlate]

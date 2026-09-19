@@ -208,8 +208,34 @@ const _inventario = <_Consulta>[
     igualdades: ['id_taller'],
     orden: 'fecha',
     descendente: true,
+    // "Mis Servicios", pestaña "Finalizados". Vivía en
+    // `mechanic_service_history_screen.dart` hasta el 2026-09-19.
     origen:
-        'lib/features/mechanic/presentation/pages/mechanic_service_history_screen.dart:96',
+        'lib/features/mechanic/data/repositories/trabajos_taller_repository.dart'
+        ' (watchServiciosDelTaller)',
+  ),
+  _Consulta(
+    coleccion: 'servicios',
+    igualdades: ['id_vehiculo', 'id_taller'],
+    orden: 'fecha',
+    descendente: true,
+    // Los servicios que el taller le hizo a un coche, en su perfil
+    // (2026-09-19). Mismo índice que la búsqueda del servicio a reseñar.
+    origen:
+        'lib/features/mechanic/data/repositories/trabajos_taller_repository.dart'
+        ' (serviciosDelVehiculo)',
+  ),
+  _Consulta(
+    coleccion: 'cotizaciones',
+    igualdades: ['id_taller'],
+    orden: 'fecha',
+    descendente: true,
+    // "Mis Servicios": pendientes, en proceso y rechazados (2026-09-19).
+    // Índice NUEVO: sin desplegarlo la pestaña muere en producción con
+    // `failed-precondition`.
+    origen:
+        'lib/features/mechanic/data/repositories/trabajos_taller_repository.dart'
+        ' (watchCotizacionesDelTaller)',
   ),
   _Consulta(
     coleccion: 'conversaciones',
@@ -263,19 +289,26 @@ const _inventario = <_Consulta>[
     // `whereIn` sobre `estado`: para el índice cuenta como igualdad.
     origen: 'lib/features/dashboard/data/services/workshop_service.dart:32',
   ),
-  _Consulta(
-    coleccion: 'cotizaciones',
-    igualdades: ['id_vehiculo', 'estado'],
-    orden: 'fecha',
-    descendente: true,
-    origen:
-        'lib/features/mechanic/presentation/pages/initiate_service_screen.dart:269',
-  ),
+  // `cotizaciones (id_vehiculo, estado, fecha DESC)` vivía aquí, por la
+  // consulta de la cotización aceptada de `InitiateServiceScreen`. Esa
+  // consulta no filtraba por taller y las reglas la rechazaban SIEMPRE
+  // (captura 7 de las observaciones del 2026-09-19): ahora filtra por
+  // `id_taller`, es de solo igualdades y ordena en memoria, así que su índice
+  // se retira. Borrarlo de producción es opcional (no estorba), y
+  // `firebase deploy --only firestore:indexes` lo propone.
   _Consulta(
     coleccion: 'cotizaciones',
     igualdades: ['id_vehiculo', 'id_taller', 'estado'],
     origen:
-        'lib/features/mechanic/presentation/pages/vehicle_public_view_screen.dart:98',
+        'lib/features/mechanic/data/repositories/trabajos_taller_repository.dart'
+        ' (cotizacionesAceptadas)',
+  ),
+  _Consulta(
+    coleccion: 'cotizaciones',
+    igualdades: ['id_vehiculo', 'id_taller'],
+    origen:
+        'lib/features/mechanic/data/repositories/trabajos_taller_repository.dart'
+        ' (cotizacionesDelVehiculo)',
   ),
   _Consulta(
     coleccion: 'reparaciones',
@@ -362,7 +395,11 @@ const _huerfanosConocidos = <String>[];
 /// 16: sube a 17 con el `orderBy` que `findReviewableServiceId` baja al
 /// servidor (gap 7.4) y vuelve a 16 al retirarse `streamReservasUsuario`
 /// (gap 7.2). Ambos de GAPS-02.
-const _orderByEsperados = 16;
+/// 17 desde las observaciones del 2026-09-19: `TrabajosTallerRepository`
+/// trae tres (servicios del coche, cotizaciones del taller y servicios del
+/// taller); se van la de `InitiateServiceScreen` (ahora de solo igualdades) y
+/// la de "Mis Servicios", que se mudó al repositorio.
+const _orderByEsperados = 17;
 
 /// Cuántos `.where(` hay hoy en `functions/index.js` y `functions/src/`. Ver el
 /// cuarto test.
@@ -396,7 +433,12 @@ const _orderByEsperados = 16;
 // campo, o mezclar una igualdad con una DESIGUALDAD — que es justo el caso que
 // se le escapo a este centinela con `caducarVinculos.js` y por el que existe
 // este segundo test.
-const _whereServidorEsperados = 32;
+//
+// Observaciones del 2026-09-19: 32 -> 33. Aceptar una invitacion de empleo
+// (`empleadosTaller.js`) comprueba que la cuenta no tenga vehiculos con UNA
+// igualdad (`id_propietario ==`) y `limit(1)`: indice de campo unico,
+// automatico. Nada que declarar.
+const _whereServidorEsperados = 33;
 
 class _Consulta {
   const _Consulta({

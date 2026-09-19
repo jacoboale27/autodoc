@@ -12,4 +12,5 @@ class FirestoreCollections {
   static const String adminLogs = 'admin_logs';
   static const String mensajes = 'mensajes';
   static const String reparaciones = 'reparaciones';
+  static const String cotizaciones = 'cotizaciones';
 }

@@ -74,7 +74,7 @@ void main() {
       // Lo que NO debe pasar: presentar el formulario manual como si se
       // supiera que no hay cotización aceptada. No se sabe.
       expect(
-        find.text('Materiales / repuestos'),
+        find.text('MATERIALES / REPUESTOS'),
         findsNothing,
         reason:
             'un fallo de la consulta no es "no hay cotizacion": ofrecer el '
@@ -160,7 +160,7 @@ void main() {
         find.textContaining('El cliente aprobó una cotización'),
         findsOneWidget,
       );
-      expect(find.text('Materiales / repuestos'), findsNothing);
+      expect(find.text('MATERIALES / REPUESTOS'), findsNothing);
     },
   );
 }

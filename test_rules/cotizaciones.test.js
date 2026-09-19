@@ -536,3 +536,89 @@ describe('cotizaciones: la cotizacion es del TALLER, no del operario (ronda 4)',
     );
   });
 });
+
+// Observaciones del 2026-09-19 (captura 7): «No se pudo comprobar si el
+// cliente aprobo una cotizacion para este vehiculo». InitiateServiceScreen
+// preguntaba por las cotizaciones aceptadas del coche solo con `id_vehiculo`
+// + `estado`. Las reglas no filtran: rechazan la consulta ENTERA si no pueden
+// demostrar que todo lo que devolveria es legible, y esa consulta podria
+// devolver cotizaciones de otros talleres. Fallaba siempre, con o sin indice.
+describe('cotizaciones: las consultas de lista del taller (2026-09-19)', () => {
+  const seedAceptadas = async () => {
+    await seed(env, async (s) => {
+      for (const [id, taller] of [['a1', UIDS.taller1], ['a2', UIDS.taller2]]) {
+        await s.collection('cotizaciones').doc(id).set({
+          id_propietario: UIDS.owner1,
+          id_mecanico: taller,
+          id_taller: taller,
+          id_vehiculo: 'v1',
+          items: [{ material: 'Aceite', cantidad: 1, costo: 20 }],
+          estado: 'aceptada',
+          fecha: new Date('2026-09-18T10:00:00Z'),
+        });
+      }
+    });
+  };
+
+  test('la consulta de antes (sin id_taller) se rechaza: era la captura 7', async () => {
+    await seedAceptadas();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db.collection('cotizaciones')
+        .where('id_vehiculo', '==', 'v1')
+        .where('estado', '==', 'aceptada')
+        .get(),
+    );
+  });
+
+  test('filtrando por su id_taller, el taller SI puede listar las aceptadas del coche', async () => {
+    await seedAceptadas();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    const snap = await assertSucceeds(
+      db.collection('cotizaciones')
+        .where('id_vehiculo', '==', 'v1')
+        .where('id_taller', '==', UIDS.taller1)
+        .where('estado', '==', 'aceptada')
+        .get(),
+    );
+    expect(snap.docs.map((d) => d.id)).toEqual(['a1']);
+  });
+
+  test('un EMPLEADO lista las del taller con el id_taller del dueño', async () => {
+    await seedAceptadas();
+    const db = await withRole(env, UIDS.empleado1, 'Taller', {
+      id_taller_propietario: UIDS.taller1,
+    });
+    await assertSucceeds(
+      db.collection('cotizaciones')
+        .where('id_vehiculo', '==', 'v1')
+        .where('id_taller', '==', UIDS.taller1)
+        .where('estado', '==', 'aceptada')
+        .get(),
+    );
+  });
+
+  test('nadie lista las de un taller ajeno, aunque filtre por su id', async () => {
+    await seedAceptadas();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertFails(
+      db.collection('cotizaciones')
+        .where('id_vehiculo', '==', 'v1')
+        .where('id_taller', '==', UIDS.taller2)
+        .get(),
+    );
+  });
+
+  test('"Mis Servicios": el taller lista todas las suyas ordenadas por fecha', async () => {
+    await seedAceptadas();
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    const snap = await assertSucceeds(
+      db.collection('cotizaciones')
+        .where('id_taller', '==', UIDS.taller1)
+        .orderBy('fecha', 'desc')
+        .limit(200)
+        .get(),
+    );
+    expect(snap.docs.map((d) => d.id)).toEqual(['a1']);
+  });
+});

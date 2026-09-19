@@ -129,77 +129,82 @@ void main() {
     );
   });
 
-  testWidgets(
-    'envía materiales, beneficio, mano de obra y fecha, y se cierra al enviar',
-    (tester) async {
-      CotizacionBorrador? recibido;
-      await pumpChatWidget(
-        tester,
-        Builder(
-          builder: (context) => TextButton(
-            onPressed: () => abrirNuevaCotizacion(
-              context,
-              vehiculo: _vehiculo,
-              initialFecha: DateTime(2030, 9, 30, 9, 20),
-              onEnviar: (b) async {
-                recibido = b;
-                return true;
-              },
-            ),
-            child: const Text('abrir'),
+  testWidgets('envía materiales, mano de obra y fecha, y se cierra al enviar', (
+    tester,
+  ) async {
+    CotizacionBorrador? recibido;
+    await pumpChatWidget(
+      tester,
+      Builder(
+        builder: (context) => TextButton(
+          onPressed: () => abrirNuevaCotizacion(
+            context,
+            vehiculo: _vehiculo,
+            initialFecha: DateTime(2030, 9, 30, 9, 20),
+            onEnviar: (b) async {
+              recibido = b;
+              return true;
+            },
           ),
+          child: const Text('abrir'),
         ),
-        width: 375,
-      );
-      await tester.tap(find.text('abrir'));
-      await tester.pumpAndSettle();
+      ),
+      width: 375,
+    );
+    await tester.tap(find.text('abrir'));
+    await tester.pumpAndSettle();
 
-      await _llenarRenglon(tester, nombre: 'Chasis entero', costo: '5000');
-      await tester.enterText(
-        find.byKey(const Key('cotizacion_item_beneficio_0')),
-        '200',
-      );
-      await tester.enterText(
-        find.descendant(
-          of: find.byKey(const Key('cotizacion_mano_de_obra')),
-          matching: find.byType(EditableText),
-        ),
-        '150',
-      );
-      await tester.pump();
-      await _tocarEnviar(tester);
-      await tester.pumpAndSettle();
+    await _llenarRenglon(tester, nombre: 'Chasis entero', costo: '5000');
+    // Observaciones del 2026-09-19: sin campo de beneficio, hacía lo mismo
+    // que la mano de obra.
+    expect(find.textContaining('Beneficio'), findsNothing);
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const Key('cotizacion_mano_de_obra')),
+        matching: find.byType(EditableText),
+      ),
+      '150',
+    );
+    await tester.pump();
+    await _tocarEnviar(tester);
+    await tester.pumpAndSettle();
 
-      expect(recibido, isNotNull);
-      expect(recibido!.items.single.material, 'Chasis entero');
-      expect(recibido!.items.single.beneficio, 200);
-      expect(recibido!.manoDeObra, 150);
-      expect(recibido!.fechaPropuesta, DateTime(2030, 9, 30, 9, 20));
-      expect(recibido!.total, 5150);
-      expect(
-        find.byType(NuevaCotizacionScreen),
-        findsNothing,
-        reason: 'enviada la cotización, la pantalla se cierra',
-      );
+    expect(recibido, isNotNull);
+    expect(recibido!.items.single.material, 'Chasis entero');
+    expect(recibido!.items.single.beneficio, 0);
+    expect(recibido!.manoDeObra, 150);
+    expect(recibido!.fechaPropuesta, DateTime(2030, 9, 30, 9, 20));
+    expect(recibido!.total, 5150);
+    expect(
+      find.byType(NuevaCotizacionScreen),
+      findsNothing,
+      reason: 'enviada la cotización, la pantalla se cierra',
+    );
 
-      final cotizacion = recibido!.toCotizacion(
-        idPropietario: 'cli1',
-        idMecanico: 'mec1',
-        idTaller: 't1',
-        idVehiculo: 'v1',
-      );
-      final mapa = cotizacion.toMap();
-      expect(mapa['id_vehiculo'], 'v1');
-      expect(mapa['mano_de_obra'], 150);
-      expect(mapa['total'], 5150);
-      expect(
-        mapa.containsKey('beneficio'),
-        isFalse,
-        reason: 'el beneficio nunca va al documento que lee el cliente',
-      );
-      expect((mapa['materiales'] as List).single['nombre'], 'Chasis entero');
-    },
-  );
+    final cotizacion = recibido!.toCotizacion(
+      idPropietario: 'cli1',
+      idMecanico: 'mec1',
+      idTaller: 't1',
+      idVehiculo: 'v1',
+    );
+    final mapa = cotizacion.toMap();
+    expect(mapa['id_vehiculo'], 'v1');
+    expect(mapa['mano_de_obra'], 150);
+    expect(mapa['total'], 5150);
+    expect(
+      mapa.containsKey('beneficio'),
+      isFalse,
+      reason: 'el beneficio nunca va al documento que lee el cliente',
+    );
+    expect((mapa['materiales'] as List).single['nombre'], 'Chasis entero');
+    // "Mis Servicios" enseña de qué coche es cada cotización: el taller no
+    // puede leer `vehiculos/{id}` antes de recibirlo.
+    expect(mapa['vehiculo_resumen'], _vehiculo.toResumen());
+    // El contrato privado que exigen las reglas sigue viajando, en cero.
+    expect(cotizacion.toPrivateMap(), {
+      'beneficios': [0.0],
+    });
+  });
 
   testWidgets('si el envío falla, la pantalla sigue abierta con lo tecleado', (
     tester,
