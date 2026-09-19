@@ -39,7 +39,21 @@ class ServiceHistoryScreen extends StatefulWidget {
 }
 
 class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
-  final _reviewService = ReviewService();
+  late final _reviewService = ReviewService(firestore: widget.firestore);
+
+  /// El servicio reseñable de cada taller (una consulta por taller, no por
+  /// servicio). Observaciones del 2026-09-19: solo se reseña el servicio MÁS
+  /// RECIENTE con un taller y solo si aún no tiene reseña; antes cada
+  /// servicio sin reseña ofrecía su botón.
+  final Map<String, Future<String?>> _resenablePorTaller = {};
+
+  Future<String?> _resenableDe(String userId, String tallerId) =>
+      _resenablePorTaller.putIfAbsent(
+        tallerId,
+        () => _reviewService
+            .findReviewableServiceId(userId, tallerId)
+            .catchError((Object _) => null),
+      );
   String _filter = 'Todos'; // 'Todos', 'Manual', 'Taller'
   DateTimeRange? _dateRange;
 
@@ -769,6 +783,35 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
           return const SizedBox.shrink();
         }
         final alreadyReviewed = snapshot.data != null;
+        if (!alreadyReviewed) {
+          // Sin reseña: el botón solo en el servicio que se puede reseñar.
+          return FutureBuilder<String?>(
+            future: _resenableDe(userId, record.idTaller!),
+            builder: (context, resenable) {
+              if (resenable.data != record.idServicio) {
+                return const SizedBox.shrink();
+              }
+              return Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () => _resenarTaller(context, record),
+                  icon: Icon(
+                    Icons.star_outline,
+                    size: 18,
+                    color: colors.warning,
+                  ),
+                  label: Text(
+                    context.l10n.histReviewWorkshop,
+                    style: TextStyle(
+                      color: colors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        }
         return Align(
           alignment: Alignment.centerRight,
           child: alreadyReviewed
@@ -834,7 +877,9 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
       tallerNombre: nombre,
       idServicio: record.idServicio,
     );
-    if (result == true && mounted) setState(() {});
+    if (result == true && mounted) {
+      setState(() => _resenablePorTaller.remove(tallerId));
+    }
   }
 
   // El visor de foto a pantalla completa se muestra siempre en chrome

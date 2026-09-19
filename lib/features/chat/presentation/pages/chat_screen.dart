@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:autodoc/features/chat/presentation/widgets/aviso_resenia_chat.dart';
+import 'package:autodoc/features/reviews/data/services/review_service.dart';
 import 'package:autodoc/core/utils/role_utils.dart';
 import 'dart:io';
 import 'dart:typed_data';
@@ -1066,6 +1068,26 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             ),
           ),
 
+          // La única forma de reseñar al taller desde el chat (observaciones
+          // del 2026-09-19): antes cada cotización finalizada traía su botón.
+          if (!isMecanico &&
+              conversacion != null &&
+              conversacion.idPropietario == userId &&
+              (conversacion.idTaller ?? conversacion.idMecanico).isNotEmpty)
+            AppPageBody(
+              maxWidth: AppBreakpoints.maxContentWidth,
+              child: AvisoReseniaChat(
+                userId: userId,
+                tallerId: conversacion.idTaller ?? conversacion.idMecanico,
+                tallerNombre: conversacion.nombreMecanico,
+                revision: chatProvider.mensajesActuales.length,
+                buscarResenable: widget.firestore == null
+                    ? null
+                    : ReviewService(
+                        firestore: widget.firestore,
+                      ).findReviewableServiceId,
+              ),
+            ),
           if (_respondiendoA != null)
             AppPageBody(
               maxWidth: AppBreakpoints.maxContentWidth,

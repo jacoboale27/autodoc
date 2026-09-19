@@ -77,7 +77,11 @@ void main() {
     expect(id, 'nuevo');
   });
 
-  test('salta los servicios que ya tienen resenia', () async {
+  // Observaciones del 2026-09-19: «cuando ya reseñé al mecánico ... quiero
+  // que ya no deje reseñarlo hasta volver a recibir otro servicio y darlo por
+  // finalizado». Antes, reseñado el último, se ofrecía el ANTERIOR sin
+  // reseñar, y así una y otra vez: «siempre deja volver a reseñarlo».
+  test('reseñado el más reciente, no ofrece uno anterior', () async {
     final db = await conHistorial(
       serviciosDeOtrosTalleres: 0,
       propios: [
@@ -91,8 +95,28 @@ void main() {
       firestore: db,
     ).findReviewableServiceId(uid, taller);
 
-    expect(id, 'viejo');
+    expect(id, isNull);
   });
+
+  test(
+    'un servicio nuevo después de reseñar vuelve a abrir la reseña',
+    () async {
+      final db = await conHistorial(
+        serviciosDeOtrosTalleres: 0,
+        propios: [
+          (id: 'viejo', dia: 1, taller: taller),
+          (id: 'otroMasNuevo', dia: 25, taller: taller),
+        ],
+        yaResenados: ['viejo'],
+      );
+
+      final id = await ReviewService(
+        firestore: db,
+      ).findReviewableServiceId(uid, taller);
+
+      expect(id, 'otroMasNuevo');
+    },
+  );
 
   test(
     'devuelve null si ya resenio todos los servicios de ese taller',

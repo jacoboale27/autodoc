@@ -10,12 +10,7 @@ import 'package:autodoc/features/chat/presentation/widgets/chat_card_shell.dart'
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
-import 'package:autodoc/core/providers/user_profile_provider.dart';
-import 'package:autodoc/features/reviews/data/services/review_service.dart';
-import 'package:autodoc/core/widgets/review_sheet.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
-import 'package:autodoc/core/utils/ui_utils.dart';
-import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
 class CotizacionChatCard extends StatefulWidget {
   final Map<String, dynamic> metadata;
@@ -44,8 +39,6 @@ class CotizacionChatCard extends StatefulWidget {
 }
 
 class _CotizacionChatCardState extends State<CotizacionChatCard> {
-  bool _isCheckingReview = false;
-
   /// Bloquea Aceptar/Rechazar mientras la decision anterior sigue en vuelo.
   /// Aceptar una cotizacion abre un ticket de reparacion en el servidor, asi
   /// que repetirla no es un no-op.
@@ -93,64 +86,6 @@ class _CotizacionChatCardState extends State<CotizacionChatCard> {
     // no se duplica ese trabajo aquí porque requiere leer `vehiculos` (la
     // placa) con permisos que el cliente no tiene hasta que el taller ya
     // está vinculado (ver firestore.rules match /vehiculos).
-  }
-
-  Future<void> _calificarServicio(BuildContext context) async {
-    if (_isCheckingReview) return;
-    final userId = context.read<UserProfileProvider>().userData?.idUsuario;
-    if (userId == null) return;
-
-    final provider = context.read<ChatProvider>();
-    final conversacion = provider.conversaciones
-        .where((c) => c.id == widget.conversacionId)
-        .firstOrNull;
-
-    final tallerId = conversacion?.idTaller ?? conversacion?.idMecanico;
-    if (tallerId == null || tallerId.isEmpty) {
-      UiUtils.showErrorSnackbar(
-        context,
-        'No se pudo identificar el taller de esta conversación.',
-      );
-      return;
-    }
-
-    setState(() => _isCheckingReview = true);
-    String? idServicio;
-    String? errorMessage;
-    try {
-      idServicio = await ReviewService().findReviewableServiceId(
-        userId,
-        tallerId,
-      );
-    } catch (e) {
-      errorMessage = mensajeDeReglaDeNegocio(e);
-    }
-    if (mounted) setState(() => _isCheckingReview = false);
-    if (!context.mounted) return;
-
-    if (errorMessage != null) {
-      UiUtils.showErrorSnackbar(context, errorMessage);
-      return;
-    }
-
-    if (idServicio == null) {
-      UiUtils.showErrorSnackbar(
-        context,
-        'No se encontró un servicio disponible para reseñar.',
-      );
-      return;
-    }
-
-    final result = await showReviewBottomSheet(
-      context,
-      tallerId: tallerId,
-      tallerNombre: conversacion?.nombreMecanico ?? 'Taller',
-      idServicio: idServicio,
-    );
-
-    if (result == true && context.mounted) {
-      UiUtils.showSuccessSnackbar(context, '¡Gracias por enviar tu reseña!');
-    }
   }
 
   @override
@@ -202,11 +137,9 @@ class _CotizacionChatCardState extends State<CotizacionChatCard> {
                       as Map<String, dynamic>?)?['mensaje']
                   as String?,
           isMe: widget.isMe,
-          isCheckingReview: _isCheckingReview,
           decidiendo: _decidiendo,
           onAceptar: () => _actualizarEstado('aceptada'),
           onRechazar: () => _actualizarEstado('rechazada'),
-          onCalificar: () => _calificarServicio(context),
         );
       },
     );
@@ -272,23 +205,19 @@ class _CotizacionCardBody extends StatelessWidget {
   final CotizacionModel cotizacion;
   final String? errorAperturaTicket;
   final bool isMe;
-  final bool isCheckingReview;
 
   /// Con una decision en vuelo, Aceptar y Rechazar dejan de aceptar taps.
   final bool decidiendo;
   final VoidCallback onAceptar;
   final VoidCallback onRechazar;
-  final VoidCallback onCalificar;
 
   const _CotizacionCardBody({
     required this.cotizacion,
     required this.errorAperturaTicket,
     required this.isMe,
-    required this.isCheckingReview,
     this.decidiendo = false,
     required this.onAceptar,
     required this.onRechazar,
-    required this.onCalificar,
   });
 
   @override
@@ -508,19 +437,10 @@ class _CotizacionCardBody extends StatelessWidget {
               colors: colors,
             ),
           ],
-          if (estado == 'finalizada' && !isMe) ...[
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: AppButton(
-                text: 'Calificar Servicio',
-                type: AppButtonType.primary,
-                isLoading: isCheckingReview,
-                icon: const Icon(Icons.star),
-                onPressed: isCheckingReview ? null : onCalificar,
-              ),
-            ),
-          ],
+          // Sin botón de reseña (observaciones del 2026-09-19): un servicio
+          // puede cobrar varias cotizaciones, y cada tarjeta traía el suyo. La
+          // única forma de reseñar es el aviso de encima de la barra de
+          // escribir (`AvisoReseniaChat`).
         ],
       ),
     );

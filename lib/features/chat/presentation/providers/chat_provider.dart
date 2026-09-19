@@ -270,6 +270,20 @@ class ChatProvider extends ChangeNotifier {
         );
   }
 
+  /// La conversación que ya exista entre este propietario y este taller,
+  /// sea del vehículo que sea, o `null`. Nunca crea una: el taller no puede
+  /// (las reglas solo dejan crearla al propietario).
+  Future<String?> conversacionExistente({
+    required String idPropietario,
+    required String idMecanico,
+  }) async {
+    final conversacion = await _chatRepository.buscarConversacion(
+      idPropietario: idPropietario,
+      idMecanico: idMecanico,
+    );
+    return conversacion?.id;
+  }
+
   Future<String> iniciarOCrearConversacion({
     required String idPropietario,
     required String idMecanico,
