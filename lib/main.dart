@@ -281,6 +281,15 @@ Future<void> main() async {
 
   debugPrint("=== [AutoDoc Init] Inicialización completa. Lanzando runApp ===");
 
+  // El tema se lee ANTES de pintar: sin esperar, quien eligió un tema distinto
+  // del de su dispositivo vería el otro durante el primer frame. La espera va
+  // acotada para que un almacenamiento lento no retrase el arranque.
+  final themeProvider = ThemeProvider();
+  await themeProvider.listo.timeout(
+    const Duration(seconds: 2),
+    onTimeout: () {},
+  );
+
   // Crear providers base
   final authSessionProvider = AuthSessionProvider();
   final userProfileProvider = UserProfileProvider();
@@ -307,7 +316,7 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider.value(value: authSessionProvider),

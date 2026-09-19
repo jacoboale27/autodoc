@@ -13,6 +13,7 @@ import 'package:autodoc/core/utils/ui_utils.dart';
 import 'package:autodoc/features/chat/presentation/providers/chat_provider.dart';
 import 'package:autodoc/features/profile/data/services/user_service.dart';
 import 'package:autodoc/core/utils/mensaje_de_error.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 
 /// Datos que necesita [ServiceFinalizedScreen], pasados via `state.extra` de
 /// go_router (no caben en la URL: son varios campos ya resueltos por
@@ -128,6 +129,14 @@ class _ServiceFinalizedScreenState extends State<ServiceFinalizedScreen> {
 
     return Scaffold(
       backgroundColor: colors.surface,
+      // Sin título ni flecha (la salida son los botones de abajo): solo las
+      // acciones comunes de la cabecera, como en el resto de pantallas.
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: colors.surface,
+        elevation: 0,
+        actions: const [AccionesDeCabecera()],
+      ),
       body: SafeArea(
         child: AppPageBody(
           child: Center(

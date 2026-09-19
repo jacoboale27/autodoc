@@ -131,10 +131,19 @@ void main() {
     expect(source.contains('Colors.white'), isFalse);
     expect(source.contains('GoogleFonts.'), isFalse);
     expect(source.contains('size.width < 700'), isFalse);
+    // Los conmutadores de tema e idioma estuvieron escritos dos veces en este
+    // fichero. Desde las observaciones del 2026-09-19 viven en un solo sitio,
+    // `AccionesDeCabecera`, que `MechanicScaffold` pone en todas las
+    // pantallas del taller: aquí no puede quedar ninguna copia.
     expect(
-      'Consumer2<ThemeProvider, LanguageProvider>'.allMatches(source).length,
-      1,
-      reason: 'los conmutadores de tema e idioma estaban escritos dos veces',
+      source.contains('ThemeProvider'),
+      isFalse,
+      reason: 'el conmutador de tema lo pone MechanicScaffold, no el dashboard',
+    );
+    expect(
+      source.contains('LanguageProvider'),
+      isFalse,
+      reason: 'el de idioma, igual',
     );
   });
 }

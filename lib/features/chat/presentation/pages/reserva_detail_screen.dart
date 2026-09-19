@@ -25,6 +25,7 @@ import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/utils/mensaje_de_error.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 
 class ReservaDetailScreen extends StatefulWidget {
   final String reservaId;
@@ -279,6 +280,7 @@ class _ReservaDetailScreenState extends State<ReservaDetailScreen> {
         title: Text(context.l10n.chatReservationDetail),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: const [AccionesDeCabecera()],
       ),
       body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
         stream: (widget.firestore ?? FirebaseFirestore.instance)

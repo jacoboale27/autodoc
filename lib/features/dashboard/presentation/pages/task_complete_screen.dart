@@ -22,6 +22,7 @@ import 'package:autodoc/core/widgets/app_scaffold.dart';
 import 'package:autodoc/core/widgets/app_section_header.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/utils/mensaje_de_error.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 
 class TaskCompleteScreen extends StatefulWidget {
   final MaintenanceTask task;
@@ -122,6 +123,7 @@ class _TaskCompleteScreenState extends State<TaskCompleteScreen> {
             color: colors.primary,
           ),
         ),
+        actions: const [AccionesDeCabecera()],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),

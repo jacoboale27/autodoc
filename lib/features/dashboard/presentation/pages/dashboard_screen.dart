@@ -13,7 +13,7 @@ import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_horizontal_scroller.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
-import 'package:autodoc/core/widgets/notification_bell_button.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
@@ -257,9 +257,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final userName =
         userSession.userData?.nombreCompleto.split(' ').first ?? 'Usuario';
 
-    final colors = context.appColors;
-    final userPhoto = userSession.userData?.fotoPerfilUrl;
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.base),
       child: Row(
@@ -292,51 +289,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
+          // Tema, idioma, campana y avatar: los mismos controles que el resto
+          // de pantallas (observaciones del 2026-09-19).
           if (!windowClass.isLarge) ...[
             const SizedBox(width: AppSpacing.sm),
-            Row(
-              key: const Key('dashboard-header-acciones'),
-              children: [
-                NotificationBellButton(readColor: subTextColor),
-                const SizedBox(width: AppSpacing.xs),
-                GestureDetector(
-                  onTap: () => context.push('/user_profile'),
-                  child: Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: Responsive.size(context, 24),
-                        backgroundColor: colors.primary,
-                        backgroundImage: userPhoto != null
-                            ? NetworkImage(userPhoto)
-                            : null,
-                        child: userPhoto == null
-                            ? Text(
-                                userName.isNotEmpty
-                                    ? userName[0].toUpperCase()
-                                    : 'U',
-                                style: AppTextStyles.titleMedium.copyWith(
-                                  color: colors.onPrimary,
-                                ),
-                              )
-                            : null,
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          width: Responsive.size(context, 12),
-                          height: Responsive.size(context, 12),
-                          decoration: BoxDecoration(
-                            color: colors.secondary,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: colors.surface, width: 2),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            const AccionesDeCabecera(
+              key: Key('dashboard-header-acciones'),
+              mostrarAvatar: true,
             ),
           ],
         ],

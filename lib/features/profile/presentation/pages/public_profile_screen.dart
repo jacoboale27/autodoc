@@ -19,6 +19,7 @@ import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_user_avatar.dart';
 import 'package:autodoc/core/widgets/missing_argument_screen.dart';
 import 'package:autodoc/features/profile/data/services/public_profile_service.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 
 /// Perfil público de "el otro" desde el chat (Tarea 10, C3).
 ///
@@ -156,6 +157,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
         backgroundColor: colors.surfaceContainer,
         foregroundColor: colors.primary,
         elevation: 0,
+        actions: const [AccionesDeCabecera()],
       ),
       body: FutureBuilder<_PerfilPublico>(
         future: _future,

@@ -8,6 +8,7 @@ import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/core/widgets/vehicle_image_widget.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_motion.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
@@ -15,6 +16,7 @@ import 'package:autodoc/core/theme/app_severity.dart';
 import 'package:autodoc/core/theme/app_shadows.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_empty_state.dart';
 import 'package:autodoc/core/widgets/app_grid.dart';
@@ -139,6 +141,11 @@ class GarageScreen extends StatelessWidget {
               ),
               onPressed: () => _showAddVehicleDialog(context, colors.primary),
             ),
+            // En `large` las lleva la barra superior del shell.
+            if (!AppBreakpoints.of(context).isLarge) ...[
+              const SizedBox(width: AppSpacing.sm),
+              const AccionesDeCabecera(),
+            ],
           ],
         ),
       ),

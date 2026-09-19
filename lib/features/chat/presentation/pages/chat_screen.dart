@@ -47,6 +47,7 @@ import 'package:autodoc/features/profile/data/services/public_profile_service.da
 import 'package:autodoc/features/chat/presentation/widgets/adjunto_preview_sheet.dart';
 import 'package:autodoc/features/mechanic/data/services/verificacion_service.dart';
 import 'package:go_router/go_router.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 
 /// Firma del selector de imagen, con el origen (`gallery`/`camera`) ya
 /// resuelto por quien llama. Misma costura que `SelectorDeArchivo` en
@@ -960,6 +961,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         ),
         backgroundColor: isDark ? colors.surfaceContainer : colors.surface,
         elevation: 1,
+        actions: const [AccionesDeCabecera()],
       ),
       body: Column(
         children: [

@@ -7,9 +7,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_scaffold.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
@@ -365,34 +367,43 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
           bottom: BorderSide(color: colors.primary.withValues(alpha: 0.1)),
         ),
       ),
+      // Sin flecha de volver: el directorio es una pestaña del shell y se
+      // llega con `go`, así que no había nada que desapilar (el `pop` moría
+      // con "There is nothing to pop"). El selector lista/mapa pasa a la fila
+      // de filtros para dejar sitio a las acciones comunes de la cabecera.
       child: Row(
         children: [
-          IconButton(
-            icon: Icon(Icons.arrow_back, color: colors.textPrimary),
-            onPressed: () => context.pop(),
-          ),
-          Text(
-            context.l10n.wdTitle,
-            style: AppTextStyles.titleLarge.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colors.textPrimary,
+          Expanded(
+            child: Text(
+              context.l10n.wdTitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.titleLarge.copyWith(
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+              ),
             ),
           ),
-          const Spacer(),
-          // Toggle Map/List
-          Container(
-            decoration: BoxDecoration(
-              color: colors.primary.withValues(alpha: isDark ? 0.15 : 0.08),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _viewToggle(Icons.list, !_showMap, colors),
-                _viewToggle(Icons.map_outlined, _showMap, colors),
-              ],
-            ),
-          ),
+          const SizedBox(width: AppSpacing.xs),
+          const AccionesDeCabecera(),
+        ],
+      ),
+    );
+  }
+
+  /// Selector lista/mapa. Solo existe por debajo de `expanded`: a partir de
+  /// ahí el split lista/mapa es persistente.
+  Widget _selectorDeVista(AppColors colors, bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.primary.withValues(alpha: isDark ? 0.15 : 0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _viewToggle(Icons.list, !_showMap, colors),
+          _viewToggle(Icons.map_outlined, _showMap, colors),
         ],
       ),
     );
@@ -480,7 +491,13 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
       padding: EdgeInsets.symmetric(
         horizontal: Responsive.padding(context, 16),
       ),
-      child: Row(children: _filterChips(isDark, colors)),
+      child: Row(
+        children: [
+          _selectorDeVista(colors, isDark),
+          const SizedBox(width: AppSpacing.sm),
+          ..._filterChips(isDark, colors),
+        ],
+      ),
     );
   }
 
@@ -511,6 +528,12 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
               child: Row(children: _filterChips(isDark, colors)),
             ),
           ),
+          // Aquí no hay cabecera (ver `_buildHeader`) y el rail lateral no
+          // lleva estas acciones; en `large` ya las pinta la barra superior.
+          if (!AppBreakpoints.of(context).isLarge) ...[
+            const SizedBox(width: AppSpacing.sm),
+            const AccionesDeCabecera(),
+          ],
         ],
       ),
     );
