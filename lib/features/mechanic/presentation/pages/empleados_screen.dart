@@ -16,6 +16,8 @@ import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/empleado_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 import 'package:autodoc/core/utils/mensaje_de_error.dart';
+import 'package:autodoc/core/models/invitacion_empleo_model.dart';
+import 'package:autodoc/core/widgets/app_section_header.dart';
 
 /// Pantalla de gestión de sub-cuentas de empleados de un taller: lista los
 /// empleados vinculados (`talleres/{idTaller}/empleados`), permite
@@ -74,7 +76,7 @@ class _NuevoEmpleadoDialogState extends State<_NuevoEmpleadoDialog> {
       return;
     }
     setState(() {});
-    final ok = await widget.provider.crearEmpleado(
+    final resultado = await widget.provider.crearEmpleado(
       correo: _correoController.text.trim(),
       password: _passwordController.text,
       nombreCompleto: _nombreController.text.trim(),
@@ -90,8 +92,8 @@ class _NuevoEmpleadoDialogState extends State<_NuevoEmpleadoDialog> {
     // del dialogo queda tan bajo que el SnackBar flotante no cabe y dispara
     // "Floating SnackBar presented off screen".
     FocusManager.instance.primaryFocus?.unfocus();
-    if (ok) {
-      Navigator.pop(context, true);
+    if (resultado != null) {
+      Navigator.pop(context, resultado);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -142,6 +144,18 @@ class _NuevoEmpleadoDialogState extends State<_NuevoEmpleadoDialog> {
                 obscureToggle: true,
                 validator: (v) =>
                     (v == null || v.length < 6) ? 'Mínimo 6 caracteres' : null,
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              // Observaciones del 2026-09-19: con un correo que ya tenía
+              // cuenta, el alta fallaba con «Ese dato ya existe». Ahora se le
+              // invita, y conviene saberlo antes de pulsar "Crear".
+              Text(
+                'Si esa persona ya tiene cuenta en AutoDoc, le llegará una '
+                'invitación a sus notificaciones y conservará su propia '
+                'contraseña.',
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: context.appColors.textSecondary,
+                ),
               ),
               const SizedBox(height: 12),
               AppTextField(
@@ -202,6 +216,9 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
   /// no gobierna el botón de la tarjeta, que es el defecto: la protección va
   /// donde está el botón, y por empleado, no global.
   final Set<String> _desactivando = <String>{};
+
+  /// Invitaciones cuyo retiro está en vuelo (mismo guard que [_desactivando]).
+  final Set<String> _retirando = <String>{};
 
   @override
   void initState() {
@@ -280,13 +297,74 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
 
   Future<void> _mostrarDialogoCrearEmpleado(BuildContext context) async {
     final provider = context.read<EmpleadoProvider>();
-    final ok = await showDialog<bool>(
+    final resultado = await showDialog<ResultadoAltaEmpleado>(
       context: context,
       builder: (dialogContext) => _NuevoEmpleadoDialog(provider: provider),
     );
-    if (ok == true && context.mounted) {
+    if (resultado == null || !context.mounted) return;
+    final mensaje = switch (resultado) {
+      ResultadoAltaEmpleado.creado => 'Empleado creado correctamente',
+      ResultadoAltaEmpleado.reactivado =>
+        'Ese empleado ya había trabajado en tu taller: volvió a quedar '
+            'activo, con la contraseña temporal que pusiste.',
+      ResultadoAltaEmpleado.reactivadoConSuContrasena =>
+        'Ese empleado ya había trabajado en tu taller y volvió a quedar '
+            'activo. Entra con su propia contraseña: la cuenta es suya, así '
+            'que la temporal que pusiste no se usó.',
+      ResultadoAltaEmpleado.invitado =>
+        'Ese correo ya tiene cuenta en AutoDoc: le enviamos una invitación. '
+            'Cuando la acepte desde sus notificaciones, aparecerá en tu lista.',
+    };
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensaje),
+        duration: resultado == ResultadoAltaEmpleado.creado
+            ? const Duration(seconds: 4)
+            : const Duration(seconds: 8),
+      ),
+    );
+  }
+
+  Future<void> _retirarInvitacion(InvitacionEmpleoModel invitacion) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Retirar invitación'),
+        content: Text(
+          '¿Retirar la invitación a "${invitacion.nombreCompleto}"? Si '
+          'intenta aceptarla después, le dirá que ya no está disponible.',
+        ),
+        actions: [
+          AppButton(
+            text: 'Cancelar',
+            type: AppButtonType.text,
+            size: AppButtonSize.small,
+            onPressed: () => Navigator.pop(context, false),
+          ),
+          AppButton(
+            text: 'Retirar',
+            type: AppButtonType.danger,
+            size: AppButtonSize.small,
+            onPressed: () => Navigator.pop(context, true),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    if (_retirando.contains(invitacion.idInvitado)) return;
+    setState(() => _retirando.add(invitacion.idInvitado));
+    final provider = context.read<EmpleadoProvider>();
+    final ok = await provider.retirarInvitacion(
+      widget.idTaller,
+      invitacion.idInvitado,
+    );
+    if (!mounted) return;
+    setState(() => _retirando.remove(invitacion.idInvitado));
+    if (!ok) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Empleado creado correctamente')),
+        SnackBar(
+          content: Text(provider.error ?? 'No se pudo retirar la invitación.'),
+        ),
       );
     }
   }
@@ -320,7 +398,11 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
           : Consumer<EmpleadoProvider>(
               builder: (context, provider, _) {
                 final empleados = provider.empleados;
-                if (empleados.isEmpty) {
+                final ahora = DateTime.now();
+                final invitaciones = provider.invitaciones
+                    .where((i) => !i.caducada(ahora))
+                    .toList();
+                if (empleados.isEmpty && invitaciones.isEmpty) {
                   return const AppEmptyState(
                     title: 'Aún no tienes empleados',
                     description:
@@ -333,21 +415,45 @@ class _EmpleadosScreenState extends State<EmpleadosScreen> {
                 return SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
                   child: AppPageBody(
-                    child: AppGrid(
-                      compactColumns: 1,
-                      mediumColumns: 2,
-                      expandedColumns: 2,
-                      largeColumns: 3,
-                      spacing: AppSpacing.base,
-                      childAspectRatio: 2.4,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        for (final empleado in empleados)
-                          _EmpleadoCard(
-                            empleado: empleado,
-                            onDesactivar: () => _confirmarDesactivar(empleado),
-                            desactivando: _desactivando.contains(
-                              empleado.idEmpleado,
+                        if (invitaciones.isNotEmpty) ...[
+                          const AppSectionHeader(
+                            title: 'Invitaciones pendientes',
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          for (final invitacion in invitaciones) ...[
+                            _InvitacionCard(
+                              invitacion: invitacion,
+                              retirando: _retirando.contains(
+                                invitacion.idInvitado,
+                              ),
+                              onRetirar: () => _retirarInvitacion(invitacion),
                             ),
+                            const SizedBox(height: AppSpacing.sm),
+                          ],
+                          const SizedBox(height: AppSpacing.xl),
+                        ],
+                        if (empleados.isNotEmpty)
+                          AppGrid(
+                            compactColumns: 1,
+                            mediumColumns: 2,
+                            expandedColumns: 2,
+                            largeColumns: 3,
+                            spacing: AppSpacing.base,
+                            childAspectRatio: 2.4,
+                            children: [
+                              for (final empleado in empleados)
+                                _EmpleadoCard(
+                                  empleado: empleado,
+                                  onDesactivar: () =>
+                                      _confirmarDesactivar(empleado),
+                                  desactivando: _desactivando.contains(
+                                    empleado.idEmpleado,
+                                  ),
+                                ),
+                            ],
                           ),
                       ],
                     ),
@@ -456,6 +562,77 @@ class _EstadoChip extends StatelessWidget {
       child: Text(
         activo ? '$rol · Activo' : '$rol · Inactivo',
         style: AppTextStyles.labelSmall.copyWith(color: color),
+      ),
+    );
+  }
+}
+
+/// Una invitación enviada a alguien que ya tenía cuenta, esperando que la
+/// acepte (observaciones del 2026-09-19).
+class _InvitacionCard extends StatelessWidget {
+  final InvitacionEmpleoModel invitacion;
+  final bool retirando;
+  final VoidCallback onRetirar;
+
+  const _InvitacionCard({
+    required this.invitacion,
+    required this.retirando,
+    required this.onRetirar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final rol = invitacion.rol == 'Recepcionista'
+        ? 'Recepcionista'
+        : 'Mecánico';
+
+    return AppCard(
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(AppSpacing.base),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: colors.warning.withValues(alpha: 0.15),
+            child: Icon(
+              Icons.mark_email_unread_outlined,
+              color: colors.warning,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  invitacion.nombreCompleto.isEmpty
+                      ? invitacion.correo
+                      : invitacion.nombreCompleto,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                Text(
+                  '${invitacion.correo} · $rol · esperando que acepte',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.close, color: colors.error),
+            tooltip: 'Retirar la invitación a ${invitacion.nombreCompleto}',
+            onPressed: retirando ? null : onRetirar,
+          ),
+        ],
       ),
     );
   }

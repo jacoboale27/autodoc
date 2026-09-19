@@ -50,6 +50,62 @@ nuevo eran las capturas 3–6 y los puntos que ese plan dejó fuera. Lo que hay 
   adapter de Hive se tocó a mano: campos 11 y 12). **Logo del taller** como avatar.
 - Sin cambios en `firestore.rules`, `storage.rules` ni índices.
 
+### Observaciones del 2026-09-19 (misma rama) — los seis puntos de Oscar
+
+La lista vive en la sesión del 2026-09-19 (se cortó por cuota y se retomó). Lo que hay que saber:
+
+- **Buscar Vehículo abre el PERFIL del coche** (`VehiclePublicViewScreen`): datos, servicio en
+  curso, cotizaciones y servicios de ESTE taller, y «Nueva cotización». `buscarVehiculoPorPlaca`
+  acepta ahora `idVehiculo` (recargar la página) y devuelve `foto_url`; mismos campos, nada nuevo
+  abierto. **El campo «Beneficio» ya no está** en `NuevaCotizacionScreen` (hacía lo mismo que la
+  mano de obra); `privado/margen` sigue viajando en ceros porque las reglas lo exigen.
+- **Tema, idioma y campana en todas las pantallas** (`AccionesDeCabecera`, más el avatar del
+  propietario). Un centinela (`acciones_de_cabecera_test.dart`) rompe si una pantalla no lo
+  lleva. El tema arranca en `ThemeMode.system`, se guarda al cambiarlo y `main` lo lee ANTES de
+  pintar (sin destello del otro tema).
+- **«Mis Servicios» solo leía `servicios`** (trabajos ya registrados), así que ni una cotización
+  rechazada ni una aceptada en proceso podían salir nunca. Ahora junta cotizaciones y servicios
+  del taller por pestañas (todos, en proceso, pendientes, finalizados, rechazados). **Índice nuevo**
+  `cotizaciones (id_taller, fecha DESC)`; se retira `(id_vehiculo, estado, fecha DESC)`, que ya no
+  usa nadie.
+- **«No se pudo comprobar si el cliente aprobó la cotización»**: la consulta no filtraba por
+  taller y las reglas la rechazaban entera (`permission-denied`). Ahora filtra por taller y suma
+  TODAS las aceptadas.
+- **Invitar como empleado a quien ya tiene cuenta** (`functions/src/empleadosTaller.js`): ex
+  empleado del taller → se reactiva; propietario → se le INVITA y acepta él desde Notificaciones
+  (`responderInvitacionEmpleo`); de otro taller o admin → se dice por qué. Aceptar exige correo
+  verificado y **que la cuenta no tenga vehículos** (un taller no puede verlos). La invitación
+  guarda el nombre que tecleó el taller, **nunca el del perfil**: el taller lee sus invitaciones
+  y si no se podía averiguar el nombre del dueño de cualquier correo. Reglas nuevas:
+  `talleres/{id}/invitaciones/{uid}` (solo Admin SDK escribe; solo el taller dueño lee).
+- **Los dos revisores de gate tumbaron la primera versión, con el mismo bloqueante:** la
+  reactivación de un ex empleado le ponía la contraseña que tecleara el taller, y con las
+  invitaciones eso ya no era «una cuenta del taller»: desactivar a quien entró por invitación y
+  volver a darlo de alta era **quedarse con su cuenta personal**. Ahora `empleados/{uid}` guarda
+  `origen: 'invitacion'` y esas cuentas se reabren con SU contraseña; y solo se reactiva lo que
+  desactivó el taller (`activo: false`), nunca una suspensión de administración. De paso:
+  aceptar va en transacción que relee invitación y perfil (una invitación retirada, o aceptar
+  la de dos talleres a la vez, dejaba la cuenta dentro), un solo mensaje para las cuentas que no
+  pueden unirse (antes revelaba si el correo era de admin), no se invita a correos sin verificar
+  ni se re-avisa con una invitación viva, el cambio de rol deja rastro en `admin_logs`, «Mis
+  Servicios» suma las pendientes/aceptadas viejas que el tope de 200 dejaba fuera,
+  `marcarFinalizadas` va en un lote y `buscarVehiculoPorPlaca` exige también `estado` aprobado.
+- **Gaps que quedan anotados:** sin cupo de invitaciones por taller (un taller puede probar
+  correos a ritmo libre), las invitaciones caducadas no se borran solas (la pantalla las oculta;
+  una política TTL sobre `expira` lo cerraría) y `vehiculos.foto_url` es una URL libre del
+  cliente que el taller carga al abrir la ficha (heredado: ya pasaba con `vehiculo_resumen`).
+- **Diseño de escritorio:** la causa de las «tarjetas deformes» era `AppGrid` con
+  `childAspectRatio`: el alto crece con el ancho. `AppGrid` tiene ahora `mainAxisExtent` (alto
+  fijo, escalado con el texto del sistema) y `sizeToContent` (cada tarjeta a su alto, con `Wrap`).
+  El perfil del coche va a dos columnas en escritorio; alertas e historial miden por contenido.
+  Para revisar diseño sin tocar producción se renderizó cada pantalla con `matchesGoldenFile` +
+  `--update-goldens` y las fuentes de `material_fonts` registradas con los nombres que usa
+  `google_fonts` (`Inter_700`…); **las fuentes se cargan en `setUpAll`**, dentro de `testWidgets`
+  la E/S real se cuelga.
+- **Despliegue:** la CI lo hace todo al fusionar a `main`. Conviene adelantar
+  `firebase deploy --only firestore:indexes --project production`: el índice nuevo tarda unos
+  minutos en construirse y «Mis Servicios» falla hasta entonces.
+
 ### La tanda GAPS-07 esta cerrada (2026-09-15, `fix/gaps-07a`) — el doble envio
 
 Cierra el gap 1 del §4 de GAPS-06: **los 15 grupos de doble envio, los 15**. Evidencia en

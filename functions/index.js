@@ -26,6 +26,11 @@ const { enviarRecordatoriosDeReserva } = require('./src/recordatoriosReserva');
 const { borrarFotosDeResenia } = require('./src/fotosDeResenia');
 const { recontarResenias, sembrarAgregado } = require('./src/agregadoResenias');
 const {
+  ErrorEmpleado,
+  incorporarCuentaExistente,
+  responderInvitacion,
+} = require('./src/empleadosTaller');
+const {
   decidirAvisoKilometraje,
   decidirSolicitudResenia,
   decidirMensajeChat,
@@ -1702,7 +1707,34 @@ exports.crearEmpleadoTaller = functions.https.onCall(async (data, context) => {
     });
   } catch (err) {
     if (err && err.code === 'auth/email-already-exists') {
-      throw new functions.https.HttpsError('already-exists', 'Ya existe una cuenta con ese correo.');
+      // Observaciones del 2026-09-19: el correo ya tiene cuenta. Antes esto
+      // terminaba aqui con un 'already-exists' que la app pintaba como «Ese
+      // dato ya existe»; ahora se reactiva al ex empleado del taller o se
+      // invita a la persona (ver src/empleadosTaller.js).
+      try {
+        return await incorporarCuentaExistente({
+          db,
+          auth: admin.auth(),
+          idTaller: idTallerPropietario,
+          nombreTaller: (tallerData && tallerData.nombre_completo) || 'Un taller',
+          correo,
+          nombreCompleto,
+          telefono,
+          rolEmpleado,
+          password,
+          ahora: new Date(),
+          escribirNotificacion: writeNotification,
+        });
+      } catch (errExistente) {
+        if (errExistente instanceof ErrorEmpleado) {
+          throw new functions.https.HttpsError(errExistente.codigo, errExistente.message);
+        }
+        console.error('crearEmpleadoTaller: fallo con un correo ya registrado:', errExistente);
+        throw new functions.https.HttpsError(
+          'internal',
+          'No se pudo completar el registro del empleado. Intenta de nuevo.'
+        );
+      }
     }
     throw new functions.https.HttpsError('invalid-argument', err.message);
   }
@@ -1757,7 +1789,45 @@ exports.crearEmpleadoTaller = functions.https.onCall(async (data, context) => {
     );
   }
 
-  return { idEmpleado: userRecord.uid };
+  return { idEmpleado: userRecord.uid, resultado: 'creado' };
+});
+
+/**
+ * La persona invitada a un taller acepta o rechaza la invitación
+ * (observaciones del 2026-09-19; ver `src/empleadosTaller.js`). Aceptar
+ * convierte SU cuenta en cuenta de empleado de ese taller, así que solo ella
+ * puede hacerlo: la invitación se busca por su propio uid.
+ */
+exports.responderInvitacionEmpleo = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'responderInvitacionEmpleo');
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  }
+  const idTaller = data && data.idTaller ? String(data.idTaller) : '';
+  if (!idTaller || idTaller.includes('/')) {
+    throw new functions.https.HttpsError('invalid-argument', 'Invitación no válida.');
+  }
+  const aceptar = Boolean(data && data.aceptar);
+  try {
+    return await responderInvitacion({
+      db,
+      auth: admin.auth(),
+      uid: context.auth.uid,
+      idTaller,
+      aceptar,
+      ahora: new Date(),
+      escribirNotificacion: writeNotification,
+    });
+  } catch (err) {
+    if (err instanceof ErrorEmpleado) {
+      throw new functions.https.HttpsError(err.codigo, err.message);
+    }
+    console.error('responderInvitacionEmpleo:', err);
+    throw new functions.https.HttpsError(
+      'internal',
+      'No se pudo responder la invitación. Intenta de nuevo.'
+    );
+  }
 });
 
 /**

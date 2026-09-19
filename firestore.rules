@@ -450,6 +450,27 @@ service cloud.firestore {
         allow create, delete: if isAdmin();
       }
 
+      // Invitaciones a unirse al taller como empleado (observaciones del
+      // 2026-09-19): las crea `crearEmpleadoTaller` cuando el correo ya tiene
+      // cuenta, y solo `responderInvitacionEmpleo` las resuelve — los dos con
+      // Admin SDK. Van en su propia subcoleccion y NO en `empleados` a
+      // proposito: `desactivarEmpleadoTaller` trata un documento de
+      // `empleados` como prueba de que la cuenta es del taller, y una
+      // invitacion todavia no lo es.
+      match /invitaciones/{invitadoId} {
+        // Solo el taller (y admin). La persona invitada NO: la app le da todo
+        // lo que necesita en la notificacion, y leer el documento le
+        // ensenaria el telefono y el nombre que tecleo el taller aunque
+        // hubiera registrado ese correo sin ser su dueno (revision del
+        // 2026-09-19). Tampoco los empleados del taller: gestionar la
+        // plantilla es cosa del dueno, igual que en `empleados`.
+        allow read: if isAuthenticated() &&
+          (request.auth.uid == tallerId || isAdmin());
+        // El taller puede retirar una invitacion que ya no quiere.
+        allow delete: if isAuthenticated() && (request.auth.uid == tallerId || isAdmin());
+        allow create, update: if false;
+      }
+
       // Catálogo de servicios/repuestos rápidos del taller (Tarea 9,
       // CatalogoRepository). Igual que 'empleados', esta subcoleccion
       // necesita su propio match aunque 'talleres/{tallerId}' ya tenga
