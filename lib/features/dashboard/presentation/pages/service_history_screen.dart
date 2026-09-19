@@ -23,6 +23,7 @@ import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 
 class ServiceHistoryScreen extends StatefulWidget {
   final String vehiculoId;
@@ -92,32 +93,38 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
             onPressed: () =>
                 context.go('/compartir_historial/${widget.vehiculoId}'),
           ),
+          const AccionesDeCabecera(),
         ],
       ),
       body: Column(
         children: [
-          // Filter Tabs
-          Padding(
-            padding: EdgeInsets.all(Responsive.padding(context, 16.0)),
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: colors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+          // Filter Tabs. Pestañas, filtros y resumen van dentro de
+          // AppPageBody, igual que la lista: en escritorio iban de borde a
+          // borde y la lista centrada debajo (observaciones del 2026-09-19).
+          AppPageBody(
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                vertical: Responsive.padding(context, 16.0),
               ),
-              child: Row(
-                children: [
-                  _buildFilterTab(context.l10n.histTabAll, colors),
-                  _buildFilterTab(context.l10n.histTabManual, colors),
-                  _buildFilterTab(context.l10n.histTabWorkshop, colors),
-                ],
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: colors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    _buildFilterTab(context.l10n.histTabAll, colors),
+                    _buildFilterTab(context.l10n.histTabManual, colors),
+                    _buildFilterTab(context.l10n.histTabWorkshop, colors),
+                  ],
+                ),
               ),
             ),
           ),
 
           // Advanced Filters
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          AppPageBody(
             child: Row(
               children: [
                 Expanded(
@@ -332,7 +339,9 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                             mediumColumns: 1,
                             expandedColumns: 2,
                             largeColumns: 2,
-                            childAspectRatio: 1.3,
+                            // A su alto: con proporción 1.3 un servicio medía
+                            // 420 px en escritorio (observaciones 2026-09-19).
+                            sizeToContent: true,
                             children: filteredRecords
                                 .map(
                                   (record) => _buildServiceCard(
@@ -365,70 +374,75 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
     );
     double avgCost = totalCost / records.length;
 
-    return AppCard(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.base,
-        vertical: AppSpacing.sm,
-      ),
-      child: Column(
-        children: [
-          Text(
-            context.l10n.histTotalSpent,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: colors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '\$${totalCost.toStringAsFixed(2)}',
-            style: AppTextStyles.headlineSmall.copyWith(
-              color: colors.primary,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Divider(height: 1),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              Column(
-                children: [
-                  Text(
-                    context.l10n.histServicesCount,
-                    style: TextStyle(color: colors.textSecondary, fontSize: 12),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${records.length}',
-                    style: TextStyle(
-                      color: colors.textPrimary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
+    return AppPageBody(
+      child: AppCard(
+        margin: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        child: Column(
+          children: [
+            Text(
+              context.l10n.histTotalSpent,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: colors.textSecondary,
               ),
-              Column(
-                children: [
-                  Text(
-                    context.l10n.histAverage,
-                    style: TextStyle(color: colors.textSecondary, fontSize: 12),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '\$${avgCost.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      color: colors.textPrimary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '\$${totalCost.toStringAsFixed(2)}',
+              style: AppTextStyles.headlineSmall.copyWith(
+                color: colors.primary,
+                fontWeight: FontWeight.bold,
               ),
-            ],
-          ),
-        ],
+            ),
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                Column(
+                  children: [
+                    Text(
+                      context.l10n.histServicesCount,
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${records.length}',
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+                Column(
+                  children: [
+                    Text(
+                      context.l10n.histAverage,
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '\$${avgCost.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

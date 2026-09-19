@@ -2,6 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
+import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/widgets/app_grid.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_core_platform_interface/test.dart';
@@ -82,7 +85,31 @@ void main() {
     tester,
   ) async {
     await pumpScreen(tester, 1440);
-    expect(find.byType(GridView), findsWidgets);
+    final grid = tester.widget<AppGrid>(find.byType(AppGrid));
+    expect(grid.columnsFor(WindowClass.large), 2);
+  });
+
+  // Observaciones del 2026-09-19: en escritorio un servicio medía 420 px de
+  // alto (proporción 1.3) y los filtros y el resumen iban de borde a borde
+  // mientras la lista quedaba centrada debajo.
+  testWidgets('en escritorio el servicio mide lo que su contenido y alinea', (
+    tester,
+  ) async {
+    await pumpScreen(tester, 1440);
+    final servicio = find.descendant(
+      of: find.byType(AppGrid),
+      matching: find.byType(AppCard),
+    );
+    final resumen = find.ancestor(
+      of: find.text('Total gastado'),
+      matching: find.byType(AppCard),
+    );
+    expect(tester.getSize(servicio.first).height, lessThan(220));
+    expect(
+      tester.getTopLeft(servicio.first).dx,
+      tester.getTopLeft(resumen.first).dx,
+      reason: 'la lista y el resumen arrancan en el mismo borde',
+    );
   });
 
   testWidgets('no desborda en ningún ancho de auditoría, en ambos temas', (

@@ -139,20 +139,17 @@ void main() {
     );
   });
 
-  testWidgets('los detalles técnicos usan AppGrid con 2/2/3 columnas', (
+  testWidgets('los detalles técnicos usan AppGrid: 2 columnas, 4 en medium', (
     tester,
   ) async {
-    // No 4 a 1440: igual que en garage_screen_test.dart, AppGrid decide por
-    // el ancho real del panel (LayoutBuilder), y AppPageBody acota ese
-    // panel a maxContentWidth (1200) menos su gutter en `large` (40): a
-    // 1440px de viewport el panel real mide 1200 - 2*40 = 1120px, que cae
-    // en `expanded` (840-1199), no en `large`. El techo alcanzable es 3
-    // columnas en cualquier ancho de viewport.
+    // Observaciones del 2026-09-19: en escritorio (>= expanded) la rejilla
+    // vive en la columna derecha, junto a la foto, así que vuelve a 2
+    // columnas: el panel mide 425 px a 1024 y 498 px a 1440 (compact).
     for (final (width, expected) in [
       (375.0, 2),
-      (768.0, 2),
-      (1024.0, 3),
-      (1440.0, 3),
+      (768.0, 4),
+      (1024.0, 2),
+      (1440.0, 2),
     ]) {
       await pumpScreen(tester, width);
 
@@ -164,6 +161,57 @@ void main() {
     }
 
     expect(find.byType(AppGrid), findsWidgets);
+  });
+
+  // Observaciones del 2026-09-19: «en computadora las tarjetas del carro se
+  // ven deformes, todo grande». Con `childAspectRatio` el alto de cada dato
+  // crecía con el ancho: 122 px en un teléfono, 250 en escritorio.
+  testWidgets(
+    'las tarjetas de datos miden lo mismo de alto a cualquier ancho',
+    (tester) async {
+      final altos = <double, double>{};
+      for (final width in [375.0, 768.0, 1024.0, 1440.0]) {
+        await pumpScreen(tester, width);
+        final tarjeta = find.descendant(
+          of: find.byKey(const Key('perfil_vehiculo_datos')),
+          matching: find.byType(AppCard),
+        );
+        altos[width] = tester.getSize(tarjeta.first).height;
+      }
+      expect(altos.values.toSet(), hasLength(1), reason: '$altos');
+      expect(altos.values.first, lessThanOrEqualTo(80));
+    },
+  );
+
+  testWidgets('en escritorio la foto y la ficha van lado a lado', (
+    tester,
+  ) async {
+    await pumpScreen(tester, 1440);
+    expect(
+      find.byKey(const Key('perfil_vehiculo_cabecera_ancha')),
+      findsOneWidget,
+    );
+    final foto = tester.getRect(find.byType(Hero).first);
+    final datos = tester.getRect(
+      find.byKey(const Key('perfil_vehiculo_datos')),
+    );
+    expect(
+      datos.left,
+      greaterThan(foto.right),
+      reason: 'datos debajo de la foto',
+    );
+    expect(
+      foto.height,
+      lessThan(450),
+      reason: 'la foto en 16:9 a todo el ancho medía más de 600 px de alto',
+    );
+
+    await pumpScreen(tester, 375);
+    expect(
+      find.byKey(const Key('perfil_vehiculo_cabecera_ancha')),
+      findsNothing,
+      reason: 'en un teléfono se queda en una columna',
+    );
   });
 
   test('ninguna sección pone su propio gutter horizontal', () {

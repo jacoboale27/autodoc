@@ -21,6 +21,7 @@ import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
@@ -114,16 +115,20 @@ class _AlertsScreenState extends State<AlertsScreen> {
               icon: Icon(Icons.arrow_back_ios_new, color: colors.textSecondary),
               onPressed: () => context.pop(),
             ),
-            Text(
-              context.l10n.alertsTitle,
-              style: AppTextStyles.titleLarge.copyWith(color: primary),
+            Expanded(
+              child: Text(
+                context.l10n.alertsTitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.titleLarge.copyWith(color: primary),
+              ),
             ),
-            const Spacer(),
             IconButton(
               icon: Icon(Icons.update, color: primary),
               tooltip: context.l10n.alertsUpdateMileage,
               onPressed: () => _showUpdateMileageDialog(context),
             ),
+            const AccionesDeCabecera(),
           ],
         ),
       ),
@@ -322,7 +327,10 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 mediumColumns: 1,
                 expandedColumns: 2,
                 largeColumns: 2,
-                childAspectRatio: 1.5,
+                // Cada tarjeta a su alto (observaciones del 2026-09-19): con
+                // proporción 1.5 una alerta de dos líneas medía 370 px en
+                // escritorio.
+                sizeToContent: true,
                 children: [
                   ...criticalTasks.map(
                     (t) => _buildTaskCard(t, currentKm, criticalStyle),
@@ -348,7 +356,10 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 mediumColumns: 1,
                 expandedColumns: 2,
                 largeColumns: 2,
-                childAspectRatio: 1.5,
+                // Cada tarjeta a su alto (observaciones del 2026-09-19): con
+                // proporción 1.5 una alerta de dos líneas medía 370 px en
+                // escritorio.
+                sizeToContent: true,
                 children: [
                   ...preventiveTasks.map(
                     (t) => _buildTaskCard(t, currentKm, preventiveStyle),
@@ -369,7 +380,10 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 mediumColumns: 1,
                 expandedColumns: 2,
                 largeColumns: 2,
-                childAspectRatio: 1.5,
+                // Cada tarjeta a su alto (observaciones del 2026-09-19): con
+                // proporción 1.5 una alerta de dos líneas medía 370 px en
+                // escritorio.
+                sizeToContent: true,
                 children: [
                   ...optimalTasks.map(
                     (t) => _buildTaskCard(t, currentKm, optimalStyle),
