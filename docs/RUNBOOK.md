@@ -145,6 +145,71 @@ Verificar despues de crearlas:
 gcloud firestore fields ttls list --project=<projectId>
 ```
 
+### Pendiente 0quater — Desplegar el asistente de agenda (IA-01), en este orden
+
+El asistente es la primera pieza del proyecto que depende de un **proveedor externo de pago** y
+de un **secreto**, así que su despliegue tiene un orden y no es negociable. Evidencia completa en
+`docs/evidencia/IA-01-asistente-de-agenda.md`.
+
+**1. El secreto — HECHO.**
+
+```bash
+firebase functions:secrets:set GEMINI_API_KEY --project production
+```
+
+La clave vive **solo** en Secret Manager. Nunca en un `.env` versionado, nunca en el bundle del
+cliente. El input de la CLI va enmascarado; para comprobar que se pegó bien, compara la
+**longitud** (`firebase functions:secrets:access GEMINI_API_KEY --project production | Measure-Object -Character`), no el contenido.
+
+**2. Índices, ANTES que las funciones.**
+
+```bash
+firebase deploy --only firestore:indexes --project production
+```
+
+Sin ellos la agenda falla **solo en producción**: los emuladores sirven cualquier consulta sin
+mirar `firestore.indexes.json`. Lo vigila `test/firestore_indices_test.dart`.
+
+**3. Las dos políticas TTL del asistente** — ver Pendiente 0bis. No son bloqueantes, pero la de
+`explicaciones_ia` es la única vía que existe para retirar una entrada mala de la caché.
+
+**4. Reglas.**
+
+```bash
+firebase deploy --only firestore:rules --project production
+```
+
+**5. La función.**
+
+```bash
+firebase deploy --only functions:asistenteAutoDoc --project production
+```
+
+Pasa por la guarda `predeploy` `scripts/verificar_env_functions.js`, **y esa guarda no es
+opcional**: la compuerta que elige entre Gemini y el doble de emulador mira
+`FUNCTIONS_EMULATOR`, y esa variable **no está en las claves reservadas de firebase-tools**
+(comprobado en la 15.28.2, `lib/functions/env.js`). Una línea en `functions/.env.<projectId>`
+llegaría al proceso desplegado y el asistente serviría **respuestas enlatadas con pinta de
+buenas**, sin que nada fallara ni nadie viera un error. Ninguna suite puede verlo: esos `.env`
+están en `functions/.gitignore`.
+
+**6. El kill switch, creado encendido y verificado en los DOS sentidos.**
+
+Documento `configuracion/asistente_ia`, campo `activo: true`. Ponerlo a `false` tiene que dejar
+la pantalla diciendo que el asistente está desactivado —no un error genérico— y volverlo a `true`
+tiene que devolver el servicio sin desplegar nada.
+
+Se lee **en cada petición**, a propósito: cachearlo significaría que apagarlo no surte efecto
+inmediato, que es justo lo que un kill switch tiene que hacer. Cuesta una lectura por consulta.
+
+**7. Cuotas.** `LIMITE_POR_USUARIO = 10` y `LIMITE_GLOBAL = 200` por ventana de 24 h. El corte
+global va muy por debajo del free tier a propósito: quedarse sin cuota del proveedor a media demo
+no se arregla con un despliegue, mientras que subir la constante sí.
+
+**8. Hosting**, con `flutter clean` (no es opcional) y la guarda `verificar_bundle_web.js`.
+
+**Siempre `--project` explícito.** El default de `.firebaserc` es `autodoc-staging`.
+
 ### Pendiente 1 — Crear el proyecto de staging (Step 1 del brief)
 
 ```bash
