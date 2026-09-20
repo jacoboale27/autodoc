@@ -15,6 +15,7 @@ import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
+import 'package:autodoc/core/constants/tipos_vehiculo.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_severity.dart';
@@ -660,7 +661,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   color: colors.surface.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                child: Icon(Icons.directions_car, color: primary),
+                child: Icon(
+                  TipoVehiculo.desdeId(vehicle.tipoVehiculo).icono,
+                  color: primary,
+                ),
               ),
             ],
           ),
@@ -669,6 +673,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             borderRadius: BorderRadius.circular(AppRadius.lg),
             child: VehicleImageWidget(
               imageUrl: vehicle.fotoUrl,
+              tipoVehiculo: vehicle.tipoVehiculo,
               height: Responsive.heroHeight(context, 140),
               width: double.infinity,
               fit: BoxFit.cover,

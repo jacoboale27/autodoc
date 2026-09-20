@@ -91,26 +91,66 @@ class _ReservaChatCardState extends State<ReservaChatCard> {
     // siguiente, asi que dos taps en el mismo frame pasarian los dos.
     if (_procesando) return;
     setState(() => _procesando = true);
-    final newMeta = Map<String, dynamic>.from(metadata);
-    newMeta['estado'] = estado;
-    final provider = context.read<ChatProvider>();
+    final chatProvider = context.read<ChatProvider>();
     final reservaProvider = context.read<ReservaProvider>();
+    final messenger = ScaffoldMessenger.of(context);
     try {
-      await provider.actualizarMetadatosMensaje(
-        conversacionId,
-        mensajeId,
-        newMeta,
+      await _escribirEstado(
+        chatProvider: chatProvider,
+        reservaProvider: reservaProvider,
+        messenger: messenger,
+        estado: estado,
+        fechaConfirmada: fechaConfirmada,
       );
-      final reservaId = _idDeReserva(metadata);
-      if (reservaId != null) {
-        await reservaProvider.cambiarEstadoReserva(
-          reservaId,
-          estado,
-          fechaConfirmada: fechaConfirmada,
-        );
-      }
     } finally {
       if (mounted) setState(() => _procesando = false);
+    }
+  }
+
+  /// Mueve la cita de estado: el documento vivo `reservas/{id}` —que es lo
+  /// que pinta la tarjeta— y la copia congelada del mensaje, que es el
+  /// respaldo cuando no hay documento que leer.
+  ///
+  /// Recibe los providers YA resueltos y no un `BuildContext`, y eso es lo
+  /// que arregla la observación del 2026-09-20: «aunque ya haya cotizado,
+  /// siguen apareciendo aceptar y rechazar». La cotización se manda desde
+  /// otra pantalla, y al volver se hacía `if (context.mounted)` sobre el
+  /// contexto de ESTA tarjeta antes de mover la cita. Un mensaje nuevo en el
+  /// hilo —el de la propia cotización— reconstruye la lista, así que ese
+  /// contexto podía estar muerto y la cita se quedaba en «pendiente» hasta
+  /// que el propietario aceptaba. Sin contexto de por medio, no hay nada que
+  /// se pueda saltar.
+  ///
+  /// Y si alguna de las dos escrituras falla, **se dice**: las dos van por
+  /// providers que se tragan la excepción en su propio `error`, así que
+  /// hasta ahora un rechazo de reglas dejaba la tarjeta igual que un éxito.
+  Future<void> _escribirEstado({
+    required ChatProvider chatProvider,
+    required ReservaProvider reservaProvider,
+    required ScaffoldMessengerState messenger,
+    required String estado,
+    DateTime? fechaConfirmada,
+  }) async {
+    final newMeta = Map<String, dynamic>.from(metadata);
+    newMeta['estado'] = estado;
+    await chatProvider.actualizarMetadatosMensaje(
+      conversacionId,
+      mensajeId,
+      newMeta,
+    );
+    final reservaId = _idDeReserva(metadata);
+    if (reservaId != null) {
+      await reservaProvider.cambiarEstadoReserva(
+        reservaId,
+        estado,
+        fechaConfirmada: fechaConfirmada,
+      );
+    }
+    final fallo = reservaProvider.error ?? chatProvider.error;
+    if (fallo != null) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('No se pudo actualizar la cita. $fallo')),
+      );
     }
   }
 
@@ -130,6 +170,7 @@ class _ReservaChatCardState extends State<ReservaChatCard> {
     // 12:00 AM. Si la reserva ya no existe, se usa el metadata como último
     // recurso para no bloquear el flujo.
     final reservaProvider = context.read<ReservaProvider>();
+    final messenger = ScaffoldMessenger.of(context);
     final reserva = await reservaProvider.obtenerReserva(reservaId);
     final fecha = reserva?.fechaHoraPropuesta ?? fechaMetadata;
     if (!context.mounted) return;
@@ -225,13 +266,15 @@ class _ReservaChatCardState extends State<ReservaChatCard> {
           return false;
         }
 
-        if (context.mounted) {
-          await _actualizar(
-            context,
-            'cotizada',
-            fechaConfirmada: borrador.fechaPropuesta,
-          );
-        }
+        // Sin `context.mounted`: ver `_escribirEstado`. La cita tiene que
+        // quedar cotizada aunque esta tarjeta ya no esté en pantalla.
+        await _escribirEstado(
+          chatProvider: chatProvider,
+          reservaProvider: reservaProvider,
+          messenger: messenger,
+          estado: 'cotizada',
+          fechaConfirmada: borrador.fechaPropuesta,
+        );
         return true;
       },
     );
@@ -477,19 +520,25 @@ class _ReservaChatCardState extends State<ReservaChatCard> {
               ),
             ],
           ],
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: AppButton(
-              text: context.l10n.chatViewDetail,
-              type: AppButtonType.text,
-              onPressed: _idDeReserva(metadata) == null
-                  ? null
-                  : () => context.push(
-                      '/reserva_detail/${_idDeReserva(metadata)}',
-                    ),
+          // Observación del 2026-09-20: una cita ya resuelta —cotizada,
+          // confirmada, rechazada o cancelada— enseña SOLO su estado. Antes
+          // «Ver detalle» seguía ahí en todos los estados y se leía como que
+          // quedaba algo por hacer.
+          if (estado == 'pendiente') ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: AppButton(
+                text: context.l10n.chatViewDetail,
+                type: AppButtonType.text,
+                onPressed: _idDeReserva(metadata) == null
+                    ? null
+                    : () => context.push(
+                        '/reserva_detail/${_idDeReserva(metadata)}',
+                      ),
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );

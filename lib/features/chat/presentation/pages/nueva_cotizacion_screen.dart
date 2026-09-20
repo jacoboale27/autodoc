@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:autodoc/core/models/catalogo_item_model.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
+import 'package:autodoc/core/constants/tipos_vehiculo.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
@@ -669,7 +670,7 @@ class _TarjetaVehiculoCotizado extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                 ),
                 child: Icon(
-                  Icons.directions_car,
+                  TipoVehiculo.desdeId(v?.tipoVehiculo).icono,
                   color: colors.onPrimary,
                   size: 32,
                 ),

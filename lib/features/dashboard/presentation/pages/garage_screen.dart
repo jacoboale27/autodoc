@@ -190,6 +190,7 @@ class GarageScreen extends StatelessWidget {
                     tag: 'vehicle_image_${vehicle.idVehiculo}',
                     child: VehicleImageWidget(
                       imageUrl: vehicle.fotoUrl,
+                      tipoVehiculo: vehicle.tipoVehiculo,
                       fit: BoxFit.cover,
                     ),
                   ),

@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:autodoc/core/widgets/app_user_avatar.dart';
 import 'package:autodoc/features/profile/data/services/public_profile_service.dart';
+import 'package:autodoc/core/widgets/visor_de_imagenes.dart';
 import 'package:autodoc/features/profile/presentation/pages/public_profile_screen.dart';
 
 import '../../support/entry_harness.dart';
@@ -338,6 +339,53 @@ void main() {
   });
 
   group('observaciones 2026-09-18 (captura 3): el logo del taller', () {
+    testWidgets('tocar una foto del local la abre a pantalla completa', (
+      tester,
+    ) async {
+      // Observación del 2026-09-20: «todas las fotos públicas deberían poder
+      // hacerse grandes al darles click». Las miniaturas miden 96 px.
+      final firestore = FakeFirebaseFirestore();
+      await firestore.collection('talleres').doc('mec2').set({
+        'nombre': 'Taller Completo',
+        'especialidad': 'Motores',
+        'calificacion_promedio': 4.0,
+        'total_resenias': 0,
+        'galeria': ['logo.webp', 'local-1.jpg', 'local-2.jpg'],
+      });
+
+      await pumpEntry(
+        tester,
+        PublicProfileScreen(
+          userId: 'mec2',
+          firestore: firestore,
+          publicProfileService: PublicProfileService(firestore: firestore),
+          storageBucket: 'bucket-de-prueba.appspot.com',
+        ),
+        profile: FakeUserProfileProvider(
+          userData: testUser(rol: 'Propietario'),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('perfil_publico_foto_1')));
+      // `pump` y no `pumpAndSettle`: la imagen no existe en un test, así que
+      // el visor se queda con su indicador de carga girando y nunca se
+      // asienta (mismo motivo por el que la galería usa un bloque de color
+      // en vez de `AppSkeleton`).
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(VisorDeImagenes), findsOneWidget);
+      // Abre por la que se tocó, y con las dos del local a mano.
+      expect(find.text('2 / 2'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('visor_cerrar')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(VisorDeImagenes), findsNothing);
+    });
+
     testWidgets('el avatar es el logo del taller, no la inicial del nombre', (
       tester,
     ) async {

@@ -41,6 +41,50 @@ void main() {
     expectNoOverflow(tester);
   });
 
+  testWidgets('cada vehículo lleva el icono de SU tipo', (tester) async {
+    // Observaciones del 2026-09-20: «siempre aparece el logo de carro aunque
+    // sea moto u otro tipo».
+    await pumpChatWidget(
+      tester,
+      _withVehicleProvider(
+        FakeVehicleProvider([
+          fakeVehicle(1, tipoVehiculo: 'motocicleta'),
+          fakeVehicle(2, tipoVehiculo: 'camion'),
+          // Sin tipo: los registrados antes del 2026-09-19 se tratan como
+          // automóvil, no se quedan sin icono.
+          fakeVehicle(3),
+        ]),
+        const VehiculoPicker(userId: 'u1', onSelected: _noop),
+      ),
+      width: 375,
+    );
+
+    expect(find.byIcon(Icons.two_wheeler_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.local_shipping_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.directions_car_filled_rounded), findsOneWidget);
+  });
+
+  testWidgets('el resumen que se manda lleva el tipo de vehículo', (
+    tester,
+  ) async {
+    // El taller no puede leer `vehiculos/{id}` hasta recibir el coche: si el
+    // tipo no viaja en el resumen de la cita, su cotización vuelve a pintar
+    // un coche para una moto.
+    Map<String, dynamic>? enviado;
+    await pumpChatWidget(
+      tester,
+      _withVehicleProvider(
+        FakeVehicleProvider([fakeVehicle(1, tipoVehiculo: 'motocicleta')]),
+        VehiculoPicker(userId: 'u1', onSelected: (m) => enviado = m),
+      ),
+      width: 375,
+    );
+    await tester.tap(find.text('Toyota Corolla'));
+    await tester.pumpAndSettle();
+
+    expect(enviado?['tipo_vehiculo'], 'motocicleta');
+  });
+
   testWidgets('usa AppEmptyState cuando no hay vehículos', (tester) async {
     await pumpChatWidget(
       tester,

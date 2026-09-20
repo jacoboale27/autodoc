@@ -1,8 +1,11 @@
 import 'dart:typed_data';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/painting.dart';
 
+import 'package:autodoc/config/secrets.dart';
 import 'package:autodoc/core/models/galeria_taller.dart';
 
 /// Se lanza cuando el archivo elegido no sirve para la galeria.
@@ -25,6 +28,16 @@ typedef SubidorDeFoto =
 /// Borra un objeto de Storage.
 typedef BorradorDeFoto = Future<void> Function(String ruta);
 
+/// Olvida una imagen ya descargada.
+///
+/// Observación del 2026-09-20: «subo una foto, la borro, pongo otra y sigue
+/// saliendo la primera». No es Storage: el nombre del objeto es fijo por
+/// hueco (`logo.jpg`), así que la URL de la foto NUEVA es carácter por
+/// carácter la misma que la de la vieja, y tanto `CachedNetworkImage` como el
+/// caché de imágenes de Flutter la sirven de su copia local sin volver a
+/// pedirla. Reemplazar el objeto no invalida nada por sí solo.
+typedef OlvidadorDeImagen = Future<void> Function(String url);
+
 /// Gestiona la galeria comercial de un taller: `talleres_fotos/{uid}/` en
 /// Storage y el campo `usuarios/{uid}.galeria` en Firestore.
 ///
@@ -35,14 +48,38 @@ class GaleriaService {
   final FirebaseFirestore _firestore;
   final SubidorDeFoto _subir;
   final BorradorDeFoto _borrar;
+  final OlvidadorDeImagen _olvidar;
+  final String _bucket;
 
   GaleriaService({
     FirebaseFirestore? firestore,
     SubidorDeFoto? subidor,
     BorradorDeFoto? borrador,
+    OlvidadorDeImagen? olvidador,
+    String? bucket,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _subir = subidor ?? _subirAFirebaseStorage,
-       _borrar = borrador ?? _borrarDeFirebaseStorage;
+       _borrar = borrador ?? _borrarDeFirebaseStorage,
+       _olvidar = olvidador ?? _olvidarImagenDescargada,
+       _bucket = bucket ?? AppSecrets.firebaseStorageBucket;
+
+  /// Tira la copia local de la foto de ese hueco, si se puede construir su
+  /// URL. Se llama al subir y al quitar: las dos operaciones dejan la URL
+  /// apuntando a otra cosa (o a nada) sin cambiar ni un carácter.
+  Future<void> _olvidarFoto(String tallerId, String nombreArchivo) async {
+    final url = GaleriaTaller.urlDe(
+      bucket: _bucket,
+      idTaller: tallerId,
+      nombreArchivo: nombreArchivo,
+    );
+    if (url == null) return;
+    try {
+      await _olvidar(url);
+    } catch (_) {
+      // Un caché que no se pudo limpiar enseña una foto vieja; tumbar por eso
+      // la subida que SÍ funcionó sería peor.
+    }
+  }
 
   DocumentReference<Map<String, dynamic>> _doc(String tallerId) =>
       _firestore.collection('usuarios').doc(tallerId);
@@ -96,6 +133,10 @@ class GaleriaService {
       await _borrarIgnorandoAusencia(tallerId, anterior);
     }
 
+    // Antes de anunciarla: si la lista se publica primero, la pantalla puede
+    // repintar el hueco y volver a meter en caché la foto VIEJA.
+    await _olvidarFoto(tallerId, nombreArchivo);
+
     final actualizada = galeriaActual.conArchivo(nombreArchivo);
     await _doc(
       tallerId,
@@ -122,6 +163,7 @@ class GaleriaService {
     ).set({'galeria': actualizada.toLista()}, SetOptions(merge: true));
 
     await _borrarIgnorandoAusencia(tallerId, archivo);
+    await _olvidarFoto(tallerId, archivo);
     return actualizada;
   }
 
@@ -165,7 +207,23 @@ class GaleriaService {
     await FirebaseStorage.instance
         .ref()
         .child(ruta)
-        .putData(bytes, SettableMetadata(contentType: contentType));
+        .putData(
+          bytes,
+          SettableMetadata(
+            contentType: contentType,
+            // Un minuto, y no el año por defecto de Storage: el nombre del
+            // objeto se repite en cada reemplazo, así que una caché larga es
+            // la foto vieja congelada en el navegador de TODO el que ya la
+            // vio. Limpiar el caché local (arriba) arregla al que sube; esto
+            // arregla a los demás.
+            cacheControl: 'public, max-age=60',
+          ),
+        );
+  }
+
+  static Future<void> _olvidarImagenDescargada(String url) async {
+    await CachedNetworkImage.evictFromCache(url);
+    PaintingBinding.instance.imageCache.evict(NetworkImage(url));
   }
 
   static Future<void> _borrarDeFirebaseStorage(String ruta) =>

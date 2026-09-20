@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
+import 'package:autodoc/core/constants/tipos_vehiculo.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_empty_state.dart';
@@ -87,6 +88,11 @@ class VehiculoPicker extends StatelessWidget {
                             // recibirlo: la cita lleva este resumen para que
                             // su cotización pueda mostrar el vehículo.
                             'kilometraje': vehicle.kilometrajeActual,
+                            // Viaja en el resumen para que el taller, que no
+                            // puede leer `vehiculos/{id}` hasta recibir el
+                            // coche, sepa también QUÉ tipo de vehículo es.
+                            if (vehicle.tipoVehiculo != null)
+                              'tipo_vehiculo': vehicle.tipoVehiculo,
                             if (vehicle.fotoUrl != null)
                               'foto_url': vehicle.fotoUrl,
                           });
@@ -101,8 +107,10 @@ class VehiculoPicker extends StatelessWidget {
                           excludeSemantics: true,
                           onTap: seleccionar,
                           child: ListTile(
+                            // Observaciones del 2026-09-20: salía el icono
+                            // de coche para todo, hasta para una moto.
                             leading: Icon(
-                              Icons.directions_car,
+                              TipoVehiculo.desdeId(vehicle.tipoVehiculo).icono,
                               color: colors.primary,
                             ),
                             title: Text(

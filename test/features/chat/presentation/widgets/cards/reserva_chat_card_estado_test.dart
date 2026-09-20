@@ -29,6 +29,71 @@ Widget _card({
 );
 
 void main() {
+  testWidgets('una cita ya cotizada enseña solo su estado, sin acciones', (
+    tester,
+  ) async {
+    // Observación del 2026-09-20: «aunque ya haya cotizado, siguen
+    // apareciendo aceptar, rechazar y ver detalle; debería quedar solo el
+    // estado».
+    final fake = FakeFirebaseFirestore();
+    await fake.collection('reservas').doc('r1').set({
+      'estado': 'cotizada',
+      'id_proponente': 'cli1',
+    });
+
+    await pumpChatWidget(
+      tester,
+      _card(
+        metadata: const {
+          'id_reserva': 'r1',
+          'estado': 'pendiente',
+          'fecha': '2026-09-10T10:00:00.000',
+          'hora': '10:00',
+        },
+        isMe: false,
+        firestore: fake,
+      ),
+      width: 375,
+      user: fakeChatUser(id: 'mec1', rol: 'Mecanico'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('COTIZACIÓN ENVIADA'), findsOneWidget);
+    expect(find.text('Cotizar y Aceptar'), findsNothing);
+    expect(find.text('Rechazar'), findsNothing);
+    expect(find.text('Ver detalle'), findsNothing);
+  });
+
+  testWidgets('una cita pendiente sí ofrece sus acciones', (tester) async {
+    // El contrapunto del anterior: sin esto, esconder la tarjeta entera
+    // pasaría los dos.
+    final fake = FakeFirebaseFirestore();
+    await fake.collection('reservas').doc('r1').set({
+      'estado': 'pendiente',
+      'id_proponente': 'cli1',
+    });
+
+    await pumpChatWidget(
+      tester,
+      _card(
+        metadata: const {
+          'id_reserva': 'r1',
+          'estado': 'pendiente',
+          'fecha': '2026-09-10T10:00:00.000',
+          'hora': '10:00',
+        },
+        isMe: false,
+        firestore: fake,
+      ),
+      width: 375,
+      user: fakeChatUser(id: 'mec1', rol: 'Mecanico'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cotizar y Aceptar'), findsOneWidget);
+    expect(find.text('Ver detalle'), findsOneWidget);
+  });
+
   testWidgets(
     'la tarjeta refleja el estado del documento de reserva, no el del mensaje',
     (tester) async {

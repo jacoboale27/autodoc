@@ -8,6 +8,7 @@ import 'package:autodoc/config/secrets.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/core/models/catalogo_item_model.dart';
 import 'package:autodoc/core/models/galeria_taller.dart';
+import 'package:autodoc/core/widgets/visor_de_imagenes.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
@@ -387,11 +388,16 @@ class _Portada extends StatelessWidget {
               aspectRatio: 3.2,
               child: url == null
                   ? degradado
-                  : CachedNetworkImage(
-                      imageUrl: url,
-                      fit: BoxFit.cover,
-                      placeholder: (_, _) => degradado,
-                      errorWidget: (_, _, _) => degradado,
+                  : GestureDetector(
+                      // El banner se recorta a 3.2:1: verlo entero solo es
+                      // posible en el visor (observación del 2026-09-20).
+                      onTap: () => abrirVisorDeImagenes(context, urls: [url]),
+                      child: CachedNetworkImage(
+                        imageUrl: url,
+                        fit: BoxFit.cover,
+                        placeholder: (_, _) => degradado,
+                        errorWidget: (_, _, _) => degradado,
+                      ),
                     ),
             ),
           ),
@@ -405,11 +411,16 @@ class _Portada extends StatelessWidget {
               color: colors.surface,
               shape: BoxShape.circle,
             ),
-            child: AppUserAvatar(
-              key: const Key('perfil_publico_avatar'),
-              urlFoto: urlLogo,
-              nombre: nombre,
-              radius: _radioLogo,
+            child: GestureDetector(
+              onTap: urlLogo == null
+                  ? null
+                  : () => abrirVisorDeImagenes(context, urls: [urlLogo!]),
+              child: AppUserAvatar(
+                key: const Key('perfil_publico_avatar'),
+                urlFoto: urlLogo,
+                nombre: nombre,
+                radius: _radioLogo,
+              ),
             ),
           ),
         ),
@@ -777,36 +788,45 @@ class _GaleriaSection extends StatelessWidget {
             itemCount: urls.length,
             separatorBuilder: (context, i) =>
                 const SizedBox(width: AppSpacing.sm),
-            itemBuilder: (context, i) => ClipRRect(
+            // Observación del 2026-09-20: las fotos públicas tienen que
+            // poder verse grandes. La miniatura mide 96 px; el visor abre
+            // TODAS las del local y empieza por la que se tocó.
+            itemBuilder: (context, i) => InkWell(
+              key: Key('perfil_publico_foto_$i'),
+              onTap: () =>
+                  abrirVisorDeImagenes(context, urls: urls, inicial: i),
               borderRadius: BorderRadius.circular(12),
-              // Mismo contrato que la tarjeta del directorio
-              // (`workshop_directory_screen.dart`): esqueleto mientras carga
-              // y un icono de reemplazo si falla. Un taller cuyo `galeria`
-              // sigue listando un archivo que ya no esta en Storage pintaba
-              // un hueco de 96x96 sin nada, ni durante la carga ni tras el
-              // fallo.
-              child: CachedNetworkImage(
-                imageUrl: urls[i],
-                width: 96,
-                height: 96,
-                fit: BoxFit.cover,
-                // Placeholder estatico y no `AppSkeleton`: el esqueleto usa
-                // `Shimmer`, que anima sin fin, y una animacion perpetua deja
-                // el arbol sin asentar — cualquier test que llegue aqui con
-                // `pumpAndSettle` se cuelga hasta el timeout. Para una
-                // miniatura de 96 no aporta nada frente a un bloque de color.
-                placeholder: (ctx, url) => Container(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                // Mismo contrato que la tarjeta del directorio
+                // (`workshop_directory_screen.dart`): esqueleto mientras carga
+                // y un icono de reemplazo si falla. Un taller cuyo `galeria`
+                // sigue listando un archivo que ya no esta en Storage pintaba
+                // un hueco de 96x96 sin nada, ni durante la carga ni tras el
+                // fallo.
+                child: CachedNetworkImage(
+                  imageUrl: urls[i],
                   width: 96,
                   height: 96,
-                  color: colors.surfaceContainer,
-                ),
-                errorWidget: (ctx, url, err) => Container(
-                  width: 96,
-                  height: 96,
-                  color: colors.surfaceContainer,
-                  child: Icon(
-                    Icons.broken_image_outlined,
-                    color: colors.textSecondary,
+                  fit: BoxFit.cover,
+                  // Placeholder estatico y no `AppSkeleton`: el esqueleto usa
+                  // `Shimmer`, que anima sin fin, y una animacion perpetua deja
+                  // el arbol sin asentar — cualquier test que llegue aqui con
+                  // `pumpAndSettle` se cuelga hasta el timeout. Para una
+                  // miniatura de 96 no aporta nada frente a un bloque de color.
+                  placeholder: (ctx, url) => Container(
+                    width: 96,
+                    height: 96,
+                    color: colors.surfaceContainer,
+                  ),
+                  errorWidget: (ctx, url, err) => Container(
+                    width: 96,
+                    height: 96,
+                    color: colors.surfaceContainer,
+                    child: Icon(
+                      Icons.broken_image_outlined,
+                      color: colors.textSecondary,
+                    ),
                   ),
                 ),
               ),

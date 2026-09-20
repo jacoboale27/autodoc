@@ -687,6 +687,7 @@ class _FichaVehiculo extends StatelessWidget {
                 aspectRatio: 16 / 9,
                 child: VehicleImageWidget(
                   imageUrl: vehiculo.fotoUrl,
+                  tipoVehiculo: vehiculo.tipoVehiculo,
                   fit: BoxFit.cover,
                 ),
               ),

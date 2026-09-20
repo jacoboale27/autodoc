@@ -79,6 +79,10 @@ class VehiculoCotizado {
   final int? kilometraje;
   final String? fotoUrl;
 
+  /// `vehiculos.tipo_vehiculo`, para pintar el icono que toca. `null` en las
+  /// citas anteriores al 2026-09-20, que no lo traen en su resumen.
+  final String? tipoVehiculo;
+
   const VehiculoCotizado({
     required this.idVehiculo,
     this.marca,
@@ -87,6 +91,7 @@ class VehiculoCotizado {
     this.placa,
     this.kilometraje,
     this.fotoUrl,
+    this.tipoVehiculo,
   });
 
   factory VehiculoCotizado.desdeVehiculo(VehicleModel v) => VehiculoCotizado(
@@ -97,6 +102,7 @@ class VehiculoCotizado {
     placa: v.placa,
     kilometraje: v.kilometrajeActual,
     fotoUrl: v.fotoUrl,
+    tipoVehiculo: v.tipoVehiculo,
   );
 
   /// Lectura tolerante: las citas y tarjetas anteriores al resumen no lo
@@ -127,6 +133,7 @@ class VehiculoCotizado {
       placa: texto('placa'),
       kilometraje: entero('kilometraje'),
       fotoUrl: texto('foto_url'),
+      tipoVehiculo: texto('tipo_vehiculo'),
     );
   }
 
