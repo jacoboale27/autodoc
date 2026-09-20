@@ -95,9 +95,50 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                 const SizedBox(height: AppSpacing.xxl),
                 _buildDashboardMetrics(colors, userData.idUsuario),
                 const SizedBox(height: AppSpacing.xxl),
-                _buildIncomeChartSection(colors, userData.idUsuario),
-                const SizedBox(height: AppSpacing.xxl),
-                _buildRecentServices(colors, userData.idUsuario),
+                // Observaciones del 2026-09-19 («que sea más ordenado y más
+                // limpio en la PC»): en escritorio la gráfica y los servicios
+                // recientes van lado a lado. Apilados, el dashboard eran tres
+                // pantallazos de scroll con media ventana vacía a los lados
+                // de la gráfica.
+                //
+                // Decide por `constraints.maxWidth` y no por el ancho de la
+                // ventana: el sidebar fijo del panel se lleva 280 px, así que
+                // la ventana es 280 px más ancha que el contenido y mirarla a
+                // ella parte en dos columnas que no caben. Mismo criterio que
+                // `AppGrid`.
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final grafica = _buildIncomeChartSection(
+                      colors,
+                      userData.idUsuario,
+                    );
+                    final recientes = _buildRecentServices(
+                      colors,
+                      userData.idUsuario,
+                    );
+                    if (constraints.maxWidth < 1000) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          grafica,
+                          const SizedBox(height: AppSpacing.xxl),
+                          recientes,
+                        ],
+                      );
+                    }
+                    return Row(
+                      // Cada tarjeta mide lo que su contenido: estirar la
+                      // lista de recientes hasta el alto de la gráfica deja
+                      // un hueco vacío debajo de la última fila.
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(flex: 3, child: grafica),
+                        const SizedBox(width: AppSpacing.xl),
+                        Expanded(flex: 2, child: recientes),
+                      ],
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -124,58 +165,73 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
   }
 
   Widget _buildQuickActions(AppColors colors) {
-    return Container(
-      padding: EdgeInsets.all(Responsive.padding(context, AppSpacing.xl)),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [colors.primary, colors.primary.withValues(alpha: 0.8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(AppRadius.xxl),
-        boxShadow: [
-          BoxShadow(
-            color: colors.primary.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+    // Ancho explícito: `Wrap` se encoge a su contenido, así que al acotar el
+    // botón (abajo) la barra entera se quedaba a media pantalla en vez de
+    // ocupar el ancho del contenido, como las tarjetas de debajo.
+    return SizedBox(
+      width: double.infinity,
+      child: Container(
+        padding: EdgeInsets.all(Responsive.padding(context, AppSpacing.xl)),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [colors.primary, colors.primary.withValues(alpha: 0.8)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-        ],
-      ),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: AppSpacing.base,
-        runSpacing: AppSpacing.base,
-        children: [
-          ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 200),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Atención Rápida',
-                  style: AppTextStyles.labelLarge.copyWith(
-                    color: colors.secondary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'Inicia un nuevo servicio buscando la placa del vehículo.',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: colors.onPrimary,
-                  ),
-                ),
-              ],
+          borderRadius: BorderRadius.circular(AppRadius.xxl),
+          boxShadow: [
+            BoxShadow(
+              color: colors.primary.withValues(alpha: 0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
             ),
-          ),
-          AppButton(
-            text: 'Buscar',
-            onPressed: () => context.push('/mechanic_search'),
-            icon: Icon(Icons.search, size: Responsive.iconSize(context, 18)),
-          ),
-        ],
+          ],
+        ),
+        child: Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: AppSpacing.base,
+          runSpacing: AppSpacing.base,
+          children: [
+            ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 200),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Atención Rápida',
+                    style: AppTextStyles.labelLarge.copyWith(
+                      color: colors.secondary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Inicia un nuevo servicio buscando la placa del vehículo.',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: colors.onPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // `AppButton` ocupa todo el ancho que le den, y en un `Wrap` eso
+            // es la barra entera: el botón salía de borde a borde debajo del
+            // texto en vez de al lado (captura del 2026-09-19).
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 220),
+              child: AppButton(
+                text: 'Buscar',
+                onPressed: () => context.push('/mechanic_search'),
+                icon: Icon(
+                  Icons.search,
+                  size: Responsive.iconSize(context, 18),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -245,11 +301,15 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
               mediumColumns: 2,
               expandedColumns: 3,
               largeColumns: 3,
-              spacing: AppSpacing.xl,
-              // Columnas de ~276 px (medium) a ~373 px (large con
-              // maxContentWidth 1200). La tarjeta necesita ~110 px de alto:
-              // caja de icono de 64 más padding. 2.6 deja entre 106 y 143.
-              childAspectRatio: 2.6,
+              spacing: AppSpacing.base,
+              // Alto fijo y no proporción: con `childAspectRatio` el alto
+              // crece con el ancho, así que en escritorio estas tarjetas —
+              // cuyo contenido no crece— quedaban enormes y medio vacías
+              // (observaciones del 2026-09-19, la misma causa que en el
+              // perfil del vehículo). 104 es lo que mide su contenido: caja
+              // de icono de 40, título, valor y subtítulo, más el padding de
+              // `AppCard`. `AppGrid` lo escala con el texto del sistema.
+              mainAxisExtent: 104,
               children: [
                 _MetricCard(
                   title: 'Ingresos (Mes)',
