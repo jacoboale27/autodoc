@@ -105,6 +105,54 @@ La lista vive en la sesión del 2026-09-19 (se cortó por cuota y se retomó). L
   `firebase deploy --only firestore:indexes --project production`: el índice nuevo tarda unos
   minutos en construirse y «Mis Servicios» falla hasta entonces.
 
+### Observaciones del 2026-09-20 (misma rama) — nueve puntos
+
+Lo que hay que saber:
+
+- **EL MAPA YA NO ES DE GOOGLE.** La clave estaba vencida y **una clave rota no se puede
+  detectar desde la app**: el error lo pinta la propia API DENTRO de la vista de plataforma. Se
+  cambió a tiles de OpenStreetMap dibujados por Flutter (`lib/core/widgets/mapa_osm.dart`, sobre
+  `flutter_map`): sin clave, sin facturación y sin vista de plataforma — o sea que también
+  funcionaría dentro de un diálogo, que era la otra mitad del defecto del 2026-09-19. Se
+  retiraron `google_maps_flutter`, el script que `main.dart` inyectaba en web,
+  `maps_availability.dart` y el JSON de estilo oscuro. **`AppSecrets.googleMapsApiKey` se queda
+  porque la usa `TranslationService`**, que es otra API de Google. La atribución a OSM **la exige
+  su política de tiles**: no la quites.
+- **`FlutterMap` retiene el toque** hasta descartar que sea un doble toque (que hace zoom), así
+  que en un test `tester.tapAt` + un `pump()` no llega NUNCA y parece que el mapa no responde.
+  Hace falta `startGesture` + `up()` + `pump(500ms)`.
+- **La cita del chat se quedaba en «pendiente» aunque el taller ya hubiera cotizado.** La
+  cotización se manda desde otra pantalla y al volver se hacía `if (context.mounted)` sobre el
+  contexto de LA TARJETA antes de mover la cita; el mensaje nuevo —el de la propia cotización—
+  reconstruye la lista, así que ese contexto podía estar muerto. Ahora el cambio de estado no
+  pasa por el contexto, y **si falla se dice**: las dos escrituras van por providers que se
+  tragan la excepción en su propio `error`. Una cita ya resuelta enseña solo su estado.
+- **«Subo una foto, la borro, pongo otra y sale la primera».** El nombre del objeto lo fijan las
+  reglas por hueco (`logo.jpg`), así que la URL nueva es carácter por carácter la vieja y el
+  caché la sirve sin pedirla. Se olvida la copia local al subir y al quitar
+  (`OlvidadorDeImagen` en `GaleriaService`) y el objeto se sube con `max-age=60` en vez del año
+  por defecto. **La foto principal del vehículo no tiene ese problema a propósito:** su nombre
+  lleva un uuid nuevo en cada subida.
+- **El teléfono del perfil público NO era un defecto de pantalla.** `publishTallerProfile` es un
+  trigger de `usuarios`, así que un campo nuevo en la proyección (telefono, municipio,
+  `banner_encuadre`, `tipos_atendidos`) no llega a las fichas YA publicadas hasta que alguien
+  reescribe ese usuario. Hay `functions/republicar_talleres.js` (dry-run y `--apply`). **NO uses
+  `src/backfillTalleres.js`:** lleva su propia copia congelada de los campos públicos y correrlo
+  hoy borraría galería y teléfono de todas las fichas.
+- **El encuadre del banner no recorta el archivo:** guarda el alineamiento vertical
+  (`banner_encuadre`, de -1 a 1) y lo aplica el `BoxFit.cover` del perfil. Así la foto original
+  se conserva y el ajuste se puede cambiar mil veces sin volver a subir nada.
+- **Los iconos de vehículo salen de `tipo_vehiculo`**, y el resumen que viaja al taller lo
+  incluye: sin eso, el taller —que no puede leer `vehiculos/{id}` hasta recibir el coche— vuelve
+  a pintar un coche para una moto.
+- **Las sugerencias del catálogo dependen de `tipos_atendidos`** (seis casillas en los ajustes
+  del taller). Lo común a todos + lo propio de cada tipo, sin repetir.
+- **Cifras:** `flutter analyze` limpio, `flutter test` **1428/1428**, Functions **430**. Las
+  reglas no se relanzaron: esta tanda no toca `firestore.rules` ni `storage.rules`.
+- **Sigue pendiente de despliegue** lo del 2026-09-19 (las reglas con el hueco `banner`) más
+  ahora las funciones (`publishTallerProfile` con los campos nuevos) y una pasada de
+  `republicar_talleres.js --apply`.
+
 ### Tercera tanda del 2026-09-19 (misma rama) — cobro, mapa y dashboard
 
 Cuatro observaciones de uso real, con capturas. Lo que hay que saber:
