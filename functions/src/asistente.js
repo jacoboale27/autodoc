@@ -130,7 +130,8 @@ const SISTEMA_CLASIFICADOR =
   'SOLO con la etiqueta, en minusculas, sin puntuacion ni explicacion:\n' +
   INTENCIONES.join('\n') +
   '\n\nagenda: vencimientos, citas o mantenimientos proximos del vehiculo.\n' +
-  'explicar: que es un tramite o un documento del vehiculo, y para que sirve.\n' +
+  'explicar: que es un tramite o un documento del vehiculo, para que sirve, ' +
+  'o que pasa si no se tiene o esta vencido.\n' +
   'fuera_de_alcance: cualquier otra cosa. SIEMPRE fuera_de_alcance si piden ' +
   'diagnosticar una averia por sintomas, o si la pregunta no es sobre ' +
   'vehiculos.';

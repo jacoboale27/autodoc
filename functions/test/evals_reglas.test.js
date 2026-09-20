@@ -16,7 +16,13 @@
 
 const assert = require('assert');
 
-const { revisarRedaccion, numerosDe, numerosDelEnvelope } = require('../evals_asistente');
+const {
+  revisarRedaccion,
+  numerosDe,
+  numerosDelEnvelope,
+  reglaMantenimientoEnDias,
+  REDACCION,
+} = require('../evals_asistente');
 
 const CASO = {
   nombre: 'de prueba',
@@ -93,6 +99,46 @@ describe('evals / las reglas duras detectan', () => {
     assert.ok(
       fallos.some((f) => /NO DICE QUE ESTA VENCIDO/.test(f)),
       'no detecto la inversion: ' + JSON.stringify(fallos)
+    );
+  });
+
+  it('una cita expresada en dias NO es un mantenimiento en dias', () => {
+    // Regresion de la primera corrida contra el modelo real (2026-09-20). La
+    // prosa de abajo es la que devolvio Gemini, y es CORRECTA: la cita va en
+    // dias porque una cita es una fecha, y el mantenimiento va en kilometros.
+    // La regla saltaba igual, porque su lista fija de palabras llevaba
+    // «aceite» y la cita era de Aceite.
+    //
+    // Una regla dura con falsos positivos se desactiva sola: la siguiente
+    // corrida se lee por encima y la violacion de verdad pasa de largo.
+    const caso = REDACCION[0];
+    const real =
+      'Tu SOAT con placa ABC123 está vencido hace 10 días y la tarjeta vence ' +
+      'en 3 días. Tienes una cita para servicio de Aceite programada en 2 ' +
+      'días a las 14:00. El mantenimiento de frenos está próximo a 200 ' +
+      'kilómetros.';
+
+    assert.deepStrictEqual(revisarRedaccion(caso, real), []);
+  });
+
+  it('la regla se arma con los nombres del envelope, no con una lista fija', () => {
+    // Lo que hace que el caso de arriba pase no es una excepcion escrita a
+    // mano para esa frase: es que «aceite» no es un mantenimiento de ESTE
+    // envelope. Si lo fuera, la regla tiene que volver a mirarlo.
+    const soloFrenos = reglaMantenimientoEnDias(REDACCION[0].envelope);
+    assert.ok(!soloFrenos.test('cita de Aceite en 2 dias'), 'sigue mirando una palabra ajena');
+    assert.ok(soloFrenos.test('frenos en 15 dias'), 'dejo de mirar su propio mantenimiento');
+
+    const conAceite = reglaMantenimientoEnDias({
+      items: [{ tipo: 'mantenimiento', nombre: 'Aceite', km_restantes: 500 }],
+    });
+    assert.ok(conAceite.test('el aceite vence en 15 dias'), 'no armo la regla con Aceite');
+  });
+
+  it('sin mantenimiento en el envelope no hay regla que aplicar', () => {
+    assert.strictEqual(
+      reglaMantenimientoEnDias({ items: [{ tipo: 'soat', dias_restantes: 3 }] }),
+      null
     );
   });
 

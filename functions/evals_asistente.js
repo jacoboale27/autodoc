@@ -165,8 +165,48 @@ const REDACCION = [
 const FECHA_CALENDARIO =
   /\b\d{1,2}\s+de\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b|\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/i;
 
-/** «en N dias» pegado a algo que es de mantenimiento. */
-const MANTENIMIENTO_EN_DIAS = /(mantenimiento|frenos|aceite|revision)[^.]{0,60}?\d+\s*d[ií]as/i;
+/**
+ * «en N dias» pegado a algo que es de mantenimiento.
+ *
+ * **Las palabras salen del envelope, no de una lista fija, y esa correccion
+ * la pago la primera corrida contra el modelo real.** La lista era
+ * `(mantenimiento|frenos|aceite|revision)`, y sobre una respuesta CORRECTA
+ * —«una cita para servicio de Aceite programada en 2 dias», que es la cita,
+ * expresada en dias como debe ser— salto por la palabra «Aceite», mientras el
+ * mantenimiento de verdad («frenos ... 200 kilometros») estaba perfecto.
+ *
+ * Una regla dura que grita sobre prosa buena es peor que no tenerla: la
+ * siguiente corrida se lee por encima y la violacion de verdad pasa. Es
+ * exactamente el modo de fallo que `test/evals_reglas.test.js` ya vigilaba
+ * desde el otro lado.
+ */
+const PALABRAS_DE_CITA = /cita|programad|agendad|appointment|scheduled/i;
+
+/**
+ * Un nombre de mantenimiento solo entra en la regla si es una palabra normal.
+ * Filtrar en vez de escapar es a proposito: los nombres vienen de datos, y un
+ * nombre raro tiene que dejar la regla mas floja (perder una deteccion), no
+ * romper el `new RegExp` a media corrida de evidencia.
+ */
+const NOMBRE_SIMPLE = /^[\p{L}\p{N} ]{2,40}$/u;
+
+/**
+ * La regla del caso, o `null` si su envelope no lleva ningun mantenimiento
+ * (sin km_restantes no hay nada que contradecir).
+ */
+function reglaMantenimientoEnDias(envelope) {
+  const mantenimientos = envelope.items.filter((i) => typeof i.km_restantes === 'number');
+  if (!mantenimientos.length) return null;
+
+  const nombres = ['mantenimiento'];
+  for (const item of mantenimientos) {
+    const nombre = String(item.nombre || '').toLowerCase();
+    if (NOMBRE_SIMPLE.test(nombre)) nombres.push(nombre);
+  }
+
+  const alternativa = nombres.join('|');
+  return new RegExp('(' + alternativa + ')[^.]{0,60}?\\d+\\s*d[ií]as', 'i');
+}
 
 /** Numeros que la respuesta afirma. Se ignoran los de las horas y las placas. */
 function numerosDe(texto) {
@@ -198,8 +238,12 @@ function revisarRedaccion(caso, prosa) {
   const fecha = prosa.match(FECHA_CALENDARIO);
   if (fecha) fallos.push('FECHA INVENTADA: "' + fecha[0] + '" (el envelope no lleva ninguna)');
 
-  const enDias = prosa.match(MANTENIMIENTO_EN_DIAS);
-  if (caso.envelope.items.some((i) => typeof i.km_restantes === 'number') && enDias) {
+  const regla = reglaMantenimientoEnDias(caso.envelope);
+  const enDias = regla && prosa.match(regla);
+  // Segunda red, para el dia en que el tipo_servicio de una cita coincida con
+  // el nombre de un mantenimiento: si el trozo que casa habla de una cita, la
+  // cita SI va en dias y no hay nada que reprochar.
+  if (enDias && !PALABRAS_DE_CITA.test(enDias[0])) {
     fallos.push('MANTENIMIENTO EN DIAS: "' + enDias[0] + '" (viaja en kilometros)');
   }
 
@@ -306,7 +350,14 @@ async function main() {
 // Se exportan las comprobaciones para que `test/evals_reglas.test.js` pueda
 // afirmar que DETECTAN. Un eval cuyas reglas no se prueban es un eval que
 // dice «sin violaciones» porque su expresion regular no casa nunca.
-module.exports = { revisarRedaccion, numerosDe, numerosDelEnvelope, CLASIFICACION, REDACCION };
+module.exports = {
+  revisarRedaccion,
+  numerosDe,
+  numerosDelEnvelope,
+  reglaMantenimientoEnDias,
+  CLASIFICACION,
+  REDACCION,
+};
 
 if (require.main === module) {
   main().catch((e) => {
