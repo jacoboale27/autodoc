@@ -1,8 +1,98 @@
 # AutoDoc — Runbook de Producción
 
-> **Versión:** 1.0 | **Última actualización:** 2026-07 | **Propietario:** Equipo AutoDoc
+> **Versión:** 1.1 | **Última actualización:** 2026-09-20 | **Propietario:** Equipo AutoDoc
 
 Este documento cubre los procedimientos operacionales para mantener AutoDoc en producción.
+
+---
+
+## 🚀 Despliegue de la rama `fix/observaciones-2026-09-18` (2026-09-18 → 20)
+
+Tres tandas de observaciones de uso real. **La CI lo despliega todo al fusionar a `main`**,
+así que esto solo hace falta para ver los cambios ANTES de fusionar — o para entender por qué
+algo «no funciona» en producción mientras la rama sigue sin fusionar.
+
+Los tres síntomas que ya se reportaron **son esto, no defectos de código**:
+
+| Lo que se ve | Lo que falta |
+|---|---|
+| «No se pudo guardar el cambio. Si tu cuenta fue suspendida, no puedes publicar fotos» al subir el **banner** | `storage.rules` (el hueco `banner` no existe en las reglas desplegadas) |
+| «Sin teléfono publicado» en el perfil público del taller | desplegar `publishTallerProfile` **y** republicar las fichas |
+| El encuadre del banner y los vehículos que atiende no se ven en el perfil | lo mismo de arriba |
+
+### Paso 1 — Reglas
+
+```bash
+firebase deploy --only storage,firestore:rules --project production
+```
+
+Qué entra: el hueco `banner` de la galería (`storage.rules`), el tope de `galeria` a 7
+(`firestore.rules`), el guard `esEmpleadoDeTaller()` y la subcolección
+`talleres/{id}/invitaciones`.
+
+**Índices NO.** `--only firestore:indexes` **borra** los que no estén en el fichero, y esta
+rama retira `cotizaciones (id_vehiculo, estado, fecha DESC)`, que la app **desplegada**
+todavía puede estar usando. Los índices van con la fusión, no antes.
+
+### Paso 2 — Funciones
+
+```bash
+firebase deploy --only functions:publishTallerProfile --project production
+```
+
+`publishTallerProfile` proyecta ahora, además de lo de siempre: `telefono`, `municipio`,
+`banner_encuadre` y `tipos_atendidos`. Los dos primeros **solo con el taller aprobado o
+activo** (`talleres` es de lectura anónima para la colección entera: la landing la baja por
+REST y filtra en el navegador, así que publicar el teléfono de cada solicitante o rechazado
+lo dejaba al alcance de cualquiera).
+
+### Paso 3 — Republicar las fichas ya publicadas
+
+**Sin este paso, el Paso 2 no se nota en ningún taller existente.**
+`publishTallerProfile` es un trigger `onWrite` de `usuarios/{uid}`: un campo nuevo en la
+proyección no llega a las fichas ya publicadas hasta que alguien reescribe ese usuario.
+
+```bash
+node functions/republicar_talleres.js --project=autodoc-6ef5a
+```
+
+Eso es un **dry-run**: cuenta y no escribe. Para escribir, `--apply`.
+
+- Se puede correr desde la raíz del repo: el script resuelve sus rutas desde su propia
+  carpeta. En PowerShell **no uses `&&`** (5.1 no lo admite).
+- **Credenciales:** descarga la clave en Firebase → Configuración del proyecto → Cuentas de
+  servicio → Generar nueva clave privada, guárdala como `functions/serviceAccountKey.json` y
+  **bórrala al terminar** — es una llave maestra del proyecto. Con la clave puesta ya no hace
+  falta `--project`: el proyecto sale de la propia clave, y si le pasas otro distinto se
+  planta en vez de escribir donde no toca.
+- Sin proyecto resuelto el script **se niega a arrancar**, a propósito: `.firebaserc` tiene
+  `default: autodoc-staging`, así que «el de por defecto» no es producción y una
+  republicación contra el proyecto equivocado no avisa de nada.
+- **NO uses `functions/src/backfillTalleres.js`.** Lleva su PROPIA copia de los campos
+  públicos, congelada en ocho: correrlo hoy borraría de todas las fichas la galería, el
+  teléfono, el municipio y el logo. `republicar_talleres.js` reutiliza
+  `construirPerfilPublico`, que es el mismo código que usa el trigger, así que no puede
+  divergir.
+
+### Paso 4 — Al fusionar (lo hace la CI)
+
+Índices incluidos. El índice nuevo `cotizaciones (id_taller, fecha DESC)` tarda unos minutos
+en construirse y **«Mis Servicios» falla hasta entonces**, así que conviene adelantar solo
+ese despliegue si se quiere evitar la ventana:
+
+```bash
+firebase deploy --only firestore:indexes --project production
+```
+
+(Pero entonces ya se retira el índice viejo: hazlo pegado a la fusión, no días antes.)
+
+### Lo que YA NO hace falta: la clave de Google Maps
+
+El mapa dejó de ser de Google el 2026-09-20 (tiles de OpenStreetMap dibujados por Flutter,
+`lib/core/widgets/mapa_osm.dart`). **No hay clave que renovar para que el mapa vuelva.**
+`AppSecrets.googleMapsApiKey` sigue existiendo porque la usa `TranslationService`, que es
+otra API de Google: si la traducción automática del chat hace falta, esa clave sí tiene que
+estar viva.
 
 ---
 
