@@ -9,6 +9,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cotizacion_form.dart';
+import 'package:autodoc/core/constants/tipos_vehiculo.dart';
 import 'package:autodoc/core/models/reparacion_model.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
@@ -1635,7 +1636,7 @@ class _VehicleHeaderCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                 ),
                 child: Icon(
-                  Icons.directions_car,
+                  TipoVehiculo.desdeId(vehiculo.tipoVehiculo).icono,
                   color: colors.onPrimary,
                   size: 32,
                 ),
