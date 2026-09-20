@@ -38,9 +38,30 @@ function fakeDb(docs = {}) {
     };
   }
   let autoId = 0;
+  function hijos(ruta) {
+    return Object.keys(docs).filter(
+      (k) => k.startsWith(`${ruta}/`) && k.split('/').length === ruta.split('/').length + 1
+    );
+  }
   function coleccion(ruta) {
     return {
       doc: (id) => docRef(`${ruta}/${id || `auto${++autoId}`}`),
+      // Consulta sin filtro y con tope: el barrido de invitaciones caducadas.
+      limit(n) {
+        return {
+          async get() {
+            return {
+              docs: hijos(ruta)
+                .slice(0, n)
+                .map((k) => ({
+                  id: k.split('/').pop(),
+                  ref: docRef(k),
+                  data: () => docs[k],
+                })),
+            };
+          },
+        };
+      },
       where(campo, op, valor) {
         let tope = Infinity;
         const q = {
@@ -176,6 +197,117 @@ describe('empleados: correo que ya tiene cuenta (2026-09-19)', () => {
     assert.strictEqual(lista[0].tipo, 'invitacion_empleo');
     assert.strictEqual(lista[0].metadata.id_taller, TALLER);
     assert.strictEqual(auth.actualizaciones.length, 0, 'ni su contraseña');
+  });
+
+  it('un taller no puede tener más de 20 invitaciones vivas a la vez', async () => {
+    // Sin cupo, el alta servía de lista de difusión: cada correo nuevo que
+    // acertara con una cuenta verificada recibía una notificación.
+    const docs = base();
+    for (let i = 0; i < 20; i += 1) {
+      docs[`talleres/taller1/invitaciones/x${i}`] = {
+        estado: 'pendiente',
+        expira: new Date(AHORA.getTime() + 86400000),
+      };
+    }
+    docs['usuarios/p1'] = { rol: 'Propietario' };
+    const db = fakeDb(docs);
+    const auth = fakeAuth({ p1: { uid: 'p1', email: 'oscar@example.com', emailVerified: true } });
+    const { lista, escribir } = avisos();
+
+    await assert.rejects(
+      incorporarCuentaExistente(datosAlta(db, auth, { escribirNotificacion: escribir })),
+      (e) => e instanceof ErrorEmpleado && e.codigo === 'resource-exhausted'
+    );
+    assert.strictEqual(docs['talleres/taller1/invitaciones/p1'], undefined);
+    assert.strictEqual(lista.length, 0, 'ni se le avisa a la persona');
+  });
+
+  it('al invitar se barren las invitaciones caducadas, y esas no gastan cupo', async () => {
+    // Nadie las borraba: la pantalla del taller solo las escondía. Así, con
+    // esperar a que caducaran se seguía invitando sin límite.
+    const docs = base();
+    for (let i = 0; i < 20; i += 1) {
+      docs[`talleres/taller1/invitaciones/x${i}`] = {
+        estado: 'pendiente',
+        expira: new Date(AHORA.getTime() - 86400000),
+      };
+    }
+    docs['usuarios/p1'] = { rol: 'Propietario' };
+    const db = fakeDb(docs);
+    const auth = fakeAuth({ p1: { uid: 'p1', email: 'oscar@example.com', emailVerified: true } });
+    const { lista, escribir } = avisos();
+
+    const r = await incorporarCuentaExistente(
+      datosAlta(db, auth, { escribirNotificacion: escribir })
+    );
+
+    assert.deepStrictEqual(r, { resultado: 'invitado', idEmpleado: 'p1' });
+    assert.strictEqual(docs['talleres/taller1/invitaciones/x0'], undefined);
+    assert.strictEqual(
+      Object.keys(docs).filter((k) => k.startsWith('talleres/taller1/invitaciones/')).length,
+      1,
+      'solo queda la que se acaba de crear'
+    );
+    assert.strictEqual(lista.length, 1);
+  });
+
+  it('con más invitaciones que la ventana del barrido, se drena en varias altas', async () => {
+    // El barrido mira INVITACIONES_BARRIDO_MAX (60) documentos, y una consulta
+    // sin `orderBy` los da por nombre ascendente: siempre drena desde el
+    // frente, así que la basura se acaba vaciando en ceil(N/60) altas. Sin
+    // este caso, subir la ventana a 10000 seguiría en verde.
+    const docs = base();
+    const caducada = { estado: 'pendiente', expira: new Date(AHORA.getTime() - 86400000) };
+    for (let i = 0; i < 80; i += 1) {
+      docs[`talleres/taller1/invitaciones/x${String(i).padStart(2, '0')}`] = { ...caducada };
+    }
+    docs['usuarios/p1'] = { rol: 'Propietario' };
+    docs['usuarios/p2'] = { rol: 'Propietario' };
+    const db = fakeDb(docs);
+    const auth = fakeAuth({
+      p1: { uid: 'p1', email: 'oscar@example.com', emailVerified: true },
+      p2: { uid: 'p2', email: 'otro@example.com', emailVerified: true },
+    });
+    const restantes = () =>
+      Object.keys(docs).filter((k) => k.startsWith('talleres/taller1/invitaciones/')).length;
+
+    await incorporarCuentaExistente(datosAlta(db, auth, { escribirNotificacion: async () => {} }));
+    assert.strictEqual(restantes(), 21, '60 barridas + la nueva');
+
+    await incorporarCuentaExistente(
+      datosAlta(db, auth, {
+        escribirNotificacion: async () => {},
+        correo: 'otro@example.com',
+      })
+    );
+    assert.strictEqual(restantes(), 2, 'se drenó el resto; quedan las dos vivas');
+  });
+
+  it('un `expira` ilegible no se barre: cuenta como viva y se queda', async () => {
+    // `aMilisegundos` devuelve 0 cuando el campo falta o es una cadena ISO.
+    // Eso NO es "caducada": borrar por no saber leer la fecha es el defecto
+    // que GAPS-06 documenta con `fecha_limite`. Una atascada se ve y se
+    // arregla; una viva borrada en silencio, no.
+    const docs = base();
+    for (let i = 0; i < 19; i += 1) {
+      docs[`talleres/taller1/invitaciones/v${i}`] = {
+        estado: 'pendiente',
+        expira: new Date(AHORA.getTime() + 86400000),
+      };
+    }
+    docs['talleres/taller1/invitaciones/rara'] = {
+      estado: 'pendiente',
+      expira: '2026-09-30T00:00:00Z',
+    };
+    docs['usuarios/p1'] = { rol: 'Propietario' };
+    const db = fakeDb(docs);
+    const auth = fakeAuth({ p1: { uid: 'p1', email: 'oscar@example.com', emailVerified: true } });
+
+    await assert.rejects(
+      incorporarCuentaExistente(datosAlta(db, auth, { escribirNotificacion: async () => {} })),
+      (e) => e instanceof ErrorEmpleado && e.codigo === 'resource-exhausted'
+    );
+    assert.ok(docs['talleres/taller1/invitaciones/rara'], 'no se barrió');
   });
 
   it('la invitación no le enseña al taller el nombre real de la cuenta', async () => {

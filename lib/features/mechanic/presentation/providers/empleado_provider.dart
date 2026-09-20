@@ -169,7 +169,7 @@ class EmpleadoProvider extends ChangeNotifier {
   /// es de un empleado de otro taller.», «Tu cuenta tiene vehículos
   /// registrados…»).
   ///
-  /// Solo para estos dos códigos, que en `crearEmpleadoTaller` y
+  /// Solo para estos tres códigos, que en `crearEmpleadoTaller` y
   /// `responderInvitacionEmpleo` salen siempre con un mensaje escrito en
   /// español para quien usa la app (ver `src/empleadosTaller.js`). Con el
   /// genérico, el taller leía «Ese dato ya existe.» sin saber qué dato ni qué
@@ -177,9 +177,15 @@ class EmpleadoProvider extends ChangeNotifier {
   /// sigue yendo por `mensajeSeguroDeError`, que no enseña detalle técnico.
   static String? _mensajeDelServidor(Object e) {
     if (e is! FirebaseFunctionsException) return null;
-    if (e.code != 'already-exists' && e.code != 'failed-precondition') {
-      return null;
-    }
+    const conMotivo = {
+      'already-exists',
+      'failed-precondition',
+      // Cupo de invitaciones vivas del taller (2026-09-19). Sin él aquí, el
+      // taller leía el genérico y no se enteraba de que el problema tiene
+      // arreglo en sus manos: retirar alguna invitación.
+      'resource-exhausted',
+    };
+    if (!conMotivo.contains(e.code)) return null;
     final mensaje = e.message?.trim() ?? '';
     return mensaje.isEmpty ? null : mensaje;
   }

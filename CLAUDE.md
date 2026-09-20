@@ -90,10 +90,9 @@ La lista vive en la sesión del 2026-09-19 (se cortó por cuota y se retomó). L
   ni se re-avisa con una invitación viva, el cambio de rol deja rastro en `admin_logs`, «Mis
   Servicios» suma las pendientes/aceptadas viejas que el tope de 200 dejaba fuera,
   `marcarFinalizadas` va en un lote y `buscarVehiculoPorPlaca` exige también `estado` aprobado.
-- **Gaps que quedan anotados:** sin cupo de invitaciones por taller (un taller puede probar
-  correos a ritmo libre), las invitaciones caducadas no se borran solas (la pantalla las oculta;
-  una política TTL sobre `expira` lo cerraría) y `vehiculos.foto_url` es una URL libre del
-  cliente que el taller carga al abrir la ficha (heredado: ya pasaba con `vehiculo_resumen`).
+- **Los gaps de esa lista ya están cerrados** (mismo día, ver el bloque de abajo), salvo
+  `vehiculos.foto_url`, que sigue siendo una URL libre del cliente que el taller carga al abrir
+  la ficha (heredado: ya pasaba con `vehiculo_resumen`).
 - **Diseño de escritorio:** la causa de las «tarjetas deformes» era `AppGrid` con
   `childAspectRatio`: el alto crece con el ancho. `AppGrid` tiene ahora `mainAxisExtent` (alto
   fijo, escalado con el texto del sistema) y `sizeToContent` (cada tarjeta a su alto, con `Wrap`).
@@ -105,6 +104,44 @@ La lista vive en la sesión del 2026-09-19 (se cortó por cuota y se retomó). L
 - **Despliegue:** la CI lo hace todo al fusionar a `main`. Conviene adelantar
   `firebase deploy --only firestore:indexes --project production`: el índice nuevo tarda unos
   minutos en construirse y «Mis Servicios» falla hasta entonces.
+
+### Drenaje de los gaps del 2026-09-19 (misma rama) — galería del empleado y cupo de invitaciones
+
+Cierra los dos gaps que dejaron abiertas las dos listas de arriba. Lo que hay que saber:
+
+- **Un EMPLEADO podía escribir en `talleres_fotos/{suPropioUid}/`**, que es ruta de lectura
+  anónima. Su cuenta lleva `rol: 'Taller'` y `estado: 'activo'`, así que pasaba
+  `esTallerAprobado()` entera. Esas fotos no eran escaparate de nadie —`publishTallerProfile`
+  BORRA la ficha de `talleres` de toda cuenta con `id_taller_propietario`, y el directorio solo
+  pinta desde esa ficha—, o sea que era **alojamiento de 7 imágenes públicas de 5 MB gratis bajo
+  el dominio del proyecto**. Guard nuevo `esEmpleadoDeTaller()` en `storage.rules`. **El `allow
+  delete` se queda sin guard a propósito:** el botón «Quitar» sigue siendo la única vía para
+  limpiar lo que subiera antes, y hay test que lo fija.
+- **Y ese arreglo dejaba a la UI mintiendo:** «Fotos del taller» sigue en la barra lateral del
+  empleado, y el rechazo de Storage se pintaba como «Si tu cuenta fue suspendida, no puedes
+  publicar fotos» — con la cuenta perfectamente activa. Ahora la pantalla es de solo lectura para
+  una sub-cuenta (aviso + sin botones de subir), con «Quitar» intacto.
+- **El cupo de invitaciones va en `runTransaction`, y el primer intento no.** Contar fuera y
+  escribir después deja el cupo en «20 por ronda secuencial»: N altas simultáneas leen todas
+  `vivas = 0` y las N escriben, que es justo la ráfaga que el cupo viene a impedir (App Check
+  está en `monitor`, así que no hay fricción delante). Y el borrado de una caducada sin
+  precondición podía llevarse por delante una invitación que otra llamada acababa de renovar: la
+  persona se quedaba con un aviso que al abrirlo decía «ya no está disponible».
+- **El barrido no borra lo que no entiende.** `aMilisegundos()` devuelve 0 cuando `expira` falta
+  o es una cadena ISO, y leer eso como «caducada» es el defecto que GAPS-06 documenta con
+  `fecha_limite`: ahora se deja quieta, se cuenta como viva y se avisa por consola. Alternativa
+  anotada: una **política TTL** sobre `expira` haría el GC en el servidor y quitaría de encima el
+  barrido entero (paso de runbook, no se configura desde `firestore.indexes.json`).
+- **El cupo acota el ENVÍO DE AVISOS A TERCEROS, no el sondeo de correos.** El resto de
+  comprobaciones ocurre antes, así que un taller con el cupo lleno sigue distinguiendo por el
+  mensaje si un correo tiene cuenta. El comentario del código lo dice para que nadie confíe en
+  una defensa que no existe.
+- **Un cambio de producción rompió un doble de prueba, no al revés:** `functions/test/empleados.test.js`
+  modelaba la subcolección `invitaciones` solo con `doc()`, así que la transacción nueva moría
+  con `TypeError` y el taller lo leía como «No se pudo completar el registro». Lo levantó la
+  suite completa, no la del fichero que toqué: **corre `npm test`, no solo el test nuevo**.
+- **Cifras:** `flutter analyze` limpio, `flutter test` **1401/1401**, Functions **429**, reglas
+  **530/530** en 31 suites.
 
 ### Segunda lista del 2026-09-19 (misma rama) — reseñas, tareas, catálogo, vehículos, mapa, perfil
 

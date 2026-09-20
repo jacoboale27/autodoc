@@ -40,6 +40,29 @@ class ErrorEmpleado extends Error {
 /** Días que una invitación sigue vigente. */
 const DIAS_INVITACION = 7;
 
+/**
+ * Invitaciones VIVAS (pendientes y sin caducar) que un taller puede tener a
+ * la vez, y cuántas se miran al barrer.
+ *
+ * Lo que acota es el ENVÍO DE NOTIFICACIONES A TERCEROS: cada correo nuevo que
+ * acierte con una cuenta verificada le manda un aviso a esa persona, y sin
+ * cupo el alta de empleados servía de lista de difusión. NO acota el sondeo de
+ * correos: `motivoCuentaNoIncorporable`, el `emailVerified` y la rama de
+ * reactivación ocurren ANTES que esto, así que un taller con el cupo lleno
+ * sigue pudiendo distinguir por el mensaje si un correo tiene cuenta. Veinte
+ * es holgado para dar de alta a una plantilla y corto para difundir.
+ *
+ * El barrido mira hasta 60 y no hace falta más: el único creador es la
+ * escritura de abajo, `responderInvitacion` borra el documento en todas sus
+ * ramas y el taller puede retirarlas desde el cliente, así que todo documento
+ * que existe está `pendiente` y tras un alta quedan `vivas + 1 <= 20`. Los 60
+ * son holgura para la ventana de una ráfaga concurrente, y están muy por
+ * debajo del tope de 500 escrituras de una transacción: no lo subas sin
+ * mirar ese límite.
+ */
+const INVITACIONES_VIVAS_MAX = 20;
+const INVITACIONES_BARRIDO_MAX = 60;
+
 /** Espejo de `isMecanico()` (componente de rol) en firestore.rules. */
 const ROLES_TALLER = ['Mecanico', 'Taller'];
 /** Espejo de `isAdmin()` en firestore.rules. */
@@ -192,21 +215,73 @@ async function incorporarCuentaExistente({
   // Cuenta de propietario (o sin perfil todavía): se le invita. Si ya tiene
   // una invitación de este taller viva, no se reescribe ni se le vuelve a
   // avisar: repetir el alta no puede servir para llenarle de notificaciones.
-  const invitacionRef = db
+  //
+  // Todo va en UNA transacción, y lo pidió la revisión de gate:
+  //  - contar fuera y escribir después dejaba el cupo en «20 por ronda
+  //    secuencial»; N altas simultáneas leen todas `vivas = 0` y las N
+  //    escriben, que es justo la ráfaga que el cupo viene a impedir.
+  //  - el borrado de una caducada sin precondición podía llevarse por delante
+  //    una invitación que otra llamada acababa de renovar: la persona se
+  //    quedaba con un aviso que al abrirlo decía «ya no está disponible».
+  const invitacionesRef = db
     .collection('talleres')
     .doc(idTaller)
-    .collection('invitaciones')
-    .doc(uid);
-  const previa = await invitacionRef.get();
-  const previaDatos = previa.exists ? previa.data() || {} : null;
-  if (
-    previaDatos &&
-    previaDatos.estado === 'pendiente' &&
-    aMilisegundos(previaDatos.expira) > ahora.getTime()
-  ) {
-    return { resultado: 'invitado', idEmpleado: uid };
-  }
-  await invitacionRef.set({
+    .collection('invitaciones');
+  const invitacionRef = invitacionesRef.doc(uid);
+
+  const hayQueAvisar = await db.runTransaction(async (tx) => {
+    const previa = await tx.get(invitacionRef);
+    const previaDatos = previa.exists ? previa.data() || {} : null;
+    if (
+      previaDatos &&
+      previaDatos.estado === 'pendiente' &&
+      aMilisegundos(previaDatos.expira) > ahora.getTime()
+    ) {
+      return false;
+    }
+
+    // Cupo por taller, y de paso barrido de las caducadas: nadie las borraba
+    // (la pantalla del taller solo las escondía), así que sin esto bastaba
+    // con esperar a que caducaran para seguir invitando sin límite.
+    const abiertas = await tx.get(invitacionesRef.limit(INVITACIONES_BARRIDO_MAX));
+    const aBorrar = [];
+    let vivas = 0;
+    for (const snap of abiertas.docs) {
+      // La propia se reescribe al final de esta misma transacción.
+      if (snap.id === uid) continue;
+      const datos = snap.data() || {};
+      // Lo que no sea una invitación pendiente no se toca: el barrido borra,
+      // y borrar por no reconocer un documento es la forma cara de
+      // equivocarse.
+      if (datos.estado !== 'pendiente') continue;
+      const expira = aMilisegundos(datos.expira);
+      if (expira === 0) {
+        // `aMilisegundos` devuelve 0 cuando falta el campo o no es una fecha
+        // (una cadena ISO, por ejemplo). Eso NO es «caducada»: se deja
+        // quieta y se cuenta, porque una atascada se ve y se arregla y una
+        // viva borrada en silencio no. Es el mismo defecto que GAPS-06
+        // documenta con `fecha_limite` en cadena.
+        console.warn(
+          `invitaciones: ${idTaller}/${snap.id} tiene un 'expira' ilegible; ` +
+            'no se barre.'
+        );
+        vivas += 1;
+        continue;
+      }
+      if (expira <= ahora.getTime()) aBorrar.push(snap.ref);
+      else vivas += 1;
+    }
+
+    if (vivas >= INVITACIONES_VIVAS_MAX) {
+      throw new ErrorEmpleado(
+        'resource-exhausted',
+        `Tu taller tiene ${vivas} invitaciones sin responder. Espera a que ` +
+          'las contesten o retira alguna antes de invitar a más personas.'
+      );
+    }
+
+    for (const ref of aBorrar) tx.delete(ref);
+    tx.set(invitacionRef, {
       id_taller: idTaller,
       id_invitado: uid,
       nombre_taller: nombreTaller,
@@ -221,6 +296,11 @@ async function incorporarCuentaExistente({
       fecha_creacion: ahora,
       expira: new Date(ahora.getTime() + DIAS_INVITACION * 86400000),
     });
+    return true;
+  });
+
+  if (!hayQueAvisar) return { resultado: 'invitado', idEmpleado: uid };
+
   await escribirNotificacion(uid, {
     tipo: 'invitacion_empleo',
     titulo: 'Te invitaron a trabajar en un taller',

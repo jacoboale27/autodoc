@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
+import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/features/mechanic/data/services/galeria_service.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/workshop_gallery_screen.dart';
@@ -43,13 +44,18 @@ GaleriaService galeriaServiceDePrueba() => GaleriaService(
   borrador: (ruta) async {},
 );
 
-Future<void> pumpGaleria(WidgetTester tester, double width) async {
+Future<void> pumpGaleria(
+  WidgetTester tester,
+  double width, {
+  UserModel? user,
+}) async {
   await pumpMechanicScreen(
     tester,
     const WorkshopGalleryScreen(),
     width: width,
     height: 1200,
     location: '/workshop_gallery',
+    user: user,
     disableAnimations: true,
     extraProviders: [
       ChangeNotifierProvider<AuthSessionProvider>(
@@ -101,6 +107,38 @@ void main() {
       await pumpGaleria(tester, width);
       expectNoOverflow(tester);
     }
+  });
+
+  testWidgets('una sub-cuenta de empleado no puede subir ni cambiar fotos', (
+    tester,
+  ) async {
+    // Lo que subiera un empleado va bajo SU uid, y el directorio solo pinta
+    // desde la ficha del dueño: no lo veía nadie. Desde el 2026-09-19
+    // storage.rules tampoco se lo permite, así que dejarle el botón era
+    // ofrecerle una acción que siempre falla — y el mensaje de error decía
+    // «Si tu cuenta fue suspendida, no puedes publicar fotos», que es mentira.
+    await pumpGaleria(
+      tester,
+      1440,
+      user: fakeTaller(idTallerPropietario: 't1'),
+    );
+
+    expect(
+      find.byKey(const Key('galeria_solo_lectura_empleado')),
+      findsOneWidget,
+    );
+    expect(find.text('Subir'), findsNothing);
+    expect(find.text('Cambiar'), findsNothing);
+  });
+
+  testWidgets('el dueño del taller sí las sube', (tester) async {
+    await pumpGaleria(tester, 1440);
+
+    expect(
+      find.byKey(const Key('galeria_solo_lectura_empleado')),
+      findsNothing,
+    );
+    expect(find.text('Subir'), findsWidgets);
   });
 
   test('la pantalla no vuelve a construir su propio Scaffold', () {

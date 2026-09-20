@@ -125,6 +125,22 @@ void _grupoInvitaciones() {
     },
   );
 
+  test('el cupo de invitaciones del taller también se lee tal cual', () async {
+    // `resource-exhausted` lo redacta `crearEmpleadoTaller` para una persona:
+    // con el genérico, el taller no sabría que puede arreglarlo retirando
+    // alguna invitación.
+    final p = conServidor(
+      (_, _) => throw FirebaseFunctionsException(
+        code: 'resource-exhausted',
+        message:
+            'Tu taller tiene 20 invitaciones sin responder. Espera a que las '
+            'contesten o retira alguna antes de invitar a más personas.',
+      ),
+    );
+    expect(await crear(p), isNull);
+    expect(p.error, contains('20 invitaciones sin responder'));
+  });
+
   test(
     'un error sin motivo redactado sigue sin enseñar detalle técnico',
     () async {

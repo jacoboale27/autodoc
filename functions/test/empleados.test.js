@@ -71,6 +71,30 @@ describe('crearEmpleadoTaller', () => {
     }
 
     const fakeDb = {
+      // El cupo de invitaciones y el barrido de caducadas van en transacción
+      // (revisión de gate del 2026-09-19): lee al momento y aplica las
+      // escrituras al final, todas o ninguna.
+      runTransaction: async (fn) => {
+        const ops = [];
+        const tx = {
+          get: (ref) => ref.get(),
+          set: (ref, value, opciones) => ops.push(() => ref.set(value, opciones)),
+          delete: (ref) => ops.push(() => ref.delete()),
+        };
+        const resultado = await fn(tx);
+        for (const op of ops) await op();
+        return resultado;
+      },
+      batch: () => {
+        const ops = [];
+        return {
+          delete: (ref) => ops.push(() => ref.delete()),
+          set: (ref, value, opciones) => ops.push(() => ref.set(value, opciones)),
+          commit: async () => {
+            for (const op of ops) await op();
+          },
+        };
+      },
       collection: (name) => {
         if (name === 'usuarios') {
           return { doc: (uid) => makeUsuariosDocRef(uid) };
@@ -83,15 +107,33 @@ describe('crearEmpleadoTaller', () => {
                   return { doc: (uid) => makeEmpleadosDocRef(uid) };
                 }
                 if (sub === 'invitaciones') {
+                  const refInvitacion = (uid) => ({
+                    id: uid,
+                    get: async () => ({
+                      exists: Boolean(invitacionesData[uid]),
+                      data: () => invitacionesData[uid],
+                    }),
+                    set: async (value) => {
+                      invitacionesData[uid] = value;
+                    },
+                    delete: async () => {
+                      delete invitacionesData[uid];
+                    },
+                  });
                   return {
-                    doc: (uid) => ({
+                    doc: refInvitacion,
+                    // Cupo y barrido de caducadas (2026-09-19): la consulta
+                    // sin filtro y con tope de `incorporarCuentaExistente`.
+                    limit: (n) => ({
                       get: async () => ({
-                        exists: Boolean(invitacionesData[uid]),
-                        data: () => invitacionesData[uid],
+                        docs: Object.keys(invitacionesData)
+                          .slice(0, n)
+                          .map((uid) => ({
+                            id: uid,
+                            ref: refInvitacion(uid),
+                            data: () => invitacionesData[uid],
+                          })),
                       }),
-                      set: async (value) => {
-                        invitacionesData[uid] = value;
-                      },
                     }),
                   };
                 }

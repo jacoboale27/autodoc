@@ -68,6 +68,21 @@ service firebase.storage {
         firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.get('estado', 'pendiente') in ['aprobado', 'activo'];
     }
 
+    // Un EMPLEADO del taller tiene cuenta propia con `rol: 'Taller'` y
+    // `estado: 'activo'` (functions/src/empleadosTaller.js), asi que
+    // esTallerAprobado() es cierto para el. Lo que lo distingue es
+    // `id_taller_propietario`, que apunta al taller para el que trabaja —
+    // mismo criterio que idTallerActor()/actuaPorTaller() de firestore.rules.
+    // Al cliente le está cerrado: firestore.rules prohíbe ese campo en el
+    // create y lo excluye del update por affectedKeys(), que incluye las
+    // claves BORRADAS, así que un empleado tampoco puede quitárselo.
+    function esEmpleadoDeTaller() {
+      return isAuthenticated() &&
+        firestore.exists(/databases/(default)/documents/usuarios/$(request.auth.uid)) &&
+        firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid))
+          .data.get('id_taller_propietario', null) != null;
+    }
+
     // Toda escritura de imagen: maximo 5 MB y tipo de imagen permitido.
     // Se excluye deliberadamente image/svg+xml: un SVG puede contener script
     // y se serviria desde el dominio del propio proyecto.
@@ -332,9 +347,24 @@ service firebase.storage {
     match /talleres_fotos/{tallerId}/{fileName} {
       allow read: if true;
 
+      // `!esEmpleadoDeTaller()` cierra un agujero anotado el 2026-09-19: un
+      // empleado pasaba esTallerAprobado() y escribia en
+      // `talleres_fotos/{suPropioUid}/`. Esas fotos no llegaban a ser
+      // escaparate de nadie: publishTallerProfile BORRA la ficha de `talleres`
+      // de toda cuenta con `id_taller_propietario`, y el directorio solo pinta
+      // desde esa ficha —las veia el propio empleado en su panel y nadie mas—,
+      // asi que era alojamiento de hasta 7 imagenes publicas de 5 MB, gratis y
+      // servidas desde el dominio del proyecto.
+      //
+      // El borrado SI se le deja, y no por simetria: el boton «Quitar» de
+      // WorkshopGalleryScreen sigue accesible para una sub-cuenta, y es la
+      // unica via para limpiar lo que subiera antes de esta regla. Con el
+      // guard tambien en el delete, esos objetos quedarian huerfanos para
+      // siempre y el fallo se tragaria en silencio.
       allow write: if request.resource != null
         && request.auth.uid == tallerId
         && esTallerAprobado()
+        && !esEmpleadoDeTaller()
         && esImagenValida()
         && fileName.matches('^(logo|banner|local-[1-5])\\.(jpg|jpeg|png|webp)$');
 

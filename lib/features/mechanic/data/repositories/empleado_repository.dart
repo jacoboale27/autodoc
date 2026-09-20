@@ -45,16 +45,27 @@ class EmpleadoRepository {
     ).doc(idEmpleado).update({'activo': false});
   }
 
+  /// Cota del stream de invitaciones: el servidor no deja pasar de 20 vivas
+  /// por taller (`INVITACIONES_VIVAS_MAX` en
+  /// `functions/src/empleadosTaller.js`, que además barre las caducadas al
+  /// invitar), así que 30 deja holgura para las que quedaran de antes sin
+  /// dejar el stream sin tope. Si alguna vez se llenara, lo que se pierde es
+  /// el final de la lista, no la capacidad de retirar las que se ven.
+  static const int _topeInvitaciones = 30;
+
   /// Las invitaciones que el taller tiene sin responder (observaciones del
-  /// 2026-09-19). Son pocas por construcción: una por persona invitada.
+  /// 2026-09-19).
   Stream<List<InvitacionEmpleoModel>> watchInvitaciones(
     String idTallerPropietario,
   ) {
-    return _invitacionesRef(idTallerPropietario).snapshots().map(
-      (snap) => snap.docs
-          .map((d) => InvitacionEmpleoModel.fromMap(d.data(), d.id))
-          .toList(),
-    );
+    return _invitacionesRef(idTallerPropietario)
+        .limit(_topeInvitaciones)
+        .snapshots()
+        .map(
+          (snap) => snap.docs
+              .map((d) => InvitacionEmpleoModel.fromMap(d.data(), d.id))
+              .toList(),
+        );
   }
 
   /// El taller retira una invitación que ya no quiere. La persona, si la

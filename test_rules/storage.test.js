@@ -617,6 +617,81 @@ describe('storage: galeria comercial del taller', () => {
     }
   });
 
+  test('un EMPLEADO del taller no publica en su propia carpeta', async () => {
+    // Un empleado tiene cuenta propia con rol 'Taller' y estado 'activo'
+    // (functions/src/empleadosTaller.js), asi que pasa esTallerAprobado().
+    // Nadie lee `talleres_fotos/{uidDelEmpleado}`: la galeria se lee siempre
+    // bajo el uid del taller dueño. Dejarle escribir ahi no publicaba nada
+    // suyo, era alojamiento de imagenes publicas gratis bajo el dominio del
+    // proyecto.
+    await seed(env, async (db) => {
+      await db.collection('usuarios').doc(UIDS.empleado1).set({
+        id_usuario: UIDS.empleado1,
+        rol: 'Taller',
+        estado: 'activo',
+        id_taller_propietario: UIDS.taller1,
+      });
+    });
+    const st = env.authenticatedContext(UIDS.empleado1).storage();
+    await assertFails(
+      st.ref(`talleres_fotos/${UIDS.empleado1}/logo.jpg`).put(imagen(10), META_JPEG),
+    );
+    // Y tampoco en la del taller para el que trabaja.
+    await assertFails(
+      st.ref(`talleres_fotos/${UIDS.taller1}/logo.jpg`).put(imagen(10), META_JPEG),
+    );
+  });
+
+  test('un taller con id_taller_propietario en null (no ausente) sigue publicando', async () => {
+    // El guard pregunta `.get('id_taller_propietario', null) != null`, asi que
+    // un null EXPLICITO tiene que contar como "no es empleado". El resto de
+    // tests siembra el campo AUSENTE (seedUsuario no lo escribe), que es otro
+    // camino de la misma expresion: sin este caso, reescribir el guard como
+    // `'id_taller_propietario' in ...` pasaria toda la suite y dejaria sin
+    // escaparate a un taller cuyo documento tenga la clave en null.
+    await seed(env, async (db) => {
+      await db.collection('usuarios').doc(UIDS.taller1).set({
+        id_usuario: UIDS.taller1,
+        rol: 'Taller',
+        estado: 'activo',
+        id_taller_propietario: null,
+      });
+    });
+    await assertSucceeds(
+      env.authenticatedContext(UIDS.taller1).storage()
+        .ref(`talleres_fotos/${UIDS.taller1}/logo.jpg`).put(imagen(10), META_JPEG),
+    );
+  });
+
+  test('un empleado SI borra lo que subio antes de la regla, pero no lo del taller', async () => {
+    // El `allow delete` no lleva `!esEmpleadoDeTaller()` a proposito: lo que un
+    // empleado subio cuando la regla le dejaba escribir tiene que poder
+    // limpiarlo el, y la UI lo permite (boton «Quitar» de
+    // WorkshopGalleryScreen, que sigue accesible para una sub-cuenta).
+    await seedUsuario(UIDS.taller1, 'Taller');
+    await seed(env, async (db) => {
+      await db.collection('usuarios').doc(UIDS.empleado1).set({
+        id_usuario: UIDS.empleado1,
+        rol: 'Taller',
+        estado: 'activo',
+        id_taller_propietario: UIDS.taller1,
+      });
+    });
+
+    const heredada = `talleres_fotos/${UIDS.empleado1}/logo.jpg`;
+    const delTaller = `talleres_fotos/${UIDS.taller1}/logo.jpg`;
+    // Se siembra sin reglas: con el guard puesto, el empleado ya no puede
+    // crear el objeto cuyo borrado queremos ejercer.
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.storage().ref(heredada).put(imagen(10), META_JPEG);
+      await ctx.storage().ref(delTaller).put(imagen(10), META_JPEG);
+    });
+
+    const st = env.authenticatedContext(UIDS.empleado1).storage();
+    await assertFails(st.ref(delTaller).delete());
+    await assertSucceeds(st.ref(heredada).delete());
+  });
+
   test('no se publica en la galeria de otro taller', async () => {
     await seedUsuario(UIDS.taller1, 'Taller');
     await seedUsuario(UIDS.taller2, 'Taller');

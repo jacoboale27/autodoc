@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:autodoc/config/secrets.dart';
 import 'package:autodoc/core/models/galeria_taller.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
@@ -41,10 +42,25 @@ class _WorkshopGalleryScreenState extends State<WorkshopGalleryScreen> {
     });
   }
 
+  /// Una sub-cuenta de empleado tiene su propio uid, y la galería se publica
+  /// bajo el uid del DUEÑO del taller: lo que subiera un empleado no lo vería
+  /// nadie (`publishTallerProfile` borra la ficha de `talleres` de toda cuenta
+  /// con `id_taller_propietario`, y el directorio solo pinta desde esa ficha).
+  /// Desde el 2026-09-19 `storage.rules` tampoco se lo permite, así que sin
+  /// esto la pantalla le ofrecía un botón que siempre falla — y con el mensaje
+  /// equivocado: «Si tu cuenta fue suspendida, no puedes publicar fotos».
+  bool get _esEmpleado {
+    final idTaller = context
+        .read<UserProfileProvider>()
+        .userData
+        ?.idTallerPropietario;
+    return idTaller != null && idTaller.isNotEmpty;
+  }
+
   Future<void> _elegirYSubir(String slot) async {
     final provider = context.read<GaleriaProvider>();
     final uid = context.read<AuthSessionProvider>().currentUid;
-    if (uid.isEmpty) return;
+    if (uid.isEmpty || _esEmpleado) return;
 
     final archivo = await ImagePicker().pickImage(
       source: ImageSource.gallery,
@@ -120,6 +136,7 @@ class _WorkshopGalleryScreenState extends State<WorkshopGalleryScreen> {
     final colors = context.appColors;
     final provider = context.watch<GaleriaProvider>();
     final uid = context.watch<AuthSessionProvider>().currentUid;
+    final esEmpleado = _esEmpleado;
 
     return MechanicScaffold(
       title: 'Fotos del taller',
@@ -142,6 +159,42 @@ class _WorkshopGalleryScreenState extends State<WorkshopGalleryScreen> {
                         height: 1.4,
                       ),
                     ),
+                    if (esEmpleado) ...[
+                      const SizedBox(height: AppSpacing.lg),
+                      Container(
+                        key: const Key('galeria_solo_lectura_empleado'),
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        decoration: BoxDecoration(
+                          color: colors.surfaceContainer,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(
+                            color: colors.outline.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              size: 20,
+                              color: colors.textSecondary,
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: Text(
+                                'Las fotos del taller las publica la cuenta '
+                                'del dueño. Desde tu cuenta de empleado no se '
+                                'pueden subir ni cambiar.',
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: colors.textSecondary,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.xxl),
 
                     _tarjeta(colors, provider, uid, GaleriaTaller.slotLogo),
@@ -265,12 +318,17 @@ class _WorkshopGalleryScreenState extends State<WorkshopGalleryScreen> {
                 icon: const Icon(Icons.delete_outline),
                 tooltip: 'Quitar',
               ),
-            AppButton(
-              text: archivo != null ? 'Cambiar' : 'Subir',
-              type: AppButtonType.text,
-              size: AppButtonSize.small,
-              onPressed: () => _elegirYSubir(slot),
-            ),
+            // «Quitar» SÍ se le deja al empleado: es la única vía para
+            // limpiar lo que hubiera subido antes de que storage.rules se lo
+            // cerrara, y el `allow delete` de esa regla lo permite a
+            // propósito.
+            if (!_esEmpleado)
+              AppButton(
+                text: archivo != null ? 'Cambiar' : 'Subir',
+                type: AppButtonType.text,
+                size: AppButtonSize.small,
+                onPressed: () => _elegirYSubir(slot),
+              ),
           ],
         ],
       ),
