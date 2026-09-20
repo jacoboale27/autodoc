@@ -208,6 +208,31 @@ class FakeReparacionProvider extends ChangeNotifier
     return errorAlRecibir == null;
   }
 
+  /// Qué contesta [tieneServicioRegistrado]. Por defecto `true` —el camino de
+  /// siempre, en el que el servicio ya se finalizó— para que los tests que no
+  /// hablan de esto no cambien de diálogo sin querer. Ponerlo en `false`
+  /// simula la observación del 2026-09-19: entregar un coche cuyo trabajo
+  /// nadie registró, y por tanto nadie cobró.
+  bool servicioRegistrado = true;
+
+  @override
+  Future<bool?> tieneServicioRegistrado(ReparacionModel reparacion) async =>
+      servicioRegistrado;
+
+  /// El ticket que devuelve [buscarUltimoTicket] cuando ya no hay ninguno
+  /// vivo (p. ej. uno entregado).
+  ReparacionModel? ultimoTicketCerrado;
+
+  @override
+  Future<ReparacionModel?> buscarUltimoTicket({
+    required String idVehiculo,
+    required String idTaller,
+  }) async => ultimoTicketCerrado;
+
+  @override
+  Future<ReparacionModel?> obtenerTicket(String idReparacion) async =>
+      ultimoTicketCerrado;
+
   @override
   void clear() {}
 }

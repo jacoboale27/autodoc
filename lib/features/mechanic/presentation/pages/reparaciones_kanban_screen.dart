@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/aviso_tablero_truncado.dart';
 import 'package:autodoc/core/models/reparacion_model.dart';
@@ -386,6 +387,16 @@ class _EstadoColumn extends StatelessWidget {
                             items[i].idReparacion,
                           )
                         : null,
+                    // Observación del 2026-09-19: se entregó un coche sin
+                    // finalizar el servicio y después no había forma de
+                    // cobrarlo — entregar revoca el vínculo y saca el ticket
+                    // del tablero, y el perfil del vehículo solo ofrece
+                    // «Continuar servicio» mientras el ticket vive.
+                    comprobarServicioRegistrado: () =>
+                        provider.tieneServicioRegistrado(items[i]),
+                    onFinalizarServicio: () => context.go(
+                      '/initiate_service/${items[i].idReparacion}',
+                    ),
                     onCancelar: () =>
                         _cancelar(context, provider, items[i].idReparacion),
                   ),

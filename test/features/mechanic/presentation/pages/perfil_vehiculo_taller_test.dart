@@ -10,9 +10,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_core_platform_interface/test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:autodoc/core/models/user_model.dart';
+import 'package:autodoc/core/models/reparacion_model.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/features/chat/data/repositories/chat_repository.dart';
 import 'package:autodoc/features/chat/data/repositories/reserva_repository.dart';
@@ -107,18 +109,19 @@ Future<FakeFirebaseFirestore> _conHistoria() async {
   return db;
 }
 
-Future<void> _montar(
+Future<GoRouter> _montar(
   WidgetTester tester,
   FakeFirebaseFirestore db, {
   double width = 1280,
   bool precargado = true,
   String estadoTicket = 'recibido',
   String? ticket = 'r1',
+  ReparacionModel? ticketCerrado,
 }) async {
   if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp();
   }
-  await pumpMechanicScreen(
+  final router = await pumpMechanicScreen(
     tester,
     VehiclePublicViewScreen(
       vehiculoId: 'v1',
@@ -140,7 +143,8 @@ Future<void> _montar(
       ),
       ChangeNotifierProvider<ReparacionProvider>.value(
         value: FakeReparacionProvider(reparacionActivaId: ticket)
-          ..estadoTicketActivo = estadoTicket,
+          ..estadoTicketActivo = estadoTicket
+          ..ultimoTicketCerrado = ticketCerrado,
       ),
       ChangeNotifierProvider<VehicleProvider>(
         create: (_) => _VehiculosConFicha(),
@@ -148,7 +152,24 @@ Future<void> _montar(
     ],
   );
   await tester.pumpAndSettle();
+  return router;
 }
+
+/// Un ticket ya entregado, abierto en [fechaCreacion]: lo que el perfil usa
+/// para distinguir «nunca hubo ticket» de «ya se entregó».
+ReparacionModel _ticketEntregado(
+  DateTime fechaCreacion, {
+  String estado = estadoReparacionEntregado,
+}) => ReparacionModel(
+  idReparacion: 'r1',
+  idVehiculo: 'v1',
+  idTaller: 't1',
+  idPropietario: 'p1',
+  placa: 'P123456',
+  estado: estado,
+  fechaCreacion: fechaCreacion,
+  fechaActualizacion: fechaCreacion,
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -188,6 +209,75 @@ void main() {
     expect(find.text('Recibir vehículo'), findsNothing);
     // Hay una aceptada sin ticket: se explica en vez de callarlo.
     expect(find.textContaining('el ticket todavía no se ha abierto'), findsOne);
+  });
+
+  testWidgets('un coche entregado sin cobrar ofrece registrar el servicio', (
+    tester,
+  ) async {
+    // Observación del 2026-09-19: se entregó el coche sin finalizar el
+    // servicio. Aquí el aviso decía «el ticket todavía no se ha abierto»,
+    // que es lo contrario de lo que pasó, y no había ninguna vía para
+    // facturar el trabajo.
+    final router = await _montar(
+      tester,
+      await _conHistoria(),
+      ticket: null,
+      ticketCerrado: _ticketEntregado(DateTime(2026, 9, 1)),
+    );
+
+    expect(
+      find.textContaining('se entregó sin registrar el servicio'),
+      findsOne,
+    );
+    expect(
+      find.textContaining('el ticket todavía no se ha abierto'),
+      findsNothing,
+    );
+
+    await tester.tap(find.byKey(const Key('perfil_vehiculo_registrar_cobro')));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.toString(), '/initiate_service/r1');
+  });
+
+  testWidgets('un ticket CANCELADO no ofrece cobrar: la visita no ocurrió', (
+    tester,
+  ) async {
+    await _montar(
+      tester,
+      await _conHistoria(),
+      ticket: null,
+      ticketCerrado: _ticketEntregado(
+        DateTime(2026, 9, 1),
+        estado: 'cancelado',
+      ),
+    );
+
+    expect(
+      find.byKey(const Key('perfil_vehiculo_registrar_cobro')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('si el servicio SÍ se registró, no se ofrece cobrar de nuevo', (
+    tester,
+  ) async {
+    // El servicio de `_conHistoria` es del 1 de junio; este ticket se abrió
+    // antes, así que ese servicio es el suyo y ya está cobrado.
+    await _montar(
+      tester,
+      await _conHistoria(),
+      ticket: null,
+      ticketCerrado: _ticketEntregado(DateTime(2026, 5, 20)),
+    );
+
+    expect(
+      find.textContaining('se entregó sin registrar el servicio'),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('perfil_vehiculo_registrar_cobro')),
+      findsNothing,
+    );
   });
 
   testWidgets('"Nueva cotización" manda una cotización extra por el chat', (

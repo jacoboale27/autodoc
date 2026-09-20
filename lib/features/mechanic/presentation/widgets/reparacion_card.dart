@@ -7,7 +7,10 @@ import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_dialog_content.dart';
 
-class ReparacionCard extends StatelessWidget {
+/// Lo que el taller decide en el diálogo de entrega.
+enum _DecisionEntrega { entregar, finalizarPrimero }
+
+class ReparacionCard extends StatefulWidget {
   final ReparacionModel reparacion;
   final VoidCallback? onAvanzar;
   final bool esUltimoEstado;
@@ -26,6 +29,16 @@ class ReparacionCard extends StatelessWidget {
   /// oculta la acción, que es lo normal salvo en la última columna.
   final VoidCallback? onEntregar;
 
+  /// ¿El servicio de este ticket ya está registrado (y por tanto cobrado)?
+  /// `null` (el callback o su resultado) significa «no se sabe», y entonces la
+  /// entrega se confirma como siempre: un fallo de red no puede impedirle al
+  /// taller registrar que el cliente se llevó el coche.
+  final Future<bool?> Function()? comprobarServicioRegistrado;
+
+  /// Lleva a finalizar el servicio de este ticket, que es lo que genera el
+  /// cobro. Se ofrece en el diálogo cuando no hay servicio registrado.
+  final VoidCallback? onFinalizarServicio;
+
   const ReparacionCard({
     super.key,
     required this.reparacion,
@@ -34,7 +47,20 @@ class ReparacionCard extends StatelessWidget {
     this.siguienteEstadoLabel,
     this.onCancelar,
     this.onEntregar,
+    this.comprobarServicioRegistrado,
+    this.onFinalizarServicio,
   });
+
+  @override
+  State<ReparacionCard> createState() => _ReparacionCardState();
+}
+
+class _ReparacionCardState extends State<ReparacionCard> {
+  /// Entregar es irreversible y el diálogo se cierra al confirmar, así que el
+  /// segundo toque no viene del mismo botón: viene de REABRIR el diálogo
+  /// mientras la primera entrega viaja (patrón de GAPS-07). Esta bandera
+  /// cubre también la comprobación previa, que es una ida a la red.
+  bool _entregando = false;
 
   /// Confirma antes de cancelar: es una acción destructiva e irreversible
   /// (el ticket cancelado desaparece del tablero, ver
@@ -47,7 +73,7 @@ class ReparacionCard extends StatelessWidget {
         title: const Text('Cancelar ticket'),
         content: AppDialogContent(
           child: Text(
-            '¿Seguro que deseas cancelar el ticket de "${reparacion.placa}"? '
+            '¿Seguro que deseas cancelar el ticket de "${widget.reparacion.placa}"? '
             'Esta acción no se puede deshacer.',
           ),
         ),
@@ -67,7 +93,7 @@ class ReparacionCard extends StatelessWidget {
         ],
       ),
     );
-    if (confirmado == true) onCancelar?.call();
+    if (confirmado == true) widget.onCancelar?.call();
   }
 
   /// Confirma antes de entregar, por el mismo motivo que
@@ -77,16 +103,46 @@ class ReparacionCard extends StatelessWidget {
   /// deshaga — el repositorio rechaza volver a un estado del pipeline desde
   /// uno terminal. El texto nombra el hecho físico ("se lo llevó"), no el
   /// estado, porque es lo único que el mecánico puede comprobar mirando.
-  Future<void> _confirmarEntregar(BuildContext context) async {
-    final confirmado = await showDialog<bool>(
+  Future<void> _confirmarEntregar() async {
+    if (_entregando) return;
+    setState(() => _entregando = true);
+    try {
+      // `?? true` = si no se puede comprobar, se pregunta lo de siempre.
+      final registrado =
+          await widget.comprobarServicioRegistrado?.call() ?? true;
+      if (!mounted) return;
+
+      final _DecisionEntrega? decision;
+      if (registrado) {
+        decision = await _preguntarEntrega();
+      } else {
+        decision = await _preguntarEntregaSinServicio();
+      }
+      if (!mounted) return;
+
+      switch (decision) {
+        case _DecisionEntrega.entregar:
+          widget.onEntregar?.call();
+        case _DecisionEntrega.finalizarPrimero:
+          widget.onFinalizarServicio?.call();
+        case null:
+          break;
+      }
+    } finally {
+      if (mounted) setState(() => _entregando = false);
+    }
+  }
+
+  Future<_DecisionEntrega?> _preguntarEntrega() {
+    return showDialog<_DecisionEntrega>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Entregar vehículo'),
         content: AppDialogContent(
           child: Text(
-            '¿El cliente ya se llevó "${reparacion.placa}"? El ticket saldrá '
-            'del tablero y tu taller dejará de tener acceso a la ficha del '
-            'vehículo.',
+            '¿El cliente ya se llevó "${widget.reparacion.placa}"? El ticket '
+            'saldrá del tablero y tu taller dejará de tener acceso a la ficha '
+            'del vehículo.',
           ),
         ),
         actions: [
@@ -94,24 +150,70 @@ class ReparacionCard extends StatelessWidget {
             text: 'Todavía no',
             type: AppButtonType.text,
             size: AppButtonSize.small,
-            onPressed: () => Navigator.pop(dialogContext, false),
+            onPressed: () => Navigator.pop(dialogContext),
           ),
           AppButton(
             text: 'Entregar',
             size: AppButtonSize.small,
-            onPressed: () => Navigator.pop(dialogContext, true),
+            onPressed: () =>
+                Navigator.pop(dialogContext, _DecisionEntrega.entregar),
           ),
         ],
       ),
     );
-    if (confirmado == true) onEntregar?.call();
+  }
+
+  /// El coche está listo para salir pero nadie registró el servicio, así que
+  /// no hay cobro. Entregar ahora revoca el vínculo y saca el ticket del
+  /// tablero: después no queda ninguna pantalla desde la que facturarlo, que
+  /// es exactamente lo que pasó el 2026-09-19.
+  ///
+  /// «Entregar sin cobrar» se conserva porque el caso existe: el cliente que
+  /// rechaza el presupuesto y se lleva el coche a medias. Lo que no puede
+  /// pasar es que ese camino sea el mismo que el de un trabajo terminado.
+  Future<_DecisionEntrega?> _preguntarEntregaSinServicio() {
+    return showDialog<_DecisionEntrega>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Falta finalizar el servicio'),
+        content: AppDialogContent(
+          child: Text(
+            'El servicio de "${widget.reparacion.placa}" todavía no está '
+            'registrado, así que no se ha generado el cobro. Si entregas '
+            'ahora, el ticket sale del tablero y tu taller pierde el acceso a '
+            'la ficha del vehículo: ya no podrás facturarlo.',
+          ),
+        ),
+        actions: [
+          AppButton(
+            text: 'Todavía no',
+            type: AppButtonType.text,
+            size: AppButtonSize.small,
+            onPressed: () => Navigator.pop(dialogContext),
+          ),
+          AppButton(
+            text: 'Entregar sin cobrar',
+            type: AppButtonType.danger,
+            size: AppButtonSize.small,
+            onPressed: () =>
+                Navigator.pop(dialogContext, _DecisionEntrega.entregar),
+          ),
+          AppButton(
+            text: 'Finalizar servicio',
+            size: AppButtonSize.small,
+            onPressed: () =>
+                Navigator.pop(dialogContext, _DecisionEntrega.finalizarPrimero),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final dias = DateTime.now()
-        .difference(reparacion.fechaActualizacion)
+        .difference(widget.reparacion.fechaActualizacion)
         .inDays;
 
     return AppCard(
@@ -121,7 +223,7 @@ class ReparacionCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            reparacion.placa,
+            widget.reparacion.placa,
             style: AppTextStyles.titleSmall.copyWith(
               fontWeight: FontWeight.bold,
               color: colors.textPrimary,
@@ -136,20 +238,21 @@ class ReparacionCard extends StatelessWidget {
               color: colors.textSecondary,
             ),
           ),
-          if (!esUltimoEstado && siguienteEstadoLabel != null) ...[
+          if (!widget.esUltimoEstado &&
+              widget.siguienteEstadoLabel != null) ...[
             const SizedBox(height: AppSpacing.sm),
             Align(
               alignment: Alignment.centerLeft,
               child: AppButton(
-                text: 'Avanzar a $siguienteEstadoLabel',
+                text: 'Avanzar a ${widget.siguienteEstadoLabel}',
                 type: AppButtonType.text,
                 size: AppButtonSize.small,
                 icon: const Icon(Icons.arrow_forward),
-                onPressed: onAvanzar,
+                onPressed: widget.onAvanzar,
               ),
             ),
           ],
-          if (onEntregar != null) ...[
+          if (widget.onEntregar != null) ...[
             const SizedBox(height: AppSpacing.sm),
             Align(
               alignment: Alignment.centerLeft,
@@ -158,11 +261,14 @@ class ReparacionCard extends StatelessWidget {
                 type: AppButtonType.text,
                 size: AppButtonSize.small,
                 icon: const Icon(Icons.check_circle_outline),
-                onPressed: () => _confirmarEntregar(context),
+                // Deshabilitado mientras la entrega viaja: es la primera
+                // de las dos capas de GAPS-07 (la otra es `_entregando`, que
+                // atrapa los dos toques del MISMO frame).
+                onPressed: _entregando ? null : _confirmarEntregar,
               ),
             ),
           ],
-          if (onCancelar != null) ...[
+          if (widget.onCancelar != null) ...[
             const SizedBox(height: AppSpacing.xs),
             Align(
               alignment: Alignment.centerLeft,

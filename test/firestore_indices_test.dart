@@ -187,6 +187,18 @@ const _inventario = <_Consulta>[
     descendente: true,
     origen: 'lib/features/reviews/data/services/review_service.dart:160',
   ),
+  // Observación del 2026-09-19: antes de dejar entregar un vehículo, el
+  // tablero comprueba si el servicio de ese ticket ya está registrado (o sea,
+  // si hay cobro). Misma forma que la de arriba, así que la sirve el mismo
+  // índice.
+  _Consulta(
+    coleccion: 'servicios',
+    igualdades: ['id_vehiculo', 'id_taller'],
+    orden: 'fecha',
+    descendente: true,
+    origen:
+        'lib/features/mechanic/data/repositories/reparacion_repository.dart:40',
+  ),
   _Consulta(
     coleccion: 'servicios',
     igualdades: ['id_vehiculo'],
@@ -399,7 +411,7 @@ const _huerfanosConocidos = <String>[];
 /// trae tres (servicios del coche, cotizaciones del taller y servicios del
 /// taller); se van la de `InitiateServiceScreen` (ahora de solo igualdades) y
 /// la de "Mis Servicios", que se mudó al repositorio.
-const _orderByEsperados = 17;
+const _orderByEsperados = 18;
 
 /// Cuántos `.where(` hay hoy en `functions/index.js` y `functions/src/`. Ver el
 /// cuarto test.

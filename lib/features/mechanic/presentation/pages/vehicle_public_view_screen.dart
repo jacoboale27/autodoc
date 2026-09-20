@@ -99,6 +99,12 @@ class _VehiclePublicViewScreenState extends State<VehiclePublicViewScreen> {
   List<ServiceRecordModel>? _servicios;
   ReparacionModel? _ticket;
 
+  /// El último ticket cuando ya no hay ninguno vivo. Sin esto, un coche
+  /// recién entregado caía en el aviso de «el ticket todavía no se ha
+  /// abierto», que es lo contrario de lo que pasó (observación del
+  /// 2026-09-19).
+  ReparacionModel? _ticketCerrado;
+
   /// La cita vigente del propietario con este taller para este coche, si la
   /// hay (observaciones del 2026-09-18).
   ReservaModel? _reserva;
@@ -245,6 +251,25 @@ class _VehiclePublicViewScreenState extends State<VehiclePublicViewScreen> {
     }
   }
 
+  /// El ticket ya entregado cuyo servicio nadie registró, o `null`.
+  ///
+  /// Entregar revoca el vínculo y saca el ticket del tablero, así que hasta
+  /// el 2026-09-19 el trabajo se quedaba sin factura y sin ninguna pantalla
+  /// desde la que emitirla. El tablero ya avisa antes de entregar; esto es la
+  /// salida para los que se entregaron antes de esa guarda.
+  ///
+  /// Se mide con los servicios que la pantalla YA cargó (van de más nuevo a
+  /// más viejo), sin una consulta extra.
+  ReparacionModel? get _ticketEntregadoSinCobro {
+    final t = _ticketCerrado;
+    if (t == null || t.estado != estadoReparacionEntregado) return null;
+    final servicios = _servicios;
+    if (servicios == null) return null;
+    final ultimo = servicios.firstOrNull;
+    if (ultimo != null && !ultimo.fecha.isBefore(t.fechaCreacion)) return null;
+    return t;
+  }
+
   Future<void> _buscarTicket() async {
     final vehiculo = _vehiculo;
     final idTaller = _idTaller;
@@ -256,7 +281,16 @@ class _VehiclePublicViewScreenState extends State<VehiclePublicViewScreen> {
             idVehiculo: vehiculo.idVehiculo,
             idTaller: idTaller,
           );
-      if (mounted) setState(() => _ticket = ticket);
+      if (!mounted) return;
+      setState(() => _ticket = ticket);
+      if (ticket != null) return;
+      final ultimo = await context
+          .read<ReparacionProvider>()
+          .buscarUltimoTicket(
+            idVehiculo: vehiculo.idVehiculo,
+            idTaller: idTaller,
+          );
+      if (mounted) setState(() => _ticketCerrado = ultimo);
     } catch (e) {
       debugPrint('No se pudo comprobar el servicio en curso: $e');
     }
@@ -510,6 +544,7 @@ class _VehiclePublicViewScreenState extends State<VehiclePublicViewScreen> {
     final principal = <Widget>[
       _ServicioEnCurso(
         ticket: _ticket,
+        ticketEntregadoSinCobro: _ticketEntregadoSinCobro,
         vehiculo: vehiculo,
         hayAceptadas: _aceptadas.isNotEmpty,
       ),
@@ -747,6 +782,9 @@ class _Dato extends StatelessWidget {
 class _ServicioEnCurso extends StatelessWidget {
   final ReparacionModel? ticket;
 
+  /// Ver `_VehiclePublicViewScreenState._ticketEntregadoSinCobro`.
+  final ReparacionModel? ticketEntregadoSinCobro;
+
   /// Se pasa como precarga a la pantalla del servicio, igual que hacía la
   /// búsqueda antes de llevar al perfil.
   final VehicleModel vehiculo;
@@ -758,6 +796,7 @@ class _ServicioEnCurso extends StatelessWidget {
 
   const _ServicioEnCurso({
     required this.ticket,
+    required this.ticketEntregadoSinCobro,
     required this.vehiculo,
     required this.hayAceptadas,
   });
@@ -768,6 +807,29 @@ class _ServicioEnCurso extends StatelessWidget {
     final t = ticket;
 
     if (t == null) {
+      // Ya se entregó y nadie registró el servicio: lo que falta no es el
+      // ticket, es el cobro — y todavía se puede emitir, porque el taller
+      // sigue en `talleres_conocidos` del vehículo.
+      final sinCobro = ticketEntregadoSinCobro;
+      if (sinCobro != null) {
+        return _Aviso(
+          icono: Icons.request_quote_outlined,
+          texto:
+              'Este vehículo se entregó sin registrar el servicio, así que no '
+              'se generó el cobro. Puedes registrarlo ahora. La foto de la '
+              'factura ya no se puede adjuntar: al entregar, tu taller dejó '
+              'de tener acceso a la ficha del vehículo.',
+          accion: TextButton.icon(
+            key: const Key('perfil_vehiculo_registrar_cobro'),
+            onPressed: () => context.go(
+              '/initiate_service/${sinCobro.idReparacion}',
+              extra: vehiculo,
+            ),
+            icon: const Icon(Icons.receipt_long_outlined, size: 18),
+            label: const Text('Registrar servicio y cobro'),
+          ),
+        );
+      }
       return _Aviso(
         icono: hayAceptadas ? Icons.hourglass_empty : Icons.info_outline,
         texto: hayAceptadas

@@ -9,6 +9,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cotizacion_form.dart';
+import 'package:autodoc/core/models/reparacion_model.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/reparacion_provider.dart';
@@ -640,13 +641,30 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           // ningún error a la vista. Es la misma clase de fallo que tenía el
           // botón «Avanzar» del tablero. Recibir es idempotente, así que
           // llamarlo aquí no cuesta nada cuando ya se recibió.
-          if (!_recepcionConfirmada) {
-            await reparacionProvider.recibirVehiculoPorId(widget.reparacionId);
-          }
-          await reparacionProvider.cambiarEstado(
+          // Un ticket YA CERRADO no se toca: se llega aquí desde
+          // «Registrar servicio y cobro» del perfil del vehículo, la salida
+          // para un coche que se entregó sin facturar (observación del
+          // 2026-09-19). Recibirlo o avanzarlo fallaría —el repositorio
+          // rechaza volver al pipeline desde un estado terminal— y el
+          // mecánico leería «no se pudo actualizar el ticket» sobre algo que
+          // no había que actualizar.
+          final ticket = await reparacionProvider.obtenerTicket(
             widget.reparacionId,
-            'listo_para_entrega',
           );
+          final cerrado =
+              ticket != null &&
+              estadosReparacionCerrados.contains(ticket.estado);
+          if (!cerrado) {
+            if (!_recepcionConfirmada) {
+              await reparacionProvider.recibirVehiculoPorId(
+                widget.reparacionId,
+              );
+            }
+            await reparacionProvider.cambiarEstado(
+              widget.reparacionId,
+              'listo_para_entrega',
+            );
+          }
         } catch (e) {
           // No bloquear el cierre del servicio si el ticket Kanban no pudo
           // actualizarse (p.ej. ya estaba en ese estado o fue eliminado),
