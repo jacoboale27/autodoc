@@ -615,6 +615,31 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get alertsSoatExpiringTitle => 'Seguro por vencer';
+
+  @override
+  String get alertsSoatExpiredTitle => 'Seguro vencido';
+
+  @override
+  String get alertsCardExpiringTitle => 'Tarjeta por vencer';
+
+  @override
+  String get alertsCardExpiredTitle => 'Tarjeta vencida';
+
+  @override
+  String get alertsDocExpiresToday => 'Vence hoy.';
+
+  @override
+  String alertsDocExpiresInDays(int dias) {
+    return 'Vence en $dias días.';
+  }
+
+  @override
+  String alertsDocExpiredDaysAgo(int dias) {
+    return 'Venció hace $dias días.';
+  }
+
+  @override
   String get histTitle => 'Historial de Servicios';
 
   @override

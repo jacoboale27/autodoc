@@ -610,6 +610,31 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get alertsSoatExpiringTitle => 'Insurance expiring soon';
+
+  @override
+  String get alertsSoatExpiredTitle => 'Insurance expired';
+
+  @override
+  String get alertsCardExpiringTitle => 'Registration expiring soon';
+
+  @override
+  String get alertsCardExpiredTitle => 'Registration expired';
+
+  @override
+  String get alertsDocExpiresToday => 'Expires today.';
+
+  @override
+  String alertsDocExpiresInDays(int dias) {
+    return 'Expires in $dias days.';
+  }
+
+  @override
+  String alertsDocExpiredDaysAgo(int dias) {
+    return 'Expired $dias days ago.';
+  }
+
+  @override
   String get histTitle => 'Service History';
 
   @override

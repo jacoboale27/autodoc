@@ -309,6 +309,27 @@
       }
     }
   },
+  "alertsSoatExpiringTitle": "Insurance expiring soon",
+  "alertsSoatExpiredTitle": "Insurance expired",
+  "alertsCardExpiringTitle": "Registration expiring soon",
+  "alertsCardExpiredTitle": "Registration expired",
+  "alertsDocExpiresToday": "Expires today.",
+  "alertsDocExpiresInDays": "Expires in {dias} days.",
+  "@alertsDocExpiresInDays": {
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
+  },
+  "alertsDocExpiredDaysAgo": "Expired {dias} days ago.",
+  "@alertsDocExpiredDaysAgo": {
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
+  },
   "histTitle": "Service History",
   "histTabAll": "All",
   "histTabManual": "Manual",

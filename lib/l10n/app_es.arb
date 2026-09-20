@@ -309,6 +309,27 @@
       }
     }
   },
+  "alertsSoatExpiringTitle": "Seguro por vencer",
+  "alertsSoatExpiredTitle": "Seguro vencido",
+  "alertsCardExpiringTitle": "Tarjeta por vencer",
+  "alertsCardExpiredTitle": "Tarjeta vencida",
+  "alertsDocExpiresToday": "Vence hoy.",
+  "alertsDocExpiresInDays": "Vence en {dias} días.",
+  "@alertsDocExpiresInDays": {
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
+  },
+  "alertsDocExpiredDaysAgo": "Venció hace {dias} días.",
+  "@alertsDocExpiredDaysAgo": {
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
+  },
   "histTitle": "Historial de Servicios",
   "histTabAll": "Todos",
   "histTabManual": "Manual",

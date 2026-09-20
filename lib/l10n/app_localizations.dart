@@ -1184,6 +1184,48 @@ abstract class AppLocalizations {
   /// **'Current mileage is lower than the last recorded service ({km} km). Correct the vehicle\'s mileage.'**
   String alertsInconsistentMileage(String km);
 
+  /// No description provided for @alertsSoatExpiringTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Insurance expiring soon'**
+  String get alertsSoatExpiringTitle;
+
+  /// No description provided for @alertsSoatExpiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Insurance expired'**
+  String get alertsSoatExpiredTitle;
+
+  /// No description provided for @alertsCardExpiringTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration expiring soon'**
+  String get alertsCardExpiringTitle;
+
+  /// No description provided for @alertsCardExpiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration expired'**
+  String get alertsCardExpiredTitle;
+
+  /// No description provided for @alertsDocExpiresToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Expires today.'**
+  String get alertsDocExpiresToday;
+
+  /// No description provided for @alertsDocExpiresInDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Expires in {dias} days.'**
+  String alertsDocExpiresInDays(int dias);
+
+  /// No description provided for @alertsDocExpiredDaysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired {dias} days ago.'**
+  String alertsDocExpiredDaysAgo(int dias);
+
   /// No description provided for @histTitle.
   ///
   /// In en, this message translates to:
