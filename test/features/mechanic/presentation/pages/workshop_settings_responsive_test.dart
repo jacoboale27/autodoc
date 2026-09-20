@@ -57,6 +57,11 @@ void main() {
   ) async {
     await pumpAjustes(tester, 375);
 
+    // El formulario creció con los tipos de vehículo que atiende el taller
+    // (2026-09-20), así que a 375 px el botón nace fuera del viewport y hay
+    // que traerlo antes de tocarlo.
+    await tester.ensureVisible(find.text('Guardar Cambios'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Guardar Cambios'));
     await tester.pump();
 

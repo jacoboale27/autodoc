@@ -43,6 +43,17 @@ class FakeVehicleProvider extends VehicleProvider {
   VehicleModel? get selectedVehicle =>
       _vehicles.isEmpty ? null : _vehicles.first;
 
+  /// Lo que se mandó guardar. El provider real llama al servicio y luego
+  /// recarga; aquí basta con anotarlo para poder afirmar QUÉ se guardó (p. ej.
+  /// la foto principal nueva).
+  final List<VehicleModel> actualizados = [];
+
+  @override
+  Future<bool> updateVehicle(VehicleModel vehicle) async {
+    actualizados.add(vehicle);
+    return true;
+  }
+
   @override
   bool get isLoading => false;
 }

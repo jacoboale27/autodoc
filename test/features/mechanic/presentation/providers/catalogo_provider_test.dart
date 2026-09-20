@@ -163,4 +163,52 @@ void main() {
       );
     });
   });
+
+  test(
+    'las sugerencias dependen de los vehículos que atiende el taller',
+    () async {
+      // Observación del 2026-09-20: «según la especialidad deberían tener
+      // sugerencias predeterminadas del catálogo». Un taller de motos no
+      // quiere un catálogo lleno de kits de embrague de coche, pero sí lo
+      // común a todos (aceite, frenos, diagnóstico).
+      final firestore = FakeFirebaseFirestore();
+      final repo = CatalogoRepository(firestore: firestore);
+      final provider = CatalogoProvider(repository: repo);
+      provider.watchTaller('t1');
+      await Future.delayed(Duration.zero);
+
+      final n = await provider.cargarServiciosComunes(tipos: ['motocicleta']);
+      await Future.delayed(Duration.zero);
+
+      final nombres = provider.items.map((i) => i.nombre).toSet();
+      expect(n, serviciosComunesPara(['motocicleta']).length);
+      expect(nombres, contains('Ajuste y lubricación de cadena'));
+      expect(nombres, contains('Cambio de aceite y filtro'));
+      expect(
+        nombres,
+        isNot(contains('Purga y revisión de frenos de aire')),
+        reason: 'eso es de camiones y autobuses',
+      );
+    },
+  );
+
+  test('sin tipos declarados se sugiere solo lo común', () {
+    final comunes = serviciosComunesPara(const []);
+    expect(comunes.length, serviciosComunesManoDeObra.length);
+    expect(
+      serviciosComunesPara(['camion']).length,
+      greaterThan(comunes.length),
+    );
+  });
+
+  test('un taller que atiende varios tipos no repite servicios', () {
+    // Camión y autobús comparten «Purga y revisión de frenos de aire» y
+    // «Cambio de aceite de motor diésel»: el catálogo no debe nacer con la
+    // misma línea dos veces.
+    final nombres = serviciosComunesPara([
+      'camion',
+      'autobus',
+    ]).map((s) => s.nombre.toLowerCase()).toList();
+    expect(nombres.length, nombres.toSet().length);
+  });
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../widgets/vehicle_gallery_widget.dart';
 
 import '../widgets/expense_summary_card.dart';
@@ -52,12 +53,19 @@ class VehicleProfileScreen extends StatefulWidget {
   /// Stream de fotos para la galeria; mismo motivo.
   final Stream<List<VehiclePhotoModel>>? galleryPhotos;
 
+  /// Elige y sube la foto principal, y devuelve su URL (o `null` si la
+  /// persona canceló). Inyectable por lo mismo que los dos de arriba:
+  /// `VehiclePhotoService` toca `FirebaseStorage.instance` y el picker no
+  /// tiene plataforma en un widget test.
+  final Future<String?> Function(VehicleModel vehiculo)? elegirFotoPrincipal;
+
   const VehicleProfileScreen({
     super.key,
     required this.vehiculoId,
     this.vehiculoPrecargado,
     this.vehicleService,
     this.galleryPhotos,
+    this.elegirFotoPrincipal,
   });
 
   @override
@@ -67,6 +75,59 @@ class VehicleProfileScreen extends StatefulWidget {
 class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
   VehicleService get _vehicleService =>
       widget.vehicleService ?? VehicleService();
+
+  /// Bloquea el botón mientras la foto viaja: subir dos veces deja un objeto
+  /// huérfano y dos escrituras del vehículo (patrón de GAPS-07).
+  bool _cambiandoFoto = false;
+
+  Future<String?> _elegirFoto(VehicleModel vehiculo) async {
+    final elegir = widget.elegirFotoPrincipal;
+    if (elegir != null) return elegir(vehiculo);
+    final imagen = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1600,
+      imageQuality: 85,
+    );
+    if (imagen == null) return null;
+    return VehiclePhotoService().setMainPhoto(
+      vehiculo.idVehiculo,
+      imagen,
+      urlAnterior: vehiculo.fotoUrl,
+    );
+  }
+
+  /// Observación del 2026-09-20: «el propietario debe poder poner la imagen
+  /// que quiera como foto principal de su vehículo».
+  Future<void> _cambiarFotoPrincipal(VehicleModel vehiculo) async {
+    if (_cambiandoFoto) return;
+    setState(() => _cambiandoFoto = true);
+    final provider = context.read<VehicleProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final url = await _elegirFoto(vehiculo);
+      if (url == null) return;
+      final ok = await provider.updateVehicle(vehiculo.copyWith(fotoUrl: url));
+      if (!ok) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              provider.error ?? 'No se pudo guardar la foto del vehículo.',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            mensajeSeguroDeError(e, accion: 'No se pudo cambiar la foto'),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _cambiandoFoto = false);
+    }
+  }
 
   /// Bandera de envio del kilometraje, de la nota nueva y de cada una de las
   /// dos fechas. Las fechas van por clave porque actualizar el SOAT no tiene
@@ -385,6 +446,38 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                   imageUrl: vehicle.fotoUrl,
                   tipoVehiculo: vehicle.tipoVehiculo,
                   fit: BoxFit.cover,
+                ),
+              ),
+              Positioned(
+                top: AppSpacing.sm,
+                right: AppSpacing.sm,
+                child: Material(
+                  // `scrim`/`onScrim` y no negro y blanco a pelo: es el par
+                  // de tokens que existe justo para dibujar encima de una
+                  // foto, y el centinela de este fichero prohíbe literales.
+                  color: colors.scrim,
+                  shape: const CircleBorder(),
+                  child: IconButton(
+                    key: const Key('perfil_vehiculo_cambiar_foto'),
+                    tooltip: 'Cambiar foto',
+                    icon: _cambiandoFoto
+                        ? SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: colors.onScrim,
+                            ),
+                          )
+                        : Icon(
+                            Icons.photo_camera_outlined,
+                            color: colors.onScrim,
+                            size: 20,
+                          ),
+                    onPressed: _cambiandoFoto
+                        ? null
+                        : () => _cambiarFotoPrincipal(vehicle),
+                  ),
                 ),
               ),
               Positioned(

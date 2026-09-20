@@ -45,20 +45,24 @@ void main() {
     );
   });
 
-  test('la vista de mapa se rinde antes de montar GoogleMap sin API key', () {
-    // Regresion: durante semanas se desplego web sin GOOGLE_MAPS_API_KEY y el
-    // directorio pintaba un rectangulo gris mudo. El guardia tiene que estar
-    // antes del GoogleMap, no despues.
-    final guard = source.indexOf('isMapUnavailable(');
+  test('el mapa no depende de ninguna clave de API', () {
+    // Este test comprobaba que, sin `GOOGLE_MAPS_API_KEY`, el directorio se
+    // rindiera con un aviso antes de montar el `GoogleMap` —durante semanas
+    // se desplegó web sin clave y aquí había un rectángulo gris mudo—. El
+    // 2026-09-20 la clave del entorno además CADUCÓ, con el agravante de que
+    // una clave rota no se puede detectar desde la app: el error lo pinta la
+    // propia API dentro de una vista de plataforma.
+    //
+    // Así que ya no hay clave que comprobar: el mapa son tiles de
+    // OpenStreetMap dibujados por Flutter. Lo que este test fija ahora es que
+    // no se vuelva a introducir esa dependencia.
+    expect(source.contains('GoogleMap('), isFalse);
+    expect(source.contains('google_maps_flutter'), isFalse);
+    expect(source.contains('googleMapsApiKey'), isFalse);
     expect(
-      guard,
-      greaterThan(-1),
-      reason: 'la vista de mapa no comprueba si falta la API key',
-    );
-    expect(
-      guard,
-      lessThan(source.indexOf('GoogleMap(')),
-      reason: 'el guardia va antes de construir el GoogleMap',
+      source.contains('MapaOsm('),
+      isTrue,
+      reason: 'el directorio pinta el mapa de la app',
     );
   });
 

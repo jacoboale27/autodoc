@@ -7,6 +7,8 @@ import 'package:provider/provider.dart';
 import 'package:autodoc/config/secrets.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/core/models/catalogo_item_model.dart';
+import 'package:autodoc/core/constants/tipos_vehiculo.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/models/galeria_taller.dart';
 import 'package:autodoc/core/widgets/visor_de_imagenes.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
@@ -306,6 +308,7 @@ class _PerfilEmpresa extends StatelessWidget {
           urlBanner: urlBanner,
           urlLogo: urlLogo,
           nombre: perfil.nombre,
+          encuadreBanner: perfil.encuadreBanner,
         ),
         const SizedBox(height: AppSpacing.md),
         _Encabezado(perfil: perfil, colors: colors),
@@ -353,11 +356,16 @@ class _Portada extends StatelessWidget {
   final String? urlLogo;
   final String nombre;
 
+  /// Qué franja del banner se ve, de -1 (arriba) a 1 (abajo). La elige el
+  /// taller en `AjustarBannerScreen`; 0 —el centro— es lo que había antes.
+  final double encuadreBanner;
+
   const _Portada({
     required this.colors,
     required this.urlBanner,
     required this.urlLogo,
     required this.nombre,
+    this.encuadreBanner = 0,
   });
 
   static const double _radioLogo = 48;
@@ -395,6 +403,7 @@ class _Portada extends StatelessWidget {
                       child: CachedNetworkImage(
                         imageUrl: url,
                         fit: BoxFit.cover,
+                        alignment: Alignment(0, encuadreBanner),
                         placeholder: (_, _) => degradado,
                         errorWidget: (_, _, _) => degradado,
                       ),
@@ -477,6 +486,26 @@ class _Encabezado extends StatelessWidget {
                   ),
                 ],
               ),
+              if (perfil.tiposAtendidos.isNotEmpty)
+                Row(
+                  key: const Key('perfil_publico_tipos'),
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final id in perfil.tiposAtendidos) ...[
+                      Tooltip(
+                        message: TipoVehiculo.desdeId(
+                          id,
+                        ).etiqueta(context.l10n),
+                        child: Icon(
+                          TipoVehiculo.desdeId(id).icono,
+                          size: 18,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                    ],
+                  ],
+                ),
               Row(
                 key: const Key('perfil_publico_calificacion'),
                 mainAxisSize: MainAxisSize.min,
@@ -998,6 +1027,13 @@ class _PerfilPublico {
   final String? telefono;
   final String? municipioTaller;
 
+  /// `banner_encuadre` de la ficha pública: qué franja del banner enseñar.
+  final double encuadreBanner;
+
+  /// `TipoVehiculo.id` que el taller declaró atender. Vacío = no lo ha dicho,
+  /// y entonces no se enseña nada (mejor callar que afirmar «atiende todo»).
+  final List<String> tiposAtendidos;
+
   // Solo cliente:
   final String? municipio;
 
@@ -1018,6 +1054,8 @@ class _PerfilPublico {
     this.empleados = const [],
     this.telefono,
     this.municipioTaller,
+    this.encuadreBanner = 0,
+    this.tiposAtendidos = const [],
     this.municipio,
   });
 
@@ -1050,6 +1088,15 @@ class _PerfilPublico {
       empleados: empleados,
       telefono: _textoONulo(data['telefono']),
       municipioTaller: _textoONulo(data['municipio']),
+      // Fuera de [-1, 1] no significa nada: se recorta en vez de pintar un
+      // alineamiento absurdo.
+      encuadreBanner: ((data['banner_encuadre'] as num?)?.toDouble() ?? 0)
+          .clamp(-1.0, 1.0),
+      tiposAtendidos:
+          (data['tipos_atendidos'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
     );
   }
 

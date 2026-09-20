@@ -168,6 +168,9 @@ void main() {
       // Pantalla modal de un solo propósito (elegir un punto en el mapa), con
       // su propio botón Confirmar arriba a la derecha.
       'selector_ubicacion_taller_screen.dart': 'selector modal del mapa',
+      // Igual que el selector del mapa: modal de un solo propósito (encuadrar
+      // el banner) que se abre DESDE el panel de taller y vuelve a él.
+      'ajustar_banner_screen.dart': 'modal de encuadre del banner',
     };
 
     final sinAcciones = <String>[];

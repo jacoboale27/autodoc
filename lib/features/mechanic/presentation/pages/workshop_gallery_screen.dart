@@ -15,6 +15,7 @@ import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_dialog_content.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
+import 'package:autodoc/features/mechanic/presentation/pages/ajustar_banner_screen.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/galeria_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 
@@ -317,6 +318,20 @@ class _WorkshopGalleryScreenState extends State<WorkshopGalleryScreen> {
                 onPressed: () => _quitar(slot),
                 icon: const Icon(Icons.delete_outline),
                 tooltip: 'Quitar',
+              ),
+            // Observación del 2026-09-20: el banner se recorta a 3.2:1 y
+            // casi ninguna foto lo es, así que hay que poder elegir QUÉ
+            // franja se ve. No recorta el archivo: guarda el alineamiento.
+            if (esBanner && archivo != null && !_esEmpleado && url != null)
+              IconButton(
+                key: const Key('galeria_encuadrar_banner'),
+                tooltip: 'Encuadre',
+                icon: const Icon(Icons.crop_outlined),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => AjustarBannerScreen(urlBanner: url),
+                  ),
+                ),
               ),
             // «Quitar» SÍ se le deja al empleado: es la única vía para
             // limpiar lo que hubiera subido antes de que storage.rules se lo

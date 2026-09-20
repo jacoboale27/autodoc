@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
+import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_grid.dart';
@@ -63,16 +64,21 @@ class _MockFirebaseAppWithStorage implements TestFirebaseCoreHostApi {
 // TestFirebaseCoreHostApi.setUp(...) + Firebase.initializeApp() registran
 // una app Firebase "[DEFAULT]" falsa (mismo patrón que
 // dashboard_screen_vehicle_fetch_test.dart) para que ese getter no lance.
-Future<void> pumpScreen(
+Future<FakeVehicleProvider> pumpScreen(
   WidgetTester tester,
   double width, {
   Brightness brightness = Brightness.light,
   List<String> notas = const [],
+  Future<String?> Function(VehicleModel)? elegirFotoPrincipal,
 }) async {
   await Firebase.initializeApp();
   final mockAuth = MockFirebaseAuth();
   when(mockAuth.idTokenChanges()).thenAnswer((_) => const Stream.empty());
   final vehicle = fakeVehicle(0, notas: notas);
+  final provider = FakeVehicleProvider([
+    vehicle,
+    for (var i = 1; i < 4; i++) fakeVehicle(i),
+  ]);
   await pumpAtWidth(
     tester,
     MultiProvider(
@@ -80,12 +86,7 @@ Future<void> pumpScreen(
         // La pantalla resuelve el vehiculo por id contra la lista del
         // provider, no contra `vehiculoPrecargado`: las notas tienen que
         // llegar por aqui. Mismo contenido que `fakeVehicleProvider()`.
-        ChangeNotifierProvider<VehicleProvider>.value(
-          value: FakeVehicleProvider([
-            vehicle,
-            for (var i = 1; i < 4; i++) fakeVehicle(i),
-          ]),
-        ),
+        ChangeNotifierProvider<VehicleProvider>.value(value: provider),
         ChangeNotifierProvider<AuthSessionProvider>.value(
           value: AuthSessionProvider(firebaseAuth: mockAuth),
         ),
@@ -93,16 +94,49 @@ Future<void> pumpScreen(
       child: VehicleProfileScreen(
         vehiculoId: vehicle.idVehiculo,
         vehiculoPrecargado: vehicle,
+        elegirFotoPrincipal: elegirFotoPrincipal,
       ),
     ),
     width: width,
     brightness: brightness,
   );
   await tester.pump();
+  return provider;
 }
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('el propietario puede poner su propia foto del vehículo', (
+    tester,
+  ) async {
+    // Observación del 2026-09-20: «por si no le gusta la que le pone la API».
+    final provider = await pumpScreen(
+      tester,
+      1280,
+      elegirFotoPrincipal: (_) async => 'https://ejemplo/mi-foto.jpg',
+    );
+
+    await tester.tap(find.byKey(const Key('perfil_vehiculo_cambiar_foto')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(provider.actualizados.single.fotoUrl, 'https://ejemplo/mi-foto.jpg');
+  });
+
+  testWidgets('cancelar el selector no guarda nada', (tester) async {
+    final provider = await pumpScreen(
+      tester,
+      1280,
+      elegirFotoPrincipal: (_) async => null,
+    );
+
+    await tester.tap(find.byKey(const Key('perfil_vehiculo_cambiar_foto')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(provider.actualizados, isEmpty);
+  });
   TestFirebaseCoreHostApi.setUp(_MockFirebaseAppWithStorage());
 
   test('no usa GoogleFonts ni colores literales', () {

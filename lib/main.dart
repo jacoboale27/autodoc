@@ -16,7 +16,6 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:autodoc/config/secrets.dart';
 
-import 'package:autodoc/core/utils/map_injector.dart';
 import 'package:autodoc/core/bootstrap/firebase_bootstrap.dart';
 import 'package:autodoc/core/providers/language_provider.dart';
 import 'package:autodoc/core/services/translation_service.dart';
@@ -133,10 +132,12 @@ Future<void> main() async {
   try {
     if (kIsWeb) {
       WidgetsBinding.instance.ensureSemantics();
-      final mapsKey = AppSecrets.googleMapsApiKey;
-      if (mapsKey.isNotEmpty) {
-        injectGoogleMapsScript(mapsKey);
-      }
+      // Ya no se inyecta el script de Google Maps: desde el 2026-09-20 el
+      // mapa son tiles de OpenStreetMap dibujados por Flutter (`MapaOsm`).
+      // Una clave que caduca dejaba la app sin mapa y sin forma de
+      // enterarse, porque el error lo pintaba la propia API dentro de una
+      // vista de plataforma. `AppSecrets.googleMapsApiKey` sigue existiendo:
+      // la usa `TranslationService`, que es otra API de Google.
     }
   } catch (e) {
     debugPrint(

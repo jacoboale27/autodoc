@@ -121,6 +121,18 @@ describe('publishTallerProfile / construirPerfilPublico', () => {
       assert.strictEqual(perfil.municipio, 'San Salvador Centro');
     });
 
+    it('publica el encuadre del banner (2026-09-20)', () => {
+      // El banner se recorta a 3.2:1 en el perfil público, así que el
+      // alineamiento que eligió el taller tiene que viajar con la ficha o
+      // cada visitante vería el recorte del centro.
+      const perfil = construirPerfilPublico(
+        'uid-taller',
+        usuarioTaller({ banner_encuadre: -0.4 }),
+        { GeoPoint: FakeGeoPoint },
+      );
+      assert.strictEqual(perfil.banner_encuadre, -0.4);
+    });
+
     for (const estado of ['pendiente', 'rechazado', 'suspendido', undefined]) {
       it(`un taller ${estado} no publica telefono, direccion ni coordenadas`, () => {
         const perfil = construirPerfilPublico(

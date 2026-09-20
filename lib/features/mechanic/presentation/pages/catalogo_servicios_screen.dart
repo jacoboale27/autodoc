@@ -10,6 +10,7 @@ import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_empty_state.dart';
 import 'package:autodoc/core/widgets/app_grid.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/catalogo_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 import 'package:autodoc/core/utils/mensaje_de_error.dart';
@@ -242,7 +243,15 @@ class _CatalogoServiciosScreenState extends State<CatalogoServiciosScreen> {
     setState(() => _cargandoComunes = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final n = await context.read<CatalogoProvider>().cargarServiciosComunes();
+      // Las sugerencias salen de lo que el taller declaró atender en sus
+      // ajustes (observación del 2026-09-20): un taller de motos no quiere un
+      // catálogo lleno de kits de embrague de coche.
+      final tipos =
+          context.read<UserProfileProvider>().userData?.tiposAtendidos ??
+          const <String>[];
+      final n = await context.read<CatalogoProvider>().cargarServiciosComunes(
+        tipos: tipos,
+      );
       messenger.showSnackBar(
         SnackBar(
           content: Text(

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:autodoc/core/constants/divipola_sv.dart';
 import 'package:autodoc/core/constants/especialidades_taller.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/constants/tipos_vehiculo.dart';
 import 'package:autodoc/l10n/app_localizations.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
@@ -60,6 +62,10 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
     return input;
   }
 
+  /// Qué tipos de vehículo atiende el taller (observación del 2026-09-20).
+  /// Vacío = no lo ha dicho; entonces el catálogo sugiere solo lo común.
+  final Set<String> _tiposAtendidos = {};
+
   @override
   void initState() {
     super.initState();
@@ -94,6 +100,7 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
 
     _latitude = user?.latitud;
     _longitude = user?.longitud;
+    _tiposAtendidos.addAll(user?.tiposAtendidos ?? const []);
   }
 
   @override
@@ -134,6 +141,7 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
           municipio: _selectedMuni,
           latitud: _latitude,
           longitud: _longitude,
+          tiposAtendidos: _tiposAtendidos.toList(),
         );
 
         final success = await userSession.updateProfile(updatedUser);
@@ -190,6 +198,16 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                   selectedMuni: _selectedMuni,
                   divipola: divipolaSv,
                   colors: colors,
+                  tiposAtendidos: _tiposAtendidos,
+                  onTipoAtendido: (id, marcado) {
+                    setState(() {
+                      if (marcado) {
+                        _tiposAtendidos.add(id);
+                      } else {
+                        _tiposAtendidos.remove(id);
+                      }
+                    });
+                  },
                   onSpecialtyChanged: (val) {
                     setState(() => _specialtyController.text = val ?? '');
                   },
@@ -325,6 +343,10 @@ class _InfoPublicaSection extends StatelessWidget {
   final String? selectedMuni;
   final Map<String, List<String>> divipola;
   final AppColors colors;
+
+  /// `TipoVehiculo.id` que el taller atiende, y el conmutador de cada uno.
+  final Set<String> tiposAtendidos;
+  final void Function(String id, bool marcado) onTipoAtendido;
   final void Function(String?) onSpecialtyChanged;
   final void Function(String?) onDeptChanged;
   final void Function(String?) onMuniChanged;
@@ -337,6 +359,8 @@ class _InfoPublicaSection extends StatelessWidget {
     required this.selectedMuni,
     required this.divipola,
     required this.colors,
+    required this.tiposAtendidos,
+    required this.onTipoAtendido,
     required this.onSpecialtyChanged,
     required this.onDeptChanged,
     required this.onMuniChanged,
@@ -390,6 +414,37 @@ class _InfoPublicaSection extends StatelessWidget {
             icon: Icons.build_circle,
             colors: colors,
             onChanged: onSpecialtyChanged,
+          ),
+          const SizedBox(height: AppSpacing.base),
+          // Observación del 2026-09-20: «deberían poder poner si su
+          // especialidad son los carros o las motos, e igual con los otros
+          // 4». Decide además qué sugiere el catálogo.
+          Text(
+            '¿Qué vehículos atiendes?',
+            style: AppTextStyles.labelLarge.copyWith(color: colors.textPrimary),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Sale en tu perfil público y decide qué servicios te sugiere el '
+            'catálogo.',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: colors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.xs,
+            children: [
+              for (final tipo in TipoVehiculo.values)
+                FilterChip(
+                  key: Key('taller_atiende_${tipo.id}'),
+                  avatar: Icon(tipo.icono, size: 18),
+                  label: Text(tipo.etiqueta(context.l10n)),
+                  selected: tiposAtendidos.contains(tipo.id),
+                  onSelected: (v) => onTipoAtendido(tipo.id, v),
+                ),
+            ],
           ),
           const SizedBox(height: AppSpacing.sm),
           // Departamento y Municipio comparten fila: son dos mitades del

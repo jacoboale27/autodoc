@@ -86,7 +86,12 @@ class CatalogoProvider extends ChangeNotifier {
 
   /// Añade los [serviciosComunesManoDeObra] que el taller todavía no tenga
   /// (por nombre, sin distinguir mayúsculas). Devuelve cuántos añadió.
-  Future<int> cargarServiciosComunes() async {
+  /// [tipos] son los `TipoVehiculo.id` que el taller declaró atender: las
+  /// sugerencias salen de ahí (observación del 2026-09-20). Vacío = solo lo
+  /// común a todos.
+  Future<int> cargarServiciosComunes({
+    Iterable<String> tipos = const [],
+  }) async {
     final idTaller = _idTaller;
     if (idTaller == null || idTaller.isEmpty) {
       _error = 'idTaller vacío: no hay taller asociado a esta cuenta';
@@ -95,7 +100,7 @@ class CatalogoProvider extends ChangeNotifier {
     }
     final existentes = _items.map((i) => i.nombre.trim().toLowerCase()).toSet();
     final nuevos = [
-      for (final s in serviciosComunesManoDeObra)
+      for (final s in serviciosComunesPara(tipos))
         if (!existentes.contains(s.nombre.toLowerCase()))
           CatalogoItemModel(
             idItem: '',

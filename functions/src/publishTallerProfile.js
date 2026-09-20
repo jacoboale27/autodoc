@@ -41,7 +41,7 @@ const CAMPOS_PUBLICOS = [
   'nombre', 'especialidad', 'ubicacion', 'direccion',
   'foto_perfil_url', 'foto_url', 'galeria',
   'calificacion_promedio', 'total_resenias', 'estado', 'departamento',
-  'telefono', 'municipio',
+  'telefono', 'municipio', 'banner_encuadre', 'tipos_atendidos',
 ];
 
 // Campos de CONTACTO: solo se publican con el taller aprobado. `talleres` es
