@@ -106,13 +106,36 @@ describe('modeloFalso / respeta el contrato del cliente', () => {
     });
   });
 
-  it('«que es el SOAT» es explicar y no agenda, aunque case con las dos', () => {
-    // Es el unico solape real entre las dos listas de pistas, y en produccion
-    // esa pregunta es `explicar`. Sin el orden correcto, el E2E de la
-    // explicacion probaria la rama de agenda.
-    assert.strictEqual(clasificar('que es el SOAT y que pasa si se vence'), 'explicar');
+  it('clasifica EN INGLES, que es el idioma en el que corre el E2E', () => {
+    // **El bundle de E2E se renderiza en ingles** (Chromium arranca con el
+    // locale del sistema), asi que todas las preguntas de la suite llegan en
+    // ingles. La primera version del doble solo tenia pistas en espanol:
+    // «what expires in the next days» no casaba con nada y caia a
+    // `fuera_de_alcance`. Los tres tests de agenda fallaban y el del RECHAZO
+    // pasaba — acertando por accidente, que es el verde mas caro de todos.
+    assert.strictEqual(clasificar('what expires in the next days'), 'agenda');
+    assert.strictEqual(clasificar('what appointments do I have'), 'agenda');
+    assert.strictEqual(clasificar('what is the soat'), 'explicar');
+  });
+
+  it('el orden agenda-antes-que-explicar decide casos reales', () => {
+    // «cuando vence mi SOAT» menciona un documento pero es agenda; «que es el
+    // SOAT» no lleva verbo de agenda y es explicar.
+    assert.strictEqual(clasificar('cuando vence mi SOAT'), 'agenda');
+    assert.strictEqual(clasificar('que es el SOAT y que pasa si se vence'), 'agenda');
+    assert.strictEqual(clasificar('que es el SOAT'), 'explicar');
     assert.strictEqual(clasificar('que vence esta semana'), 'agenda');
     assert.strictEqual(clasificar('por que suena raro el motor'), 'fuera_de_alcance');
+  });
+
+  it('una pregunta de cultura general NO es `explicar`', () => {
+    // Con `'que es'` / `'what is'` como pista, «what is the capital of
+    // France» salia `explicar`: una pregunta de fuera del alcance
+    // clasificada como buena, o sea un E2E en verde que deberia estar rojo.
+    // Por eso las pistas de `explicar` son terminos del dominio.
+    assert.strictEqual(clasificar('what is the capital of France'), 'fuera_de_alcance');
+    assert.strictEqual(clasificar('cual es la capital de Francia'), 'fuera_de_alcance');
+    assert.strictEqual(clasificar('que es la fotosintesis'), 'fuera_de_alcance');
   });
 
   it('la prosa SALE del envelope: un envelope distinto da texto distinto', () => {

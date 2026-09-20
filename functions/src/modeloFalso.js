@@ -79,9 +79,48 @@ const FALLOS = {
   },
 };
 
-/** Palabras que bastan para clasificar en el doble. */
-const PISTAS_AGENDA = ['alerta', 'vence', 'vencimiento', 'cita', 'mantenimiento', 'agenda', 'km'];
-const PISTAS_EXPLICAR = ['que es', 'para que sirve', 'soat', 'tecnomecanica', 'tramite'];
+/**
+ * Palabras que bastan para clasificar en el doble, **en los dos idiomas**.
+ *
+ * El ingles no es un extra: el bundle de E2E se renderiza en ingles porque
+ * Chromium arranca con el locale del sistema, asi que TODAS las preguntas de
+ * la suite llegan en ingles. Con solo pistas en espanol, «what expires in the
+ * next days» no casaba con nada y caia a `fuera_de_alcance` — y el test del
+ * rechazo pasaba por eso, acertando por accidente mientras los tres de agenda
+ * fallaban. Un doble que solo entiende el idioma en el que no corre la suite
+ * es un doble que miente.
+ */
+const PISTAS_AGENDA = [
+  'alerta',
+  'vence',
+  'vencimiento',
+  'cita',
+  'mantenimiento',
+  'agenda',
+  'km',
+  'expire',
+  'appointment',
+  'maintenance',
+  'schedule',
+  'alert',
+  'due date',
+];
+/**
+ * `explicar` se reconoce por TERMINOS DEL DOMINIO, no por «que es».
+ *
+ * El primer intento uso `'que es'` y `'what is'`, y con eso «what is the
+ * capital of France» salia `explicar`: una pregunta de fuera del alcance
+ * clasificada como buena. Un doble que se equivoca asi le da verde a un E2E
+ * que deberia estar rojo.
+ */
+const PISTAS_EXPLICAR = [
+  'soat',
+  'tecnomecanica',
+  'tecno mecanica',
+  'tarjeta de operacion',
+  'tramite',
+  'revision tecnica',
+];
 
 function errorFalso(codigo, mensaje, detalle) {
   const e = new Error(mensaje);
@@ -97,13 +136,22 @@ function sinTildes(texto) {
     .toLowerCase();
 }
 
-/** La etiqueta que devolveria el clasificador. */
+/**
+ * La etiqueta que devolveria el clasificador.
+ *
+ * **`agenda` se comprueba ANTES que `explicar`**, y el orden decide casos
+ * reales: «cuando vence mi SOAT» menciona un documento pero es una pregunta
+ * de agenda, no de que-es-esto. Al reves, «que es el SOAT» no lleva ningun
+ * verbo de agenda, asi que cae en `explicar` sin ambiguedad.
+ *
+ * (La primera version comentaba justo lo contrario, y el comentario era
+ * falso: `soat` no estaba en las pistas de agenda, asi que el solape que
+ * decia evitar no existia.)
+ */
 function clasificar(pregunta) {
   const limpio = sinTildes(pregunta);
-  // `explicar` se comprueba ANTES que `agenda` porque "que es el soat" casa
-  // con las dos listas, y en produccion esa pregunta es `explicar`.
-  if (PISTAS_EXPLICAR.some((p) => limpio.indexOf(p) !== -1)) return 'explicar';
   if (PISTAS_AGENDA.some((p) => limpio.indexOf(p) !== -1)) return 'agenda';
+  if (PISTAS_EXPLICAR.some((p) => limpio.indexOf(p) !== -1)) return 'explicar';
   return 'fuera_de_alcance';
 }
 
