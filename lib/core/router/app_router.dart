@@ -56,6 +56,7 @@ import 'package:autodoc/features/dashboard/presentation/pages/notifications_scre
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:autodoc/core/widgets/missing_argument_screen.dart';
 import 'package:autodoc/core/widgets/not_found_screen.dart';
+import 'package:autodoc/features/asistente/presentation/pages/asistente_screen.dart';
 
 CustomTransitionPage<T> buildPageWithFadeThrough<T>({
   required BuildContext context,
@@ -856,6 +857,26 @@ GoRouter createAppRouter(
           context: context,
           state: state,
           child: const AdminSeedScreen(),
+        ),
+      ),
+      // IA-01 — el asistente de agenda.
+      //
+      // **No esta en `_ownerRoutes` ni en `_mechanicRoutes`, y es deliberado:**
+      // es la unica pantalla que sirve a los dos roles con la misma URL. El
+      // servidor resuelve el rol por su cuenta en `functions/src/agenda.js`
+      // —propietario o taller, y para un taller ademas su estado y su taller
+      // efectivo—, asi que meterla en uno de los dos conjuntos no anadiria
+      // seguridad y si dejaria fuera a la mitad de los usuarios.
+      //
+      // Un taller sin aprobar tampoco llega: `resolveRedirect` lo retiene en
+      // `/mechanic_pending` antes de mirar nada mas, y si llegara, la agenda
+      // le responde `permission-denied`.
+      GoRoute(
+        path: '/asistente',
+        pageBuilder: (context, state) => buildPageWithFadeThrough(
+          context: context,
+          state: state,
+          child: const AsistenteScreen(),
         ),
       ),
       GoRoute(

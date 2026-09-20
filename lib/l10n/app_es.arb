@@ -962,5 +962,81 @@
   "mechanicDashboardTitle": "Panel del taller",
   "@mechanicDashboardTitle": {
     "description": "Titulo del panel del taller (barra superior y menu lateral)."
+  },
+  "asistenteTitulo": "Asistente",
+  "@asistenteTitulo": {
+    "description": "Titulo de la pantalla del asistente de agenda (IA-01)"
+  },
+  "asistenteAbrir": "Preguntar al asistente",
+  "@asistenteAbrir": {
+    "description": "Tooltip del acceso al asistente desde alertas y desde el panel del taller"
+  },
+  "asistenteCampoEtiqueta": "Tu pregunta",
+  "@asistenteCampoEtiqueta": {
+    "description": "Etiqueta del campo de texto donde se escribe la pregunta"
+  },
+  "asistenteCampoPista": "¿Qué vencimientos tengo esta semana?",
+  "@asistenteCampoPista": {
+    "description": "Ejemplo dentro del campo de pregunta"
+  },
+  "asistenteEnviar": "Preguntar",
+  "@asistenteEnviar": {
+    "description": "Boton que envia la pregunta al asistente"
+  },
+  "asistenteOtraPregunta": "Hacer otra pregunta",
+  "@asistenteOtraPregunta": {
+    "description": "Boton que limpia la respuesta y devuelve el foco al campo"
+  },
+  "asistentePensando": "Pensando…",
+  "@asistentePensando": {
+    "description": "Estado de carga mientras el servidor responde"
+  },
+  "asistenteVacio": "Pregúntame por los vencimientos, las citas y los mantenimientos de tus vehículos.",
+  "@asistenteVacio": {
+    "description": "Estado inicial de la pantalla, antes de la primera pregunta"
+  },
+  "asistenteAlcance": "Solo responde sobre tu agenda. No diagnostica averías ni sustituye a un taller.",
+  "@asistenteAlcance": {
+    "description": "Aviso permanente del alcance del asistente, bajo el campo de pregunta"
+  },
+  "asistenteEtiquetaFueraDeAlcance": "Fuera de alcance",
+  "@asistenteEtiquetaFueraDeAlcance": {
+    "description": "Distintivo de la respuesta cuando el servidor rechaza la pregunta por no ser de su competencia"
+  },
+  "asistenteErrorCupo": "Alcanzaste tu límite de consultas de hoy. Vuelve a intentarlo mañana.",
+  "@asistenteErrorCupo": {
+    "description": "resource-exhausted con motivo cupo_usuario: esta persona agoto SU cupo diario"
+  },
+  "asistenteErrorApagado": "El asistente está desactivado temporalmente.",
+  "@asistenteErrorApagado": {
+    "description": "unavailable con motivo apagado: el interruptor de configuracion/asistente_ia. Reintentar no lo enciende"
+  },
+  "asistenteErrorNoDisponible": "El asistente no está configurado todavía. Estamos en ello.",
+  "@asistenteErrorNoDisponible": {
+    "description": "Codigo failed-precondition: falta la clave o el modelo configurado no sirve. Reintentar no lo arregla"
+  },
+  "asistenteErrorLento": "El asistente tardó demasiado en responder. Inténtalo de nuevo.",
+  "@asistenteErrorLento": {
+    "description": "Codigo deadline-exceeded: el modelo no respondio dentro del plazo"
+  },
+  "asistenteErrorSinRespuesta": "No pude preparar una respuesta a esa pregunta. Prueba a formularla de otra forma.",
+  "@asistenteErrorSinRespuesta": {
+    "description": "Codigo aborted: el filtro del proveedor bloqueo la respuesta o llego vacia"
+  },
+  "asistenteErrorTallerPendiente": "Tu taller todavía no está aprobado, así que no puedo consultar su agenda.",
+  "@asistenteErrorTallerPendiente": {
+    "description": "Codigo permission-denied: lo lanza agenda.js cuando el taller no esta aprobado"
+  },
+  "asistenteErrorPreguntaVacia": "Escribe una pregunta antes de enviarla.",
+  "@asistenteErrorPreguntaVacia": {
+    "description": "Codigo invalid-argument: la pregunta llego vacia al servidor"
+  },
+  "asistenteErrorCupoGlobal": "El asistente alcanzó su límite de consultas de hoy. No es cosa tuya: vuelve a intentarlo mañana.",
+  "@asistenteErrorCupoGlobal": {
+    "description": "resource-exhausted con motivo cupo_global: se agoto el cupo del asistente entero, no el de esta persona"
+  },
+  "asistenteErrorProveedor": "El asistente no está disponible en este momento. Inténtalo de nuevo.",
+  "@asistenteErrorProveedor": {
+    "description": "unavailable con motivo proveedor: el modelo esta caido. Reintentar si puede funcionar, a diferencia del interruptor apagado"
   }
 }

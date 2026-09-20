@@ -1572,4 +1572,72 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mechanicDashboardTitle => 'Workshop dashboard';
+
+  @override
+  String get asistenteTitulo => 'Assistant';
+
+  @override
+  String get asistenteAbrir => 'Ask the assistant';
+
+  @override
+  String get asistenteCampoEtiqueta => 'Your question';
+
+  @override
+  String get asistenteCampoPista => 'What expires this week?';
+
+  @override
+  String get asistenteEnviar => 'Ask';
+
+  @override
+  String get asistenteOtraPregunta => 'Ask another question';
+
+  @override
+  String get asistentePensando => 'Thinking…';
+
+  @override
+  String get asistenteVacio =>
+      'Ask me about your vehicles\' expirations, appointments and maintenance.';
+
+  @override
+  String get asistenteAlcance =>
+      'It only answers about your schedule. It does not diagnose faults or replace a workshop.';
+
+  @override
+  String get asistenteEtiquetaFueraDeAlcance => 'Out of scope';
+
+  @override
+  String get asistenteErrorCupo =>
+      'You\'ve reached your question limit for today. Try again tomorrow.';
+
+  @override
+  String get asistenteErrorApagado =>
+      'The assistant is temporarily switched off.';
+
+  @override
+  String get asistenteErrorNoDisponible =>
+      'The assistant isn\'t set up yet. We\'re on it.';
+
+  @override
+  String get asistenteErrorLento =>
+      'The assistant took too long to answer. Try again.';
+
+  @override
+  String get asistenteErrorSinRespuesta =>
+      'I couldn\'t put together an answer to that. Try wording it differently.';
+
+  @override
+  String get asistenteErrorTallerPendiente =>
+      'Your workshop isn\'t approved yet, so I can\'t look up its schedule.';
+
+  @override
+  String get asistenteErrorPreguntaVacia =>
+      'Write a question before sending it.';
+
+  @override
+  String get asistenteErrorCupoGlobal =>
+      'The assistant has reached today\'s question limit. It\'s not you: try again tomorrow.';
+
+  @override
+  String get asistenteErrorProveedor =>
+      'The assistant is unavailable right now. Try again.';
 }

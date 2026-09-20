@@ -130,6 +130,18 @@ class _AlertsScreenState extends State<AlertsScreen> {
               style: AppTextStyles.titleLarge.copyWith(color: primary),
             ),
             const Spacer(),
+            // IA-01 — entrada del propietario al asistente de agenda. Va aqui
+            // y no como campo de texto en linea porque la pregunta no puede
+            // viajar en `state.extra`: un F5 lo pierde y el cast revienta la
+            // app (la cicatriz de H-01 con /task_config), y `context.push`
+            // ademas no mueve la URL en go_router 17 (INNO-01). El campo vive
+            // en la pantalla que lo usa.
+            IconButton(
+              key: const Key('alerts-abrir-asistente'),
+              icon: Icon(Icons.auto_awesome_outlined, color: primary),
+              tooltip: context.l10n.asistenteAbrir,
+              onPressed: () => context.push('/asistente'),
+            ),
             IconButton(
               icon: Icon(Icons.update, color: primary),
               tooltip: context.l10n.alertsUpdateMileage,

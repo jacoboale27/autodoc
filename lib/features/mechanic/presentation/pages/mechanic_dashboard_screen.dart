@@ -87,6 +87,11 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
     return MechanicScaffold(
       title: context.l10n.mechanicDashboardTitle,
       actions: const [
+        // IA-01 — el asistente sirve tambien al taller: su agenda son las
+        // citas confirmadas de los proximos dias, no los vencimientos.
+        // `construirAgenda` resuelve el rol y el taller efectivo por su
+        // cuenta, asi que el cliente no manda ni el uid ni el taller.
+        _AbrirAsistenteAction(),
         _TemaIdiomaActions(),
         SizedBox(width: AppSpacing.base),
         NotificationBellButton(),
@@ -561,6 +566,25 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Entrada del taller al asistente de agenda (IA-01).
+///
+/// Es un widget propio y no un `IconButton` suelto dentro de `actions` porque
+/// `actions` es `const` y necesita un `BuildContext` para el tooltip
+/// traducido y para navegar.
+class _AbrirAsistenteAction extends StatelessWidget {
+  const _AbrirAsistenteAction();
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      key: const Key('mechanic-abrir-asistente'),
+      tooltip: context.l10n.asistenteAbrir,
+      icon: Icon(Icons.auto_awesome_outlined, color: context.appColors.primary),
+      onPressed: () => context.push('/asistente'),
     );
   }
 }
