@@ -105,6 +105,54 @@ La lista vive en la sesión del 2026-09-19 (se cortó por cuota y se retomó). L
   `firebase deploy --only firestore:indexes --project production`: el índice nuevo tarda unos
   minutos en construirse y «Mis Servicios» falla hasta entonces.
 
+### Tercera tanda del 2026-09-19 (misma rama) — cobro, mapa y dashboard
+
+Cuatro observaciones de uso real, con capturas. Lo que hay que saber:
+
+- **EL BANNER NO ES UN DEFECTO DE CÓDIGO: son las reglas sin desplegar.** «No se pudo guardar
+  el cambio. Si tu cuenta fue suspendida, no puedes publicar fotos» sale porque las reglas de
+  PRODUCCIÓN (las de `main`) todavía tienen
+  `^(logo|local-[1-5])\.(jpg|jpeg|png|webp)$`: el archivo `banner` se deniega. Se arregla con
+  `firebase deploy --only storage,firestore:rules --project production` (o al fusionar el PR).
+  **Índices NO**, y esto importa: `--only firestore:indexes` BORRA los que no estén en el
+  fichero, y esta rama retira `cotizaciones (id_vehiculo, estado, fecha DESC)`, que la app
+  desplegada todavía puede estar usando. Los índices van con la fusión.
+- **Se entregó un vehículo sin haber generado el cobro, y ahí se acabó.** Entregar revoca el
+  vínculo al coche y saca el ticket del tablero, y el perfil del vehículo solo ofrece
+  «Continuar servicio» mientras el ticket vive: el trabajo quedaba hecho, sin factura y sin
+  ninguna pantalla desde la que emitirla. Encima el perfil decía «el ticket todavía no se ha
+  abierto», que es lo contrario de lo que pasó. Ahora el tablero comprueba antes de entregar si
+  hay un `servicios` de ese vehículo+taller POSTERIOR a la apertura del ticket, y si no, el
+  diálogo ofrece «Finalizar servicio» o «Entregar sin cobrar» —que se queda, porque el caso
+  existe: el cliente que rechaza el presupuesto y se lleva el coche a medias.
+  **Se mide por el hecho, no por el estado del tablero:** a `listo_para_entrega` también se
+  llega a mano con «Avanzar». Sin índice nuevo: misma forma que la consulta de reseñas.
+- **Y hay salida para los que ya se entregaron así:** el perfil del vehículo ofrece «Registrar
+  servicio y cobro». Funciona porque el taller sigue en `talleres_conocidos`, y
+  `puedeMecanicoAtenderVehiculo` mira eso — o sea que las reglas todavía le dejan escribir el
+  servicio aunque el vínculo esté revocado. **La foto de la factura NO**: `facturas/{vehicleId}`
+  de `storage.rules` sí exige el vínculo, así que ese cobro va sin adjunto.
+- **El mapa no es el diálogo esta vez: es la clave vencida.** Con la clave rota (vencida, sin
+  facturación o restringida a otro dominio) Google pinta SU cartel gris DENTRO de la vista de
+  plataforma y `onMapCreated` **no se llama nunca** — no hay callback de fallo en
+  `google_maps_flutter`. Por eso el fallo se mide por tiempo (8 s) y el mapa se **sustituye**,
+  que es lo único que retira el cartel de Google. En el selector se pueden escribir las
+  coordenadas; en el directorio sale el aviso que ya existía para la clave ausente. **Renovar la
+  clave sigue siendo trabajo de consola.**
+- **El mapa falso de las pruebas recibe ahora `alCargar`**, y no es decoración: un mapa que no
+  avisa ES el caso de la clave vencida. Sin ese tercer argumento, ese camino no se puede probar.
+- **`pumpAndSettle` avanza el reloj**, así que un temporizador de 50 ms vence durante la
+  transición de ruta (~300 ms) y el test ve el estado de después. Las esperas de prueba van en
+  segundos.
+- **Dashboard del taller:** misma causa que las tarjetas deformes del perfil del coche
+  (`childAspectRatio` → `mainAxisExtent`), gráfica y servicios recientes lado a lado cuando hay
+  ancho, y el botón de «Atención Rápida» deja de ocupar la barra entera. Al acotarlo salió lo
+  otro: **`Wrap` se encoge a su contenido**, así que la barra se quedó a media pantalla y hubo
+  que fijarle el ancho. La decisión de dos columnas mira el ancho DISPONIBLE (`LayoutBuilder`),
+  no el de la ventana: el sidebar del panel se lleva 280 px.
+- **Cifras:** `flutter analyze` limpio, `flutter test` **1412/1412**. Functions y reglas no se
+  relanzaron: esta tanda no toca `functions/`, `firestore.rules` ni `storage.rules`.
+
 ### Drenaje de los gaps del 2026-09-19 (misma rama) — galería del empleado y cupo de invitaciones
 
 Cierra los dos gaps que dejaron abiertas las dos listas de arriba. Lo que hay que saber:
