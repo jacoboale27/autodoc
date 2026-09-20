@@ -666,6 +666,15 @@ function crearAsistente(opciones) {
 
 module.exports = {
   INTENCIONES,
+  // Los prompts se EXPORTAN para que los evals midan los de verdad.
+  // `spike_gemini.js` lleva una copia propia del clasificador, y esa copia
+  // fue exactamente lo que hizo que el arreglo del presupuesto de tokens se
+  // quedara a medias: se subio aqui y el spike siguio midiendo con el valor
+  // viejo, o sea siguio dando rojo sobre codigo ya arreglado. Un eval que
+  // mide un prompt copiado no mide nada.
+  SISTEMA_CLASIFICADOR,
+  SISTEMA_REDACTOR,
+  SISTEMA_EXPLICADOR,
   MAX_TOKENS_ETIQUETA,
   CODIGOS_QUE_SUBEN,
   CODIGOS_SIN_CARGO_GLOBAL,
