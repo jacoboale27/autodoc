@@ -136,7 +136,11 @@ Lo que hay que saber:
 - **El teléfono del perfil público NO era un defecto de pantalla.** `publishTallerProfile` es un
   trigger de `usuarios`, así que un campo nuevo en la proyección (telefono, municipio,
   `banner_encuadre`, `tipos_atendidos`) no llega a las fichas YA publicadas hasta que alguien
-  reescribe ese usuario. Hay `functions/republicar_talleres.js` (dry-run y `--apply`). **NO uses
+  reescribe ese usuario. Hay `functions/republicar_talleres.js` (dry-run y `--apply`), que **se
+  corre desde `functions/`** —ahí está firebase-admin— y **exige nombrar el proyecto**: sin clave
+  de cuenta de servicio en `functions/serviceAccountKey.json` hay que pasar
+  `--project=autodoc-6ef5a`, porque `.firebaserc` apunta por defecto a staging y una
+  republicación contra el proyecto equivocado no avisa de nada. **NO uses
   `src/backfillTalleres.js`:** lleva su propia copia congelada de los campos públicos y correrlo
   hoy borraría galería y teléfono de todas las fichas.
 - **El encuadre del banner no recorta el archivo:** guarda el alineamiento vertical
