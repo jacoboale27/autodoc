@@ -99,7 +99,7 @@ URLs que ya apuntan a nuestro Storage: ésas son fotos que el propietario subió
 script de secretos—. Bórrala del panel de SearchAPI.io y del repositorio de secretos de GitHub.
 Sigue viva en tu `.env` local, que un hook impide editar.
 
-### Pendiente 0bis — Politicas TTL de Firestore (DOS, y una llevaba perdida desde UX-01)
+### Pendiente 0bis — Politicas TTL de Firestore (CUATRO, y una llevaba perdida desde UX-01)
 
 **Firestore no configura TTL desde `firestore.indexes.json`.** Va por consola o por `gcloud`, y
 por eso estos pasos se pierden: no hay ningun archivo del repo que los declare y ningun test que
@@ -108,18 +108,29 @@ los eche de menos.
 **Y una ya se perdio.** La politica de `solicitudes_landing_control` se decidio en UX-01 y quedo
 anotada **solo** en `docs/evidencia/UX-01-contacto-y-ctas.md`, nunca en este runbook. Es
 literalmente el patron que el propio proyecto lleva cuatro tandas escribiendo: remitir un paso a
-otro documento no lo cierra. Aqui quedan las dos.
+otro documento no lo cierra. Aqui quedan las cuatro.
 
 | Coleccion | Campo | Por que |
 |---|---|---|
 | `solicitudes_landing_control` | `expira_en` | Un documento por IP del limitador de la landing. Sin TTL no se purga nunca. |
 | `tokens_historial` | `purgar_en` | Un documento por pase de historial emitido (INNO-01). Guarda `{id_vehiculo, id_propietario}` — o sea un mapa de quien tiene que coche— en una coleccion que **nadie puede leer** y que por tanto nadie va a auditar. |
+| `consultas_ia_control` | `expira_en` | Un documento por usuario del asistente de agenda, mas el cubo `_global`. Sin TTL crece un documento por persona que lo use, para siempre, aunque cada uno solo se lea durante 24 h. |
+| `explicaciones_ia` | `expira_en` | Cache global de explicaciones del asistente: un documento por pregunta distinta. Sin TTL no se purga nunca **y una entrada mala se queda para siempre** — el cliente no puede borrarla (correcto) y no hay ningun barrido que lo haga. |
 
 ```bash
 gcloud firestore fields ttls update expira_en   --collection-group=solicitudes_landing_control --enable-ttl --project=<projectId>
 
 gcloud firestore fields ttls update purgar_en   --collection-group=tokens_historial --enable-ttl --project=<projectId>
+
+gcloud firestore fields ttls update expira_en   --collection-group=consultas_ia_control --enable-ttl --project=<projectId>
+
+gcloud firestore fields ttls update expira_en   --collection-group=explicaciones_ia --enable-ttl --project=<projectId>
 ```
+
+**Las dos del asistente NO son bloqueantes para desplegar**, a diferencia de los backfills: sin
+ellas la feature funciona igual y lo unico que pasa es que dos colecciones crecen sin fondo. Pero
+la de `explicaciones_ia` es la unica via que existe para retirar una entrada de cache: la
+coleccion esta cerrada al cliente por los dos lados y no hay barrido que la toque.
 
 **El campo tiene que ser `Timestamp`, no milisegundos.** Con un numero la politica se crea sin
 error y no borra nada jamas. Por eso `tokens_historial` guarda **dos** campos de tiempo:

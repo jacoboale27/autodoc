@@ -351,6 +351,27 @@ const _inventario = <_Consulta>[
     // justo el fallo que los emuladores no pueden ver.
     origen: 'functions/src/historialCompartido.js:160',
   ),
+  // Asistente de agenda (plan 2026-09-19). Las DOS consultas de citas, una por
+  // rol, y las dos son nuevas: hasta hoy el unico indice de `reservas` era el
+  // del barrido global de recordatorios, que filtra solo por `estado` y no
+  // sirve a ninguna de estas dos.
+  //
+  // La del taller es ademas la primera consulta a `reservas` que existe para
+  // ese rol en todo el repositorio: `grep -rn "reservas" lib/features/mechanic/`
+  // no devuelve nada, o sea que el taller no tiene hoy ninguna vista de sus
+  // citas proximas pese a que el dato lleva ahi desde siempre.
+  _Consulta(
+    coleccion: 'reservas',
+    igualdades: ['id_propietario', 'estado'],
+    orden: 'fecha_hora_propuesta',
+    origen: 'functions/src/agenda.js (leerCitas, rol propietario)',
+  ),
+  _Consulta(
+    coleccion: 'reservas',
+    igualdades: ['id_taller', 'estado'],
+    orden: 'fecha_hora_propuesta',
+    origen: 'functions/src/agenda.js (leerCitas, rol taller)',
+  ),
 ];
 
 /// Índices que no sirven a ninguna consulta del inventario y aun así se
@@ -400,7 +421,7 @@ const _orderByEsperados = 17;
 // campo, o mezclar una igualdad con una DESIGUALDAD — que es justo el caso que
 // se le escapo a este centinela con `caducarVinculos.js` y por el que existe
 // este segundo test.
-const _whereServidorEsperados = 32;
+const _whereServidorEsperados = 39;
 
 class _Consulta {
   const _Consulta({

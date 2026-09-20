@@ -2064,3 +2064,128 @@ exports.revocarPaseHistorial = functions.https.onCall(async (data, context) => {
     throw traducirFallo(e);
   }
 });
+
+// **Ojo: poner un `require` al pie NO lo difiere.** Es un `const` de nivel
+// superior, asi que se ejecuta en cada arranque en frio de CADA una de las 35
+// funciones desplegadas desde este entrypoint, exactamente igual que los de
+// las primeras lineas. La posicion no cambia nada, y la version anterior de
+// este comentario afirmaba lo contrario — lo levanto el gate de rendimiento.
+//
+// Aqui el coste es despreciable, pero por otra razon: estos tres modulos no
+// arrastran ninguna dependencia. `asistente.js` solo requiere `crypto`
+// (builtin), `agenda.js` y `modeloFalso.js` no requieren nada, y
+// `modeloGemini.js` usa el `fetch` global de Node 20 en vez de un SDK. La
+// cascada real son CINCO modulos: `asistente`->`agenda`, y
+// `clienteDelModelo`->`modeloGemini`+`modeloFalso`. No se anadio ni una linea
+// a `functions/package.json`.
+//
+// Si algun dia se sustituye `fetch` por `@google/generative-ai`, esto deja de
+// ser cierto y los `require` hay que moverlos DENTRO del handler, que es lo
+// unico que difiere de verdad.
+const asistenteIA = require('./src/asistente');
+const { crearClienteDelModelo } = require('./src/clienteDelModelo');
+
+/**
+ * 35. Callable: asistente de agenda con IA (plan 2026-09-19).
+ *
+ * Responde en lenguaje natural a «que tengo en los proximos dias», para el
+ * PROPIETARIO y para el TALLER. Es de **solo lectura**: no agenda nada, no
+ * marca nada como hecho, y lo unico que escribe son su contador de cuota y su
+ * cache de explicaciones.
+ *
+ * El modelo no elige que leer. Clasifica la pregunta en un enum cerrado, el
+ * servidor corre la consulta determinista de esa intencion —con toda la
+ * autorizacion resuelta ANTES, a mano, porque Admin SDK no pasa por
+ * `firestore.rules`— y el modelo solo redacta desde el envelope resultante.
+ * Ver `src/asistente.js` y `src/agenda.js`.
+ *
+ * El cliente del modelo se crea aqui y se inyecta, que es lo que permite que
+ * los tests de `src/` no llamen nunca a Gemini.
+ */
+exports.asistenteAutoDoc = functions
+  .runWith({
+    // La clave vive en Secret Manager: `firebase functions:secrets:set
+    // GEMINI_API_KEY --project production`. Nunca en un .env versionado y
+    // nunca en el bundle del cliente.
+    secrets: ['GEMINI_API_KEY'],
+    // Con 10 RPM de cuota en el proveedor, mas instancias solo sirven para
+    // chocar contra el 429 mas rapido.
+    maxInstances: 5,
+    memory: '256MB',
+    timeoutSeconds: 30,
+  })
+  .https.onCall(async (data, context) => {
+    exigirAppCheck(context, 'asistenteAutoDoc');
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+    }
+
+    let responder;
+    try {
+      responder = asistenteIA.crearAsistente({
+        db,
+        // Gemini en produccion; el doble de `modeloFalso.js` dentro del
+        // emulador, donde no hay Secret Manager y la clave no existe. La
+        // compuerta es `FUNCTIONS_EMULATOR`, que pone el propio emulador y no
+        // existe en una funcion desplegada; la decision entera tiene tests en
+        // `test/cliente_del_modelo.test.js`.
+        cliente: crearClienteDelModelo(),
+      }).responder;
+    } catch (e) {
+      // Falta la clave o el entorno no trae `fetch`: es un fallo de
+      // despliegue, no del usuario. Se registra entero y se devuelve un
+      // codigo que no manda a nadie a revisar su conexion.
+      console.error('asistenteAutoDoc: mal configurado:', e && e.message ? e.message : e);
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'El asistente no está disponible ahora mismo.'
+      );
+    }
+
+    try {
+      const resultado = await responder({
+        uid: context.auth.uid,
+        pregunta: data && data.pregunta,
+        // El idioma se PASA, no se infiere: la app se renderiza en el idioma
+        // del navegador, y esa fue la trampa de INNO-01.
+        idioma: data && data.idioma,
+      });
+      return resultado;
+    } catch (e) {
+      const codigo = e && e.code ? e.code : 'internal';
+      const conocidos = [
+        'unauthenticated',
+        'invalid-argument',
+        'permission-denied',
+        'resource-exhausted',
+        'unavailable',
+        'deadline-exceeded',
+        'failed-precondition',
+        'aborted',
+      ];
+      if (conocidos.indexOf(codigo) !== -1) {
+        // `details` viaja al cliente tal cual, asi que NO se reenvia
+        // `e.detalle`: `modeloGemini.js` lo rellena tambien con el
+        // `blockReason` que devuelve Google, que es texto de un tercero.
+        // `motivoPublico` filtra contra un vocabulario cerrado de cuatro
+        // valores. Sin esto, `resource-exhausted` no distingue el cupo de la
+        // persona del cupo global, y `unavailable` no distingue el
+        // interruptor apagado del proveedor caido — cuatro situaciones con
+        // dos codigos, y la pantalla teniendo que adivinar cual de las dos.
+        const motivo = asistenteIA.motivoPublico(e);
+        // El mensaje REAL se queda aqui. Los de `modeloGemini.js` estan
+        // escritos para quien despliega y nombran GEMINI_API_KEY,
+        // GEMINI_MODELO y `functions/spike_gemini.js`; el `message` de un
+        // HttpsError viaja al cliente igual de literal que `details`. El
+        // cliente no lo usa: compone el texto desde el codigo y el motivo.
+        console.error('asistenteAutoDoc [' + codigo + ']:', e && e.message ? e.message : e);
+        throw new functions.https.HttpsError(
+          codigo,
+          asistenteIA.mensajePublico(codigo),
+          motivo
+        );
+      }
+      console.error('asistenteAutoDoc:', e);
+      throw new functions.https.HttpsError('internal', 'No se pudo responder.');
+    }
+  });

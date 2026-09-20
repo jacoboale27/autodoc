@@ -1983,5 +1983,76 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Asistente de agenda con IA (plan 2026-09-19).
+    //
+    // Las tres colecciones estan cerradas a TODO cliente, en los dos sentidos.
+    // El callable `asistenteAutoDoc` corre con Admin SDK y no pasa por aqui.
+
+    // Contador de cuota, uno por uid mas el cubo `_global`. Si un cliente
+    // pudiera escribirlo, el limite seria decorativo: bastaria con ponerlo a
+    // cero entre consulta y consulta, y quien paga esa factura es el free tier
+    // de Gemini. Y `read` tambien se cierra: poder LISTAR la coleccion es
+    // poder enumerar que uids usan el asistente y cuanto.
+    match /consultas_ia_control/{uid} {
+      allow read, write: if false;
+    }
+
+    // Cache global de las explicaciones ya redactadas.
+    //
+    // Cerrarla al `read` puede parecer excesivo —su contenido no tiene datos
+    // de nadie, es la explicacion de un tramite— pero el `write` es lo que
+    // importa y no se puede conceder uno sin el otro con honestidad: quien
+    // pudiera escribir aqui estaria **poniendo palabras en boca del asistente
+    // para todos los demas usuarios**, que es la peor forma de inyeccion que
+    // admite este diseño. Se sirve por el callable, que ya la lee con Admin
+    // SDK.
+    match /explicaciones_ia/{clave} {
+      allow read, write: if false;
+    }
+
+    // Interruptor de apagado sin desplegar.
+    //
+    // Lectura anonima NO: saber que el asistente esta encendido no le sirve a
+    // nadie mas que al propio servidor, que lo lee con Admin SDK. La escritura
+    // se queda en Superusuario y no en admin, por simetria con el borrado de
+    // solicitudes: apagar la feature en mitad de una demo es una accion con
+    // consecuencias y sin deshacer visible.
+    //
+    // OJO con el default: `estaEncendido()` trata la AUSENCIA del documento
+    // como encendido, a proposito. Si desplegar sin sembrar este documento
+    // apagara la feature, la primera version desplegada estaria muerta y el
+    // motivo no apareceria en ningun log.
+    // El `write` a secas cubria create, update Y delete sobre CUALQUIER
+    // `{ajuste}`, y el gate de revision lo levanto. Tres agujeros distintos,
+    // los tres reales:
+    //
+    // 1. **Borrar el documento reenciende la feature en silencio.**
+    //    `estaEncendido()` trata la ausencia como ENCENDIDO a proposito (si no,
+    //    desplegar sin sembrarlo dejaria la feature muerta sin rastro en
+    //    ningun log). Con `delete` permitido, «apagado» es un estado que
+    //    desaparece con una operacion autorizada y sin dejar huella. Por eso
+    //    `delete: if false`: al estado de encendido se llega escribiendo, no
+    //    borrando.
+    // 2. **`configuracion` es un nombre generico.** Sin pinear `{ajuste}`, la
+    //    proxima feature que lea de esta coleccion hereda una superficie de
+    //    escritura sin validar sin tocar las reglas. Es el patron
+    //    denylist -> allowlist que `/alertas` ya tuvo que corregir en GAPS-04.
+    // 3. **La forma no se validaba y el servidor lee `activo !== false`.**
+    //    Un `{activo: 'false'}` escrito a mano deja la feature ENCENDIDA
+    //    mientras la consola muestra un campo que parece apagarla. El
+    //    `is bool` cierra eso.
+    //
+    // `create` sigue permitido, y hace falta: no hay ningun creador de este
+    // documento ni en `functions/` ni en `lib/`, asi que la primera vez que se
+    // quiera apagar habra que crearlo.
+    match /configuracion/{ajuste} {
+      allow read: if false;
+      allow create, update: if isSuperUser()
+                            && ajuste == 'asistente_ia'
+                            && request.resource.data.keys().hasOnly(['activo'])
+                            && request.resource.data.activo is bool;
+      allow delete: if false;
+    }
+
   }
 }
