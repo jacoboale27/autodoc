@@ -329,6 +329,8 @@
   "wdYourLocation": "Your Location",
   "wdMapUnavailableTitle": "Map unavailable",
   "wdMapUnavailableBody": "The map could not be loaded because this build is missing its Google Maps key. In the meantime you can browse the workshops in list view.",
+  "wdMapLoadFailedTitle": "The map could not load",
+  "wdMapLoadFailedBody": "Google Maps did not respond. It is usually the key: expired, without billing, or restricted to another domain. The workshop list still works.",
   "wdWorkshop": "Workshop",
   "wdGeneralMechanics": "General Mechanics",
   "wdMechanics": "Mechanics",

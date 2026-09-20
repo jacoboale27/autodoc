@@ -664,6 +664,13 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo cargar el mapa porque a esta versión de la app le falta la clave de Google Maps. Mientras tanto puedes ver los talleres en la vista de lista.';
 
   @override
+  String get wdMapLoadFailedTitle => 'El mapa no se pudo cargar';
+
+  @override
+  String get wdMapLoadFailedBody =>
+      'Google Maps no respondió. Suele ser la clave: vencida, sin facturación o restringida a otro dominio. La lista de talleres sigue funcionando.';
+
+  @override
   String get wdWorkshop => 'Taller';
 
   @override

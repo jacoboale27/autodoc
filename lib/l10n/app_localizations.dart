@@ -1304,6 +1304,18 @@ abstract class AppLocalizations {
   /// **'The map could not be loaded because this build is missing its Google Maps key. In the meantime you can browse the workshops in list view.'**
   String get wdMapUnavailableBody;
 
+  /// No description provided for @wdMapLoadFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The map could not load'**
+  String get wdMapLoadFailedTitle;
+
+  /// No description provided for @wdMapLoadFailedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Google Maps did not respond. It is usually the key: expired, without billing, or restricted to another domain. The workshop list still works.'**
+  String get wdMapLoadFailedBody;
+
   /// No description provided for @wdWorkshop.
   ///
   /// In en, this message translates to:

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -64,6 +66,24 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
   bool _showFavorites = false;
   bool _showMap = false;
   GoogleMapController? _mapController;
+
+  /// Pasó [_esperaDeCargaDelMapa] sin que Google Maps llegara a crear el
+  /// mapa. Ver `_buildMapView`.
+  bool _mapaNoCargo = false;
+  Timer? _esperaMapa;
+  static const Duration _esperaDeCargaDelMapa = Duration(seconds: 8);
+
+  /// Arranca la cuenta atrás la primera vez que se pinta el mapa. Idempotente:
+  /// `_buildMapView` se reconstruye con cada `setState` del buscador.
+  void _vigilarCargaDelMapa() {
+    if (_esperaMapa != null || _mapController != null) return;
+    _esperaMapa = Timer(_esperaDeCargaDelMapa, () {
+      if (mounted && _mapController == null) {
+        setState(() => _mapaNoCargo = true);
+      }
+    });
+  }
+
   Position? _userPosition;
 
   // Default center (El Salvador)
@@ -116,6 +136,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _esperaMapa?.cancel();
     _mapController?.dispose();
     super.dispose();
   }
@@ -728,6 +749,21 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
       );
     }
 
+    // Y con clave pero rota —vencida, sin facturación o restringida a otro
+    // dominio— Google pinta SU cartel gris dentro de la vista de plataforma:
+    // «Se ha producido un error», sin decir qué hacer (observaciones del
+    // 2026-09-19). No hay callback de fallo: si la API no carga,
+    // `onMapCreated` no llega nunca, así que se mide por tiempo.
+    if (_mapaNoCargo) {
+      return AppEmptyState(
+        key: const Key('directorio_mapa_no_cargo'),
+        title: context.l10n.wdMapLoadFailedTitle,
+        description: context.l10n.wdMapLoadFailedBody,
+        icon: Icons.map_outlined,
+      );
+    }
+    _vigilarCargaDelMapa();
+
     final markers = <Marker>{};
 
     // Marcador de la ubicación del usuario
@@ -785,7 +821,10 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
             zoom: 12,
           ),
           markers: markers,
-          onMapCreated: (controller) => _mapController = controller,
+          onMapCreated: (controller) {
+            _esperaMapa?.cancel();
+            _mapController = controller;
+          },
           myLocationEnabled: true,
           myLocationButtonEnabled: true,
           zoomControlsEnabled: false,

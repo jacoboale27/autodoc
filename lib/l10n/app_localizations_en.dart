@@ -659,6 +659,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'The map could not be loaded because this build is missing its Google Maps key. In the meantime you can browse the workshops in list view.';
 
   @override
+  String get wdMapLoadFailedTitle => 'The map could not load';
+
+  @override
+  String get wdMapLoadFailedBody =>
+      'Google Maps did not respond. It is usually the key: expired, without billing, or restricted to another domain. The workshop list still works.';
+
+  @override
   String get wdWorkshop => 'Workshop';
 
   @override
