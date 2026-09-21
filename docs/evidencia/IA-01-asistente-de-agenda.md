@@ -370,10 +370,16 @@ Los ocho del §9 del plan. Estado:
 
 Abiertos, con su razón. **Un gap documentado no está cerrado.**
 
-> **Estado tras el drenaje (§9) y la segunda corrida (§10 y §11):** cerrados los gaps **1**,
-> **2**, **6**, **7** y **8**. Siguen abiertos el **3**, **4**, **5** y **9**, con su razón. Los
-> **10** y **11** son nuevos y salieron de leer la segunda corrida a mano; el §9.2 añade el
-> comentario de `firestore.rules` cuyo razonamiento era falso, que tampoco se cierra aquí.
+> **Estado a 2026-09-21 — cerrados todos menos uno.** Los gaps **1**, **2**, **6**, **7** y **8**
+> se cerraron en el drenaje (§9) y la segunda corrida (§10 y §11). Los **3**, **4**, **5**, **9** y
+> **10** se cierran en el §12, y dos de ellos **no como los pedía su anotación**: el 4 pedía el
+> lado equivocado de la balanza (§12.1) y el 5 se cierra como decisión razonada, no como pendiente
+> (§12.3).
+>
+> **Queda abierto el 11** —los arreglos del prompt sin reverificar contra el modelo—, que solo se
+> cierra con otra corrida de evals. Y siguen abiertos, fuera de esta lista, el comentario de
+> `firestore.rules` del §9.2 (con sus dos salidas y su coste escritos) y la deuda de la
+> integración del §13.4.
 
 1. **`vencimientoTarjeta` sigue sin generar alerta en `/alerts`** — defecto de producción del §1.1
    del plan. El asistente **sí** lo saca, pero la pantalla de alertas no. La DoD exige
@@ -813,4 +819,178 @@ que un caso. Queda como gap, y con el hueco medido en vez de supuesto.
 Los dos arreglos del prompt **no están reverificados** contra el modelo: son del mismo tipo que
 los del §5 y la próxima corrida los mide. Lo que sí está probado es que las reglas duras nuevas
 **detectan**, con la prosa real de esta corrida como caso, y que no gritan sobre la prosa buena.
+
+---
+
+## 12. Cierre de los gaps 3, 4, 5, 9 y 10 — 2026-09-21
+
+### 12.1 El gap 4 pedía el lado equivocado de la balanza
+
+Decía que la caché se consulta antes de clasificar y que eso «cuesta una lectura por cada pregunta
+de agenda». Se hizo el cambio, y **un test existente lo paró** con la medición delante:
+
+| Sobre un **acierto de caché** | Lecturas Firestore | Llamadas al modelo |
+|---|---|---|
+| `caché → clasificar` (actual) | 1 | **0** |
+| `clasificar → caché` (lo que pedía el gap) | 1 | **1** |
+
+O sea: clasificar primero cambia una lectura barata por una llamada al **recurso caro y con cupo**
+(10 por usuario y día), que es justo lo que la caché existe para evitar. Se revirtió y queda
+escrito en el código con los dos costes, para que nadie lo vuelva a «arreglar».
+
+**Lo que sí era un defecto**, y se cerró: un acierto de caché salta la clasificación **sin
+comprobar que lo cacheado fuera una explicación**. Hoy solo se escribe `explicar`, pero eso es una
+propiedad del **escritor**, no del lector. Ahora se sella `intencion` al escribir y se valida al
+leer; las entradas heredadas sin el campo se aceptan, porque negarlas vaciaría la caché de golpe —
+el defecto del `orderBy` sobre un campo ausente que este repositorio ya conoce.
+
+### 12.2 El gap 3 se cerró con un esquema, y con una caída blanda que importa igual
+
+La etiqueta se pide ahora con `responseSchema`/`enum` en vez de con una instrucción en prosa: la
+decodificación queda restringida al conjunto, así que **`fuera_de_alc` deja de ser un resultado
+posible**. Y con el presupuesto de razonamiento a cero, porque lo que no se gasta pensando no
+puede agotar el presupuesto de salida — que era la causa de que `gemini-3.5-flash` devolviera
+respuestas **vacías** al clasificar.
+
+`responseSchema` y `thinkingConfig` son superficie del proveedor que **este repositorio no puede
+verificar sin gastar cuota**: el emulador usa un doble y los evals se corren a mano. Si Gemini
+rechazara el mimetype y no hubiera reintento, **toda** clasificación fallaría y el asistente
+moriría entero por una mejora de robustez — cambiar un gap por una avería. Se reintenta una vez
+sin esquema, y solo ante `failed-precondition`.
+
+### 12.3 El gap 5 se cierra como decisión, no como pendiente
+
+El interruptor se lee **una vez por petición** y se queda así. Un kill switch cacheado deja de ser
+un kill switch: con 60 s de caché, apagarlo tarda hasta un minuto — y ese minuto es justo aquello
+para lo que existe. Con caché por instancia es peor: cada instancia caliente expira cuando le
+toca, así que el apagado sería **parcial** y sin forma de saber cuándo acabó.
+
+El precio queda **clavado por dos tests**: exactamente una lectura, y en **cada** petición. Si
+alguien lo cachea, el segundo se pone rojo, y ninguna otra suite puede verlo.
+
+### 12.4 El gap 9 se cierra moviendo el freno, no quitándolo
+
+Se devuelven **los dos cupos**. Cobrarle a alguien una de sus diez consultas diarias por una
+avería ajena era injusto. La razón original para no devolverlo —«abre un camino para agotar el
+global a coste cero»— era **correcta**, y se resuelve con un tope de **3 devoluciones por
+ventana** en vez de con no devolver nada.
+
+Dos detalles que sostienen el tope, los dos con test propio:
+
+- **Se comprueba dentro de la transacción.** Fuera, dos fallos simultáneos leerían el mismo
+  contador y devolverían los dos.
+- **`devoluciones` se arrastra en `dentroDelCupo`.** Su `tx.set` **reemplaza** el documento, así
+  que sin arrastrarlo cada consulta nueva borraría el contador y el límite se reiniciaría a cada
+  vuelta: devoluciones infinitas, que es exactamente el abuso que el tope cierra.
+
+### 12.5 El gap 10 tenía un agujero entero, no un detalle
+
+`numerosDe` solo miraba dígitos, así que **«te quedan diez días» sobre un envelope que dice 3 se
+saltaba entera la comprobación de números inventados** — la que más vale, porque un número que no
+está en el JSON es un dato inventado sobre el coche de alguien. Mapa de numerales para es y en,
+aplicado sobre el texto **normalizado** para que una tilde no lo esconda.
+
+`un`/`una`/`one`/`a` **no están, a propósito**: en los dos idiomas son artículos antes que
+numerales, y mapearlos marcaría «un vehículo» como el número 1 en toda respuesta. Se pierde «vence
+en un día» a cambio de que la regla no sea ruido — que es como una comprobación se desactiva de
+hecho sin desactivarse de derecho.
+
+### 12.6 El gate tumbó dos de estos arreglos, y los dos eran de coste
+
+- **El reintento tiraba también `sinRazonar`**, porque las dos banderas iban acopladas. Son
+  features independientes: si el proveedor rechazara el esquema pero siguiera admitiendo
+  `thinkingConfig`, el reintento volvía a exponerse al defecto que el esquema vino a cerrar.
+- **El reintento se disparaba con cualquier `failed-precondition`**, y ese código lo produce
+  también una clave inválida o un modelo inexistente. Con una mala configuración, **cada** consulta
+  pagaría dos llamadas mientras durase. Ahora el rechazo se **recuerda por instancia**.
+
+  Eso destapó algo en los propios tests: la memoria es de módulo, así que los casos que lanzan
+  `failed-precondition` a propósito contaminaban a los de después, que fallaban por un efecto de
+  **otro** test.
+- Y `devolverCupo` borraba `devoluciones` del cubo global — el mismo `tx.set` que reemplaza contra
+  el que advierte su propio comentario, aplicado a medias.
+
+**Queda NO VERIFICADO EN TEST** el tope contra dos devoluciones **simultáneas**: está argumentado
+(la comprobación vive dentro de la transacción, con `maxAttempts: 5`) pero el doble de Firestore de
+ese fichero se documenta como «transacciones de verdad **(secuenciales)**» y no dispara dos en
+paralelo. Es la misma familia de riesgo que el repositorio ya tiene escrita sobre los dobles que
+no aplican la semántica real.
+
+---
+
+## 13. Integración en `integracion/ola-2`
+
+Tres líneas divergentes desde `main` (`59f4a43`): `feat/play-store` (7 commits) →
+`feat/asistente-agenda` (+12 más), y **`fix/observaciones-2026-09-18` (30)**, la de GitHub.
+`play-store` **no** era ancestro de observaciones, así que hubo que fusionar de verdad, no
+fast-forward. La base es observaciones, por ser descendiente directo de `main`.
+
+Once conflictos en total. **Tres eran trampas que compilan**, y merecen quedar escritas:
+
+### 13.1 La barra del panel del taller se habría pintado dos veces
+
+`feat/play-store` declaraba `actions: [_TemaIdiomaActions, SizedBox, NotificationBellButton]` en
+`MechanicScaffold`, y las observaciones del 2026-09-19 **movieron esas tres al propio scaffold**,
+que las pone siempre — precisamente porque cada pantalla tenía que acordarse y solo el dashboard lo
+hacía. Conservar las de play-store **compila, analiza limpio y pasa los tests**: solo se ve mirando
+la pantalla. El propio contrato de `MechanicScaffold.actions` lo dice.
+
+Apareció **dos veces**, una por cada merge, porque la rama del asistente traía las mismas tres
+junto a su botón.
+
+### 13.2 `firebase.json`: las dos claves tenían que sobrevivir
+
+Observaciones añadió `functions.ignore` con `serviceAccountKey*.json` —su arreglo de seguridad,
+para que la clave de cuenta de servicio no viaje en el paquete— y el asistente añadió
+`functions.predeploy` con la guarda del `.env`. Quedarse con una **deshacía en silencio un arreglo
+de seguridad recién hecho**, o retiraba la guarda que impide desplegar un `.env` que simule un
+emulador.
+
+### 13.3 Los índices se unieron por conjuntos, no a mano
+
+Observaciones **retira** un índice (`cotizaciones id_vehiculo,estado,fecha DESC`) y añade otro. Un
+merge textual lo habría resucitado, y **retirar un índice es un paso de despliegue** — la cicatriz
+que GAPS-04 ya dejó escrita. Resultado verificado programáticamente: 12 base − 1 + 1 + 2 del
+asistente = **14**, comprobando además que el retirado sigue fuera.
+
+Los dos contadores del centinela de índices se **midieron** sobre el árbol fusionado y coinciden
+con la suma de las ramas: **19** `.orderBy(` en `lib/` (16+2+1) y **40** `.where(` en el servidor
+(32+1+7). Cuadrar la cuenta es lo que distingue «cada rama añadió lo suyo» de «al fusionar
+entraron consultas que nadie revisó».
+
+### 13.4 Las dos ramas implementaron la misma funcionalidad con diseños distintos
+
+La foto principal del vehículo: `setMainPhoto` (observaciones, sube y sustituye en un paso) frente
+a `usarComoPrincipal` + `subirAStorage`/`registrarFoto` + `tieneFoto` (GAPS-08, descompuesto para
+poder probar la lógica de portada sin un doble de Storage).
+
+**No es un conflicto de texto, es una decisión de diseño**, y las dos tienen llamadores reales en
+las pantallas de su rama. Se conservan las dos, anotado en el código: retirar una exige reescribir
+las pantallas de la otra. **Queda como deuda de la integración** — dos formas de hacer lo mismo
+sobre el mismo campo es el patrón que este repositorio ya ha pagado varias veces.
+
+La ficha del vehículo se queda con el layout responsive de observaciones y adopta los dos
+parámetros de portada de play-store (`fotoPrincipal`, `onPortadaCambiada`): sin ellos la galería
+compila igual y **la portada deja de poder cambiarse desde la ficha**.
+
+### 13.5 Un centinela de observaciones cazó algo real
+
+`acciones_de_cabecera_test.dart` —que exige que toda pantalla lleve tema, idioma y campana—
+levantó que **`asistente_screen.dart` era la única pantalla de la app sin ellas**. Nació en la rama
+del asistente, antes de que eso fuera convención. Es justo para lo que existe ese centinela: una
+pantalla nueva no puede quedarse fuera en silencio.
+
+### 13.6 Gates del árbol integrado
+
+| Gate | Resultado |
+|---|---|
+| `flutter analyze` | `No issues found!` |
+| `flutter test` | **1509 / 1509**, exit 0 |
+| `functions` (Mocha) | **598 passing** |
+| `test_rules` (Jest + emuladores) | **571 / 571**, 33 suites |
+
+**Falta la E2E**, y no es opcional antes de fusionar a `main`: exige recompilar el bundle
+(`npm run build:web`, varios minutos con su `flutter clean`) y correrse **en serie**. Es el único
+gate que puede ver los defectos de integración que viven en el artefacto y no en el fuente — la
+lección del incidente del 2026-09-13.
 
