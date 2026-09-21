@@ -532,6 +532,13 @@ async function devolverCupo(db, uid, ahoraMs) {
           tx.set(refGlobal, {
             ventana_inicio: global.inicio,
             conteo: Math.max(0, (global.datos.conteo || 0) - 1),
+            // Se arrastra tambien aqui. Lo levanto el gate: `dentroDelCupo`
+            // escribe `devoluciones` en los DOS cubos, y esta reposicion lo
+            // borraba del global — el mismo patron de `tx.set` que reemplaza
+            // el documento contra el que advierte su propio comentario,
+            // aplicado a medias. Hoy es inofensivo porque el global no se
+            // topa, pero el dia que se tope el defecto ya estaria sembrado.
+            devoluciones: global.datos.devoluciones || 0,
             expira_en: new Date(global.inicio + VENTANA_MS),
           });
         }
@@ -603,19 +610,48 @@ function pedirEtiqueta(cliente, pregunta, conEsquema) {
     usuario: pregunta,
     maxTokens: MAX_TOKENS_ETIQUETA,
     temperatura: 0,
+    // **`sinRazonar` va SIEMPRE, tambien en el reintento sin esquema.** Lo
+    // levanto el gate de rendimiento: la primera version las acoplaba bajo el
+    // mismo flag, asi que el reintento tiraba tambien el presupuesto de
+    // razonamiento a cero y volvia a exponerse al defecto que el esquema vino
+    // a cerrar — respuestas VACIAS porque los tokens de pensamiento se comen
+    // el presupuesto de salida. Son dos features independientes del proveedor
+    // y se tratan como tales.
+    sinRazonar: true,
   };
   if (conEsquema) {
     peticion.enumeracion = INTENCIONES;
-    peticion.sinRazonar = true;
   }
   return cliente.generar(peticion);
+}
+
+/**
+ * ¿Ya sabemos que este proveedor rechaza el esquema?
+ *
+ * **Se recuerda por instancia, y esa es la otra mitad del arreglo del gate.**
+ * El unico sintoma de un esquema rechazado es `failed-precondition`, y ese
+ * codigo lo produce tambien una clave invalida, un modelo inexistente y una
+ * peticion mal formada (400/401/403/404 en `deEstadoHttp`). Sin memoria, una
+ * mala configuracion haria que CADA consulta pagara dos llamadas al proveedor
+ * —el doble de latencia y de cuota— mientras durase, en vez de una sola vez.
+ *
+ * Con memoria, el coste extra es una llamada por instancia caliente y luego
+ * cero. Y si la causa era la configuracion y no el esquema, lo unico que se
+ * pierde es la restriccion de decodificacion: se degrada a lo que habia antes,
+ * que es el comportamiento correcto para una mejora de robustez.
+ */
+let esquemaRechazado = false;
+
+/** Solo para los tests: devuelve la memoria a su estado inicial. */
+function olvidarRechazoDeEsquema() {
+  esquemaRechazado = false;
 }
 
 async function clasificar(cliente, pregunta) {
   let bruto;
   try {
     try {
-      bruto = await pedirEtiqueta(cliente, pregunta, true);
+      bruto = await pedirEtiqueta(cliente, pregunta, !esquemaRechazado);
     } catch (e) {
       // **Caida blanda, y no es pesimismo.** `responseSchema` y
       // `thinkingConfig` son superficie del proveedor que este repositorio no
@@ -629,10 +665,14 @@ async function clasificar(cliente, pregunta) {
       // Solo se reintenta la configuracion rechazada. Una caida del proveedor
       // o un timeout NO se reintentan: ahi repetir es gastar cuota dos veces
       // para el mismo fallo.
-      if (!e || e.code !== 'failed-precondition') throw e;
+      // Si ya iba sin esquema, no hay nada que degradar: sube.
+      if (!e || e.code !== 'failed-precondition' || esquemaRechazado) throw e;
+      esquemaRechazado = true;
       console.error(
-        'asistente: el proveedor rechazo el esquema del clasificador, ' +
-          'reintentando sin el:',
+        'asistente: el proveedor rechazo el esquema del clasificador. Se ' +
+          'reintenta sin el y NO se volvera a pedir en esta instancia. Si la ' +
+          'causa fuera la configuracion (clave o GEMINI_MODELO), el reintento ' +
+          'fallara igual y el codigo subira:',
         e.code
       );
       bruto = await pedirEtiqueta(cliente, pregunta, false);
@@ -882,6 +922,7 @@ module.exports = {
   TEXTO_FUERA_DE_ALCANCE,
   VENTANA_MS,
   DEVOLUCIONES_POR_VENTANA,
+  olvidarRechazoDeEsquema,
   VIDA_CACHE_MS,
   normalizar,
   idiomaValido,

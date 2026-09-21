@@ -23,6 +23,7 @@ const {
   CODIGOS_QUE_SUBEN,
   CODIGOS_SIN_CARGO_GLOBAL,
   DEVOLUCIONES_POR_VENTANA,
+  olvidarRechazoDeEsquema,
   VENTANA_MS,
   FUERA_DE_ALCANCE,
   COLECCION_CUOTA,
@@ -115,6 +116,15 @@ const agendaVacia = async () => ({ rol: 'propietario', ventana_dias: 30, items: 
 const agendaCon = (items) => async () => ({ rol: 'propietario', ventana_dias: 30, items });
 
 function crear(opciones = {}) {
+  // La memoria de «este proveedor rechaza el esquema» es de MODULO, asi que
+  // persiste entre casos del mismo proceso de mocha. Y varios casos lanzan
+  // `failed-precondition` a proposito (los de devolucion de cupo), asi que sin
+  // este olvido contaminaban a los de despues: el enum dejaba de pedirse y
+  // fallaban por un efecto de OTRO test. Es una propiedad real del codigo —en
+  // produccion la memoria es lo que evita pagar dos llamadas por consulta—, no
+  // un apano del test.
+  olvidarRechazoDeEsquema();
+
   const db = opciones.db || fakeDb();
   const cliente = opciones.cliente || fakeCliente('agenda');
   const asistente = crearAsistente({
@@ -974,5 +984,127 @@ describe('asistente / la etiqueta se pide con esquema', () => {
         codigo + ': se reintento una averia que no era de configuracion'
       );
     }
+  });
+});
+
+/**
+ * Lo que levanto el segundo gate de rendimiento sobre el esquema.
+ *
+ * Dos defectos mios, los dos de coste y los dos reales:
+ *
+ *   1. El reintento **tiraba tambien `sinRazonar`**, porque las dos banderas
+ *      iban acopladas. Son features independientes del proveedor: si rechaza
+ *      el esquema pero sigue admitiendo `thinkingConfig`, el reintento volvia
+ *      a exponerse al defecto que el esquema vino a cerrar.
+ *   2. El reintento se disparaba con CUALQUIER `failed-precondition`, y ese
+ *      codigo lo produce tambien una clave invalida o un modelo inexistente
+ *      (400/401/403/404). Con una mala configuracion, CADA consulta pagaba dos
+ *      llamadas al proveedor mientras durase.
+ */
+describe('asistente / el esquema y su reintento, tras el gate', () => {
+  it('el reintento conserva `sinRazonar`: es otra feature, no la misma', async () => {
+    const rechazo = new Error('mimetype no soportado');
+    rechazo.code = 'failed-precondition';
+
+    let llamadas = 0;
+    const cliente = {
+      peticiones: [],
+      async generar(peticion) {
+        this.peticiones.push(peticion);
+        llamadas += 1;
+        if (llamadas === 1) throw rechazo;
+        return 'agenda';
+      },
+    };
+    const { asistente } = crear({ cliente, construirAgenda: agendaVacia });
+    await preguntar(asistente);
+
+    assert.strictEqual(
+      cliente.peticiones[1].sinRazonar,
+      true,
+      'el reintento perdio el presupuesto de razonamiento a cero, que es el ' +
+        'otro defecto que el esquema vino a cerrar'
+    );
+    assert.strictEqual(cliente.peticiones[1].enumeracion, undefined);
+  });
+
+  it('el rechazo se RECUERDA: no se paga el doble en cada consulta', async () => {
+    // El caso 2. Con una clave invalida o un GEMINI_MODELO mal fijado, el
+    // reintento tambien falla y nada tiene que ver con el esquema. Sin
+    // memoria, eso duplicaba latencia y cuota en TODAS las consultas
+    // mientras durase la mala configuracion.
+    const rechazo = new Error('rechazado');
+    rechazo.code = 'failed-precondition';
+
+    const cliente = {
+      peticiones: [],
+      async generar(peticion) {
+        this.peticiones.push(peticion);
+        if (peticion.enumeracion) throw rechazo;
+        return 'agenda';
+      },
+    };
+    const { asistente } = crear({ cliente, construirAgenda: agendaVacia });
+
+    await preguntar(asistente);
+    const trasLaPrimera = cliente.peticiones.length;
+    await preguntar(asistente);
+
+    assert.strictEqual(trasLaPrimera, 2, 'la primera consulta deberia pagar el reintento');
+    assert.strictEqual(
+      cliente.peticiones.length - trasLaPrimera,
+      1,
+      'la SEGUNDA consulta volvio a pedir el esquema ya rechazado y pago dos ' +
+        'llamadas: la memoria del rechazo no esta funcionando'
+    );
+    assert.strictEqual(
+      cliente.peticiones[2].enumeracion,
+      undefined,
+      'la segunda consulta reintento con el esquema que ya se sabe rechazado'
+    );
+  });
+
+  it('si ya iba sin esquema, un failed-precondition SUBE', async () => {
+    // Sin esto, con la memoria puesta el codigo podria quedarse en un bucle
+    // de reintentos o tragarse el fallo. Un `failed-precondition` sin esquema
+    // que degradar es una averia de configuracion y tiene que llegar a la
+    // persona.
+    const averia = new Error('clave invalida');
+    averia.code = 'failed-precondition';
+    const cliente = fakeCliente(averia);
+    const { asistente } = crear({ cliente });
+
+    // Primera: reintenta una vez y sube.
+    await assert.rejects(() => preguntar(asistente), (e) => e.code === 'failed-precondition');
+    assert.strictEqual(cliente.peticiones.length, 2);
+
+    // Segunda: ya sin esquema desde el principio, una sola llamada.
+    await assert.rejects(() => preguntar(asistente), (e) => e.code === 'failed-precondition');
+    assert.strictEqual(
+      cliente.peticiones.length,
+      3,
+      'la segunda consulta volvio a reintentar sobre una averia ya conocida'
+    );
+  });
+
+  it('la reposicion del cupo global no borra su contador de devoluciones', async () => {
+    // El cuarto hallazgo del gate: `dentroDelCupo` escribe `devoluciones` en
+    // los DOS cubos y la reposicion lo borraba del global — el mismo patron de
+    // `tx.set` que reemplaza el documento contra el que advierte su propio
+    // comentario, aplicado a medias. Inofensivo hoy, sembrado para manana.
+    const db = fakeDb();
+    const averia = new Error('averia');
+    averia.code = 'unavailable';
+    averia.detalle = 'proveedor';
+    const { asistente } = crear({ db, cliente: fakeCliente(averia) });
+
+    await assert.rejects(() => preguntar(asistente), (e) => e.code === 'unavailable');
+
+    const global = db.docs[COLECCION_CUOTA + '/' + DOC_CUOTA_GLOBAL];
+    assert.notStrictEqual(
+      global.devoluciones,
+      undefined,
+      'la reposicion del global borro `devoluciones`'
+    );
   });
 });
