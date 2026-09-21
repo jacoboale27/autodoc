@@ -22,6 +22,7 @@ const {
   MAX_TOKENS_ETIQUETA,
   CODIGOS_QUE_SUBEN,
   CODIGOS_SIN_CARGO_GLOBAL,
+  DEVOLUCIONES_POR_VENTANA,
   VENTANA_MS,
   FUERA_DE_ALCANCE,
   COLECCION_CUOTA,
@@ -44,6 +45,7 @@ const AHORA = new Date('2026-09-19T15:00:00Z');
 /** Firestore de mentira con transacciones de verdad (secuenciales). */
 function fakeDb(docs = {}) {
   const escrituras = [];
+  const lecturas = [];
   const opcionesDeTransaccion = [];
   const ref = (coleccion, id) => ({
     clave: coleccion + '/' + id,
@@ -56,6 +58,7 @@ function fakeDb(docs = {}) {
     },
   });
   const leer = (clave) => {
+    lecturas.push(clave);
     const existe = Object.prototype.hasOwnProperty.call(docs, clave);
     return {
       exists: existe,
@@ -70,6 +73,7 @@ function fakeDb(docs = {}) {
   return {
     docs,
     escrituras,
+    lecturas,
     opcionesDeTransaccion,
     collection: (coleccion) => ({
       doc: (id) => ref(coleccion, id),
@@ -658,7 +662,20 @@ describe('asistente / el cupo global no paga lo que el proveedor no atendio', ()
     return e;
   }
 
-  it('una averia devuelve el cupo GLOBAL y deja cobrado el del usuario', async () => {
+  const campoDe = (db, clave, campo) => {
+    const escritas = db.escrituras.filter((e) => e.clave === clave);
+    return escritas.length ? escritas[escritas.length - 1].datos[campo] : null;
+  };
+
+  it('una averia devuelve LOS DOS cupos, el global y el del usuario', async () => {
+    // **Politica cambiada al cerrar el gap 9.** Antes el cargo del usuario se
+    // quedaba, con la razon de que era «el freno que impide reintentar sin
+    // limite contra un proveedor roto». La razon era correcta y el efecto
+    // injusto: a alguien que no recibio ninguna respuesta se le comia una de
+    // sus diez consultas del dia por una averia ajena.
+    //
+    // El freno no desaparece, cambia de sitio: ahora es el tope de
+    // `DEVOLUCIONES_POR_VENTANA`, que se prueba en el caso siguiente.
     for (const codigo of CODIGOS_SIN_CARGO_GLOBAL) {
       const db = fakeDb();
       const { asistente } = crear({ db, cliente: fakeCliente(averia(codigo)) });
@@ -672,12 +689,65 @@ describe('asistente / el cupo global no paga lo que el proveedor no atendio', ()
       );
       assert.strictEqual(
         conteoDe(db, COLECCION_CUOTA + '/u1'),
+        0,
+        codigo + ': se le cobro al usuario una consulta que nadie le respondio'
+      );
+      assert.strictEqual(
+        campoDe(db, COLECCION_CUOTA + '/u1', 'devoluciones'),
         1,
-        codigo +
-          ': se devolvio tambien el cupo del usuario, y ese es el freno que ' +
-          'impide reintentar sin limite contra un proveedor roto'
+        codigo + ': la devolucion no quedo contada, asi que el tope no puede aplicarse'
       );
     }
+  });
+
+  it('el tope corta las devoluciones del usuario, no el global', async () => {
+    // El abuso que la politica vieja cerraba negandose a devolver: quien
+    // encuentre una entrada que haga fallar al proveedor de forma fiable
+    // tendria consultas infinitas, y con ellas el cubo GLOBAL a coste cero —
+    // que es el que tumba la feature para todos.
+    //
+    // Se ejerce una vez MAS que el tope, con el estado acumulandose entre
+    // vueltas como en produccion.
+    const db = fakeDb();
+    const { asistente } = crear({ db, cliente: fakeCliente(averia('unavailable')) });
+
+    for (let i = 0; i < DEVOLUCIONES_POR_VENTANA + 1; i += 1) {
+      await assert.rejects(() => preguntar(asistente), (e) => e.code === 'unavailable');
+    }
+
+    assert.strictEqual(
+      campoDe(db, COLECCION_CUOTA + '/u1', 'devoluciones'),
+      DEVOLUCIONES_POR_VENTANA,
+      'el tope no corto: se devolvieron mas consultas de las permitidas por ventana'
+    );
+    assert.strictEqual(
+      conteoDe(db, COLECCION_CUOTA + '/u1'),
+      1,
+      'pasado el tope, la consulta fallida SI se cobra: es lo que frena el bucle'
+    );
+  });
+
+  it('el contador de devoluciones sobrevive a la consulta siguiente', async () => {
+    // Sin esto el tope no valdria nada, y el defecto es facil de reintroducir:
+    // `dentroDelCupo` escribe con `tx.set`, que REEMPLAZA el documento. Si no
+    // arrastrara `devoluciones`, cada consulta nueva lo borraria y el limite
+    // se reiniciaria a cada vuelta — devoluciones infinitas otra vez.
+    const db = fakeDb();
+    const { asistente } = crear({ db, cliente: fakeCliente(averia('unavailable')) });
+    await assert.rejects(() => preguntar(asistente), (e) => e.code === 'unavailable');
+
+    // Una consulta que SI funciona, entre medias.
+    const { asistente: bueno } = crear({
+      db,
+      cliente: fakeCliente(['explicar', 'El SOAT es...']),
+    });
+    await preguntar(bueno, { pregunta: 'que es el SOAT' });
+
+    assert.strictEqual(
+      campoDe(db, COLECCION_CUOTA + '/u1', 'devoluciones'),
+      1,
+      'la consulta siguiente borro el contador de devoluciones'
+    );
   });
 
   it('un 429 del PROVEEDOR no se devuelve: insistirle seria el error', async () => {
@@ -757,5 +827,152 @@ describe('asistente / el clasificador cabe en su presupuesto', () => {
     return preguntar(asistente).then((r) => {
       assert.strictEqual(r.intencion, FUERA_DE_ALCANCE);
     });
+  });
+});
+
+/**
+ * El interruptor se lee UNA vez por peticion, y eso es una decision cerrada.
+ *
+ * El gap 5 preguntaba si cachearlo. La respuesta es no: un interruptor de
+ * emergencia cacheado deja de ser un interruptor de emergencia — con 60 s de
+ * cache, apagarlo tarda hasta un minuto, y ese minuto es justo aquello para lo
+ * que existe. Con cache por instancia es peor: cada instancia caliente expira
+ * cuando le toca, asi que el apagado seria parcial y sin forma de saber cuando
+ * acabo.
+ *
+ * Lo que estos casos fijan es el precio de esa decision, para que no se
+ * convierta en otro sin que nadie lo note: **exactamente una** lectura, y
+ * **en cada** peticion.
+ */
+describe('asistente / el coste del interruptor esta clavado', () => {
+  const CLAVE = 'configuracion/asistente_ia';
+
+  it('estaEncendido cuesta UNA lectura, no dos', async () => {
+    const db = fakeDb();
+    const { asistente } = crear({ db, cliente: fakeCliente(FUERA_DE_ALCANCE) });
+    await preguntar(asistente);
+
+    const delInterruptor = db.lecturas.filter((c) => c === CLAVE);
+    assert.strictEqual(
+      delInterruptor.length,
+      1,
+      'el interruptor se leyo ' + delInterruptor.length + ' veces en una sola consulta'
+    );
+  });
+
+  it('se relee en CADA peticion: apagarlo surte efecto en la siguiente', async () => {
+    // La propiedad que hace del interruptor un interruptor. Si alguien lo
+    // cachea entre llamadas, este caso se pone rojo — y no hay ningun otro
+    // test que pueda verlo.
+    const db = fakeDb();
+    const { asistente } = crear({ db, cliente: fakeCliente(FUERA_DE_ALCANCE) });
+
+    await preguntar(asistente);
+    db.docs[CLAVE] = { activo: false };
+
+    await assert.rejects(
+      () => preguntar(asistente),
+      (e) => e.code === 'unavailable' && e.detalle === 'apagado',
+      'apagar el interruptor no surtio efecto en la consulta siguiente'
+    );
+
+    assert.strictEqual(
+      db.lecturas.filter((c) => c === CLAVE).length,
+      2,
+      'no se releyo: el interruptor quedo cacheado entre peticiones'
+    );
+  });
+});
+
+/**
+ * El clasificador pide la etiqueta con un ESQUEMA, y sobrevive si el
+ * proveedor no lo admite.
+ *
+ * Cierra el gap 3. `maxOutputTokens` no protege frente a un modelo que piensa:
+ * los tokens de razonamiento se comen el presupuesto y la etiqueta sale
+ * truncada o vacia — medido con `gemini-3.5-flash`, que devolvia respuestas
+ * VACIAS al clasificar. La instruccion en prosa PIDE una etiqueta del enum;
+ * el esquema OBLIGA, porque restringe la decodificacion.
+ *
+ * Y la caida blanda es la mitad que evita cambiar un gap por una averia:
+ * `responseSchema` y `thinkingConfig` son superficie del proveedor que este
+ * repositorio **no puede verificar sin gastar cuota**. Si Gemini rechazara el
+ * mimetype, sin reintento toda clasificacion fallaria y el asistente moriria
+ * entero.
+ */
+describe('asistente / la etiqueta se pide con esquema', () => {
+  it('la peticion del clasificador lleva el enum y apaga el razonamiento', async () => {
+    const { asistente, cliente } = crear({ cliente: fakeCliente(FUERA_DE_ALCANCE) });
+    await preguntar(asistente);
+
+    const clasificador = cliente.peticiones[0];
+    assert.deepStrictEqual(
+      clasificador.enumeracion,
+      INTENCIONES,
+      'el clasificador no restringe la salida al enum'
+    );
+    assert.strictEqual(clasificador.sinRazonar, true);
+    assert.strictEqual(clasificador.temperatura, 0);
+  });
+
+  it('el REDACTOR no lleva esquema: ese si escribe prosa', async () => {
+    // Sin esta red, restringir la salida del redactor a un enum le daria una
+    // respuesta de tres palabras a la persona.
+    const cliente = fakeCliente(['agenda', 'prosa']);
+    const { asistente } = crear({
+      cliente,
+      construirAgenda: agendaCon([{ tipo: 'soat', placa: 'ABC123', dias_restantes: 3 }]),
+    });
+    await preguntar(asistente);
+
+    const redactor = cliente.peticiones[1];
+    assert.strictEqual(redactor.enumeracion, undefined);
+    assert.strictEqual(redactor.sinRazonar, undefined);
+  });
+
+  it('si el proveedor RECHAZA el esquema, se reintenta sin el', async () => {
+    const rechazo = new Error('mimetype no soportado');
+    rechazo.code = 'failed-precondition';
+
+    let llamadas = 0;
+    const cliente = {
+      peticiones: [],
+      async generar(peticion) {
+        this.peticiones.push(peticion);
+        llamadas += 1;
+        if (llamadas === 1) throw rechazo;
+        return 'agenda';
+      },
+    };
+    const { asistente } = crear({ cliente, construirAgenda: agendaVacia });
+
+    const r = await preguntar(asistente);
+
+    assert.strictEqual(r.intencion, 'agenda', 'el rechazo del esquema tumbo la clasificacion');
+    assert.strictEqual(cliente.peticiones.length, 2);
+    assert.deepStrictEqual(cliente.peticiones[0].enumeracion, INTENCIONES);
+    assert.strictEqual(
+      cliente.peticiones[1].enumeracion,
+      undefined,
+      'el reintento volvio a mandar el esquema que acababan de rechazar'
+    );
+  });
+
+  it('una caida del proveedor NO se reintenta: seria pagar dos veces', async () => {
+    // El reintento es solo para la configuracion rechazada. Un `unavailable`
+    // o un timeout repetido gasta cuota dos veces para el mismo fallo.
+    for (const codigo of ['unavailable', 'deadline-exceeded', 'resource-exhausted']) {
+      const averia = new Error('averia');
+      averia.code = codigo;
+      const cliente = fakeCliente(averia);
+      const { asistente } = crear({ cliente });
+
+      await assert.rejects(() => preguntar(asistente), (e) => e.code === codigo);
+      assert.strictEqual(
+        cliente.peticiones.length,
+        1,
+        codigo + ': se reintento una averia que no era de configuracion'
+      );
+    }
   });
 });

@@ -258,15 +258,57 @@ const DOCUMENTO_INVENTADO =
 const REGLA_FILTRADA =
   /(mantenimiento|maintenance)[^.]{0,60}?(se\s+(mide|miden|calcula|calculan)|va[n]?\s+siempre|debe[n]?\s+medirse|is\s+(always\s+)?measured|are\s+(always\s+)?measured)[^.]{0,30}?(kil[oó]metr|\bkm\b|kilometre)/i;
 
+/**
+ * Numerales escritos con letras, en los dos idiomas.
+ *
+ * **Sin esto la comprobacion que mas vale tenia un agujero entero**, y salio
+ * leyendo la segunda corrida: el envelope 5 dijo «los proximos **treinta**
+ * dias». Ese 30 era legitimo (viene de `ventana_dias`), pero revelo que
+ * `numerosDe` solo miraba digitos — o sea que un modelo que escriba «diez
+ * dias» donde el envelope dice 3 se salta la regla de numeros inventados sin
+ * que nada salte.
+ *
+ * **`uno`/`un`/`una`/`one`/`a` NO estan, a proposito.** En los dos idiomas son
+ * articulos antes que numerales: mapearlos marcaria «un vehiculo» o «un
+ * compromiso» como el numero 1 y convertiria la regla en ruido, que es como
+ * una comprobacion se desactiva de hecho. Se pierde «vence en un dia» a
+ * cambio de no tener falsos positivos en toda respuesta que empiece por «un».
+ */
+const NUMERALES = {
+  dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9,
+  diez: 10, once: 11, doce: 12, trece: 13, catorce: 14, quince: 15,
+  dieciseis: 16, diecisiete: 17, dieciocho: 18, diecinueve: 19,
+  veinte: 20, veintiuno: 21, veintidos: 22, veintitres: 23, veinticuatro: 24,
+  veinticinco: 25, veintiseis: 26, veintisiete: 27, veintiocho: 28,
+  veintinueve: 29, treinta: 30, cuarenta: 40, cincuenta: 50, sesenta: 60,
+  setenta: 70, ochenta: 80, noventa: 90, cien: 100, ciento: 100,
+  doscientos: 200, trescientos: 300, quinientos: 500, mil: 1000,
+
+  two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9,
+  ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15,
+  sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20,
+  thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80,
+  ninety: 90, hundred: 100, thousand: 1000,
+};
+
 /** Numeros que la respuesta afirma. Se ignoran los de las horas y las placas. */
 function numerosDe(texto) {
-  return (
-    texto
-      // fuera las horas (14:00) y las placas (ABC123)
-      .replace(/\b\d{1,2}:\d{2}\b/g, ' ')
-      .replace(/\b[A-Z]{3}\d{3}\b/g, ' ')
-      .match(/\d+/g) || []
-  ).map(Number);
+  const limpio = texto
+    // fuera las horas (14:00) y las placas (ABC123)
+    .replace(/\b\d{1,2}:\d{2}\b/g, ' ')
+    .replace(/\b[A-Z]{3}\d{3}\b/g, ' ');
+
+  const digitos = (limpio.match(/\d+/g) || []).map(Number);
+
+  const conLetras = [];
+  const palabras = normalizar(limpio).split(/[^a-z]+/);
+  for (const palabra of palabras) {
+    if (Object.prototype.hasOwnProperty.call(NUMERALES, palabra)) {
+      conLetras.push(NUMERALES[palabra]);
+    }
+  }
+
+  return digitos.concat(conLetras);
 }
 
 /** Numeros que el envelope autoriza a decir. */

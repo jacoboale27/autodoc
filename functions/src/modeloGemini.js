@@ -132,20 +132,55 @@ function crearClienteGemini(opciones = {}) {
    * Una llamada. `sistema` son las instrucciones; `usuario` es lo unico que
    * cambia por peticion.
    *
-   * @param {{sistema: string, usuario: string, maxTokens?: number, temperatura?: number}} peticion
+   * `enumeracion` y `sinRazonar` existen para el clasificador, y cierran el
+   * gap de `maxOutputTokens` frente a modelos que piensan:
+   *
+   *   - **`enumeracion`** pide la salida con un **esquema**
+   *     (`responseSchema` con `enum`) en vez de con una instruccion en prosa.
+   *     La decodificacion queda restringida al conjunto, asi que el modelo no
+   *     puede devolver `fuera_de_alc` —doce de los dieciseis caracteres— ni
+   *     una etiqueta inventada: o sale un valor del enum, o sale un error. La
+   *     instruccion en prosa PIDE; el esquema OBLIGA.
+   *   - **`sinRazonar`** pone el presupuesto de razonamiento a cero. Es la
+   *     otra mitad: con `gemini-3.5-flash` el clasificador devolvia respuestas
+   *     VACIAS porque los tokens de pensamiento se comian el presupuesto de
+   *     salida antes de emitir la etiqueta. Clasificar en un enum de tres no
+   *     necesita razonar, y lo que no se gasta pensando no puede agotarse.
+   *
+   * Las dos son opcionales y no se aplican al redactor, que si escribe prosa.
+   *
+   * @param {{sistema: string, usuario: string, maxTokens?: number,
+   *          temperatura?: number, enumeracion?: string[], sinRazonar?: boolean}} peticion
    * @returns {Promise<string>} el texto, ya recortado.
    */
   async function generar(peticion) {
+    const generationConfig = {
+      // Temperatura baja a proposito: esto no escribe poesia, reformula
+      // datos que ya vienen dados. Cuanta menos libertad, menos ocasiones
+      // de inventar.
+      temperature: peticion.temperatura === undefined ? 0.2 : peticion.temperatura,
+      maxOutputTokens: peticion.maxTokens || 300,
+    };
+
+    if (peticion.enumeracion && peticion.enumeracion.length) {
+      generationConfig.responseMimeType = 'text/x.enum';
+      generationConfig.responseSchema = {
+        type: 'STRING',
+        enum: peticion.enumeracion.slice(),
+      };
+    }
+
+    if (peticion.sinRazonar) {
+      // Un modelo que no soporta `thinkingConfig` lo ignora; uno que si lo
+      // soporta deja de gastar presupuesto pensando. En ninguno de los dos
+      // casos cambia la etiqueta que sale.
+      generationConfig.thinkingConfig = { thinkingBudget: 0 };
+    }
+
     const cuerpo = {
       system_instruction: { parts: [{ text: peticion.sistema }] },
       contents: [{ role: 'user', parts: [{ text: peticion.usuario }] }],
-      generationConfig: {
-        // Temperatura baja a proposito: esto no escribe poesia, reformula
-        // datos que ya vienen dados. Cuanta menos libertad, menos ocasiones
-        // de inventar.
-        temperature: peticion.temperatura === undefined ? 0.2 : peticion.temperatura,
-        maxOutputTokens: peticion.maxTokens || 300,
-      },
+      generationConfig,
     };
 
     const control = new AbortController();

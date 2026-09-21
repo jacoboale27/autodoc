@@ -232,6 +232,40 @@ describe('evals / las reglas duras detectan', () => {
     );
   });
 
+  it('un numero escrito CON LETRAS tambien cuenta', () => {
+    // El agujero que salio leyendo la segunda corrida. `numerosDe` solo miraba
+    // digitos, asi que «te quedan diez dias» sobre un envelope que dice 3 se
+    // saltaba entera la comprobacion de numeros inventados — la que mas vale,
+    // porque un numero que no esta en el JSON es un dato inventado sobre el
+    // coche de alguien.
+    const conLetras = BUENA + ' Ademas te quedan siete revisiones.';
+    const fallos = revisarRedaccion(CASO, conLetras);
+    assert.ok(
+      fallos.some((f) => /NUMEROS QUE NO ESTAN/.test(f) && /7/.test(f)),
+      'no detecto el «siete»: ' + JSON.stringify(fallos)
+    );
+  });
+
+  it('en los dos idiomas', () => {
+    assert.deepStrictEqual(numerosDe('Expires in thirty days'), [30]);
+    assert.deepStrictEqual(numerosDe('faltan doscientos kilometros'), [200]);
+  });
+
+  it('las tildes no esconden un numeral', () => {
+    // La normalizacion se aplica antes de buscar, asi que «dieciséis» cuenta
+    // igual que «dieciseis». Sin eso, la regla se saltaria con un acento.
+    assert.deepStrictEqual(numerosDe('quedan dieciséis días'), [16]);
+  });
+
+  it('«un» y «una» NO cuentan como el numero 1', () => {
+    // Deliberado: en los dos idiomas son articulos antes que numerales, y
+    // mapearlos marcaria «un vehiculo» como el 1 en toda respuesta. Se pierde
+    // «vence en un dia» a cambio de que la regla no sea ruido — que es como
+    // una comprobacion se desactiva sin desactivarse.
+    assert.deepStrictEqual(numerosDe('Tienes un compromiso con una placa'), []);
+    assert.deepStrictEqual(numerosDe('You have a commitment and one plate'), []);
+  });
+
   it('las horas y las placas NO cuentan como numeros inventados', () => {
     // Si contaran, toda redaccion con una cita saltaria y las reglas se
     // volverian ruido que nadie mira — que es como una comprobacion se

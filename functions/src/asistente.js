@@ -325,6 +325,26 @@ function idiomaValido(idioma) {
  * la feature ya va a fallar sola en el paso siguiente, y apagarla por una
  * lectura transitoria seria apagarla por nada.
  */
+/**
+ * Lee el interruptor. **Una lectura por peticion, y se queda asi.**
+ *
+ * El gap 5 preguntaba si cachearlo. La respuesta es no, y conviene que quede
+ * cerrada y no abierta: un interruptor de emergencia cacheado **deja de ser un
+ * interruptor de emergencia**. Con 60 s de cache, apagarlo durante una fuga de
+ * cuota o una respuesta mala tarda hasta un minuto en surtir efecto, y ese
+ * minuto es justo aquello para lo que existe. Con cache por instancia es peor:
+ * cada instancia caliente de Cloud Functions expira cuando le toca, asi que el
+ * apagado seria parcial y no habria forma de saber cuando termino.
+ *
+ * El coste es **una** lectura de documento por consulta, sobre un limite de
+ * 10 consultas por usuario y dia. Eso no es un problema de escala, es el
+ * precio de que apagar signifique apagar. Lo que si esta prohibido es que sea
+ * mas de una: lo fija `estaEncendido cuesta UNA lectura` en los tests.
+ *
+ * Tampoco se agrupa con la transaccion de cuota, y no por descuido: el cupo se
+ * cobra DESPUES de saber que el asistente esta encendido. Al reves se le
+ * cobraria a alguien una consulta que el interruptor va a rechazar.
+ */
 async function estaEncendido(db) {
   try {
     const [coleccion, doc] = DOC_CONFIGURACION.split('/');
@@ -366,6 +386,14 @@ async function dentroDelCupo(db, uid, ahoraMs) {
         return {
           inicio: vigente ? inicio : ahoraMs,
           conteo: vigente ? previo.conteo || 0 : 0,
+          // **Se arrastra, y sin esto el tope de devoluciones no valdria
+          // nada.** El `tx.set` de abajo REEMPLAZA el documento, asi que la
+          // siguiente consulta borraria el contador de devoluciones y el
+          // limite se reiniciaria a cada vuelta: devoluciones infinitas y el
+          // cubo global a coste cero, que es justo el abuso que el tope
+          // existe para cerrar. Al rodar la ventana vuelve a cero, que es lo
+          // correcto: son tres por ventana, no tres por vida.
+          devoluciones: vigente && previo ? previo.devoluciones || 0 : 0,
         };
       };
 
@@ -383,6 +411,7 @@ async function dentroDelCupo(db, uid, ahoraMs) {
         tx.set(ref, {
           ventana_inicio: estado.inicio,
           conteo: estado.conteo + 1,
+          devoluciones: estado.devoluciones,
           // Para la politica TTL de Firestore. Tiene que ser Date/Timestamp,
           // no milisegundos, o la politica no lo mira. Sin TTL esta coleccion
           // crece un documento por usuario y no se vacia nunca.
@@ -449,26 +478,83 @@ const CODIGOS_SIN_CARGO_GLOBAL = ['unavailable', 'deadline-exceeded', 'failed-pr
  * Un fallo aqui se traga a proposito: esto corre dentro del camino de error,
  * y tapar el error original con otro dejaria a la persona sin saber que paso.
  */
-async function devolverCupoGlobal(db, ahoraMs) {
-  const ref = db.collection(COLECCION_CUOTA).doc(DOC_CUOTA_GLOBAL);
+/**
+ * Cuantas devoluciones admite el cubo de UNA persona por ventana.
+ *
+ * Existe porque devolver el cupo del usuario sin tope abre un camino de abuso:
+ * quien encuentre una entrada que haga fallar al proveedor de forma fiable
+ * tiene consultas infinitas, y con ellas el cubo GLOBAL a coste cero — que es
+ * el que tumba la feature para todos. Tres es holgado para los fallos reales
+ * de un dia y estrecho para un bucle.
+ */
+const DEVOLUCIONES_POR_VENTANA = 3;
+
+/**
+ * Devuelve la consulta que el proveedor no atendio.
+ *
+ * Toca el cubo global **y el del usuario**, y solo si su ventana sigue siendo
+ * la misma: si ya rodo, el contador vale cero y restar ahi escribiria un
+ * negativo por una consulta de ayer. El `Math.max(0, ...)` es la segunda red
+ * para el mismo caso.
+ *
+ * **Lo del usuario se anadio cerrando el gap 9**, que era una injusticia
+ * concreta: un fallo del proveedor se comia una de las diez consultas diarias
+ * de alguien que no recibio ninguna respuesta. La razon original para no
+ * devolverlo —«abre un camino para agotar el global a coste cero»— era
+ * correcta, y se resuelve con un tope por ventana en vez de con no devolver
+ * nada.
+ *
+ * Un fallo aqui se traga a proposito: esto corre dentro del camino de error, y
+ * tapar el error original con otro dejaria a la persona sin saber que paso.
+ */
+async function devolverCupo(db, uid, ahoraMs) {
+  const refGlobal = db.collection(COLECCION_CUOTA).doc(DOC_CUOTA_GLOBAL);
+  const refUsuario = uid ? db.collection(COLECCION_CUOTA).doc(uid) : null;
+
   try {
     await db.runTransaction(
       async (tx) => {
-        const snap = await tx.get(ref);
-        if (!snap.exists) return;
-        const datos = snap.data() || {};
-        const inicio = datos.ventana_inicio || 0;
-        if (ahoraMs - inicio >= VENTANA_MS) return;
-        tx.set(ref, {
-          ventana_inicio: inicio,
-          conteo: Math.max(0, (datos.conteo || 0) - 1),
-          expira_en: new Date(inicio + VENTANA_MS),
-        });
+        const refs = refUsuario ? [refGlobal, refUsuario] : [refGlobal];
+        const snaps = await Promise.all(refs.map((ref) => tx.get(ref)));
+
+        const [snapGlobal, snapUsuario] = snaps;
+
+        const vigente = (snap) => {
+          if (!snap || !snap.exists) return null;
+          const datos = snap.data() || {};
+          const inicio = datos.ventana_inicio || 0;
+          if (ahoraMs - inicio >= VENTANA_MS) return null;
+          return { inicio, datos };
+        };
+
+        const global = vigente(snapGlobal);
+        if (global) {
+          tx.set(refGlobal, {
+            ventana_inicio: global.inicio,
+            conteo: Math.max(0, (global.datos.conteo || 0) - 1),
+            expira_en: new Date(global.inicio + VENTANA_MS),
+          });
+        }
+
+        const usuario = refUsuario ? vigente(snapUsuario) : null;
+        if (usuario) {
+          const devueltas = usuario.datos.devoluciones || 0;
+          // El tope se comprueba DENTRO de la transaccion: si no, dos fallos
+          // simultaneos leerian el mismo contador y devolverian los dos.
+          if (devueltas < DEVOLUCIONES_POR_VENTANA) {
+            tx.set(refUsuario, {
+              ventana_inicio: usuario.inicio,
+              conteo: Math.max(0, (usuario.datos.conteo || 0) - 1),
+              devoluciones: devueltas + 1,
+              expira_en: new Date(usuario.inicio + VENTANA_MS),
+            });
+          }
+        }
       },
       { maxAttempts: 5 }
     );
   } catch (e) {
-    console.error('asistente: no se pudo devolver el cupo global:', e && e.code ? e.code : e);
+    console.error('asistente: no se pudo devolver el cupo:', e && e.code ? e.code : e);
   }
 }
 
@@ -501,15 +587,56 @@ const CODIGOS_QUE_SUBEN = [
  * ([CODIGOS_QUE_SUBEN]), porque no es una respuesta del modelo: es su
  * ausencia.
  */
+/**
+ * Una llamada al clasificador, con o sin esquema.
+ *
+ * **Con esquema** la etiqueta se pide con `responseSchema`/`enum` en vez de
+ * con una instruccion en prosa: la decodificacion queda restringida al
+ * conjunto, asi que `fuera_de_alc` —doce de los dieciseis caracteres— deja de
+ * ser un resultado posible. Y sin razonar, porque los tokens de pensamiento se
+ * comian el presupuesto de salida antes de emitir la etiqueta. Son las dos
+ * mitades del gap de `maxOutputTokens`.
+ */
+function pedirEtiqueta(cliente, pregunta, conEsquema) {
+  const peticion = {
+    sistema: SISTEMA_CLASIFICADOR,
+    usuario: pregunta,
+    maxTokens: MAX_TOKENS_ETIQUETA,
+    temperatura: 0,
+  };
+  if (conEsquema) {
+    peticion.enumeracion = INTENCIONES;
+    peticion.sinRazonar = true;
+  }
+  return cliente.generar(peticion);
+}
+
 async function clasificar(cliente, pregunta) {
   let bruto;
   try {
-    bruto = await cliente.generar({
-      sistema: SISTEMA_CLASIFICADOR,
-      usuario: pregunta,
-      maxTokens: MAX_TOKENS_ETIQUETA,
-      temperatura: 0,
-    });
+    try {
+      bruto = await pedirEtiqueta(cliente, pregunta, true);
+    } catch (e) {
+      // **Caida blanda, y no es pesimismo.** `responseSchema` y
+      // `thinkingConfig` son superficie del proveedor que este repositorio no
+      // puede verificar sin gastar cuota: el emulador usa un doble y el eval
+      // se corre a mano. Si Gemini rechaza el mimetype o el esquema devuelve
+      // 400 —que mapea a `failed-precondition`— y esto no se reintentara sin
+      // esquema, **toda** clasificacion fallaria y el asistente moriria
+      // entero por una mejora de robustez. Seria cambiar un gap por una
+      // averia.
+      //
+      // Solo se reintenta la configuracion rechazada. Una caida del proveedor
+      // o un timeout NO se reintentan: ahi repetir es gastar cuota dos veces
+      // para el mismo fallo.
+      if (!e || e.code !== 'failed-precondition') throw e;
+      console.error(
+        'asistente: el proveedor rechazo el esquema del clasificador, ' +
+          'reintentando sin el:',
+        e.code
+      );
+      bruto = await pedirEtiqueta(cliente, pregunta, false);
+    }
   } catch (e) {
     // Estos suben: son accionables y la persona los entiende. Tragarselos
     // convierte una averia en un rechazo, que es la peor de las dos.
@@ -575,23 +702,47 @@ function crearAsistente(opciones) {
     }
 
     // A partir de aqui el cupo YA esta cobrado, asi que un fallo del proveedor
-    // deja pagada una consulta que nadie recibio. El cargo del usuario se
-    // queda (es el freno contra reintentar sin limite); el global se devuelve,
-    // porque ese cubo representa la cuota del PROVEEDOR y el proveedor no
-    // atendio nada.
+    // deja pagada una consulta que nadie recibio. Se devuelven **los dos
+    // cubos**: el global porque representa la cuota del PROVEEDOR y el
+    // proveedor no atendio nada, y el del usuario porque cobrarle una de sus
+    // diez consultas diarias por una averia ajena es injusto (gap 9).
+    //
+    // El freno contra el bucle no es negarse a devolver, es el tope de
+    // `DEVOLUCIONES_POR_VENTANA`: tres por ventana bastan para los fallos
+    // reales de un dia y no alcanzan para consultas infinitas.
     try {
       return await ejecutar();
     } catch (e) {
       if (e && CODIGOS_SIN_CARGO_GLOBAL.indexOf(e.code) !== -1) {
-        await devolverCupoGlobal(db, ahoraMs);
+        await devolverCupo(db, uid, ahoraMs);
       }
       throw e;
     }
 
     async function ejecutar() {
-      // La cache va DESPUES del cupo: un acierto de cache ahorra la llamada al
-      // modelo, que es lo caro y lo limitado, pero sigue costando lecturas de
-      // Firestore. Cobrar el cupo igual mantiene el limite superior acotado.
+      // La cache va DESPUES del cupo y **ANTES de clasificar**, y esto se
+      // intento cambiar y se revirtio con la medicion delante. Queda escrito
+      // porque el gap 4 de la evidencia pedia justo lo contrario:
+      //
+      //   Sobre un acierto de cache, el orden `cache -> clasificar` cuesta
+      //   **1 lectura de Firestore y CERO llamadas al modelo**. El orden
+      //   `clasificar -> cache` cuesta **1 lectura y UNA llamada al modelo**.
+      //
+      // O sea que clasificar primero cambia una lectura barata por una llamada
+      // al recurso caro y con cupo (10 por usuario y dia) — justo lo que la
+      // cache existe para evitar. Lo levanto el test 7, que afirma que la
+      // segunda pregunta identica no vuelve a llamar al proveedor.
+      //
+      // El coste real del orden actual es **una lectura por pregunta de
+      // agenda**, que nunca acierta porque solo se cachea `explicar`. Es el
+      // lado barato de la balanza, y por eso se queda.
+      //
+      // Lo que si era un defecto del gap: un acierto de cache **saltaba la
+      // clasificacion sin comprobar que lo cacheado fuera una explicacion**.
+      // Hoy solo se escribe `explicar`, pero eso es una propiedad del
+      // escritor, no del lector, y el dia que se cachee una segunda intencion
+      // se serviria cruzada en silencio. `leerCache` valida ahora la intencion
+      // del documento, asi que el cruce es imposible por construccion.
       const clave = claveDeCache(pregunta, idioma);
       const cacheada = await leerCache(clave);
       if (cacheada) return { intencion: 'explicar', texto: cacheada, cacheada: true };
@@ -639,11 +790,34 @@ function crearAsistente(opciones) {
     }
   }
 
+  /**
+   * La unica intencion cacheable, y se **comprueba al leer**.
+   *
+   * Un acierto de cache se sirve sin clasificar (ver el comentario de
+   * `ejecutar`), asi que lo unico que impide servir una respuesta de otra
+   * categoria es que solo se escriba `explicar` — una propiedad del ESCRITOR,
+   * no del lector. El dia que se cachee una segunda intencion, el cruce
+   * ocurriria en silencio y la persona recibiria una respuesta de otra
+   * pregunta presentada como la suya. Validarlo al leer lo hace imposible.
+   *
+   * Las entradas heredadas no llevan `intencion`, asi que su ausencia se
+   * acepta: negarlas vaciaria la cache de golpe, que es el defecto del
+   * `orderBy` sobre un campo ausente que este repositorio ya conoce.
+   */
+  const INTENCION_CACHEABLE = 'explicar';
+
   async function leerCache(clave) {
     try {
       const snap = await db.collection(COLECCION_CACHE).doc(clave).get();
       if (!snap.exists) return null;
       const datos = snap.data() || {};
+      if (datos.intencion !== undefined && datos.intencion !== INTENCION_CACHEABLE) {
+        console.error(
+          'asistente: entrada de cache con intencion no cacheable, ignorada:',
+          datos.intencion
+        );
+        return null;
+      }
       return typeof datos.texto === 'string' && datos.texto ? datos.texto : null;
     } catch (e) {
       // Una cache que no se puede leer es una cache fria, no una averia.
@@ -661,6 +835,8 @@ function crearAsistente(opciones) {
         .set({
           texto,
           idioma,
+          // Se sella la intencion para que `leerCache` pueda comprobarla.
+          intencion: INTENCION_CACHEABLE,
           creada_en: new Date(ahoraMs),
           // Sin `expira_en` esta coleccion no es siquiera CANDIDATA a una
           // politica TTL: crece un documento por pregunta distinta y no se vacia
@@ -705,6 +881,7 @@ module.exports = {
   LARGO_MAXIMO_PREGUNTA,
   TEXTO_FUERA_DE_ALCANCE,
   VENTANA_MS,
+  DEVOLUCIONES_POR_VENTANA,
   VIDA_CACHE_MS,
   normalizar,
   idiomaValido,
