@@ -49,10 +49,37 @@ const storage = admin.storage();
 /**
  * Helper: Write a notification to Firestore for the in-app notification center.
  * Stored under `notificaciones/{userId}/items/{auto-id}`
- * 
+ *
+ * **Devuelve si se escribio, y no relanza.** Los dos importan:
+ *
+ * No relanza porque la escriben nueve triggers de notificacion para los que
+ * una nota perdida no es motivo de abortar la operacion de negocio que la
+ * provoco. Cambiar eso a `throw` cambiaria el flujo de control de todos.
+ *
+ * Pero devolver `false` era imprescindible: tragarse el error Y no decir nada
+ * dejaba a los llamadores sin forma de distinguir «escrita» de «perdida».
+ * Lo levanto el gate de `functions-perf-reviewer`, y el coste era real en los
+ * dos barridos programados — `resumen.notasFallidas` no podia incrementarse
+ * NUNCA en produccion (solo contra un doble de test que si relanzaba), y en
+ * `alertasVencidas` el fallo silencioso ademas dejaba marcar el escalon, o sea
+ * que la nota se perdia sin reintento posible pese a que el comentario de su
+ * `catch` afirma lo contrario.
+ *
+ * Los nueve triggers ignoran el valor devuelto: para ellos nada cambia.
+ *
  * @param {string} userId - The recipient user ID
  * @param {object} notification - { tipo, titulo, body, deepLink, metadata }
+ * @returns {Promise<boolean>} `true` si la nota quedo escrita.
  */
+/**
+ * Cuanto vive una nota del centro de notificaciones.
+ *
+ * Sin TTL la coleccion crece sin cota: nadie borra las notas leidas y ningun
+ * barrido las toca. Noventa dias son de sobra para algo que se consulta en
+ * los dias siguientes al aviso.
+ */
+const VIDA_DE_NOTIFICACION_MS = 90 * 24 * 60 * 60 * 1000;
+
 async function writeNotification(userId, notification) {
   try {
     await db.collection('notificaciones').doc(userId).collection('items').add({
@@ -62,10 +89,21 @@ async function writeNotification(userId, notification) {
       leida: false,
       deepLink: notification.deepLink || null,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      // Campo PROPIO para la politica TTL, y no se puede reutilizar
+      // `timestamp`: ese es la hora de CREACION, o sea ya esta en el pasado,
+      // asi que una TTL apuntada ahi borraria el centro de notificaciones
+      // entero en la primera pasada. Mismo motivo por el que
+      // `tokens_historial` lleva `expira_en` y `purgar_en` separados.
+      //
+      // Un `Date` calculado aqui y no un centinela de servidor: la TTL compara
+      // Timestamps y el centinela no esta resuelto en el momento del `add`.
+      purgar_en: new Date(Date.now() + VIDA_DE_NOTIFICACION_MS),
       metadata: notification.metadata || null,
     });
+    return true;
   } catch (e) {
     console.error(`Error writing notification for user ${userId}:`, e);
+    return false;
   }
 }
 

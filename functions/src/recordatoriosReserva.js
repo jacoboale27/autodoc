@@ -146,8 +146,16 @@ async function enviarRecordatoriosDeReserva(db, messaging, opciones = {}) {
       const cuando = reserva.fecha_hora_propuesta;
       const fecha = cuando && cuando.toDate ? cuando.toDate() : cuando;
       const hora = fecha instanceof Date ? horaLocal(fecha, desfase) : null;
-      await avisar(reserva.id_propietario, 'propietario', hora);
-      await avisar(reserva.id_mecanico, 'mecanico', hora);
+      // En paralelo: propietario y mecanico son uids DISTINTOS, asi que no
+      // compiten por la misma entrada del cache de usuarios, y entre reservas
+      // se sigue yendo en serie (el cache se llena igual). El gate de
+      // rendimiento midio el coste de no hacerlo: la nota anadio una segunda
+      // operacion de red por persona, o sea hasta 2000 idas y vueltas
+      // secuenciales en una pagina de 500 reservas, bajo un techo de 540 s.
+      await Promise.all([
+        avisar(reserva.id_propietario, 'propietario', hora),
+        avisar(reserva.id_mecanico, 'mecanico', hora),
+      ]);
     }
 
     // Media pagina significa que no hay mas: nos ahorramos una consulta que
@@ -169,20 +177,27 @@ async function enviarRecordatoriosDeReserva(db, messaging, opciones = {}) {
     // reinstalo la app y tiene el token muerto, y la que nunca registro uno.
     // Su try es propio para que un Firestore caido no se lleve por delante el
     // push, que es la mitad que si podria llegar.
+    // Se mira el valor DEVUELTO y no solo la excepcion: el
+    // `writeNotification` real se traga su error y no relanza, asi que contar
+    // solo los `throw` dejaba `notasFallidas` clavado en 0 en produccion —
+    // se disparaba unicamente contra un doble de test que si relanzaba, que
+    // es un contador que miente. Lo levanto el gate de rendimiento.
+    let escrita = false;
     try {
-      await escribirNotificacion(uid, {
-        tipo: 'reserva',
-        titulo: TITULO,
-        body: texto,
-        deepLink: '/appointments',
-      });
+      escrita =
+        (await escribirNotificacion(uid, {
+          tipo: 'reserva',
+          titulo: TITULO,
+          body: texto,
+          deepLink: '/appointments',
+        })) !== false;
     } catch (e) {
-      resumen.notasFallidas += 1;
       console.error(
         `Nota de recordatorio no escrita para ${uid} (${rol}):`,
         e && e.code ? e.code : e
       );
     }
+    if (!escrita) resumen.notasFallidas += 1;
 
     // El try envuelve TAMBIEN la lectura del usuario. Cuando solo cubria el
     // envio, un fallo transitorio leyendo `usuarios/{uid}` subia hasta el

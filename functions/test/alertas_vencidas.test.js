@@ -506,3 +506,58 @@ describe('alertasVencidas / el barrido no relee lo ya avisado (gap 1)', () => {
   });
 });
 
+
+/**
+ * Una nota perdida se ve, y el escalon se marca igual — a proposito.
+ *
+ * Lo destapo el gate de `functions-perf-reviewer` revisando el barrido
+ * hermano: `writeNotification` **se traga su error y no relanza**, asi que un
+ * fallo escribiendo la nota no llegaba nunca al `catch` de este barrido. Se
+ * seguia adelante, **se marcaba el escalon**, y la nota se perdia para siempre
+ * — justo lo contrario de lo que afirma el comentario de ese `catch`, que dice
+ * que un fallo de entrega no debe consumir el aviso.
+ *
+ * Lo que se arregla es la VISIBILIDAD, no la politica: el escalon se sigue
+ * marcando, porque reintentar manana reenviaria tambien el push que ya se
+ * entrego. Elegir entre una nota perdida y un push duplicado es decision de
+ * producto y queda anotada como gap; lo que no es admisible es que la nota se
+ * pierda sin que nada lo diga.
+ */
+describe('alertasVencidas / una nota perdida no pasa desapercibida', () => {
+  it('cuenta la nota que DEVUELVE false, y el push sigue saliendo', async () => {
+    // Esta es la forma real del helper: registra el error y devuelve false.
+    const db = fakeDb(escenario({ fecha_limite: enDias(3) }));
+    const messaging = fakeMessaging();
+
+    const r = await notificarAlertasVencidas(db, messaging, {
+      ahora: AHORA,
+      escribirNotificacion: async () => false,
+    });
+
+    assert.strictEqual(
+      r.notasFallidas,
+      1,
+      'la nota se perdio en silencio: es la forma REAL de writeNotification'
+    );
+    assert.strictEqual(messaging.enviados.length, 1, 'el push no deberia perderse por la nota');
+    assert.strictEqual(
+      db.docs['alertas/a1'].ultimo_aviso,
+      'por_vencer',
+      'el escalon se marca igual, a proposito: reintentar duplicaria el push'
+    );
+  });
+
+  it('una nota escrita no cuenta como perdida', async () => {
+    // Sin este, un contador que incrementara siempre pasaria el de arriba.
+    const db = fakeDb(escenario({ fecha_limite: enDias(3) }));
+    const centro = recolector();
+
+    const r = await notificarAlertasVencidas(db, fakeMessaging(), {
+      ahora: AHORA,
+      escribirNotificacion: centro.escribirNotificacion,
+    });
+
+    assert.strictEqual(r.notasFallidas, 0);
+    assert.strictEqual(centro.escritas.length, 1);
+  });
+});

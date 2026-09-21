@@ -99,7 +99,7 @@ URLs que ya apuntan a nuestro Storage: ésas son fotos que el propietario subió
 script de secretos—. Bórrala del panel de SearchAPI.io y del repositorio de secretos de GitHub.
 Sigue viva en tu `.env` local, que un hook impide editar.
 
-### Pendiente 0bis — Politicas TTL de Firestore (CUATRO, y una llevaba perdida desde UX-01)
+### Pendiente 0bis — Politicas TTL de Firestore (CINCO, y una llevaba perdida desde UX-01)
 
 **Firestore no configura TTL desde `firestore.indexes.json`.** Va por consola o por `gcloud`, y
 por eso estos pasos se pierden: no hay ningun archivo del repo que los declare y ningun test que
@@ -116,6 +116,7 @@ otro documento no lo cierra. Aqui quedan las cuatro.
 | `tokens_historial` | `purgar_en` | Un documento por pase de historial emitido (INNO-01). Guarda `{id_vehiculo, id_propietario}` — o sea un mapa de quien tiene que coche— en una coleccion que **nadie puede leer** y que por tanto nadie va a auditar. |
 | `consultas_ia_control` | `expira_en` | Un documento por usuario del asistente de agenda, mas el cubo `_global`. Sin TTL crece un documento por persona que lo use, para siempre, aunque cada uno solo se lea durante 24 h. |
 | `explicaciones_ia` | `expira_en` | Cache global de explicaciones del asistente: un documento por pregunta distinta. Sin TTL no se purga nunca **y una entrada mala se queda para siempre** — el cliente no puede borrarla (correcto) y no hay ningun barrido que lo haga. |
+| `notificaciones/{uid}/items` (grupo `items`) | `purgar_en` | El centro de notificaciones. Nadie borra las notas leidas y ningun barrido las toca, asi que crece sin cota — y desde 2026-09-21 mas rapido, porque el recordatorio de citas tambien escribe (dos notas por cita, cada dia). |
 
 ```bash
 gcloud firestore fields ttls update expira_en   --collection-group=solicitudes_landing_control --enable-ttl --project=<projectId>
@@ -126,6 +127,24 @@ gcloud firestore fields ttls update expira_en   --collection-group=consultas_ia_
 
 gcloud firestore fields ttls update expira_en   --collection-group=explicaciones_ia --enable-ttl --project=<projectId>
 ```
+
+**⚠️ La TTL de `notificaciones` va sobre `purgar_en`, NUNCA sobre `timestamp`.** `timestamp` es la
+hora de CREACION de la nota, o sea ya esta en el pasado: una politica apuntada ahi **borraria el
+centro de notificaciones entero en su primera pasada**. `purgar_en` lo escribe
+`writeNotification` a creacion + 90 dias. Es el mismo motivo por el que `tokens_historial` lleva
+`expira_en` y `purgar_en` separados, y el error es facil de cometer porque `timestamp` es el campo
+que salta a la vista.
+
+```bash
+gcloud firestore fields ttls update purgar_en \
+  --collection-group=items --enable-ttl --project=<projectId>
+```
+
+**El grupo de coleccion es `items`, no `notificaciones`.** Las notas viven en una subcoleccion
+(`notificaciones/{uid}/items`), y una TTL se declara sobre el grupo de coleccion. Hoy no hay
+ninguna otra subcoleccion llamada `items` en el proyecto; si se anade una, esta politica la
+alcanzaria tambien.
+
 
 **Las dos del asistente NO son bloqueantes para desplegar**, a diferencia de los backfills: sin
 ellas la feature funciona igual y lo unico que pasa es que dos colecciones crecen sin fondo. Pero

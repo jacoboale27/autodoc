@@ -472,3 +472,81 @@ describe('recordatoriosReserva / la hora y el centro de notificaciones', () => {
     );
   });
 });
+
+/**
+ * El contador de notas perdidas cuenta lo que pasa DE VERDAD.
+ *
+ * Lo levanto el gate de `functions-perf-reviewer`, y era un falso verde de
+ * manual: el `writeNotification` real **se traga su error y no relanza**, asi
+ * que contar solo las excepciones dejaba `notasFallidas` clavado en 0 en
+ * produccion. El unico sitio donde se incrementaba era un test cuyo doble SI
+ * relanzaba — un doble que no modela la implementacion que dice suplantar.
+ *
+ * Los dos casos de abajo son la pareja: uno con la forma REAL (devuelve
+ * `false`) y otro con la forma que un consumidor futuro podria tener (lanza).
+ * El que importa es el primero; sin el, el arreglo no esta probado.
+ */
+describe('recordatoriosReserva / las notas perdidas se cuentan', () => {
+  const reserva = () => ({
+    estado: 'confirmada',
+    fecha_hora_propuesta: ts('2026-09-13T15:00:00Z'),
+    id_propietario: 'p1',
+    id_mecanico: 'm1',
+  });
+
+  const conUsuarios = () =>
+    fakeDb({
+      'reservas/r1': reserva(),
+      'usuarios/p1': { fcmToken: 'tok-p1' },
+      'usuarios/m1': { fcmToken: 'tok-m1' },
+    });
+
+  it('una nota que DEVUELVE false se cuenta como perdida', async () => {
+    // Esta es la forma real de `writeNotification`: registra el error y
+    // devuelve false. Si el barrido solo mirara las excepciones, este caso
+    // saldria con notasFallidas: 0 y nadie sabria que se perdieron las dos.
+    const resumen = await enviarRecordatoriosDeReserva(conUsuarios(), fakeMessaging(), {
+      ahora: AHORA,
+      escribirNotificacion: async () => false,
+    });
+
+    assert.strictEqual(
+      resumen.notasFallidas,
+      2,
+      'el contador no vio las notas perdidas: es la forma REAL del helper'
+    );
+    // Y el push sigue saliendo: una nota perdida no se lleva el aviso.
+    assert.strictEqual(resumen.enviados, 2);
+  });
+
+  it('una nota que devuelve true no cuenta como perdida', async () => {
+    // Sin este, un contador que incrementara SIEMPRE pasaria el de arriba.
+    const resumen = await enviarRecordatoriosDeReserva(conUsuarios(), fakeMessaging(), {
+      ahora: AHORA,
+      escribirNotificacion: async () => true,
+    });
+    assert.strictEqual(resumen.notasFallidas, 0);
+  });
+
+  it('un doble que no devuelve nada tampoco cuenta como perdida', async () => {
+    // Los casos que no afirman sobre notas usan un sumidero `async () => {}`.
+    // Contar `undefined` como fallo los pondria rojos por el motivo
+    // equivocado, asi que solo `false` significa perdida.
+    const resumen = await enviarRecordatoriosDeReserva(conUsuarios(), fakeMessaging(), {
+      ahora: AHORA,
+      escribirNotificacion: async () => {},
+    });
+    assert.strictEqual(resumen.notasFallidas, 0);
+  });
+
+  it('una nota que LANZA tambien se cuenta, y no tumba el push', async () => {
+    const resumen = await enviarRecordatoriosDeReserva(conUsuarios(), fakeMessaging(), {
+      ahora: AHORA,
+      escribirNotificacion: async () => {
+        throw new Error('firestore caido');
+      },
+    });
+    assert.strictEqual(resumen.notasFallidas, 2);
+    assert.strictEqual(resumen.enviados, 2);
+  });
+});

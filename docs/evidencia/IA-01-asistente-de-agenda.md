@@ -597,3 +597,47 @@ sintética y nunca se persiste (`_addOrUpdateLocalAlert` solo toca la lista en m
 `AlertModel.toMap()` no cambió y por tanto el centinela `test/alertas_campos_test.dart` sigue
 cuadrando, y que las tres colecciones del asistente siguen cerradas a todo cliente.
 
+### 9.6 El gate de rendimiento tumbó mi propio arreglo, y destapó uno peor al lado
+
+`functions-perf-reviewer` encontró que **`writeNotification` se traga su error y no relanza**
+(`functions/index.js`, `catch` con `console.error` y nada más). Consecuencias, las dos verificadas:
+
+- **Mi `resumen.notasFallidas` no podía incrementarse NUNCA en producción.** Solo se disparaba
+  contra un doble de test que sí relanzaba, o sea un doble que no modela la implementación que
+  dice suplantar. Es el falso verde de siempre, y esta vez lo escribí yo.
+- **En el barrido de ALERTAS el mismo silencio es peor.** La escritura de la nota está dentro del
+  `try` cuyo `catch` existe explícitamente para *no consumir el escalón* —su comentario lo dice—,
+  pero como el fallo nunca llega ahí, se sigue adelante, **se marca el escalón y la nota se pierde
+  para siempre**. El código afirmaba una protección que no tenía.
+
+`writeNotification` **devuelve ahora un booleano** y sigue sin relanzar: los nueve triggers que la
+usan ignoran el valor y para ellos no cambia nada, mientras los dos barridos pueden distinguir
+«escrita» de «perdida». En alertas se hace **visible** (se cuenta y se registra) sin cambiar si el
+escalón se marca: reintentar mañana reenviaría también el push ya entregado, y elegir entre una
+nota perdida y un push duplicado es decisión de producto — queda anotada.
+
+Los tests nuevos usan **la forma real** (`async () => false`), con sus dos redes: `true` y
+`undefined` no cuentan como perdida. Rojo-antes medido.
+
+Del mismo gate se tomó también el coste de latencia: la nota añadió una segunda operación de red
+por persona, o sea hasta **2000 idas y vueltas secuenciales** en una página de 500 reservas, bajo
+un techo de 540 s. Propietario y mecánico son uids distintos y no compiten por el caché, así que
+sus dos avisos van ahora en paralelo. **Batchear las escrituras de la página queda anotado**: son
+dos por reserva, así que con `limite = 500` habría que trocear el batch o bajar la página a 250.
+
+### 9.7 La TTL que el gate propuso habría borrado el centro de notificaciones
+
+El gate señaló bien que `notificaciones/{uid}/items` crece sin cota y sugirió una TTL **sobre
+`timestamp`**. Eso es destructivo: `timestamp` es la hora de **creación**, ya está en el pasado, y
+una política apuntada ahí **borra la colección entera en su primera pasada**.
+
+`writeNotification` escribe ahora `purgar_en` (creación + 90 días) y el runbook lo documenta como
+la quinta política TTL, con el aviso y con el detalle de que el grupo de colección es **`items`**,
+no `notificaciones`. Es el mismo patrón de `tokens_historial`, que ya lleva `expira_en` y
+`purgar_en` separados por esta razón.
+
+**Gap nuevo:** `notificaciones/{uid}/items` tiene `allow update: if isOwner(userId)` **sin lista
+de campos**, así que su dueño puede reescribir `purgar_en` —o borrarlo con `FieldValue.delete()`,
+el defecto que GAPS-02 ya encontró en `abierto`— y dejar sus notas fuera de la purga. Es su propio
+subárbol y el daño se lo hace a sí mismo, pero la regla tendría que ser una allowlist de
+`{leida}`, igual que `/alertas` pasó de denylist a allowlist en GAPS-04.
