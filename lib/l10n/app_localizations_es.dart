@@ -1696,6 +1696,19 @@ class AppLocalizationsEs extends AppLocalizations {
       'El asistente está desactivado temporalmente.';
 
   @override
+  String get asistenteTituloCupo => 'Sin consultas por hoy';
+
+  @override
+  String get asistenteTituloApagado => 'Asistente desactivado';
+
+  @override
+  String get asistenteTituloTallerPendiente =>
+      'Tu taller todavía no está aprobado';
+
+  @override
+  String get asistenteTituloPreguntaVacia => 'Falta la pregunta';
+
+  @override
   String get asistenteErrorNoDisponible =>
       'El asistente no está configurado todavía. Estamos en ello.';
 

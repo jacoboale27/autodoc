@@ -1059,6 +1059,22 @@
   "@asistenteErrorApagado": {
     "description": "unavailable with motive apagado: the configuracion/asistente_ia switch. Retrying does not turn it on"
   },
+  "asistenteTituloCupo": "No questions left today",
+  "@asistenteTituloCupo": {
+    "description": "Headline for the exhausted quota state. NOT 'we couldn't load': nothing failed, the day's questions ran out"
+  },
+  "asistenteTituloApagado": "Assistant switched off",
+  "@asistenteTituloApagado": {
+    "description": "Headline for the kill switch. NOT a loading or connectivity failure"
+  },
+  "asistenteTituloTallerPendiente": "Your workshop isn't approved yet",
+  "@asistenteTituloTallerPendiente": {
+    "description": "Headline for permission-denied: the workshop is awaiting approval. Not a loading failure"
+  },
+  "asistenteTituloPreguntaVacia": "Your question is missing",
+  "@asistenteTituloPreguntaVacia": {
+    "description": "Headline for invalid-argument: nothing was typed. Not a loading failure"
+  },
   "asistenteErrorNoDisponible": "The assistant isn't set up yet. We're on it.",
   "@asistenteErrorNoDisponible": {
     "description": "failed-precondition: the key is missing or the configured model doesn't work. Retrying never fixes it"

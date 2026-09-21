@@ -1,4 +1,5 @@
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/material.dart';
 
 import 'package:autodoc/core/utils/mensaje_de_error.dart';
 import 'package:autodoc/l10n/app_localizations.dart';
@@ -75,6 +76,62 @@ String mensajeDeAsistente(AppLocalizations l10n, Object? error) {
     'permission-denied' => l10n.asistenteErrorTallerPendiente,
     'invalid-argument' => l10n.asistenteErrorPreguntaVacia,
     _ => mensajeDeError(l10n, error),
+  };
+}
+
+/// El titular y el icono del estado de error, cuando el generico miente.
+///
+/// **El mensaje ya era correcto; lo que mentia era lo de encima.** El estado
+/// de error comun de UX-04 corona con «No pudimos cargar esta información» y
+/// una nube tachada — la estampa de «no hay internet». Sobre los cuatro
+/// estados de abajo eso es falso, y ademas se contradice con el texto que
+/// tiene justo debajo:
+///
+///   - el cupo agotado no fallo: se acabaron las consultas del dia;
+///   - el interruptor apagado no fallo: alguien lo apago a proposito;
+///   - un taller sin aprobar no fallo: le falta una aprobacion;
+///   - una pregunta vacia no fallo: falta escribirla.
+///
+/// Es exactamente el defecto que [mensajeDeAsistente] corrige un piso mas
+/// abajo, y por eso vive al lado: separar los dos invitaria a arreglar uno y
+/// dejar el otro, que es como se llego a esto.
+///
+/// **Los demas codigos se quedan con el generico a proposito.** El proveedor
+/// caido, la respuesta vacia o el tiempo agotado SI son un fallo de carga, y
+/// para esos la nube y el titular dicen la verdad. Cambiarlos todos por
+/// simetria habria sido sustituir un texto equivocado por otro.
+({String titulo, IconData icono})? presentacionDeAsistente(
+  AppLocalizations l10n,
+  Object? error,
+) {
+  final codigo = error is FirebaseFunctionsException ? error.code : null;
+
+  return switch (codigo) {
+    // Los dos cupos comparten titular: para quien pregunta, la diferencia
+    // entre su cupo y el global la cuenta el MENSAJE, y el titular solo tiene
+    // que dejar de hablar de una carga que no ocurrio.
+    'resource-exhausted' => (
+      titulo: l10n.asistenteTituloCupo,
+      icono: Icons.hourglass_bottom_outlined,
+    ),
+    // Solo el interruptor. El proveedor caido comparte codigo y se queda con
+    // el generico, que para el es correcto.
+    'unavailable' =>
+      _motivo(error) == MotivoAsistente.apagado
+          ? (
+              titulo: l10n.asistenteTituloApagado,
+              icono: Icons.power_settings_new_outlined,
+            )
+          : null,
+    'permission-denied' => (
+      titulo: l10n.asistenteTituloTallerPendiente,
+      icono: Icons.pending_outlined,
+    ),
+    'invalid-argument' => (
+      titulo: l10n.asistenteTituloPreguntaVacia,
+      icono: Icons.edit_outlined,
+    ),
+    _ => null,
   };
 }
 

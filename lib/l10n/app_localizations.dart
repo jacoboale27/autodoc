@@ -3134,6 +3134,30 @@ abstract class AppLocalizations {
   /// **'The assistant is temporarily switched off.'**
   String get asistenteErrorApagado;
 
+  /// Headline for the exhausted quota state. NOT 'we couldn't load': nothing failed, the day's questions ran out
+  ///
+  /// In en, this message translates to:
+  /// **'No questions left today'**
+  String get asistenteTituloCupo;
+
+  /// Headline for the kill switch. NOT a loading or connectivity failure
+  ///
+  /// In en, this message translates to:
+  /// **'Assistant switched off'**
+  String get asistenteTituloApagado;
+
+  /// Headline for permission-denied: the workshop is awaiting approval. Not a loading failure
+  ///
+  /// In en, this message translates to:
+  /// **'Your workshop isn\'t approved yet'**
+  String get asistenteTituloTallerPendiente;
+
+  /// Headline for invalid-argument: nothing was typed. Not a loading failure
+  ///
+  /// In en, this message translates to:
+  /// **'Your question is missing'**
+  String get asistenteTituloPreguntaVacia;
+
   /// failed-precondition: the key is missing or the configured model doesn't work. Retrying never fixes it
   ///
   /// In en, this message translates to:

@@ -123,7 +123,24 @@ async function abrirAsistente(page, actor) {
   // Flutter web solo construye su arbol de semantica tras una interaccion:
   // sin este clic ningun selector encuentra nada.
   await page.mouse.click(10, 10);
-  await expect(page.getByRole('button', { name: T('asistenteEnviar'), exact: true })).toBeVisible();
+  // **El timeout es explicito porque el de por defecto no llega, y por poco.**
+  // Medido sobre este bundle: tras un `goto` en frio el boton entra en el
+  // arbol de semantica a los **5117 ms**, y el defecto de `expect` en
+  // Playwright son 5000. O sea que los seis casos que entran por aqui fallaban
+  // por ~100 ms mientras la pantalla estaba perfectamente cargada — el
+  // snapshot de accesibilidad del fallo ya mostraba `button "Ask" [disabled]`.
+  //
+  // No es lentitud de la pantalla sino el arranque en frio entero: recarga,
+  // restauracion de sesion, lectura del perfil, el suelo anti-parpadeo de 400 ms
+  // del splash y la construccion del arbol. El test 1 no pasa por aqui —navega
+  // DENTRO de la app— y por eso era el unico que pasaba.
+  //
+  // El resto de esperas en frio de este repositorio ya son explicitas por lo
+  // mismo (`comprobarPantalla` usa 30 s, `preguntar` 20 s); esta se habia
+  // quedado con el defecto.
+  await expect(
+    page.getByRole('button', { name: T('asistenteEnviar'), exact: true })
+  ).toBeVisible({ timeout: 30000 });
 }
 
 /** Escribe la pregunta y espera a que la pantalla deje de estar pensando. */
@@ -172,7 +189,12 @@ test.describe('IA-01 / el asistente de agenda', () => {
     await page.mouse.click(10, 10);
 
     await page.getByRole('button', { name: T('asistenteAbrir') }).click();
-    await expect(page.getByRole('button', { name: T('asistenteEnviar'), exact: true })).toBeVisible();
+    // Generoso por el mismo motivo que `abrirAsistente`: aqui la navegacion es
+    // interna y por eso este caso era el unico que pasaba, pero con el emulador
+    // degradado cae en la misma frontera.
+    await expect(
+      page.getByRole('button', { name: T('asistenteEnviar'), exact: true })
+    ).toBeVisible({ timeout: 30000 });
 
     await preguntar(page, 'what expires in the next days');
 

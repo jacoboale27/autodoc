@@ -109,5 +109,9 @@ functions/talleres_a_revisar.csv
 # script no reproduzca.
 e2e/capturas/out/
 
+# Capturas de verificacion visual del asistente (IA-01). Mismo criterio: las
+# reproduce `npx playwright test --config playwright.capturas.config.js asistente`.
+e2e/capturas/out-asistente/
+
 # Cache del compilador de Kotlin (Gradle). Es artefacto de build local.
 android/.kotlin/

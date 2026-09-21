@@ -12,6 +12,7 @@ import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_scaffold.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
+import 'package:autodoc/core/widgets/titulo_de_cabecera.dart';
 import 'package:autodoc/features/asistente/data/services/asistente_service.dart';
 import 'package:autodoc/features/asistente/presentation/utils/mensaje_de_asistente.dart';
 
@@ -118,7 +119,7 @@ class _AsistenteScreenState extends State<AsistenteScreen> {
     return AppScaffold(
       useGradient: true,
       appBar: AppBar(
-        title: Text(context.l10n.asistenteTitulo),
+        title: TituloDeCabecera(context.l10n.asistenteTitulo),
         // Las acciones comunes (tema, idioma y campana). Lo levanto el
         // centinela `acciones_de_cabecera_test.dart` al integrar: esta
         // pantalla nacio en la rama del asistente, antes de que las
@@ -234,8 +235,15 @@ class _AsistenteScreenState extends State<AsistenteScreen> {
     }
 
     if (_error != null) {
+      // El titular y el icono, no solo el mensaje: sobre el cupo agotado la
+      // pantalla coronaba con «No pudimos cargar esta información» y una nube
+      // tachada —o sea «no hay internet»— encima del texto correcto. `null`
+      // deja el generico, que para un proveedor caido SI es verdad.
+      final presentacion = presentacionDeAsistente(context.l10n, _error);
       return AppErrorState(
         key: const Key('asistente-error'),
+        titulo: presentacion?.titulo,
+        icono: presentacion?.icono,
         mensaje: mensajeDeAsistente(context.l10n, _error),
         // El boton se RETIRA donde reintentar no puede funcionar nunca —
         // cupo agotado, taller sin aprobar, clave sin configurar. Es el

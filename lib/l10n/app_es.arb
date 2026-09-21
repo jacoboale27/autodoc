@@ -1056,6 +1056,22 @@
   "@asistenteErrorApagado": {
     "description": "unavailable con motivo apagado: el interruptor de configuracion/asistente_ia. Reintentar no lo enciende"
   },
+  "asistenteTituloCupo": "Sin consultas por hoy",
+  "@asistenteTituloCupo": {
+    "description": "Titular del estado de cupo agotado. NO es 'no pudimos cargar': no fallo nada, se acabaron las consultas del dia"
+  },
+  "asistenteTituloApagado": "Asistente desactivado",
+  "@asistenteTituloApagado": {
+    "description": "Titular del interruptor apagado. NO es un fallo de carga ni de conexion"
+  },
+  "asistenteTituloTallerPendiente": "Tu taller todavía no está aprobado",
+  "@asistenteTituloTallerPendiente": {
+    "description": "Titular de permission-denied: el taller espera aprobacion. No es un fallo de carga"
+  },
+  "asistenteTituloPreguntaVacia": "Falta la pregunta",
+  "@asistenteTituloPreguntaVacia": {
+    "description": "Titular de invalid-argument: no se escribio nada. No es un fallo de carga"
+  },
   "asistenteErrorNoDisponible": "El asistente no está configurado todavía. Estamos en ello.",
   "@asistenteErrorNoDisponible": {
     "description": "Codigo failed-precondition: falta la clave o el modelo configurado no sirve. Reintentar no lo arregla"

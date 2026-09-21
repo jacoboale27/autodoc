@@ -260,4 +260,65 @@ void main() {
       );
     });
   });
+
+  group('presentacionDeAsistente', () {
+    // El mensaje ya era correcto; lo que mentia era el titular y el icono.
+    // Sobre «Alcanzaste tu limite de consultas de hoy» la pantalla coronaba
+    // con «No pudimos cargar esta informacion» y una NUBE TACHADA, que es la
+    // estampa de «no hay internet». Lo levanto una captura a 360 dp.
+    test('los estados que no son un fallo de carga traen titular propio', () {
+      for (final caso in <(String, Object?, String)>[
+        ('resource-exhausted', MotivoAsistente.cupoUsuario, 'cupo'),
+        ('resource-exhausted', MotivoAsistente.cupoGlobal, 'cupo'),
+        ('unavailable', MotivoAsistente.apagado, 'apagado'),
+        ('permission-denied', null, 'taller'),
+        ('invalid-argument', null, 'pregunta'),
+      ]) {
+        final p = presentacionDeAsistente(es, fallo(caso.$1, caso.$2));
+        expect(
+          p,
+          isNotNull,
+          reason: '${caso.$1}/${caso.$3} se quedo con el titular generico',
+        );
+        // La segunda mitad, que es la que atrapa el defecto: el titular tiene
+        // que ser DISTINTO del generico. Sin esto, el dia que alguien apunte
+        // una rama al generico el test seguiria verde.
+        expect(p!.titulo, isNot(es.errorDatosTitulo));
+        expect(p.icono, isNot(Icons.cloud_off_outlined));
+      }
+    });
+
+    test('el proveedor caido SI conserva el generico', () {
+      // Es un fallo de carga de verdad: ahi la nube y «no pudimos cargar»
+      // dicen la verdad, y cambiarlas por simetria habria sido sustituir un
+      // texto equivocado por otro. Mismo codigo que el interruptor, respuesta
+      // opuesta — la diferencia la hace el motivo.
+      expect(
+        presentacionDeAsistente(
+          es,
+          fallo('unavailable', MotivoAsistente.proveedor),
+        ),
+        isNull,
+      );
+      expect(presentacionDeAsistente(es, fallo('unavailable')), isNull);
+      for (final codigo in ['deadline-exceeded', 'aborted', 'internal']) {
+        expect(presentacionDeAsistente(es, fallo(codigo)), isNull);
+      }
+    });
+
+    test('un error que no es del callable no cambia la presentacion', () {
+      expect(presentacionDeAsistente(es, Exception('cualquiera')), isNull);
+      expect(presentacionDeAsistente(es, null), isNull);
+    });
+
+    test('los titulares estan en los dos idiomas y no se repiten', () {
+      // Sin esto una clave sin traducir saldria en español dentro de la app en
+      // ingles, que es el defecto que UX-03/04 documenta para el ARB.
+      final cupo = fallo('resource-exhausted', MotivoAsistente.cupoUsuario);
+      expect(
+        presentacionDeAsistente(en, cupo)!.titulo,
+        isNot(presentacionDeAsistente(es, cupo)!.titulo),
+      );
+    });
+  });
 }

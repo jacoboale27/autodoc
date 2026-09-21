@@ -7,6 +7,7 @@ import 'package:autodoc/core/providers/language_provider.dart';
 import 'package:autodoc/core/providers/notification_center_provider.dart';
 import 'package:autodoc/core/providers/theme_provider.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
@@ -59,26 +60,56 @@ class AccionesDeCabecera extends StatelessWidget {
         usuario != null && appRoleOf(usuario.rol) == AppRole.owner;
     final conAvatar = (mostrarAvatar ?? esPropietario) && usuario != null;
 
+    // ── Por que estos controles se aprietan en `compact` ────────────────────
+    //
+    // **Porque si no, se comen el titulo de la pantalla.** A 360 dp —el ancho
+    // logico mas comun de Android— la cabecera de una pantalla empujada lleva
+    // flecha atras (56) + estos cuatro controles (~200) + el `titleSpacing`
+    // (16), o sea que al titulo le quedan ~88 px y Flutter lo recorta. Medido
+    // sobre el asistente con el viewport de telefono: se leia «Asiste…».
+    //
+    // No es un defecto de esa pantalla: son 25 las que montan este widget,
+    // varias con titulos mas largos. Por eso el arreglo vive aqui, que es
+    // donde esta la causa, y no en la barra de cada una.
+    //
+    // Se aprieta SOLO en `compact`: a partir de 600 dp sobra sitio de sobra y
+    // encoger los controles seria empeorar el blanco a cambio de nada. Lo fija
+    // `titulo_de_cabecera_test.dart`.
+    final apretado = MediaQuery.sizeOf(context).width < AppBreakpoints.medium;
+    final separacion = apretado ? 0.0 : AppSpacing.xs;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (tema != null) _BotonTema(tema: tema, discreto: esPropietario),
+        if (tema != null)
+          _BotonTema(tema: tema, discreto: esPropietario, apretado: apretado),
         if (idioma != null) ...[
-          const SizedBox(width: AppSpacing.xs),
+          SizedBox(width: separacion),
           _BotonIdioma(idioma: idioma, enCaja: esPropietario),
-          const SizedBox(width: AppSpacing.xs),
+          SizedBox(width: separacion),
         ],
         if (mostrarCampana && notificaciones != null)
-          _Campana(notificaciones: notificaciones),
+          _Campana(notificaciones: notificaciones, apretado: apretado),
         if (conAvatar) ...[
-          const SizedBox(width: AppSpacing.xs),
-          _AvatarDePerfil(usuario: usuario),
+          SizedBox(width: separacion),
+          _AvatarDePerfil(usuario: usuario, apretado: apretado),
         ],
-        const SizedBox(width: AppSpacing.sm),
+        SizedBox(width: apretado ? AppSpacing.xs : AppSpacing.sm),
       ],
     );
   }
 }
+
+/// Lo que encoge un `IconButton` sin tocar su area tactil util.
+///
+/// `visualDensity.compact` recorta el relleno, no el icono. El minimo de 40 dp
+/// es deliberado: por debajo se incumpliria el objetivo tactil minimo, que es
+/// justo el tipo de arreglo que cambia un defecto visible por uno de
+/// accesibilidad que nadie mide.
+const BoxConstraints _areaApretada = BoxConstraints(
+  minWidth: 40,
+  minHeight: 40,
+);
 
 /// Sol en oscuro, luna en claro.
 ///
@@ -94,13 +125,24 @@ class _BotonTema extends StatelessWidget {
   /// color de la marca (captura en oscuro).
   final bool discreto;
 
-  const _BotonTema({required this.tema, required this.discreto});
+  /// Ver el bloque de `AccionesDeCabecera.build`: a 360 dp estos controles se
+  /// comian el titulo de la pantalla.
+  final bool apretado;
+
+  const _BotonTema({
+    required this.tema,
+    required this.discreto,
+    required this.apretado,
+  });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final oscuro = Theme.of(context).brightness == Brightness.dark;
     return IconButton(
+      visualDensity: apretado ? VisualDensity.compact : null,
+      padding: apretado ? EdgeInsets.zero : null,
+      constraints: apretado ? _areaApretada : null,
       icon: Icon(
         oscuro ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
         color: discreto ? colors.textSecondary : colors.primary,
@@ -165,7 +207,10 @@ class _BotonIdioma extends StatelessWidget {
 class _Campana extends StatelessWidget {
   final NotificationCenterProvider notificaciones;
 
-  const _Campana({required this.notificaciones});
+  /// Ver el bloque de `AccionesDeCabecera.build`.
+  final bool apretado;
+
+  const _Campana({required this.notificaciones, required this.apretado});
 
   @override
   Widget build(BuildContext context) {
@@ -179,6 +224,9 @@ class _Campana extends StatelessWidget {
         // Sin envoltorio `Semantics`: el `IconButton` ya publica rol, acción
         // y nombre (vía `tooltip`).
         IconButton(
+          visualDensity: apretado ? VisualDensity.compact : null,
+          padding: apretado ? EdgeInsets.zero : null,
+          constraints: apretado ? _areaApretada : null,
           icon: Icon(
             hay
                 ? Icons.notifications_active_rounded
@@ -227,7 +275,10 @@ class _Campana extends StatelessWidget {
 class _AvatarDePerfil extends StatelessWidget {
   final UserModel usuario;
 
-  const _AvatarDePerfil({required this.usuario});
+  /// Ver el bloque de `AccionesDeCabecera.build`.
+  final bool apretado;
+
+  const _AvatarDePerfil({required this.usuario, required this.apretado});
 
   @override
   Widget build(BuildContext context) {
@@ -245,9 +296,9 @@ class _AvatarDePerfil extends StatelessWidget {
           onTap: () => context.push('/user_profile'),
           borderRadius: BorderRadius.circular(999),
           child: Padding(
-            padding: const EdgeInsets.all(4),
+            padding: EdgeInsets.all(apretado ? 2 : 4),
             child: CircleAvatar(
-              radius: 16,
+              radius: apretado ? 14 : 16,
               backgroundColor: colors.primary,
               backgroundImage: foto != null && foto.isNotEmpty
                   ? NetworkImage(foto)
