@@ -22,6 +22,8 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_severity.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/features/dashboard/presentation/utils/texto_de_alerta.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
@@ -1458,6 +1460,10 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           mediaLabel: 'Preventiva',
           bajaLabel: 'Informativa',
         );
+        // El provider no puede localizar el texto de las alertas generadas
+        // (no tiene BuildContext): se arma aqui. Sin esto, una alerta de SOAT
+        // o de tarjeta se pintaba con el titulo VACIO en esta pantalla.
+        final texto = textoDeAlerta(context.l10n, alert);
         return Container(
           margin: const EdgeInsets.only(bottom: AppSpacing.sm),
           padding: const EdgeInsets.all(AppSpacing.md),
@@ -1472,10 +1478,10 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Semantics(
-                  label: '${estilo.label}: ${alert.titulo}',
+                  label: '${estilo.label}: ${texto.titulo}',
                   excludeSemantics: true,
                   child: Text(
-                    alert.titulo,
+                    texto.titulo,
                     style: AppTextStyles.labelLarge.copyWith(
                       fontWeight: FontWeight.bold,
                       color: estilo.color,

@@ -194,34 +194,86 @@ class AlertProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Días de CALENDARIO hasta [vencimiento], contados en la zona local.
+  ///
+  /// **No es `difference(now).inDays`, y la diferencia es un defecto que se
+  /// veía en producción.** `Duration.inDays` trunca hacia cero, así que un
+  /// documento que venció hace dos horas daba `0` — ni negativo ni vencido—,
+  /// y la app decía *«por vencer, vence en 0 días»* sobre un documento **ya
+  /// vencido**, durante las 24 h siguientes. Es justo la alerta en la que la
+  /// persona necesita creerle a la app.
+  ///
+  /// Un vencimiento es una FECHA, no un instante: lo que importa es en qué
+  /// día del calendario cae respecto a hoy, no cuántos períodos de 24 h
+  /// caben en medio. Es el mismo criterio que usa la agenda del asistente
+  /// (`functions/src/agenda.js`).
+  static int _diasDeCalendarioHasta(DateTime vencimiento, DateTime ahora) {
+    final hoy = DateTime(ahora.year, ahora.month, ahora.day);
+    final dia = DateTime(vencimiento.year, vencimiento.month, vencimiento.day);
+    return dia.difference(hoy).inDays;
+  }
+
+  /// Umbral a partir del cual un documento del vehículo entra en alertas.
+  static const int _diasDeAvisoDeDocumento = 15;
+
+  /// Alerta de un documento con fecha de vencimiento (SOAT o tarjeta).
+  ///
+  /// El texto visible **no se arma aquí**: el provider no tiene
+  /// `BuildContext` ni locale, así que viajan el tipo y los días en
+  /// `metadata` y cada pantalla los localiza, igual que ya hacía
+  /// `MantenimientoInconsistente`. Bakear la prosa en español era lo que
+  /// convertía estas alertas en literales sin traducir.
+  AlertModel? _alertaDeDocumento({
+    required VehicleModel vehicle,
+    required DateTime? vencimiento,
+    required String tipoAlerta,
+    required String prefijoId,
+    required DateTime ahora,
+  }) {
+    if (vencimiento == null) return null;
+
+    final dias = _diasDeCalendarioHasta(vencimiento, ahora);
+    if (dias > _diasDeAvisoDeDocumento) return null;
+
+    return AlertModel(
+      idAlerta: '${prefijoId}_${vehicle.idVehiculo}',
+      idVehiculo: vehicle.idVehiculo,
+      tipoAlerta: tipoAlerta,
+      titulo: '',
+      descripcion: '',
+      fechaLimite: vencimiento,
+      metadata: {'placa': vehicle.placa, 'dias_restantes': dias},
+      prioridad: dias < 0 ? AlertPriority.high : AlertPriority.medium,
+    );
+  }
+
   Future<void> _generateSmartAlerts(VehicleModel vehicle) async {
     final now = DateTime.now();
 
-    // --- 1. Alerta de Seguro (SOAT) ---
-    if (vehicle.vencimientoSoat != null) {
-      final daysToExpire = vehicle.vencimientoSoat!.difference(now).inDays;
-      if (daysToExpire <= 15) {
-        _addOrUpdateLocalAlert(
-          AlertModel(
-            idAlerta: 'soat_${vehicle.idVehiculo}',
-            idVehiculo: vehicle.idVehiculo,
-            tipoAlerta: 'SOAT',
-            // El título tiene que concordar con el cuerpo: "Seguro por
-            // vencer" encabezando "Tu SOAT venció hace 38 días" se lee como
-            // un dato equivocado, y es justo la alerta en la que el usuario
-            // necesita creerle a la app.
-            titulo: daysToExpire < 0 ? 'Seguro vencido' : 'Seguro por vencer',
-            descripcion: daysToExpire < 0
-                ? 'Tu SOAT venció hace ${daysToExpire.abs()} días.'
-                : 'Tu SOAT vence en $daysToExpire días.',
-            fechaLimite: vehicle.vencimientoSoat,
-            metadata: {'placa': vehicle.placa},
-            prioridad: daysToExpire < 0
-                ? AlertPriority.high
-                : AlertPriority.medium,
-          ),
-        );
-      }
+    // --- 1. Documentos con fecha de vencimiento (SOAT y tarjeta) ---
+    //
+    // La tarjeta de circulación llevaba desde siempre sin generar nada: se le
+    // pedía la fecha a la persona, se guardaba, se dejaba editar en la ficha
+    // del vehículo **al lado de la del SOAT y con el mismo aspecto**, y no se
+    // avisaba jamás. Ver `test/features/dashboard/alerta_tarjeta_test.dart`.
+    final documentos = [
+      _alertaDeDocumento(
+        vehicle: vehicle,
+        vencimiento: vehicle.vencimientoSoat,
+        tipoAlerta: 'SOAT',
+        prefijoId: 'soat',
+        ahora: now,
+      ),
+      _alertaDeDocumento(
+        vehicle: vehicle,
+        vencimiento: vehicle.vencimientoTarjeta,
+        tipoAlerta: 'Tarjeta',
+        prefijoId: 'tarjeta',
+        ahora: now,
+      ),
+    ];
+    for (final alerta in documentos) {
+      if (alerta != null) _addOrUpdateLocalAlert(alerta);
     }
 
     // Nota: La alerta de Aceite se ha migrado a MaintenanceTasks

@@ -15,6 +15,9 @@
       "firebase-debug.*.log",
       "serviceAccountKey*.json",
       "*.local"
+    ],
+    "predeploy": [
+      "node scripts/verificar_env_functions.js"
     ]
   },
   "hosting": [

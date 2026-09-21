@@ -615,6 +615,31 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get alertsSoatExpiringTitle => 'Seguro por vencer';
+
+  @override
+  String get alertsSoatExpiredTitle => 'Seguro vencido';
+
+  @override
+  String get alertsCardExpiringTitle => 'Tarjeta por vencer';
+
+  @override
+  String get alertsCardExpiredTitle => 'Tarjeta vencida';
+
+  @override
+  String get alertsDocExpiresToday => 'Vence hoy.';
+
+  @override
+  String alertsDocExpiresInDays(int dias) {
+    return 'Vence en $dias días.';
+  }
+
+  @override
+  String alertsDocExpiredDaysAgo(int dias) {
+    return 'Venció hace $dias días.';
+  }
+
+  @override
   String get histTitle => 'Historial de Servicios';
 
   @override
@@ -1500,6 +1525,16 @@ class AppLocalizationsEs extends AppLocalizations {
       'Algo salió mal al cargar esta información. Inténtalo de nuevo en un momento.';
 
   @override
+  String get errorDatosNoEncontrado =>
+      'No encontramos ese dato. Puede que ya no exista.';
+
+  @override
+  String get errorDatosYaExiste => 'Ese dato ya existe.';
+
+  @override
+  String get errorDatosCancelado => 'La operación se canceló.';
+
+  @override
   String get errorReintentar => 'Reintentar';
 
   @override
@@ -1619,4 +1654,72 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get mechanicDashboardTitle => 'Panel del taller';
+
+  @override
+  String get asistenteTitulo => 'Asistente';
+
+  @override
+  String get asistenteAbrir => 'Preguntar al asistente';
+
+  @override
+  String get asistenteCampoEtiqueta => 'Tu pregunta';
+
+  @override
+  String get asistenteCampoPista => '¿Qué vencimientos tengo esta semana?';
+
+  @override
+  String get asistenteEnviar => 'Preguntar';
+
+  @override
+  String get asistenteOtraPregunta => 'Hacer otra pregunta';
+
+  @override
+  String get asistentePensando => 'Pensando…';
+
+  @override
+  String get asistenteVacio =>
+      'Pregúntame por los vencimientos, las citas y los mantenimientos de tus vehículos.';
+
+  @override
+  String get asistenteAlcance =>
+      'Solo responde sobre tu agenda. No diagnostica averías ni sustituye a un taller.';
+
+  @override
+  String get asistenteEtiquetaFueraDeAlcance => 'Fuera de alcance';
+
+  @override
+  String get asistenteErrorCupo =>
+      'Alcanzaste tu límite de consultas de hoy. Vuelve a intentarlo mañana.';
+
+  @override
+  String get asistenteErrorApagado =>
+      'El asistente está desactivado temporalmente.';
+
+  @override
+  String get asistenteErrorNoDisponible =>
+      'El asistente no está configurado todavía. Estamos en ello.';
+
+  @override
+  String get asistenteErrorLento =>
+      'El asistente tardó demasiado en responder. Inténtalo de nuevo.';
+
+  @override
+  String get asistenteErrorSinRespuesta =>
+      'No pude preparar una respuesta a esa pregunta. Prueba a formularla de otra forma.';
+
+  @override
+  String get asistenteErrorTallerPendiente =>
+      'Tu taller todavía no está aprobado, así que no puedo consultar su agenda.';
+
+  @override
+  String get asistenteErrorPreguntaVacia =>
+      'Escribe una pregunta antes de enviarla.';
+
+  @override
+  String get asistenteErrorCupoGlobal =>
+      'El asistente alcanzó su límite de consultas de hoy. No es cosa tuya: vuelve a intentarlo mañana.';
+
+  @override
+  String get asistenteErrorProveedor =>
+      'El asistente no está disponible en este momento. Inténtalo de nuevo.';
 }

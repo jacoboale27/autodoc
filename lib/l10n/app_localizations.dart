@@ -1184,6 +1184,48 @@ abstract class AppLocalizations {
   /// **'Current mileage is lower than the last recorded service ({km} km). Correct the vehicle\'s mileage.'**
   String alertsInconsistentMileage(String km);
 
+  /// No description provided for @alertsSoatExpiringTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Insurance expiring soon'**
+  String get alertsSoatExpiringTitle;
+
+  /// No description provided for @alertsSoatExpiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Insurance expired'**
+  String get alertsSoatExpiredTitle;
+
+  /// No description provided for @alertsCardExpiringTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration expiring soon'**
+  String get alertsCardExpiringTitle;
+
+  /// No description provided for @alertsCardExpiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration expired'**
+  String get alertsCardExpiredTitle;
+
+  /// No description provided for @alertsDocExpiresToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Expires today.'**
+  String get alertsDocExpiresToday;
+
+  /// No description provided for @alertsDocExpiresInDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Expires in {dias} days.'**
+  String alertsDocExpiresInDays(int dias);
+
+  /// No description provided for @alertsDocExpiredDaysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired {dias} days ago.'**
+  String alertsDocExpiredDaysAgo(int dias);
+
   /// No description provided for @histTitle.
   ///
   /// In en, this message translates to:
@@ -2792,6 +2834,24 @@ abstract class AppLocalizations {
   /// **'Something went wrong loading this information. Try again in a moment.'**
   String get errorDatosGenerico;
 
+  /// Motivo de error de datos, mostrado a la persona.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t find that item. It may no longer exist.'**
+  String get errorDatosNoEncontrado;
+
+  /// Motivo de error de datos, mostrado a la persona.
+  ///
+  /// In en, this message translates to:
+  /// **'That item already exists.'**
+  String get errorDatosYaExiste;
+
+  /// Motivo de error de datos, mostrado a la persona.
+  ///
+  /// In en, this message translates to:
+  /// **'The operation was canceled.'**
+  String get errorDatosCancelado;
+
   /// Action to retry a failed query
   ///
   /// In en, this message translates to:
@@ -3001,6 +3061,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Workshop dashboard'**
   String get mechanicDashboardTitle;
+
+  /// Title of the agenda assistant screen (IA-01)
+  ///
+  /// In en, this message translates to:
+  /// **'Assistant'**
+  String get asistenteTitulo;
+
+  /// Tooltip of the assistant entry point in alerts and in the workshop dashboard
+  ///
+  /// In en, this message translates to:
+  /// **'Ask the assistant'**
+  String get asistenteAbrir;
+
+  /// Label of the text field where the question is typed
+  ///
+  /// In en, this message translates to:
+  /// **'Your question'**
+  String get asistenteCampoEtiqueta;
+
+  /// Example inside the question field
+  ///
+  /// In en, this message translates to:
+  /// **'What expires this week?'**
+  String get asistenteCampoPista;
+
+  /// Button that sends the question to the assistant
+  ///
+  /// In en, this message translates to:
+  /// **'Ask'**
+  String get asistenteEnviar;
+
+  /// Button that clears the answer and returns focus to the field
+  ///
+  /// In en, this message translates to:
+  /// **'Ask another question'**
+  String get asistenteOtraPregunta;
+
+  /// Loading state while the server answers
+  ///
+  /// In en, this message translates to:
+  /// **'Thinking…'**
+  String get asistentePensando;
+
+  /// Initial state of the screen, before the first question
+  ///
+  /// In en, this message translates to:
+  /// **'Ask me about your vehicles\' expirations, appointments and maintenance.'**
+  String get asistenteVacio;
+
+  /// Permanent notice about the assistant's scope, below the question field
+  ///
+  /// In en, this message translates to:
+  /// **'It only answers about your schedule. It does not diagnose faults or replace a workshop.'**
+  String get asistenteAlcance;
+
+  /// Badge on the answer when the server rejects the question as outside its remit
+  ///
+  /// In en, this message translates to:
+  /// **'Out of scope'**
+  String get asistenteEtiquetaFueraDeAlcance;
+
+  /// resource-exhausted with motive cupo_usuario: this person ran out of THEIR daily quota
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve reached your question limit for today. Try again tomorrow.'**
+  String get asistenteErrorCupo;
+
+  /// unavailable with motive apagado: the configuracion/asistente_ia switch. Retrying does not turn it on
+  ///
+  /// In en, this message translates to:
+  /// **'The assistant is temporarily switched off.'**
+  String get asistenteErrorApagado;
+
+  /// failed-precondition: the key is missing or the configured model doesn't work. Retrying never fixes it
+  ///
+  /// In en, this message translates to:
+  /// **'The assistant isn\'t set up yet. We\'re on it.'**
+  String get asistenteErrorNoDisponible;
+
+  /// deadline-exceeded: the model did not answer in time
+  ///
+  /// In en, this message translates to:
+  /// **'The assistant took too long to answer. Try again.'**
+  String get asistenteErrorLento;
+
+  /// aborted: the provider's filter blocked the answer, or it came back empty
+  ///
+  /// In en, this message translates to:
+  /// **'I couldn\'t put together an answer to that. Try wording it differently.'**
+  String get asistenteErrorSinRespuesta;
+
+  /// permission-denied: thrown by agenda.js when the workshop is not approved
+  ///
+  /// In en, this message translates to:
+  /// **'Your workshop isn\'t approved yet, so I can\'t look up its schedule.'**
+  String get asistenteErrorTallerPendiente;
+
+  /// invalid-argument: the question reached the server empty
+  ///
+  /// In en, this message translates to:
+  /// **'Write a question before sending it.'**
+  String get asistenteErrorPreguntaVacia;
+
+  /// resource-exhausted with motive cupo_global: the whole assistant ran out, not this person
+  ///
+  /// In en, this message translates to:
+  /// **'The assistant has reached today\'s question limit. It\'s not you: try again tomorrow.'**
+  String get asistenteErrorCupoGlobal;
+
+  /// unavailable with motive proveedor: the model is down. Retrying can work, unlike the kill switch
+  ///
+  /// In en, this message translates to:
+  /// **'The assistant is unavailable right now. Try again.'**
+  String get asistenteErrorProveedor;
 }
 
 class _AppLocalizationsDelegate

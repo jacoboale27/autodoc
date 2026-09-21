@@ -22,6 +22,7 @@ import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
+import 'package:autodoc/features/dashboard/presentation/utils/texto_de_alerta.dart';
 import '../utils/asegurar_datos_del_garaje.dart';
 
 class AlertsScreen extends StatefulWidget {
@@ -133,6 +134,18 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.titleLarge.copyWith(color: primary),
               ),
+            ),
+            // IA-01 — entrada del propietario al asistente de agenda. Va aqui
+            // y no como campo de texto en linea porque la pregunta no puede
+            // viajar en `state.extra`: un F5 lo pierde y el cast revienta la
+            // app (la cicatriz de H-01 con /task_config), y `context.push`
+            // ademas no mueve la URL en go_router 17 (INNO-01). El campo vive
+            // en la pantalla que lo usa.
+            IconButton(
+              key: const Key('alerts-abrir-asistente'),
+              icon: Icon(Icons.auto_awesome_outlined, color: primary),
+              tooltip: context.l10n.asistenteAbrir,
+              onPressed: () => context.push('/asistente'),
             ),
             IconButton(
               icon: Icon(Icons.update, color: primary),
@@ -690,21 +703,21 @@ class _AlertsScreenState extends State<AlertsScreen> {
       case 'MantenimientoInconsistente':
         icon = Icons.speed;
         break;
+      case 'Tarjeta':
+        icon = Icons.badge_outlined;
+        break;
       default:
         icon = Icons.info_outline;
     }
 
     // El provider no puede localizar este texto (no tiene BuildContext),
-    // así que la pantalla lo arma aquí a partir del dato guardado en
-    // metadata.
-    final descripcion = alert.tipoAlerta == 'MantenimientoInconsistente'
-        ? context.l10n.alertsInconsistentMileage(
-            NumberFormat('#,###').format(alert.metadata?['ultimo_km'] ?? 0),
-          )
-        : alert.descripcion;
+    // así que se arma a partir del tipo y de metadata. Ver
+    // `utils/texto_de_alerta.dart`.
+    final texto = textoDeAlerta(context.l10n, alert);
+    final descripcion = texto.descripcion;
 
     return Semantics(
-      label: '${style.label}: ${alert.titulo}',
+      label: '${style.label}: ${texto.titulo}',
       child: AppCard(
         margin: EdgeInsets.zero,
         padding: EdgeInsets.zero,
@@ -739,7 +752,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            alert.titulo,
+                            texto.titulo,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: AppTextStyles.titleSmall.copyWith(

@@ -50,16 +50,49 @@ function ventanaDeManana(ahora, desfaseMinutos = DESFASE_MINUTOS_BOGOTA) {
   return { desde, hasta: new Date(desde.getTime() + MS_POR_DIA) };
 }
 
-const TEXTOS = {
-  propietario: {
-    title: 'Recordatorio de Cita',
-    body: 'Tienes una cita programada para mañana a la hora acordada.',
-  },
-  mecanico: {
-    title: 'Recordatorio de Cita',
-    body: 'Tienes una cita programada para mañana con el vehículo del cliente.',
-  },
-};
+const TITULO = 'Recordatorio de Cita';
+
+/**
+ * Hora local de la cita, como `HH:MM` de 24 h.
+ *
+ * **La hora hay que rendirla en la zona local, y el desfase es el mismo que
+ * usa la ventana de la consulta.** Decir la hora UTC seria peor que no decir
+ * ninguna: una cita a las 20:00 de Bogota saldria como «01:00» y mandaria a
+ * alguien al taller con diecinueve horas de desfase. OPS-01 ya corrigio este
+ * error en el CALCULO de la ventana; aqui esperaba a que alguien formateara
+ * una hora.
+ *
+ * Formato de 24 h y a mano, sin `toLocaleTimeString`: el runtime de Cloud
+ * Functions no garantiza tener datos de localizacion (`Intl` completo), y un
+ * ICU minimo devuelve la hora en ingles o en UTC sin fallar.
+ */
+function horaLocal(fecha, desfaseMinutos) {
+  const local = new Date(fecha.getTime() + desfaseMinutos * 60000);
+  const hh = String(local.getUTCHours()).padStart(2, '0');
+  const mm = String(local.getUTCMinutes()).padStart(2, '0');
+  return hh + ':' + mm;
+}
+
+/**
+ * Cuerpo del recordatorio.
+ *
+ * Decia «mañana a la hora acordada» teniendo `fecha_hora_propuesta` en la
+ * mano, o sea obligaba a abrir la app para saber a que hora es la cita — que
+ * es justo lo que un recordatorio existe para ahorrar.
+ */
+function cuerpo(rol, hora) {
+  if (!hora) {
+    // Una reserva sin fecha legible no deberia pasar la consulta (el filtro es
+    // por `fecha_hora_propuesta`), pero si pasa es mejor un recordatorio vago
+    // que ninguno o que una hora inventada.
+    return rol === 'mecanico'
+      ? 'Tienes una cita mañana con el vehículo del cliente.'
+      : 'Tienes una cita programada para mañana.';
+  }
+  return rol === 'mecanico'
+    ? 'Tienes una cita mañana a las ' + hora + ' con el vehículo del cliente.'
+    : 'Tienes una cita mañana a las ' + hora + '.';
+}
 
 /**
  * Envia el recordatorio a propietario y mecanico de cada reserva confirmada
@@ -75,10 +108,19 @@ async function enviarRecordatoriosDeReserva(db, messaging, opciones = {}) {
   const desfase =
     opciones.desfaseMinutos === undefined ? DESFASE_MINUTOS_BOGOTA : opciones.desfaseMinutos;
   const limite = opciones.limite || LIMITE_POR_PAGINA;
+
+  // Mismo contrato que `notificarAlertasVencidas`, y por el mismo motivo: un
+  // default vacio dejaria el centro de notificaciones sin nada por un olvido
+  // de cableado, y eso no lo ve ningun test ni ningun log.
+  const escribirNotificacion = opciones.escribirNotificacion;
+  if (typeof escribirNotificacion !== 'function') {
+    throw new TypeError('enviarRecordatoriosDeReserva necesita `escribirNotificacion`');
+  }
+
   const { desde, hasta } = ventanaDeManana(ahora, desfase);
 
   const usuarios = new Map();
-  const resumen = { reservas: 0, enviados: 0, fallidos: 0, sinToken: 0 };
+  const resumen = { reservas: 0, enviados: 0, fallidos: 0, sinToken: 0, notasFallidas: 0 };
   let cursor = null;
 
   for (;;) {
@@ -101,8 +143,19 @@ async function enviarRecordatoriosDeReserva(db, messaging, opciones = {}) {
     for (const doc of pagina.docs) {
       resumen.reservas += 1;
       const reserva = doc.data();
-      await avisar(reserva.id_propietario, 'propietario');
-      await avisar(reserva.id_mecanico, 'mecanico');
+      const cuando = reserva.fecha_hora_propuesta;
+      const fecha = cuando && cuando.toDate ? cuando.toDate() : cuando;
+      const hora = fecha instanceof Date ? horaLocal(fecha, desfase) : null;
+      // En paralelo: propietario y mecanico son uids DISTINTOS, asi que no
+      // compiten por la misma entrada del cache de usuarios, y entre reservas
+      // se sigue yendo en serie (el cache se llena igual). El gate de
+      // rendimiento midio el coste de no hacerlo: la nota anadio una segunda
+      // operacion de red por persona, o sea hasta 2000 idas y vueltas
+      // secuenciales en una pagina de 500 reservas, bajo un techo de 540 s.
+      await Promise.all([
+        avisar(reserva.id_propietario, 'propietario', hora),
+        avisar(reserva.id_mecanico, 'mecanico', hora),
+      ]);
     }
 
     // Media pagina significa que no hay mas: nos ahorramos una consulta que
@@ -113,8 +166,39 @@ async function enviarRecordatoriosDeReserva(db, messaging, opciones = {}) {
 
   return resumen;
 
-  async function avisar(uid, rol) {
+  async function avisar(uid, rol, hora) {
     if (!uid) return;
+
+    const texto = cuerpo(rol, hora);
+
+    // **La nota va ANTES y por su cuenta, no despues de un envio con exito.**
+    // Escribirla solo tras enviar dejaria sin rastro a exactamente las
+    // personas para las que existe el centro de notificaciones: la que
+    // reinstalo la app y tiene el token muerto, y la que nunca registro uno.
+    // Su try es propio para que un Firestore caido no se lleve por delante el
+    // push, que es la mitad que si podria llegar.
+    // Se mira el valor DEVUELTO y no solo la excepcion: el
+    // `writeNotification` real se traga su error y no relanza, asi que contar
+    // solo los `throw` dejaba `notasFallidas` clavado en 0 en produccion —
+    // se disparaba unicamente contra un doble de test que si relanzaba, que
+    // es un contador que miente. Lo levanto el gate de rendimiento.
+    let escrita = false;
+    try {
+      escrita =
+        (await escribirNotificacion(uid, {
+          tipo: 'reserva',
+          titulo: TITULO,
+          body: texto,
+          deepLink: '/appointments',
+        })) !== false;
+    } catch (e) {
+      console.error(
+        `Nota de recordatorio no escrita para ${uid} (${rol}):`,
+        e && e.code ? e.code : e
+      );
+    }
+    if (!escrita) resumen.notasFallidas += 1;
+
     // El try envuelve TAMBIEN la lectura del usuario. Cuando solo cubria el
     // envio, un fallo transitorio leyendo `usuarios/{uid}` subia hasta el
     // catch de fuera del bucle y abortaba el barrido entero: el resto de
@@ -132,7 +216,7 @@ async function enviarRecordatoriosDeReserva(db, messaging, opciones = {}) {
         resumen.sinToken += 1;
         return;
       }
-      await messaging.send({ token, notification: TEXTOS[rol] });
+      await messaging.send({ token, notification: { title: TITULO, body: texto } });
       resumen.enviados += 1;
     } catch (e) {
       // Un token muerto es lo normal (app desinstalada), no una averia del
@@ -144,6 +228,7 @@ async function enviarRecordatoriosDeReserva(db, messaging, opciones = {}) {
 }
 
 module.exports = {
+  horaLocal,
   DESFASE_MINUTOS_BOGOTA,
   LIMITE_POR_PAGINA,
   ventanaDeManana,

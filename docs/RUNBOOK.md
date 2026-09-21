@@ -189,7 +189,7 @@ URLs que ya apuntan a nuestro Storage: ésas son fotos que el propietario subió
 script de secretos—. Bórrala del panel de SearchAPI.io y del repositorio de secretos de GitHub.
 Sigue viva en tu `.env` local, que un hook impide editar.
 
-### Pendiente 0bis — Politicas TTL de Firestore (DOS, y una llevaba perdida desde UX-01)
+### Pendiente 0bis — Politicas TTL de Firestore (CINCO, y una llevaba perdida desde UX-01)
 
 **Firestore no configura TTL desde `firestore.indexes.json`.** Va por consola o por `gcloud`, y
 por eso estos pasos se pierden: no hay ningun archivo del repo que los declare y ningun test que
@@ -198,18 +198,48 @@ los eche de menos.
 **Y una ya se perdio.** La politica de `solicitudes_landing_control` se decidio en UX-01 y quedo
 anotada **solo** en `docs/evidencia/UX-01-contacto-y-ctas.md`, nunca en este runbook. Es
 literalmente el patron que el propio proyecto lleva cuatro tandas escribiendo: remitir un paso a
-otro documento no lo cierra. Aqui quedan las dos.
+otro documento no lo cierra. Aqui quedan las cuatro.
 
 | Coleccion | Campo | Por que |
 |---|---|---|
 | `solicitudes_landing_control` | `expira_en` | Un documento por IP del limitador de la landing. Sin TTL no se purga nunca. |
 | `tokens_historial` | `purgar_en` | Un documento por pase de historial emitido (INNO-01). Guarda `{id_vehiculo, id_propietario}` — o sea un mapa de quien tiene que coche— en una coleccion que **nadie puede leer** y que por tanto nadie va a auditar. |
+| `consultas_ia_control` | `expira_en` | Un documento por usuario del asistente de agenda, mas el cubo `_global`. Sin TTL crece un documento por persona que lo use, para siempre, aunque cada uno solo se lea durante 24 h. |
+| `explicaciones_ia` | `expira_en` | Cache global de explicaciones del asistente: un documento por pregunta distinta. Sin TTL no se purga nunca **y una entrada mala se queda para siempre** — el cliente no puede borrarla (correcto) y no hay ningun barrido que lo haga. |
+| `notificaciones/{uid}/items` (grupo `items`) | `purgar_en` | El centro de notificaciones. Nadie borra las notas leidas y ningun barrido las toca, asi que crece sin cota — y desde 2026-09-21 mas rapido, porque el recordatorio de citas tambien escribe (dos notas por cita, cada dia). |
 
 ```bash
 gcloud firestore fields ttls update expira_en   --collection-group=solicitudes_landing_control --enable-ttl --project=<projectId>
 
 gcloud firestore fields ttls update purgar_en   --collection-group=tokens_historial --enable-ttl --project=<projectId>
+
+gcloud firestore fields ttls update expira_en   --collection-group=consultas_ia_control --enable-ttl --project=<projectId>
+
+gcloud firestore fields ttls update expira_en   --collection-group=explicaciones_ia --enable-ttl --project=<projectId>
 ```
+
+**⚠️ La TTL de `notificaciones` va sobre `purgar_en`, NUNCA sobre `timestamp`.** `timestamp` es la
+hora de CREACION de la nota, o sea ya esta en el pasado: una politica apuntada ahi **borraria el
+centro de notificaciones entero en su primera pasada**. `purgar_en` lo escribe
+`writeNotification` a creacion + 90 dias. Es el mismo motivo por el que `tokens_historial` lleva
+`expira_en` y `purgar_en` separados, y el error es facil de cometer porque `timestamp` es el campo
+que salta a la vista.
+
+```bash
+gcloud firestore fields ttls update purgar_en \
+  --collection-group=items --enable-ttl --project=<projectId>
+```
+
+**El grupo de coleccion es `items`, no `notificaciones`.** Las notas viven en una subcoleccion
+(`notificaciones/{uid}/items`), y una TTL se declara sobre el grupo de coleccion. Hoy no hay
+ninguna otra subcoleccion llamada `items` en el proyecto; si se anade una, esta politica la
+alcanzaria tambien.
+
+
+**Las dos del asistente NO son bloqueantes para desplegar**, a diferencia de los backfills: sin
+ellas la feature funciona igual y lo unico que pasa es que dos colecciones crecen sin fondo. Pero
+la de `explicaciones_ia` es la unica via que existe para retirar una entrada de cache: la
+coleccion esta cerrada al cliente por los dos lados y no hay barrido que la toque.
 
 **El campo tiene que ser `Timestamp`, no milisegundos.** Con un numero la politica se crea sin
 error y no borra nada jamas. Por eso `tokens_historial` guarda **dos** campos de tiempo:
@@ -223,6 +253,71 @@ Verificar despues de crearlas:
 ```bash
 gcloud firestore fields ttls list --project=<projectId>
 ```
+
+### Pendiente 0quater — Desplegar el asistente de agenda (IA-01), en este orden
+
+El asistente es la primera pieza del proyecto que depende de un **proveedor externo de pago** y
+de un **secreto**, así que su despliegue tiene un orden y no es negociable. Evidencia completa en
+`docs/evidencia/IA-01-asistente-de-agenda.md`.
+
+**1. El secreto — HECHO.**
+
+```bash
+firebase functions:secrets:set GEMINI_API_KEY --project production
+```
+
+La clave vive **solo** en Secret Manager. Nunca en un `.env` versionado, nunca en el bundle del
+cliente. El input de la CLI va enmascarado; para comprobar que se pegó bien, compara la
+**longitud** (`firebase functions:secrets:access GEMINI_API_KEY --project production | Measure-Object -Character`), no el contenido.
+
+**2. Índices, ANTES que las funciones.**
+
+```bash
+firebase deploy --only firestore:indexes --project production
+```
+
+Sin ellos la agenda falla **solo en producción**: los emuladores sirven cualquier consulta sin
+mirar `firestore.indexes.json`. Lo vigila `test/firestore_indices_test.dart`.
+
+**3. Las dos políticas TTL del asistente** — ver Pendiente 0bis. No son bloqueantes, pero la de
+`explicaciones_ia` es la única vía que existe para retirar una entrada mala de la caché.
+
+**4. Reglas.**
+
+```bash
+firebase deploy --only firestore:rules --project production
+```
+
+**5. La función.**
+
+```bash
+firebase deploy --only functions:asistenteAutoDoc --project production
+```
+
+Pasa por la guarda `predeploy` `scripts/verificar_env_functions.js`, **y esa guarda no es
+opcional**: la compuerta que elige entre Gemini y el doble de emulador mira
+`FUNCTIONS_EMULATOR`, y esa variable **no está en las claves reservadas de firebase-tools**
+(comprobado en la 15.28.2, `lib/functions/env.js`). Una línea en `functions/.env.<projectId>`
+llegaría al proceso desplegado y el asistente serviría **respuestas enlatadas con pinta de
+buenas**, sin que nada fallara ni nadie viera un error. Ninguna suite puede verlo: esos `.env`
+están en `functions/.gitignore`.
+
+**6. El kill switch, creado encendido y verificado en los DOS sentidos.**
+
+Documento `configuracion/asistente_ia`, campo `activo: true`. Ponerlo a `false` tiene que dejar
+la pantalla diciendo que el asistente está desactivado —no un error genérico— y volverlo a `true`
+tiene que devolver el servicio sin desplegar nada.
+
+Se lee **en cada petición**, a propósito: cachearlo significaría que apagarlo no surte efecto
+inmediato, que es justo lo que un kill switch tiene que hacer. Cuesta una lectura por consulta.
+
+**7. Cuotas.** `LIMITE_POR_USUARIO = 10` y `LIMITE_GLOBAL = 200` por ventana de 24 h. El corte
+global va muy por debajo del free tier a propósito: quedarse sin cuota del proveedor a media demo
+no se arregla con un despliegue, mientras que subir la constante sí.
+
+**8. Hosting**, con `flutter clean` (no es opcional) y la guarda `verificar_bundle_web.js`.
+
+**Siempre `--project` explícito.** El default de `.firebaserc` es `autodoc-staging`.
 
 ### Pendiente 1 — Crear el proyecto de staging (Step 1 del brief)
 

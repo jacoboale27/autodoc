@@ -396,6 +396,27 @@ const _inventario = <_Consulta>[
     // justo el fallo que los emuladores no pueden ver.
     origen: 'functions/src/historialCompartido.js:160',
   ),
+  // Asistente de agenda (plan 2026-09-19). Las DOS consultas de citas, una por
+  // rol, y las dos son nuevas: hasta hoy el unico indice de `reservas` era el
+  // del barrido global de recordatorios, que filtra solo por `estado` y no
+  // sirve a ninguna de estas dos.
+  //
+  // La del taller es ademas la primera consulta a `reservas` que existe para
+  // ese rol en todo el repositorio: `grep -rn "reservas" lib/features/mechanic/`
+  // no devuelve nada, o sea que el taller no tiene hoy ninguna vista de sus
+  // citas proximas pese a que el dato lleva ahi desde siempre.
+  _Consulta(
+    coleccion: 'reservas',
+    igualdades: ['id_propietario', 'estado'],
+    orden: 'fecha_hora_propuesta',
+    origen: 'functions/src/agenda.js (leerCitas, rol propietario)',
+  ),
+  _Consulta(
+    coleccion: 'reservas',
+    igualdades: ['id_taller', 'estado'],
+    orden: 'fecha_hora_propuesta',
+    origen: 'functions/src/agenda.js (leerCitas, rol taller)',
+  ),
 ];
 
 /// Índices que no sirven a ninguna consulta del inventario y aun así se
@@ -459,7 +480,19 @@ const _orderByEsperados = 19;
 // (`empleadosTaller.js`) comprueba que la cuenta no tenga vehiculos con UNA
 // igualdad (`id_propietario ==`) y `limit(1)`: indice de campo unico,
 // automatico. Nada que declarar.
-const _whereServidorEsperados = 33;
+//
+// IA-01: 33 -> 40. La agenda del asistente son siete: vehiculos del
+// propietario, sus mantenimientos, sus reservas confirmadas, y las del taller
+// por su lado. Las dos de `reservas` con desigualdad SI declaran indice (los
+// dos de `reservas (…, estado, fecha_hora_propuesta)`).
+//
+// El 40 se MIDIO sobre el arbol fusionado y coincide con la suma
+// 32 + 1 + 7. Cuadrar la cuenta es lo que distingue «cada rama anadio lo
+// suyo» de «al fusionar entraron consultas que nadie reviso» — y este
+// centinela existe porque los emuladores sirven cualquier consulta sin mirar
+// `firestore.indexes.json`, asi que una consulta sin indice no la ve ninguna
+// suite: solo un usuario en produccion.
+const _whereServidorEsperados = 40;
 
 class _Consulta {
   const _Consulta({
