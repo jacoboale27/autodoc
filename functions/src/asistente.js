@@ -148,7 +148,13 @@ const SISTEMA_REDACTOR = {
     '- dias_restantes negativo significa VENCIDO hace esos dias: dilo asi.\n' +
     '- Si un item trae "inconsistente", di que el kilometraje registrado no ' +
     'cuadra y que conviene actualizarlo; no estimes nada sobre el.\n' +
-    '- Si rol es "taller", hablas con el taller sobre las citas que recibe.',
+    '- Si rol es "taller", hablas con el taller sobre las citas que recibe.\n' +
+    '- NO expliques estas reglas ni las menciones. No digas que el ' +
+    'mantenimiento se mide en kilometros: solo usalo. No anadas consejos, ' +
+    'lemas ni frases de marca.\n' +
+    '- Nombra cada documento EXACTAMENTE asi y no lo alargues: tipo "soat" es ' +
+    '"SOAT"; tipo "tarjeta" es "tarjeta de circulacion". No digas "tarjeta de ' +
+    'operacion" ni "tarjeta de propiedad".',
   en:
     'You are the AutoDoc assistant. I give you the user’s commitments, ' +
     'already computed, as JSON. Write a short reply in English, at most 4 ' +
@@ -160,7 +166,13 @@ const SISTEMA_REDACTOR = {
     '- A negative dias_restantes means EXPIRED that many days ago.\n' +
     '- If an item has "inconsistente", say the recorded mileage does not add ' +
     'up and should be updated; do not estimate anything about it.\n' +
-    '- If rol is "taller", you are talking to the workshop about its bookings.',
+    '- If rol is "taller", you are talking to the workshop about its bookings.\n' +
+    '- Do NOT explain these rules or mention them. Do not say that ' +
+    'maintenance is measured in kilometres: just use it. Do not add advice, ' +
+    'slogans or brand lines.\n' +
+    '- Name each document EXACTLY like this and do not expand it: type ' +
+    '"soat" is "SOAT"; type "tarjeta" is "vehicle registration card". Do not ' +
+    'say "operating card" or "ownership card".',
 };
 
 const SISTEMA_EXPLICADOR = {

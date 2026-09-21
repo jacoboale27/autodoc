@@ -142,6 +142,96 @@ describe('evals / las reglas duras detectan', () => {
     );
   });
 
+  it('caza un nombre de documento inventado', () => {
+    // Prosa REAL de la corrida del 2026-09-21. El envelope dice `tipo:
+    // 'tarjeta'` a secas y el modelo lo alargo a «tarjeta de operacion», que
+    // es el documento de los vehiculos de SERVICIO PUBLICO — un particular no
+    // tiene uno. La app llama a ese campo «Tarjeta de Circulacion».
+    //
+    // Ninguna regla anterior podia verlo: no es un numero, ni una fecha, ni
+    // dias en vez de kilometros. Es un dato legal equivocado dentro de prosa
+    // impecable, y solo salio leyendo a mano.
+    const real =
+      'Tienes el SOAT del vehiculo ABC123 vencido hace 10 dias y la tarjeta ' +
+      'de operacion vence en 3 dias. El mantenimiento de frenos esta proximo ' +
+      'al faltar 200 kilometros.';
+    const fallos = revisarRedaccion(CASO, real);
+    assert.ok(
+      fallos.some((f) => /NOMBRE DE DOCUMENTO INVENTADO/.test(f)),
+      'no detecto el documento: ' + JSON.stringify(fallos)
+    );
+  });
+
+  it('«tarjeta» a secas NO dispara la regla del documento', () => {
+    // Sin esto, la regla saltaria en toda respuesta que mencione la tarjeta y
+    // se volveria ruido. Lo que esta prohibido es ALARGARLA, no nombrarla.
+    const bien = BUENA + ' La tarjeta de circulacion vence en 3 dias.';
+    const fallos = revisarRedaccion(CASO, bien);
+    assert.ok(
+      !fallos.some((f) => /NOMBRE DE DOCUMENTO INVENTADO/.test(f)),
+      'salto sobre el nombre correcto: ' + JSON.stringify(fallos)
+    );
+  });
+
+  it('caza la regla del prompt filtrada a la prosa', () => {
+    // La otra cosa que destapo la corrida: el modelo explico su propia
+    // instruccion en CUATRO de los seis envelopes, incluido uno sin ningun
+    // mantenimiento. Es la regla del sistema saliendo hacia la persona como si
+    // fuera un dato suyo.
+    const sinKm = {
+      nombre: 'solo soat',
+      envelope: {
+        rol: 'propietario',
+        ventana_dias: 30,
+        items: [{ tipo: 'soat', placa: 'ABC123', dias_restantes: 7 }],
+      },
+    };
+    const real =
+      'Te quedan 7 dias para renovar el SOAT de tu vehiculo. Recuerda que el ' +
+      'mantenimiento preventivo siempre debe medirse en kilometros.';
+    const fallos = revisarRedaccion(sinKm, real);
+    assert.ok(
+      fallos.some((f) => /REGLA DEL PROMPT FILTRADA/.test(f)),
+      'no detecto la regla filtrada: ' + JSON.stringify(fallos)
+    );
+  });
+
+  it('decir que el kilometraje no cuadra NO es filtrar la regla', () => {
+    // El falso positivo que tuvo la primera version de esta regla, que miraba
+    // «se mencionan kilometros y el envelope no trae ninguno». En el envelope
+    // del kilometraje inconsistente, decirlo es EXACTAMENTE lo que el prompt
+    // manda — y la frase real de la corrida lo dice bien.
+    const inconsistente = {
+      nombre: 'inconsistente',
+      envelope: {
+        rol: 'propietario',
+        ventana_dias: 30,
+        items: [{ tipo: 'mantenimiento', placa: 'XYZ789', nombre: 'Aceite', inconsistente: true }],
+      },
+    };
+    const bien =
+      'El mantenimiento de Aceite para tu vehiculo XYZ789 presenta un ' +
+      'kilometraje registrado que no cuadra, por lo que conviene actualizarlo.';
+    const fallos = revisarRedaccion(inconsistente, bien);
+    assert.deepStrictEqual(
+      fallos,
+      [],
+      'salto sobre la frase que el prompt pide literalmente: ' + JSON.stringify(fallos)
+    );
+  });
+
+  it('con mantenimiento en el envelope, hablar de kilometros es lo CORRECTO', () => {
+    // La red que hace util a la regla de arriba. `BUENA` dice «200
+    // kilometros» y debe seguir sin disparar nada: una regla que grita sobre
+    // prosa buena se desactiva sola, que es la leccion que pago el falso
+    // positivo de la primera corrida.
+    const fallos = revisarRedaccion(CASO, BUENA);
+    assert.ok(
+      !fallos.some((f) => /REGLA DEL PROMPT FILTRADA/.test(f)),
+      'salto sobre kilometros legitimos: ' + JSON.stringify(fallos)
+    );
+  });
+
   it('las horas y las placas NO cuentan como numeros inventados', () => {
     // Si contaran, toda redaccion con una cita saltaria y las reglas se
     // volverian ruido que nadie mira — que es como una comprobacion se

@@ -218,6 +218,46 @@ function reglaMantenimientoEnDias(envelope) {
   return new RegExp('(' + alternativa + ')[^.]{0,60}?\\d+\\s*d[ií]as', 'i');
 }
 
+/**
+ * Nombres de documento que el modelo NO debe inventar.
+ *
+ * El envelope lleva `tipo: 'tarjeta'` a secas, y en la corrida del 2026-09-21
+ * el modelo lo alargo a **«tarjeta de operacion»** — que es otro documento,
+ * el de los vehiculos de servicio publico, y un particular no tiene. La app
+ * llama a ese campo «Tarjeta de Circulacion» (`vpCirculationCard`).
+ *
+ * Ninguna regla anterior podia verlo: no es un numero, ni una fecha, ni dias
+ * en vez de kilometros. Es un dato legal equivocado en prosa correcta, y sale
+ * solo a mano — asi que se automatiza para no depender de que alguien lea bien
+ * seis parrafos.
+ */
+const DOCUMENTO_INVENTADO =
+  /tarjeta\s+de\s+(operacion|operación|propiedad)|(operating|ownership)\s+card/i;
+
+/**
+ * La regla del prompt, filtrada a la prosa.
+ *
+ * En esa misma corrida el modelo explico su propia instruccion en **cuatro de
+ * los seis** envelopes: «Recuerda que el mantenimiento se mide siempre en
+ * kilometros», incluso en uno cuyo envelope **no tenia ningun mantenimiento**.
+ * Eso es la regla del sistema saliendo hacia la persona como si fuera un dato
+ * suyo, y en un caso con una causa inventada («no tenemos informacion sobre
+ * mantenimientos, ya que estos se calculan en kilometros»).
+ *
+ * **Se caza la forma del ENUNCIADO, no cualquier mencion de kilometros**, y
+ * esa precision se pago igual que la anterior: la primera version miraba «hay
+ * kilometros y el envelope no trae ninguno», y eso daba falso positivo en el
+ * envelope del kilometraje inconsistente — ahi decir que «el kilometraje
+ * registrado no cuadra» es EXACTAMENTE lo que el prompt manda decir. Una
+ * regla que grita sobre prosa buena se desactiva sola.
+ *
+ * Lo prohibido es afirmar COMO se mide el mantenimiento («se mide en», «va
+ * siempre en», «debe medirse en»), que es el prompt hablando. Describir el
+ * kilometraje de un item concreto no lo es.
+ */
+const REGLA_FILTRADA =
+  /(mantenimiento|maintenance)[^.]{0,60}?(se\s+(mide|miden|calcula|calculan)|va[n]?\s+siempre|debe[n]?\s+medirse|is\s+(always\s+)?measured|are\s+(always\s+)?measured)[^.]{0,30}?(kil[oó]metr|\bkm\b|kilometre)/i;
+
 /** Numeros que la respuesta afirma. Se ignoran los de las horas y las placas. */
 function numerosDe(texto) {
   return (
@@ -269,6 +309,24 @@ function revisarRedaccion(caso, prosa) {
     if (!diceVencido) {
       fallos.push('NO DICE QUE ESTA VENCIDO (dias_restantes: -' + dias + ')');
     }
+  }
+
+  const documento = prosa.match(DOCUMENTO_INVENTADO);
+  if (documento) {
+    fallos.push(
+      'NOMBRE DE DOCUMENTO INVENTADO: "' +
+        documento[0] +
+        '" (el envelope solo dice el tipo; ese es OTRO documento)'
+    );
+  }
+
+  const filtrada = prosa.match(REGLA_FILTRADA);
+  if (filtrada) {
+    fallos.push(
+      'REGLA DEL PROMPT FILTRADA: "' +
+        filtrada[0] +
+        '" (eso es la instruccion del sistema, no un dato de la persona)'
+    );
   }
 
   return fallos;
