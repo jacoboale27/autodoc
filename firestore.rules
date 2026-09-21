@@ -229,13 +229,32 @@ service cloud.firestore {
     // no es una imagen rota, es cosecha de IP y User-Agent de todo el que abra
     // el listado, servida por un tercero.
     //
-    // Se ancla el HOST, que es donde esta la amenaza. El segmento del bucket
-    // se deja abierto a proposito: el nombre real del bucket es un valor de
-    // entorno (FIREBASE_STORAGE_BUCKET) que no vive en el repositorio, y
-    // clavarlo aqui obligaria a mantener sincronizados dos sitios sin ganar
-    // gran cosa. Lo que queda permitido apuntando a otro bucket de Firebase es
+    // Se ancla el HOST. El segmento del bucket se deja abierto, y eso NO es
+    // gratis: el razonamiento que lo justificaba aqui era FALSO y conviene que
+    // quede escrito, porque tranquilizaba.
+    //
+    // Decia: «lo que queda permitido apuntando a otro bucket de Firebase es
     // contenido, no telemetria: la peticion sigue yendo a un host de Google,
-    // nunca a un servidor del atacante.
+    // nunca a un servidor del atacante». Que el host sea de Google no protege
+    // a nadie aqui. El bucket es del atacante, y el dueño de un bucket puede
+    // activar los **usage logs** de Cloud Storage, que traen `c_ip` y
+    // `cs_user_agent` de cada descarga. O sea: exactamente la IP y el
+    // User-Agent que esta funcion existe para no filtrar, del mismo conjunto
+    // de personas (todo el que abra el directorio, que es de lectura ANONIMA).
+    // Lo unico que cambia frente a un servidor propio es que el atacante ve
+    // IP, User-Agent y momento, pero no puede responder contenido arbitrario.
+    //
+    // Por que sigue abierto pese a eso: el nombre real del bucket es un valor
+    // de entorno (FIREBASE_STORAGE_BUCKET) distinto en cada proyecto
+    // —produccion, staging, el de E2E y el de test_rules—, y este fichero de
+    // reglas es UNO para todos. Clavar un literal romperia los demas entornos.
+    //
+    // Las dos salidas reales, ninguna de una linea: (a) que las reglas lean el
+    // bucket de un documento de configuracion del propio proyecto, con su paso
+    // de runbook y el riesgo de orden que eso arrastra (H-01, Pendiente 0), o
+    // (b) generar las reglas por entorno en un `predeploy`, que es lo que ya se
+    // hace con el SW de FCM. Queda anotado como gap con su coste, no como
+    // decision cerrada.
     //
     // La cadena de consulta se deja libre (`.*`): el token de descarga que
     // añade getDownloadURL() es un detalle del formato de Firebase, y atarlo

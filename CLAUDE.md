@@ -483,6 +483,28 @@ Firestore de verdad. Y **el navegador leyendo Firestore por REST desestabiliza e
 (Chromium aborta las conexiones al navegar, netty acumula "Connection reset"): en la suite de la
 landing esa lectura se intercepta.
 
+### ⚠️ Ramas — estado real a 2026-09-20 (lo de abajo es HISTORIA, no instrucciones)
+
+**`integracion/ola-1` YA NO EXISTE.** Su contenido esta en `main`. Todo lo que este
+documento dice mas abajo sobre cortar de `integracion/ola-1`, o sobre que «nada esta
+fusionado a `main`», **esta obsoleto**: se conserva porque explica como se llego aqui,
+no porque describa el arbol de hoy. Un agente que lo obedezca al pie de la letra corta
+de una rama que no existe.
+
+Lo que hay hoy:
+
+| Rama | Punta | Que es |
+|---|---|---|
+| `main` | `59f4a43` | Todo lo integrado, incluida la antigua `integracion/ola-1` |
+| `feat/play-store` | `d75d897` | Preparacion de tienda + fotos de vehiculo desde la galeria |
+| `feat/asistente-agenda` | (activa) | IA-01, el asistente de agenda. Cortada de `feat/play-store` |
+| `fix/ux1` | — | Intento antiguo SIN commits propios. Ignorala; la buena era `fix/ux01` |
+
+**De donde cortar:** de `main`, salvo que tu tarea toque ficheros que `feat/play-store`
+tenga tocados y sin integrar — que fue justo el caso de IA-01: sus siete commits tocan
+`mechanic_dashboard_screen.dart`, `alerts_screen.dart`, `app_es.arb` y `firestore.rules`.
+**Miralo antes de cortar**, con `git log --oneline main..feat/play-store --name-only`.
+
 ### Ramas — nada está fusionado a `main`
 
 `main` sigue en `1265d23`. **Las 12 tareas cerradas viven en `integracion/ola-1`**: ola 1
@@ -550,7 +572,8 @@ harness que ella misma había destapado. Evidencia en
 Ojo con el nombre: `fix/ux1` (sin el cero) es de un intento anterior y **no tiene ni un commit
 propio** — es ancestro de `integracion/ola-1`. La buena es `fix/ux01`.
 
-Las ramas `fix/*` ya integradas: **no trabajes sobre ellas**, parte de `integracion/ola-1`.
+Las ramas `fix/*` ya integradas: **no trabajes sobre ellas**. Parte de `main` (ver el
+bloque de ramas de arriba: `integracion/ola-1` ya no existe).
 
 Antes de empezar una tarea, mira qué ramas `fix/*` existen ya para no duplicar.
 
@@ -603,7 +626,8 @@ límite de 500 por batch**, así que ese defecto se reproduce con el doble tal c
 el doble no ve —cuántos lotes se commitean y de qué tamaño— hay que envolverlo para
 afirmarlo, o «se marcaron todos» da igual de verde leyendo el hilo entero de una vez.
 
-Corta la rama de la punta de `integracion/ola-1`, nunca de una `fix/*`.
+Corta la rama de la punta de `main`, nunca de una `fix/*`. (`integracion/ola-1` ya no
+existe — ver el bloque de ramas.)
 
 Tres cosas que ahorran una hora:
 

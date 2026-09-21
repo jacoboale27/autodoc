@@ -1487,6 +1487,16 @@ class AppLocalizationsEs extends AppLocalizations {
       'Algo salió mal al cargar esta información. Inténtalo de nuevo en un momento.';
 
   @override
+  String get errorDatosNoEncontrado =>
+      'No encontramos ese dato. Puede que ya no exista.';
+
+  @override
+  String get errorDatosYaExiste => 'Ese dato ya existe.';
+
+  @override
+  String get errorDatosCancelado => 'La operación se canceló.';
+
+  @override
   String get errorReintentar => 'Reintentar';
 
   @override

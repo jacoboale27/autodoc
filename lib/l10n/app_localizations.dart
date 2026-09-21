@@ -2762,6 +2762,24 @@ abstract class AppLocalizations {
   /// **'Something went wrong loading this information. Try again in a moment.'**
   String get errorDatosGenerico;
 
+  /// Motivo de error de datos, mostrado a la persona.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t find that item. It may no longer exist.'**
+  String get errorDatosNoEncontrado;
+
+  /// Motivo de error de datos, mostrado a la persona.
+  ///
+  /// In en, this message translates to:
+  /// **'That item already exists.'**
+  String get errorDatosYaExiste;
+
+  /// Motivo de error de datos, mostrado a la persona.
+  ///
+  /// In en, this message translates to:
+  /// **'The operation was canceled.'**
+  String get errorDatosCancelado;
+
   /// Action to retry a failed query
   ///
   /// In en, this message translates to:

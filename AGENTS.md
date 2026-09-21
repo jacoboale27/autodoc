@@ -530,6 +530,28 @@ Windows) y es justo lo contrario. Ambas suites esperan ahora a Firestore de verd
 conexiones al navegar y netty acumula "Connection reset". En la suite de la landing esa lectura
 se intercepta.
 
+### ⚠️ Ramas — estado real a 2026-09-20 (lo de abajo es HISTORIA, no instrucciones)
+
+**`integracion/ola-1` YA NO EXISTE.** Su contenido esta en `main`. Todo lo que este
+documento dice mas abajo sobre cortar de `integracion/ola-1`, o sobre que «nada esta
+fusionado a `main`», **esta obsoleto**: se conserva porque explica como se llego aqui,
+no porque describa el arbol de hoy. Un agente que lo obedezca al pie de la letra corta
+de una rama que no existe.
+
+Lo que hay hoy:
+
+| Rama | Punta | Que es |
+|---|---|---|
+| `main` | `59f4a43` | Todo lo integrado, incluida la antigua `integracion/ola-1` |
+| `feat/play-store` | `d75d897` | Preparacion de tienda + fotos de vehiculo desde la galeria |
+| `feat/asistente-agenda` | (activa) | IA-01, el asistente de agenda. Cortada de `feat/play-store` |
+| `fix/ux1` | — | Intento antiguo SIN commits propios. Ignorala; la buena era `fix/ux01` |
+
+**De donde cortar:** de `main`, salvo que tu tarea toque ficheros que `feat/play-store`
+tenga tocados y sin integrar — que fue justo el caso de IA-01: sus siete commits tocan
+`mechanic_dashboard_screen.dart`, `alerts_screen.dart`, `app_es.arb` y `firestore.rules`.
+**Miralo antes de cortar**, con `git log --oneline main..feat/play-store --name-only`.
+
 ### Estado de ramas — todo vive en `integracion/ola-1`
 
 `main` sigue en `1265d23`: **ninguna tarea del plan esta fusionada a `main`.** Las 10 tareas
@@ -539,7 +561,8 @@ cerradas estan todas en **`integracion/ola-1`**. Las tres de ola 2 (`fix/qa02`,
 tarea del plan** pero si trabajo real sobre la landing: normaliza las calificaciones que
 llegan por la REST de Firestore (de ahi salia el crash) y retira Vercel Analytics.
 
-**Ya no queda ninguna rama `fix/*` pendiente de fusionar.** Corta de `integracion/ola-1`.
+**Ya no queda ninguna rama `fix/*` pendiente de fusionar.** Corta de `main` —
+`integracion/ola-1` ya no existe, ver el bloque de ramas de arriba.
 
 **Arbol combinado verificado entero el 2026-09-10** en
 `C:/Users/User/Documents/creaj/wt-integra`:
@@ -629,7 +652,7 @@ Lo que UX-02 dejo dicho, y que un worker en frio necesita saber antes de tocar `
 `fix/ux1` (sin el cero) es de un intento anterior y **no tiene ni un commit propio**: es
 ancestro de `integracion/ola-1`. Ignorala; la buena es `fix/ux01`.
 
-Las ramas `fix/*` ya integradas: **no trabajes sobre ellas**, parte de `integracion/ola-1`.
+Las ramas `fix/*` ya integradas: **no trabajes sobre ellas**. Parte de `main`.
 
 Antes de empezar una tarea, mira que ramas `fix/*` existen ya para no duplicar.
 

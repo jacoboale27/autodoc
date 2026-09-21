@@ -832,6 +832,18 @@
   "@errorDatosGenerico": {
     "description": "Default error message, with no technical detail"
   },
+  "errorDatosNoEncontrado": "We couldn't find that item. It may no longer exist.",
+  "@errorDatosNoEncontrado": {
+    "description": "Motivo de error de datos, mostrado a la persona."
+  },
+  "errorDatosYaExiste": "That item already exists.",
+  "@errorDatosYaExiste": {
+    "description": "Motivo de error de datos, mostrado a la persona."
+  },
+  "errorDatosCancelado": "The operation was canceled.",
+  "@errorDatosCancelado": {
+    "description": "Motivo de error de datos, mostrado a la persona."
+  },
   "errorReintentar": "Retry",
   "@errorReintentar": {
     "description": "Action to retry a failed query"

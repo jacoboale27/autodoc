@@ -46,6 +46,8 @@ Future<AppLocalizations> cargarL10n(WidgetTester tester, Locale locale) async {
 }
 
 void main() {
+  _centinelaDeParidad();
+
   testWidgets('un permission-denied no menciona permisos ni el codigo', (
     tester,
   ) async {
@@ -139,5 +141,83 @@ void main() {
     );
 
     expect(enEs, isNot(equals(enEn)));
+  });
+}
+
+/// Centinela: los dos traductores de error cubren los MISMOS codigos.
+///
+/// **Por que existe.** Hay dos: `mensajeDeError(l10n, e)`, que traduce, y
+/// `mensajeSeguroDeError(e)`, en espanol y sin `BuildContext`, para los
+/// providers. Nacieron juntos en UX-04 y han ido separandose sin que nada
+/// avisara: el de los providers distingue `not-found`, `already-exists` y
+/// `canceled`; el LOCALIZADO los mandaba a los tres al generico.
+///
+/// O sea, al reves de lo que uno esperaria: la persona que tiene la app en
+/// ingles recibia **menos** informacion que la que la tiene en espanol, y en
+/// vez de «no encontramos ese dato» leia «algo salio mal, intentalo mas tarde»
+/// — que ademas la invita a reintentar algo que no va a funcionar nunca.
+///
+/// Se afirma por COMPORTAMIENTO y no leyendo el fuente: para cada codigo, si
+/// la version en espanol dice algo distinto de su generico, la localizada
+/// tambien tiene que decirlo. Un centinela que parsee el `switch` se rompe con
+/// un reformateo; este solo se rompe si la asimetria vuelve.
+void _centinelaDeParidad() {
+  group('los dos traductores de error no se separan', () {
+    const codigos = [
+      'permission-denied',
+      'unauthorized',
+      'unavailable',
+      'deadline-exceeded',
+      'network-request-failed',
+      'not-found',
+      'already-exists',
+      'canceled',
+    ];
+
+    testWidgets('cada codigo con mensaje propio lo tiene en las dos vias', (
+      tester,
+    ) async {
+      final l10n = await cargarL10n(tester, const Locale('es'));
+      final genericoLocalizado = l10n.errorDatosGenerico;
+      final genericoSeguro = mensajeSeguroDeError(Exception('cualquier cosa'));
+
+      for (final codigo in codigos) {
+        final error = FirebaseException(
+          plugin: 'cloud_firestore',
+          code: codigo,
+        );
+        final seguro = mensajeSeguroDeError(error);
+        final localizado = mensajeDeError(l10n, error);
+
+        final seguroEsPropio = seguro != genericoSeguro;
+        final localizadoEsPropio = localizado != genericoLocalizado;
+
+        expect(
+          localizadoEsPropio,
+          seguroEsPropio,
+          reason:
+              'El codigo "$codigo" tiene mensaje propio en una via y no en la '
+              'otra. Localizado: "$localizado". Espanol: "$seguro". Los dos '
+              'traductores tienen que decir lo mismo, o la persona que usa la '
+              'app en ingles recibe menos informacion que la que la usa en '
+              'espanol.',
+        );
+      }
+    });
+
+    testWidgets('el ingles tambien distingue not-found del generico', (
+      tester,
+    ) async {
+      // Sin este, el test de arriba pasaria igual si las claves nuevas
+      // existieran solo en el ARB espanol: `AppLocalizations` cae al idioma
+      // de plantilla y el ingles se quedaria con el generico sin fallar nada.
+      final l10n = await cargarL10n(tester, const Locale('en'));
+      final noEncontrado = mensajeDeError(
+        l10n,
+        FirebaseException(plugin: 'cloud_firestore', code: 'not-found'),
+      );
+      expect(noEncontrado, isNot(l10n.errorDatosGenerico));
+      expect(noEncontrado, isNot(contains('not-found')));
+    });
   });
 }

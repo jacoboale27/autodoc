@@ -829,6 +829,18 @@
   "@errorDatosGenerico": {
     "description": "Mensaje de error por defecto, sin detalle tecnico"
   },
+  "errorDatosNoEncontrado": "No encontramos ese dato. Puede que ya no exista.",
+  "@errorDatosNoEncontrado": {
+    "description": "Motivo de error de datos, mostrado a la persona."
+  },
+  "errorDatosYaExiste": "Ese dato ya existe.",
+  "@errorDatosYaExiste": {
+    "description": "Motivo de error de datos, mostrado a la persona."
+  },
+  "errorDatosCancelado": "La operación se canceló.",
+  "@errorDatosCancelado": {
+    "description": "Motivo de error de datos, mostrado a la persona."
+  },
   "errorReintentar": "Reintentar",
   "@errorReintentar": {
     "description": "Accion para volver a intentar una consulta que fallo"

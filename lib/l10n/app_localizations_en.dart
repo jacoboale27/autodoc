@@ -1479,6 +1479,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Something went wrong loading this information. Try again in a moment.';
 
   @override
+  String get errorDatosNoEncontrado =>
+      'We couldn\'t find that item. It may no longer exist.';
+
+  @override
+  String get errorDatosYaExiste => 'That item already exists.';
+
+  @override
+  String get errorDatosCancelado => 'The operation was canceled.';
+
+  @override
   String get errorReintentar => 'Retry';
 
   @override

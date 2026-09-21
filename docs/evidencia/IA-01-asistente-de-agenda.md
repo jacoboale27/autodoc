@@ -370,6 +370,11 @@ Los ocho del §9 del plan. Estado:
 
 Abiertos, con su razón. **Un gap documentado no está cerrado.**
 
+> **Estado tras el drenaje del 2026-09-20 (§9):** cerrados los gaps **1**, **2** (a medias: la
+> regla ya tiene test con la prosa real; el prompt sigue sin reverificar contra el modelo),
+> **6** y **7**. El **8** y el **9** siguen abiertos tal cual. Los §9.1 y §9.2 añaden lo que
+> salió del barrido, incluido un comentario de `firestore.rules` cuyo razonamiento era falso.
+
 1. **`vencimientoTarjeta` sigue sin generar alerta en `/alerts`** — defecto de producción del §1.1
    del plan. El asistente **sí** lo saca, pero la pantalla de alertas no. La DoD exige
    arreglarlo o justificarlo por escrito; **no se cierra por estar de camino**. Es el gap de más
@@ -399,3 +404,126 @@ Abiertos, con su razón. **Un gap documentado no está cerrado.**
    `devolverCupoGlobal` repone el contador global pero la consulta sigue contando contra las 10
    del usuario. Es deliberado —devolverla abre un camino para agotar el global a coste cero— pero
    es injusto con quien no tuvo la culpa.
+
+---
+
+## 9. Drenaje de gaps — 2026-09-20
+
+El reconocimiento se delegó a Codex, que es el reparto que el historial del proyecto dice que
+rinde: *«el reconocimiento rinde delegado; la implementación con TDD no, si la cuota puede
+cortarse»*. Barrió los 18 documentos de `docs/evidencia/`, dedujo **~70 anotaciones a unos 60
+gaps reales** y dio un veredicto por gap contra el código. La implementación se hizo aquí.
+
+**Su informe no se tomó al pie de la letra**, y eso era el trabajo: de los cinco que priorizó,
+dos estaban descritos de forma que habría llevado a arreglar lo que no era. Ver §9.3.
+
+### 9.1 Cerrados
+
+#### `vencimientoTarjeta` no generaba ninguna alerta — el gap 1, y era de producción
+
+Se le pedía la fecha a la persona, se guardaba, se dejaba editar en la ficha del vehículo **al
+lado de la del SOAT y con el mismo aspecto**, y no se avisaba jamás.
+
+Ninguna suite podía verlo, y la razón es transferible: **no había ningún test que afirmara sobre
+la ausencia de una alerta que nadie había escrito.** Un generador que no genera algo compila,
+analiza limpio y pasa todos los tests del generador.
+
+#### El cálculo de días estaba mal en la misma función, y salió al escribir el test
+
+`difference(now).inDays` **trunca hacia cero**, y un vencimiento es una **fecha**, no un
+instante. Un SOAT que venció ayer a las 23:59 daba `0` durante todo el día de hoy, así que
+`daysToExpire < 0` era falso y la app decía *«por vencer — vence en 0 días»* sobre un seguro **ya
+vencido**. El mismo error al revés: mañana a las 00:01 también daba `0`, o sea *«vence hoy»*.
+
+Ahora se cuentan días de calendario locales, el mismo criterio que la agenda del asistente.
+
+**Mi primer test para esto afirmaba algo falso** y queda escrito en el fichero para que nadie lo
+reescriba: *«venció hace dos horas»* **no** es un caso de este defecto, porque un SOAT vale hasta
+el final de su día — las dos cuentas dan 0 y las dos aciertan.
+
+#### El texto de las alertas generadas ya no nace en español
+
+Es una mordida al gap `LITERALS`, el más repetido del proyecto (anotado en H-01, GAPS-05, 06, 07
+y 08). `AlertProvider` no tiene `BuildContext` ni locale, así que **cualquier prosa que escriba
+ahí nace en español y no hay forma de traducirla**. Las alertas generadas viajan ahora con su
+tipo y sus datos en `metadata`, y `presentation/utils/texto_de_alerta.dart` las localiza.
+
+Ese patrón ya existía para `MantenimientoInconsistente`, **duplicado a mano en dos pantallas**.
+Ahora vive una sola vez y lo usan las **tres** que pintan alertas — incluida la del mecánico, que
+con el cambio se habría quedado con el título vacío si no se hubiera mirado.
+
+#### Los dos traductores de error se habían separado, y en la dirección que sorprende
+
+`mensajeDeError(l10n, e)` traduce; `mensajeSeguroDeError(e)` es la versión en español para
+providers. Nacieron juntas en UX-04 y fueron divergiendo: la de los providers distingue
+`not-found`, `already-exists` y `canceled`; **la localizada mandaba las tres al genérico**.
+
+O sea al revés de lo que uno esperaría: **quien tiene la app en inglés recibía menos información
+que quien la tiene en español**, y en vez de «no encontramos ese dato» leía «algo salió mal,
+inténtalo más tarde» — que además la invita a reintentar algo que no va a funcionar nunca.
+
+Cerrado con tres claves de ARB y **un centinela de paridad** que afirma por comportamiento: para
+cada código, si la versión en español dice algo distinto de su genérico, la localizada también.
+No parsea el `switch`, así que un reformateo no lo rompe; solo lo rompe la asimetría volviendo.
+Con un segundo test que carga el ARB **inglés**, porque sin él las claves podrían existir solo en
+español y `AppLocalizations` caería al idioma de plantilla sin fallar nada.
+
+#### `CLAUDE.md` y `AGENTS.md` mandaban cortar de una rama que no existe
+
+`integracion/ola-1` está en `main` desde hace tiempo. Los dos documentos seguían diciendo «nada
+está fusionado a `main`» y «corta de `integracion/ola-1`». Un agente nuevo que los obedeciera
+cortaba de una rama inexistente, y el que se lo saltara cortaría de `main` sin mirar que
+`feat/play-store` tiene ficheros tocados sin integrar — que fue justo el caso de esta tanda.
+
+Corregido con un bloque fechado que dice **qué ramas hay hoy** y cómo decidir la base, dejando el
+resto como historia marcada como tal.
+
+### 9.2 El hallazgo de más peso: un comentario de `firestore.rules` que tranquilizaba en falso
+
+`esUrlDeStoragePropia` ancla el host de Storage pero **deja el bucket abierto**, y el comentario
+que lo justificaba decía:
+
+> «Lo que queda permitido apuntando a otro bucket de Firebase es contenido, no telemetría: la
+> petición sigue yendo a un host de Google, nunca a un servidor del atacante.»
+
+**Es falso, y es la clase de error peor: tranquiliza.** Que el host sea de Google no protege a
+nadie aquí, porque el bucket es del atacante y **el dueño de un bucket puede activar los usage
+logs de Cloud Storage**, que traen `c_ip` y `cs_user_agent` de cada descarga. Es exactamente la
+IP y el User-Agent que esa función existe para no filtrar, del mismo conjunto de personas: todo
+el que abra el directorio, que es de **lectura anónima**.
+
+Lo único que cambia frente a un servidor propio es que el atacante ve IP, User-Agent y momento,
+pero no puede responder contenido arbitrario. Eso es una mitigación, no la ausencia de fuga.
+
+**Por qué no se cierra en esta tanda, con su coste.** El nombre del bucket es un valor de entorno
+distinto en cada proyecto —producción, staging, el de E2E y el de `test_rules`— y el fichero de
+reglas es **uno para todos**: un literal rompería los demás entornos. Las dos salidas reales, y
+ninguna es de una línea:
+
+- **(a)** que las reglas lean el bucket de un documento de configuración del propio proyecto. Una
+  lectura extra en las escrituras con URL (no en caminos calientes), pero arrastra un paso de
+  runbook **bloqueante** y el riesgo de orden que H-01 ya documentó: si las reglas se despliegan
+  antes que el documento, las subidas mueren.
+- **(b)** generar las reglas por entorno en un `predeploy`, que es lo que este repo ya hace con el
+  SW de FCM.
+
+El comentario queda corregido con el razonamiento verdadero y las dos salidas, para que quien lo
+lea después no lo cierre creyendo que ya estaba razonado.
+
+### 9.3 Dos de los cinco que Codex priorizó estaban mal encuadrados
+
+**`RATING-RACE`** lo marcó `VIVO` con esfuerzo «tanda propia». Es cierto que está vivo, pero el
+código **ya lo documenta y ya explica por qué se dejó**: cerrar la ventana de subconteo exige una
+marca de agua (comparar `context.timestamp` contra el instante del recuento). No es un gap
+olvidado, es un diseño diferido con su razón escrita. Tratarlo como hallazgo nuevo habría sido
+rehacer un análisis ya pagado.
+
+**`STORAGE-BUCKET`** lo marcó `VIVO` con esfuerzo «medio, configuración por entorno». El
+diagnóstico de la amenaza es correcto —y vale mucho, porque contradice lo que el repo tenía
+escrito—, pero el esfuerzo no: las dos salidas posibles cuestan un paso de runbook bloqueante o
+un generador de reglas por entorno. No es medio.
+
+También conviene no dar por buenos sus `YA CERRADO` sin mirar: son los que harían perder un gap
+de verdad. Los que afectan a esta tanda se comprobaron uno a uno; el resto queda como hipótesis
+útil, **no como cierre**.
+
