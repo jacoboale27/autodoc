@@ -372,7 +372,7 @@ Abiertos, con su razón. **Un gap documentado no está cerrado.**
 
 > **Estado tras el drenaje del 2026-09-20 (§9):** cerrados los gaps **1**, **2** (a medias: la
 > regla ya tiene test con la prosa real; el prompt sigue sin reverificar contra el modelo),
-> **6** y **7**. El **8** y el **9** siguen abiertos tal cual. Los §9.1 y §9.2 añaden lo que
+> **6**, **7** y **8** (§9.4). El **9** sigue abierto tal cual. Los §9.1 y §9.2 añaden lo que
 > salió del barrido, incluido un comentario de `firestore.rules` cuyo razonamiento era falso.
 
 1. **`vencimientoTarjeta` sigue sin generar alerta en `/alerts`** — defecto de producción del §1.1
@@ -526,4 +526,74 @@ un generador de reglas por entorno. No es medio.
 También conviene no dar por buenos sus `YA CERRADO` sin mirar: son los que harían perder un gap
 de verdad. Los que afectan a esta tanda se comprobaron uno a uno; el resto queda como hipótesis
 útil, **no como cierre**.
+
+### 9.4 Segunda vuelta del drenaje — 2026-09-21
+
+#### El recordatorio de citas no decía la hora, teniéndola en la mano
+
+El cuerpo del push era, literal: *«Tienes una cita programada para mañana a la hora acordada»*, con
+`reserva.fecha_hora_propuesta` en la mano. **Un recordatorio que no dice la hora obliga a abrir la
+app para saber a qué hora es la cita**, que es justo lo que un recordatorio existe para ahorrar.
+
+La hora se rinde con el **mismo desfase fijo de Bogotá** que ya usa la ventana de la consulta.
+Decir la hora UTC habría sido peor que no decir ninguna: una cita a las 20:00 saldría como
+«01:00» y mandaría a alguien al taller con diecinueve horas de desfase. SEC-04/OPS-01 ya corrigió
+ese error en el **cálculo** de la ventana; aquí esperaba a que alguien formateara una hora, y hay
+un test que lo fija.
+
+Se formatea a mano, sin `toLocaleTimeString`: el runtime de Cloud Functions no garantiza `Intl`
+completo, y un ICU mínimo devuelve la hora en inglés o en UTC **sin fallar**.
+
+#### El recordatorio no dejaba rastro, y eso no era una decisión
+
+No escribía nada en el centro de notificaciones. **Un push es efímero**: quien lo pierde —teléfono
+apagado, notificaciones silenciadas, token muerto por reinstalar la app— no tenía **ninguna** vía
+para enterarse de su cita.
+
+Y no era una decisión de diseño: el barrido de alertas, **hermano suyo y del mismo OPS-01**, sí
+llama a `escribirNotificacion`. Este se quedó sin ello.
+
+**El caso que decide el arreglo es el cuarto test:** la nota se escribe **antes** del push y en su
+propio `try`. Escribirla solo tras un envío con éxito habría dejado el gap abierto exactamente
+para las personas a las que va dirigido — la que tiene el token muerto y la que nunca registró
+uno, que son las únicas que necesitan el centro de notificaciones.
+
+`escribirNotificacion` es **obligatorio** (lanza `TypeError` si falta), mismo contrato que
+`notificarAlertasVencidas`. Un default vacío dejaría el centro sin nada por un olvido de cableado.
+
+#### Centinela nuevo: `functions/test/barridos_escriben_notas.test.js`
+
+El `TypeError` no es silencioso, pero **se descubre a las 9 de la mañana del día siguiente**, y
+ese día de avisos se pierde sin reintento posible: el recordatorio no tiene marca de
+idempotencia, así que ni relanzarlo lo arregla. El centinela mueve el descubrimiento al commit,
+leyendo el fuente del entrypoint.
+
+**Va sin expresiones regulares a propósito.** Un centinela que busca una cadena que no está pasa
+siempre, y la primera versión de este fichero lo demostró en vivo: se escribió con un heredoc y
+**el shell se comió las barras invertidas**, así que `\s` quedó como `s` y los dos casos no
+casaban con nada. Con `indexOf` no hay nada que escapar mal. Verificado en los dos sentidos:
+quitando el cableado, el caso del recordatorio se pone rojo y el de alertas sigue verde.
+
+#### Los evals ya cubren el rol de taller en clasificación
+
+Cierra el gap 8. El clasificador es **ciego al rol** a propósito —el rol decide la consulta y el
+envelope, no la etiqueta—, así que lo que miden los cuatro casos nuevos es que el vocabulario del
+taller («recibo», «entran», «agendados») no se le escape a `fuera_de_alcance`. Antes el rol de
+taller solo se ejercitaba en redacción (un envelope) y en E2E. **22 casos de clasificación.**
+
+### 9.5 El gate de reglas confirmó la corrección del §9.2, y la afinó
+
+`firestore-rules-reviewer` verificó el razonamiento nuevo y añadió dos precisiones que se
+aplicaron:
+
+- **Los logs son opt-in.** El atacante tiene que activarlos en su proyecto; no vienen encendidos.
+  Es el dueño, así que está a un comando de distancia, pero decirlo importa para no sobrestimar la
+  gravedad — y el comentario ya lo decía con «puede activar».
+- **«No puede responder contenido arbitrario» estaba mal dicho.** El atacante sí elige qué objeto
+  estático sirve; lo que no puede es variar la respuesta **por petición**. Reescrito.
+
+Sobre el resto del fichero no encontró hallazgos nuevos: confirmó que la alerta `Tarjeta` es
+sintética y nunca se persiste (`_addOrUpdateLocalAlert` solo toca la lista en memoria), que
+`AlertModel.toMap()` no cambió y por tanto el centinela `test/alertas_campos_test.dart` sigue
+cuadrando, y que las tres colecciones del asistente siguen cerradas a todo cliente.
 

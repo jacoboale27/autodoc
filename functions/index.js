@@ -1021,7 +1021,12 @@ exports.sendReservationReminders = functions.runWith({ timeoutSeconds: 540, memo
   // OPS-01: la logica vive en `src/recordatoriosReserva.js` para poder
   // ejercerla con fixtures. Aqui solo queda el enganche del scheduler.
   try {
-    const resumen = await enviarRecordatoriosDeReserva(db, messaging);
+    const resumen = await enviarRecordatoriosDeReserva(db, messaging, {
+      // Igual que `checkAlertsDaily`. El recordatorio no escribia nada aqui y
+      // un push es efimero: quien lo perdia no tenia NINGUNA via para
+      // enterarse de su cita.
+      escribirNotificacion: writeNotification,
+    });
     console.log('sendReservationReminders:', JSON.stringify(resumen));
     return resumen;
   } catch (error) {

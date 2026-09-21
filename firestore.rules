@@ -241,8 +241,12 @@ service cloud.firestore {
     // `cs_user_agent` de cada descarga. O sea: exactamente la IP y el
     // User-Agent que esta funcion existe para no filtrar, del mismo conjunto
     // de personas (todo el que abra el directorio, que es de lectura ANONIMA).
-    // Lo unico que cambia frente a un servidor propio es que el atacante ve
-    // IP, User-Agent y momento, pero no puede responder contenido arbitrario.
+    // Requiere que el atacante ACTIVE esos logs en su proyecto — no vienen
+    // encendidos—, pero es el dueno, asi que esta a un comando de distancia.
+    //
+    // Lo unico que cambia frente a un servidor propio es que sirve un objeto
+    // ESTATICO elegido de antemano, sin logica por peticion: ve IP, UA y
+    // momento, pero no puede variar la respuesta segun quien pida.
     //
     // Por que sigue abierto pese a eso: el nombre real del bucket es un valor
     // de entorno (FIREBASE_STORAGE_BUCKET) distinto en cada proyecto

@@ -59,7 +59,7 @@ const PAUSA_MS = 400;
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
- * 18 preguntas de clasificacion.
+ * 22 preguntas de clasificacion.
  *
  * La mezcla no es arbitraria: la mitad son las que una persona escribiria de
  * verdad (con erratas, sin tildes, en dos idiomas), y el resto son los bordes
@@ -74,6 +74,16 @@ const CLASIFICACION = [
   ['cuanto me falta para el proximo cambio de aceite', 'agenda'],
   ['que citas tengo manana en el taller', 'agenda'],
   ['what expires this week', 'agenda'],
+
+  // Preguntas de TALLER. El clasificador es ciego al rol a proposito —el rol
+  // decide la CONSULTA y el envelope, no la etiqueta— asi que lo que se mide
+  // aqui es que el vocabulario del taller («recibo», «entran», «agendados»)
+  // no se le escape a `fuera_de_alcance`. Sin estos casos el rol de taller
+  // solo se ejercitaba en redaccion (un envelope) y en E2E.
+  ['que citas tengo hoy en el taller', 'agenda'],
+  ['que carros recibo manana', 'agenda'],
+  ['cuantos vehiculos entran esta semana', 'agenda'],
+  ['what appointments do I have tomorrow', 'agenda'],
 
   ['que es el SOAT', 'explicar'],
   ['para que sirve la tecnomecanica', 'explicar'],
