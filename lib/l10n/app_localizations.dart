@@ -1091,8 +1091,8 @@ abstract class AppLocalizations {
   /// No description provided for @alertsPendingCount.
   ///
   /// In en, this message translates to:
-  /// **'{count} pending'**
-  String alertsPendingCount(String count);
+  /// **'{count, plural, =1{1 pending} other{{count} pending}}'**
+  String alertsPendingCount(int count);
 
   /// No description provided for @alertsUpcomingExpirations.
   ///
@@ -1103,8 +1103,8 @@ abstract class AppLocalizations {
   /// No description provided for @alertsEventsCount.
   ///
   /// In en, this message translates to:
-  /// **'{count} events'**
-  String alertsEventsCount(String count);
+  /// **'{count, plural, =1{1 event} other{{count} events}}'**
+  String alertsEventsCount(int count);
 
   /// No description provided for @alertsSuggestions.
   ///
@@ -2995,6 +2995,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'We couldn\'t check your verification. Try again in a moment.'**
   String get authRefreshError;
+
+  /// Titulo del panel del taller (barra superior y menu lateral).
+  ///
+  /// In en, this message translates to:
+  /// **'Workshop dashboard'**
+  String get mechanicDashboardTitle;
 }
 
 class _AppLocalizationsDelegate

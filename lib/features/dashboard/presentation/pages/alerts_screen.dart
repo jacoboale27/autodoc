@@ -22,6 +22,7 @@ import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
+import '../utils/asegurar_datos_del_garaje.dart';
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
@@ -32,6 +33,16 @@ class AlertsScreen extends StatefulWidget {
 
 class _AlertsScreenState extends State<AlertsScreen> {
   int _selectedTab = 0; // 0=Todas, 1=Urgentes, 2=Próximas
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Mismo motivo que en el garaje: con un F5 o un enlace directo a /alerts
+    // el provider esta recien construido, `selectedVehicle` es null y la
+    // pantalla se quedaba en «Selecciona un vehiculo primero» para siempre,
+    // sin ninguna via para seleccionar nada desde aqui.
+    asegurarDatosDelGaraje(context);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -318,7 +329,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
               _buildSectionHeader(
                 criticalStyle,
                 context.l10n.alertsPendingCount(
-                  (criticalTasks.length + highAlerts.length).toString(),
+                  criticalTasks.length + highAlerts.length,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -347,7 +358,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
               _buildSectionHeader(
                 preventiveStyle,
                 context.l10n.alertsEventsCount(
-                  (preventiveTasks.length + medAlerts.length).toString(),
+                  preventiveTasks.length + medAlerts.length,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),

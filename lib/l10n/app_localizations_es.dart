@@ -294,7 +294,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get dashMaintStatusLabel => 'Estado de Mantenimiento';
 
   @override
-  String get dashNoVehicles => 'No hay vehiculos registrados';
+  String get dashNoVehicles => 'No hay vehículos registrados';
 
   @override
   String get dashNoVehiclesDesc =>
@@ -304,7 +304,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get dashRegisterVehicle => 'Registrar Vehículo';
 
   @override
-  String get dashMainVehicle => 'VEHICULO PRINCIPAL';
+  String get dashMainVehicle => 'VEHÍCULO PRINCIPAL';
 
   @override
   String dashLicensePlate(String placa) {
@@ -321,7 +321,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get dashViewVehicleState => 'Ver Estado del Vehículo';
 
   @override
-  String get dashAddVehicleError => 'Error al agregar vehiculo';
+  String get dashAddVehicleError => 'Error al agregar vehículo';
 
   @override
   String get dashActiveAlerts => 'Alertas Activas';
@@ -385,7 +385,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo establecer el vehículo principal';
 
   @override
-  String get garageAddVehicleError => 'Error al agregar vehiculo';
+  String get garageAddVehicleError => 'Error al agregar vehículo';
 
   @override
   String get vpProfileTitle => 'Perfil del Vehículo';
@@ -539,16 +539,28 @@ class AppLocalizationsEs extends AppLocalizations {
   String get alertsHighPriority => 'Prioridad Alta';
 
   @override
-  String alertsPendingCount(String count) {
-    return '$count pendientes';
+  String alertsPendingCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pendientes',
+      one: '1 pendiente',
+    );
+    return '$_temp0';
   }
 
   @override
   String get alertsUpcomingExpirations => 'Próximos Vencimientos';
 
   @override
-  String alertsEventsCount(String count) {
-    return '$count eventos';
+  String alertsEventsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count eventos',
+      one: '1 evento',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -1215,7 +1227,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get chatReservationFailed =>
-      'No se pudo crear la cita. Intentalo de nuevo.';
+      'No se pudo crear la cita. Inténtalo de nuevo.';
 
   @override
   String get chatReservationDetail => 'Detalle de Cita';
@@ -1464,28 +1476,28 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String bandejaTruncada(int tope) {
-    return 'Se muestran las $tope conversaciones con actividad mas reciente. Hay mas hilos que no caben aqui.';
+    return 'Se muestran las $tope conversaciones con actividad más reciente. Hay mas hilos que no caben aquí.';
   }
 
   @override
   String hiloTruncado(int tope) {
-    return 'Se muestran los $tope mensajes mas recientes. Los anteriores no estan cargados.';
+    return 'Se muestran los $tope mensajes más recientes. Los anteriores no están cargados.';
   }
 
   @override
-  String get errorDatosTitulo => 'No pudimos cargar esta informacion';
+  String get errorDatosTitulo => 'No pudimos cargar esta información';
 
   @override
   String get errorDatosPermiso =>
-      'No tienes acceso a esta informacion. Si crees que deberia estar disponible, vuelve a iniciar sesion.';
+      'No tienes acceso a esta información. Si crees que debería estar disponible, vuelve a iniciar sesión.';
 
   @override
   String get errorDatosConexion =>
-      'No pudimos conectar con el servidor. Revisa tu conexion e intentalo de nuevo.';
+      'No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.';
 
   @override
   String get errorDatosGenerico =>
-      'Algo salio mal al cargar esta informacion. Intentalo de nuevo en un momento.';
+      'Algo salió mal al cargar esta información. Inténtalo de nuevo en un momento.';
 
   @override
   String get errorReintentar => 'Reintentar';
@@ -1495,7 +1507,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get paseIntro =>
-      'Quien escanee este codigo vera que mantenimientos tiene el vehiculo y cuando. No vera importes ni facturas, y el pase caduca solo.';
+      'Quien escanee este código verá qué mantenimientos tiene el vehículo y cuándo. No verá importes ni facturas, y el pase caduca solo.';
 
   @override
   String paseCaducaEn(String tiempo) {
@@ -1516,7 +1528,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get paseGenerarOtro => 'Generar otro pase';
 
   @override
-  String get paseTokenEtiqueta => 'Si no puede escanear, comparte este codigo:';
+  String get paseTokenEtiqueta => 'Si no puede escanear, comparte este código:';
 
   @override
   String get paseErrorEmitir => 'No pudimos generar el pase.';
@@ -1534,7 +1546,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get paseLectorSinServicios =>
-      'Este vehiculo no tiene mantenimientos registrados en AutoDoc.';
+      'Este vehículo no tiene mantenimientos registrados en AutoDoc.';
 
   @override
   String get paseLectorPorTaller => 'Registrado por un taller';
@@ -1566,13 +1578,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get paseLectorInvalido =>
-      'Ese codigo no es un pase de historial de AutoDoc.';
+      'Ese código no es un pase de historial de AutoDoc.';
 
   @override
-  String get paseCopiarCodigo => 'Copiar codigo';
+  String get paseCopiarCodigo => 'Copiar código';
 
   @override
-  String get paseCodigoCopiado => 'Codigo copiado';
+  String get paseCodigoCopiado => 'Código copiado';
 
   @override
   String get perfilTallerIncompletoTitulo => 'Completa tu perfil de taller';
@@ -1599,9 +1611,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get authSignOutError =>
-      'No pudimos cerrar tu sesion. Revisa tu conexion e intentalo de nuevo.';
+      'No pudimos cerrar tu sesión. Revisa tu conexión e inténtalo de nuevo.';
 
   @override
   String get authRefreshError =>
-      'No pudimos comprobar tu verificacion. Intentalo de nuevo en un momento.';
+      'No pudimos comprobar tu verificación. Inténtalo de nuevo en un momento.';
+
+  @override
+  String get mechanicDashboardTitle => 'Panel del taller';
 }

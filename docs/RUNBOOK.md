@@ -155,6 +155,40 @@ devuelve nada.
 sigue usando el `isMecanico()` laxo de `storage.rules`, porque un taller sube su NIT y sus fotos
 precisamente cuando todavía no está aprobado.
 
+### Pendiente 0ter — Limpiar los `foto_url` raspados de los vehículos existentes
+
+**Comando:** `cd functions && node backfill_foto_url_ajena.js` (dry-run) y luego `--apply`.
+
+Hasta el 2026-09-17 `VehicleProvider.addVehicle` llamaba a `VehicleImageService`, que buscaba en
+SearchAPI.io (engine `google_images`) una foto de la marca y el modelo y guardaba **ese enlace**
+en `vehiculos.foto_url`. O sea: **cada vehículo creado desde que existe la app** lleva enlazada
+una imagen de un tercero. El servicio está retirado y `firestore.rules` ya impide que nazca otro,
+pero eso no limpia los que hay.
+
+Dos motivos, y el segundo es el que no caduca solo:
+
+- **Propiedad intelectual.** Son fotos de catálogos de concesionario y bancos de imagen sobre las
+  que AutoDoc no tiene licencia, pintadas como si fueran el coche de la persona. En una ficha de
+  Google Play eso es exposición a una retirada.
+- **Privacidad.** `foto_url` la lee todo el que puede ver el vehículo —el taller vinculado y sus
+  empleados, aquel con quien el dueño lo comparta, y por la vista pública quien reciba un pase de
+  historial—, así que cada visita le entrega al servidor ajeno la IP y el User-Agent del
+  visitante. Es el mismo agujero que FUNC-01 cerró en `resenias.fotos`.
+
+**No es bloqueante para desplegar** las reglas ni la app: la regla nueva valida `foto_url` solo
+cuando **cambia** (`fotoDeVehiculoValidaEnUpdate`), así que un vehículo con enlace heredado se
+sigue pudiendo editar mientras tanto. Pero **ninguna suite puede avisar de que falta**: los
+emuladores se siembran limpios, así que el único sitio donde se ve el problema es producción.
+
+El script borra el campo (`FieldValue.delete()`); la app cae al placeholder local. **No toca** las
+URLs que ya apuntan a nuestro Storage: ésas son fotos que el propietario subió con
+`VehiclePhotoService` y son suyas.
+
+**Y un paso fuera del repo:** la clave `VEHICLE_IMAGE_API_KEY` ya no la usa nadie —se retiró de
+`secrets.dart`, de los cinco `--dart-define` de `ci.yml`, de `.env.example`, de `app.env` y del
+script de secretos—. Bórrala del panel de SearchAPI.io y del repositorio de secretos de GitHub.
+Sigue viva en tu `.env` local, que un hook impide editar.
+
 ### Pendiente 0bis — Politicas TTL de Firestore (DOS, y una llevaba perdida desde UX-01)
 
 **Firestore no configura TTL desde `firestore.indexes.json`.** Va por consola o por `gcloud`, y

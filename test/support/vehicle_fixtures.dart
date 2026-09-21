@@ -30,10 +30,7 @@ VehicleModel fakeVehicle(
 /// de instanciar las clases reales.
 class FakeVehicleProvider extends VehicleProvider {
   FakeVehicleProvider(this._vehicles)
-    : super(
-        vehicleService: MockVehicleService(),
-        imageService: MockVehicleImageService(),
-      );
+    : super(vehicleService: MockVehicleService());
   final List<VehicleModel> _vehicles;
 
   @override

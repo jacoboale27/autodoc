@@ -10,6 +10,7 @@ import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/features/chat/presentation/widgets/aviso_mensajes_nuevos.dart';
 
 class MechanicSidebar extends StatelessWidget {
@@ -111,7 +112,7 @@ class MechanicSidebar extends StatelessWidget {
                   _buildNavItem(
                     context,
                     icon: Icons.dashboard,
-                    label: 'Dashboard',
+                    label: context.l10n.mechanicDashboardTitle,
                     isActive: currentPath == '/mechanic_dashboard',
                     colors: colors,
                     onTap: () => _navigate(context, '/mechanic_dashboard'),

@@ -407,11 +407,20 @@ const _huerfanosConocidos = <String>[];
 /// 16: sube a 17 con el `orderBy` que `findReviewableServiceId` baja al
 /// servidor (gap 7.4) y vuelve a 16 al retirarse `streamReservasUsuario`
 /// (gap 7.2). Ambos de GAPS-02.
-/// 17 desde las observaciones del 2026-09-19: `TrabajosTallerRepository`
+/// 18 desde las observaciones del 2026-09-19: `TrabajosTallerRepository`
 /// trae tres (servicios del coche, cotizaciones del taller y servicios del
 /// taller); se van la de `InitiateServiceScreen` (ahora de solo igualdades) y
 /// la de "Mis Servicios", que se mudó al repositorio.
-const _orderByEsperados = 18;
+/// 19 al integrar GAPS-08: `VehiclePhotoService.deletePhoto` busca la foto más
+/// reciente que queda para ascenderla a portada. NO necesita índice
+/// declarado —es un `orderBy` de un solo campo sin `where`, y ésos Firestore
+/// los tiene automáticos—, así que solo ajusta el contador.
+///
+/// El 19 no se copió de la salida del test: es 16 + 2 (observaciones) + 1
+/// (play-store), y el barrido da exactamente esa suma. Cuadrar la cuenta es
+/// lo que distingue «las dos ramas añadieron lo suyo» de «al fusionar se
+/// colaron consultas que nadie revisó».
+const _orderByEsperados = 19;
 
 /// Cuántos `.where(` hay hoy en `functions/index.js` y `functions/src/`. Ver el
 /// cuarto test.

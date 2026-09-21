@@ -281,6 +281,52 @@ service cloud.firestore {
            );
     }
 
+    // La foto de un vehiculo solo puede apuntar a nuestro propio Storage.
+    //
+    // Mismo argumento que `fotosBajoServicio`, y con la misma historia detras.
+    // `foto_url` la lee todo el que puede leer el vehiculo: el taller
+    // vinculado, SUS EMPLEADOS (la regla resuelve por `idTallerActor()`, no
+    // por el uid de la sesion), aquel con quien el dueño lo comparta y el
+    // admin. Un enlace a un servidor ajeno le entrega a ese tercero la IP y el
+    // User-Agent de cada uno de ellos.
+    //
+    // NO la lee quien recibe un pase de historial, aunque lo pareciera:
+    // `leerHistorial` proyecta una allowlist explicita
+    // (functions/src/historialCompartido.js:319-327) que no incluye este
+    // campo. La audiencia de arriba ya justifica la regla de sobra; se anota
+    // para que la proxima auditoria no herede una premisa falsa.
+    //
+    // Y aqui no era teorico: hasta 2026-09-17 la app RELLENABA este campo sola
+    // con enlaces raspados de Google Imagenes (VehicleImageService, retirado),
+    // asi que la fuga estaba encendida por defecto en cada vehiculo creado.
+    //
+    // Vacio o ausente vale: un vehiculo sin foto es lo normal ahora, y la app
+    // pinta un placeholder local. `assets/` tambien vale por los documentos
+    // heredados que guardaron la ruta del asset como si fuera una URL.
+    function fotoDeVehiculoValida(vehiculoId) {
+      return !('foto_url' in request.resource.data)
+        || request.resource.data.foto_url == null
+        || request.resource.data.foto_url == ''
+        || request.resource.data.foto_url == 'assets/images/default_vehicle.jpg'
+        || esUrlDeStoragePropia(
+             request.resource.data.foto_url,
+             'vehiculos%2F' + vehiculoId + '%2F',
+           );
+    }
+
+    // En un update se valida SOLO si `foto_url` cambia, por el mismo motivo
+    // que `fotosDeReseniaValidasEnUpdate`: si se validara siempre, los
+    // vehiculos que ya tienen guardado un enlace raspado quedarian
+    // INEDITABLES —ni el kilometraje, ni el color, ni la revocacion de un
+    // taller—, que es cambiar una fuga por una averia. El backfill
+    // `functions/backfill_foto_url_ajena.js` los limpia; mientras tanto, esta
+    // regla garantiza que no nazca ninguno nuevo.
+    function fotoDeVehiculoValidaEnUpdate(vehiculoId) {
+      return !request.resource.data.diff(resource.data)
+                .affectedKeys().hasAny(['foto_url'])
+        || fotoDeVehiculoValida(vehiculoId);
+    }
+
     // La foto de perfil solo puede apuntar al objeto del propio usuario en
     // `perfiles/` (ver UserService.uploadProfilePhoto, que sube a
     // `perfiles/{uid}.jpg`). Ausente o vacia tambien vale: no todo el mundo
@@ -574,10 +620,11 @@ service cloud.firestore {
       // `resource == null` (documento inexistente) se permite explicitamente.
       // Sin esa rama, un get() sobre un id que aun no existe no devuelve "no
       // existe": evalua `resource.data.id_propietario` sobre null, lo que es
-      // un error de evaluacion y se traduce en PERMISSION_DENIED. Eso rompia
-      // VehicleImageService.getVehicleImage(), que consulta el vehiculo ANTES
-      // de que addVehicle() lo escriba: la excepcion tumbaba la funcion entera
-      // y ningun vehiculo nuevo llegaba a buscar su foto.
+      // un error de evaluacion y se traduce en PERMISSION_DENIED. La rama se
+      // escribio para VehicleImageService (retirado el 2026-09-17), que
+      // consultaba el vehiculo ANTES de que addVehicle() lo escribiera; se
+      // conserva porque la propiedad sigue siendo la correcta y su ausencia
+      // vuelve a convertir "no existe" en "prohibido".
       // No filtra nada: un documento inexistente no tiene datos que exponer, y
       // los ids son UUID, no enumerables.
       allow read: if isAuthenticated() && (
@@ -597,7 +644,9 @@ service cloud.firestore {
       );
 
       // Solo el propietario registrado del vehículo puede crearlo o eliminarlo
-      allow create: if isAuthenticated() && request.resource.data.id_propietario == request.auth.uid;
+      allow create: if isAuthenticated()
+        && request.resource.data.id_propietario == request.auth.uid
+        && fotoDeVehiculoValida(vehiculoId);
       allow delete: if isAuthenticated() && resource.data.id_propietario == request.auth.uid;
 
       // El propietario puede modificar todo su vehículo MENOS de quién es:
@@ -624,7 +673,18 @@ service cloud.firestore {
       // vínculos de las rondas 5/6.
       // Un mecánico de un taller ya vinculado puede actualizar el vehículo
       // únicamente para reportar el 'kilometraje_actual'.
-      allow update: if isAuthenticated() && (
+      // `fotoDeVehiculoValidaEnUpdate` va FUERA de la disyuncion, igual que
+      // `fotosDeReseniaValidasEnUpdate` en /resenias: dentro de la rama del
+      // propietario, el `|| isAdmin()` del final la esquivaba entera, y un
+      // admin podia plantar un enlace ajeno en el vehiculo de cualquiera sin
+      // dejar rastro en `admin_logs` (ese update no pasa por admin_service).
+      // Sacarla no rompe la rama del mecanico: con `hasOnly(['kilometraje_
+      // actual'])` `foto_url` nunca esta en `affectedKeys()`, asi que la
+      // funcion devuelve true por su primera clausula y un vehiculo con
+      // enlace heredado sigue aceptando el reporte de kilometraje.
+      allow update: if isAuthenticated()
+        && fotoDeVehiculoValidaEnUpdate(vehiculoId)
+        && (
         (resource.data.id_propietario == request.auth.uid
           && !request.resource.data.diff(resource.data)
                 .affectedKeys().hasAny(['id_propietario', 'talleres_conocidos']))
@@ -671,7 +731,30 @@ service cloud.firestore {
                );
         }
         allow read: if puedeVerVehiculo();
-        allow create, update, delete: if isAuthenticated()
+
+        // `url` es una URL que elige el CLIENTE, y sus lectores son los
+        // mismos que los de `foto_url` del vehiculo padre: el taller
+        // vinculado, sus empleados, aquel con quien se comparta el coche y el
+        // admin. Sin este filtro, el dueño de un vehiculo podia escribir aqui
+        // `{url: 'https://servidor-propio/pixel.jpg'}` SIN subir nada a
+        // Storage y cosechar la IP y el User-Agent de todos ellos cada vez que
+        // abrieran la ficha. Es el mismo agujero que se cierra un nivel mas
+        // arriba, por la puerta de al lado, y lo levanto el gate de revision.
+        //
+        // El prefijo encaja con lo que sube `VehiclePhotoService.addPhoto`:
+        // `vehiculos/{id}/fotos/{uuid}.jpg`.
+        //
+        // El `delete` va en su PROPIO allow y no agrupado con los otros dos:
+        // en un delete `request.resource` es null, asi que validar el
+        // documento resultante denegaria todo borrado. Es el mismo error de
+        // agrupar verbos que GAPS-05 anoto para las facturas en Storage.
+        allow create, update: if isAuthenticated()
+          && (isVehicleOwner(vehiculoId) || isAdmin())
+          && esUrlDeStoragePropia(
+               request.resource.data.get('url', ''),
+               'vehiculos%2F' + vehiculoId + '%2Ffotos%2F',
+             );
+        allow delete: if isAuthenticated()
           && (isVehicleOwner(vehiculoId) || isAdmin());
       }
     }

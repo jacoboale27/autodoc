@@ -534,16 +534,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get alertsHighPriority => 'High Priority';
 
   @override
-  String alertsPendingCount(String count) {
-    return '$count pending';
+  String alertsPendingCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pending',
+      one: '1 pending',
+    );
+    return '$_temp0';
   }
 
   @override
   String get alertsUpcomingExpirations => 'Upcoming Expirations';
 
   @override
-  String alertsEventsCount(String count) {
-    return '$count events';
+  String alertsEventsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count events',
+      one: '1 event',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -1595,4 +1607,7 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get authRefreshError =>
       'We couldn\'t check your verification. Try again in a moment.';
+
+  @override
+  String get mechanicDashboardTitle => 'Workshop dashboard';
 }

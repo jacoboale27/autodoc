@@ -29,9 +29,29 @@ import 'package:uuid/uuid.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
+import '../utils/asegurar_datos_del_garaje.dart';
 
-class GarageScreen extends StatelessWidget {
+class GarageScreen extends StatefulWidget {
   const GarageScreen({super.key});
+
+  @override
+  State<GarageScreen> createState() => _GarageScreenState();
+}
+
+class _GarageScreenState extends State<GarageScreen> {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Sin esto, un F5 sobre /garage pintaba «No tienes vehiculos» teniendo
+    // tres: esta pantalla solo LEIA `vehicleProvider.vehicles` y quien los
+    // cargaba era el dashboard. Ver `asegurarDatosDelGaraje`.
+    //
+    // Va sin bandera de "ya inicializado" porque el propio helper es
+    // idempotente, y hace falta que se reintente: `didChangeDependencies`
+    // corre tambien cuando llega el perfil, que es justo el momento en que
+    // por fin hay un uid con el que pedir.
+    asegurarDatosDelGaraje(context);
+  }
 
   @override
   Widget build(BuildContext context) {

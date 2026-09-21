@@ -237,20 +237,20 @@
   "alertsAllGood": "All up to date!",
   "alertsNoAlertsInCategory": "No alerts in this category.",
   "alertsHighPriority": "High Priority",
-  "alertsPendingCount": "{count} pending",
+  "alertsPendingCount": "{count, plural, =1{1 pending} other{{count} pending}}",
   "@alertsPendingCount": {
     "placeholders": {
       "count": {
-        "type": "String"
+        "type": "int"
       }
     }
   },
   "alertsUpcomingExpirations": "Upcoming Expirations",
-  "alertsEventsCount": "{count} events",
+  "alertsEventsCount": "{count, plural, =1{1 event} other{{count} events}}",
   "@alertsEventsCount": {
     "placeholders": {
       "count": {
-        "type": "String"
+        "type": "int"
       }
     }
   },
@@ -973,5 +973,9 @@
   "authRefreshError": "We couldn't check your verification. Try again in a moment.",
   "@authRefreshError": {
     "description": "Fallo al recargar el estado de verificacion del usuario"
+  },
+  "mechanicDashboardTitle": "Workshop dashboard",
+  "@mechanicDashboardTitle": {
+    "description": "Titulo del panel del taller (barra superior y menu lateral)."
   }
 }

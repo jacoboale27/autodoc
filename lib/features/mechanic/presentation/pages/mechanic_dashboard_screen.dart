@@ -19,6 +19,7 @@ import 'package:intl/intl.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 /// Primer día del mes que está cinco meses atrás: el borde de la ventana que
 /// la gráfica de tendencia dibuja desde siempre.
@@ -81,7 +82,16 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
     final mechanicName = userData.nombreCompleto;
 
     return MechanicScaffold(
-      title: 'Dashboard',
+      // El titulo LOCALIZADO viene de play-store; las `actions` NO.
+      //
+      // play-store las declaraba aqui (tema, idioma y campana), pero las
+      // observaciones del 2026-09-19 movieron esas tres al propio
+      // `MechanicScaffold`, que las pone SIEMPRE — justo porque cada pantalla
+      // tenia que acordarse y solo el dashboard lo hacia. Conservar las de
+      // play-store al fusionar habria pintado la barra DOS VECES, y nada lo
+      // habria dicho: compila, analiza limpio y solo se ve mirando la
+      // pantalla. Lo dice el propio contrato de `MechanicScaffold.actions`.
+      title: context.l10n.mechanicDashboardTitle,
       body: SingleChildScrollView(
         child: AppPageBody(
           child: Padding(

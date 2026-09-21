@@ -18,9 +18,14 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../../support/shell_harness.dart';
+import 'package:autodoc/l10n/app_localizations_es.dart';
 
-const _destinosTaller = <String>[
-  'Dashboard',
+// El primer destino se lee del ARB en vez de ir incrustado: el rotulo cambio de
+// «Dashboard» (literal sin traducir) a «Panel del taller» y este test se puso
+// rojo, que es justo lo que tiene que pasar. Atarlo a la clave evita que la
+// proxima traduccion lo vuelva a romper sin aportar informacion.
+final _destinosTaller = <String>[
+  AppLocalizationsEs().mechanicDashboardTitle,
   'Buscar Vehículo',
   'Mis Servicios',
   'Reparaciones',

@@ -10,11 +10,7 @@ import 'helpers/test_helpers.mocks.dart';
 import 'support/responsive_harness.dart';
 
 class _Revocaciones extends VehicleProvider {
-  _Revocaciones()
-    : super(
-        vehicleService: MockVehicleService(),
-        imageService: MockVehicleImageService(),
-      );
+  _Revocaciones() : super(vehicleService: MockVehicleService());
 
   Completer<bool> pendiente = Completer<bool>();
   final llamadas = <(String, String)>[];

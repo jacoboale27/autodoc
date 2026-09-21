@@ -5,11 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/alerts_screen.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
 import 'helpers/test_helpers.mocks.dart';
 import 'support/vehicle_fixtures.dart';
 import 'support/responsive_harness.dart';
+import 'support/shell_harness.dart';
 
 class _Vehicles extends FakeVehicleProvider {
   _Vehicles() : super([fakeVehicle(0)]);
@@ -40,6 +42,9 @@ void main() {
         providers: [
           ChangeNotifierProvider<VehicleProvider>.value(value: vehicles),
           ChangeNotifierProvider<AlertProvider>.value(value: _Alerts()),
+          ChangeNotifierProvider<UserProfileProvider>.value(
+            value: FakeProfileProvider('Propietario'),
+          ),
         ],
         child: const AlertsScreen(),
       ),

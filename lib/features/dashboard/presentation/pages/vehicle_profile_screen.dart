@@ -59,6 +59,12 @@ class VehicleProfileScreen extends StatefulWidget {
   /// tiene plataforma en un widget test.
   final Future<String?> Function(VehicleModel vehiculo)? elegirFotoPrincipal;
 
+  /// Servicio de fotos y selector de imagen, inyectables por el mismo motivo:
+  /// los dos tocan plataforma (Firebase y el picker nativo) y sin ellos no se
+  /// puede probar el camino de "añadir la primera foto".
+  final VehiclePhotoService? photoService;
+  final Future<XFile?> Function()? seleccionarFoto;
+
   const VehicleProfileScreen({
     super.key,
     required this.vehiculoId,
@@ -66,6 +72,8 @@ class VehicleProfileScreen extends StatefulWidget {
     this.vehicleService,
     this.galleryPhotos,
     this.elegirFotoPrincipal,
+    this.photoService,
+    this.seleccionarFoto,
   });
 
   @override
@@ -322,6 +330,11 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
       vehicleId: vehicle.idVehiculo,
       colors: colors,
       photos: widget.galleryPhotos,
+      // Los dos de GAPS-08. Sin ellos la galeria compila igual y la portada
+      // deja de poder cambiarse desde aqui: el layout responsive de las
+      // observaciones se quedo con la version anterior de esta llamada.
+      fotoPrincipal: vehicle.fotoUrl,
+      onPortadaCambiada: _refrescarVehiculos,
     );
   }
 
@@ -425,6 +438,63 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
     );
   }
 
+  /// Bloquea el segundo tap mientras el selector o la subida siguen en vuelo.
+  /// Mismo guard que la galeria: `onTap: null` solo surte efecto en el frame
+  /// siguiente, asi que dos taps en el MISMO frame pasan los dos.
+  bool _subiendoPortada = false;
+
+  VehiclePhotoService? _photoServiceCache;
+  VehiclePhotoService get _photoService =>
+      widget.photoService ?? (_photoServiceCache ??= VehiclePhotoService());
+
+  /// Sube una foto desde el hueco de la ficha y la deja como portada.
+  ///
+  /// Es el mismo `addPhoto` de la galeria —la foto acaba tambien alli, que es
+  /// lo correcto: son la misma coleccion—, y asciende sola porque el vehiculo
+  /// no tenia ninguna. Este atajo existe solo cuando no hay foto.
+  Future<void> _subirFotoDePortada(String vehiculoId) async {
+    if (_subiendoPortada) return;
+    setState(() => _subiendoPortada = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final elegida = widget.seleccionarFoto != null
+          ? await widget.seleccionarFoto!()
+          : await ImagePicker().pickImage(
+              source: ImageSource.gallery,
+              imageQuality: 70,
+            );
+      if (elegida == null) return;
+      messenger.showSnackBar(const SnackBar(content: Text('Subiendo foto...')));
+      await _photoService.addPhoto(vehiculoId, elegida);
+      messenger.hideCurrentSnackBar();
+      if (!mounted) return;
+      _refrescarVehiculos();
+    } catch (e) {
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            mensajeSeguroDeError(e, accion: 'No se pudo subir la foto'),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _subiendoPortada = false);
+    }
+  }
+
+  /// Relee el garaje tras cambiar la foto del vehiculo.
+  ///
+  /// Hace falta porque `foto_url` no llega por el stream de la galeria: vive
+  /// en el documento del vehiculo, y quien lo tiene en memoria es
+  /// `VehicleProvider`. Sin esto, la portada cambiaba en Firestore y la ficha
+  /// seguia enseñando la anterior hasta el siguiente arranque.
+  void _refrescarVehiculos() {
+    final uid = context.read<AuthSessionProvider>().user?.uid;
+    if (uid == null) return;
+    context.read<VehicleProvider>().fetchVehicles(uid);
+  }
+
   Widget _buildHeroImage(
     VehicleModel vehicle,
     AppColors colors, {
@@ -448,6 +518,41 @@ class _VehicleProfileScreenState extends State<VehicleProfileScreen> {
                   fit: BoxFit.cover,
                 ),
               ),
+              // Sin foto, la silueta no dice que se pueda hacer algo al
+              // respecto. La galeria esta mas abajo, fuera de pantalla en un
+              // telefono, asi que el sitio donde se nota el hueco es tambien
+              // donde tiene que estar la invitacion a llenarlo.
+              if (!VehiclePhotoService.tieneFoto(vehicle.fotoUrl))
+                Positioned.fill(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _subiendoPortada
+                          ? null
+                          : () => _subirFotoDePortada(vehicle.idVehiculo),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.add_a_photo_outlined,
+                              color: colors.primary,
+                              size: 32,
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              'Añade una foto de tu vehículo',
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: colors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               Positioned(
                 top: AppSpacing.sm,
                 right: AppSpacing.sm,
