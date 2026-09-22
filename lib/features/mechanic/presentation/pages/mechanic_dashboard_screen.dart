@@ -11,17 +11,15 @@ import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_grid.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_section_header.dart';
-import 'package:autodoc/core/widgets/notification_bell_button.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:intl/intl.dart';
 import 'package:autodoc/core/utils/responsive.dart';
-import 'package:autodoc/core/providers/theme_provider.dart';
-import 'package:autodoc/core/providers/language_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 
 /// Primer día del mes que está cinco meses atrás: el borde de la ventana que
 /// la gráfica de tendencia dibuja desde siempre.
@@ -84,11 +82,25 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
     final mechanicName = userData.nombreCompleto;
 
     return MechanicScaffold(
-      title: 'Dashboard',
+      // El titulo LOCALIZADO viene de play-store; las `actions` NO.
+      //
+      // play-store las declaraba aqui (tema, idioma y campana), pero las
+      // observaciones del 2026-09-19 movieron esas tres al propio
+      // `MechanicScaffold`, que las pone SIEMPRE — justo porque cada pantalla
+      // tenia que acordarse y solo el dashboard lo hacia. Conservar las de
+      // play-store al fusionar habria pintado la barra DOS VECES, y nada lo
+      // habria dicho: compila, analiza limpio y solo se ve mirando la
+      // pantalla. Lo dice el propio contrato de `MechanicScaffold.actions`.
+      title: context.l10n.mechanicDashboardTitle,
+      // Solo la accion PROPIA de esta pantalla. Las tres comunes que mi rama
+      // traia aqui (tema, idioma y campana) las pone ya el scaffold: ver el
+      // comentario de arriba.
       actions: const [
-        _TemaIdiomaActions(),
-        SizedBox(width: AppSpacing.base),
-        NotificationBellButton(),
+        // IA-01 — el asistente sirve tambien al taller: su agenda son las
+        // citas confirmadas de los proximos dias, no los vencimientos.
+        // `construirAgenda` resuelve el rol y el taller efectivo por su
+        // cuenta, asi que el cliente no manda ni el uid ni el taller.
+        _AbrirAsistenteAction(),
       ],
       body: SingleChildScrollView(
         child: AppPageBody(
@@ -103,9 +115,50 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                 const SizedBox(height: AppSpacing.xxl),
                 _buildDashboardMetrics(colors, userData.idUsuario),
                 const SizedBox(height: AppSpacing.xxl),
-                _buildIncomeChartSection(colors, userData.idUsuario),
-                const SizedBox(height: AppSpacing.xxl),
-                _buildRecentServices(colors, userData.idUsuario),
+                // Observaciones del 2026-09-19 («que sea más ordenado y más
+                // limpio en la PC»): en escritorio la gráfica y los servicios
+                // recientes van lado a lado. Apilados, el dashboard eran tres
+                // pantallazos de scroll con media ventana vacía a los lados
+                // de la gráfica.
+                //
+                // Decide por `constraints.maxWidth` y no por el ancho de la
+                // ventana: el sidebar fijo del panel se lleva 280 px, así que
+                // la ventana es 280 px más ancha que el contenido y mirarla a
+                // ella parte en dos columnas que no caben. Mismo criterio que
+                // `AppGrid`.
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final grafica = _buildIncomeChartSection(
+                      colors,
+                      userData.idUsuario,
+                    );
+                    final recientes = _buildRecentServices(
+                      colors,
+                      userData.idUsuario,
+                    );
+                    if (constraints.maxWidth < 1000) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          grafica,
+                          const SizedBox(height: AppSpacing.xxl),
+                          recientes,
+                        ],
+                      );
+                    }
+                    return Row(
+                      // Cada tarjeta mide lo que su contenido: estirar la
+                      // lista de recientes hasta el alto de la gráfica deja
+                      // un hueco vacío debajo de la última fila.
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(flex: 3, child: grafica),
+                        const SizedBox(width: AppSpacing.xl),
+                        Expanded(flex: 2, child: recientes),
+                      ],
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -132,58 +185,73 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
   }
 
   Widget _buildQuickActions(AppColors colors) {
-    return Container(
-      padding: EdgeInsets.all(Responsive.padding(context, AppSpacing.xl)),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [colors.primary, colors.primary.withValues(alpha: 0.8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(AppRadius.xxl),
-        boxShadow: [
-          BoxShadow(
-            color: colors.primary.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+    // Ancho explícito: `Wrap` se encoge a su contenido, así que al acotar el
+    // botón (abajo) la barra entera se quedaba a media pantalla en vez de
+    // ocupar el ancho del contenido, como las tarjetas de debajo.
+    return SizedBox(
+      width: double.infinity,
+      child: Container(
+        padding: EdgeInsets.all(Responsive.padding(context, AppSpacing.xl)),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [colors.primary, colors.primary.withValues(alpha: 0.8)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-        ],
-      ),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: AppSpacing.base,
-        runSpacing: AppSpacing.base,
-        children: [
-          ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 200),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Atención Rápida',
-                  style: AppTextStyles.labelLarge.copyWith(
-                    color: colors.secondary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'Inicia un nuevo servicio buscando la placa del vehículo.',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: colors.onPrimary,
-                  ),
-                ),
-              ],
+          borderRadius: BorderRadius.circular(AppRadius.xxl),
+          boxShadow: [
+            BoxShadow(
+              color: colors.primary.withValues(alpha: 0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
             ),
-          ),
-          AppButton(
-            text: 'Buscar',
-            onPressed: () => context.push('/mechanic_search'),
-            icon: Icon(Icons.search, size: Responsive.iconSize(context, 18)),
-          ),
-        ],
+          ],
+        ),
+        child: Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: AppSpacing.base,
+          runSpacing: AppSpacing.base,
+          children: [
+            ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 200),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Atención Rápida',
+                    style: AppTextStyles.labelLarge.copyWith(
+                      color: colors.secondary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Inicia un nuevo servicio buscando la placa del vehículo.',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: colors.onPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // `AppButton` ocupa todo el ancho que le den, y en un `Wrap` eso
+            // es la barra entera: el botón salía de borde a borde debajo del
+            // texto en vez de al lado (captura del 2026-09-19).
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 220),
+              child: AppButton(
+                text: 'Buscar',
+                onPressed: () => context.push('/mechanic_search'),
+                icon: Icon(
+                  Icons.search,
+                  size: Responsive.iconSize(context, 18),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -253,11 +321,15 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
               mediumColumns: 2,
               expandedColumns: 3,
               largeColumns: 3,
-              spacing: AppSpacing.xl,
-              // Columnas de ~276 px (medium) a ~373 px (large con
-              // maxContentWidth 1200). La tarjeta necesita ~110 px de alto:
-              // caja de icono de 64 más padding. 2.6 deja entre 106 y 143.
-              childAspectRatio: 2.6,
+              spacing: AppSpacing.base,
+              // Alto fijo y no proporción: con `childAspectRatio` el alto
+              // crece con el ancho, así que en escritorio estas tarjetas —
+              // cuyo contenido no crece— quedaban enormes y medio vacías
+              // (observaciones del 2026-09-19, la misma causa que en el
+              // perfil del vehículo). 104 es lo que mide su contenido: caja
+              // de icono de 40, título, valor y subtítulo, más el padding de
+              // `AppCard`. `AppGrid` lo escala con el texto del sistema.
+              mainAxisExtent: 104,
               children: [
                 _MetricCard(
                   title: 'Ingresos (Mes)',
@@ -564,53 +636,28 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
   }
 }
 
-/// Conmutadores de tema e idioma. Estaban escritos dos veces —una en el
-/// `AppBar` de teléfono y otra en la barra de escritorio— con distinto color
-/// cada uno. `MechanicScaffold` los pinta en la barra que corresponda.
-class _TemaIdiomaActions extends StatelessWidget {
-  const _TemaIdiomaActions();
+/// Entrada del taller al asistente de agenda (IA-01).
+///
+/// Es un widget propio y no un `IconButton` suelto dentro de `actions` porque
+/// `actions` es `const` y necesita un `BuildContext` para el tooltip
+/// traducido y para navegar.
+class _AbrirAsistenteAction extends StatelessWidget {
+  const _AbrirAsistenteAction();
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.appColors;
-
-    return Consumer2<ThemeProvider, LanguageProvider>(
-      builder: (context, themeProvider, languageProvider, _) {
-        final isDark = themeProvider.isDarkMode;
-        final isEnglish = languageProvider.currentLocale.languageCode == 'en';
-
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              tooltip: isDark
-                  ? 'Cambiar a modo claro'
-                  : 'Cambiar a modo oscuro',
-              icon: Icon(
-                isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-                color: colors.primary,
-              ),
-              onPressed: themeProvider.toggleTheme,
-            ),
-            IconButton(
-              tooltip: isEnglish ? 'Cambiar a español' : 'Switch to English',
-              onPressed: () =>
-                  languageProvider.changeLanguage(isEnglish ? 'es' : 'en'),
-              icon: Text(
-                isEnglish ? 'EN' : 'ES',
-                style: AppTextStyles.labelLarge.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colors.primary,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+    return IconButton(
+      key: const Key('mechanic-abrir-asistente'),
+      tooltip: context.l10n.asistenteAbrir,
+      icon: Icon(Icons.auto_awesome_outlined, color: context.appColors.primary),
+      onPressed: () => context.push('/asistente'),
     );
   }
 }
 
+/// Conmutadores de tema e idioma. Estaban escritos dos veces —una en el
+/// `AppBar` de teléfono y otra en la barra de escritorio— con distinto color
+/// cada uno. `MechanicScaffold` los pinta en la barra que corresponda.
 /// Tarjeta de un KPI del dashboard. `AppGrid` decide su celda; la tarjeta
 /// solo rellena el espacio que recibe — antes un `SizedBox(width: ...)`
 /// interno duplicaba el ancho que ya fijaba el `Wrap` externo (más el

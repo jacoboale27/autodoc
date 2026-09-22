@@ -1,9 +1,9 @@
 // test/features/mechanic/presentation/pages/initiate_service_materiales_test.dart
 //
 // Task 7 (B1) reemplazó el diálogo "Agregar Material" de esta pantalla por
-// las mismas filas editables en línea que ya usaba `CotizacionPicker`
+// las mismas filas editables en línea que ya usaba `NuevaCotizacionScreen`
 // (`CotizacionItemsForm`, en `cotizacion_form.dart`). Ese cambio de mecanismo
-// es justo lo que `cotizacion_picker_test.dart` e
+// es justo lo que `nueva_cotizacion_screen_test.dart` e
 // `initiate_service_finalizar_test.dart` no cubren — ninguno de los dos
 // tocaba materiales. Estos tests cierran ese hueco: agregar/quitar renglones,
 // el atajo "Desde catálogo", y el defecto que abrió la revisión (Fix 1) —
@@ -203,7 +203,9 @@ void main() {
             )
             .controller!
             .text,
-        'Bujía',
+        // El catálogo es de mano de obra (observaciones del 2026-09-19): el
+        // renglón lo dice para que no se confunda con un repuesto.
+        'Bujía (mano de obra)',
       );
       expect(
         tester

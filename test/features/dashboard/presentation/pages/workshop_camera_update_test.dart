@@ -1,37 +1,27 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/workshop_directory_screen.dart';
 
-// `GoogleMapController` (google_maps_flutter 2.17.0) solo se puede construir
-// a través de su factory `init()`, que exige un `_GoogleMapState` privado y
-// un `GoogleMapsFlutterPlatform.instance.init(id)` con soporte de plataforma
-// real: no hay forma de instanciarlo ni de simularlo en un test sin montar
-// infraestructura de plataforma para mapas (inexistente en este repo). Por
-// eso `workshopCameraUpdate` se extrajo como función pura: no prueba que
-// `animateCamera` llegue a invocarse, pero sí que el tap de la tarjeta del
-// mapa sigue calculando el destino correcto tras mover el onTap de un
-// GestureDetector externo a la propia AppCard.
+// `workshopCameraUpdate` es una función pura: dice a qué punto se mueve el
+// mapa al tocar la tarjeta de un taller en la lista. Lo que cubre es ESE
+// cálculo (y que un taller sin coordenadas no mueva el mapa a ninguna parte),
+// no la mecánica de mover la cámara.
+//
+// Devolvía un `CameraUpdate` de Google Maps, que ni siquiera se podía
+// instanciar en un test sin infraestructura de plataforma. Desde el
+// 2026-09-20 el mapa es OpenStreetMap dibujado por Flutter, así que esto es
+// ya un `LatLng` corriente y el test no necesita rodeos.
 void main() {
-  test(
-    'workshopCameraUpdate centra en las coordenadas del taller a zoom 15',
-    () {
-      final expected = CameraUpdate.newLatLngZoom(
-        const LatLng(13.7, -89.2),
-        15,
-      );
+  test('workshopCameraUpdate centra en las coordenadas del taller', () {
+    final destino = workshopCameraUpdate({'latitud': 13.7, 'longitud': -89.2});
 
-      final update = workshopCameraUpdate({'latitud': 13.7, 'longitud': -89.2});
-
-      expect(update?.toJson(), expected.toJson());
-    },
-  );
+    expect(destino, const LatLng(13.7, -89.2));
+  });
 
   test('workshopCameraUpdate acepta enteros (num.toDouble)', () {
-    final expected = CameraUpdate.newLatLngZoom(const LatLng(13.0, -89.0), 15);
+    final destino = workshopCameraUpdate({'latitud': 13, 'longitud': -89});
 
-    final update = workshopCameraUpdate({'latitud': 13, 'longitud': -89});
-
-    expect(update?.toJson(), expected.toJson());
+    expect(destino, const LatLng(13.0, -89.0));
   });
 
   test('workshopCameraUpdate es null si el taller no tiene coordenadas', () {

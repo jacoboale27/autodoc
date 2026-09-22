@@ -88,6 +88,10 @@ async function notificarAlertasVencidas(db, messaging, opciones = {}) {
     sinDestinatario: 0,
     fallidas: 0,
     noMarcadas: 0,
+    // Notas del centro de notificaciones que `writeNotification` no pudo
+    // escribir. El escalon se marca igual, asi que este contador es la UNICA
+    // senal de que alguien se quedo sin su aviso en la app.
+    notasFallidas: 0,
   };
   let cursor = null;
 
@@ -168,13 +172,31 @@ async function notificarAlertasVencidas(db, messaging, opciones = {}) {
           data: { type: 'alerta', alertaId: doc.id, vehiculoId: alerta.id_vehiculo },
         });
       }
-      await escribirNotificacion(propietarioId, {
+      // El valor devuelto SI se mira. `writeNotification` se traga su error y
+      // no relanza, asi que un fallo escribiendo la nota no llegaba al `catch`
+      // de abajo: se seguia adelante, **se marcaba el escalon** y la nota se
+      // perdia para siempre — justo lo contrario de lo que afirma el
+      // comentario de ese catch. Lo destapo el gate de rendimiento al revisar
+      // el barrido hermano.
+      //
+      // Aqui solo se hace VISIBLE (se cuenta y se registra). No se deja de
+      // marcar el escalon, porque reintentar manana reenviaria tambien el
+      // push que ya se entrego: elegir entre una nota perdida y un push
+      // duplicado es decision de producto y queda anotada como gap.
+      const notaEscrita = await escribirNotificacion(propietarioId, {
         tipo: 'alerta',
         titulo: texto.title,
         body: texto.body,
         deepLink: '/alerts',
         metadata: { alertaId: doc.id, vehiculoId: alerta.id_vehiculo },
       });
+      if (notaEscrita === false) {
+        resumen.notasFallidas += 1;
+        console.error(
+          `Nota de alerta no escrita para ${propietarioId} (alerta ${doc.id}); ` +
+            'el escalon se marca igual: la nota NO se reintenta.'
+        );
+      }
     } catch (e) {
       // No se marca el escalon: si se marcara, un fallo de entrega consumiria
       // el aviso y la alerta no volveria a avisarse nunca.

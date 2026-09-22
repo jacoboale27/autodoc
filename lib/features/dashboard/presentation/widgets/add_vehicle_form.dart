@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/models/vehicle_model.dart';
 import '../../../../core/utils/plate_formatter.dart';
+import 'package:autodoc/core/constants/tipos_vehiculo.dart';
 import '../../../../core/models/nhtsa_models.dart';
 import '../../../../core/services/vehicle_api_service.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -39,66 +40,10 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
   String _searchQuery = '';
   String _brandSearchQuery = '';
 
-  static const List<String> _popularMakes = [
-    'Toyota',
-    'Nissan',
-    'Honda',
-    'Hyundai',
-    'Kia',
-    'Chevrolet',
-    'Ford',
-    'Mazda',
-    'Volkswagen',
-    'Renault',
-    'Peugeot',
-    'Suzuki',
-    'Mitsubishi',
-    'Subaru',
-    'BMW',
-    'Mercedes-Benz',
-    'Audi',
-    'Jeep',
-    'Fiat',
-    'Dodge',
-    'Volvo',
-    'Lexus',
-    'Porsche',
-    'Land Rover',
-    'Jaguar',
-    'Mini',
-    'Alfa Romeo',
-    'Acura',
-    'Infiniti',
-    'Lincoln',
-    'Buick',
-    'Cadillac',
-    'Chrysler',
-    'GMC',
-    'Ram',
-    'Tesla',
-    'Seat',
-    'Skoda',
-    'Citroen',
-    'Chery',
-    'MG',
-    'JAC',
-    'Changan',
-    'Geely',
-    'Great Wall',
-    'BYD',
-    'Haval',
-    'SsangYong',
-    'Isuzu',
-    'Aston Martin',
-    'Ferrari',
-    'Lamborghini',
-    'Maserati',
-    'McLaren',
-    'Bentley',
-    'Rolls Royce',
-    'Genesis',
-    'Smart',
-  ];
+  /// Qué se está registrando (observaciones del 2026-09-19): decide las
+  /// marcas que se ofrecen, qué modelos se piden y el tipo de placa por
+  /// defecto.
+  TipoVehiculo? _tipoVehiculo;
 
   // API Data
   final VehicleApiService _apiService = VehicleApiService();
@@ -148,7 +93,7 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
     if (nuevo == _tipoPlaca) return;
     var correlativo = _placaController.text.trim().toUpperCase();
     if (correlativo.startsWith(_tipoPlaca.prefijo)) {
-      correlativo = correlativo.substring(1);
+      correlativo = correlativo.substring(_tipoPlaca.prefijo.length);
     }
     setState(() {
       _tipoPlaca = nuevo;
@@ -166,6 +111,10 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
         return context.l10n.addVehiclePlateTypeCarga;
       case TipoPlaca.alquiler:
         return context.l10n.addVehiclePlateTypeAlquiler;
+      case TipoPlaca.microbus:
+        return context.l10n.addVehiclePlateTypeMicrobus;
+      case TipoPlaca.autobus:
+        return context.l10n.addVehiclePlateTypeAutobus;
     }
   }
 
@@ -271,7 +220,17 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
       _modelsError = null;
     });
     try {
-      final models = await _apiService.fetchModelsByMake(makeName);
+      final tipoNhtsa = _tipoVehiculo?.tipoNhtsa;
+      var models = await _apiService.fetchModelsByMakeAndType(
+        makeName,
+        tipoNhtsa,
+      );
+      // NHTSA no clasifica igual todas las marcas: si el filtro por tipo no
+      // trae nada, se ofrecen todos sus modelos antes que ninguno.
+      if (models.isEmpty && tipoNhtsa != null) {
+        models = await _apiService.fetchModelsByMake(makeName);
+      }
+      if (!mounted) return;
       setState(() {
         _makeModels = models;
         _isLoadingModels = false;
@@ -335,12 +294,14 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
   Widget _buildCurrentStep() {
     switch (_currentStep) {
       case 0:
-        return _buildBrandStep();
+        return _buildTipoStep();
       case 1:
-        return _buildModelStep();
+        return _buildBrandStep();
       case 2:
-        return _buildDetailsStep();
+        return _buildModelStep();
       case 3:
+        return _buildDetailsStep();
+      case 4:
         return _buildSuccessStep();
       default:
         return const SizedBox();
@@ -354,7 +315,7 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (_currentStep > 0 && _currentStep < 3)
+          if (_currentStep > 0 && _currentStep < 4)
             IconButton(
               onPressed: _prevStep,
               icon: Icon(
@@ -382,48 +343,121 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
     );
   }
 
+  void _elegirTipo(TipoVehiculo tipo) {
+    var correlativo = _placaController.text.trim().toUpperCase();
+    if (correlativo.startsWith(_tipoPlaca.prefijo)) {
+      correlativo = correlativo.substring(_tipoPlaca.prefijo.length);
+    }
+    setState(() {
+      _tipoVehiculo = tipo;
+      _tipoPlaca = tipo.placaPorDefecto;
+      _placaController.text = correlativo.isEmpty
+          ? ''
+          : componerPlaca(_tipoPlaca, correlativo);
+      _brandSearchQuery = '';
+    });
+    _nextStep();
+  }
+
+  Widget _buildTipoStep() {
+    final colors = context.appColors;
+    return Column(
+      key: const ValueKey('tipo'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStepHeader(
+          context.l10n.addVehicleType,
+          context.l10n.addVehicleTypeSubtitle,
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final columnas = constraints.maxWidth >= 520 ? 3 : 2;
+                final ancho =
+                    ((constraints.maxWidth - 12 * (columnas - 1)) / columnas)
+                        .floorToDouble();
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    for (final tipo in TipoVehiculo.values)
+                      SizedBox(
+                        width: ancho,
+                        child: Material(
+                          color: colors.surfaceContainer,
+                          borderRadius: BorderRadius.circular(16),
+                          child: InkWell(
+                            key: Key('tipo_vehiculo_${tipo.id}'),
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () => _elegirTipo(tipo),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 20,
+                                horizontal: 12,
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    tipo.icono,
+                                    size: 36,
+                                    color: widget.primaryColor,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    tipo.etiqueta(context.l10n),
+                                    textAlign: TextAlign.center,
+                                    style: AppTextStyles.labelLarge.copyWith(
+                                      color: colors.textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildBrandStep() {
     final colors = context.appColors;
-    final popularMakesLower = _popularMakes
-        .map((e) => e.toLowerCase())
-        .toList();
+    final curadas = (_tipoVehiculo ?? TipoVehiculo.automovil).marcas;
+    final consulta = _brandSearchQuery.trim().toLowerCase();
 
-    List<CarMake> filteredMakes;
-
-    if (_brandSearchQuery.trim().isEmpty) {
-      filteredMakes = _allMakes
-          .where((m) => popularMakesLower.contains(m.makeName.toLowerCase()))
-          .toList();
-
-      filteredMakes.sort((a, b) {
-        return popularMakesLower
-            .indexOf(a.makeName.toLowerCase())
-            .compareTo(popularMakesLower.indexOf(b.makeName.toLowerCase()));
-      });
+    // Sin búsqueda, las marcas frecuentes de ESE tipo de vehículo, aunque la
+    // API de NHTSA (de EE. UU.) no las tenga: Italika o Hino no salen allí.
+    // Al buscar, primero las frecuentes que coincidan y luego las de NHTSA.
+    final List<String> filteredMakes;
+    if (consulta.isEmpty) {
+      filteredMakes = curadas;
     } else {
-      filteredMakes = _allMakes
-          .where(
-            (m) => m.makeName.toLowerCase().contains(
-              _brandSearchQuery.trim().toLowerCase(),
-            ),
-          )
-          .take(50)
-          .toList();
-
-      filteredMakes.sort((a, b) {
-        final aLower = a.makeName.toLowerCase();
-        final bLower = b.makeName.toLowerCase();
-        final aIsPopular = popularMakesLower.contains(aLower);
-        final bIsPopular = popularMakesLower.contains(bLower);
-
-        if (aIsPopular && !bIsPopular) return -1;
-        if (!aIsPopular && bIsPopular) return 1;
-        return aLower.compareTo(bLower);
-      });
+      final curadasLower = curadas.map((m) => m.toLowerCase()).toSet();
+      filteredMakes = [
+        ...curadas.where((m) => m.toLowerCase().contains(consulta)),
+        ..._allMakes
+            .map((m) => m.makeName)
+            .where(
+              (m) =>
+                  m.toLowerCase().contains(consulta) &&
+                  !curadasLower.contains(m.toLowerCase()),
+            )
+            .take(50),
+      ];
     }
+    final buscandoEnApi = consulta.isNotEmpty && filteredMakes.isEmpty;
 
     return Column(
-      key: const ValueKey(0),
+      key: const ValueKey('marca'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildStepHeader(
@@ -442,9 +476,9 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
         ),
         const SizedBox(height: 16),
         Expanded(
-          child: _isLoadingMakes
+          child: buscandoEnApi && _isLoadingMakes
               ? const Center(child: CircularProgressIndicator())
-              : _makesError != null
+              : buscandoEnApi && _makesError != null
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -489,7 +523,7 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                       ),
                       child: ListTile(
                         title: Text(
-                          make.makeName,
+                          make,
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             color: colors.textPrimary,
@@ -501,8 +535,8 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                           color: colors.textSecondary,
                         ),
                         onTap: () {
-                          setState(() => _selectedBrand = make.makeName);
-                          _fetchModels(make.makeName);
+                          setState(() => _selectedBrand = make);
+                          _fetchModels(make);
                           _nextStep();
                         },
                       ),
@@ -885,7 +919,7 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
             child: Column(
               children: [
                 Icon(
-                  Icons.directions_car_filled_rounded,
+                  (_tipoVehiculo ?? TipoVehiculo.automovil).icono,
                   size: 100,
                   color: _getColorFromName(_colorController.text),
                 ),
@@ -923,6 +957,8 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                             int.tryParse(_kilometrajeController.text) ?? 0,
                         vencimientoTarjeta: _vencimientoTarjeta,
                         vencimientoSoat: _vencimientoSoat,
+                        tipoVehiculo:
+                            (_tipoVehiculo ?? TipoVehiculo.automovil).id,
                       );
 
                       try {

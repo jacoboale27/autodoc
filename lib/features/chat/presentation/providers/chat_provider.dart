@@ -64,6 +64,81 @@ class ChatProvider extends ChangeNotifier {
   int get totalNoLeidosMecanico =>
       _conversaciones.fold(0, (sum, item) => sum + item.noLeidosMecanico);
 
+  // ── Lector de la conversación abierta ──
+  //
+  // Observaciones del 2026-09-18: «los cheques de los mensajes no aparecen
+  // hasta que se refresca el chat». `marcarComoLeidos` solo se llamaba AL
+  // ABRIR la conversación, así que con las dos personas dentro, lo que una
+  // escribía nunca pasaba a "visto" para la otra hasta que alguna salía y
+  // volvía a entrar. Ahora, mientras una conversación está abierta y visible,
+  // cada mensaje nuevo del otro se marca como visto en cuanto llega.
+  String? _lectorConversacionId;
+  String? _lectorUid;
+  bool _lectorEsMecanico = false;
+  bool _lecturaEnPausa = false;
+  bool _marcandoLeidos = false;
+  bool _marcarOtraVez = false;
+
+  /// Conversación que el usuario tiene abierta en pantalla, o `null`. La usa
+  /// también el aviso de mensajes nuevos para no avisar de lo que ya se ve.
+  String? get conversacionAbierta =>
+      _lecturaEnPausa ? null : _lectorConversacionId;
+
+  /// Registra que [lectorId] está viendo [conversacionId]: a partir de aquí,
+  /// los mensajes del otro participante que lleguen se marcan como vistos.
+  void abrirConversacion(
+    String conversacionId, {
+    required String lectorId,
+    required bool lectorEsMecanico,
+  }) {
+    _lectorConversacionId = conversacionId;
+    _lectorUid = lectorId;
+    _lectorEsMecanico = lectorEsMecanico;
+    _lecturaEnPausa = false;
+    _marcarLeidosSiHaceFalta();
+  }
+
+  /// La pantalla del chat se cerró: lo que llegue ya no lo está viendo nadie.
+  void cerrarConversacion(String conversacionId) {
+    if (_lectorConversacionId != conversacionId) return;
+    _lectorConversacionId = null;
+    _lectorUid = null;
+  }
+
+  /// La app pasó a segundo plano (o la pestaña del navegador quedó oculta):
+  /// los mensajes que lleguen mientras tanto NO se han visto. Al volver se
+  /// marcan los que se acumularon.
+  void pausarLectura(bool enPausa) {
+    if (_lecturaEnPausa == enPausa) return;
+    _lecturaEnPausa = enPausa;
+    if (!enPausa) _marcarLeidosSiHaceFalta();
+  }
+
+  void _marcarLeidosSiHaceFalta() {
+    final conversacionId = _lectorConversacionId;
+    final uid = _lectorUid;
+    if (conversacionId == null || uid == null || uid.isEmpty) return;
+    if (_lecturaEnPausa) return;
+    final hayPorVer = _mensajesActuales.any(
+      (m) => m.idRemitente != uid && m.estado != kEstadoMensajeVisto,
+    );
+    if (!hayPorVer) return;
+    // Una sola marcación en vuelo: si llegan más mensajes mientras tanto, se
+    // repite al terminar en vez de lanzar consultas en paralelo.
+    if (_marcandoLeidos) {
+      _marcarOtraVez = true;
+      return;
+    }
+    _marcandoLeidos = true;
+    marcarComoLeidos(conversacionId, _lectorEsMecanico, uid).whenComplete(() {
+      _marcandoLeidos = false;
+      if (_marcarOtraVez) {
+        _marcarOtraVez = false;
+        _marcarLeidosSiHaceFalta();
+      }
+    });
+  }
+
   @override
   void dispose() {
     _conversacionesSub?.cancel();
@@ -85,11 +160,37 @@ class ChatProvider extends ChangeNotifier {
     _error = null;
     _isLoading = false;
     _conversacionesCargadas = false;
+    _lectorConversacionId = null;
+    _lectorUid = null;
+    _lecturaEnPausa = false;
+    _bandejaDe = null;
+    _bandejaComoMecanico = null;
     notifyListeners();
+  }
+
+  /// Para quién está abierta la suscripción de la bandeja (ver
+  /// [inicializarConversacionesSiHaceFalta]).
+  String? _bandejaDe;
+  bool? _bandejaComoMecanico;
+
+  /// Abre la bandeja solo si no está ya abierta para este usuario y rol.
+  ///
+  /// La usa el aviso de mensajes nuevos, que vive en toda la app: sin esta
+  /// guarda, cada reconstrucción volvería a suscribirse y la bandeja
+  /// parpadearía al estado de carga.
+  void inicializarConversacionesSiHaceFalta(String userId, bool isMecanico) {
+    if (_conversacionesSub != null &&
+        _bandejaDe == userId &&
+        _bandejaComoMecanico == isMecanico) {
+      return;
+    }
+    inicializarConversaciones(userId, isMecanico);
   }
 
   void inicializarConversaciones(String userId, bool isMecanico) {
     _conversacionesSub?.cancel();
+    _bandejaDe = userId;
+    _bandejaComoMecanico = isMecanico;
     _error = null;
     _conversacionesCargadas = false;
     _conversacionesSub = _chatRepository
@@ -157,6 +258,9 @@ class ChatProvider extends ChangeNotifier {
 
             _isLoading = false;
             notifyListeners();
+            if (_lectorConversacionId == conversacionId) {
+              _marcarLeidosSiHaceFalta();
+            }
           },
           onError: (e) {
             _error = mensajeSeguroDeError(e);
@@ -164,6 +268,20 @@ class ChatProvider extends ChangeNotifier {
             notifyListeners();
           },
         );
+  }
+
+  /// La conversación que ya exista entre este propietario y este taller,
+  /// sea del vehículo que sea, o `null`. Nunca crea una: el taller no puede
+  /// (las reglas solo dejan crearla al propietario).
+  Future<String?> conversacionExistente({
+    required String idPropietario,
+    required String idMecanico,
+  }) async {
+    final conversacion = await _chatRepository.buscarConversacion(
+      idPropietario: idPropietario,
+      idMecanico: idMecanico,
+    );
+    return conversacion?.id;
   }
 
   Future<String> iniciarOCrearConversacion({
@@ -238,6 +356,8 @@ class ChatProvider extends ChangeNotifier {
     Map<String, dynamic>? metadata,
     String? urlArchivo,
     int? duracionSegundos,
+    Map<String, dynamic>? respuestaA,
+    bool reenviado = false,
   }) async {
     try {
       final mensaje = MensajeModel(
@@ -249,6 +369,8 @@ class ChatProvider extends ChangeNotifier {
         timestamp: DateTime.now(),
         urlArchivo: urlArchivo,
         duracionSegundos: duracionSegundos,
+        respuestaA: respuestaA,
+        reenviado: reenviado,
       );
 
       await _chatRepository.enviarMensaje(

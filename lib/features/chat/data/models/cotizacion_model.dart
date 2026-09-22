@@ -58,6 +58,14 @@ class CotizacionModel {
   final double? manoDeObra;
   final List<Map<String, dynamic>>? materiales;
 
+  /// Marca, modelo, año y placa del coche cotizado (`VehiculoCotizado.toResumen`).
+  ///
+  /// Observaciones del 2026-09-19: "Mis Servicios" lista las cotizaciones del
+  /// taller y tiene que decir de QUÉ coche es cada una, pero el taller no
+  /// puede leer `vehiculos/{id}` hasta que recibe el coche. Las cotizaciones
+  /// anteriores no lo traen: la lista cae entonces a lo que se cotizó.
+  final Map<String, dynamic>? vehiculoResumen;
+
   CotizacionModel({
     required this.id,
     required this.idPropietario,
@@ -71,6 +79,7 @@ class CotizacionModel {
     required this.fecha,
     this.manoDeObra,
     this.materiales,
+    this.vehiculoResumen,
   });
 
   /// Resumen legible de los materiales/repuestos cotizados.
@@ -80,7 +89,30 @@ class CotizacionModel {
 
   /// Total que paga el cliente (sin incluir el beneficio del mecánico aparte;
   /// el beneficio ya está reflejado en el costo de cada renglón).
-  double get total => items.fold(0.0, (acc, i) => acc + i.subtotal);
+  ///
+  /// Incluye la mano de obra: desde las observaciones del 2026-09-18 la
+  /// cotización del chat es la misma que la de Buscar Vehículo, que siempre
+  /// la cobró aparte de los materiales. Las cotizaciones anteriores no traen
+  /// `mano_de_obra` y su total no cambia.
+  double get total =>
+      items.fold(0.0, (acc, i) => acc + i.subtotal) + (manoDeObra ?? 0);
+
+  /// Los renglones con la forma que espera el registro de servicio
+  /// (`AlertProvider.tallerUpdateService`): así, al cerrar el servicio de una
+  /// cotización aprobada, el historial del cliente muestra el mismo desglose
+  /// que aceptó en vez de quedarse sin materiales.
+  static List<Map<String, dynamic>> materialesDesdeItems(
+    List<CotizacionItem> items,
+  ) => items
+      .where((i) => i.material.trim().isNotEmpty)
+      .map(
+        (i) => {
+          'nombre': i.material,
+          'cantidad': i.cantidad,
+          'precioUnitario': i.costo,
+        },
+      )
+      .toList();
 
   factory CotizacionModel.fromMap(Map<String, dynamic> map, String documentId) {
     final rawItems = map['items'] as List? ?? const [];
@@ -101,6 +133,9 @@ class CotizacionModel {
       materiales: map['materiales'] is List
           ? List<Map<String, dynamic>>.from(map['materiales'])
           : null,
+      vehiculoResumen: map['vehiculo_resumen'] is Map
+          ? Map<String, dynamic>.from(map['vehiculo_resumen'] as Map)
+          : null,
     );
   }
 
@@ -120,6 +155,8 @@ class CotizacionModel {
       'fecha': Timestamp.fromDate(fecha),
       if (manoDeObra != null) 'mano_de_obra': manoDeObra,
       if (materiales != null) 'materiales': materiales,
+      if (vehiculoResumen != null && vehiculoResumen!.isNotEmpty)
+        'vehiculo_resumen': vehiculoResumen,
     };
   }
 
@@ -153,6 +190,7 @@ class CotizacionModel {
       fecha: fecha,
       manoDeObra: manoDeObra,
       materiales: materiales,
+      vehiculoResumen: vehiculoResumen,
     );
   }
 }

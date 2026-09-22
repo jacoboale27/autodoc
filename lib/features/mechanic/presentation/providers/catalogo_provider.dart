@@ -4,9 +4,10 @@ import 'package:autodoc/core/models/catalogo_item_model.dart';
 import 'package:autodoc/features/mechanic/data/repositories/catalogo_repository.dart';
 import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
-/// Gestiona el catálogo rápido de servicios/repuestos de un taller
-/// (`talleres/{idTaller}/catalogo_servicios`), permitiendo agregarlo con un
-/// clic a la lista de materiales de una factura (Task 10).
+/// Gestiona el catálogo de mano de obra del taller
+/// (`talleres/{idTaller}/catalogo_servicios`): servicios con su precio
+/// estimado, que se agregan con un clic a una cotización (ver
+/// [CatalogoItemModel]).
 class CatalogoProvider extends ChangeNotifier {
   final CatalogoRepository _repository;
   StreamSubscription<List<CatalogoItemModel>>? _sub;
@@ -54,7 +55,11 @@ class CatalogoProvider extends ChangeNotifier {
         );
   }
 
-  Future<void> agregar(String nombre, double precio) async {
+  Future<void> agregar(
+    String nombre,
+    double precio, {
+    double? precioMax,
+  }) async {
     if (_idTaller == null || _idTaller!.isEmpty) {
       _error = 'idTaller vacío: no hay taller asociado a esta cuenta';
       notifyListeners();
@@ -68,7 +73,50 @@ class CatalogoProvider extends ChangeNotifier {
         idTaller: _idTaller!,
         nombre: nombre,
         precio: precio,
+        precioMax: precioMax,
       );
+    } catch (e) {
+      _error = mensajeSeguroDeError(e);
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Añade los [serviciosComunesManoDeObra] que el taller todavía no tenga
+  /// (por nombre, sin distinguir mayúsculas). Devuelve cuántos añadió.
+  /// [tipos] son los `TipoVehiculo.id` que el taller declaró atender: las
+  /// sugerencias salen de ahí (observación del 2026-09-20). Vacío = solo lo
+  /// común a todos.
+  Future<int> cargarServiciosComunes({
+    Iterable<String> tipos = const [],
+  }) async {
+    final idTaller = _idTaller;
+    if (idTaller == null || idTaller.isEmpty) {
+      _error = 'idTaller vacío: no hay taller asociado a esta cuenta';
+      notifyListeners();
+      throw StateError(_error!);
+    }
+    final existentes = _items.map((i) => i.nombre.trim().toLowerCase()).toSet();
+    final nuevos = [
+      for (final s in serviciosComunesPara(tipos))
+        if (!existentes.contains(s.nombre.toLowerCase()))
+          CatalogoItemModel(
+            idItem: '',
+            idTaller: idTaller,
+            nombre: s.nombre,
+            precio: s.desde,
+            precioMax: s.hasta,
+          ),
+    ];
+    if (nuevos.isEmpty) return 0;
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _repository.agregarVarios(idTaller, nuevos);
+      return nuevos.length;
     } catch (e) {
       _error = mensajeSeguroDeError(e);
       rethrow;

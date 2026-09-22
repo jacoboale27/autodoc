@@ -18,6 +18,39 @@ class ReparacionRepository {
   /// de un cliente recurrente sin dejar la consulta sin tope.
   static const int _maxTicketsPorVehiculoTaller = 20;
 
+  /// ¿Este ticket ya tiene su servicio registrado, o sea el cobro generado?
+  ///
+  /// Observación del 2026-09-19: se entregó un vehículo desde el tablero sin
+  /// haber finalizado el servicio, y después no había forma de cobrarlo.
+  /// Entregar revoca el vínculo y saca el ticket del tablero, y el perfil del
+  /// coche solo ofrece «Continuar servicio» mientras el ticket sigue vivo:
+  /// el trabajo quedaba hecho, sin factura y sin ninguna vía para emitirla.
+  ///
+  /// Se mide por el hecho (existe un `servicios` de este vehículo y este
+  /// taller posterior a la apertura del ticket) y NO por el estado del
+  /// tablero: a `listo_para_entrega` también se llega a mano con el botón
+  /// «Avanzar», sin haber registrado nada.
+  ///
+  /// `orderBy` + `limit(1)` y la comparación de fechas en memoria, en vez de
+  /// una desigualdad sobre `fecha`: la consulta queda con la MISMA forma que
+  /// las otras de `servicios` (dos igualdades + orden por fecha) y la sirve el
+  /// índice que ya existe, sin declarar uno nuevo.
+  Future<bool> tieneServicioRegistrado(ReparacionModel reparacion) async {
+    final snap = await _firestore
+        .collection(FirestoreCollections.servicios)
+        .where('id_vehiculo', isEqualTo: reparacion.idVehiculo)
+        .where('id_taller', isEqualTo: reparacion.idTaller)
+        .orderBy('fecha', descending: true)
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) return false;
+    final fecha = snap.docs.first.data()['fecha'];
+    if (fecha is! Timestamp) return false;
+    // `isBefore` sobre la apertura del ticket = es el servicio de una visita
+    // ANTERIOR de este mismo cliente, no el de esta.
+    return !fecha.toDate().isBefore(reparacion.fechaCreacion);
+  }
+
   /// Busca el ticket de reparación **de la visita actual** de este vehículo en
   /// este taller, o `null` si no hay ninguno.
   ///

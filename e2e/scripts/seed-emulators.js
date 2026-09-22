@@ -101,6 +101,39 @@ const ACTORES = {
   },
 };
 
+/**
+ * Una fecha a N dias, anclada al MEDIODIA de Bogota (17:00 UTC).
+ *
+ * El anclaje no es cosmetico. `construirAgenda` calcula los dias con
+ * `diasLocalesEntre` y `DESFASE_MINUTOS_BOGOTA = -300`, o sea contando dias
+ * de CALENDARIO local, no periodos de 24 h. Sembrar con `Date.now() + n*24h`
+ * hace que el numero de dias que ve el asistente dependa de la hora a la que
+ * se lance la suite: una corrida a las 23:00 daria n, y una a las 00:30 del
+ * dia siguiente daria n-1. Es el mismo error que OPS-01 cometio calculando
+ * «manana» en UTC y descoloco las citas de la tarde.
+ *
+ * Con el ancla al mediodia hay doce horas de margen por cada lado, asi que el
+ * numero es estable venga la corrida a la hora que venga.
+ */
+const DESFASE_MINUTOS_BOGOTA = -300;
+
+function enDiasAlMediodia(n) {
+  // El dia de partida es el de BOGOTA, no el de UTC. Parece un detalle y no lo
+  // es: entre las 00:00 y las 04:59 UTC son las 19:00-23:59 del dia ANTERIOR
+  // en Bogota, asi que la fecha UTC ya paso de dia mientras la local no. Con
+  // un ancla sobre `getUTCDate()`, una corrida lanzada en esa franja sembraba
+  // todo un dia mas alla y el asistente veia 6 dias donde el spec esperaba 5.
+  // Medido barriendo las 24 horas: desviaba en cinco de ellas.
+  const local = new Date(Date.now() + DESFASE_MINUTOS_BOGOTA * 60000);
+  const medianocheLocal = Date.UTC(
+    local.getUTCFullYear(),
+    local.getUTCMonth(),
+    local.getUTCDate() + n
+  );
+  // Mediodia local, devuelto a UTC. Doce horas de margen por cada lado.
+  return new Date(medianocheLocal + 12 * 3600000 - DESFASE_MINUTOS_BOGOTA * 60000);
+}
+
 async function crearUsuario(actor) {
   try {
     await auth.deleteUser(actor.uid);
@@ -136,6 +169,16 @@ async function main() {
 
   // Un vehiculo por propietario, para tener el par permitido/denegado de
   // cualquier lectura cruzada.
+  // IA-01: los vencimientos del vehiculo de A son RELATIVOS al momento de
+  // sembrar, no fechas fijas. `construirAgenda` mira una ventana de 30 dias,
+  // asi que una fecha escrita a mano deja de aparecer en la agenda en cuanto
+  // pasa, y el spike del asistente se quedaria afirmando sobre una lista
+  // vacia sin que nada se pusiera rojo — el peor modo de fallo de un fixture.
+  //
+  // `vencimiento_tarjeta` esta a proposito: se guarda y se parsea en
+  // `VehicleModel` pero **no lo muestra ninguna pantalla de la app**. El
+  // asistente es el primer sitio del producto donde ese dato le llega a
+  // alguien, asi que el E2E lo cubre.
   await db.collection('vehiculos').doc('e2e-vehiculo-a').set({
     id_vehiculo: 'e2e-vehiculo-a',
     id_propietario: ACTORES.propietarioA.uid,
@@ -144,6 +187,8 @@ async function main() {
     modelo: 'Corolla',
     anio: 2020,
     kilometraje_actual: 45000,
+    vencimiento_soat: enDiasAlMediodia(5),
+    vencimiento_tarjeta: enDiasAlMediodia(20),
     talleres_vinculados: [ACTORES.tallerA.uid],
     talleres_conocidos: [ACTORES.tallerA.uid],
   });
@@ -188,6 +233,27 @@ async function main() {
     kilometraje_servicio: 38000,
     costo: 0,
     fecha: new Date('2026-01-15T15:00:00Z'),
+  });
+
+  // IA-01: una cita confirmada del taller A, dentro de la ventana.
+  //
+  // Es la OTRA rama de `construirAgenda`: la del taller resuelve el rol, su
+  // estado y su taller efectivo, y lee `reservas` por `id_taller`. Sin este
+  // documento, la mitad server-side que mas autorizacion tiene no la ejerce
+  // nadie de punta a punta.
+  //
+  // `id_vehiculo` va aunque `reservas` no guarde `placa`: la placa la resuelve
+  // el servidor con `leerPlacas`, y sin el id no tendria de donde sacarla —
+  // el taller veria todas sus citas con `placa: null`.
+  await db.collection('reservas').doc('e2e-reserva-taller-a').set({
+    id_reserva: 'e2e-reserva-taller-a',
+    id_taller: ACTORES.tallerA.uid,
+    id_mecanico: ACTORES.tallerA.uid,
+    id_propietario: ACTORES.propietarioA.uid,
+    id_vehiculo: 'e2e-vehiculo-a',
+    estado: 'confirmada',
+    tipo_servicio: 'Cambio de aceite',
+    fecha_hora_propuesta: enDiasAlMediodia(2),
   });
 
   // Ficha publica del taller aprobado, que es lo que alimenta el directorio.

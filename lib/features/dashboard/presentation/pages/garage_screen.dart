@@ -8,6 +8,7 @@ import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/core/widgets/vehicle_image_widget.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_motion.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
@@ -15,6 +16,7 @@ import 'package:autodoc/core/theme/app_severity.dart';
 import 'package:autodoc/core/theme/app_shadows.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_empty_state.dart';
 import 'package:autodoc/core/widgets/app_grid.dart';
@@ -27,9 +29,29 @@ import 'package:uuid/uuid.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
+import '../utils/asegurar_datos_del_garaje.dart';
 
-class GarageScreen extends StatelessWidget {
+class GarageScreen extends StatefulWidget {
   const GarageScreen({super.key});
+
+  @override
+  State<GarageScreen> createState() => _GarageScreenState();
+}
+
+class _GarageScreenState extends State<GarageScreen> {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Sin esto, un F5 sobre /garage pintaba «No tienes vehiculos» teniendo
+    // tres: esta pantalla solo LEIA `vehicleProvider.vehicles` y quien los
+    // cargaba era el dashboard. Ver `asegurarDatosDelGaraje`.
+    //
+    // Va sin bandera de "ya inicializado" porque el propio helper es
+    // idempotente, y hace falta que se reintente: `didChangeDependencies`
+    // corre tambien cuando llega el perfil, que es justo el momento en que
+    // por fin hay un uid con el que pedir.
+    asegurarDatosDelGaraje(context);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -139,6 +161,11 @@ class GarageScreen extends StatelessWidget {
               ),
               onPressed: () => _showAddVehicleDialog(context, colors.primary),
             ),
+            // En `large` las lleva la barra superior del shell.
+            if (!AppBreakpoints.of(context).isLarge) ...[
+              const SizedBox(width: AppSpacing.sm),
+              const AccionesDeCabecera(),
+            ],
           ],
         ),
       ),
@@ -183,6 +210,7 @@ class GarageScreen extends StatelessWidget {
                     tag: 'vehicle_image_${vehicle.idVehiculo}',
                     child: VehicleImageWidget(
                       imageUrl: vehicle.fotoUrl,
+                      tipoVehiculo: vehicle.tipoVehiculo,
                       fit: BoxFit.cover,
                     ),
                   ),

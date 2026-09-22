@@ -4,18 +4,22 @@ import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provid
 
 import '../helpers/test_helpers.mocks.dart';
 
-VehicleModel fakeVehicle(int index, {List<String> notas = const []}) =>
-    VehicleModel(
-      idVehiculo: 'v$index',
-      idPropietario: 'u1',
-      placa: 'P00$index-123',
-      marca: 'Toyota',
-      modelo: 'Corolla',
-      anio: 2019 + index,
-      color: 'Blanco',
-      kilometrajeActual: 50000 + index * 1000,
-      notas: notas,
-    );
+VehicleModel fakeVehicle(
+  int index, {
+  List<String> notas = const [],
+  String? tipoVehiculo,
+}) => VehicleModel(
+  idVehiculo: 'v$index',
+  idPropietario: 'u1',
+  placa: 'P00$index-123',
+  marca: 'Toyota',
+  modelo: 'Corolla',
+  anio: 2019 + index,
+  color: 'Blanco',
+  kilometrajeActual: 50000 + index * 1000,
+  notas: notas,
+  tipoVehiculo: tipoVehiculo,
+);
 
 /// Provider de vehículos con datos fijos, sin tocar Firestore.
 ///
@@ -26,10 +30,7 @@ VehicleModel fakeVehicle(int index, {List<String> notas = const []}) =>
 /// de instanciar las clases reales.
 class FakeVehicleProvider extends VehicleProvider {
   FakeVehicleProvider(this._vehicles)
-    : super(
-        vehicleService: MockVehicleService(),
-        imageService: MockVehicleImageService(),
-      );
+    : super(vehicleService: MockVehicleService());
   final List<VehicleModel> _vehicles;
 
   @override
@@ -38,6 +39,17 @@ class FakeVehicleProvider extends VehicleProvider {
   @override
   VehicleModel? get selectedVehicle =>
       _vehicles.isEmpty ? null : _vehicles.first;
+
+  /// Lo que se mandó guardar. El provider real llama al servicio y luego
+  /// recarga; aquí basta con anotarlo para poder afirmar QUÉ se guardó (p. ej.
+  /// la foto principal nueva).
+  final List<VehicleModel> actualizados = [];
+
+  @override
+  Future<bool> updateVehicle(VehicleModel vehicle) async {
+    actualizados.add(vehicle);
+    return true;
+  }
 
   @override
   bool get isLoading => false;

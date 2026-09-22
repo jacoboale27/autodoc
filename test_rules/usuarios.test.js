@@ -292,7 +292,7 @@ describe('usuarios: URLs que acaban en un documento de lectura anonima', () => {
     );
   });
 
-  test('la galeria acepta hasta seis huecos y no mas', async () => {
+  test('la galeria acepta hasta siete huecos y no mas', async () => {
     // La galeria guarda nombres de hueco, no URLs, asi que no hay nada que
     // validar contra inyeccion: la ruta se reconstruye del uid y del hueco.
     // El tope existe para que un taller no plante una lista enorme que
@@ -301,11 +301,11 @@ describe('usuarios: URLs que acaban en un documento de lectura anonima', () => {
 
     await assertSucceeds(
       db.collection('usuarios').doc(UIDS.taller1)
-        .update({ galeria: ['logo', 'local-1', 'local-2', 'local-3', 'local-4', 'local-5'] }),
+        .update({ galeria: ['logo', 'banner', 'local-1', 'local-2', 'local-3', 'local-4', 'local-5'] }),
     );
     await assertFails(
       db.collection('usuarios').doc(UIDS.taller1)
-        .update({ galeria: ['logo', 'local-1', 'local-2', 'local-3', 'local-4', 'local-5', 'de-mas'] }),
+        .update({ galeria: ['logo', 'banner', 'local-1', 'local-2', 'local-3', 'local-4', 'local-5', 'de-mas'] }),
     );
     await assertFails(
       db.collection('usuarios').doc(UIDS.taller1).update({ galeria: 'no soy una lista' }),

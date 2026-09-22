@@ -6,16 +6,11 @@ import '../../helpers/test_helpers.mocks.dart';
 
 void main() {
   late MockVehicleService mockVehicleService;
-  late MockVehicleImageService mockVehicleImageService;
   late VehicleProvider vehicleProvider;
 
   setUp(() {
     mockVehicleService = MockVehicleService();
-    mockVehicleImageService = MockVehicleImageService();
-    vehicleProvider = VehicleProvider(
-      vehicleService: mockVehicleService,
-      imageService: mockVehicleImageService,
-    );
+    vehicleProvider = VehicleProvider(vehicleService: mockVehicleService);
   });
 
   group('VehicleProvider Tests', () {
@@ -63,15 +58,6 @@ void main() {
         anio: 2020,
         color: 'Rojo',
       );
-      when(
-        mockVehicleImageService.getVehicleImage(
-          vehicleId: anyNamed('vehicleId'),
-          brand: anyNamed('brand'),
-          model: anyNamed('model'),
-          year: anyNamed('year'),
-          color: anyNamed('color'),
-        ),
-      ).thenAnswer((_) async => 'http://image.url');
       when(mockVehicleService.addVehicle(any)).thenAnswer((_) async {});
       when(
         mockVehicleService.getVehiclesByOwner('owner'),
@@ -98,15 +84,6 @@ void main() {
         anio: 2020,
         color: 'Rojo',
       );
-      when(
-        mockVehicleImageService.getVehicleImage(
-          vehicleId: anyNamed('vehicleId'),
-          brand: anyNamed('brand'),
-          model: anyNamed('model'),
-          year: anyNamed('year'),
-          color: anyNamed('color'),
-        ),
-      ).thenAnswer((_) async => 'http://image.url');
       when(mockVehicleService.addVehicle(any)).thenAnswer((_) async {});
       when(mockVehicleService.deleteVehicle('1')).thenAnswer((_) async {});
       when(

@@ -24,6 +24,7 @@ import 'package:autodoc/core/widgets/app_image_viewer.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/features/mechanic/data/services/verificacion_service.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/verificacion_provider.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 
 /// Firma del selector de archivo, con origen y opciones ya fijadas.
 ///
@@ -323,6 +324,7 @@ class _WorkshopVerificationScreenState
         ),
         title: const Text('Verificación del taller'),
         backgroundColor: colors.surface,
+        actions: const [AccionesDeCabecera()],
       ),
       body: provider.cargando && expediente == null
           ? const Center(child: CircularProgressIndicator())

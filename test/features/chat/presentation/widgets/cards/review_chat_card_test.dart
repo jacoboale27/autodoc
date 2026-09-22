@@ -37,12 +37,12 @@ void main() {
       final context = tester.element(find.byType(ChatCardShell));
       final colors = context.appColors;
       final cuerpo = tester.widget<Text>(
-        find.textContaining('Por favor califica'),
+        find.textContaining('Le pediste al cliente'),
       );
       final color =
           cuerpo.style?.color ??
           DefaultTextStyle.of(
-            tester.element(find.textContaining('Por favor califica')),
+            tester.element(find.textContaining('Le pediste al cliente')),
           ).style.color!;
       expect(contrastRatio(color, colors.surface), greaterThanOrEqualTo(4.5));
     },
@@ -71,11 +71,15 @@ void main() {
     },
   );
 
-  testWidgets('usa AppButton y ChatCardShell', (tester) async {
+  // Observaciones del 2026-09-19: una sola forma de reseñar desde el chat
+  // (el aviso de encima de la barra de escribir). La solicitud del taller ya
+  // no trae su propio botón.
+  testWidgets('usa ChatCardShell y no trae botón de calificar', (tester) async {
     await pumpChatWidget(tester, _card(isMe: false), width: 375);
     expect(find.byType(ChatCardShell), findsOneWidget);
-    expect(find.byType(AppButton), findsOneWidget);
+    expect(find.byType(AppButton), findsNothing);
     expect(find.byType(ElevatedButton), findsNothing);
+    expect(find.textContaining('Calificar servicio'), findsOneWidget);
   });
 
   testWidgets('no desborda en ningún ancho auditado, en ambos temas', (

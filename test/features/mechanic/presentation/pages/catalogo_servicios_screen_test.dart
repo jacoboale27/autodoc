@@ -12,6 +12,7 @@ import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/auth/presentation/providers/auth_provider.dart';
 import 'package:autodoc/core/theme/app_theme.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:autodoc/l10n/app_localizations.dart';
 
 class _FakeUserProfileProvider extends ChangeNotifier
     implements UserProfileProvider {
@@ -72,7 +73,14 @@ void main() {
             create: (_) => _FakeUserProfileProvider(),
           ),
         ],
-        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+        child: MaterialApp.router(
+          theme: AppTheme.light,
+          // Ver la nota de empleados_screen_test: sin delegados, context.l10n
+          // lanza en cuanto un widget del arbol traduce.
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          routerConfig: router,
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -82,10 +90,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Find the price TextFormField by its labelText
-    final priceFieldFinder = find.widgetWithText(
-      TextFormField,
-      'Precio unitario',
-    );
+    final priceFieldFinder = find.widgetWithText(TextFormField, 'Desde (USD)');
     expect(priceFieldFinder, findsOneWidget);
 
     // Get the TextEditingController from the TextFormField
@@ -164,7 +169,14 @@ void main() {
             create: (_) => _FakeUserProfileProvider(),
           ),
         ],
-        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+        child: MaterialApp.router(
+          theme: AppTheme.light,
+          // Ver la nota de empleados_screen_test: sin delegados, context.l10n
+          // lanza en cuanto un widget del arbol traduce.
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          routerConfig: router,
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -172,10 +184,7 @@ void main() {
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
 
-    final priceFieldFinder = find.widgetWithText(
-      TextFormField,
-      'Precio unitario',
-    );
+    final priceFieldFinder = find.widgetWithText(TextFormField, 'Desde (USD)');
 
     TextEditingController? priceController;
     for (final element in priceFieldFinder.evaluate()) {

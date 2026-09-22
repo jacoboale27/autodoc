@@ -91,6 +91,21 @@ class ReparacionProvider extends ChangeNotifier {
     required String idVehiculo,
     required String idTaller,
   }) async {
+    final ticket = await buscarTicketVigente(
+      idVehiculo: idVehiculo,
+      idTaller: idTaller,
+    );
+    return ticket?.idReparacion;
+  }
+
+  /// Igual que [buscarReparacionActiva], pero devuelve el ticket entero: el
+  /// perfil del vehículo (observaciones del 2026-09-19) enseña en qué punto
+  /// está el servicio en curso ("Por recibir", "En revisión"...), no solo si
+  /// existe.
+  Future<ReparacionModel?> buscarTicketVigente({
+    required String idVehiculo,
+    required String idTaller,
+  }) async {
     final idReparacion = await _repository.buscarReparacionActiva(
       idVehiculo: idVehiculo,
       idTaller: idTaller,
@@ -101,7 +116,7 @@ class ReparacionProvider extends ChangeNotifier {
         estadosReparacionCerrados.contains(reparacion.estado)) {
       return null;
     }
-    return idReparacion;
+    return reparacion;
   }
 
   /// Marca la llegada física del vehículo para un ticket ya conocido. Desde
@@ -179,6 +194,56 @@ class ReparacionProvider extends ChangeNotifier {
       return true;
     } catch (_) {
       return false;
+    }
+  }
+
+  /// El último ticket de este vehículo en este taller, **esté abierto o
+  /// cerrado**.
+  ///
+  /// [buscarTicketVigente] devuelve `null` en cuanto el ticket se entrega, y
+  /// eso dejaba al perfil del vehículo diciendo «el ticket todavía no se ha
+  /// abierto» sobre un coche que se acababa de entregar (observación del
+  /// 2026-09-19). Con esto, la pantalla puede distinguir «nunca hubo ticket»
+  /// de «ya se entregó».
+  Future<ReparacionModel?> buscarUltimoTicket({
+    required String idVehiculo,
+    required String idTaller,
+  }) async {
+    try {
+      final id = await _repository.buscarReparacionActiva(
+        idVehiculo: idVehiculo,
+        idTaller: idTaller,
+      );
+      if (id == null) return null;
+      return await _repository.obtenerReparacion(id);
+    } catch (e) {
+      debugPrint('No se pudo leer el último ticket del vehículo: $e');
+      return null;
+    }
+  }
+
+  /// El ticket [idReparacion], o `null` si no se pudo leer.
+  Future<ReparacionModel?> obtenerTicket(String idReparacion) async {
+    try {
+      return await _repository.obtenerReparacion(idReparacion);
+    } catch (e) {
+      debugPrint('No se pudo leer el ticket $idReparacion: $e');
+      return null;
+    }
+  }
+
+  /// ¿El servicio de este ticket ya está registrado (y por tanto cobrado)?
+  ///
+  /// `null` significa «no se pudo comprobar», y la interfaz lo trata como un
+  /// sí: un fallo de red no puede dejar al taller sin poder entregar un coche
+  /// que el cliente ya se llevó. Ver
+  /// [ReparacionRepository.tieneServicioRegistrado].
+  Future<bool?> tieneServicioRegistrado(ReparacionModel reparacion) async {
+    try {
+      return await _repository.tieneServicioRegistrado(reparacion);
+    } catch (e) {
+      debugPrint('No se pudo comprobar el servicio del ticket: $e');
+      return null;
     }
   }
 

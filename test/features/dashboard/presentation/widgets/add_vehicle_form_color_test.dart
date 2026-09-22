@@ -39,7 +39,15 @@ Widget _spanish(Widget child) {
 Future<void> _advanceToDetailsStep(WidgetTester tester) async {
   await tester.pumpAndSettle();
 
-  expect(find.text('No encuentro mi marca...'), findsOneWidget);
+  // Observaciones del 2026-09-19: primero el tipo de vehículo; las marcas
+  // frecuentes van delante y el "no la encuentro" queda al final.
+  await tester.tap(find.byKey(const Key('tipo_vehiculo_automovil')));
+  await tester.pumpAndSettle();
+  await tester.scrollUntilVisible(
+    find.text('No encuentro mi marca...'),
+    200,
+    scrollable: find.byType(Scrollable).last,
+  );
   await tester.tap(find.text('No encuentro mi marca...'));
   await tester.pumpAndSettle();
 

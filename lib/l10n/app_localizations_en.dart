@@ -534,16 +534,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get alertsHighPriority => 'High Priority';
 
   @override
-  String alertsPendingCount(String count) {
-    return '$count pending';
+  String alertsPendingCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pending',
+      one: '1 pending',
+    );
+    return '$_temp0';
   }
 
   @override
   String get alertsUpcomingExpirations => 'Upcoming Expirations';
 
   @override
-  String alertsEventsCount(String count) {
-    return '$count events';
+  String alertsEventsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count events',
+      one: '1 event',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -595,6 +607,31 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String alertsInconsistentMileage(String km) {
     return 'Current mileage is lower than the last recorded service ($km km). Correct the vehicle\'s mileage.';
+  }
+
+  @override
+  String get alertsSoatExpiringTitle => 'Insurance expiring soon';
+
+  @override
+  String get alertsSoatExpiredTitle => 'Insurance expired';
+
+  @override
+  String get alertsCardExpiringTitle => 'Registration expiring soon';
+
+  @override
+  String get alertsCardExpiredTitle => 'Registration expired';
+
+  @override
+  String get alertsDocExpiresToday => 'Expires today.';
+
+  @override
+  String alertsDocExpiresInDays(int dias) {
+    return 'Expires in $dias days.';
+  }
+
+  @override
+  String alertsDocExpiredDaysAgo(int dias) {
+    return 'Expired $dias days ago.';
   }
 
   @override
@@ -657,6 +694,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get wdMapUnavailableBody =>
       'The map could not be loaded because this build is missing its Google Maps key. In the meantime you can browse the workshops in list view.';
+
+  @override
+  String get wdMapLoadFailedTitle => 'The map could not load';
+
+  @override
+  String get wdMapLoadFailedBody =>
+      'Google Maps did not respond. It is usually the key: expired, without billing, or restricted to another domain. The workshop list still works.';
 
   @override
   String get wdWorkshop => 'Workshop';
@@ -899,6 +943,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addVehiclePlateTypeAlquiler => 'Rental';
+
+  @override
+  String get addVehiclePlateTypeMicrobus => 'Minibus';
+
+  @override
+  String get addVehiclePlateTypeAutobus => 'Bus';
+
+  @override
+  String get addVehicleType => 'Vehicle type';
+
+  @override
+  String get addVehicleTypeSubtitle =>
+      'What are you registering? We will show its brands and plate type.';
+
+  @override
+  String get tipoVehiculoAutomovil => 'Car';
+
+  @override
+  String get tipoVehiculoCamioneta => 'SUV / Pickup';
+
+  @override
+  String get tipoVehiculoMotocicleta => 'Motorcycle';
+
+  @override
+  String get tipoVehiculoCamion => 'Truck';
+
+  @override
+  String get tipoVehiculoMicrobus => 'Minibus';
+
+  @override
+  String get tipoVehiculoAutobus => 'Bus';
 
   @override
   String get addVehiclePlate => 'License Plate';
@@ -1442,6 +1517,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Something went wrong loading this information. Try again in a moment.';
 
   @override
+  String get errorDatosNoEncontrado =>
+      'We couldn\'t find that item. It may no longer exist.';
+
+  @override
+  String get errorDatosYaExiste => 'That item already exists.';
+
+  @override
+  String get errorDatosCancelado => 'The operation was canceled.';
+
+  @override
   String get errorReintentar => 'Retry';
 
   @override
@@ -1557,4 +1642,88 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get authRefreshError =>
       'We couldn\'t check your verification. Try again in a moment.';
+
+  @override
+  String get mechanicDashboardTitle => 'Workshop dashboard';
+
+  @override
+  String get asistenteTitulo => 'Assistant';
+
+  @override
+  String get asistenteAbrir => 'Ask the assistant';
+
+  @override
+  String get asistenteCampoEtiqueta => 'Your question';
+
+  @override
+  String get asistenteCampoPista => 'What expires this week?';
+
+  @override
+  String get asistenteEnviar => 'Ask';
+
+  @override
+  String get asistenteOtraPregunta => 'Ask another question';
+
+  @override
+  String get asistentePensando => 'Thinking…';
+
+  @override
+  String get asistenteVacio =>
+      'Ask me about your vehicles\' expirations, appointments and maintenance.';
+
+  @override
+  String get asistenteAlcance =>
+      'It only answers about your schedule. It does not diagnose faults or replace a workshop.';
+
+  @override
+  String get asistenteEtiquetaFueraDeAlcance => 'Out of scope';
+
+  @override
+  String get asistenteErrorCupo =>
+      'You\'ve reached your question limit for today. Try again tomorrow.';
+
+  @override
+  String get asistenteErrorApagado =>
+      'The assistant is temporarily switched off.';
+
+  @override
+  String get asistenteTituloCupo => 'No questions left today';
+
+  @override
+  String get asistenteTituloApagado => 'Assistant switched off';
+
+  @override
+  String get asistenteTituloTallerPendiente =>
+      'Your workshop isn\'t approved yet';
+
+  @override
+  String get asistenteTituloPreguntaVacia => 'Your question is missing';
+
+  @override
+  String get asistenteErrorNoDisponible =>
+      'The assistant isn\'t set up yet. We\'re on it.';
+
+  @override
+  String get asistenteErrorLento =>
+      'The assistant took too long to answer. Try again.';
+
+  @override
+  String get asistenteErrorSinRespuesta =>
+      'I couldn\'t put together an answer to that. Try wording it differently.';
+
+  @override
+  String get asistenteErrorTallerPendiente =>
+      'Your workshop isn\'t approved yet, so I can\'t look up its schedule.';
+
+  @override
+  String get asistenteErrorPreguntaVacia =>
+      'Write a question before sending it.';
+
+  @override
+  String get asistenteErrorCupoGlobal =>
+      'The assistant has reached today\'s question limit. It\'s not you: try again tomorrow.';
+
+  @override
+  String get asistenteErrorProveedor =>
+      'The assistant is unavailable right now. Try again.';
 }

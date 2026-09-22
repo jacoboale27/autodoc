@@ -4,9 +4,10 @@ import 'package:autodoc/core/models/galeria_taller.dart';
 
 void main() {
   group('huecos permitidos', () {
-    test('son exactamente los seis que aceptan las reglas de Storage', () {
+    test('son exactamente los siete que aceptan las reglas de Storage', () {
       expect(GaleriaTaller.slotsPermitidos, [
         'logo',
+        'banner',
         'local-1',
         'local-2',
         'local-3',
@@ -167,7 +168,13 @@ void main() {
           .conArchivo('logo.jpg')
           .conArchivo('local-2.jpg');
 
-      expect(galeria.slotsLibres, ['local-1', 'local-3', 'local-4', 'local-5']);
+      expect(galeria.slotsLibres, [
+        'banner',
+        'local-1',
+        'local-3',
+        'local-4',
+        'local-5',
+      ]);
     });
   });
 }

@@ -4,6 +4,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/mechanic_reviews_screen.dart';
 import 'package:autodoc/features/reviews/data/services/review_service.dart';
 
@@ -92,13 +93,34 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  // NO hay test del boton "Publicar" de la respuesta, y no es un olvido: el
-  // dialogo de respuesta DESBORDA ~99000 px al abrirse en un test de widget y
-  // las excepciones se encadenan por todo su subarbol (incluido el
-  // RawGestureDetector), asi que no se puede tocar su boton. La causa no es
-  // este arreglo: `AlertDialog` envuelve el contenido en `IntrinsicWidth` y el
-  // `SizedBox(width: double.maxFinite)` de `AppDialogContent` vuelve absurdo el
-  // ancho intrinseco. Es el unico de los dieciseis controles de esta tanda que
-  // se queda sin test; el guard esta puesto y es el mismo `_enCurso` que el de
-  // reportar, que si esta verificado arriba. Queda anotado como gap propio.
+  testWidgets('grupo 16: dos publicaciones responden la resenia una vez', (
+    tester,
+  ) async {
+    final servicio = await _montar(tester);
+
+    final responder = find.widgetWithText(AppButton, 'Responder');
+    await tester.tap(responder);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'Gracias por tu confianza');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Publicar'));
+    await tester.pumpAndSettle();
+
+    // Igual que en el grupo 15: el dialogo se cierra al publicar, asi que el
+    // segundo envio solo puede venir de REABRIRLO. Se afirma sobre el control
+    // que lo abre, que es lo que de verdad cierra el camino.
+    expect(tester.widget<AppButton>(responder).onPressed, isNull);
+    expect(servicio.respuestas, 1);
+
+    servicio.respuesta.complete();
+    await tester.pumpAndSettle();
+  });
+
+  // Este test no existia hasta 2026-09-17, y el motivo anotado era falso: se
+  // decia que el dialogo desbordaba ~99 000 px por el `IntrinsicWidth` de
+  // `AlertDialog`. El desbordamiento era el sintoma de un
+  // `TextEditingController` desechado con su campo aun en el arbol. Ver
+  // `responder_resenia_dialogo_test.dart`.
 }

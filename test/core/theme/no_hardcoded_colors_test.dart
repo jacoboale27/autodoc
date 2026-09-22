@@ -60,7 +60,7 @@ const List<String> kTokenizedPaths = [
   'lib/features/chat/presentation/widgets/chat_bubble.dart',
   'lib/features/chat/presentation/widgets/chat_card_shell.dart',
   'lib/features/chat/presentation/widgets/chat_background.dart',
-  'lib/features/chat/presentation/widgets/cotizacion_picker.dart',
+  'lib/features/chat/presentation/pages/nueva_cotizacion_screen.dart',
   'lib/features/chat/presentation/widgets/vehiculo_picker.dart',
   'lib/features/chat/presentation/widgets/cards/audio_chat_card.dart',
   'lib/features/chat/presentation/widgets/cards/cotizacion_chat_card.dart',

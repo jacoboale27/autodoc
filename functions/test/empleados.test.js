@@ -33,6 +33,9 @@ describe('crearEmpleadoTaller', () => {
   let authCreateUserStub;
   let usuariosData;
   let empleadosData;
+  let invitacionesData;
+  let notificacionesData;
+  let authGetUserByEmailStub;
 
   before(() => {
     admin = require('firebase-admin');
@@ -44,6 +47,8 @@ describe('crearEmpleadoTaller', () => {
 
     usuariosData = {};
     empleadosData = {};
+    invitacionesData = {};
+    notificacionesData = [];
 
     function makeUsuariosDocRef(uid) {
       return {
@@ -66,6 +71,30 @@ describe('crearEmpleadoTaller', () => {
     }
 
     const fakeDb = {
+      // El cupo de invitaciones y el barrido de caducadas van en transacción
+      // (revisión de gate del 2026-09-19): lee al momento y aplica las
+      // escrituras al final, todas o ninguna.
+      runTransaction: async (fn) => {
+        const ops = [];
+        const tx = {
+          get: (ref) => ref.get(),
+          set: (ref, value, opciones) => ops.push(() => ref.set(value, opciones)),
+          delete: (ref) => ops.push(() => ref.delete()),
+        };
+        const resultado = await fn(tx);
+        for (const op of ops) await op();
+        return resultado;
+      },
+      batch: () => {
+        const ops = [];
+        return {
+          delete: (ref) => ops.push(() => ref.delete()),
+          set: (ref, value, opciones) => ops.push(() => ref.set(value, opciones)),
+          commit: async () => {
+            for (const op of ops) await op();
+          },
+        };
+      },
       collection: (name) => {
         if (name === 'usuarios') {
           return { doc: (uid) => makeUsuariosDocRef(uid) };
@@ -77,8 +106,50 @@ describe('crearEmpleadoTaller', () => {
                 if (sub === 'empleados') {
                   return { doc: (uid) => makeEmpleadosDocRef(uid) };
                 }
+                if (sub === 'invitaciones') {
+                  const refInvitacion = (uid) => ({
+                    id: uid,
+                    get: async () => ({
+                      exists: Boolean(invitacionesData[uid]),
+                      data: () => invitacionesData[uid],
+                    }),
+                    set: async (value) => {
+                      invitacionesData[uid] = value;
+                    },
+                    delete: async () => {
+                      delete invitacionesData[uid];
+                    },
+                  });
+                  return {
+                    doc: refInvitacion,
+                    // Cupo y barrido de caducadas (2026-09-19): la consulta
+                    // sin filtro y con tope de `incorporarCuentaExistente`.
+                    limit: (n) => ({
+                      get: async () => ({
+                        docs: Object.keys(invitacionesData)
+                          .slice(0, n)
+                          .map((uid) => ({
+                            id: uid,
+                            ref: refInvitacion(uid),
+                            data: () => invitacionesData[uid],
+                          })),
+                      }),
+                    }),
+                  };
+                }
                 throw new Error(`Unexpected sub-collection in test fake: ${sub}`);
               },
+            }),
+          };
+        }
+        if (name === 'notificaciones') {
+          return {
+            doc: (uid) => ({
+              collection: () => ({
+                add: async (value) => {
+                  notificacionesData.push({ uid, ...value });
+                },
+              }),
             }),
           };
         }
@@ -93,11 +164,23 @@ describe('crearEmpleadoTaller', () => {
     admin.firestore.Timestamp = { now: () => 'FAKE_TIMESTAMP' };
     admin.firestore.FieldValue = { serverTimestamp: () => 'FAKE_SERVER_TIMESTAMP' };
 
-    authCreateUserStub = sinon.stub().callsFake(async ({ email }) => ({
-      uid: `uid-${email}`,
+    authCreateUserStub = sinon.stub().callsFake(async ({ email }) => {
+      // Un correo que ya tiene cuenta (observaciones del 2026-09-19).
+      if (email === 'ya.registrado@example.com') {
+        const err = new Error('The email address is already in use');
+        err.code = 'auth/email-already-exists';
+        throw err;
+      }
+      return { uid: `uid-${email}` };
+    });
+    authGetUserByEmailStub = sinon.stub().callsFake(async (email) => ({
+      uid: 'uid-propietario-existente',
+      email,
+      emailVerified: true,
     }));
     const fakeAuth = {
       createUser: authCreateUserStub,
+      getUserByEmail: authGetUserByEmailStub,
       deleteUser: sinon.stub().resolves(),
     };
     Object.defineProperty(admin, 'auth', {
@@ -127,6 +210,8 @@ describe('crearEmpleadoTaller', () => {
     // in-memory stores between tests.
     usuariosData = {};
     empleadosData = {};
+    invitacionesData = {};
+    notificacionesData = [];
     authCreateUserStub.resetHistory();
   });
 
@@ -206,5 +291,53 @@ describe('crearEmpleadoTaller', () => {
     );
 
     assert.strictEqual(authCreateUserStub.called, false);
+  });
+
+  // Revisión del 2026-09-19: `buscarVehiculoPorPlaca` miraba solo el rol, así
+  // que un taller sin aprobar (o un empleado suspendido con el token vivo)
+  // podía usar la búsqueda nueva por `idVehiculo`. Ahora exige también el
+  // estado, igual que `isMecanico()`. Se para antes de leer `vehiculos`.
+  for (const estado of ['pendiente', 'suspendido', 'rechazado', undefined]) {
+    it(`buscarVehiculoPorPlaca rechaza a un taller con estado ${estado}`, async () => {
+      usuariosData[idTallerPropietario] = { rol: 'Taller', estado };
+      await assert.rejects(
+        myFunctions.buscarVehiculoPorPlaca.run({ idVehiculo: 'v1' }, context),
+        (err) => err.code === 'permission-denied'
+      );
+    });
+  }
+
+  it('con un correo que ya tiene cuenta de propietario, la invita en vez de fallar', async () => {
+    // Observaciones del 2026-09-19, punto 4: antes esto era un
+    // 'already-exists' que la app pintaba como «Ese dato ya existe».
+    seedTallerAprobado();
+    usuariosData['uid-propietario-existente'] = {
+      rol: 'Propietario',
+      nombre_completo: 'Oscar Isaac',
+    };
+
+    const result = await myFunctions.crearEmpleadoTaller.run(
+      {
+        correo: 'ya.registrado@example.com',
+        password: 'password123',
+        nombreCompleto: 'Oscar Isaac',
+        rol: 'Mecanico',
+      },
+      context
+    );
+
+    assert.deepStrictEqual(result, {
+      resultado: 'invitado',
+      idEmpleado: 'uid-propietario-existente',
+    });
+    assert.strictEqual(
+      usuariosData['uid-propietario-existente'].rol,
+      'Propietario',
+      'su cuenta no cambia hasta que acepte'
+    );
+    assert.strictEqual(invitacionesData['uid-propietario-existente'].estado, 'pendiente');
+    assert.strictEqual(notificacionesData.length, 1);
+    assert.strictEqual(notificacionesData[0].uid, 'uid-propietario-existente');
+    assert.strictEqual(notificacionesData[0].tipo, 'invitacion_empleo');
   });
 });

@@ -26,6 +26,11 @@ const { enviarRecordatoriosDeReserva } = require('./src/recordatoriosReserva');
 const { borrarFotosDeResenia } = require('./src/fotosDeResenia');
 const { recontarResenias, sembrarAgregado } = require('./src/agregadoResenias');
 const {
+  ErrorEmpleado,
+  incorporarCuentaExistente,
+  responderInvitacion,
+} = require('./src/empleadosTaller');
+const {
   decidirAvisoKilometraje,
   decidirSolicitudResenia,
   decidirMensajeChat,
@@ -49,10 +54,37 @@ const storage = admin.storage();
 /**
  * Helper: Write a notification to Firestore for the in-app notification center.
  * Stored under `notificaciones/{userId}/items/{auto-id}`
- * 
+ *
+ * **Devuelve si se escribio, y no relanza.** Los dos importan:
+ *
+ * No relanza porque la escriben nueve triggers de notificacion para los que
+ * una nota perdida no es motivo de abortar la operacion de negocio que la
+ * provoco. Cambiar eso a `throw` cambiaria el flujo de control de todos.
+ *
+ * Pero devolver `false` era imprescindible: tragarse el error Y no decir nada
+ * dejaba a los llamadores sin forma de distinguir «escrita» de «perdida».
+ * Lo levanto el gate de `functions-perf-reviewer`, y el coste era real en los
+ * dos barridos programados — `resumen.notasFallidas` no podia incrementarse
+ * NUNCA en produccion (solo contra un doble de test que si relanzaba), y en
+ * `alertasVencidas` el fallo silencioso ademas dejaba marcar el escalon, o sea
+ * que la nota se perdia sin reintento posible pese a que el comentario de su
+ * `catch` afirma lo contrario.
+ *
+ * Los nueve triggers ignoran el valor devuelto: para ellos nada cambia.
+ *
  * @param {string} userId - The recipient user ID
  * @param {object} notification - { tipo, titulo, body, deepLink, metadata }
+ * @returns {Promise<boolean>} `true` si la nota quedo escrita.
  */
+/**
+ * Cuanto vive una nota del centro de notificaciones.
+ *
+ * Sin TTL la coleccion crece sin cota: nadie borra las notas leidas y ningun
+ * barrido las toca. Noventa dias son de sobra para algo que se consulta en
+ * los dias siguientes al aviso.
+ */
+const VIDA_DE_NOTIFICACION_MS = 90 * 24 * 60 * 60 * 1000;
+
 async function writeNotification(userId, notification) {
   try {
     await db.collection('notificaciones').doc(userId).collection('items').add({
@@ -62,10 +94,21 @@ async function writeNotification(userId, notification) {
       leida: false,
       deepLink: notification.deepLink || null,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      // Campo PROPIO para la politica TTL, y no se puede reutilizar
+      // `timestamp`: ese es la hora de CREACION, o sea ya esta en el pasado,
+      // asi que una TTL apuntada ahi borraria el centro de notificaciones
+      // entero en la primera pasada. Mismo motivo por el que
+      // `tokens_historial` lleva `expira_en` y `purgar_en` separados.
+      //
+      // Un `Date` calculado aqui y no un centinela de servidor: la TTL compara
+      // Timestamps y el centinela no esta resuelto en el momento del `add`.
+      purgar_en: new Date(Date.now() + VIDA_DE_NOTIFICACION_MS),
       metadata: notification.metadata || null,
     });
+    return true;
   } catch (e) {
     console.error(`Error writing notification for user ${userId}:`, e);
+    return false;
   }
 }
 
@@ -1021,7 +1064,12 @@ exports.sendReservationReminders = functions.runWith({ timeoutSeconds: 540, memo
   // OPS-01: la logica vive en `src/recordatoriosReserva.js` para poder
   // ejercerla con fixtures. Aqui solo queda el enganche del scheduler.
   try {
-    const resumen = await enviarRecordatoriosDeReserva(db, messaging);
+    const resumen = await enviarRecordatoriosDeReserva(db, messaging, {
+      // Igual que `checkAlertsDaily`. El recordatorio no escribia nada aqui y
+      // un push es efimero: quien lo perdia no tenia NINGUNA via para
+      // enterarse de su cita.
+      escribirNotificacion: writeNotification,
+    });
     console.log('sendReservationReminders:', JSON.stringify(resumen));
     return resumen;
   } catch (error) {
@@ -1294,6 +1342,17 @@ exports.borrarFotosAlEliminarResenia = functions.firestore
  * Returns only non-sensitive identifying fields. It intentionally does NOT
  * expose id_propietario or any other owner data — full vehicle documents
  * stay protected by firestore.rules (owner, admin, or talleres_vinculados).
+ *
+ * Observaciones del 2026-09-19:
+ *  - Devuelve tambien `foto_url`. Es la imagen de catalogo del modelo que
+ *    genera `VehicleImageService` al dar de alta el coche (no una foto del
+ *    dueño), y la ficha del taller la pedia desde el 2026-09-18 («el nombre
+ *    del vehiculo, la placa, el kilometraje y las imagenes»).
+ *  - Acepta `idVehiculo` en vez de `placa`. El perfil del vehiculo del taller
+ *    se abre por id (desde "Mis Servicios", o al recargar la pagina, que
+ *    pierde los datos de la busqueda) y el taller no puede leer
+ *    `vehiculos/{id}` hasta que recibe el coche. Devuelve exactamente los
+ *    mismos campos que la busqueda por placa: no abre nada nuevo.
  */
 exports.buscarVehiculoPorPlaca = functions.https.onCall(async (data, context) => {
   exigirAppCheck(context, 'buscarVehiculoPorPlaca');
@@ -1303,7 +1362,11 @@ exports.buscarVehiculoPorPlaca = functions.https.onCall(async (data, context) =>
 
   const callerDoc = await db.collection('usuarios').doc(context.auth.uid).get();
   const rol = callerDoc.exists ? callerDoc.data().rol : null;
-  if (!['Mecanico', 'Taller'].includes(rol)) {
+  // Y el estado, igual que `isMecanico()` en firestore.rules: un taller sin
+  // aprobar o un empleado suspendido (con el token aún vivo) no busca coches.
+  // Revisión del 2026-09-19, al abrir la búsqueda por `idVehiculo`.
+  const estado = callerDoc.exists ? callerDoc.data().estado : null;
+  if (!['Mecanico', 'Taller'].includes(rol) || !['aprobado', 'activo'].includes(estado)) {
     throw new functions.https.HttpsError(
       'permission-denied',
       'Solo mecánicos pueden buscar vehículos por placa.'
@@ -1311,19 +1374,29 @@ exports.buscarVehiculoPorPlaca = functions.https.onCall(async (data, context) =>
   }
 
   const placa = (data && data.placa ? String(data.placa) : '').trim().toUpperCase();
-  if (!placa) {
+  const idVehiculo = (data && data.idVehiculo ? String(data.idVehiculo) : '').trim();
+  if (!placa && !idVehiculo) {
     throw new functions.https.HttpsError('invalid-argument', 'Debes indicar una placa.');
   }
+  // Un id con '/' apuntaria a otra ruta de la base de datos.
+  if (idVehiculo.includes('/')) {
+    throw new functions.https.HttpsError('invalid-argument', 'Vehículo no válido.');
+  }
 
-  const snapshot = await db
-    .collection('vehiculos')
-    .where('placa', '==', placa)
-    .limit(1)
-    .get();
+  let doc;
+  if (idVehiculo) {
+    doc = await db.collection('vehiculos').doc(idVehiculo).get();
+    if (!doc.exists) return null;
+  } else {
+    const snapshot = await db
+      .collection('vehiculos')
+      .where('placa', '==', placa)
+      .limit(1)
+      .get();
+    if (snapshot.empty) return null;
+    doc = snapshot.docs[0];
+  }
 
-  if (snapshot.empty) return null;
-
-  const doc = snapshot.docs[0];
   const v = doc.data();
   return {
     id_vehiculo: doc.id,
@@ -1333,6 +1406,7 @@ exports.buscarVehiculoPorPlaca = functions.https.onCall(async (data, context) =>
     anio: v.anio || null,
     color: v.color || null,
     kilometraje_actual: v.kilometraje_actual || 0,
+    foto_url: v.foto_url || null,
   };
 });
 
@@ -1676,7 +1750,34 @@ exports.crearEmpleadoTaller = functions.https.onCall(async (data, context) => {
     });
   } catch (err) {
     if (err && err.code === 'auth/email-already-exists') {
-      throw new functions.https.HttpsError('already-exists', 'Ya existe una cuenta con ese correo.');
+      // Observaciones del 2026-09-19: el correo ya tiene cuenta. Antes esto
+      // terminaba aqui con un 'already-exists' que la app pintaba como «Ese
+      // dato ya existe»; ahora se reactiva al ex empleado del taller o se
+      // invita a la persona (ver src/empleadosTaller.js).
+      try {
+        return await incorporarCuentaExistente({
+          db,
+          auth: admin.auth(),
+          idTaller: idTallerPropietario,
+          nombreTaller: (tallerData && tallerData.nombre_completo) || 'Un taller',
+          correo,
+          nombreCompleto,
+          telefono,
+          rolEmpleado,
+          password,
+          ahora: new Date(),
+          escribirNotificacion: writeNotification,
+        });
+      } catch (errExistente) {
+        if (errExistente instanceof ErrorEmpleado) {
+          throw new functions.https.HttpsError(errExistente.codigo, errExistente.message);
+        }
+        console.error('crearEmpleadoTaller: fallo con un correo ya registrado:', errExistente);
+        throw new functions.https.HttpsError(
+          'internal',
+          'No se pudo completar el registro del empleado. Intenta de nuevo.'
+        );
+      }
     }
     throw new functions.https.HttpsError('invalid-argument', err.message);
   }
@@ -1731,7 +1832,45 @@ exports.crearEmpleadoTaller = functions.https.onCall(async (data, context) => {
     );
   }
 
-  return { idEmpleado: userRecord.uid };
+  return { idEmpleado: userRecord.uid, resultado: 'creado' };
+});
+
+/**
+ * La persona invitada a un taller acepta o rechaza la invitación
+ * (observaciones del 2026-09-19; ver `src/empleadosTaller.js`). Aceptar
+ * convierte SU cuenta en cuenta de empleado de ese taller, así que solo ella
+ * puede hacerlo: la invitación se busca por su propio uid.
+ */
+exports.responderInvitacionEmpleo = functions.https.onCall(async (data, context) => {
+  exigirAppCheck(context, 'responderInvitacionEmpleo');
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+  }
+  const idTaller = data && data.idTaller ? String(data.idTaller) : '';
+  if (!idTaller || idTaller.includes('/')) {
+    throw new functions.https.HttpsError('invalid-argument', 'Invitación no válida.');
+  }
+  const aceptar = Boolean(data && data.aceptar);
+  try {
+    return await responderInvitacion({
+      db,
+      auth: admin.auth(),
+      uid: context.auth.uid,
+      idTaller,
+      aceptar,
+      ahora: new Date(),
+      escribirNotificacion: writeNotification,
+    });
+  } catch (err) {
+    if (err instanceof ErrorEmpleado) {
+      throw new functions.https.HttpsError(err.codigo, err.message);
+    }
+    console.error('responderInvitacionEmpleo:', err);
+    throw new functions.https.HttpsError(
+      'internal',
+      'No se pudo responder la invitación. Intenta de nuevo.'
+    );
+  }
 });
 
 /**
@@ -2064,3 +2203,128 @@ exports.revocarPaseHistorial = functions.https.onCall(async (data, context) => {
     throw traducirFallo(e);
   }
 });
+
+// **Ojo: poner un `require` al pie NO lo difiere.** Es un `const` de nivel
+// superior, asi que se ejecuta en cada arranque en frio de CADA una de las 35
+// funciones desplegadas desde este entrypoint, exactamente igual que los de
+// las primeras lineas. La posicion no cambia nada, y la version anterior de
+// este comentario afirmaba lo contrario — lo levanto el gate de rendimiento.
+//
+// Aqui el coste es despreciable, pero por otra razon: estos tres modulos no
+// arrastran ninguna dependencia. `asistente.js` solo requiere `crypto`
+// (builtin), `agenda.js` y `modeloFalso.js` no requieren nada, y
+// `modeloGemini.js` usa el `fetch` global de Node 20 en vez de un SDK. La
+// cascada real son CINCO modulos: `asistente`->`agenda`, y
+// `clienteDelModelo`->`modeloGemini`+`modeloFalso`. No se anadio ni una linea
+// a `functions/package.json`.
+//
+// Si algun dia se sustituye `fetch` por `@google/generative-ai`, esto deja de
+// ser cierto y los `require` hay que moverlos DENTRO del handler, que es lo
+// unico que difiere de verdad.
+const asistenteIA = require('./src/asistente');
+const { crearClienteDelModelo } = require('./src/clienteDelModelo');
+
+/**
+ * 35. Callable: asistente de agenda con IA (plan 2026-09-19).
+ *
+ * Responde en lenguaje natural a «que tengo en los proximos dias», para el
+ * PROPIETARIO y para el TALLER. Es de **solo lectura**: no agenda nada, no
+ * marca nada como hecho, y lo unico que escribe son su contador de cuota y su
+ * cache de explicaciones.
+ *
+ * El modelo no elige que leer. Clasifica la pregunta en un enum cerrado, el
+ * servidor corre la consulta determinista de esa intencion —con toda la
+ * autorizacion resuelta ANTES, a mano, porque Admin SDK no pasa por
+ * `firestore.rules`— y el modelo solo redacta desde el envelope resultante.
+ * Ver `src/asistente.js` y `src/agenda.js`.
+ *
+ * El cliente del modelo se crea aqui y se inyecta, que es lo que permite que
+ * los tests de `src/` no llamen nunca a Gemini.
+ */
+exports.asistenteAutoDoc = functions
+  .runWith({
+    // La clave vive en Secret Manager: `firebase functions:secrets:set
+    // GEMINI_API_KEY --project production`. Nunca en un .env versionado y
+    // nunca en el bundle del cliente.
+    secrets: ['GEMINI_API_KEY'],
+    // Con 10 RPM de cuota en el proveedor, mas instancias solo sirven para
+    // chocar contra el 429 mas rapido.
+    maxInstances: 5,
+    memory: '256MB',
+    timeoutSeconds: 30,
+  })
+  .https.onCall(async (data, context) => {
+    exigirAppCheck(context, 'asistenteAutoDoc');
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+    }
+
+    let responder;
+    try {
+      responder = asistenteIA.crearAsistente({
+        db,
+        // Gemini en produccion; el doble de `modeloFalso.js` dentro del
+        // emulador, donde no hay Secret Manager y la clave no existe. La
+        // compuerta es `FUNCTIONS_EMULATOR`, que pone el propio emulador y no
+        // existe en una funcion desplegada; la decision entera tiene tests en
+        // `test/cliente_del_modelo.test.js`.
+        cliente: crearClienteDelModelo(),
+      }).responder;
+    } catch (e) {
+      // Falta la clave o el entorno no trae `fetch`: es un fallo de
+      // despliegue, no del usuario. Se registra entero y se devuelve un
+      // codigo que no manda a nadie a revisar su conexion.
+      console.error('asistenteAutoDoc: mal configurado:', e && e.message ? e.message : e);
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'El asistente no está disponible ahora mismo.'
+      );
+    }
+
+    try {
+      const resultado = await responder({
+        uid: context.auth.uid,
+        pregunta: data && data.pregunta,
+        // El idioma se PASA, no se infiere: la app se renderiza en el idioma
+        // del navegador, y esa fue la trampa de INNO-01.
+        idioma: data && data.idioma,
+      });
+      return resultado;
+    } catch (e) {
+      const codigo = e && e.code ? e.code : 'internal';
+      const conocidos = [
+        'unauthenticated',
+        'invalid-argument',
+        'permission-denied',
+        'resource-exhausted',
+        'unavailable',
+        'deadline-exceeded',
+        'failed-precondition',
+        'aborted',
+      ];
+      if (conocidos.indexOf(codigo) !== -1) {
+        // `details` viaja al cliente tal cual, asi que NO se reenvia
+        // `e.detalle`: `modeloGemini.js` lo rellena tambien con el
+        // `blockReason` que devuelve Google, que es texto de un tercero.
+        // `motivoPublico` filtra contra un vocabulario cerrado de cuatro
+        // valores. Sin esto, `resource-exhausted` no distingue el cupo de la
+        // persona del cupo global, y `unavailable` no distingue el
+        // interruptor apagado del proveedor caido — cuatro situaciones con
+        // dos codigos, y la pantalla teniendo que adivinar cual de las dos.
+        const motivo = asistenteIA.motivoPublico(e);
+        // El mensaje REAL se queda aqui. Los de `modeloGemini.js` estan
+        // escritos para quien despliega y nombran GEMINI_API_KEY,
+        // GEMINI_MODELO y `functions/spike_gemini.js`; el `message` de un
+        // HttpsError viaja al cliente igual de literal que `details`. El
+        // cliente no lo usa: compone el texto desde el codigo y el motivo.
+        console.error('asistenteAutoDoc [' + codigo + ']:', e && e.message ? e.message : e);
+        throw new functions.https.HttpsError(
+          codigo,
+          asistenteIA.mensajePublico(codigo),
+          motivo
+        );
+      }
+      console.error('asistenteAutoDoc:', e);
+      throw new functions.https.HttpsError('internal', 'No se pudo responder.');
+    }
+  });

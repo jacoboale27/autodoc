@@ -15,6 +15,7 @@ import 'package:autodoc/core/widgets/app_error_state.dart';
 import 'package:autodoc/core/widgets/app_scaffold.dart';
 import 'package:autodoc/features/dashboard/data/services/pase_historial_service.dart';
 import 'package:autodoc/l10n/app_localizations.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 
 /// INNO-01 — lo que ve quien escanea el pase.
 ///
@@ -96,6 +97,7 @@ class _HistorialCompartidoScreenState extends State<HistorialCompartidoScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
+        actions: const [AccionesDeCabecera()],
       ),
       applyGutter: true,
       body: _cuerpo(context),

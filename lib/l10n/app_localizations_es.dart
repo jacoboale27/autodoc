@@ -294,7 +294,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get dashMaintStatusLabel => 'Estado de Mantenimiento';
 
   @override
-  String get dashNoVehicles => 'No hay vehiculos registrados';
+  String get dashNoVehicles => 'No hay vehículos registrados';
 
   @override
   String get dashNoVehiclesDesc =>
@@ -304,7 +304,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get dashRegisterVehicle => 'Registrar Vehículo';
 
   @override
-  String get dashMainVehicle => 'VEHICULO PRINCIPAL';
+  String get dashMainVehicle => 'VEHÍCULO PRINCIPAL';
 
   @override
   String dashLicensePlate(String placa) {
@@ -321,7 +321,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get dashViewVehicleState => 'Ver Estado del Vehículo';
 
   @override
-  String get dashAddVehicleError => 'Error al agregar vehiculo';
+  String get dashAddVehicleError => 'Error al agregar vehículo';
 
   @override
   String get dashActiveAlerts => 'Alertas Activas';
@@ -385,7 +385,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo establecer el vehículo principal';
 
   @override
-  String get garageAddVehicleError => 'Error al agregar vehiculo';
+  String get garageAddVehicleError => 'Error al agregar vehículo';
 
   @override
   String get vpProfileTitle => 'Perfil del Vehículo';
@@ -539,16 +539,28 @@ class AppLocalizationsEs extends AppLocalizations {
   String get alertsHighPriority => 'Prioridad Alta';
 
   @override
-  String alertsPendingCount(String count) {
-    return '$count pendientes';
+  String alertsPendingCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pendientes',
+      one: '1 pendiente',
+    );
+    return '$_temp0';
   }
 
   @override
   String get alertsUpcomingExpirations => 'Próximos Vencimientos';
 
   @override
-  String alertsEventsCount(String count) {
-    return '$count eventos';
+  String alertsEventsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count eventos',
+      one: '1 evento',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -600,6 +612,31 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String alertsInconsistentMileage(String km) {
     return 'El kilometraje actual es menor al del último servicio registrado ($km km). Corrige el kilometraje del vehículo.';
+  }
+
+  @override
+  String get alertsSoatExpiringTitle => 'Seguro por vencer';
+
+  @override
+  String get alertsSoatExpiredTitle => 'Seguro vencido';
+
+  @override
+  String get alertsCardExpiringTitle => 'Tarjeta por vencer';
+
+  @override
+  String get alertsCardExpiredTitle => 'Tarjeta vencida';
+
+  @override
+  String get alertsDocExpiresToday => 'Vence hoy.';
+
+  @override
+  String alertsDocExpiresInDays(int dias) {
+    return 'Vence en $dias días.';
+  }
+
+  @override
+  String alertsDocExpiredDaysAgo(int dias) {
+    return 'Venció hace $dias días.';
   }
 
   @override
@@ -662,6 +699,13 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get wdMapUnavailableBody =>
       'No se pudo cargar el mapa porque a esta versión de la app le falta la clave de Google Maps. Mientras tanto puedes ver los talleres en la vista de lista.';
+
+  @override
+  String get wdMapLoadFailedTitle => 'El mapa no se pudo cargar';
+
+  @override
+  String get wdMapLoadFailedBody =>
+      'Google Maps no respondió. Suele ser la clave: vencida, sin facturación o restringida a otro dominio. La lista de talleres sigue funcionando.';
 
   @override
   String get wdWorkshop => 'Taller';
@@ -906,6 +950,37 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get addVehiclePlateTypeAlquiler => 'Alquiler';
+
+  @override
+  String get addVehiclePlateTypeMicrobus => 'Microbús';
+
+  @override
+  String get addVehiclePlateTypeAutobus => 'Autobús';
+
+  @override
+  String get addVehicleType => 'Tipo de vehículo';
+
+  @override
+  String get addVehicleTypeSubtitle =>
+      '¿Qué vas a registrar? Así te mostramos sus marcas y su tipo de placa.';
+
+  @override
+  String get tipoVehiculoAutomovil => 'Automóvil';
+
+  @override
+  String get tipoVehiculoCamioneta => 'Camioneta / Pick-up';
+
+  @override
+  String get tipoVehiculoMotocicleta => 'Motocicleta';
+
+  @override
+  String get tipoVehiculoCamion => 'Camión';
+
+  @override
+  String get tipoVehiculoMicrobus => 'Microbús';
+
+  @override
+  String get tipoVehiculoAutobus => 'Autobús';
 
   @override
   String get addVehiclePlate => 'Número de Placa';
@@ -1177,7 +1252,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get chatReservationFailed =>
-      'No se pudo crear la cita. Intentalo de nuevo.';
+      'No se pudo crear la cita. Inténtalo de nuevo.';
 
   @override
   String get chatReservationDetail => 'Detalle de Cita';
@@ -1426,28 +1501,38 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String bandejaTruncada(int tope) {
-    return 'Se muestran las $tope conversaciones con actividad mas reciente. Hay mas hilos que no caben aqui.';
+    return 'Se muestran las $tope conversaciones con actividad más reciente. Hay mas hilos que no caben aquí.';
   }
 
   @override
   String hiloTruncado(int tope) {
-    return 'Se muestran los $tope mensajes mas recientes. Los anteriores no estan cargados.';
+    return 'Se muestran los $tope mensajes más recientes. Los anteriores no están cargados.';
   }
 
   @override
-  String get errorDatosTitulo => 'No pudimos cargar esta informacion';
+  String get errorDatosTitulo => 'No pudimos cargar esta información';
 
   @override
   String get errorDatosPermiso =>
-      'No tienes acceso a esta informacion. Si crees que deberia estar disponible, vuelve a iniciar sesion.';
+      'No tienes acceso a esta información. Si crees que debería estar disponible, vuelve a iniciar sesión.';
 
   @override
   String get errorDatosConexion =>
-      'No pudimos conectar con el servidor. Revisa tu conexion e intentalo de nuevo.';
+      'No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.';
 
   @override
   String get errorDatosGenerico =>
-      'Algo salio mal al cargar esta informacion. Intentalo de nuevo en un momento.';
+      'Algo salió mal al cargar esta información. Inténtalo de nuevo en un momento.';
+
+  @override
+  String get errorDatosNoEncontrado =>
+      'No encontramos ese dato. Puede que ya no exista.';
+
+  @override
+  String get errorDatosYaExiste => 'Ese dato ya existe.';
+
+  @override
+  String get errorDatosCancelado => 'La operación se canceló.';
 
   @override
   String get errorReintentar => 'Reintentar';
@@ -1457,7 +1542,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get paseIntro =>
-      'Quien escanee este codigo vera que mantenimientos tiene el vehiculo y cuando. No vera importes ni facturas, y el pase caduca solo.';
+      'Quien escanee este código verá qué mantenimientos tiene el vehículo y cuándo. No verá importes ni facturas, y el pase caduca solo.';
 
   @override
   String paseCaducaEn(String tiempo) {
@@ -1478,7 +1563,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get paseGenerarOtro => 'Generar otro pase';
 
   @override
-  String get paseTokenEtiqueta => 'Si no puede escanear, comparte este codigo:';
+  String get paseTokenEtiqueta => 'Si no puede escanear, comparte este código:';
 
   @override
   String get paseErrorEmitir => 'No pudimos generar el pase.';
@@ -1496,7 +1581,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get paseLectorSinServicios =>
-      'Este vehiculo no tiene mantenimientos registrados en AutoDoc.';
+      'Este vehículo no tiene mantenimientos registrados en AutoDoc.';
 
   @override
   String get paseLectorPorTaller => 'Registrado por un taller';
@@ -1528,13 +1613,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get paseLectorInvalido =>
-      'Ese codigo no es un pase de historial de AutoDoc.';
+      'Ese código no es un pase de historial de AutoDoc.';
 
   @override
-  String get paseCopiarCodigo => 'Copiar codigo';
+  String get paseCopiarCodigo => 'Copiar código';
 
   @override
-  String get paseCodigoCopiado => 'Codigo copiado';
+  String get paseCodigoCopiado => 'Código copiado';
 
   @override
   String get perfilTallerIncompletoTitulo => 'Completa tu perfil de taller';
@@ -1561,9 +1646,93 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get authSignOutError =>
-      'No pudimos cerrar tu sesion. Revisa tu conexion e intentalo de nuevo.';
+      'No pudimos cerrar tu sesión. Revisa tu conexión e inténtalo de nuevo.';
 
   @override
   String get authRefreshError =>
-      'No pudimos comprobar tu verificacion. Intentalo de nuevo en un momento.';
+      'No pudimos comprobar tu verificación. Inténtalo de nuevo en un momento.';
+
+  @override
+  String get mechanicDashboardTitle => 'Panel del taller';
+
+  @override
+  String get asistenteTitulo => 'Asistente';
+
+  @override
+  String get asistenteAbrir => 'Preguntar al asistente';
+
+  @override
+  String get asistenteCampoEtiqueta => 'Tu pregunta';
+
+  @override
+  String get asistenteCampoPista => '¿Qué vencimientos tengo esta semana?';
+
+  @override
+  String get asistenteEnviar => 'Preguntar';
+
+  @override
+  String get asistenteOtraPregunta => 'Hacer otra pregunta';
+
+  @override
+  String get asistentePensando => 'Pensando…';
+
+  @override
+  String get asistenteVacio =>
+      'Pregúntame por los vencimientos, las citas y los mantenimientos de tus vehículos.';
+
+  @override
+  String get asistenteAlcance =>
+      'Solo responde sobre tu agenda. No diagnostica averías ni sustituye a un taller.';
+
+  @override
+  String get asistenteEtiquetaFueraDeAlcance => 'Fuera de alcance';
+
+  @override
+  String get asistenteErrorCupo =>
+      'Alcanzaste tu límite de consultas de hoy. Vuelve a intentarlo mañana.';
+
+  @override
+  String get asistenteErrorApagado =>
+      'El asistente está desactivado temporalmente.';
+
+  @override
+  String get asistenteTituloCupo => 'Sin consultas por hoy';
+
+  @override
+  String get asistenteTituloApagado => 'Asistente desactivado';
+
+  @override
+  String get asistenteTituloTallerPendiente =>
+      'Tu taller todavía no está aprobado';
+
+  @override
+  String get asistenteTituloPreguntaVacia => 'Falta la pregunta';
+
+  @override
+  String get asistenteErrorNoDisponible =>
+      'El asistente no está configurado todavía. Estamos en ello.';
+
+  @override
+  String get asistenteErrorLento =>
+      'El asistente tardó demasiado en responder. Inténtalo de nuevo.';
+
+  @override
+  String get asistenteErrorSinRespuesta =>
+      'No pude preparar una respuesta a esa pregunta. Prueba a formularla de otra forma.';
+
+  @override
+  String get asistenteErrorTallerPendiente =>
+      'Tu taller todavía no está aprobado, así que no puedo consultar su agenda.';
+
+  @override
+  String get asistenteErrorPreguntaVacia =>
+      'Escribe una pregunta antes de enviarla.';
+
+  @override
+  String get asistenteErrorCupoGlobal =>
+      'El asistente alcanzó su límite de consultas de hoy. No es cosa tuya: vuelve a intentarlo mañana.';
+
+  @override
+  String get asistenteErrorProveedor =>
+      'El asistente no está disponible en este momento. Inténtalo de nuevo.';
 }

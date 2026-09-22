@@ -5,8 +5,9 @@ import 'package:autodoc/core/utils/input_formatters.dart';
 
 /// Controladores de una fila de material/repuesto: nombre, cantidad y costo
 /// unitario. Es la única pieza genuinamente idéntica entre las dos pantallas
-/// que hoy piden una lista de materiales — `CotizacionPicker` (chat, antes de
-/// que el cliente acepte nada) e `InitiateServiceScreen` (al cerrar un
+/// que hoy piden una lista de materiales — `NuevaCotizacionScreen` (la
+/// cotización, antes de que el cliente acepte nada, desde el chat o desde
+/// Buscar Vehículo) e `InitiateServiceScreen` (al cerrar un
 /// servicio sin cotización aprobada) — el resto (fecha propuesta, beneficio
 /// por renglón, mano de obra) sigue siendo propio de cada lado porque no
 /// tienen equivalente en el otro. Ver
@@ -30,7 +31,7 @@ class CotizacionItemRowControllers {
 /// Lista editable de renglones de material/repuesto (nombre + cantidad +
 /// costo, con `montoInputFormatters` en el campo de dinero) y, opcionalmente,
 /// el total calculado. No emite un modelo de dominio ni asume a qué destino
-/// va a parar la cotización: cada llamador (`CotizacionPicker`,
+/// va a parar la cotización: cada llamador (`NuevaCotizacionScreen`,
 /// `InitiateServiceScreen`) sigue armando su propio payload a partir de
 /// [rows] — este widget solo evita que ambos reimplementen el mismo renglón.
 class CotizacionItemsForm extends StatelessWidget {
@@ -50,9 +51,9 @@ class CotizacionItemsForm extends StatelessWidget {
   /// combinado con mano de obra en `InitiateServiceScreen`).
   final VoidCallback onChanged;
 
-  /// Mínimo de filas que deben quedar sin botón de eliminar. `CotizacionPicker`
-  /// exige al menos un renglón (usa 1, su valor por defecto); `InitiateServiceScreen`
-  /// permite quedarse sin materiales (usa 0).
+  /// Mínimo de filas que deben quedar sin botón de eliminar. Las dos pantallas
+  /// actuales usan 0: una cotización puede ser solo de mano de obra, y un
+  /// servicio puede cerrarse sin materiales.
   final int minRows;
 
   /// Si es `true` (por defecto), dibuja el total de estas filas debajo de la
@@ -69,7 +70,7 @@ class CotizacionItemsForm extends StatelessWidget {
   final Widget? emptyPlaceholder;
 
   /// Widget adicional a dibujar al final de la fila `index` (p. ej. el campo
-  /// "beneficio" que solo existe en `CotizacionPicker`).
+  /// "beneficio" que solo existe en `NuevaCotizacionScreen`).
   final Widget Function(BuildContext context, int index)? trailingBuilder;
 
   const CotizacionItemsForm({

@@ -17,6 +17,271 @@ VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01, FUNC-02, UX-03 / UX-04,
 cerradas: `fix/gaps-02` (residuales de FUNC-02), `fix/gaps-03` (accesibilidad de la landing que
 dejó UX-03) y **`fix/gaps-04`** (lo que quedaba abierto antes de H-01, cerrada el 2026-09-13).
 
+### Observaciones de uso real del 2026-09-18 (rama `fix/observaciones-2026-09-18`)
+
+Segunda ronda del PDF de chele moskar / chele alonzo + el Inge. Las páginas 1–2 eran el
+backlog ya cerrado el 2026-09-04/05 (plan `2026-09-04-observaciones-colaboradores.md`); lo
+nuevo eran las capturas 3–6 y los puntos que ese plan dejó fuera. Lo que hay que saber:
+
+- **La cotización del chat nacía sin coche** (capturas 4–5): "Cotizar y Aceptar" tomaba
+  `id_vehiculo` de la CONVERSACIÓN, vacía cuando el chat se abrió desde el directorio. El
+  coche sale ahora de la cita; `onCotizacionAceptada` lo recupera de `id_reserva` si falta
+  (misma pareja propietario/taller) y lo escribe de vuelta. **Paso de despliegue:**
+  `firebase deploy --only functions:onCotizacionAceptada --project production`, y después
+  `node backfill_tickets_cotizaciones_aceptadas.js` (dry-run, luego `--apply`) para abrir los
+  tickets de las cotizaciones ya atascadas. **Hecho el 2026-09-18:** la función ya está
+  desplegada en producción, y una simulación fiel (la misma `abrirTicketDeReparacion` con las
+  escrituras interceptadas) dio **0 tickets recuperables** de 26: 19 sin coche ni cita, 10 con
+  el coche ya borrado —5 de ellas con la cita borrada también, incluida la de la captura— y 1
+  que ya tenía ticket abierto. **El dry-run del script engaña:** solo mira si existe
+  `cot_<id>` y dice "abriría" de todo lo demás. No se corrió `--apply`: no habría abierto nada
+  y solo habría reescrito el aviso rojo en cotizaciones viejas.
+- **Una sola pantalla de cotización** (`NuevaCotizacionScreen`, captura 6) para chat, cita y
+  Buscar Vehículo: dos columnas, catálogo, mano de obra y día/hora. `CotizacionModel.total`
+  incluye `mano_de_obra`. La cita guarda `vehiculo_resumen` porque el taller no puede leer
+  `vehiculos/{id}` hasta recibir el coche.
+- **Buscar Vehículo cotiza si hay cita vigente** del propietario con el taller; sin cita, solo
+  la ficha pública. Recibir sigue exigiendo la cotización ACEPTADA.
+- **Checks automáticos:** `ChatProvider.abrirConversacion` marca vistos los mensajes que llegan
+  con el chat abierto (pausado en segundo plano). **Aviso en pantalla** de mensajes nuevos
+  (`AvisoMensajesNuevos`, en el `builder` de `MaterialApp.router`: está sobre el `Navigator`,
+  sin `Overlay` — nada de `Tooltip` ahí) e insignia de no leídos en la navegación.
+- **Tres puntos, responder y reenviar** en cada mensaje (`respuesta_a`, `reenviado`; el
+  adapter de Hive se tocó a mano: campos 11 y 12). **Logo del taller** como avatar.
+- Sin cambios en `firestore.rules`, `storage.rules` ni índices.
+
+### Observaciones del 2026-09-19 (misma rama) — los seis puntos de Oscar
+
+La lista vive en la sesión del 2026-09-19 (se cortó por cuota y se retomó). Lo que hay que saber:
+
+- **Buscar Vehículo abre el PERFIL del coche** (`VehiclePublicViewScreen`): datos, servicio en
+  curso, cotizaciones y servicios de ESTE taller, y «Nueva cotización». `buscarVehiculoPorPlaca`
+  acepta ahora `idVehiculo` (recargar la página) y devuelve `foto_url`; mismos campos, nada nuevo
+  abierto. **El campo «Beneficio» ya no está** en `NuevaCotizacionScreen` (hacía lo mismo que la
+  mano de obra); `privado/margen` sigue viajando en ceros porque las reglas lo exigen.
+- **Tema, idioma y campana en todas las pantallas** (`AccionesDeCabecera`, más el avatar del
+  propietario). Un centinela (`acciones_de_cabecera_test.dart`) rompe si una pantalla no lo
+  lleva. El tema arranca en `ThemeMode.system`, se guarda al cambiarlo y `main` lo lee ANTES de
+  pintar (sin destello del otro tema).
+- **«Mis Servicios» solo leía `servicios`** (trabajos ya registrados), así que ni una cotización
+  rechazada ni una aceptada en proceso podían salir nunca. Ahora junta cotizaciones y servicios
+  del taller por pestañas (todos, en proceso, pendientes, finalizados, rechazados). **Índice nuevo**
+  `cotizaciones (id_taller, fecha DESC)`; se retira `(id_vehiculo, estado, fecha DESC)`, que ya no
+  usa nadie.
+- **«No se pudo comprobar si el cliente aprobó la cotización»**: la consulta no filtraba por
+  taller y las reglas la rechazaban entera (`permission-denied`). Ahora filtra por taller y suma
+  TODAS las aceptadas.
+- **Invitar como empleado a quien ya tiene cuenta** (`functions/src/empleadosTaller.js`): ex
+  empleado del taller → se reactiva; propietario → se le INVITA y acepta él desde Notificaciones
+  (`responderInvitacionEmpleo`); de otro taller o admin → se dice por qué. Aceptar exige correo
+  verificado y **que la cuenta no tenga vehículos** (un taller no puede verlos). La invitación
+  guarda el nombre que tecleó el taller, **nunca el del perfil**: el taller lee sus invitaciones
+  y si no se podía averiguar el nombre del dueño de cualquier correo. Reglas nuevas:
+  `talleres/{id}/invitaciones/{uid}` (solo Admin SDK escribe; solo el taller dueño lee).
+- **Los dos revisores de gate tumbaron la primera versión, con el mismo bloqueante:** la
+  reactivación de un ex empleado le ponía la contraseña que tecleara el taller, y con las
+  invitaciones eso ya no era «una cuenta del taller»: desactivar a quien entró por invitación y
+  volver a darlo de alta era **quedarse con su cuenta personal**. Ahora `empleados/{uid}` guarda
+  `origen: 'invitacion'` y esas cuentas se reabren con SU contraseña; y solo se reactiva lo que
+  desactivó el taller (`activo: false`), nunca una suspensión de administración. De paso:
+  aceptar va en transacción que relee invitación y perfil (una invitación retirada, o aceptar
+  la de dos talleres a la vez, dejaba la cuenta dentro), un solo mensaje para las cuentas que no
+  pueden unirse (antes revelaba si el correo era de admin), no se invita a correos sin verificar
+  ni se re-avisa con una invitación viva, el cambio de rol deja rastro en `admin_logs`, «Mis
+  Servicios» suma las pendientes/aceptadas viejas que el tope de 200 dejaba fuera,
+  `marcarFinalizadas` va en un lote y `buscarVehiculoPorPlaca` exige también `estado` aprobado.
+- **Los gaps de esa lista ya están cerrados** (mismo día, ver el bloque de abajo), salvo
+  `vehiculos.foto_url`, que sigue siendo una URL libre del cliente que el taller carga al abrir
+  la ficha (heredado: ya pasaba con `vehiculo_resumen`).
+- **Diseño de escritorio:** la causa de las «tarjetas deformes» era `AppGrid` con
+  `childAspectRatio`: el alto crece con el ancho. `AppGrid` tiene ahora `mainAxisExtent` (alto
+  fijo, escalado con el texto del sistema) y `sizeToContent` (cada tarjeta a su alto, con `Wrap`).
+  El perfil del coche va a dos columnas en escritorio; alertas e historial miden por contenido.
+  Para revisar diseño sin tocar producción se renderizó cada pantalla con `matchesGoldenFile` +
+  `--update-goldens` y las fuentes de `material_fonts` registradas con los nombres que usa
+  `google_fonts` (`Inter_700`…); **las fuentes se cargan en `setUpAll`**, dentro de `testWidgets`
+  la E/S real se cuelga.
+- **Despliegue:** la CI lo hace todo al fusionar a `main`. Conviene adelantar
+  `firebase deploy --only firestore:indexes --project production`: el índice nuevo tarda unos
+  minutos en construirse y «Mis Servicios» falla hasta entonces.
+
+### Observaciones del 2026-09-20 (misma rama) — nueve puntos
+
+Lo que hay que saber:
+
+- **EL MAPA YA NO ES DE GOOGLE.** La clave estaba vencida y **una clave rota no se puede
+  detectar desde la app**: el error lo pinta la propia API DENTRO de la vista de plataforma. Se
+  cambió a tiles de OpenStreetMap dibujados por Flutter (`lib/core/widgets/mapa_osm.dart`, sobre
+  `flutter_map`): sin clave, sin facturación y sin vista de plataforma — o sea que también
+  funcionaría dentro de un diálogo, que era la otra mitad del defecto del 2026-09-19. Se
+  retiraron `google_maps_flutter`, el script que `main.dart` inyectaba en web,
+  `maps_availability.dart` y el JSON de estilo oscuro. **`AppSecrets.googleMapsApiKey` se queda
+  porque la usa `TranslationService`**, que es otra API de Google. La atribución a OSM **la exige
+  su política de tiles**: no la quites.
+- **`FlutterMap` retiene el toque** hasta descartar que sea un doble toque (que hace zoom), así
+  que en un test `tester.tapAt` + un `pump()` no llega NUNCA y parece que el mapa no responde.
+  Hace falta `startGesture` + `up()` + `pump(500ms)`.
+- **La cita del chat se quedaba en «pendiente» aunque el taller ya hubiera cotizado.** La
+  cotización se manda desde otra pantalla y al volver se hacía `if (context.mounted)` sobre el
+  contexto de LA TARJETA antes de mover la cita; el mensaje nuevo —el de la propia cotización—
+  reconstruye la lista, así que ese contexto podía estar muerto. Ahora el cambio de estado no
+  pasa por el contexto, y **si falla se dice**: las dos escrituras van por providers que se
+  tragan la excepción en su propio `error`. Una cita ya resuelta enseña solo su estado.
+- **«Subo una foto, la borro, pongo otra y sale la primera».** El nombre del objeto lo fijan las
+  reglas por hueco (`logo.jpg`), así que la URL nueva es carácter por carácter la vieja y el
+  caché la sirve sin pedirla. Se olvida la copia local al subir y al quitar
+  (`OlvidadorDeImagen` en `GaleriaService`) y el objeto se sube con `max-age=60` en vez del año
+  por defecto. **La foto principal del vehículo no tiene ese problema a propósito:** su nombre
+  lleva un uuid nuevo en cada subida.
+- **El teléfono del perfil público NO era un defecto de pantalla.** `publishTallerProfile` es un
+  trigger de `usuarios`, así que un campo nuevo en la proyección (telefono, municipio,
+  `banner_encuadre`, `tipos_atendidos`) no llega a las fichas YA publicadas hasta que alguien
+  reescribe ese usuario. Hay `functions/republicar_talleres.js` (dry-run y `--apply`), que **se
+  corre desde `functions/`** —ahí está firebase-admin— y **exige nombrar el proyecto**: sin clave
+  de cuenta de servicio en `functions/serviceAccountKey.json` hay que pasar
+  `--project=autodoc-6ef5a`, porque `.firebaserc` apunta por defecto a staging y una
+  republicación contra el proyecto equivocado no avisa de nada. **NO uses
+  `src/backfillTalleres.js`:** lleva su propia copia congelada de los campos públicos y correrlo
+  hoy borraría galería y teléfono de todas las fichas.
+- **El encuadre del banner no recorta el archivo:** guarda el alineamiento vertical
+  (`banner_encuadre`, de -1 a 1) y lo aplica el `BoxFit.cover` del perfil. Así la foto original
+  se conserva y el ajuste se puede cambiar mil veces sin volver a subir nada.
+- **Los iconos de vehículo salen de `tipo_vehiculo`**, y el resumen que viaja al taller lo
+  incluye: sin eso, el taller —que no puede leer `vehiculos/{id}` hasta recibir el coche— vuelve
+  a pintar un coche para una moto.
+- **Las sugerencias del catálogo dependen de `tipos_atendidos`** (seis casillas en los ajustes
+  del taller). Lo común a todos + lo propio de cada tipo, sin repetir.
+- **Cifras:** `flutter analyze` limpio, `flutter test` **1428/1428**, Functions **430**. Las
+  reglas no se relanzaron: esta tanda no toca `firestore.rules` ni `storage.rules`.
+- **Sigue pendiente de despliegue** lo del 2026-09-19 (las reglas con el hueco `banner`) más
+  ahora las funciones (`publishTallerProfile` con los campos nuevos) y una pasada de
+  `republicar_talleres.js --apply`.
+
+### Tercera tanda del 2026-09-19 (misma rama) — cobro, mapa y dashboard
+
+Cuatro observaciones de uso real, con capturas. Lo que hay que saber:
+
+- **EL BANNER NO ES UN DEFECTO DE CÓDIGO: son las reglas sin desplegar.** «No se pudo guardar
+  el cambio. Si tu cuenta fue suspendida, no puedes publicar fotos» sale porque las reglas de
+  PRODUCCIÓN (las de `main`) todavía tienen
+  `^(logo|local-[1-5])\.(jpg|jpeg|png|webp)$`: el archivo `banner` se deniega. Se arregla con
+  `firebase deploy --only storage,firestore:rules --project production` (o al fusionar el PR).
+  **Índices NO**, y esto importa: `--only firestore:indexes` BORRA los que no estén en el
+  fichero, y esta rama retira `cotizaciones (id_vehiculo, estado, fecha DESC)`, que la app
+  desplegada todavía puede estar usando. Los índices van con la fusión.
+- **Se entregó un vehículo sin haber generado el cobro, y ahí se acabó.** Entregar revoca el
+  vínculo al coche y saca el ticket del tablero, y el perfil del vehículo solo ofrece
+  «Continuar servicio» mientras el ticket vive: el trabajo quedaba hecho, sin factura y sin
+  ninguna pantalla desde la que emitirla. Encima el perfil decía «el ticket todavía no se ha
+  abierto», que es lo contrario de lo que pasó. Ahora el tablero comprueba antes de entregar si
+  hay un `servicios` de ese vehículo+taller POSTERIOR a la apertura del ticket, y si no, el
+  diálogo ofrece «Finalizar servicio» o «Entregar sin cobrar» —que se queda, porque el caso
+  existe: el cliente que rechaza el presupuesto y se lleva el coche a medias.
+  **Se mide por el hecho, no por el estado del tablero:** a `listo_para_entrega` también se
+  llega a mano con «Avanzar». Sin índice nuevo: misma forma que la consulta de reseñas.
+- **Y hay salida para los que ya se entregaron así:** el perfil del vehículo ofrece «Registrar
+  servicio y cobro». Funciona porque el taller sigue en `talleres_conocidos`, y
+  `puedeMecanicoAtenderVehiculo` mira eso — o sea que las reglas todavía le dejan escribir el
+  servicio aunque el vínculo esté revocado. **La foto de la factura NO**: `facturas/{vehicleId}`
+  de `storage.rules` sí exige el vínculo, así que ese cobro va sin adjunto.
+- **El mapa no es el diálogo esta vez: es la clave vencida.** Con la clave rota (vencida, sin
+  facturación o restringida a otro dominio) Google pinta SU cartel gris DENTRO de la vista de
+  plataforma y `onMapCreated` **no se llama nunca** — no hay callback de fallo en
+  `google_maps_flutter`. Por eso el fallo se mide por tiempo (8 s) y el mapa se **sustituye**,
+  que es lo único que retira el cartel de Google. En el selector se pueden escribir las
+  coordenadas; en el directorio sale el aviso que ya existía para la clave ausente. **Renovar la
+  clave sigue siendo trabajo de consola.**
+- **El mapa falso de las pruebas recibe ahora `alCargar`**, y no es decoración: un mapa que no
+  avisa ES el caso de la clave vencida. Sin ese tercer argumento, ese camino no se puede probar.
+- **`pumpAndSettle` avanza el reloj**, así que un temporizador de 50 ms vence durante la
+  transición de ruta (~300 ms) y el test ve el estado de después. Las esperas de prueba van en
+  segundos.
+- **Dashboard del taller:** misma causa que las tarjetas deformes del perfil del coche
+  (`childAspectRatio` → `mainAxisExtent`), gráfica y servicios recientes lado a lado cuando hay
+  ancho, y el botón de «Atención Rápida» deja de ocupar la barra entera. Al acotarlo salió lo
+  otro: **`Wrap` se encoge a su contenido**, así que la barra se quedó a media pantalla y hubo
+  que fijarle el ancho. La decisión de dos columnas mira el ancho DISPONIBLE (`LayoutBuilder`),
+  no el de la ventana: el sidebar del panel se lleva 280 px.
+- **Cifras:** `flutter analyze` limpio, `flutter test` **1412/1412**. Functions y reglas no se
+  relanzaron: esta tanda no toca `functions/`, `firestore.rules` ni `storage.rules`.
+
+### Drenaje de los gaps del 2026-09-19 (misma rama) — galería del empleado y cupo de invitaciones
+
+Cierra los dos gaps que dejaron abiertas las dos listas de arriba. Lo que hay que saber:
+
+- **Un EMPLEADO podía escribir en `talleres_fotos/{suPropioUid}/`**, que es ruta de lectura
+  anónima. Su cuenta lleva `rol: 'Taller'` y `estado: 'activo'`, así que pasaba
+  `esTallerAprobado()` entera. Esas fotos no eran escaparate de nadie —`publishTallerProfile`
+  BORRA la ficha de `talleres` de toda cuenta con `id_taller_propietario`, y el directorio solo
+  pinta desde esa ficha—, o sea que era **alojamiento de 7 imágenes públicas de 5 MB gratis bajo
+  el dominio del proyecto**. Guard nuevo `esEmpleadoDeTaller()` en `storage.rules`. **El `allow
+  delete` se queda sin guard a propósito:** el botón «Quitar» sigue siendo la única vía para
+  limpiar lo que subiera antes, y hay test que lo fija.
+- **Y ese arreglo dejaba a la UI mintiendo:** «Fotos del taller» sigue en la barra lateral del
+  empleado, y el rechazo de Storage se pintaba como «Si tu cuenta fue suspendida, no puedes
+  publicar fotos» — con la cuenta perfectamente activa. Ahora la pantalla es de solo lectura para
+  una sub-cuenta (aviso + sin botones de subir), con «Quitar» intacto.
+- **El cupo de invitaciones va en `runTransaction`, y el primer intento no.** Contar fuera y
+  escribir después deja el cupo en «20 por ronda secuencial»: N altas simultáneas leen todas
+  `vivas = 0` y las N escriben, que es justo la ráfaga que el cupo viene a impedir (App Check
+  está en `monitor`, así que no hay fricción delante). Y el borrado de una caducada sin
+  precondición podía llevarse por delante una invitación que otra llamada acababa de renovar: la
+  persona se quedaba con un aviso que al abrirlo decía «ya no está disponible».
+- **El barrido no borra lo que no entiende.** `aMilisegundos()` devuelve 0 cuando `expira` falta
+  o es una cadena ISO, y leer eso como «caducada» es el defecto que GAPS-06 documenta con
+  `fecha_limite`: ahora se deja quieta, se cuenta como viva y se avisa por consola. Alternativa
+  anotada: una **política TTL** sobre `expira` haría el GC en el servidor y quitaría de encima el
+  barrido entero (paso de runbook, no se configura desde `firestore.indexes.json`).
+- **El cupo acota el ENVÍO DE AVISOS A TERCEROS, no el sondeo de correos.** El resto de
+  comprobaciones ocurre antes, así que un taller con el cupo lleno sigue distinguiendo por el
+  mensaje si un correo tiene cuenta. El comentario del código lo dice para que nadie confíe en
+  una defensa que no existe.
+- **Un cambio de producción rompió un doble de prueba, no al revés:** `functions/test/empleados.test.js`
+  modelaba la subcolección `invitaciones` solo con `doc()`, así que la transacción nueva moría
+  con `TypeError` y el taller lo leía como «No se pudo completar el registro». Lo levantó la
+  suite completa, no la del fichero que toqué: **corre `npm test`, no solo el test nuevo**.
+- **Cifras:** `flutter analyze` limpio, `flutter test` **1401/1401**, Functions **429**, reglas
+  **530/530** en 31 suites.
+
+### Segunda lista del 2026-09-19 (misma rama) — reseñas, tareas, catálogo, vehículos, mapa, perfil
+
+- **Un servicio escribía un `servicios` POR TAREA marcada**, cada uno con el importe entero (3
+  tareas de $588 = tres servicios de $588, tres reseñas, tres avisos). Ahora
+  `AlertProvider.tallerCerrarServicio` escribe UNO; las tareas son opcionales (plegadas en
+  «Mantenimiento del cliente») y solo reinician el calendario de mantenimiento.
+- **Reseñas:** solo se reseña el servicio **más reciente** con un taller y solo si no tiene
+  reseña (`ReviewService.findReviewableServiceId`); antes, reseñado el último se ofrecía el
+  anterior, sin fin. En el chat hay **una** opción (`AvisoReseniaChat`, sobre la barra de
+  escribir); las tarjetas de cotización y la solicitud del taller ya no traen botón. La
+  solicitud del taller fallaba porque buscaba la conversación de ESE coche y, sin ella,
+  intentaba crear otra (las reglas no dejan al taller): ahora usa la que haya y, si no hay, lo
+  dice. **Los empleados no pueden leer ni escribir conversaciones** (reglas: `id_mecanico ==
+  uid`), así que a ellos no se les ofrece.
+- **El mapa del taller no se movía, y eran dos causas.** (1) Estaba en un `AlertDialog`: con
+  `ensureSemantics()` en web (`main.dart`), la capa de accesibilidad del diálogo queda en el DOM
+  encima de la vista de plataforma y se come los clics. Reproducido en el navegador con el mismo
+  `GoogleMap`: en diálogo no se mueve, en página sí → `SelectorUbicacionTallerScreen` a pantalla
+  completa. **Cualquier `GoogleMap` dentro de un diálogo tendrá el mismo problema.** (2) La clave
+  de Maps del `.env` local está **vencida** (`ExpiredKeyMapError`): hay que renovarla en Google
+  Cloud y en el secreto de la CI.
+- **Catálogo de mano de obra con precio estimado** (`precio` = desde, `precio_max` = hasta) y un
+  botón que carga 18 servicios comunes con rangos para El Salvador. Al cotizar entra como
+  renglón «X (mano de obra)» con el «desde».
+- **Tipos de vehículo:** primer paso del alta (`TipoVehiculo`: automóvil, camioneta, moto,
+  camión, microbús, autobús) con marcas frecuentes por tipo (aunque NHTSA no las tenga), modelos
+  filtrados por `vehicletype` y placa por defecto. Placas nuevas `MB` y `AB`; `normalizarPlaca`
+  prueba primero el prefijo más largo. Se guarda `vehiculos.tipo_vehiculo`.
+- **Perfil del taller como página de empresa:** banner (hueco nuevo `banner` de la galería;
+  `storage.rules` y el tope de `galeria` pasan a 7), logo encima, «Llamar» y «Cómo llegar», y
+  todas las secciones siempre visibles. `publishTallerProfile` publica ahora `telefono` y
+  `municipio`, que la pantalla de ajustes ya presentaba como públicos y nunca se publicaban.
+  **El gate de reglas paró la primera versión:** `talleres` es de lectura anónima para la
+  colección entera (la landing la baja por REST y filtra en el navegador), así que el teléfono
+  de cada solicitante, rechazado o suspendido quedaba público. Ahora `telefono`, `direccion` y
+  las coordenadas solo se proyectan con `estado` aprobado/activo; al aprobar, el propio trigger
+  los publica. **Despliega `storage.rules` con la app o antes**: una app vieja descarta el
+  archivo `banner` al leer la galería y lo quita en su siguiente guardado.
+
 ### La tanda GAPS-07 esta cerrada (2026-09-15, `fix/gaps-07a`) — el doble envio
 
 Cierra el gap 1 del §4 de GAPS-06: **los 15 grupos de doble envio, los 15**. Evidencia en
@@ -483,6 +748,28 @@ Firestore de verdad. Y **el navegador leyendo Firestore por REST desestabiliza e
 (Chromium aborta las conexiones al navegar, netty acumula "Connection reset"): en la suite de la
 landing esa lectura se intercepta.
 
+### ⚠️ Ramas — estado real a 2026-09-20 (lo de abajo es HISTORIA, no instrucciones)
+
+**`integracion/ola-1` YA NO EXISTE.** Su contenido esta en `main`. Todo lo que este
+documento dice mas abajo sobre cortar de `integracion/ola-1`, o sobre que «nada esta
+fusionado a `main`», **esta obsoleto**: se conserva porque explica como se llego aqui,
+no porque describa el arbol de hoy. Un agente que lo obedezca al pie de la letra corta
+de una rama que no existe.
+
+Lo que hay hoy:
+
+| Rama | Punta | Que es |
+|---|---|---|
+| `main` | `59f4a43` | Todo lo integrado, incluida la antigua `integracion/ola-1` |
+| `feat/play-store` | `d75d897` | Preparacion de tienda + fotos de vehiculo desde la galeria |
+| `feat/asistente-agenda` | (activa) | IA-01, el asistente de agenda. Cortada de `feat/play-store` |
+| `fix/ux1` | — | Intento antiguo SIN commits propios. Ignorala; la buena era `fix/ux01` |
+
+**De donde cortar:** de `main`, salvo que tu tarea toque ficheros que `feat/play-store`
+tenga tocados y sin integrar — que fue justo el caso de IA-01: sus siete commits tocan
+`mechanic_dashboard_screen.dart`, `alerts_screen.dart`, `app_es.arb` y `firestore.rules`.
+**Miralo antes de cortar**, con `git log --oneline main..feat/play-store --name-only`.
+
 ### Ramas — nada está fusionado a `main`
 
 `main` sigue en `1265d23`. **Las 12 tareas cerradas viven en `integracion/ola-1`**: ola 1
@@ -550,7 +837,8 @@ harness que ella misma había destapado. Evidencia en
 Ojo con el nombre: `fix/ux1` (sin el cero) es de un intento anterior y **no tiene ni un commit
 propio** — es ancestro de `integracion/ola-1`. La buena es `fix/ux01`.
 
-Las ramas `fix/*` ya integradas: **no trabajes sobre ellas**, parte de `integracion/ola-1`.
+Las ramas `fix/*` ya integradas: **no trabajes sobre ellas**. Parte de `main` (ver el
+bloque de ramas de arriba: `integracion/ola-1` ya no existe).
 
 Antes de empezar una tarea, mira qué ramas `fix/*` existen ya para no duplicar.
 
@@ -603,7 +891,8 @@ límite de 500 por batch**, así que ese defecto se reproduce con el doble tal c
 el doble no ve —cuántos lotes se commitean y de qué tamaño— hay que envolverlo para
 afirmarlo, o «se marcaron todos» da igual de verde leyendo el hilo entero de una vez.
 
-Corta la rama de la punta de `integracion/ola-1`, nunca de una `fix/*`.
+Corta la rama de la punta de `main`, nunca de una `fix/*`. (`integracion/ola-1` ya no
+existe — ver el bloque de ramas.)
 
 Tres cosas que ahorran una hora:
 

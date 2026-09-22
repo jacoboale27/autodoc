@@ -103,3 +103,15 @@ audit-*.yml
 # nombres de usuarios reales. Nunca se versiona.
 functions/talleres_a_revisar.csv
 *.csv
+
+# Capturas generadas para la ficha de Play. Se regeneran con `npm run capturas`
+# y pesan ~2 MB por tanda; versionarlas engordaria el repo sin dar nada que el
+# script no reproduzca.
+e2e/capturas/out/
+
+# Capturas de verificacion visual del asistente (IA-01). Mismo criterio: las
+# reproduce `npx playwright test --config playwright.capturas.config.js asistente`.
+e2e/capturas/out-asistente/
+
+# Cache del compilador de Kotlin (Gradle). Es artefacto de build local.
+android/.kotlin/

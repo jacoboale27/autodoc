@@ -187,6 +187,18 @@ const _inventario = <_Consulta>[
     descendente: true,
     origen: 'lib/features/reviews/data/services/review_service.dart:160',
   ),
+  // Observación del 2026-09-19: antes de dejar entregar un vehículo, el
+  // tablero comprueba si el servicio de ese ticket ya está registrado (o sea,
+  // si hay cobro). Misma forma que la de arriba, así que la sirve el mismo
+  // índice.
+  _Consulta(
+    coleccion: 'servicios',
+    igualdades: ['id_vehiculo', 'id_taller'],
+    orden: 'fecha',
+    descendente: true,
+    origen:
+        'lib/features/mechanic/data/repositories/reparacion_repository.dart:40',
+  ),
   _Consulta(
     coleccion: 'servicios',
     igualdades: ['id_vehiculo'],
@@ -208,8 +220,34 @@ const _inventario = <_Consulta>[
     igualdades: ['id_taller'],
     orden: 'fecha',
     descendente: true,
+    // "Mis Servicios", pestaña "Finalizados". Vivía en
+    // `mechanic_service_history_screen.dart` hasta el 2026-09-19.
     origen:
-        'lib/features/mechanic/presentation/pages/mechanic_service_history_screen.dart:96',
+        'lib/features/mechanic/data/repositories/trabajos_taller_repository.dart'
+        ' (watchServiciosDelTaller)',
+  ),
+  _Consulta(
+    coleccion: 'servicios',
+    igualdades: ['id_vehiculo', 'id_taller'],
+    orden: 'fecha',
+    descendente: true,
+    // Los servicios que el taller le hizo a un coche, en su perfil
+    // (2026-09-19). Mismo índice que la búsqueda del servicio a reseñar.
+    origen:
+        'lib/features/mechanic/data/repositories/trabajos_taller_repository.dart'
+        ' (serviciosDelVehiculo)',
+  ),
+  _Consulta(
+    coleccion: 'cotizaciones',
+    igualdades: ['id_taller'],
+    orden: 'fecha',
+    descendente: true,
+    // "Mis Servicios": pendientes, en proceso y rechazados (2026-09-19).
+    // Índice NUEVO: sin desplegarlo la pestaña muere en producción con
+    // `failed-precondition`.
+    origen:
+        'lib/features/mechanic/data/repositories/trabajos_taller_repository.dart'
+        ' (watchCotizacionesDelTaller)',
   ),
   _Consulta(
     coleccion: 'conversaciones',
@@ -263,19 +301,26 @@ const _inventario = <_Consulta>[
     // `whereIn` sobre `estado`: para el índice cuenta como igualdad.
     origen: 'lib/features/dashboard/data/services/workshop_service.dart:32',
   ),
-  _Consulta(
-    coleccion: 'cotizaciones',
-    igualdades: ['id_vehiculo', 'estado'],
-    orden: 'fecha',
-    descendente: true,
-    origen:
-        'lib/features/mechanic/presentation/pages/initiate_service_screen.dart:269',
-  ),
+  // `cotizaciones (id_vehiculo, estado, fecha DESC)` vivía aquí, por la
+  // consulta de la cotización aceptada de `InitiateServiceScreen`. Esa
+  // consulta no filtraba por taller y las reglas la rechazaban SIEMPRE
+  // (captura 7 de las observaciones del 2026-09-19): ahora filtra por
+  // `id_taller`, es de solo igualdades y ordena en memoria, así que su índice
+  // se retira. Borrarlo de producción es opcional (no estorba), y
+  // `firebase deploy --only firestore:indexes` lo propone.
   _Consulta(
     coleccion: 'cotizaciones',
     igualdades: ['id_vehiculo', 'id_taller', 'estado'],
     origen:
-        'lib/features/mechanic/presentation/pages/vehicle_public_view_screen.dart:98',
+        'lib/features/mechanic/data/repositories/trabajos_taller_repository.dart'
+        ' (cotizacionesAceptadas)',
+  ),
+  _Consulta(
+    coleccion: 'cotizaciones',
+    igualdades: ['id_vehiculo', 'id_taller'],
+    origen:
+        'lib/features/mechanic/data/repositories/trabajos_taller_repository.dart'
+        ' (cotizacionesDelVehiculo)',
   ),
   _Consulta(
     coleccion: 'reparaciones',
@@ -351,6 +396,27 @@ const _inventario = <_Consulta>[
     // justo el fallo que los emuladores no pueden ver.
     origen: 'functions/src/historialCompartido.js:160',
   ),
+  // Asistente de agenda (plan 2026-09-19). Las DOS consultas de citas, una por
+  // rol, y las dos son nuevas: hasta hoy el unico indice de `reservas` era el
+  // del barrido global de recordatorios, que filtra solo por `estado` y no
+  // sirve a ninguna de estas dos.
+  //
+  // La del taller es ademas la primera consulta a `reservas` que existe para
+  // ese rol en todo el repositorio: `grep -rn "reservas" lib/features/mechanic/`
+  // no devuelve nada, o sea que el taller no tiene hoy ninguna vista de sus
+  // citas proximas pese a que el dato lleva ahi desde siempre.
+  _Consulta(
+    coleccion: 'reservas',
+    igualdades: ['id_propietario', 'estado'],
+    orden: 'fecha_hora_propuesta',
+    origen: 'functions/src/agenda.js (leerCitas, rol propietario)',
+  ),
+  _Consulta(
+    coleccion: 'reservas',
+    igualdades: ['id_taller', 'estado'],
+    orden: 'fecha_hora_propuesta',
+    origen: 'functions/src/agenda.js (leerCitas, rol taller)',
+  ),
 ];
 
 /// Índices que no sirven a ninguna consulta del inventario y aun así se
@@ -362,7 +428,20 @@ const _huerfanosConocidos = <String>[];
 /// 16: sube a 17 con el `orderBy` que `findReviewableServiceId` baja al
 /// servidor (gap 7.4) y vuelve a 16 al retirarse `streamReservasUsuario`
 /// (gap 7.2). Ambos de GAPS-02.
-const _orderByEsperados = 16;
+/// 18 desde las observaciones del 2026-09-19: `TrabajosTallerRepository`
+/// trae tres (servicios del coche, cotizaciones del taller y servicios del
+/// taller); se van la de `InitiateServiceScreen` (ahora de solo igualdades) y
+/// la de "Mis Servicios", que se mudó al repositorio.
+/// 19 al integrar GAPS-08: `VehiclePhotoService.deletePhoto` busca la foto más
+/// reciente que queda para ascenderla a portada. NO necesita índice
+/// declarado —es un `orderBy` de un solo campo sin `where`, y ésos Firestore
+/// los tiene automáticos—, así que solo ajusta el contador.
+///
+/// El 19 no se copió de la salida del test: es 16 + 2 (observaciones) + 1
+/// (play-store), y el barrido da exactamente esa suma. Cuadrar la cuenta es
+/// lo que distingue «las dos ramas añadieron lo suyo» de «al fusionar se
+/// colaron consultas que nadie revisó».
+const _orderByEsperados = 19;
 
 /// Cuántos `.where(` hay hoy en `functions/index.js` y `functions/src/`. Ver el
 /// cuarto test.
@@ -396,7 +475,24 @@ const _orderByEsperados = 16;
 // campo, o mezclar una igualdad con una DESIGUALDAD — que es justo el caso que
 // se le escapo a este centinela con `caducarVinculos.js` y por el que existe
 // este segundo test.
-const _whereServidorEsperados = 32;
+//
+// Observaciones del 2026-09-19: 32 -> 33. Aceptar una invitacion de empleo
+// (`empleadosTaller.js`) comprueba que la cuenta no tenga vehiculos con UNA
+// igualdad (`id_propietario ==`) y `limit(1)`: indice de campo unico,
+// automatico. Nada que declarar.
+//
+// IA-01: 33 -> 40. La agenda del asistente son siete: vehiculos del
+// propietario, sus mantenimientos, sus reservas confirmadas, y las del taller
+// por su lado. Las dos de `reservas` con desigualdad SI declaran indice (los
+// dos de `reservas (…, estado, fecha_hora_propuesta)`).
+//
+// El 40 se MIDIO sobre el arbol fusionado y coincide con la suma
+// 32 + 1 + 7. Cuadrar la cuenta es lo que distingue «cada rama anadio lo
+// suyo» de «al fusionar entraron consultas que nadie reviso» — y este
+// centinela existe porque los emuladores sirven cualquier consulta sin mirar
+// `firestore.indexes.json`, asi que una consulta sin indice no la ve ninguna
+// suite: solo un usuario en produccion.
+const _whereServidorEsperados = 40;
 
 class _Consulta {
   const _Consulta({

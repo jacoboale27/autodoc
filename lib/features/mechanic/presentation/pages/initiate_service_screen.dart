@@ -9,6 +9,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:autodoc/features/chat/data/models/cotizacion_model.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cotizacion_form.dart';
+import 'package:autodoc/core/constants/tipos_vehiculo.dart';
+import 'package:autodoc/core/models/reparacion_model.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/reparacion_provider.dart';
@@ -20,6 +22,8 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_severity.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/features/dashboard/presentation/utils/texto_de_alerta.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
@@ -31,6 +35,9 @@ import 'package:autodoc/core/utils/ui_utils.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/service_finalized_screen.dart';
 import 'package:autodoc/core/utils/mensaje_de_error.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
+import 'package:autodoc/features/mechanic/data/repositories/trabajos_taller_repository.dart';
+import 'package:intl/intl.dart';
 
 class InitiateServiceScreen extends StatefulWidget {
   /// Id del ticket de `reparaciones`. Desde la Tarea 5 (A3/B2) es lo que
@@ -64,6 +71,9 @@ class InitiateServiceScreen extends StatefulWidget {
 class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   FirebaseFirestore get _db => widget.firestore ?? FirebaseFirestore.instance;
 
+  TrabajosTallerRepository get _trabajos =>
+      TrabajosTallerRepository(firestore: _db);
+
   VehicleModel? _vehiculo;
   bool _cargando = false;
   String? _errorCarga;
@@ -92,8 +102,34 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   bool _isSaving = false;
   XFile? _invoiceImage;
 
-  bool _hasApprovedQuote = false;
-  CotizacionModel? _approvedQuote;
+  /// Las cotizaciones que el cliente aprobó y que este servicio va a cobrar.
+  ///
+  /// Una lista y no una sola: desde el 2026-09-19 el taller puede mandar una
+  /// cotización extra sobre un coche que ya tiene una aceptada, y las dos van
+  /// a la misma visita (el servidor no abre un segundo ticket mientras haya
+  /// uno abierto). Antes se cogía la más reciente y la otra no se cobraba
+  /// nunca ni se marcaba como `finalizada`.
+  List<CotizacionModel> _cotizacionesAprobadas = const [];
+
+  bool get _hasApprovedQuote => _cotizacionesAprobadas.isNotEmpty;
+
+  double get _totalAprobado =>
+      _cotizacionesAprobadas.fold(0.0, (acc, c) => acc + c.total);
+
+  /// `null` si ninguna cotización cobraba mano de obra aparte.
+  double? get _manoDeObraAprobada {
+    final conMano = _cotizacionesAprobadas.where((c) => c.manoDeObra != null);
+    if (conMano.isEmpty) return null;
+    return conMano.fold<double>(0.0, (acc, c) => acc + c.manoDeObra!);
+  }
+
+  /// El desglose de todas las cotizaciones aprobadas, en el formato que
+  /// espera el registro del servicio. Las cotizaciones anteriores a
+  /// `materiales` lo sacan de sus renglones.
+  List<Map<String, dynamic>> get _materialesAprobados => [
+    for (final c in _cotizacionesAprobadas)
+      ...(c.materiales ?? CotizacionModel.materialesDesdeItems(c.items)),
+  ];
 
   /// `true` cuando la consulta de la cotización aceptada FALLÓ, que no es lo
   /// mismo que no haber encontrado ninguna.
@@ -112,6 +148,13 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   /// (`id_vehiculo`, `estado`, `orderBy fecha DESC`) y su índice no estaba
   /// declarado, así que en producción devolvía `failed-precondition`. Iba en
   /// un `.then(...)` sin `catchError`, o sea que ni se registraba.
+  ///
+  /// Y con el índice ya desplegado seguía fallando SIEMPRE (observaciones del
+  /// 2026-09-19, captura 7): la consulta no filtraba por taller, y las reglas
+  /// de `/cotizaciones` rechazan una consulta que no pueden acotar a lo que
+  /// el que pregunta tiene derecho a leer. Ahora va por
+  /// `TrabajosTallerRepository.cotizacionesAceptadas`, que filtra por
+  /// `id_taller`.
   bool _errorCotizacion = false;
 
   /// `true` una vez que "Recibir vehículo" confirmó la transición en esta
@@ -291,7 +334,8 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   /// llegar aquí. Ya no lo hace (ver comentario más abajo), así que suelta el
   /// spinner en cuanto el vehículo está listo, sin esperar a ninguna
   /// escritura en Firestore.
-  /// Busca la cotización que el cliente ya aceptó para este vehículo.
+  /// Busca las cotizaciones que el cliente ya aceptó para este vehículo en
+  /// este taller.
   ///
   /// Los tres resultados posibles son distintos y la pantalla los distingue:
   /// hay cotización (banner con el importe aprobado), no hay (formulario
@@ -299,36 +343,36 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   /// una falta de índice o un corte de red se arregla solo o con un
   /// despliegue, y no hay razón para obligar a salir y volver a entrar.
   Future<void> _cargarCotizacionAceptada(VehicleModel vehiculo) async {
+    // El taller efectivo (el uid del DUEÑO, también si opera un empleado):
+    // es el `id_taller` con el que se escriben las cotizaciones.
+    final idTaller =
+        context.read<UserProfileProvider>().userData?.idTallerEfectivo ?? '';
     try {
-      final snapshot = await _db
-          .collection('cotizaciones')
-          .where('id_vehiculo', isEqualTo: vehiculo.idVehiculo)
-          .where('estado', isEqualTo: 'aceptada')
-          .orderBy('fecha', descending: true)
-          .limit(1)
-          .get();
+      if (idTaller.isEmpty) {
+        throw StateError('Sin taller en la sesión');
+      }
+      final aprobadas = await _trabajos.cotizacionesAceptadas(
+        idVehiculo: vehiculo.idVehiculo,
+        idTaller: idTaller,
+      );
       if (!mounted) return;
       setState(() {
         _errorCotizacion = false;
-        if (snapshot.docs.isNotEmpty) {
-          _hasApprovedQuote = true;
-          _approvedQuote = CotizacionModel.fromMap(
-            snapshot.docs.first.data(),
-            snapshot.docs.first.id,
-          );
-          _costoController.text = _approvedQuote!.total.toStringAsFixed(2);
+        _cotizacionesAprobadas = aprobadas;
+        if (aprobadas.isNotEmpty) {
+          _costoController.text = _totalAprobado.toStringAsFixed(2);
         }
       });
     } catch (e) {
-      // Se registra a propósito: el caso que motivó esto (índice compuesto sin
-      // declarar) es invisible en los emuladores y solo se manifiesta en
-      // producción, así que el log es la única pista que va a existir.
+      // Se registra a propósito: los dos casos que motivaron esto (un índice
+      // sin declarar y una consulta que las reglas rechazan) son invisibles en
+      // los emuladores y solo se manifiestan en producción, así que el log es
+      // la única pista que va a existir.
       debugPrint('No se pudo comprobar la cotización aceptada: $e');
       if (!mounted) return;
       setState(() {
         _errorCotizacion = true;
-        _hasApprovedQuote = false;
-        _approvedQuote = null;
+        _cotizacionesAprobadas = const [];
       });
     }
   }
@@ -515,21 +559,9 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
       return;
     }
 
-    final tareasDisponibles = context
-        .read<AlertProvider>()
-        .maintenanceTasks
-        .length;
-    if (requiereTareaSeleccionada(
-      tareasDisponibles: tareasDisponibles,
-      tareasMarcadas: _completedTaskIds.length,
-    )) {
-      HapticFeedback.heavyImpact();
-      UiUtils.showErrorSnackbar(
-        context,
-        'Selecciona al menos una tarea realizada',
-      );
-      return;
-    }
+    // Las tareas de mantenimiento ya NO se exigen (observaciones del
+    // 2026-09-19): lo que se hizo y se cobra es lo de la cotización. Marcar
+    // una solo pone al día el calendario de mantenimiento del cliente.
 
     // Sin cotización aprobada, los materiales son filas editables en línea
     // (Task 7/B1): validar aquí es lo que impide que una fila con nombre
@@ -564,50 +596,36 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
 
       final costoDouble = double.tryParse(_costoController.text);
       final manoDeObraDouble = _hasApprovedQuote
-          ? _approvedQuote?.manoDeObra
+          ? _manoDeObraAprobada
           : double.tryParse(_manoDeObraController.text);
       final materialesList = _hasApprovedQuote
-          ? _approvedQuote?.materiales
+          ? _materialesAprobados
           : _materialesDesdeFilas();
 
-      if (_completedTaskIds.isEmpty) {
-        // Sin tareas de mantenimiento configuradas, el bucle de abajo no daba
-        // ni una vuelta: no se escribia NADA y aun asi la pantalla decia
-        // "Servicio registrado exitosamente". No es un caso raro — es el que
-        // `requiereTareaSeleccionada` deja pasar a proposito, y el que el
-        // texto de la pantalla promete que "quedara registrado en el
-        // historial".
-        await alertProvider.tallerRegistrarServicioSinTarea(
-          vehiculoId: _vehiculo!.idVehiculo,
-          nuevoKilometraje: nuevoKm,
-          tallerId: tallerId,
-          descripcion: _notesController.text,
-          costo: costoDouble,
-          manoDeObra: manoDeObraDouble,
-          materiales: materialesList,
-          receiptImage: _invoiceImage,
-        );
-      } else {
-        for (var taskId in _completedTaskIds) {
-          await alertProvider.tallerUpdateService(
-            taskId: taskId,
-            nuevoKilometraje: nuevoKm,
-            tallerId: tallerId,
-            descripcion: _notesController.text,
-            costo: costoDouble,
-            manoDeObra: manoDeObraDouble,
-            materiales: materialesList,
-            receiptImage: _invoiceImage,
-          );
-        }
-      }
+      // UN servicio por cierre, marque las tareas que marque: antes cada
+      // tarea marcada escribía su propio `servicios` con el importe entero.
+      final tareasSinActualizar = await alertProvider.tallerCerrarServicio(
+        vehiculoId: _vehiculo!.idVehiculo,
+        nuevoKilometraje: nuevoKm,
+        tallerId: tallerId,
+        descripcion: _notesController.text,
+        costo: costoDouble,
+        manoDeObra: manoDeObraDouble,
+        materiales: materialesList,
+        receiptImage: _invoiceImage,
+        tareasRealizadas: _completedTaskIds,
+        tipoServicio: _tituloDelServicio(alertProvider),
+      );
 
       await alertProvider.fetchAlerts(_vehiculo!.idVehiculo, _vehiculo!);
 
-      if (_hasApprovedQuote && _approvedQuote != null) {
-        await _db.collection('cotizaciones').doc(_approvedQuote!.id).update({
-          'estado': 'finalizada',
-        });
+      // TODAS las aprobadas que este servicio cobró, no solo la última: una
+      // que se quedara en `aceptada` volvería a sumarse al siguiente servicio
+      // del mismo coche.
+      if (_hasApprovedQuote) {
+        await _trabajos.marcarFinalizadas(
+          _cotizacionesAprobadas.map((c) => c.id),
+        );
       }
 
       bool kanbanUpdateFailed = false;
@@ -626,13 +644,30 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           // ningún error a la vista. Es la misma clase de fallo que tenía el
           // botón «Avanzar» del tablero. Recibir es idempotente, así que
           // llamarlo aquí no cuesta nada cuando ya se recibió.
-          if (!_recepcionConfirmada) {
-            await reparacionProvider.recibirVehiculoPorId(widget.reparacionId);
-          }
-          await reparacionProvider.cambiarEstado(
+          // Un ticket YA CERRADO no se toca: se llega aquí desde
+          // «Registrar servicio y cobro» del perfil del vehículo, la salida
+          // para un coche que se entregó sin facturar (observación del
+          // 2026-09-19). Recibirlo o avanzarlo fallaría —el repositorio
+          // rechaza volver al pipeline desde un estado terminal— y el
+          // mecánico leería «no se pudo actualizar el ticket» sobre algo que
+          // no había que actualizar.
+          final ticket = await reparacionProvider.obtenerTicket(
             widget.reparacionId,
-            'listo_para_entrega',
           );
+          final cerrado =
+              ticket != null &&
+              estadosReparacionCerrados.contains(ticket.estado);
+          if (!cerrado) {
+            if (!_recepcionConfirmada) {
+              await reparacionProvider.recibirVehiculoPorId(
+                widget.reparacionId,
+              );
+            }
+            await reparacionProvider.cambiarEstado(
+              widget.reparacionId,
+              'listo_para_entrega',
+            );
+          }
         } catch (e) {
           // No bloquear el cierre del servicio si el ticket Kanban no pudo
           // actualizarse (p.ej. ya estaba en ese estado o fue eliminado),
@@ -646,6 +681,13 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
 
       if (mounted) {
         HapticFeedback.lightImpact();
+        if (tareasSinActualizar > 0) {
+          UiUtils.showErrorSnackbar(
+            context,
+            'Servicio registrado, pero no se pudo poner al día '
+            '$tareasSinActualizar tarea(s) de mantenimiento del cliente.',
+          );
+        }
         if (kanbanUpdateFailed) {
           UiUtils.showErrorSnackbar(
             context,
@@ -747,6 +789,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
         backgroundColor: colors.surfaceContainer,
         foregroundColor: colors.primary,
         elevation: 0,
+        actions: const [AccionesDeCabecera()],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
@@ -781,12 +824,13 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
               const SizedBox(height: AppSpacing.md),
               _buildAlertsList(alertProvider, colors),
               const SizedBox(height: AppSpacing.xl),
-              const AppSectionHeader(
-                title: 'Tareas a realizar',
-                uppercase: true,
+              // Opcional y plegada (observaciones del 2026-09-19): lo que se
+              // hace lo dice la cotización. Solo sirve para que las alertas
+              // de mantenimiento del cliente se reinicien.
+              _SeccionTareasOpcional(
+                marcadas: _completedTaskIds.length,
+                child: _buildMaintenanceTasks(alertProvider, colors),
               ),
-              const SizedBox(height: AppSpacing.md),
-              _buildMaintenanceTasks(alertProvider, colors),
             ];
 
             final derecha = <Widget>[
@@ -961,21 +1005,65 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
         borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: colors.primary.withValues(alpha: 0.3)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.check_circle, color: colors.primary),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Text(
-              'El cliente aprobó una cotización previa por '
-              '\$${_approvedQuote!.total.toStringAsFixed(2)}. El desglose '
-              'ya está registrado.',
-              style: AppTextStyles.labelLarge.copyWith(
-                color: colors.primary,
-                fontWeight: FontWeight.w600,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.check_circle, color: colors.primary),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  _cotizacionesAprobadas.length == 1
+                      ? 'El cliente aprobó una cotización por '
+                            '\$${_totalAprobado.toStringAsFixed(2)}. El '
+                            'desglose ya está registrado.'
+                      : 'El cliente aprobó ${_cotizacionesAprobadas.length} '
+                            'cotizaciones por \$${_totalAprobado.toStringAsFixed(2)} '
+                            'en total. Este servicio las cobra todas; el '
+                            'desglose ya está registrado.',
+                  style: AppTextStyles.labelLarge.copyWith(
+                    color: colors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
+          if (_cotizacionesAprobadas.length > 1) ...[
+            const SizedBox(height: AppSpacing.sm),
+            for (final c in _cotizacionesAprobadas)
+              Padding(
+                padding: const EdgeInsets.only(
+                  left: AppSpacing.xl + AppSpacing.md,
+                  top: AppSpacing.xs,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${DateFormat('dd/MM/yyyy').format(c.fecha)} · '
+                        '${c.resumen}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(
+                      '\$${c.total.toStringAsFixed(2)}',
+                      style: AppTextStyles.labelMedium.copyWith(
+                        color: colors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ],
       ),
     );
@@ -1303,7 +1391,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
                             ),
                           ),
                           trailing: Text(
-                            '\$${item.precio.toStringAsFixed(2)}',
+                            item.rangoTexto,
                             style: AppTextStyles.titleSmall.copyWith(
                               color: colors.primary,
                             ),
@@ -1328,7 +1416,7 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
   ) {
     setState(() {
       final row = CotizacionItemRowControllers();
-      row.nombreController.text = item.nombre;
+      row.nombreController.text = '${item.nombre} (mano de obra)';
       row.costoController.text = item.precio.toStringAsFixed(2);
       _materialRows.add(row);
       _updateTotalCost();
@@ -1372,6 +1460,10 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
           mediaLabel: 'Preventiva',
           bajaLabel: 'Informativa',
         );
+        // El provider no puede localizar el texto de las alertas generadas
+        // (no tiene BuildContext): se arma aqui. Sin esto, una alerta de SOAT
+        // o de tarjeta se pintaba con el titulo VACIO en esta pantalla.
+        final texto = textoDeAlerta(context.l10n, alert);
         return Container(
           margin: const EdgeInsets.only(bottom: AppSpacing.sm),
           padding: const EdgeInsets.all(AppSpacing.md),
@@ -1386,10 +1478,10 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Semantics(
-                  label: '${estilo.label}: ${alert.titulo}',
+                  label: '${estilo.label}: ${texto.titulo}',
                   excludeSemantics: true,
                   child: Text(
-                    alert.titulo,
+                    texto.titulo,
                     style: AppTextStyles.labelLarge.copyWith(
                       fontWeight: FontWeight.bold,
                       color: estilo.color,
@@ -1402,6 +1494,25 @@ class _InitiateServiceScreenState extends State<InitiateServiceScreen> {
         );
       }).toList(),
     );
+  }
+
+  /// Cómo sale el servicio en los historiales: las tareas marcadas, o si no
+  /// hay, lo que se cotizó; sin nada de eso, `null` (y `AlertProvider` pone
+  /// «Servicio General»).
+  String? _tituloDelServicio(AlertProvider provider) {
+    final nombresTareas = provider.maintenanceTasks
+        .where((t) => _completedTaskIds.contains(t.id))
+        .map((t) => t.nombre)
+        .toList();
+    if (nombresTareas.isNotEmpty) return nombresTareas.join(', ');
+    final cotizado = _cotizacionesAprobadas
+        .expand((c) => c.items.map((i) => i.material.trim()))
+        .where((m) => m.isNotEmpty)
+        .toSet()
+        .toList();
+    if (cotizado.isEmpty) return null;
+    final titulo = cotizado.take(3).join(', ');
+    return cotizado.length > 3 ? '$titulo y más' : titulo;
   }
 
   Widget _buildMaintenanceTasks(AlertProvider provider, AppColors colors) {
@@ -1531,7 +1642,7 @@ class _VehicleHeaderCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                 ),
                 child: Icon(
-                  Icons.directions_car,
+                  TipoVehiculo.desdeId(vehiculo.tipoVehiculo).icono,
                   color: colors.onPrimary,
                   size: 32,
                 ),
@@ -1640,20 +1751,77 @@ class _BoxedField extends StatelessWidget {
   }
 }
 
-/// Decide si hay que exigir al mecanico marcar una tarea antes de cerrar el
-/// servicio.
+/// Las tareas de mantenimiento del cliente, plegadas y opcionales.
 ///
-/// Hasta 2026-08-28 el guard era `_completedTaskIds.isEmpty` a secas, sin
-/// mirar si habia tareas que marcar. Cuando el vehiculo no tenia ninguna
-/// configurada, la pantalla pintaba "No hay tareas configuradas para este
-/// vehiculo" (sin casillas) y el submit respondia "Selecciona al menos una
-/// tarea realizada": un callejon sin salida con el parte entero relleno.
-bool requiereTareaSeleccionada({
-  required int tareasDisponibles,
-  required int tareasMarcadas,
-}) {
-  if (tareasDisponibles == 0) return false;
-  return tareasMarcadas == 0;
+/// Observaciones del 2026-09-19: «si o si hay que seleccionar una tarea ...
+/// cuando no debería de ser así porque la tarea ya la asigno yo en las
+/// especificaciones de la cotización». Siguen aquí porque marcar una reinicia
+/// la alerta de mantenimiento del cliente, pero ya no se exige ninguna.
+class _SeccionTareasOpcional extends StatefulWidget {
+  final int marcadas;
+  final Widget child;
+
+  const _SeccionTareasOpcional({required this.marcadas, required this.child});
+
+  @override
+  State<_SeccionTareasOpcional> createState() => _SeccionTareasOpcionalState();
+}
+
+class _SeccionTareasOpcionalState extends State<_SeccionTareasOpcional> {
+  bool _abierta = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          key: const Key('tareas_opcionales_toggle'),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          onTap: () => setState(() => _abierta = !_abierta),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.marcadas == 0
+                            ? 'MANTENIMIENTO DEL CLIENTE (OPCIONAL)'
+                            : 'MANTENIMIENTO DEL CLIENTE · ${widget.marcadas} '
+                                  'MARCADA${widget.marcadas == 1 ? '' : 'S'}',
+                        style: AppTextStyles.labelMedium.copyWith(
+                          color: colors.textSecondary,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Marca lo que coincida con sus tareas para reiniciar '
+                        'sus alertas. No es obligatorio.',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  _abierta ? Icons.expand_less : Icons.expand_more,
+                  color: colors.textSecondary,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_abierta) ...[const SizedBox(height: AppSpacing.md), widget.child],
+      ],
+    );
+  }
 }
 
 /// Lo que ve el mecánico cuando el ticket todavía espera el coche.
@@ -1694,6 +1862,7 @@ class _PantallaPorRecibir extends StatelessWidget {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/mechanic_reparaciones'),
         ),
+        actions: const [AccionesDeCabecera()],
       ),
       body: AppPageBody(
         child: Column(

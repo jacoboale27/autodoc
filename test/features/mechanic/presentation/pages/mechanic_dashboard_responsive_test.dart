@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 
 import 'package:autodoc/core/theme/app_colors.dart';
+import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_grid.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/mechanic_dashboard_screen.dart';
 
@@ -74,6 +75,60 @@ void main() {
     );
   });
 
+  testWidgets('en escritorio la gráfica y los recientes van lado a lado', (
+    tester,
+  ) async {
+    // Observaciones del 2026-09-19 («que sea más ordenado y más limpio en la
+    // PC»): apilados, el dashboard eran tres pantallazos de scroll con media
+    // ventana vacía a los lados de la gráfica.
+    final firestore = await seedTaller();
+    await pumpDashboard(tester, width: 1440, firestore: firestore);
+
+    final grafica = tester.getTopLeft(find.text('Tendencia de Ingresos'));
+    final recientes = tester.getTopLeft(find.text('Servicios Recientes'));
+    expect(recientes.dx, greaterThan(grafica.dx));
+    expect((recientes.dy - grafica.dy).abs(), lessThan(4));
+  });
+
+  testWidgets('en una ventana estrecha siguen apilados', (tester) async {
+    // El sidebar fijo se lleva 280 px, así que a 1024 el contenido no da para
+    // dos columnas: la decisión mira el ancho DISPONIBLE, no el de la
+    // ventana.
+    final firestore = await seedTaller();
+    await pumpDashboard(tester, width: 1024, firestore: firestore);
+
+    final grafica = tester.getTopLeft(find.text('Tendencia de Ingresos'));
+    final recientes = tester.getTopLeft(find.text('Servicios Recientes'));
+    expect(recientes.dy, greaterThan(grafica.dy));
+    expect(recientes.dx, grafica.dx);
+  });
+
+  testWidgets('un KPI no se estira con el ancho de su columna', (tester) async {
+    // La causa de «en computadora se ven deformes, todo grande»: con
+    // `childAspectRatio` el alto de la celda crece con su ancho, y el
+    // contenido de estas tarjetas no crece. Con `mainAxisExtent` mide lo
+    // mismo a 1440 que a 700.
+    final firestore = await seedTaller();
+    final alturas = <double>[];
+    for (final ancho in [1440.0, 900.0]) {
+      await pumpDashboard(tester, width: ancho, firestore: firestore);
+      alturas.add(
+        tester
+            .getSize(
+              find
+                  .ancestor(
+                    of: find.text('Ingresos (Mes)'),
+                    matching: find.byType(AppCard),
+                  )
+                  .first,
+            )
+            .height,
+      );
+    }
+    expect(alturas.first, lessThan(140));
+    expect(alturas.first, alturas.last);
+  });
+
   testWidgets('el texto de "Atención Rápida" es legible en dark', (
     tester,
   ) async {
@@ -131,10 +186,19 @@ void main() {
     expect(source.contains('Colors.white'), isFalse);
     expect(source.contains('GoogleFonts.'), isFalse);
     expect(source.contains('size.width < 700'), isFalse);
+    // Los conmutadores de tema e idioma estuvieron escritos dos veces en este
+    // fichero. Desde las observaciones del 2026-09-19 viven en un solo sitio,
+    // `AccionesDeCabecera`, que `MechanicScaffold` pone en todas las
+    // pantallas del taller: aquí no puede quedar ninguna copia.
     expect(
-      'Consumer2<ThemeProvider, LanguageProvider>'.allMatches(source).length,
-      1,
-      reason: 'los conmutadores de tema e idioma estaban escritos dos veces',
+      source.contains('ThemeProvider'),
+      isFalse,
+      reason: 'el conmutador de tema lo pone MechanicScaffold, no el dashboard',
+    );
+    expect(
+      source.contains('LanguageProvider'),
+      isFalse,
+      reason: 'el de idioma, igual',
     );
   });
 }

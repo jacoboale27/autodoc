@@ -80,6 +80,13 @@ class FakeUserProfileProvider extends ChangeNotifier
 /// fallo de compilación si se declara `@override`, no un fallo silencioso en
 /// runtime.
 class FakeChatProvider extends ChangeNotifier implements ChatProvider {
+  /// Lo que llevó el último `enviarMensaje` (responder/reenviar, observaciones
+  /// del 2026-09-18).
+  Map<String, dynamic>? ultimaRespuestaA;
+  bool ultimoReenviado = false;
+  String? ultimoTipo;
+  String? ultimaUrlArchivo;
+
   FakeChatProvider({
     List<ConversacionModel>? conversaciones,
     List<MensajeModel>? mensajes,
@@ -181,6 +188,35 @@ class FakeChatProvider extends ChangeNotifier implements ChatProvider {
   void inicializarConversaciones(String userId, bool isMecanico) =>
       llamadas.add('inicializarConversaciones:$userId:$isMecanico');
   @override
+  int get totalNoLeidosPropietario =>
+      _conversaciones.fold(0, (sum, c) => sum + c.noLeidosPropietario);
+  @override
+  int get totalNoLeidosMecanico =>
+      _conversaciones.fold(0, (sum, c) => sum + c.noLeidosMecanico);
+  @override
+  void inicializarConversacionesSiHaceFalta(String userId, bool isMecanico) =>
+      llamadas.add('inicializarConversacionesSiHaceFalta:$userId:$isMecanico');
+  @override
+  String? conversacionAbierta;
+  @override
+  void abrirConversacion(
+    String conversacionId, {
+    required String lectorId,
+    required bool lectorEsMecanico,
+  }) {
+    conversacionAbierta = conversacionId;
+    llamadas.add('abrirConversacion:$conversacionId:$lectorId');
+  }
+
+  @override
+  void cerrarConversacion(String conversacionId) {
+    if (conversacionAbierta == conversacionId) conversacionAbierta = null;
+    llamadas.add('cerrarConversacion:$conversacionId');
+  }
+
+  @override
+  void pausarLectura(bool enPausa) => llamadas.add('pausarLectura:$enPausa');
+  @override
   Future<void> marcarComoLeidos(
     String conversacionId,
     bool isMecanico,
@@ -205,8 +241,14 @@ class FakeChatProvider extends ChangeNotifier implements ChatProvider {
     Map<String, dynamic>? metadata,
     String? urlArchivo,
     int? duracionSegundos,
+    Map<String, dynamic>? respuestaA,
+    bool reenviado = false,
   }) async {
     llamadas.add('enviarMensaje:$conversacionId:$contenido');
+    ultimaRespuestaA = respuestaA;
+    ultimoReenviado = reenviado;
+    ultimoTipo = tipo;
+    ultimaUrlArchivo = urlArchivo;
     // GAPS-05: el contrato devuelve si el mensaje llego al servidor. Este
     // doble responde `true` porque los tests que lo usan ejercen el camino
     // feliz; el fallo tiene su propio test en

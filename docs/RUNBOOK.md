@@ -1,8 +1,98 @@
 # AutoDoc — Runbook de Producción
 
-> **Versión:** 1.0 | **Última actualización:** 2026-07 | **Propietario:** Equipo AutoDoc
+> **Versión:** 1.1 | **Última actualización:** 2026-09-20 | **Propietario:** Equipo AutoDoc
 
 Este documento cubre los procedimientos operacionales para mantener AutoDoc en producción.
+
+---
+
+## 🚀 Despliegue de la rama `fix/observaciones-2026-09-18` (2026-09-18 → 20)
+
+Tres tandas de observaciones de uso real. **La CI lo despliega todo al fusionar a `main`**,
+así que esto solo hace falta para ver los cambios ANTES de fusionar — o para entender por qué
+algo «no funciona» en producción mientras la rama sigue sin fusionar.
+
+Los tres síntomas que ya se reportaron **son esto, no defectos de código**:
+
+| Lo que se ve | Lo que falta |
+|---|---|
+| «No se pudo guardar el cambio. Si tu cuenta fue suspendida, no puedes publicar fotos» al subir el **banner** | `storage.rules` (el hueco `banner` no existe en las reglas desplegadas) |
+| «Sin teléfono publicado» en el perfil público del taller | desplegar `publishTallerProfile` **y** republicar las fichas |
+| El encuadre del banner y los vehículos que atiende no se ven en el perfil | lo mismo de arriba |
+
+### Paso 1 — Reglas
+
+```bash
+firebase deploy --only storage,firestore:rules --project production
+```
+
+Qué entra: el hueco `banner` de la galería (`storage.rules`), el tope de `galeria` a 7
+(`firestore.rules`), el guard `esEmpleadoDeTaller()` y la subcolección
+`talleres/{id}/invitaciones`.
+
+**Índices NO.** `--only firestore:indexes` **borra** los que no estén en el fichero, y esta
+rama retira `cotizaciones (id_vehiculo, estado, fecha DESC)`, que la app **desplegada**
+todavía puede estar usando. Los índices van con la fusión, no antes.
+
+### Paso 2 — Funciones
+
+```bash
+firebase deploy --only functions:publishTallerProfile --project production
+```
+
+`publishTallerProfile` proyecta ahora, además de lo de siempre: `telefono`, `municipio`,
+`banner_encuadre` y `tipos_atendidos`. Los dos primeros **solo con el taller aprobado o
+activo** (`talleres` es de lectura anónima para la colección entera: la landing la baja por
+REST y filtra en el navegador, así que publicar el teléfono de cada solicitante o rechazado
+lo dejaba al alcance de cualquiera).
+
+### Paso 3 — Republicar las fichas ya publicadas
+
+**Sin este paso, el Paso 2 no se nota en ningún taller existente.**
+`publishTallerProfile` es un trigger `onWrite` de `usuarios/{uid}`: un campo nuevo en la
+proyección no llega a las fichas ya publicadas hasta que alguien reescribe ese usuario.
+
+```bash
+node functions/republicar_talleres.js --project=autodoc-6ef5a
+```
+
+Eso es un **dry-run**: cuenta y no escribe. Para escribir, `--apply`.
+
+- Se puede correr desde la raíz del repo: el script resuelve sus rutas desde su propia
+  carpeta. En PowerShell **no uses `&&`** (5.1 no lo admite).
+- **Credenciales:** descarga la clave en Firebase → Configuración del proyecto → Cuentas de
+  servicio → Generar nueva clave privada, guárdala como `functions/serviceAccountKey.json` y
+  **bórrala al terminar** — es una llave maestra del proyecto. Con la clave puesta ya no hace
+  falta `--project`: el proyecto sale de la propia clave, y si le pasas otro distinto se
+  planta en vez de escribir donde no toca.
+- Sin proyecto resuelto el script **se niega a arrancar**, a propósito: `.firebaserc` tiene
+  `default: autodoc-staging`, así que «el de por defecto» no es producción y una
+  republicación contra el proyecto equivocado no avisa de nada.
+- **NO uses `functions/src/backfillTalleres.js`.** Lleva su PROPIA copia de los campos
+  públicos, congelada en ocho: correrlo hoy borraría de todas las fichas la galería, el
+  teléfono, el municipio y el logo. `republicar_talleres.js` reutiliza
+  `construirPerfilPublico`, que es el mismo código que usa el trigger, así que no puede
+  divergir.
+
+### Paso 4 — Al fusionar (lo hace la CI)
+
+Índices incluidos. El índice nuevo `cotizaciones (id_taller, fecha DESC)` tarda unos minutos
+en construirse y **«Mis Servicios» falla hasta entonces**, así que conviene adelantar solo
+ese despliegue si se quiere evitar la ventana:
+
+```bash
+firebase deploy --only firestore:indexes --project production
+```
+
+(Pero entonces ya se retira el índice viejo: hazlo pegado a la fusión, no días antes.)
+
+### Lo que YA NO hace falta: la clave de Google Maps
+
+El mapa dejó de ser de Google el 2026-09-20 (tiles de OpenStreetMap dibujados por Flutter,
+`lib/core/widgets/mapa_osm.dart`). **No hay clave que renovar para que el mapa vuelva.**
+`AppSecrets.googleMapsApiKey` sigue existiendo porque la usa `TranslationService`, que es
+otra API de Google: si la traducción automática del chat hace falta, esa clave sí tiene que
+estar viva.
 
 ---
 
@@ -65,7 +155,41 @@ devuelve nada.
 sigue usando el `isMecanico()` laxo de `storage.rules`, porque un taller sube su NIT y sus fotos
 precisamente cuando todavía no está aprobado.
 
-### Pendiente 0bis — Politicas TTL de Firestore (DOS, y una llevaba perdida desde UX-01)
+### Pendiente 0ter — Limpiar los `foto_url` raspados de los vehículos existentes
+
+**Comando:** `cd functions && node backfill_foto_url_ajena.js` (dry-run) y luego `--apply`.
+
+Hasta el 2026-09-17 `VehicleProvider.addVehicle` llamaba a `VehicleImageService`, que buscaba en
+SearchAPI.io (engine `google_images`) una foto de la marca y el modelo y guardaba **ese enlace**
+en `vehiculos.foto_url`. O sea: **cada vehículo creado desde que existe la app** lleva enlazada
+una imagen de un tercero. El servicio está retirado y `firestore.rules` ya impide que nazca otro,
+pero eso no limpia los que hay.
+
+Dos motivos, y el segundo es el que no caduca solo:
+
+- **Propiedad intelectual.** Son fotos de catálogos de concesionario y bancos de imagen sobre las
+  que AutoDoc no tiene licencia, pintadas como si fueran el coche de la persona. En una ficha de
+  Google Play eso es exposición a una retirada.
+- **Privacidad.** `foto_url` la lee todo el que puede ver el vehículo —el taller vinculado y sus
+  empleados, aquel con quien el dueño lo comparta, y por la vista pública quien reciba un pase de
+  historial—, así que cada visita le entrega al servidor ajeno la IP y el User-Agent del
+  visitante. Es el mismo agujero que FUNC-01 cerró en `resenias.fotos`.
+
+**No es bloqueante para desplegar** las reglas ni la app: la regla nueva valida `foto_url` solo
+cuando **cambia** (`fotoDeVehiculoValidaEnUpdate`), así que un vehículo con enlace heredado se
+sigue pudiendo editar mientras tanto. Pero **ninguna suite puede avisar de que falta**: los
+emuladores se siembran limpios, así que el único sitio donde se ve el problema es producción.
+
+El script borra el campo (`FieldValue.delete()`); la app cae al placeholder local. **No toca** las
+URLs que ya apuntan a nuestro Storage: ésas son fotos que el propietario subió con
+`VehiclePhotoService` y son suyas.
+
+**Y un paso fuera del repo:** la clave `VEHICLE_IMAGE_API_KEY` ya no la usa nadie —se retiró de
+`secrets.dart`, de los cinco `--dart-define` de `ci.yml`, de `.env.example`, de `app.env` y del
+script de secretos—. Bórrala del panel de SearchAPI.io y del repositorio de secretos de GitHub.
+Sigue viva en tu `.env` local, que un hook impide editar.
+
+### Pendiente 0bis — Politicas TTL de Firestore (CINCO, y una llevaba perdida desde UX-01)
 
 **Firestore no configura TTL desde `firestore.indexes.json`.** Va por consola o por `gcloud`, y
 por eso estos pasos se pierden: no hay ningun archivo del repo que los declare y ningun test que
@@ -74,18 +198,48 @@ los eche de menos.
 **Y una ya se perdio.** La politica de `solicitudes_landing_control` se decidio en UX-01 y quedo
 anotada **solo** en `docs/evidencia/UX-01-contacto-y-ctas.md`, nunca en este runbook. Es
 literalmente el patron que el propio proyecto lleva cuatro tandas escribiendo: remitir un paso a
-otro documento no lo cierra. Aqui quedan las dos.
+otro documento no lo cierra. Aqui quedan las cuatro.
 
 | Coleccion | Campo | Por que |
 |---|---|---|
 | `solicitudes_landing_control` | `expira_en` | Un documento por IP del limitador de la landing. Sin TTL no se purga nunca. |
 | `tokens_historial` | `purgar_en` | Un documento por pase de historial emitido (INNO-01). Guarda `{id_vehiculo, id_propietario}` — o sea un mapa de quien tiene que coche— en una coleccion que **nadie puede leer** y que por tanto nadie va a auditar. |
+| `consultas_ia_control` | `expira_en` | Un documento por usuario del asistente de agenda, mas el cubo `_global`. Sin TTL crece un documento por persona que lo use, para siempre, aunque cada uno solo se lea durante 24 h. |
+| `explicaciones_ia` | `expira_en` | Cache global de explicaciones del asistente: un documento por pregunta distinta. Sin TTL no se purga nunca **y una entrada mala se queda para siempre** — el cliente no puede borrarla (correcto) y no hay ningun barrido que lo haga. |
+| `notificaciones/{uid}/items` (grupo `items`) | `purgar_en` | El centro de notificaciones. Nadie borra las notas leidas y ningun barrido las toca, asi que crece sin cota — y desde 2026-09-21 mas rapido, porque el recordatorio de citas tambien escribe (dos notas por cita, cada dia). |
 
 ```bash
 gcloud firestore fields ttls update expira_en   --collection-group=solicitudes_landing_control --enable-ttl --project=<projectId>
 
 gcloud firestore fields ttls update purgar_en   --collection-group=tokens_historial --enable-ttl --project=<projectId>
+
+gcloud firestore fields ttls update expira_en   --collection-group=consultas_ia_control --enable-ttl --project=<projectId>
+
+gcloud firestore fields ttls update expira_en   --collection-group=explicaciones_ia --enable-ttl --project=<projectId>
 ```
+
+**⚠️ La TTL de `notificaciones` va sobre `purgar_en`, NUNCA sobre `timestamp`.** `timestamp` es la
+hora de CREACION de la nota, o sea ya esta en el pasado: una politica apuntada ahi **borraria el
+centro de notificaciones entero en su primera pasada**. `purgar_en` lo escribe
+`writeNotification` a creacion + 90 dias. Es el mismo motivo por el que `tokens_historial` lleva
+`expira_en` y `purgar_en` separados, y el error es facil de cometer porque `timestamp` es el campo
+que salta a la vista.
+
+```bash
+gcloud firestore fields ttls update purgar_en \
+  --collection-group=items --enable-ttl --project=<projectId>
+```
+
+**El grupo de coleccion es `items`, no `notificaciones`.** Las notas viven en una subcoleccion
+(`notificaciones/{uid}/items`), y una TTL se declara sobre el grupo de coleccion. Hoy no hay
+ninguna otra subcoleccion llamada `items` en el proyecto; si se anade una, esta politica la
+alcanzaria tambien.
+
+
+**Las dos del asistente NO son bloqueantes para desplegar**, a diferencia de los backfills: sin
+ellas la feature funciona igual y lo unico que pasa es que dos colecciones crecen sin fondo. Pero
+la de `explicaciones_ia` es la unica via que existe para retirar una entrada de cache: la
+coleccion esta cerrada al cliente por los dos lados y no hay barrido que la toque.
 
 **El campo tiene que ser `Timestamp`, no milisegundos.** Con un numero la politica se crea sin
 error y no borra nada jamas. Por eso `tokens_historial` guarda **dos** campos de tiempo:
@@ -99,6 +253,71 @@ Verificar despues de crearlas:
 ```bash
 gcloud firestore fields ttls list --project=<projectId>
 ```
+
+### Pendiente 0quater — Desplegar el asistente de agenda (IA-01), en este orden
+
+El asistente es la primera pieza del proyecto que depende de un **proveedor externo de pago** y
+de un **secreto**, así que su despliegue tiene un orden y no es negociable. Evidencia completa en
+`docs/evidencia/IA-01-asistente-de-agenda.md`.
+
+**1. El secreto — HECHO.**
+
+```bash
+firebase functions:secrets:set GEMINI_API_KEY --project production
+```
+
+La clave vive **solo** en Secret Manager. Nunca en un `.env` versionado, nunca en el bundle del
+cliente. El input de la CLI va enmascarado; para comprobar que se pegó bien, compara la
+**longitud** (`firebase functions:secrets:access GEMINI_API_KEY --project production | Measure-Object -Character`), no el contenido.
+
+**2. Índices, ANTES que las funciones.**
+
+```bash
+firebase deploy --only firestore:indexes --project production
+```
+
+Sin ellos la agenda falla **solo en producción**: los emuladores sirven cualquier consulta sin
+mirar `firestore.indexes.json`. Lo vigila `test/firestore_indices_test.dart`.
+
+**3. Las dos políticas TTL del asistente** — ver Pendiente 0bis. No son bloqueantes, pero la de
+`explicaciones_ia` es la única vía que existe para retirar una entrada mala de la caché.
+
+**4. Reglas.**
+
+```bash
+firebase deploy --only firestore:rules --project production
+```
+
+**5. La función.**
+
+```bash
+firebase deploy --only functions:asistenteAutoDoc --project production
+```
+
+Pasa por la guarda `predeploy` `scripts/verificar_env_functions.js`, **y esa guarda no es
+opcional**: la compuerta que elige entre Gemini y el doble de emulador mira
+`FUNCTIONS_EMULATOR`, y esa variable **no está en las claves reservadas de firebase-tools**
+(comprobado en la 15.28.2, `lib/functions/env.js`). Una línea en `functions/.env.<projectId>`
+llegaría al proceso desplegado y el asistente serviría **respuestas enlatadas con pinta de
+buenas**, sin que nada fallara ni nadie viera un error. Ninguna suite puede verlo: esos `.env`
+están en `functions/.gitignore`.
+
+**6. El kill switch, creado encendido y verificado en los DOS sentidos.**
+
+Documento `configuracion/asistente_ia`, campo `activo: true`. Ponerlo a `false` tiene que dejar
+la pantalla diciendo que el asistente está desactivado —no un error genérico— y volverlo a `true`
+tiene que devolver el servicio sin desplegar nada.
+
+Se lee **en cada petición**, a propósito: cachearlo significaría que apagarlo no surte efecto
+inmediato, que es justo lo que un kill switch tiene que hacer. Cuesta una lectura por consulta.
+
+**7. Cuotas.** `LIMITE_POR_USUARIO = 10` y `LIMITE_GLOBAL = 200` por ventana de 24 h. El corte
+global va muy por debajo del free tier a propósito: quedarse sin cuota del proveedor a media demo
+no se arregla con un despliegue, mientras que subir la constante sí.
+
+**8. Hosting**, con `flutter clean` (no es opcional) y la guarda `verificar_bundle_web.js`.
+
+**Siempre `--project` explícito.** El default de `.firebaserc` es `autodoc-staging`.
 
 ### Pendiente 1 — Crear el proyecto de staging (Step 1 del brief)
 

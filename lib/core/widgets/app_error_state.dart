@@ -23,16 +23,40 @@ class AppErrorState extends StatelessWidget {
   /// arregla nada, y ofrecerlo seria mentir.
   final VoidCallback? onReintentar;
 
-  const AppErrorState({super.key, required this.mensaje, this.onReintentar});
+  /// Titular propio, para los estados que NO son un fallo de carga.
+  ///
+  /// **Sin esto el titular contradice al mensaje.** El por defecto es «No
+  /// pudimos cargar esta información» y el icono una nube tachada, o sea la
+  /// estampa de «no hay internet». Medido sobre el asistente: encima de
+  /// «Alcanzaste tu límite de consultas de hoy» —que es correcto y no tiene
+  /// nada que ver con la red— la pantalla coronaba con esa nube. Es la misma
+  /// familia de defecto que UX-04 corrigio dentro de `mensajeDeError`, un
+  /// piso mas arriba: alli mentia el texto, aqui mentian el titular y el
+  /// icono mientras el texto decia la verdad.
+  ///
+  /// `null` mantiene el generico, que es correcto para lo que SI es un fallo
+  /// de carga; por eso las demas pantallas no cambian.
+  final String? titulo;
+
+  /// Icono propio. Mismo motivo y mismo defecto por defecto.
+  final IconData? icono;
+
+  const AppErrorState({
+    super.key,
+    required this.mensaje,
+    this.onReintentar,
+    this.titulo,
+    this.icono,
+  });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
 
     return AppEmptyState(
-      title: context.l10n.errorDatosTitulo,
+      title: titulo ?? context.l10n.errorDatosTitulo,
       description: mensaje,
-      icon: Icons.cloud_off_outlined,
+      icon: icono ?? Icons.cloud_off_outlined,
       action: onReintentar == null
           ? null
           : TextButton.icon(

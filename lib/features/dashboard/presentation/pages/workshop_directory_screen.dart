@@ -1,15 +1,21 @@
-import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/features/dashboard/data/services/workshop_service.dart';
 import 'package:autodoc/core/models/user_model.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+
+import 'package:autodoc/core/widgets/mapa_osm.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_scaffold.dart';
+import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
@@ -22,7 +28,6 @@ import 'package:autodoc/core/widgets/app_skeleton.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 
 import 'package:autodoc/core/widgets/workshop_reviews_list_sheet.dart';
-import 'package:autodoc/core/utils/maps_availability.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:provider/provider.dart';
@@ -35,18 +40,23 @@ import 'package:autodoc/core/models/galeria_taller.dart';
 /// [data] (con claves `latitud`/`longitud`), o `null` si no tiene
 /// coordenadas registradas.
 ///
-/// Extraída como función pura y testeable: `GoogleMapController` solo se
-/// puede construir a través del plugin nativo (constructor privado,
-/// `init()` exige una `_GoogleMapState`), así que no hay forma de verificar
-/// en un test que `animateCamera` se invoque de verdad. Lo que sí se puede
-/// y se debe cubrir es que el tap sigue calculando el destino correcto.
+/// Extraída como función pura y testeable: lo que importa cubrir es que el
+/// tap calcula el destino correcto (y que un taller sin coordenadas no mueve
+/// el mapa a ninguna parte), no la mecánica de mover la cámara.
+///
+/// Devolvía un `CameraUpdate` de Google Maps; desde el 2026-09-20 el mapa es
+/// OpenStreetMap (ver [MapaOsm]) y mover la cámara es `MapController.move`,
+/// así que aquí basta con el punto.
 @visibleForTesting
-CameraUpdate? workshopCameraUpdate(Map<String, dynamic> data) {
+LatLng? workshopCameraUpdate(Map<String, dynamic> data) {
   final lat = data['latitud']?.toDouble();
   final lng = data['longitud']?.toDouble();
   if (lat == null || lng == null) return null;
-  return CameraUpdate.newLatLngZoom(LatLng(lat, lng), 15);
+  return LatLng(lat, lng);
 }
+
+/// Zoom al que se centra un taller elegido en la lista.
+const double _zoomDeTaller = 15;
 
 class WorkshopDirectoryScreen extends StatefulWidget {
   const WorkshopDirectoryScreen({super.key});
@@ -61,7 +71,16 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
   String _searchQuery = '';
   bool _showFavorites = false;
   bool _showMap = false;
-  GoogleMapController? _mapController;
+
+  /// Mueve el mapa cuando se elige un taller en la lista.
+  ///
+  /// Ya no hace falta vigilar si el mapa «llegó a cargar»: eso era para
+  /// Google Maps, que con la clave vencida pintaba su propio cartel de error
+  /// dentro de una vista de plataforma sin avisar a la app. Los tiles de OSM
+  /// los dibuja Flutter, así que un tile que no baje deja un hueco gris y el
+  /// mapa sigue funcionando.
+  final MapController _mapController = MapController();
+
   Position? _userPosition;
 
   // Default center (El Salvador)
@@ -100,11 +119,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
           _userPosition = pos;
         });
 
-        if (_mapController != null) {
-          _mapController!.animateCamera(
-            CameraUpdate.newLatLng(LatLng(pos.latitude, pos.longitude)),
-          );
-        }
+        _mapController.move(LatLng(pos.latitude, pos.longitude), _zoomDeTaller);
       }
     } catch (e) {
       debugPrint("Error requesting location permission: $e");
@@ -114,7 +129,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
   @override
   void dispose() {
     _searchController.dispose();
-    _mapController?.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 
@@ -365,34 +380,43 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
           bottom: BorderSide(color: colors.primary.withValues(alpha: 0.1)),
         ),
       ),
+      // Sin flecha de volver: el directorio es una pestaña del shell y se
+      // llega con `go`, así que no había nada que desapilar (el `pop` moría
+      // con "There is nothing to pop"). El selector lista/mapa pasa a la fila
+      // de filtros para dejar sitio a las acciones comunes de la cabecera.
       child: Row(
         children: [
-          IconButton(
-            icon: Icon(Icons.arrow_back, color: colors.textPrimary),
-            onPressed: () => context.pop(),
-          ),
-          Text(
-            context.l10n.wdTitle,
-            style: AppTextStyles.titleLarge.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colors.textPrimary,
+          Expanded(
+            child: Text(
+              context.l10n.wdTitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.titleLarge.copyWith(
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+              ),
             ),
           ),
-          const Spacer(),
-          // Toggle Map/List
-          Container(
-            decoration: BoxDecoration(
-              color: colors.primary.withValues(alpha: isDark ? 0.15 : 0.08),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _viewToggle(Icons.list, !_showMap, colors),
-                _viewToggle(Icons.map_outlined, _showMap, colors),
-              ],
-            ),
-          ),
+          const SizedBox(width: AppSpacing.xs),
+          const AccionesDeCabecera(),
+        ],
+      ),
+    );
+  }
+
+  /// Selector lista/mapa. Solo existe por debajo de `expanded`: a partir de
+  /// ahí el split lista/mapa es persistente.
+  Widget _selectorDeVista(AppColors colors, bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.primary.withValues(alpha: isDark ? 0.15 : 0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _viewToggle(Icons.list, !_showMap, colors),
+          _viewToggle(Icons.map_outlined, _showMap, colors),
         ],
       ),
     );
@@ -480,7 +504,13 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
       padding: EdgeInsets.symmetric(
         horizontal: Responsive.padding(context, 16),
       ),
-      child: Row(children: _filterChips(isDark, colors)),
+      child: Row(
+        children: [
+          _selectorDeVista(colors, isDark),
+          const SizedBox(width: AppSpacing.sm),
+          ..._filterChips(isDark, colors),
+        ],
+      ),
     );
   }
 
@@ -511,6 +541,12 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
               child: Row(children: _filterChips(isDark, colors)),
             ),
           ),
+          // Aquí no hay cabecera (ver `_buildHeader`) y el rail lateral no
+          // lleva estas acciones; en `large` ya las pinta la barra superior.
+          if (!AppBreakpoints.of(context).isLarge) ...[
+            const SizedBox(width: AppSpacing.sm),
+            const AccionesDeCabecera(),
+          ],
         ],
       ),
     );
@@ -695,26 +731,18 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
     AppColors colors,
     bool isDark,
   ) {
-    // Sin la clave de Maps el plugin de web monta un div vacio y el usuario ve
-    // un rectangulo gris sin explicacion. Decirlo es mejor que fingir un mapa.
-    if (isMapUnavailable(isWeb: kIsWeb, apiKey: AppSecrets.googleMapsApiKey)) {
-      return AppEmptyState(
-        title: context.l10n.wdMapUnavailableTitle,
-        description: context.l10n.wdMapUnavailableBody,
-        icon: Icons.map_outlined,
-      );
-    }
+    // Observación del 2026-09-20 («arregla lo del mapa»): ya no hay clave que
+    // falte ni que caduque. Los tiles son de OpenStreetMap y los dibuja
+    // Flutter, así que la rama de «mapa no disponible» que había aquí —y el
+    // vigilante de carga que la acompañaba— dejaron de tener sentido.
+    final marcadores = <MarcadorMapa>[];
 
-    final markers = <Marker>{};
-
-    // Marcador de la ubicación del usuario
     if (_userPosition != null) {
-      markers.add(
-        Marker(
-          markerId: const MarkerId('user_location'),
-          position: LatLng(_userPosition!.latitude, _userPosition!.longitude),
-          infoWindow: InfoWindow(title: context.l10n.wdYourLocation),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
+      marcadores.add(
+        MarcadorMapa(
+          punto: LatLng(_userPosition!.latitude, _userPosition!.longitude),
+          color: colors.secondary,
+          etiqueta: context.l10n.wdYourLocation,
         ),
       );
     }
@@ -723,25 +751,19 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
       final data = item['data'] as Map<String, dynamic>;
       final lat = data['latitud']?.toDouble();
       final lng = data['longitud']?.toDouble();
+      if (lat == null || lng == null) continue;
       final name = data['nombre_completo'] ?? context.l10n.wdWorkshop;
-
-      if (lat != null && lng != null) {
-        final dist = item['distance'] as double?;
-        final snippet = dist != null
-            ? '${data['especialidad'] ?? context.l10n.wdMechanics} - ${context.l10n.wdDistanceKm(dist.toStringAsFixed(1))}'
-            : data['especialidad'] ?? context.l10n.wdGeneralMechanics;
-
-        markers.add(
-          Marker(
-            markerId: MarkerId(item['id']),
-            position: LatLng(lat, lng),
-            infoWindow: InfoWindow(title: name, snippet: snippet),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueViolet,
-            ),
-          ),
-        );
-      }
+      marcadores.add(
+        MarcadorMapa(
+          punto: LatLng(lat, lng),
+          color: colors.primary,
+          etiqueta: name.toString(),
+          // Tocar el pin abre la ficha del taller. Google Maps enseñaba aquí
+          // una `InfoWindow` con el nombre y la distancia; el nombre ya va
+          // bajo el pin, y llegar al taller es más útil que leerlo.
+          onTap: () => context.push('/public_profile/${item['id']}'),
+        ),
+      );
     }
 
     // Info card for workshops without coordinates
@@ -752,22 +774,16 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
 
     return Stack(
       children: [
-        GoogleMap(
-          initialCameraPosition: CameraPosition(
-            target: _userPosition != null
-                ? LatLng(_userPosition!.latitude, _userPosition!.longitude)
-                : (markers.isNotEmpty
-                      ? markers.first.position
-                      : _defaultCenter),
-            zoom: 12,
-          ),
-          markers: markers,
-          onMapCreated: (controller) => _mapController = controller,
-          myLocationEnabled: true,
-          myLocationButtonEnabled: true,
-          zoomControlsEnabled: false,
-          mapToolbarEnabled: false,
-          style: isDark ? _darkMapStyle : null,
+        MapaOsm(
+          key: const Key('directorio_mapa'),
+          controlador: _mapController,
+          centro: _userPosition != null
+              ? LatLng(_userPosition!.latitude, _userPosition!.longitude)
+              : (marcadores.isNotEmpty
+                    ? marcadores.first.punto
+                    : _defaultCenter),
+          zoom: 12,
+          marcadores: marcadores,
         ),
         // Floating info
         Positioned(
@@ -794,7 +810,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
                 const SizedBox(width: 8),
                 Text(
                   context.l10n.wdWorkshopsOnMap(
-                    (markers.length - (_userPosition != null ? 1 : 0))
+                    (marcadores.length - (_userPosition != null ? 1 : 0))
                         .toString(),
                   ),
                   style: AppTextStyles.labelLarge.copyWith(
@@ -862,10 +878,8 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
         margin: const EdgeInsets.only(right: 12),
         padding: EdgeInsets.all(Responsive.padding(context, 14)),
         onTap: () {
-          final update = workshopCameraUpdate(data);
-          if (update != null && _mapController != null) {
-            _mapController!.animateCamera(update);
-          }
+          final destino = workshopCameraUpdate(data);
+          if (destino != null) _mapController.move(destino, _zoomDeTaller);
         },
         // La valoracion va en el label de la tarjeta, no en un `Semantics`
         // hijo: `AppCard` pulsable excluye la semantica de sus hijos, asi
@@ -1255,12 +1269,8 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
     );
   }
 
-  static const String _darkMapStyle = '''[
-    {"elementType":"geometry","stylers":[{"color":"#242f3e"}]},
-    {"elementType":"labels.text.fill","stylers":[{"color":"#746855"}]},
-    {"elementType":"labels.text.stroke","stylers":[{"color":"#242f3e"}]},
-    {"featureType":"road","elementType":"geometry","stylers":[{"color":"#38414e"}]},
-    {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#212a37"}]},
-    {"featureType":"water","elementType":"geometry","stylers":[{"color":"#17263c"}]}
-  ]''';
+  // El estilo oscuro de Google Maps (un JSON de ~40 reglas) vivía aquí y se
+  // fue con él: los tiles de OpenStreetMap son los mismos en claro y en
+  // oscuro. Si alguna vez se quiere un mapa oscuro, se cambia la URL de
+  // tiles en `MapaOsm`, no se pega otro JSON.
 }

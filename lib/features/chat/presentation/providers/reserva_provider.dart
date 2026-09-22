@@ -31,6 +31,19 @@ class ReservaProvider extends ChangeNotifier {
     return _reservaRepository.getReserva(reservaId);
   }
 
+  /// Ver `ReservaRepository.reservaVigenteParaVehiculo`. Lanza si la consulta
+  /// falla: quien llama tiene que poder distinguir "no hay cita" de "no se
+  /// pudo saber".
+  Future<ReservaModel?> reservaVigenteParaVehiculo({
+    required String idMecanico,
+    required String idVehiculo,
+  }) {
+    return _reservaRepository.reservaVigenteParaVehiculo(
+      idMecanico: idMecanico,
+      idVehiculo: idVehiculo,
+    );
+  }
+
   Future<String> solicitarReserva(ReservaModel reserva) async {
     _isLoading = true;
     _error = null;

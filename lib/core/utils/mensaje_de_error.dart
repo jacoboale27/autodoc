@@ -39,6 +39,15 @@ String mensajeDeError(AppLocalizations l10n, Object? error) {
       'deadline-exceeded' ||
       'retry-limit-exceeded' ||
       'network-request-failed' => l10n.errorDatosConexion,
+      // Estos tres estaban SOLO en `mensajeSeguroDeError`, la version en
+      // espanol para providers, asi que quien tenia la app en ingles recibia
+      // menos informacion que quien la tenia en espanol: leia «algo salio
+      // mal, intentalo mas tarde» —que ademas invita a reintentar algo que no
+      // va a funcionar— en vez de «no encontramos ese dato». Lo vigila el
+      // centinela de paridad de `test/core/mensaje_de_error_test.dart`.
+      'not-found' => l10n.errorDatosNoEncontrado,
+      'already-exists' => l10n.errorDatosYaExiste,
+      'canceled' => l10n.errorDatosCancelado,
       // `failed-precondition` cae aqui a proposito y NO tiene mensaje propio:
       // en esta app significa casi siempre una consulta sin indice compuesto,
       // o sea un fallo nuestro que la persona no puede resolver ni entender.

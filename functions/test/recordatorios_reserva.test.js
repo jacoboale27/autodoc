@@ -157,6 +157,14 @@ describe('recordatoriosReserva / ventanaDeManana', () => {
   });
 });
 
+/**
+ * `escribirNotificacion` es OBLIGATORIO desde que el recordatorio deja rastro
+ * en el centro de notificaciones (mismo contrato que `notificarAlertasVencidas`).
+ * Los casos de este bloque no afirman sobre las notas — eso lo hace el bloque
+ * de abajo—, asi que reciben un sumidero.
+ */
+const sumideroDeNotas = async () => {};
+
 describe('recordatoriosReserva / enviarRecordatoriosDeReserva', () => {
   const reserva = (extra) =>
     Object.assign(
@@ -171,7 +179,7 @@ describe('recordatoriosReserva / enviarRecordatoriosDeReserva', () => {
 
   it('acota la consulta por fecha en el servidor, no en memoria', async () => {
     const db = fakeDb({ 'reservas/r1': reserva() });
-    await enviarRecordatoriosDeReserva(db, fakeMessaging(), { ahora: AHORA });
+    await enviarRecordatoriosDeReserva(db, fakeMessaging(), { ahora: AHORA, escribirNotificacion: sumideroDeNotas });
 
     assert.ok(db.consultas.length > 0, 'no se consulto nada');
     const filtros = db.consultas[0].filtros;
@@ -191,7 +199,7 @@ describe('recordatoriosReserva / enviarRecordatoriosDeReserva', () => {
     });
     const messaging = fakeMessaging();
 
-    const { enviados } = await enviarRecordatoriosDeReserva(db, messaging, { ahora: AHORA });
+    const { enviados } = await enviarRecordatoriosDeReserva(db, messaging, { ahora: AHORA, escribirNotificacion: sumideroDeNotas });
 
     assert.strictEqual(enviados, 2);
     assert.deepStrictEqual(messaging.enviados.map((m) => m.token).sort(), ['tok-m1', 'tok-p1']);
@@ -204,7 +212,7 @@ describe('recordatoriosReserva / enviarRecordatoriosDeReserva', () => {
     });
     const messaging = fakeMessaging();
 
-    const { enviados } = await enviarRecordatoriosDeReserva(db, messaging, { ahora: AHORA });
+    const { enviados } = await enviarRecordatoriosDeReserva(db, messaging, { ahora: AHORA, escribirNotificacion: sumideroDeNotas });
 
     assert.strictEqual(enviados, 0);
     assert.deepStrictEqual(messaging.enviados, []);
@@ -220,6 +228,7 @@ describe('recordatoriosReserva / enviarRecordatoriosDeReserva', () => {
 
     const { enviados, sinToken } = await enviarRecordatoriosDeReserva(db, messaging, {
       ahora: AHORA,
+      escribirNotificacion: sumideroDeNotas,
     });
 
     assert.strictEqual(enviados, 1);
@@ -240,6 +249,7 @@ describe('recordatoriosReserva / enviarRecordatoriosDeReserva', () => {
 
     const { enviados, fallidos } = await enviarRecordatoriosDeReserva(db, messaging, {
       ahora: AHORA,
+      escribirNotificacion: sumideroDeNotas,
     });
 
     assert.strictEqual(fallidos, 1);
@@ -263,7 +273,7 @@ describe('recordatoriosReserva / enviarRecordatoriosDeReserva', () => {
     const db = fakeDb(docs);
     const messaging = fakeMessaging();
 
-    const r = await enviarRecordatoriosDeReserva(db, messaging, { ahora: AHORA, limite: 2 });
+    const r = await enviarRecordatoriosDeReserva(db, messaging, { ahora: AHORA, limite: 2, escribirNotificacion: sumideroDeNotas });
 
     assert.strictEqual(r.reservas, 5, 'se salto alguna pagina');
     assert.strictEqual(r.enviados, 5);
@@ -279,9 +289,264 @@ describe('recordatoriosReserva / enviarRecordatoriosDeReserva', () => {
     });
     const messaging = fakeMessaging();
 
-    const { enviados } = await enviarRecordatoriosDeReserva(db, messaging, { ahora: AHORA });
+    const { enviados } = await enviarRecordatoriosDeReserva(db, messaging, { ahora: AHORA, escribirNotificacion: sumideroDeNotas });
 
     assert.strictEqual(enviados, 4);
     assert.strictEqual(db.lecturasDeUsuario, 2, 'el cache de usuarios no esta funcionando');
+  });
+});
+
+/**
+ * El recordatorio decia la hora y no la decia, y no dejaba rastro.
+ *
+ * Dos gaps de la evidencia de SEC-04/OPS-01, los dos confirmados contra el
+ * codigo antes de tocar nada:
+ *
+ *   - El cuerpo era **«Tienes una cita programada para mañana a la hora
+ *     acordada»** teniendo `fecha_hora_propuesta` en la mano. Un recordatorio
+ *     que no dice la hora obliga a abrir la app para saber a que hora es la
+ *     cita, que es justo lo que un recordatorio existe para ahorrar.
+ *
+ *   - **No escribia nada en el centro de notificaciones.** Un push es
+ *     efimero: quien lo pierde —telefono apagado, notificaciones silenciadas,
+ *     token muerto por una reinstalacion— no tiene NINGUNA via para enterarse.
+ *     Y no es una decision: el barrido de alertas, hermano de este y del mismo
+ *     OPS-01, si llama a `escribirNotificacion`. Este se quedo sin ello.
+ *
+ * El caso que mas vale es el cuarto: **la nota se escribe aunque el push
+ * falle o no haya token**. Si se escribiera solo despues de enviar, el gap
+ * seguiria abierto para exactamente las personas a las que iba dirigido.
+ */
+describe('recordatoriosReserva / la hora y el centro de notificaciones', () => {
+  const reserva = (extra) =>
+    Object.assign(
+      {
+        estado: 'confirmada',
+        fecha_hora_propuesta: ts('2026-09-13T15:00:00Z'),
+        id_propietario: 'p1',
+        id_mecanico: 'm1',
+      },
+      extra || {}
+    );
+
+  function fakeNotas() {
+    const escritas = [];
+    const fn = async (uid, nota) => {
+      escritas.push({ uid, nota });
+    };
+    fn.escritas = escritas;
+    return fn;
+  }
+
+  it('el cuerpo del push dice la hora local de la cita', async () => {
+    // 15:00Z del 13 son las 10:00 en Bogota.
+    const db = fakeDb({
+      'reservas/r1': reserva(),
+      'usuarios/p1': { fcmToken: 'tok-p1' },
+      'usuarios/m1': { fcmToken: 'tok-m1' },
+    });
+    const messaging = fakeMessaging();
+
+    await enviarRecordatoriosDeReserva(db, messaging, {
+      ahora: AHORA,
+      escribirNotificacion: fakeNotas(),
+    });
+
+    for (const mensaje of messaging.enviados) {
+      assert.ok(
+        mensaje.notification.body.indexOf('10:00') !== -1,
+        'el cuerpo no dice la hora: ' + mensaje.notification.body
+      );
+      assert.ok(
+        !/hora acordada/i.test(mensaje.notification.body),
+        'sigue diciendo «a la hora acordada»: ' + mensaje.notification.body
+      );
+    }
+  });
+
+  it('la hora se rinde en hora de Bogota, no en UTC', async () => {
+    // 01:00Z del 14 son las 20:00 del 13 en Bogota. Decir «01:00» seria peor
+    // que no decir nada: manda a alguien al taller con diecinueve horas de
+    // desfase. Es el mismo error que OPS-01 ya corrigio en la VENTANA de la
+    // consulta, esperando a que alguien formateara una hora.
+    const db = fakeDb({
+      'reservas/r1': reserva({ fecha_hora_propuesta: ts('2026-09-14T01:00:00Z') }),
+      'usuarios/p1': { fcmToken: 'tok-p1' },
+      'usuarios/m1': { fcmToken: 'tok-m1' },
+    });
+    const messaging = fakeMessaging();
+
+    await enviarRecordatoriosDeReserva(db, messaging, {
+      ahora: AHORA,
+      escribirNotificacion: fakeNotas(),
+    });
+
+    const cuerpo = messaging.enviados[0].notification.body;
+    assert.ok(cuerpo.indexOf('20:00') !== -1, 'no dice la hora local: ' + cuerpo);
+    assert.ok(cuerpo.indexOf('01:00') === -1, 'dice la hora UTC: ' + cuerpo);
+  });
+
+  it('escribe la nota en el centro de notificaciones de los dos', async () => {
+    const db = fakeDb({
+      'reservas/r1': reserva(),
+      'usuarios/p1': { fcmToken: 'tok-p1' },
+      'usuarios/m1': { fcmToken: 'tok-m1' },
+    });
+    const notas = fakeNotas();
+
+    await enviarRecordatoriosDeReserva(db, fakeMessaging(), {
+      ahora: AHORA,
+      escribirNotificacion: notas,
+    });
+
+    assert.deepStrictEqual(
+      notas.escritas.map((e) => e.uid).sort(),
+      ['m1', 'p1']
+    );
+    for (const { nota } of notas.escritas) {
+      assert.ok(nota.titulo, 'la nota no tiene titulo');
+      assert.ok(nota.body.indexOf('10:00') !== -1, 'la nota no dice la hora');
+    }
+  });
+
+  it('la nota se escribe aunque el push falle o no haya token', async () => {
+    // EL CASO QUE IMPORTA. El propietario reinstalo la app y su token esta
+    // muerto; el mecanico nunca registro token. Los dos son exactamente las
+    // personas para las que existe el centro de notificaciones, asi que
+    // escribir la nota solo despues de un envio con exito dejaria el gap
+    // abierto justo donde duele.
+    const db = fakeDb({
+      'reservas/r1': reserva(),
+      'usuarios/p1': { fcmToken: 'tok-muerto' },
+      'usuarios/m1': {},
+    });
+    const notas = fakeNotas();
+    const messaging = fakeMessaging({ fallaPara: ['tok-muerto'] });
+
+    const resumen = await enviarRecordatoriosDeReserva(db, messaging, {
+      ahora: AHORA,
+      escribirNotificacion: notas,
+    });
+
+    assert.strictEqual(resumen.enviados, 0);
+    assert.strictEqual(resumen.fallidos, 1);
+    assert.strictEqual(resumen.sinToken, 1);
+    assert.deepStrictEqual(
+      notas.escritas.map((e) => e.uid).sort(),
+      ['m1', 'p1'],
+      'se perdio la nota de quien no recibio el push, que es justo quien la necesita'
+    );
+  });
+
+  it('un fallo escribiendo la nota no tumba el recordatorio del resto', async () => {
+    const db = fakeDb({
+      'reservas/r1': reserva(),
+      'usuarios/p1': { fcmToken: 'tok-p1' },
+      'usuarios/m1': { fcmToken: 'tok-m1' },
+    });
+    const messaging = fakeMessaging();
+
+    const resumen = await enviarRecordatoriosDeReserva(db, messaging, {
+      ahora: AHORA,
+      escribirNotificacion: async (uid) => {
+        if (uid === 'p1') throw new Error('firestore caido');
+      },
+    });
+
+    assert.strictEqual(resumen.reservas, 1);
+    assert.strictEqual(
+      messaging.enviados.length,
+      2,
+      'un fallo de escritura se llevo por delante los dos pushes'
+    );
+  });
+
+  it('sin `escribirNotificacion` falla en alto, no en silencio', async () => {
+    // Mismo contrato que `notificarAlertasVencidas`. Un default vacio dejaria
+    // el centro de notificaciones sin nada por un olvido de cableado, y eso no
+    // lo ve ningun test ni ningun log.
+    const db = fakeDb({ 'reservas/r1': reserva() });
+    await assert.rejects(
+      () => enviarRecordatoriosDeReserva(db, fakeMessaging(), { ahora: AHORA }),
+      /escribirNotificacion/
+    );
+  });
+});
+
+/**
+ * El contador de notas perdidas cuenta lo que pasa DE VERDAD.
+ *
+ * Lo levanto el gate de `functions-perf-reviewer`, y era un falso verde de
+ * manual: el `writeNotification` real **se traga su error y no relanza**, asi
+ * que contar solo las excepciones dejaba `notasFallidas` clavado en 0 en
+ * produccion. El unico sitio donde se incrementaba era un test cuyo doble SI
+ * relanzaba — un doble que no modela la implementacion que dice suplantar.
+ *
+ * Los dos casos de abajo son la pareja: uno con la forma REAL (devuelve
+ * `false`) y otro con la forma que un consumidor futuro podria tener (lanza).
+ * El que importa es el primero; sin el, el arreglo no esta probado.
+ */
+describe('recordatoriosReserva / las notas perdidas se cuentan', () => {
+  const reserva = () => ({
+    estado: 'confirmada',
+    fecha_hora_propuesta: ts('2026-09-13T15:00:00Z'),
+    id_propietario: 'p1',
+    id_mecanico: 'm1',
+  });
+
+  const conUsuarios = () =>
+    fakeDb({
+      'reservas/r1': reserva(),
+      'usuarios/p1': { fcmToken: 'tok-p1' },
+      'usuarios/m1': { fcmToken: 'tok-m1' },
+    });
+
+  it('una nota que DEVUELVE false se cuenta como perdida', async () => {
+    // Esta es la forma real de `writeNotification`: registra el error y
+    // devuelve false. Si el barrido solo mirara las excepciones, este caso
+    // saldria con notasFallidas: 0 y nadie sabria que se perdieron las dos.
+    const resumen = await enviarRecordatoriosDeReserva(conUsuarios(), fakeMessaging(), {
+      ahora: AHORA,
+      escribirNotificacion: async () => false,
+    });
+
+    assert.strictEqual(
+      resumen.notasFallidas,
+      2,
+      'el contador no vio las notas perdidas: es la forma REAL del helper'
+    );
+    // Y el push sigue saliendo: una nota perdida no se lleva el aviso.
+    assert.strictEqual(resumen.enviados, 2);
+  });
+
+  it('una nota que devuelve true no cuenta como perdida', async () => {
+    // Sin este, un contador que incrementara SIEMPRE pasaria el de arriba.
+    const resumen = await enviarRecordatoriosDeReserva(conUsuarios(), fakeMessaging(), {
+      ahora: AHORA,
+      escribirNotificacion: async () => true,
+    });
+    assert.strictEqual(resumen.notasFallidas, 0);
+  });
+
+  it('un doble que no devuelve nada tampoco cuenta como perdida', async () => {
+    // Los casos que no afirman sobre notas usan un sumidero `async () => {}`.
+    // Contar `undefined` como fallo los pondria rojos por el motivo
+    // equivocado, asi que solo `false` significa perdida.
+    const resumen = await enviarRecordatoriosDeReserva(conUsuarios(), fakeMessaging(), {
+      ahora: AHORA,
+      escribirNotificacion: async () => {},
+    });
+    assert.strictEqual(resumen.notasFallidas, 0);
+  });
+
+  it('una nota que LANZA tambien se cuenta, y no tumba el push', async () => {
+    const resumen = await enviarRecordatoriosDeReserva(conUsuarios(), fakeMessaging(), {
+      ahora: AHORA,
+      escribirNotificacion: async () => {
+        throw new Error('firestore caido');
+      },
+    });
+    assert.strictEqual(resumen.notasFallidas, 2);
+    assert.strictEqual(resumen.enviados, 2);
   });
 });

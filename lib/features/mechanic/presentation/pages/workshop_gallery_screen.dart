@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:autodoc/config/secrets.dart';
 import 'package:autodoc/core/models/galeria_taller.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
@@ -14,6 +15,7 @@ import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_dialog_content.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
+import 'package:autodoc/features/mechanic/presentation/pages/ajustar_banner_screen.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/galeria_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 
@@ -41,10 +43,25 @@ class _WorkshopGalleryScreenState extends State<WorkshopGalleryScreen> {
     });
   }
 
+  /// Una sub-cuenta de empleado tiene su propio uid, y la galería se publica
+  /// bajo el uid del DUEÑO del taller: lo que subiera un empleado no lo vería
+  /// nadie (`publishTallerProfile` borra la ficha de `talleres` de toda cuenta
+  /// con `id_taller_propietario`, y el directorio solo pinta desde esa ficha).
+  /// Desde el 2026-09-19 `storage.rules` tampoco se lo permite, así que sin
+  /// esto la pantalla le ofrecía un botón que siempre falla — y con el mensaje
+  /// equivocado: «Si tu cuenta fue suspendida, no puedes publicar fotos».
+  bool get _esEmpleado {
+    final idTaller = context
+        .read<UserProfileProvider>()
+        .userData
+        ?.idTallerPropietario;
+    return idTaller != null && idTaller.isNotEmpty;
+  }
+
   Future<void> _elegirYSubir(String slot) async {
     final provider = context.read<GaleriaProvider>();
     final uid = context.read<AuthSessionProvider>().currentUid;
-    if (uid.isEmpty) return;
+    if (uid.isEmpty || _esEmpleado) return;
 
     final archivo = await ImagePicker().pickImage(
       source: ImageSource.gallery,
@@ -120,6 +137,7 @@ class _WorkshopGalleryScreenState extends State<WorkshopGalleryScreen> {
     final colors = context.appColors;
     final provider = context.watch<GaleriaProvider>();
     final uid = context.watch<AuthSessionProvider>().currentUid;
+    final esEmpleado = _esEmpleado;
 
     return MechanicScaffold(
       title: 'Fotos del taller',
@@ -134,15 +152,57 @@ class _WorkshopGalleryScreenState extends State<WorkshopGalleryScreen> {
                   children: [
                     Text(
                       'Estas fotos son las que ven los clientes en el '
-                      'directorio. El logo es la imagen principal de tu ficha.',
+                      'directorio y en tu perfil. El logo es la imagen '
+                      'principal de tu ficha y el banner, la portada de tu '
+                      'perfil.',
                       style: AppTextStyles.bodyMedium.copyWith(
                         color: colors.textSecondary,
                         height: 1.4,
                       ),
                     ),
+                    if (esEmpleado) ...[
+                      const SizedBox(height: AppSpacing.lg),
+                      Container(
+                        key: const Key('galeria_solo_lectura_empleado'),
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        decoration: BoxDecoration(
+                          color: colors.surfaceContainer,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(
+                            color: colors.outline.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              size: 20,
+                              color: colors.textSecondary,
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: Text(
+                                'Las fotos del taller las publica la cuenta '
+                                'del dueño. Desde tu cuenta de empleado no se '
+                                'pueden subir ni cambiar.',
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: colors.textSecondary,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.xxl),
 
                     _tarjeta(colors, provider, uid, GaleriaTaller.slotLogo),
+                    const SizedBox(height: AppSpacing.md),
+                    // Observaciones del 2026-09-19: «que parezca que tiene un
+                    // perfil empresarial».
+                    _tarjeta(colors, provider, uid, GaleriaTaller.slotBanner),
                     const SizedBox(height: AppSpacing.xl),
 
                     Text(
@@ -171,6 +231,7 @@ class _WorkshopGalleryScreenState extends State<WorkshopGalleryScreen> {
     String slot,
   ) {
     final esLogo = slot == GaleriaTaller.slotLogo;
+    final esBanner = slot == GaleriaTaller.slotBanner;
     final archivo = provider.galeria.archivoDe(slot);
     final enCurso = provider.slotEnCurso == slot;
     final url = archivo == null
@@ -191,8 +252,10 @@ class _WorkshopGalleryScreenState extends State<WorkshopGalleryScreen> {
       child: Row(
         children: [
           SizedBox(
+            // El banner es apaisado: su vista previa también, con el mismo
+            // ancho que las demás para que la fila quepa en un teléfono.
             width: 96,
-            height: 72,
+            height: esBanner ? 54 : 72,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(AppRadius.md),
               child: url != null
@@ -206,6 +269,8 @@ class _WorkshopGalleryScreenState extends State<WorkshopGalleryScreen> {
                       colors,
                       esLogo
                           ? Icons.storefront_outlined
+                          : esBanner
+                          ? Icons.panorama_outlined
                           : Icons.add_photo_alternate_outlined,
                     ),
             ),
@@ -216,7 +281,11 @@ class _WorkshopGalleryScreenState extends State<WorkshopGalleryScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  esLogo ? 'Logo del taller' : 'Foto ${slot.split('-').last}',
+                  esLogo
+                      ? 'Logo del taller'
+                      : esBanner
+                      ? 'Banner (portada del perfil)'
+                      : 'Foto ${slot.split('-').last}',
                   style: AppTextStyles.titleSmall.copyWith(
                     color: colors.textPrimary,
                   ),
@@ -227,6 +296,8 @@ class _WorkshopGalleryScreenState extends State<WorkshopGalleryScreen> {
                       ? 'Publicada.'
                       : esLogo
                       ? 'Es la imagen principal de tu ficha.'
+                      : esBanner
+                      ? 'Una foto horizontal de tu taller. Opcional.'
                       : 'Opcional.',
                   style: AppTextStyles.bodySmall.copyWith(
                     color: colors.textSecondary,
@@ -248,12 +319,31 @@ class _WorkshopGalleryScreenState extends State<WorkshopGalleryScreen> {
                 icon: const Icon(Icons.delete_outline),
                 tooltip: 'Quitar',
               ),
-            AppButton(
-              text: archivo != null ? 'Cambiar' : 'Subir',
-              type: AppButtonType.text,
-              size: AppButtonSize.small,
-              onPressed: () => _elegirYSubir(slot),
-            ),
+            // Observación del 2026-09-20: el banner se recorta a 3.2:1 y
+            // casi ninguna foto lo es, así que hay que poder elegir QUÉ
+            // franja se ve. No recorta el archivo: guarda el alineamiento.
+            if (esBanner && archivo != null && !_esEmpleado && url != null)
+              IconButton(
+                key: const Key('galeria_encuadrar_banner'),
+                tooltip: 'Encuadre',
+                icon: const Icon(Icons.crop_outlined),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => AjustarBannerScreen(urlBanner: url),
+                  ),
+                ),
+              ),
+            // «Quitar» SÍ se le deja al empleado: es la única vía para
+            // limpiar lo que hubiera subido antes de que storage.rules se lo
+            // cerrara, y el `allow delete` de esa regla lo permite a
+            // propósito.
+            if (!_esEmpleado)
+              AppButton(
+                text: archivo != null ? 'Cambiar' : 'Subir',
+                type: AppButtonType.text,
+                size: AppButtonSize.small,
+                onPressed: () => _elegirYSubir(slot),
+              ),
           ],
         ],
       ),

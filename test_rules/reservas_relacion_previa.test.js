@@ -166,3 +166,47 @@ describe('reservas: el atacante tampoco puede fabricarse la relacion', () => {
     );
   });
 });
+
+// Observaciones del 2026-09-18: la cita lleva `vehiculo_resumen` (el taller no
+// puede leer la ficha del coche hasta recibirlo) y Buscar Vehiculo busca la
+// cita vigente del taller para ese coche. Ninguna de las dos cosas toco las
+// reglas; estos casos dejan escrito que las reglas vigentes las admiten.
+describe('reservas: cotizar desde Buscar Vehiculo (observaciones 2026-09-18)', () => {
+  test('el propietario puede crear la cita con el resumen del vehiculo', async () => {
+    await seedConversacion();
+    const db = await withRole(env, UIDS.owner1, 'Propietario');
+    await assertSucceeds(
+      db.collection('reservas').add(cita({
+        vehiculo_resumen: { marca: 'NISSAN', modelo: 'Rogue', placa: 'P123-123', kilometraje: 75 },
+      })),
+    );
+  });
+
+  test('el taller puede listar SUS citas de un vehiculo (id_mecanico + id_vehiculo)', async () => {
+    await seed(env, async (s) => {
+      await s.collection('reservas').doc('r1').set(cita());
+    });
+    const db = await withRole(env, UIDS.taller1, 'Taller');
+    await assertSucceeds(
+      db.collection('reservas')
+        .where('id_mecanico', '==', UIDS.taller1)
+        .where('id_vehiculo', '==', 'v1')
+        .limit(20)
+        .get(),
+    );
+  });
+
+  test('otro taller NO puede listar las citas de ese vehiculo con el primero', async () => {
+    await seed(env, async (s) => {
+      await s.collection('reservas').doc('r1').set(cita());
+    });
+    const db = await withRole(env, UIDS.taller2, 'Taller');
+    await assertFails(
+      db.collection('reservas')
+        .where('id_mecanico', '==', UIDS.taller1)
+        .where('id_vehiculo', '==', 'v1')
+        .limit(20)
+        .get(),
+    );
+  });
+});

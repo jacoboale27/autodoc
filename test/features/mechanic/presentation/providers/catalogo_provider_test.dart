@@ -1,4 +1,5 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:autodoc/core/models/catalogo_item_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:autodoc/features/mechanic/data/repositories/catalogo_repository.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/catalogo_provider.dart';
@@ -117,4 +118,97 @@ void main() {
       expect(provider.items, isEmpty);
     },
   );
+
+  // Observaciones del 2026-09-19: el catálogo es de mano de obra con precio
+  // estimado, y trae servicios comunes para no empezar vacío.
+  group('catálogo de mano de obra', () {
+    test('guarda el rango «desde – hasta»', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = CatalogoProvider(
+        repository: CatalogoRepository(firestore: firestore),
+      );
+      provider.watchTaller('t1');
+      await provider.agregar('Alineación', 15, precioMax: 25);
+      await Future<void>.delayed(Duration.zero);
+
+      final item = provider.items.single;
+      expect(item.precio, 15);
+      expect(item.precioMax, 25);
+      expect(item.rangoTexto, '\$15.00 – \$25.00');
+    });
+
+    test('los servicios comunes se agregan una sola vez', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = CatalogoProvider(
+        repository: CatalogoRepository(firestore: firestore),
+      );
+      provider.watchTaller('t1');
+      await provider.agregar('alineación', 18);
+      await Future<void>.delayed(Duration.zero);
+
+      final agregados = await provider.cargarServiciosComunes();
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        agregados,
+        serviciosComunesManoDeObra.length - 1,
+        reason: 'la alineación ya estaba (sin distinguir mayúsculas)',
+      );
+      expect(await provider.cargarServiciosComunes(), 0);
+      expect(provider.items, hasLength(serviciosComunesManoDeObra.length));
+      expect(
+        provider.items.every(
+          (i) => i.precioMax == null || i.precioMax! >= i.precio,
+        ),
+        isTrue,
+      );
+    });
+  });
+
+  test(
+    'las sugerencias dependen de los vehículos que atiende el taller',
+    () async {
+      // Observación del 2026-09-20: «según la especialidad deberían tener
+      // sugerencias predeterminadas del catálogo». Un taller de motos no
+      // quiere un catálogo lleno de kits de embrague de coche, pero sí lo
+      // común a todos (aceite, frenos, diagnóstico).
+      final firestore = FakeFirebaseFirestore();
+      final repo = CatalogoRepository(firestore: firestore);
+      final provider = CatalogoProvider(repository: repo);
+      provider.watchTaller('t1');
+      await Future.delayed(Duration.zero);
+
+      final n = await provider.cargarServiciosComunes(tipos: ['motocicleta']);
+      await Future.delayed(Duration.zero);
+
+      final nombres = provider.items.map((i) => i.nombre).toSet();
+      expect(n, serviciosComunesPara(['motocicleta']).length);
+      expect(nombres, contains('Ajuste y lubricación de cadena'));
+      expect(nombres, contains('Cambio de aceite y filtro'));
+      expect(
+        nombres,
+        isNot(contains('Purga y revisión de frenos de aire')),
+        reason: 'eso es de camiones y autobuses',
+      );
+    },
+  );
+
+  test('sin tipos declarados se sugiere solo lo común', () {
+    final comunes = serviciosComunesPara(const []);
+    expect(comunes.length, serviciosComunesManoDeObra.length);
+    expect(
+      serviciosComunesPara(['camion']).length,
+      greaterThan(comunes.length),
+    );
+  });
+
+  test('un taller que atiende varios tipos no repite servicios', () {
+    // Camión y autobús comparten «Purga y revisión de frenos de aire» y
+    // «Cambio de aceite de motor diésel»: el catálogo no debe nacer con la
+    // misma línea dos veces.
+    final nombres = serviciosComunesPara([
+      'camion',
+      'autobus',
+    ]).map((s) => s.nombre.toLowerCase()).toList();
+    expect(nombres.length, nombres.toSet().length);
+  });
 }

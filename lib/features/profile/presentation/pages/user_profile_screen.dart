@@ -5,6 +5,7 @@ import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_shadows.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_dialog_content.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
@@ -190,7 +191,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               color: primaryPurple,
             ),
           ),
-          const SizedBox(width: AppSpacing.sm),
+          // En `large` las lleva la barra superior del shell. Sin avatar:
+          // lleva justo a esta pantalla.
+          if (!AppBreakpoints.of(context).isLarge)
+            const AccionesDeCabecera(mostrarAvatar: false)
+          else
+            const SizedBox(width: AppSpacing.sm),
         ],
       ),
       body: Container(

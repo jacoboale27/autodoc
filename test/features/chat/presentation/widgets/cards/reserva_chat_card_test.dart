@@ -90,7 +90,11 @@ void main() {
                 child: ReservaChatCard(
                   metadata: const {
                     'id_reserva': 'r1',
-                    'estado': 'confirmada',
+                    // 'pendiente' y no 'confirmada': desde la observación del
+                    // 2026-09-20, una cita ya resuelta enseña solo su estado
+                    // —sin acciones y sin «Ver detalle»—, que es lo que
+                    // comprueba `reserva_chat_card_estado_test.dart`.
+                    'estado': 'pendiente',
                     'fecha': '2026-08-03T10:00:00.000',
                     'hora': '10:00',
                   },

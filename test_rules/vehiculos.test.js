@@ -195,7 +195,16 @@ describe('vehiculos', () => {
 // el stream como el set() morian en permission-denied y la galeria salia
 // siempre vacia sin poder subir nada.
 describe('vehiculos/{id}/fotos (galeria)', () => {
-  const foto = { url: 'https://x/f.jpg', timestamp: new Date() };
+  // La URL tiene que estar en NUESTRO Storage: la regla lo exige desde
+  // GAPS-08, porque esta `url` la elige el cliente y la leen el taller
+  // vinculado, sus empleados y quien tenga el coche compartido. Este fixture
+  // decia `https://x/f.jpg`, que es justo el ataque.
+  const foto = {
+    url:
+      'https://firebasestorage.googleapis.com/v0/b/autodoc.appspot.com/o/' +
+      'vehiculos%2Fv-mio%2Ffotos%2Ff.jpg?alt=media&token=x',
+    timestamp: new Date(),
+  };
 
   test('el propietario SI puede añadir una foto a su vehiculo', async () => {
     const db = await withRole(env, UIDS.owner1, 'Propietario');

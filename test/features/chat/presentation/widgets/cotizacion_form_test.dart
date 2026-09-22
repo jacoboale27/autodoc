@@ -1,7 +1,7 @@
 // test/features/chat/presentation/widgets/cotizacion_form_test.dart
 //
 // B1: la lista de renglones de material (nombre/material, cantidad, costo)
-// es la única pieza genuinamente idéntica entre `CotizacionPicker` (chat) e
+// es la única pieza genuinamente idéntica entre `NuevaCotizacionScreen` (chat) e
 // `InitiateServiceScreen` (buscar vehículo) — ver task-7-report.md. Este test
 // no reproduce el "test de paridad" del brief (asumía un `CotizacionForm`
 // con `onSubmit(CotizacionModel)` y claves que no existen en ninguno de los
@@ -18,7 +18,7 @@ import 'package:provider/provider.dart';
 
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/features/chat/presentation/widgets/cotizacion_form.dart';
-import 'package:autodoc/features/chat/presentation/widgets/cotizacion_picker.dart';
+import 'package:autodoc/features/chat/presentation/pages/nueva_cotizacion_screen.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/features/mechanic/presentation/pages/initiate_service_screen.dart';
 import 'package:autodoc/features/mechanic/presentation/providers/reparacion_provider.dart';
@@ -42,12 +42,12 @@ void main() {
   setupFirebaseCoreMocks();
 
   testWidgets(
-    'CotizacionPicker (chat) monta CotizacionItemsForm y su campo de costo '
+    'NuevaCotizacionScreen (chat) monta CotizacionItemsForm y su campo de costo '
     'rechaza letras',
     (tester) async {
       await pumpChatWidget(
         tester,
-        CotizacionPicker(onConfirm: (_, _) async {}),
+        NuevaCotizacionScreen(vehiculo: null, onEnviar: (_) async => true),
         width: 500,
       );
 
@@ -105,7 +105,7 @@ void main() {
       expect(find.byType(CotizacionItemsForm), findsOneWidget);
 
       // Sin materiales agregados todavía, la lista de renglones empieza
-      // vacía (a diferencia de CotizacionPicker, que exige al menos uno):
+      // vacía (igual que NuevaCotizacionScreen, que admite solo mano de obra):
       // hay que agregar un renglón antes de poder tocar su campo de costo.
       await tester.tap(find.text('Agregar renglón'));
       await tester.pump();

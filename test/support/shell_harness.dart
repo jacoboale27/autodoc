@@ -124,6 +124,12 @@ Future<void> pumpShell(
       child: MaterialApp.router(
         theme: AppTheme.light,
         routerConfig: router,
+        // Español fijo, como la app: `LanguageProvider` arranca en 'es'
+        // (language_provider.dart:7). Sin esto el harness resuelve el locale
+        // del SISTEMA —en_US bajo `flutter test`— y cualquier rotulo traducido
+        // sale en ingles, asi que un test que afirme sobre texto español falla
+        // en una pantalla perfectamente correcta.
+        locale: const Locale('es'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
       ),
@@ -170,6 +176,12 @@ Future<void> pumpTopNav(
       child: MaterialApp.router(
         theme: brightness == Brightness.dark ? AppTheme.dark : AppTheme.light,
         routerConfig: router,
+        // Español fijo, como la app: `LanguageProvider` arranca en 'es'
+        // (language_provider.dart:7). Sin esto el harness resuelve el locale
+        // del SISTEMA —en_US bajo `flutter test`— y cualquier rotulo traducido
+        // sale en ingles, asi que un test que afirme sobre texto español falla
+        // en una pantalla perfectamente correcta.
+        locale: const Locale('es'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
       ),

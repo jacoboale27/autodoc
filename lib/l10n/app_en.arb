@@ -237,20 +237,20 @@
   "alertsAllGood": "All up to date!",
   "alertsNoAlertsInCategory": "No alerts in this category.",
   "alertsHighPriority": "High Priority",
-  "alertsPendingCount": "{count} pending",
+  "alertsPendingCount": "{count, plural, =1{1 pending} other{{count} pending}}",
   "@alertsPendingCount": {
     "placeholders": {
       "count": {
-        "type": "String"
+        "type": "int"
       }
     }
   },
   "alertsUpcomingExpirations": "Upcoming Expirations",
-  "alertsEventsCount": "{count} events",
+  "alertsEventsCount": "{count, plural, =1{1 event} other{{count} events}}",
   "@alertsEventsCount": {
     "placeholders": {
       "count": {
-        "type": "String"
+        "type": "int"
       }
     }
   },
@@ -309,6 +309,27 @@
       }
     }
   },
+  "alertsSoatExpiringTitle": "Insurance expiring soon",
+  "alertsSoatExpiredTitle": "Insurance expired",
+  "alertsCardExpiringTitle": "Registration expiring soon",
+  "alertsCardExpiredTitle": "Registration expired",
+  "alertsDocExpiresToday": "Expires today.",
+  "alertsDocExpiresInDays": "Expires in {dias} days.",
+  "@alertsDocExpiresInDays": {
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
+  },
+  "alertsDocExpiredDaysAgo": "Expired {dias} days ago.",
+  "@alertsDocExpiredDaysAgo": {
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
+  },
   "histTitle": "Service History",
   "histTabAll": "All",
   "histTabManual": "Manual",
@@ -329,6 +350,8 @@
   "wdYourLocation": "Your Location",
   "wdMapUnavailableTitle": "Map unavailable",
   "wdMapUnavailableBody": "The map could not be loaded because this build is missing its Google Maps key. In the meantime you can browse the workshops in list view.",
+  "wdMapLoadFailedTitle": "The map could not load",
+  "wdMapLoadFailedBody": "Google Maps did not respond. It is usually the key: expired, without billing, or restricted to another domain. The workshop list still works.",
   "wdWorkshop": "Workshop",
   "wdGeneralMechanics": "General Mechanics",
   "wdMechanics": "Mechanics",
@@ -473,6 +496,16 @@
   "addVehiclePlateTypeMoto": "Motorcycle",
   "addVehiclePlateTypeCarga": "Cargo",
   "addVehiclePlateTypeAlquiler": "Rental",
+  "addVehiclePlateTypeMicrobus": "Minibus",
+  "addVehiclePlateTypeAutobus": "Bus",
+  "addVehicleType": "Vehicle type",
+  "addVehicleTypeSubtitle": "What are you registering? We will show its brands and plate type.",
+  "tipoVehiculoAutomovil": "Car",
+  "tipoVehiculoCamioneta": "SUV / Pickup",
+  "tipoVehiculoMotocicleta": "Motorcycle",
+  "tipoVehiculoCamion": "Truck",
+  "tipoVehiculoMicrobus": "Minibus",
+  "tipoVehiculoAutobus": "Bus",
   "addVehiclePlate": "License Plate",
   "addVehiclePlateHint": "e.g. P123-456 or P12-345",
   "addVehicleYear": "Year",
@@ -811,6 +844,18 @@
   "@errorDatosGenerico": {
     "description": "Default error message, with no technical detail"
   },
+  "errorDatosNoEncontrado": "We couldn't find that item. It may no longer exist.",
+  "@errorDatosNoEncontrado": {
+    "description": "Motivo de error de datos, mostrado a la persona."
+  },
+  "errorDatosYaExiste": "That item already exists.",
+  "@errorDatosYaExiste": {
+    "description": "Motivo de error de datos, mostrado a la persona."
+  },
+  "errorDatosCancelado": "The operation was canceled.",
+  "@errorDatosCancelado": {
+    "description": "Motivo de error de datos, mostrado a la persona."
+  },
   "errorReintentar": "Retry",
   "@errorReintentar": {
     "description": "Action to retry a failed query"
@@ -961,5 +1006,101 @@
   "authRefreshError": "We couldn't check your verification. Try again in a moment.",
   "@authRefreshError": {
     "description": "Fallo al recargar el estado de verificacion del usuario"
+  },
+  "mechanicDashboardTitle": "Workshop dashboard",
+  "@mechanicDashboardTitle": {
+    "description": "Titulo del panel del taller (barra superior y menu lateral)."
+  },
+  "asistenteTitulo": "Assistant",
+  "@asistenteTitulo": {
+    "description": "Title of the agenda assistant screen (IA-01)"
+  },
+  "asistenteAbrir": "Ask the assistant",
+  "@asistenteAbrir": {
+    "description": "Tooltip of the assistant entry point in alerts and in the workshop dashboard"
+  },
+  "asistenteCampoEtiqueta": "Your question",
+  "@asistenteCampoEtiqueta": {
+    "description": "Label of the text field where the question is typed"
+  },
+  "asistenteCampoPista": "What expires this week?",
+  "@asistenteCampoPista": {
+    "description": "Example inside the question field"
+  },
+  "asistenteEnviar": "Ask",
+  "@asistenteEnviar": {
+    "description": "Button that sends the question to the assistant"
+  },
+  "asistenteOtraPregunta": "Ask another question",
+  "@asistenteOtraPregunta": {
+    "description": "Button that clears the answer and returns focus to the field"
+  },
+  "asistentePensando": "Thinking…",
+  "@asistentePensando": {
+    "description": "Loading state while the server answers"
+  },
+  "asistenteVacio": "Ask me about your vehicles' expirations, appointments and maintenance.",
+  "@asistenteVacio": {
+    "description": "Initial state of the screen, before the first question"
+  },
+  "asistenteAlcance": "It only answers about your schedule. It does not diagnose faults or replace a workshop.",
+  "@asistenteAlcance": {
+    "description": "Permanent notice about the assistant's scope, below the question field"
+  },
+  "asistenteEtiquetaFueraDeAlcance": "Out of scope",
+  "@asistenteEtiquetaFueraDeAlcance": {
+    "description": "Badge on the answer when the server rejects the question as outside its remit"
+  },
+  "asistenteErrorCupo": "You've reached your question limit for today. Try again tomorrow.",
+  "@asistenteErrorCupo": {
+    "description": "resource-exhausted with motive cupo_usuario: this person ran out of THEIR daily quota"
+  },
+  "asistenteErrorApagado": "The assistant is temporarily switched off.",
+  "@asistenteErrorApagado": {
+    "description": "unavailable with motive apagado: the configuracion/asistente_ia switch. Retrying does not turn it on"
+  },
+  "asistenteTituloCupo": "No questions left today",
+  "@asistenteTituloCupo": {
+    "description": "Headline for the exhausted quota state. NOT 'we couldn't load': nothing failed, the day's questions ran out"
+  },
+  "asistenteTituloApagado": "Assistant switched off",
+  "@asistenteTituloApagado": {
+    "description": "Headline for the kill switch. NOT a loading or connectivity failure"
+  },
+  "asistenteTituloTallerPendiente": "Your workshop isn't approved yet",
+  "@asistenteTituloTallerPendiente": {
+    "description": "Headline for permission-denied: the workshop is awaiting approval. Not a loading failure"
+  },
+  "asistenteTituloPreguntaVacia": "Your question is missing",
+  "@asistenteTituloPreguntaVacia": {
+    "description": "Headline for invalid-argument: nothing was typed. Not a loading failure"
+  },
+  "asistenteErrorNoDisponible": "The assistant isn't set up yet. We're on it.",
+  "@asistenteErrorNoDisponible": {
+    "description": "failed-precondition: the key is missing or the configured model doesn't work. Retrying never fixes it"
+  },
+  "asistenteErrorLento": "The assistant took too long to answer. Try again.",
+  "@asistenteErrorLento": {
+    "description": "deadline-exceeded: the model did not answer in time"
+  },
+  "asistenteErrorSinRespuesta": "I couldn't put together an answer to that. Try wording it differently.",
+  "@asistenteErrorSinRespuesta": {
+    "description": "aborted: the provider's filter blocked the answer, or it came back empty"
+  },
+  "asistenteErrorTallerPendiente": "Your workshop isn't approved yet, so I can't look up its schedule.",
+  "@asistenteErrorTallerPendiente": {
+    "description": "permission-denied: thrown by agenda.js when the workshop is not approved"
+  },
+  "asistenteErrorPreguntaVacia": "Write a question before sending it.",
+  "@asistenteErrorPreguntaVacia": {
+    "description": "invalid-argument: the question reached the server empty"
+  },
+  "asistenteErrorCupoGlobal": "The assistant has reached today's question limit. It's not you: try again tomorrow.",
+  "@asistenteErrorCupoGlobal": {
+    "description": "resource-exhausted with motive cupo_global: the whole assistant ran out, not this person"
+  },
+  "asistenteErrorProveedor": "The assistant is unavailable right now. Try again.",
+  "@asistenteErrorProveedor": {
+    "description": "unavailable with motive proveedor: the model is down. Retrying can work, unlike the kill switch"
   }
 }

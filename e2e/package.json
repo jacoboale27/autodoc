@@ -8,7 +8,9 @@
     "test": "playwright test",
     "report": "node scripts/generate_report.js",
     "build:landing": "node scripts/build-landing.js",
-    "test:landing": "playwright test --config playwright.landing.config.js"
+    "test:landing": "playwright test --config playwright.landing.config.js",
+    "seed:vitrina": "node scripts/seed-vitrina.js",
+    "capturas": "playwright test --config playwright.capturas.config.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.1",

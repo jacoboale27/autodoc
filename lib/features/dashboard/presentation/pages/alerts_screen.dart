@@ -21,6 +21,9 @@ import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
+import 'package:autodoc/features/dashboard/presentation/utils/texto_de_alerta.dart';
+import '../utils/asegurar_datos_del_garaje.dart';
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
@@ -31,6 +34,16 @@ class AlertsScreen extends StatefulWidget {
 
 class _AlertsScreenState extends State<AlertsScreen> {
   int _selectedTab = 0; // 0=Todas, 1=Urgentes, 2=Próximas
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Mismo motivo que en el garaje: con un F5 o un enlace directo a /alerts
+    // el provider esta recien construido, `selectedVehicle` es null y la
+    // pantalla se quedaba en «Selecciona un vehiculo primero» para siempre,
+    // sin ninguna via para seleccionar nada desde aqui.
+    asegurarDatosDelGaraje(context);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -114,16 +127,32 @@ class _AlertsScreenState extends State<AlertsScreen> {
               icon: Icon(Icons.arrow_back_ios_new, color: colors.textSecondary),
               onPressed: () => context.pop(),
             ),
-            Text(
-              context.l10n.alertsTitle,
-              style: AppTextStyles.titleLarge.copyWith(color: primary),
+            Expanded(
+              child: Text(
+                context.l10n.alertsTitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.titleLarge.copyWith(color: primary),
+              ),
             ),
-            const Spacer(),
+            // IA-01 — entrada del propietario al asistente de agenda. Va aqui
+            // y no como campo de texto en linea porque la pregunta no puede
+            // viajar en `state.extra`: un F5 lo pierde y el cast revienta la
+            // app (la cicatriz de H-01 con /task_config), y `context.push`
+            // ademas no mueve la URL en go_router 17 (INNO-01). El campo vive
+            // en la pantalla que lo usa.
+            IconButton(
+              key: const Key('alerts-abrir-asistente'),
+              icon: Icon(Icons.auto_awesome_outlined, color: primary),
+              tooltip: context.l10n.asistenteAbrir,
+              onPressed: () => context.push('/asistente'),
+            ),
             IconButton(
               icon: Icon(Icons.update, color: primary),
               tooltip: context.l10n.alertsUpdateMileage,
               onPressed: () => _showUpdateMileageDialog(context),
             ),
+            const AccionesDeCabecera(),
           ],
         ),
       ),
@@ -313,7 +342,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
               _buildSectionHeader(
                 criticalStyle,
                 context.l10n.alertsPendingCount(
-                  (criticalTasks.length + highAlerts.length).toString(),
+                  criticalTasks.length + highAlerts.length,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -322,7 +351,10 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 mediumColumns: 1,
                 expandedColumns: 2,
                 largeColumns: 2,
-                childAspectRatio: 1.5,
+                // Cada tarjeta a su alto (observaciones del 2026-09-19): con
+                // proporción 1.5 una alerta de dos líneas medía 370 px en
+                // escritorio.
+                sizeToContent: true,
                 children: [
                   ...criticalTasks.map(
                     (t) => _buildTaskCard(t, currentKm, criticalStyle),
@@ -339,7 +371,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
               _buildSectionHeader(
                 preventiveStyle,
                 context.l10n.alertsEventsCount(
-                  (preventiveTasks.length + medAlerts.length).toString(),
+                  preventiveTasks.length + medAlerts.length,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -348,7 +380,10 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 mediumColumns: 1,
                 expandedColumns: 2,
                 largeColumns: 2,
-                childAspectRatio: 1.5,
+                // Cada tarjeta a su alto (observaciones del 2026-09-19): con
+                // proporción 1.5 una alerta de dos líneas medía 370 px en
+                // escritorio.
+                sizeToContent: true,
                 children: [
                   ...preventiveTasks.map(
                     (t) => _buildTaskCard(t, currentKm, preventiveStyle),
@@ -369,7 +404,10 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 mediumColumns: 1,
                 expandedColumns: 2,
                 largeColumns: 2,
-                childAspectRatio: 1.5,
+                // Cada tarjeta a su alto (observaciones del 2026-09-19): con
+                // proporción 1.5 una alerta de dos líneas medía 370 px en
+                // escritorio.
+                sizeToContent: true,
                 children: [
                   ...optimalTasks.map(
                     (t) => _buildTaskCard(t, currentKm, optimalStyle),
@@ -665,21 +703,21 @@ class _AlertsScreenState extends State<AlertsScreen> {
       case 'MantenimientoInconsistente':
         icon = Icons.speed;
         break;
+      case 'Tarjeta':
+        icon = Icons.badge_outlined;
+        break;
       default:
         icon = Icons.info_outline;
     }
 
     // El provider no puede localizar este texto (no tiene BuildContext),
-    // así que la pantalla lo arma aquí a partir del dato guardado en
-    // metadata.
-    final descripcion = alert.tipoAlerta == 'MantenimientoInconsistente'
-        ? context.l10n.alertsInconsistentMileage(
-            NumberFormat('#,###').format(alert.metadata?['ultimo_km'] ?? 0),
-          )
-        : alert.descripcion;
+    // así que se arma a partir del tipo y de metadata. Ver
+    // `utils/texto_de_alerta.dart`.
+    final texto = textoDeAlerta(context.l10n, alert);
+    final descripcion = texto.descripcion;
 
     return Semantics(
-      label: '${style.label}: ${alert.titulo}',
+      label: '${style.label}: ${texto.titulo}',
       child: AppCard(
         margin: EdgeInsets.zero,
         padding: EdgeInsets.zero,
@@ -714,7 +752,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            alert.titulo,
+                            texto.titulo,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: AppTextStyles.titleSmall.copyWith(

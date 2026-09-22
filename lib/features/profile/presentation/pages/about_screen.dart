@@ -8,6 +8,7 @@ import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_snackbar.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -60,6 +61,7 @@ class _AboutScreenState extends State<AboutScreen> {
           style: AppTextStyles.titleMedium.copyWith(color: colors.textPrimary),
         ),
         iconTheme: IconThemeData(color: colors.textPrimary),
+        actions: const [AccionesDeCabecera()],
       ),
       body: AppPageBody(
         maxWidth: AppBreakpoints.maxReadingWidth,

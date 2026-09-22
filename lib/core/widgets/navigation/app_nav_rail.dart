@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/navigation/app_nav_destination.dart';
+import 'package:autodoc/features/chat/presentation/widgets/aviso_mensajes_nuevos.dart';
 
 /// Navegación principal en `WindowClass.medium` y `WindowClass.expanded`.
 ///
@@ -56,11 +57,17 @@ class AppNavRail extends StatelessWidget {
           NavigationRailDestination(
             icon: Tooltip(
               message: destination.semanticLabel,
-              child: Icon(destination.icon),
+              child: IconoConMensajesSinLeer(
+                route: destination.route,
+                icono: Icon(destination.icon),
+              ),
             ),
             selectedIcon: Tooltip(
               message: destination.semanticLabel,
-              child: Icon(destination.selectedIcon),
+              child: IconoConMensajesSinLeer(
+                route: destination.route,
+                icono: Icon(destination.selectedIcon),
+              ),
             ),
             label: Text(destination.label),
           ),

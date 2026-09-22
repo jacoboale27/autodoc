@@ -16,6 +16,7 @@ import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_error_state.dart';
 import 'package:autodoc/core/widgets/app_scaffold.dart';
 import 'package:autodoc/features/dashboard/data/services/pase_historial_service.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 
 /// INNO-01 — el propietario emite el pase temporal de su historial.
 ///
@@ -173,6 +174,7 @@ class _CompartirHistorialScreenState extends State<CompartirHistorialScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
+        actions: const [AccionesDeCabecera()],
       ),
       applyGutter: true,
       body: _cuerpo(context),

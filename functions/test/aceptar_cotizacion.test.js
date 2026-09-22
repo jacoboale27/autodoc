@@ -410,6 +410,101 @@ describe('onCotizacionAceptada / abrirTicketDeReparacion', () => {
     }
   });
 
+  it('observaciones 2026-09-18: una cotizacion SIN id_vehiculo pero con su cita abre el ticket con el coche de la cita', async () => {
+    // El caso real de las capturas 4 y 5: el cliente agenda la cita eligiendo
+    // su coche, el taller pulsa "Cotizar y Aceptar" y la cotizacion nace sin
+    // `id_vehiculo`. La cita si sabe de que coche se trata.
+    const db = fakeDb({
+      'vehiculos/v1': { placa: 'P123-123', id_propietario: 'cli1' },
+      'reservas/r1': {
+        id_propietario: 'cli1',
+        id_mecanico: 't1',
+        id_taller: 't1',
+        id_vehiculo: 'v1',
+      },
+    });
+    const sinVehiculo = cotizacion({ id_reserva: 'r1' });
+    delete sinVehiculo.id_vehiculo;
+
+    const { id } = await abrirTicketDeReparacion(db, {
+      cotizacionId: 'c10',
+      antes: { estado: 'pendiente' },
+      despues: sinVehiculo,
+      ahora: AHORA,
+    });
+
+    assert.strictEqual(id, idTicketDeCotizacion('c10'));
+    const ticket = db.docs[`reparaciones/${id}`];
+    assert.strictEqual(ticket.id_vehiculo, 'v1');
+    assert.strictEqual(ticket.placa, 'P123-123');
+    assert.strictEqual(ticket.estado, 'pendiente_recepcion');
+    // Y la cotizacion queda anclada al coche, que es por donde la busca
+    // InitiateServiceScreen para precargar el importe aprobado.
+    assert.strictEqual(db.docs['cotizaciones/c10'].id_vehiculo, 'v1');
+  });
+
+  it('NO toma el coche de una cita de OTRO cliente', async () => {
+    const db = fakeDb({
+      'vehiculos/v9': { placa: 'AJENO', id_propietario: 'otro' },
+      'reservas/r9': {
+        id_propietario: 'otro',
+        id_mecanico: 't1',
+        id_taller: 't1',
+        id_vehiculo: 'v9',
+      },
+    });
+    const warn = sinon.stub(console, 'warn');
+    try {
+      const sinVehiculo = cotizacion({ id_reserva: 'r9' });
+      delete sinVehiculo.id_vehiculo;
+
+      await assert.rejects(
+        abrirTicketDeReparacion(db, {
+          cotizacionId: 'c11',
+          antes: { estado: 'pendiente' },
+          despues: sinVehiculo,
+          ahora: AHORA,
+        }),
+        (error) =>
+          error instanceof ErrorTicketNoAplicable &&
+          /no está asociada a ningún vehículo/.test(error.message)
+      );
+      assert.deepStrictEqual(db.escrituras, []);
+    } finally {
+      warn.restore();
+    }
+  });
+
+  it('NO toma el coche de una cita con OTRO taller', async () => {
+    const db = fakeDb({
+      'vehiculos/v1': { placa: 'P123-123', id_propietario: 'cli1' },
+      'reservas/r2': {
+        id_propietario: 'cli1',
+        id_mecanico: 'otroTaller',
+        id_taller: 'otroTaller',
+        id_vehiculo: 'v1',
+      },
+    });
+    const warn = sinon.stub(console, 'warn');
+    try {
+      const sinVehiculo = cotizacion({ id_reserva: 'r2' });
+      delete sinVehiculo.id_vehiculo;
+
+      await assert.rejects(
+        abrirTicketDeReparacion(db, {
+          cotizacionId: 'c12',
+          antes: { estado: 'pendiente' },
+          despues: sinVehiculo,
+          ahora: AHORA,
+        }),
+        ErrorTicketNoAplicable
+      );
+      assert.deepStrictEqual(db.escrituras, []);
+    } finally {
+      warn.restore();
+    }
+  });
+
   it('no crea nada si la cotizacion no ancla a taller/propietario, y lo avisa por consola', async () => {
     const db = fakeDb({ 'vehiculos/v1': { placa: 'ABC123', id_propietario: 'cli1' } });
     const warn = sinon.stub(console, 'warn');

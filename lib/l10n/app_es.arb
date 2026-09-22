@@ -100,10 +100,10 @@
   "dashMaintWarning": "Mantenimiento próximo — revisa las alertas",
   "dashMaintOptimal": "Vehículo en buen estado",
   "dashMaintStatusLabel": "Estado de Mantenimiento",
-  "dashNoVehicles": "No hay vehiculos registrados",
+  "dashNoVehicles": "No hay vehículos registrados",
   "dashNoVehiclesDesc": "Añade tu primer vehículo para empezar a controlar su mantenimiento y estado.",
   "dashRegisterVehicle": "Registrar Vehículo",
-  "dashMainVehicle": "VEHICULO PRINCIPAL",
+  "dashMainVehicle": "VEHÍCULO PRINCIPAL",
   "dashLicensePlate": "Placa: {placa}",
   "@dashLicensePlate": {
     "placeholders": {
@@ -115,7 +115,7 @@
   "dashMileage": "KILOMETRAJE",
   "dashKm": "km",
   "dashViewVehicleState": "Ver Estado del Vehículo",
-  "dashAddVehicleError": "Error al agregar vehiculo",
+  "dashAddVehicleError": "Error al agregar vehículo",
   "dashActiveAlerts": "Alertas Activas",
   "dashViewAll": "Ver Todas",
   "dashNoAlertsPending": "¡Excelente! No tienes alertas pendientes.",
@@ -148,7 +148,7 @@
     }
   },
   "garageMakePrimaryError": "No se pudo establecer el vehículo principal",
-  "garageAddVehicleError": "Error al agregar vehiculo",
+  "garageAddVehicleError": "Error al agregar vehículo",
   "vpProfileTitle": "Perfil del Vehículo",
   "vpShareVehicle": "Compartir Vehículo",
   "vpDeleteVehicle": "Eliminar Vehículo",
@@ -237,20 +237,20 @@
   "alertsAllGood": "¡Todo al día!",
   "alertsNoAlertsInCategory": "No hay alertas en esta categoría.",
   "alertsHighPriority": "Prioridad Alta",
-  "alertsPendingCount": "{count} pendientes",
+  "alertsPendingCount": "{count, plural, =1{1 pendiente} other{{count} pendientes}}",
   "@alertsPendingCount": {
     "placeholders": {
       "count": {
-        "type": "String"
+        "type": "int"
       }
     }
   },
   "alertsUpcomingExpirations": "Próximos Vencimientos",
-  "alertsEventsCount": "{count} eventos",
+  "alertsEventsCount": "{count, plural, =1{1 evento} other{{count} eventos}}",
   "@alertsEventsCount": {
     "placeholders": {
       "count": {
-        "type": "String"
+        "type": "int"
       }
     }
   },
@@ -309,6 +309,27 @@
       }
     }
   },
+  "alertsSoatExpiringTitle": "Seguro por vencer",
+  "alertsSoatExpiredTitle": "Seguro vencido",
+  "alertsCardExpiringTitle": "Tarjeta por vencer",
+  "alertsCardExpiredTitle": "Tarjeta vencida",
+  "alertsDocExpiresToday": "Vence hoy.",
+  "alertsDocExpiresInDays": "Vence en {dias} días.",
+  "@alertsDocExpiresInDays": {
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
+  },
+  "alertsDocExpiredDaysAgo": "Venció hace {dias} días.",
+  "@alertsDocExpiredDaysAgo": {
+    "placeholders": {
+      "dias": {
+        "type": "int"
+      }
+    }
+  },
   "histTitle": "Historial de Servicios",
   "histTabAll": "Todos",
   "histTabManual": "Manual",
@@ -329,6 +350,8 @@
   "wdYourLocation": "Tu Ubicación",
   "wdMapUnavailableTitle": "Mapa no disponible",
   "wdMapUnavailableBody": "No se pudo cargar el mapa porque a esta versión de la app le falta la clave de Google Maps. Mientras tanto puedes ver los talleres en la vista de lista.",
+  "wdMapLoadFailedTitle": "El mapa no se pudo cargar",
+  "wdMapLoadFailedBody": "Google Maps no respondió. Suele ser la clave: vencida, sin facturación o restringida a otro dominio. La lista de talleres sigue funcionando.",
   "wdWorkshop": "Taller",
   "wdGeneralMechanics": "Mecánica General",
   "wdMechanics": "Mecánica",
@@ -473,6 +496,16 @@
   "addVehiclePlateTypeMoto": "Moto",
   "addVehiclePlateTypeCarga": "Carga",
   "addVehiclePlateTypeAlquiler": "Alquiler",
+  "addVehiclePlateTypeMicrobus": "Microbús",
+  "addVehiclePlateTypeAutobus": "Autobús",
+  "addVehicleType": "Tipo de vehículo",
+  "addVehicleTypeSubtitle": "¿Qué vas a registrar? Así te mostramos sus marcas y su tipo de placa.",
+  "tipoVehiculoAutomovil": "Automóvil",
+  "tipoVehiculoCamioneta": "Camioneta / Pick-up",
+  "tipoVehiculoMotocicleta": "Motocicleta",
+  "tipoVehiculoCamion": "Camión",
+  "tipoVehiculoMicrobus": "Microbús",
+  "tipoVehiculoAutobus": "Autobús",
   "addVehiclePlate": "Número de Placa",
   "addVehiclePlateHint": "Ej: P123-456 o P12-345",
   "addVehicleYear": "Año",
@@ -658,7 +691,7 @@
       }
     }
   },
-  "chatReservationFailed": "No se pudo crear la cita. Intentalo de nuevo.",
+  "chatReservationFailed": "No se pudo crear la cita. Inténtalo de nuevo.",
   "chatReservationDetail": "Detalle de Cita",
   "coreAppTitle": "AutoDoc Taller",
   "chatViewFullHistory": "Ver Historial Completo",
@@ -774,7 +807,7 @@
   "@notFoundGoBack": {
     "description": "Boton que vuelve a la pantalla anterior desde el 404"
   },
-  "bandejaTruncada": "Se muestran las {tope} conversaciones con actividad mas reciente. Hay mas hilos que no caben aqui.",
+  "bandejaTruncada": "Se muestran las {tope} conversaciones con actividad más reciente. Hay mas hilos que no caben aquí.",
   "@bandejaTruncada": {
     "description": "Aviso de que la bandeja de chat llego a su tope y hay conversaciones que no se listan",
     "placeholders": {
@@ -783,7 +816,7 @@
       }
     }
   },
-  "hiloTruncado": "Se muestran los {tope} mensajes mas recientes. Los anteriores no estan cargados.",
+  "hiloTruncado": "Se muestran los {tope} mensajes más recientes. Los anteriores no están cargados.",
   "@hiloTruncado": {
     "description": "Aviso de que el hilo de chat llego a su tope y los mensajes mas antiguos no se cargaron",
     "placeholders": {
@@ -792,21 +825,33 @@
       }
     }
   },
-  "errorDatosTitulo": "No pudimos cargar esta informacion",
+  "errorDatosTitulo": "No pudimos cargar esta información",
   "@errorDatosTitulo": {
     "description": "Titulo del estado de error de una pantalla que consulta datos (UX-04)"
   },
-  "errorDatosPermiso": "No tienes acceso a esta informacion. Si crees que deberia estar disponible, vuelve a iniciar sesion.",
+  "errorDatosPermiso": "No tienes acceso a esta información. Si crees que debería estar disponible, vuelve a iniciar sesión.",
   "@errorDatosPermiso": {
     "description": "Mensaje de error cuando el backend deniega el acceso (permission-denied / unauthorized)"
   },
-  "errorDatosConexion": "No pudimos conectar con el servidor. Revisa tu conexion e intentalo de nuevo.",
+  "errorDatosConexion": "No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.",
   "@errorDatosConexion": {
     "description": "Mensaje de error de red o servicio no disponible"
   },
-  "errorDatosGenerico": "Algo salio mal al cargar esta informacion. Intentalo de nuevo en un momento.",
+  "errorDatosGenerico": "Algo salió mal al cargar esta información. Inténtalo de nuevo en un momento.",
   "@errorDatosGenerico": {
     "description": "Mensaje de error por defecto, sin detalle tecnico"
+  },
+  "errorDatosNoEncontrado": "No encontramos ese dato. Puede que ya no exista.",
+  "@errorDatosNoEncontrado": {
+    "description": "Motivo de error de datos, mostrado a la persona."
+  },
+  "errorDatosYaExiste": "Ese dato ya existe.",
+  "@errorDatosYaExiste": {
+    "description": "Motivo de error de datos, mostrado a la persona."
+  },
+  "errorDatosCancelado": "La operación se canceló.",
+  "@errorDatosCancelado": {
+    "description": "Motivo de error de datos, mostrado a la persona."
   },
   "errorReintentar": "Reintentar",
   "@errorReintentar": {
@@ -816,7 +861,7 @@
   "@paseTitulo": {
     "description": "Titulo de la pantalla donde el propietario emite un pase temporal de historial (INNO-01)"
   },
-  "paseIntro": "Quien escanee este codigo vera que mantenimientos tiene el vehiculo y cuando. No vera importes ni facturas, y el pase caduca solo.",
+  "paseIntro": "Quien escanee este código verá qué mantenimientos tiene el vehículo y cuándo. No verá importes ni facturas, y el pase caduca solo.",
   "@paseIntro": {
     "description": "Explicacion de que ve y que no ve quien escanea el pase"
   },
@@ -845,7 +890,7 @@
   "@paseGenerarOtro": {
     "description": "Accion para emitir un pase nuevo cuando el anterior caduco o se revoco"
   },
-  "paseTokenEtiqueta": "Si no puede escanear, comparte este codigo:",
+  "paseTokenEtiqueta": "Si no puede escanear, comparte este código:",
   "@paseTokenEtiqueta": {
     "description": "Alternativa textual al QR"
   },
@@ -870,7 +915,7 @@
       }
     }
   },
-  "paseLectorSinServicios": "Este vehiculo no tiene mantenimientos registrados en AutoDoc.",
+  "paseLectorSinServicios": "Este vehículo no tiene mantenimientos registrados en AutoDoc.",
   "@paseLectorSinServicios": {
     "description": "Estado vacio del historial compartido"
   },
@@ -906,15 +951,15 @@
   "@paseLectorNoExiste": {
     "description": "Error: el pase no se encuentra"
   },
-  "paseLectorInvalido": "Ese codigo no es un pase de historial de AutoDoc.",
+  "paseLectorInvalido": "Ese código no es un pase de historial de AutoDoc.",
   "@paseLectorInvalido": {
     "description": "Error: el codigo escaneado no tiene la forma de un pase"
   },
-  "paseCopiarCodigo": "Copiar codigo",
+  "paseCopiarCodigo": "Copiar código",
   "@paseCopiarCodigo": {
     "description": "Accion para copiar al portapapeles el codigo del pase (INNO-01)"
   },
-  "paseCodigoCopiado": "Codigo copiado",
+  "paseCodigoCopiado": "Código copiado",
   "@paseCodigoCopiado": {
     "description": "Aviso de que el codigo del pase se copio al portapapeles"
   },
@@ -951,12 +996,108 @@
       }
     }
   },
-  "authSignOutError": "No pudimos cerrar tu sesion. Revisa tu conexion e intentalo de nuevo.",
+  "authSignOutError": "No pudimos cerrar tu sesión. Revisa tu conexión e inténtalo de nuevo.",
   "@authSignOutError": {
     "description": "Fallo al cerrar sesion desde el gate de verificacion de correo (GAPS-05)"
   },
-  "authRefreshError": "No pudimos comprobar tu verificacion. Intentalo de nuevo en un momento.",
+  "authRefreshError": "No pudimos comprobar tu verificación. Inténtalo de nuevo en un momento.",
   "@authRefreshError": {
     "description": "Fallo al recargar el estado de verificacion del usuario"
+  },
+  "mechanicDashboardTitle": "Panel del taller",
+  "@mechanicDashboardTitle": {
+    "description": "Titulo del panel del taller (barra superior y menu lateral)."
+  },
+  "asistenteTitulo": "Asistente",
+  "@asistenteTitulo": {
+    "description": "Titulo de la pantalla del asistente de agenda (IA-01)"
+  },
+  "asistenteAbrir": "Preguntar al asistente",
+  "@asistenteAbrir": {
+    "description": "Tooltip del acceso al asistente desde alertas y desde el panel del taller"
+  },
+  "asistenteCampoEtiqueta": "Tu pregunta",
+  "@asistenteCampoEtiqueta": {
+    "description": "Etiqueta del campo de texto donde se escribe la pregunta"
+  },
+  "asistenteCampoPista": "¿Qué vencimientos tengo esta semana?",
+  "@asistenteCampoPista": {
+    "description": "Ejemplo dentro del campo de pregunta"
+  },
+  "asistenteEnviar": "Preguntar",
+  "@asistenteEnviar": {
+    "description": "Boton que envia la pregunta al asistente"
+  },
+  "asistenteOtraPregunta": "Hacer otra pregunta",
+  "@asistenteOtraPregunta": {
+    "description": "Boton que limpia la respuesta y devuelve el foco al campo"
+  },
+  "asistentePensando": "Pensando…",
+  "@asistentePensando": {
+    "description": "Estado de carga mientras el servidor responde"
+  },
+  "asistenteVacio": "Pregúntame por los vencimientos, las citas y los mantenimientos de tus vehículos.",
+  "@asistenteVacio": {
+    "description": "Estado inicial de la pantalla, antes de la primera pregunta"
+  },
+  "asistenteAlcance": "Solo responde sobre tu agenda. No diagnostica averías ni sustituye a un taller.",
+  "@asistenteAlcance": {
+    "description": "Aviso permanente del alcance del asistente, bajo el campo de pregunta"
+  },
+  "asistenteEtiquetaFueraDeAlcance": "Fuera de alcance",
+  "@asistenteEtiquetaFueraDeAlcance": {
+    "description": "Distintivo de la respuesta cuando el servidor rechaza la pregunta por no ser de su competencia"
+  },
+  "asistenteErrorCupo": "Alcanzaste tu límite de consultas de hoy. Vuelve a intentarlo mañana.",
+  "@asistenteErrorCupo": {
+    "description": "resource-exhausted con motivo cupo_usuario: esta persona agoto SU cupo diario"
+  },
+  "asistenteErrorApagado": "El asistente está desactivado temporalmente.",
+  "@asistenteErrorApagado": {
+    "description": "unavailable con motivo apagado: el interruptor de configuracion/asistente_ia. Reintentar no lo enciende"
+  },
+  "asistenteTituloCupo": "Sin consultas por hoy",
+  "@asistenteTituloCupo": {
+    "description": "Titular del estado de cupo agotado. NO es 'no pudimos cargar': no fallo nada, se acabaron las consultas del dia"
+  },
+  "asistenteTituloApagado": "Asistente desactivado",
+  "@asistenteTituloApagado": {
+    "description": "Titular del interruptor apagado. NO es un fallo de carga ni de conexion"
+  },
+  "asistenteTituloTallerPendiente": "Tu taller todavía no está aprobado",
+  "@asistenteTituloTallerPendiente": {
+    "description": "Titular de permission-denied: el taller espera aprobacion. No es un fallo de carga"
+  },
+  "asistenteTituloPreguntaVacia": "Falta la pregunta",
+  "@asistenteTituloPreguntaVacia": {
+    "description": "Titular de invalid-argument: no se escribio nada. No es un fallo de carga"
+  },
+  "asistenteErrorNoDisponible": "El asistente no está configurado todavía. Estamos en ello.",
+  "@asistenteErrorNoDisponible": {
+    "description": "Codigo failed-precondition: falta la clave o el modelo configurado no sirve. Reintentar no lo arregla"
+  },
+  "asistenteErrorLento": "El asistente tardó demasiado en responder. Inténtalo de nuevo.",
+  "@asistenteErrorLento": {
+    "description": "Codigo deadline-exceeded: el modelo no respondio dentro del plazo"
+  },
+  "asistenteErrorSinRespuesta": "No pude preparar una respuesta a esa pregunta. Prueba a formularla de otra forma.",
+  "@asistenteErrorSinRespuesta": {
+    "description": "Codigo aborted: el filtro del proveedor bloqueo la respuesta o llego vacia"
+  },
+  "asistenteErrorTallerPendiente": "Tu taller todavía no está aprobado, así que no puedo consultar su agenda.",
+  "@asistenteErrorTallerPendiente": {
+    "description": "Codigo permission-denied: lo lanza agenda.js cuando el taller no esta aprobado"
+  },
+  "asistenteErrorPreguntaVacia": "Escribe una pregunta antes de enviarla.",
+  "@asistenteErrorPreguntaVacia": {
+    "description": "Codigo invalid-argument: la pregunta llego vacia al servidor"
+  },
+  "asistenteErrorCupoGlobal": "El asistente alcanzó su límite de consultas de hoy. No es cosa tuya: vuelve a intentarlo mañana.",
+  "@asistenteErrorCupoGlobal": {
+    "description": "resource-exhausted con motivo cupo_global: se agoto el cupo del asistente entero, no el de esta persona"
+  },
+  "asistenteErrorProveedor": "El asistente no está disponible en este momento. Inténtalo de nuevo.",
+  "@asistenteErrorProveedor": {
+    "description": "unavailable con motivo proveedor: el modelo esta caido. Reintentar si puede funcionar, a diferencia del interruptor apagado"
   }
 }

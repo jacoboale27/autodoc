@@ -26,6 +26,11 @@
 //
 // DESPLIEGA PRIMERO las functions y las reglas. Si se corre antes, abre los
 // tickets pero deja el resto del sistema en la versión vieja.
+//
+// Observaciones del 2026-09-18: también rescata las cotizaciones aceptadas
+// SIN `id_vehiculo` pero con su cita (`id_reserva`) — el caso de las capturas
+// 4 y 5 —, porque `abrirTicketDeReparacion` recupera ahora el coche de la
+// cita. Al abrirlas les borra el `error_apertura_ticket` que dejó el trigger.
 
 'use strict';
 
@@ -78,7 +83,9 @@ async function main() {
       // `antes` finge el estado previo para que `debeAbrirTicket` vea la
       // transición que en su día nadie llegó a observar. Es lo único que este
       // script simula; todo lo demás son las comprobaciones reales.
-      const id = await abrirTicketDeReparacion(db, {
+      // `abrirTicketDeReparacion` devuelve `{id, ticket}` desde el residual
+      // 7.8; comprobar el objeto entero daba siempre "abierto".
+      const { id } = await abrirTicketDeReparacion(db, {
         cotizacionId: doc.id,
         antes: { ...datos, estado: 'pendiente' },
         despues: datos,
@@ -87,6 +94,15 @@ async function main() {
       if (id) {
         abiertos++;
         console.log(`  abierto ${id} para cotizacion ${doc.id}`);
+        // Observaciones del 2026-09-18: una cotizacion que el trigger no
+        // pudo abrir (p. ej. sin id_vehiculo, ahora recuperado de su cita)
+        // arrastra `error_apertura_ticket`, y la tarjeta seguiria pintando
+        // el aviso rojo con el ticket ya abierto.
+        if (datos.error_apertura_ticket) {
+          await doc.ref.update({
+            error_apertura_ticket: admin.firestore.FieldValue.delete(),
+          });
+        }
       } else {
         yaTenian++;
       }

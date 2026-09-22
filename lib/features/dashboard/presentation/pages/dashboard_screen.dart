@@ -13,8 +13,9 @@ import 'package:autodoc/core/widgets/app_card.dart';
 import 'package:autodoc/core/widgets/app_horizontal_scroller.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_skeleton_layouts.dart';
-import 'package:autodoc/core/widgets/notification_bell_button.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
+import 'package:autodoc/core/constants/tipos_vehiculo.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_severity.dart';
@@ -23,10 +24,10 @@ import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_section_header.dart';
 import 'package:uuid/uuid.dart';
-import 'package:intl/intl.dart';
 
 import 'package:autodoc/core/utils/responsive.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/features/dashboard/presentation/utils/texto_de_alerta.dart';
 import 'package:autodoc/core/utils/ui_utils.dart';
 import '../widgets/add_vehicle_form.dart';
 import '../widgets/share_vehicle_sheet.dart';
@@ -257,9 +258,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final userName =
         userSession.userData?.nombreCompleto.split(' ').first ?? 'Usuario';
 
-    final colors = context.appColors;
-    final userPhoto = userSession.userData?.fotoPerfilUrl;
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.base),
       child: Row(
@@ -292,51 +290,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
+          // Tema, idioma, campana y avatar: los mismos controles que el resto
+          // de pantallas (observaciones del 2026-09-19).
           if (!windowClass.isLarge) ...[
             const SizedBox(width: AppSpacing.sm),
-            Row(
-              key: const Key('dashboard-header-acciones'),
-              children: [
-                NotificationBellButton(readColor: subTextColor),
-                const SizedBox(width: AppSpacing.xs),
-                GestureDetector(
-                  onTap: () => context.push('/user_profile'),
-                  child: Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: Responsive.size(context, 24),
-                        backgroundColor: colors.primary,
-                        backgroundImage: userPhoto != null
-                            ? NetworkImage(userPhoto)
-                            : null,
-                        child: userPhoto == null
-                            ? Text(
-                                userName.isNotEmpty
-                                    ? userName[0].toUpperCase()
-                                    : 'U',
-                                style: AppTextStyles.titleMedium.copyWith(
-                                  color: colors.onPrimary,
-                                ),
-                              )
-                            : null,
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          width: Responsive.size(context, 12),
-                          height: Responsive.size(context, 12),
-                          decoration: BoxDecoration(
-                            color: colors.secondary,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: colors.surface, width: 2),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            const AccionesDeCabecera(
+              key: Key('dashboard-header-acciones'),
+              mostrarAvatar: true,
             ),
           ],
         ],
@@ -701,7 +661,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   color: colors.surface.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                child: Icon(Icons.directions_car, color: primary),
+                child: Icon(
+                  TipoVehiculo.desdeId(vehicle.tipoVehiculo).icono,
+                  color: primary,
+                ),
               ),
             ],
           ),
@@ -710,6 +673,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             borderRadius: BorderRadius.circular(AppRadius.lg),
             child: VehicleImageWidget(
               imageUrl: vehicle.fotoUrl,
+              tipoVehiculo: vehicle.tipoVehiculo,
               height: Responsive.heroHeight(context, 140),
               width: double.infinity,
               fit: BoxFit.cover,
@@ -890,24 +854,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   icon = Icons.speed;
                   color = colors.error;
                   break;
+                case 'Tarjeta':
+                  icon = Icons.badge_outlined;
+                  color = colors.error;
+                  break;
                 default:
                   icon = Icons.notifications;
                   color = primary;
               }
               // El provider no puede localizar este texto (no tiene
-              // BuildContext); se arma aquí a partir de metadata.
-              final descripcion =
-                  alert.tipoAlerta == 'MantenimientoInconsistente'
-                  ? context.l10n.alertsInconsistentMileage(
-                      NumberFormat(
-                        '#,###',
-                      ).format(alert.metadata?['ultimo_km'] ?? 0),
-                    )
-                  : alert.descripcion;
+              // BuildContext); se arma a partir del tipo y de metadata. Ver
+              // `utils/texto_de_alerta.dart`.
+              final texto = textoDeAlerta(context.l10n, alert);
               return _buildAlertCard(
                 icon,
-                alert.titulo,
-                descripcion,
+                texto.titulo,
+                texto.descripcion,
                 color,
                 isDark,
                 subTextColor,

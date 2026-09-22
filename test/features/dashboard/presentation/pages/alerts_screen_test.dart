@@ -3,16 +3,21 @@ import 'dart:io';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:autodoc/core/theme/app_breakpoints.dart';
+import 'package:autodoc/core/widgets/app_card.dart';
+import 'package:autodoc/core/widgets/app_grid.dart';
 import 'package:provider/provider.dart';
 import 'package:autodoc/core/models/alert_model.dart';
 import 'package:autodoc/core/models/maintenance_task_model.dart';
 import 'package:autodoc/core/models/vehicle_model.dart';
 import 'package:autodoc/features/dashboard/presentation/pages/alerts_screen.dart';
+import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/alert_provider.dart';
 import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
 
 import '../../../../helpers/test_helpers.mocks.dart';
 import '../../../../support/responsive_harness.dart';
+import '../../../../support/shell_harness.dart';
 import '../../../../support/vehicle_fixtures.dart';
 
 /// AlertProvider con datos fijos, sin tocar Firestore.
@@ -128,6 +133,12 @@ Future<void> pumpScreen(
         ChangeNotifierProvider<AlertProvider>(
           create: (_) => _FakeAlertProvider(),
         ),
+        // La pantalla lo lee desde `asegurarDatosDelGaraje`. Sin el, este
+        // arbol era MENOS parecido a la app real de lo que aparentaba: en
+        // produccion `UserProfileProvider` siempre esta por encima.
+        ChangeNotifierProvider<UserProfileProvider>.value(
+          value: FakeProfileProvider('Propietario'),
+        ),
       ],
       child: const AlertsScreen(),
     ),
@@ -227,7 +238,29 @@ void main() {
     tester,
   ) async {
     await pumpScreen(tester, 1440);
-    expect(find.byType(GridView), findsWidgets);
+    final rejillas = tester.widgetList<AppGrid>(find.byType(AppGrid));
+    expect(rejillas, isNotEmpty);
+    expect(
+      rejillas.map((g) => g.columnsFor(WindowClass.large)),
+      everyElement(2),
+    );
+  });
+
+  // Observaciones del 2026-09-19: con `childAspectRatio: 1.5` una alerta de
+  // dos líneas medía 370 px de alto en escritorio, casi toda vacía.
+  testWidgets('en escritorio cada alerta mide lo que su contenido', (
+    tester,
+  ) async {
+    await pumpScreen(tester, 1440);
+    final tarjetas = find.descendant(
+      of: find.byType(AppGrid),
+      matching: find.byType(AppCard),
+    );
+    expect(tarjetas, findsWidgets);
+    for (final tarjeta in tarjetas.evaluate()) {
+      final alto = (tarjeta.renderObject! as RenderBox).size.height;
+      expect(alto, lessThan(220), reason: 'tarjeta de $alto px');
+    }
   });
 
   testWidgets('no desborda en ningún ancho de auditoría, en ambos temas', (
@@ -261,6 +294,9 @@ void main() {
             ),
             ChangeNotifierProvider<AlertProvider>(
               create: (_) => _MultiVehicleFakeAlertProvider(),
+            ),
+            ChangeNotifierProvider<UserProfileProvider>.value(
+              value: FakeProfileProvider('Propietario'),
             ),
           ],
           child: const AlertsScreen(),

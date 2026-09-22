@@ -4,8 +4,10 @@
 // ticket salía nunca del Kanban: el taller acumulaba en pantalla su historia
 // completa. Estas pruebas cubren las dos acciones de las columnas extremas,
 // que son las dos que tienen efectos fuera del propio ticket.
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:autodoc/core/models/reparacion_model.dart';
 import 'package:provider/provider.dart';
@@ -35,11 +37,27 @@ Future<FakeFirebaseFirestore> sembrarTicket(String estado) async {
   return firestore;
 }
 
-Future<void> pumpKanban(
+/// El servicio que deja registrado «Finalizar servicio»: es lo que genera el
+/// cobro, y desde el 2026-09-19 lo que el tablero comprueba antes de dejar
+/// entregar el vehículo.
+Future<void> sembrarServicio(
+  FakeFirebaseFirestore firestore, {
+  DateTime? fecha,
+}) async {
+  await firestore.collection('servicios').add({
+    'id_vehiculo': 'v1',
+    'id_taller': 't1',
+    'tipo_servicio': 'Cambio de aceite',
+    'fecha': Timestamp.fromDate(fecha ?? DateTime(2026, 8, 5)),
+    'costo': 55.0,
+  });
+}
+
+Future<GoRouter> pumpKanban(
   WidgetTester tester,
   FakeFirebaseFirestore firestore,
 ) async {
-  await pumpMechanicScreen(
+  final router = await pumpMechanicScreen(
     tester,
     const ReparacionesKanbanScreen(idTaller: 't1'),
     width: 1440,
@@ -56,8 +74,10 @@ Future<void> pumpKanban(
         ),
       ),
     ],
+    rutasExtra: const ['/initiate_service/r1'],
   );
   await tester.pumpAndSettle();
+  return router;
 }
 
 /// El tablero se desplaza en horizontal cuando las cinco columnas no caben en
@@ -81,6 +101,10 @@ void main() {
     'la última columna ofrece entregar el vehículo, con confirmación',
     (tester) async {
       final firestore = await sembrarTicket('listo_para_entrega');
+      // Con el servicio ya registrado, que es como se llega aquí por el
+      // camino normal: finalizar el servicio es lo que deja el ticket en
+      // `listo_para_entrega`.
+      await sembrarServicio(firestore);
       await pumpKanban(tester, firestore);
 
       expect(find.text('ABC123'), findsOneWidget);
@@ -102,6 +126,7 @@ void main() {
     tester,
   ) async {
     final firestore = await sembrarTicket('listo_para_entrega');
+    await sembrarServicio(firestore);
     await pumpKanban(tester, firestore);
 
     await tocar(tester, 'Entregar vehículo');
@@ -126,12 +151,60 @@ void main() {
 
       expect(find.text('ABC123'), findsOneWidget);
       await tocar(tester, 'Entregar vehículo');
-      await tocar(tester, 'Entregar');
+      // Sin servicio registrado el diálogo avisa, y la salida de este caso es
+      // «Entregar sin cobrar»: no hay nada que facturar.
+      await tocar(tester, 'Entregar sin cobrar');
 
       expect(await estadoDe(firestore), 'entregado');
       expect(find.text('ABC123'), findsNothing);
     },
   );
+
+  testWidgets(
+    'sin servicio registrado, entregar avisa de que no se generó el cobro',
+    (tester) async {
+      // Observación del 2026-09-19: se entregó un coche sin finalizar el
+      // servicio y después no había forma de cobrarlo — entregar revoca el
+      // vínculo y saca el ticket del tablero.
+      final firestore = await sembrarTicket('listo_para_entrega');
+      await pumpKanban(tester, firestore);
+
+      await tocar(tester, 'Entregar vehículo');
+
+      expect(find.text('Falta finalizar el servicio'), findsOneWidget);
+      expect(find.textContaining('ya se llevó'), findsNothing);
+      expect(await estadoDe(firestore), 'listo_para_entrega');
+    },
+  );
+
+  testWidgets('«Finalizar servicio» lleva a facturar y NO entrega el coche', (
+    tester,
+  ) async {
+    final firestore = await sembrarTicket('listo_para_entrega');
+    final router = await pumpKanban(tester, firestore);
+
+    await tocar(tester, 'Entregar vehículo');
+    await tocar(tester, 'Finalizar servicio');
+
+    expect(router.state.uri.toString(), '/initiate_service/r1');
+    expect(await estadoDe(firestore), 'listo_para_entrega');
+  });
+
+  testWidgets('un servicio de una visita ANTERIOR no cuenta como cobrado', (
+    tester,
+  ) async {
+    // El ticket se abrió el 2026-08-01; este servicio es de julio, o sea de
+    // la visita pasada de un cliente que vuelve. Sin la comparación de
+    // fechas, el primer servicio que un coche tuviera en el taller haría
+    // pasar por cobradas todas sus visitas siguientes.
+    final firestore = await sembrarTicket('listo_para_entrega');
+    await sembrarServicio(firestore, fecha: DateTime(2026, 7, 20));
+    await pumpKanban(tester, firestore);
+
+    await tocar(tester, 'Entregar vehículo');
+
+    expect(find.text('Falta finalizar el servicio'), findsOneWidget);
+  });
 
   testWidgets('"Por recibir" NO ofrece entregar: el coche no ha llegado', (
     tester,

@@ -1,60 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 
 import 'package:autodoc/core/models/vehicle_model.dart';
-import 'package:autodoc/core/utils/ui_utils.dart';
-import 'package:autodoc/features/mechanic/presentation/providers/reparacion_provider.dart';
 
-/// Único lugar que decide a dónde lleva tocar un vehículo siendo mecánico:
-/// a la ficha pública (sin ticket vigente, A3/B2) o a `InitiateServiceScreen`
-/// (ya hay un ticket vigente, en cualquier estado desde `pendiente_recepcion`
-/// — `cancelado` cuenta como "no hay ticket": ver
-/// `ReparacionProvider.buscarReparacionActiva`).
+/// A dónde lleva tocar un vehículo siendo mecánico: a su perfil
+/// (`VehiclePublicViewScreen`, ruta `/vehiculo_publico/:id`).
 ///
-/// "Buscar vehículo" y el chat lo llaman igual: si cada entrada decide por su
-/// cuenta, una de las dos se queda atrás — fue exactamente lo que pasó (A3/B2
-/// solo se había corregido en `vehicle_search_screen.dart`, y el chat nunca
-/// se tocó).
+/// "Buscar vehículo" y la tarjeta de vehículo del chat lo llaman igual: si
+/// cada entrada decidiera por su cuenta, una de las dos se quedaría atrás —
+/// fue exactamente lo que pasó (A3/B2 solo se había corregido en
+/// `vehicle_search_screen.dart`, y el chat nunca se tocó).
 ///
-/// Usa `ReparacionProvider`, no `ReparacionRepository` directo: es el único
-/// provider que `main.dart` registra para este dominio
-/// (`ChangeNotifierProvider(create: (_) => ReparacionProvider())`), y es el
-/// patrón que ya sigue el resto del módulo (`InitiateServiceScreen`,
-/// `ReparacionesKanbanScreen`).
+/// Hasta el 2026-09-19 esta función miraba si había un ticket vigente y, si
+/// lo había, saltaba directo a `InitiateServiceScreen`. Las observaciones de
+/// ese día pidieron otra cosa: al buscar la placa de un coche con
+/// cotizaciones aceptadas, el taller tiene que ver el PERFIL del coche (sus
+/// datos, los servicios que ya le hizo, sus cotizaciones y el botón para
+/// mandarle otra). Qué enseña ese perfil —solo la ficha pública, la ficha con
+/// cita, o el perfil completo con el acceso al servicio en curso— lo decide
+/// ahora la propia pantalla, que es la que carga esa relación.
 ///
-/// El `try`/`catch` cubre a los tres puntos que llaman a esta función
-/// (`vehicle_search_screen.dart` x2, `vehiculo_chat_card.dart`): antes de
-/// esto, un fallo de red o de permisos en la consulta dejaba un tap sin
-/// ningún efecto visible — ni snackbar, ni navegación, nada — que se lee
-/// como una app rota, sobre todo en un taller con mala señal.
+/// [idTaller] se conserva por compatibilidad con los llamadores.
 Future<void> abrirVehiculoComoMecanico(
   BuildContext context,
   VehicleModel vehiculo,
   String idTaller,
 ) async {
-  String? idReparacion;
-  try {
-    idReparacion = await context
-        .read<ReparacionProvider>()
-        .buscarReparacionActiva(
-          idVehiculo: vehiculo.idVehiculo,
-          idTaller: idTaller,
-        );
-  } catch (e) {
-    if (!context.mounted) return;
-    UiUtils.showErrorSnackbar(
-      context,
-      'No se pudo comprobar el estado de este vehículo. Revisa tu conexión '
-      'e intenta de nuevo.',
-    );
-    return;
-  }
-
-  if (!context.mounted) return;
-  if (idReparacion == null) {
-    context.go('/vehiculo_publico/${vehiculo.idVehiculo}', extra: vehiculo);
-  } else {
-    context.go('/initiate_service/$idReparacion', extra: vehiculo);
-  }
+  // `go` y no `push`: la URL tiene que seguir a la pantalla para que un F5
+  // no deje al taller a medias (en go_router 17 `push` conserva el `uri`).
+  context.go('/vehiculo_publico/${vehiculo.idVehiculo}', extra: vehiculo);
 }

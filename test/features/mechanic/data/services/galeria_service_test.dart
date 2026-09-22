@@ -10,6 +10,7 @@ void main() {
   late FakeFirebaseFirestore firestore;
   late List<String> subidas;
   late List<String> borrados;
+  late List<String> olvidadas;
   late GaleriaService service;
   Object? errorAlBorrar;
 
@@ -17,9 +18,12 @@ void main() {
     firestore = FakeFirebaseFirestore();
     subidas = [];
     borrados = [];
+    olvidadas = [];
     errorAlBorrar = null;
     service = GaleriaService(
       firestore: firestore,
+      bucket: 'bucket-de-prueba',
+      olvidador: (url) async => olvidadas.add(url),
       subidor:
           ({
             required String ruta,
@@ -39,6 +43,16 @@ void main() {
     nombreOriginal: nombre,
     bytes: Uint8List.fromList([1, 2, 3]),
   );
+
+  /// Observación del 2026-09-20: «subo una foto, la borro, pongo otra y
+  /// sigue saliendo la primera». El nombre del objeto es fijo por hueco, así
+  /// que la URL de la foto nueva es EXACTAMENTE la de la vieja y el caché la
+  /// sirve sin volver a pedirla.
+  String urlDe(String archivo) => GaleriaTaller.urlDe(
+    bucket: 'bucket-de-prueba',
+    idTaller: 'taller-1',
+    nombreArchivo: archivo,
+  )!;
 
   Future<List<dynamic>?> galeriaEnFirestore() async {
     final doc = await firestore.collection('usuarios').doc('taller-1').get();
@@ -209,5 +223,47 @@ void main() {
 
       expect((await service.obtener('taller-1')).archivos, ['logo.jpg']);
     });
+  });
+
+  test('reemplazar una foto tira su copia en caché', () async {
+    await subir('logo', 'primera.jpg');
+    olvidadas.clear();
+
+    await subir('logo', 'segunda.jpg');
+
+    expect(olvidadas, [urlDe('logo.jpg')]);
+  });
+
+  test('quitar una foto también la tira del caché', () async {
+    await subir('local-1', 'foto.jpg');
+    olvidadas.clear();
+
+    await service.quitarFoto(tallerId: 'taller-1', slot: 'local-1');
+
+    expect(olvidadas, [urlDe('local-1.jpg')]);
+  });
+
+  test('un caché que no se puede limpiar no tumba la subida', () async {
+    final conFallo = GaleriaService(
+      firestore: firestore,
+      bucket: 'bucket-de-prueba',
+      olvidador: (_) async => throw StateError('sin caché'),
+      subidor:
+          ({
+            required String ruta,
+            required Uint8List bytes,
+            required String contentType,
+          }) async => subidas.add(ruta),
+      borrador: (ruta) async => borrados.add(ruta),
+    );
+
+    final galeria = await conFallo.subirFoto(
+      tallerId: 'taller-1',
+      slot: 'logo',
+      nombreOriginal: 'foto.jpg',
+      bytes: Uint8List.fromList([1]),
+    );
+
+    expect(galeria.archivoLogo, 'logo.jpg');
   });
 }

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:autodoc/core/constants/divipola_sv.dart';
 import 'package:autodoc/core/constants/especialidades_taller.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
+import 'package:autodoc/core/constants/tipos_vehiculo.dart';
 import 'package:autodoc/l10n/app_localizations.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
@@ -13,10 +15,10 @@ import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_card.dart';
-import 'package:autodoc/core/widgets/app_dialog_content.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_section_header.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
+import 'package:autodoc/features/mechanic/presentation/pages/selector_ubicacion_taller_screen.dart';
 import 'package:autodoc/features/mechanic/presentation/widgets/mechanic_scaffold.dart';
 import 'package:autodoc/core/utils/mensaje_de_error.dart';
 
@@ -60,6 +62,10 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
     return input;
   }
 
+  /// Qué tipos de vehículo atiende el taller (observación del 2026-09-20).
+  /// Vacío = no lo ha dicho; entonces el catálogo sugiere solo lo común.
+  final Set<String> _tiposAtendidos = {};
+
   @override
   void initState() {
     super.initState();
@@ -94,6 +100,7 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
 
     _latitude = user?.latitud;
     _longitude = user?.longitud;
+    _tiposAtendidos.addAll(user?.tiposAtendidos ?? const []);
   }
 
   @override
@@ -134,6 +141,7 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
           municipio: _selectedMuni,
           latitud: _latitude,
           longitud: _longitude,
+          tiposAtendidos: _tiposAtendidos.toList(),
         );
 
         final success = await userSession.updateProfile(updatedUser);
@@ -190,6 +198,16 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
                   selectedMuni: _selectedMuni,
                   divipola: divipolaSv,
                   colors: colors,
+                  tiposAtendidos: _tiposAtendidos,
+                  onTipoAtendido: (id, marcado) {
+                    setState(() {
+                      if (marcado) {
+                        _tiposAtendidos.add(id);
+                      } else {
+                        _tiposAtendidos.remove(id);
+                      }
+                    });
+                  },
                   onSpecialtyChanged: (val) {
                     setState(() => _specialtyController.text = val ?? '');
                   },
@@ -297,82 +315,21 @@ class _WorkshopSettingsScreenState extends State<WorkshopSettingsScreen> {
     }
   }
 
-  void _abrirSelectorMapa() {
-    final colors = context.appColors;
-    LatLng? selectedLatLng = _latitude != null && _longitude != null
-        ? LatLng(_latitude!, _longitude!)
-        : const LatLng(13.6929, -89.2182); // San Salvador, El Salvador
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        LatLng markerPos = selectedLatLng;
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: colors.surfaceContainer,
-              title: Text(
-                'Toca en tu ubicación exacta',
-                style: AppTextStyles.titleSmall.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colors.textPrimary,
-                ),
-              ),
-              content: AppDialogContent(
-                maxWidth: 640,
-                child: SizedBox(
-                  height: AppBreakpoints.of(context).isCompact ? 280 : 400,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    child: Semantics(
-                      label:
-                          'Mapa para elegir la ubicación del taller. Toca para marcar el punto.',
-                      child: GoogleMap(
-                        initialCameraPosition: CameraPosition(
-                          target: markerPos,
-                          zoom: 14,
-                        ),
-                        onTap: (latLng) {
-                          setDialogState(() {
-                            markerPos = latLng;
-                          });
-                        },
-                        markers: {
-                          Marker(
-                            markerId: const MarkerId('workshop_selected'),
-                            position: markerPos,
-                          ),
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              actions: [
-                AppButton(
-                  text: 'Cancelar',
-                  type: AppButtonType.text,
-                  size: AppButtonSize.small,
-                  onPressed: () => Navigator.pop(ctx),
-                ),
-                AppButton(
-                  text: 'Confirmar',
-                  size: AppButtonSize.small,
-                  onPressed: () {
-                    setState(() {
-                      _latitude = markerPos.latitude;
-                      _longitude = markerPos.longitude;
-                      _errorUbicacion = null;
-                    });
-                    Navigator.pop(ctx);
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      },
+  /// Abre el mapa a pantalla completa (ver `SelectorUbicacionTallerScreen`:
+  /// dentro de un diálogo el mapa no se podía mover en la web).
+  Future<void> _abrirSelectorMapa() async {
+    final elegido = await elegirUbicacionDelTaller(
+      context,
+      inicial: _latitude != null && _longitude != null
+          ? LatLng(_latitude!, _longitude!)
+          : null,
     );
+    if (elegido == null || !mounted) return;
+    setState(() {
+      _latitude = elegido.latitude;
+      _longitude = elegido.longitude;
+      _errorUbicacion = null;
+    });
   }
 }
 
@@ -386,6 +343,10 @@ class _InfoPublicaSection extends StatelessWidget {
   final String? selectedMuni;
   final Map<String, List<String>> divipola;
   final AppColors colors;
+
+  /// `TipoVehiculo.id` que el taller atiende, y el conmutador de cada uno.
+  final Set<String> tiposAtendidos;
+  final void Function(String id, bool marcado) onTipoAtendido;
   final void Function(String?) onSpecialtyChanged;
   final void Function(String?) onDeptChanged;
   final void Function(String?) onMuniChanged;
@@ -398,6 +359,8 @@ class _InfoPublicaSection extends StatelessWidget {
     required this.selectedMuni,
     required this.divipola,
     required this.colors,
+    required this.tiposAtendidos,
+    required this.onTipoAtendido,
     required this.onSpecialtyChanged,
     required this.onDeptChanged,
     required this.onMuniChanged,
@@ -451,6 +414,37 @@ class _InfoPublicaSection extends StatelessWidget {
             icon: Icons.build_circle,
             colors: colors,
             onChanged: onSpecialtyChanged,
+          ),
+          const SizedBox(height: AppSpacing.base),
+          // Observación del 2026-09-20: «deberían poder poner si su
+          // especialidad son los carros o las motos, e igual con los otros
+          // 4». Decide además qué sugiere el catálogo.
+          Text(
+            '¿Qué vehículos atiendes?',
+            style: AppTextStyles.labelLarge.copyWith(color: colors.textPrimary),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Sale en tu perfil público y decide qué servicios te sugiere el '
+            'catálogo.',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: colors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.xs,
+            children: [
+              for (final tipo in TipoVehiculo.values)
+                FilterChip(
+                  key: Key('taller_atiende_${tipo.id}'),
+                  avatar: Icon(tipo.icono, size: 18),
+                  label: Text(tipo.etiqueta(context.l10n)),
+                  selected: tiposAtendidos.contains(tipo.id),
+                  onSelected: (v) => onTipoAtendido(tipo.id, v),
+                ),
+            ],
           ),
           const SizedBox(height: AppSpacing.sm),
           // Departamento y Municipio comparten fila: son dos mitades del

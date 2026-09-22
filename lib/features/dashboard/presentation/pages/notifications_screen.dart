@@ -13,6 +13,8 @@ import 'package:autodoc/core/widgets/app_empty_state.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/l10n/app_localizations.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
+import 'package:autodoc/features/mechanic/presentation/providers/empleado_provider.dart';
 
 /// Normaliza un `deepLink` legado: antes de la Tarea 12, `/reserva_detail`
 /// se guardaba sin id (dependía de `state.extra`, que ya no existe en la
@@ -47,6 +49,94 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   /// Bloquea el segundo tap de "marcar todo como leido" mientras el primero
   /// sigue en vuelo: el batch escribe en Firestore y repetirlo duplica trabajo.
   bool _marcandoTodo = false;
+
+  /// Invitación a un taller cuya respuesta está en vuelo (guard de GAPS-07:
+  /// aceptar dos veces llamaría dos veces al servidor).
+  String? _respondiendo;
+
+  /// Invitaciones ya respondidas. `_respondiendo` se suelta al terminar, y la
+  /// notificación no desaparece hasta el frame siguiente: sin esto, un toque
+  /// más en ese hueco volvía a mandar la respuesta al servidor.
+  final Set<String> _respondidas = {};
+
+  /// Acepta o rechaza la invitación de un taller (observaciones del
+  /// 2026-09-19). Aceptar convierte la cuenta en cuenta de empleado del
+  /// taller, así que primero se confirma, y después se recarga el perfil y
+  /// se lleva a la persona a su nuevo panel.
+  Future<void> _responderInvitacion(
+    AppNotification notif,
+    String userId, {
+    required bool aceptar,
+  }) async {
+    if (_respondiendo != null || _respondidas.contains(notif.id)) return;
+    final idTaller = (notif.metadata?['id_taller'] ?? '').toString();
+    final nombreTaller = (notif.metadata?['nombre_taller'] ?? 'el taller')
+        .toString();
+    if (idTaller.isEmpty) return;
+
+    if (aceptar) {
+      final confirmar = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Unirte al taller'),
+          content: Text(
+            'Tu cuenta pasará a ser una cuenta de empleado de $nombreTaller: '
+            'entrarás al panel del taller con tu mismo correo y contraseña. '
+            '¿Quieres unirte?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Unirme'),
+            ),
+          ],
+        ),
+      );
+      if (confirmar != true || !mounted) return;
+    }
+
+    setState(() => _respondiendo = notif.id);
+    final empleados = context.read<EmpleadoProvider>();
+    final notificaciones = context.read<NotificationCenterProvider>();
+    final perfil = context.read<UserProfileProvider>();
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await empleados.responderInvitacion(
+      idTaller: idTaller,
+      aceptar: aceptar,
+    );
+    if (!mounted) return;
+    setState(() => _respondiendo = null);
+    if (!ok) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            empleados.error ?? 'No se pudo responder la invitación.',
+          ),
+        ),
+      );
+      return;
+    }
+    _respondidas.add(notif.id);
+    await notificaciones.deleteNotification(userId, notif.id);
+    if (!aceptar) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Rechazaste la invitación.')),
+      );
+      return;
+    }
+    messenger.showSnackBar(
+      SnackBar(content: Text('Ya eres parte de $nombreTaller.')),
+    );
+    // Con el perfil recargado, el rol ya es de taller y el router manda
+    // cada pantalla al panel del taller.
+    await perfil.fetchUserData(userId);
+    router.go('/mechanic_dashboard');
+  }
 
   Future<void> _marcarTodo(
     NotificationCenterProvider provider,
@@ -102,6 +192,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ? null
                   : () => _marcarTodo(notifProvider, userId),
             ),
+          const AccionesDeCabecera(mostrarCampana: false),
         ],
       ),
       backgroundColor: colors.surface,
@@ -143,6 +234,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ),
         itemBuilder: (context, index) {
           final notif = provider.notifications[index];
+          if (notif.tipo == 'invitacion_empleo') {
+            return _InvitacionEmpleoTile(
+              notification: notif,
+              colors: colors,
+              respondiendo: _respondiendo == notif.id,
+              onAceptar: () =>
+                  _responderInvitacion(notif, userId, aceptar: true),
+              onRechazar: () =>
+                  _responderInvitacion(notif, userId, aceptar: false),
+            );
+          }
           return _NotificationTile(
             notification: notif,
             colors: colors,
@@ -318,6 +420,95 @@ class _NotificationTile extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// La invitación de un taller a unirse como empleado, con sus dos respuestas
+/// (observaciones del 2026-09-19).
+///
+/// Es su propio widget y no una variante de `_NotificationTile` porque aquella
+/// excluye la semántica de sus hijos (toda la fila es un solo botón): aquí
+/// hay dos acciones distintas, y las dos tienen que poder activarse con un
+/// lector de pantalla.
+class _InvitacionEmpleoTile extends StatelessWidget {
+  final AppNotification notification;
+  final AppColors colors;
+  final bool respondiendo;
+  final VoidCallback onAceptar;
+  final VoidCallback onRechazar;
+
+  const _InvitacionEmpleoTile({
+    required this.notification,
+    required this.colors,
+    required this.respondiendo,
+    required this.onAceptar,
+    required this.onRechazar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: notification.leida
+          ? Colors.transparent
+          : colors.primary.withValues(alpha: 0.04),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.md,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: colors.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Icon(Icons.handshake_outlined, color: colors.primary),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  notification.titulo,
+                  style: AppTextStyles.labelLarge.copyWith(
+                    color: colors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  notification.body,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    FilledButton(
+                      key: Key('invitacion_aceptar_${notification.id}'),
+                      onPressed: respondiendo ? null : onAceptar,
+                      child: const Text('Aceptar'),
+                    ),
+                    OutlinedButton(
+                      key: Key('invitacion_rechazar_${notification.id}'),
+                      onPressed: respondiendo ? null : onRechazar,
+                      child: const Text('Rechazar'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

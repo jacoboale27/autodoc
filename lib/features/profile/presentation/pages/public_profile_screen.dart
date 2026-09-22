@@ -6,10 +6,15 @@ import 'package:provider/provider.dart';
 
 import 'package:autodoc/config/secrets.dart';
 import 'package:autodoc/core/constants/firestore_collections.dart';
+import 'package:autodoc/core/models/catalogo_item_model.dart';
+import 'package:autodoc/core/constants/tipos_vehiculo.dart';
+import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/models/galeria_taller.dart';
+import 'package:autodoc/core/widgets/visor_de_imagenes.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_breakpoints.dart';
+import 'package:autodoc/core/theme/app_radius.dart';
 import 'package:autodoc/core/theme/app_spacing.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/utils/role_utils.dart';
@@ -19,6 +24,7 @@ import 'package:autodoc/core/widgets/app_page_body.dart';
 import 'package:autodoc/core/widgets/app_user_avatar.dart';
 import 'package:autodoc/core/widgets/missing_argument_screen.dart';
 import 'package:autodoc/features/profile/data/services/public_profile_service.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 
 /// Perfil público de "el otro" desde el chat (Tarea 10, C3).
 ///
@@ -156,6 +162,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
         backgroundColor: colors.surfaceContainer,
         foregroundColor: colors.primary,
         elevation: 0,
+        actions: const [AccionesDeCabecera()],
       ),
       body: FutureBuilder<_PerfilPublico>(
         future: _future,
@@ -170,6 +177,44 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
               rutaVuelta: '/chat_list',
             );
           }
+          final bucket =
+              widget.storageBucket ?? AppSecrets.firebaseStorageBucket;
+          // Observaciones del 2026-09-18 (captura 3): el taller se representa
+          // con su LOGO, no con la inicial de su nombre. Antes el logo solo
+          // salía abajo, en la galería, y el avatar decía "L".
+          final logo = perfil.esMecanico ? perfil.galeria.archivoLogo : null;
+          final urlAvatar =
+              (logo == null
+                  ? null
+                  : GaleriaTaller.urlDe(
+                      bucket: bucket,
+                      idTaller: widget.userId,
+                      nombreArchivo: logo,
+                    )) ??
+              perfil.fotoUrl;
+          if (perfil.esMecanico) {
+            final banner = perfil.galeria.archivoBanner;
+            return SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
+              child: AppPageBody(
+                maxWidth: 1000,
+                child: _PerfilEmpresa(
+                  perfil: perfil,
+                  colors: colors,
+                  uid: widget.userId,
+                  storageBucket: bucket,
+                  urlLogo: urlAvatar,
+                  urlBanner: banner == null
+                      ? null
+                      : GaleriaTaller.urlDe(
+                          bucket: bucket,
+                          idTaller: widget.userId,
+                          nombreArchivo: banner,
+                        ),
+                ),
+              ),
+            );
+          }
           return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
             child: AppPageBody(
@@ -177,7 +222,8 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
               child: Column(
                 children: [
                   AppUserAvatar(
-                    urlFoto: perfil.fotoUrl,
+                    key: const Key('perfil_publico_avatar'),
+                    urlFoto: urlAvatar,
                     nombre: perfil.nombre,
                     radius: 48,
                   ),
@@ -189,17 +235,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: AppSpacing.xl),
-                  if (perfil.esMecanico)
-                    _MecanicoDetalle(
-                      perfil: perfil,
-                      colors: colors,
-                      uid: widget.userId,
-                      storageBucket:
-                          widget.storageBucket ??
-                          AppSecrets.firebaseStorageBucket,
-                    )
-                  else
-                    _ClienteDetalle(perfil: perfil, colors: colors),
+                  _ClienteDetalle(perfil: perfil, colors: colors),
                 ],
               ),
             ),
@@ -210,34 +246,238 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
   }
 }
 
-class _MecanicoDetalle extends StatelessWidget {
+/// El perfil del taller como página de empresa (observaciones del
+/// 2026-09-19): «quiero que en el perfil que el usuario puede ver del mecánico
+/// aparezca siempre toda la información pública» y «que el mecánico pueda
+/// poner un banner ... quiero que parezca que tiene un perfil empresarial».
+///
+/// Es la misma pantalla desde el directorio y desde el chat. Todas las
+/// secciones se pintan SIEMPRE: una sección vacía dice que está vacía en vez
+/// de desaparecer, que era por lo que el perfil parecía incompleto.
+class _PerfilEmpresa extends StatelessWidget {
   final _PerfilPublico perfil;
   final AppColors colors;
   final String uid;
   final String storageBucket;
+  final String? urlLogo;
+  final String? urlBanner;
 
-  const _MecanicoDetalle({
+  const _PerfilEmpresa({
     required this.perfil,
     required this.colors,
     required this.uid,
     required this.storageBucket,
+    required this.urlLogo,
+    required this.urlBanner,
   });
 
   @override
   Widget build(BuildContext context) {
+    final contacto = _Seccion(
+      titulo: 'Contacto y ubicación',
+      claveContenido: const Key('perfil_publico_contacto'),
+      child: _ContactoSection(perfil: perfil, colors: colors),
+    );
+    final fotos = _Seccion(
+      titulo: 'Fotos del local',
+      child: _GaleriaSection(
+        uid: uid,
+        galeria: perfil.galeria,
+        colors: colors,
+        storageBucket: storageBucket,
+      ),
+    );
+    final catalogo = _Seccion(
+      titulo: 'Servicios y precios estimados',
+      child: _CatalogoSection(items: perfil.catalogo, colors: colors),
+    );
+    final equipo = _Seccion(
+      titulo: 'Equipo',
+      child: _EmpleadosSection(empleados: perfil.empleados, colors: colors),
+    );
+    final resenias = _Seccion(
+      titulo: 'Reseñas',
+      child: _ReseniasSection(resenias: perfil.resenias ?? const []),
+    );
+
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AppCard(
-          margin: EdgeInsets.zero,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        _Portada(
+          colors: colors,
+          urlBanner: urlBanner,
+          urlLogo: urlLogo,
+          nombre: perfil.nombre,
+          encuadreBanner: perfil.encuadreBanner,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _Encabezado(perfil: perfil, colors: colors),
+        const SizedBox(height: AppSpacing.xl),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth < 720) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [contacto, fotos, catalogo, equipo, resenias],
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [contacto, equipo],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xl),
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [fotos, catalogo, resenias],
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+/// Banner de portada con el logo encima, como la cabecera de una página de
+/// empresa. Sin banner, un degradado de la marca ocupa su sitio.
+class _Portada extends StatelessWidget {
+  final AppColors colors;
+  final String? urlBanner;
+  final String? urlLogo;
+  final String nombre;
+
+  /// Qué franja del banner se ve, de -1 (arriba) a 1 (abajo). La elige el
+  /// taller en `AjustarBannerScreen`; 0 —el centro— es lo que había antes.
+  final double encuadreBanner;
+
+  const _Portada({
+    required this.colors,
+    required this.urlBanner,
+    required this.urlLogo,
+    required this.nombre,
+    this.encuadreBanner = 0,
+  });
+
+  static const double _radioLogo = 48;
+
+  @override
+  Widget build(BuildContext context) {
+    final degradado = Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [colors.primary, colors.primary.withValues(alpha: 0.6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+    );
+    final url = urlBanner;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: _radioLogo),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(AppRadius.lg),
+            ),
+            child: AspectRatio(
+              key: const Key('perfil_publico_banner'),
+              aspectRatio: 3.2,
+              child: url == null
+                  ? degradado
+                  : GestureDetector(
+                      // El banner se recorta a 3.2:1: verlo entero solo es
+                      // posible en el visor (observación del 2026-09-20).
+                      onTap: () => abrirVisorDeImagenes(context, urls: [url]),
+                      child: CachedNetworkImage(
+                        imageUrl: url,
+                        fit: BoxFit.cover,
+                        alignment: Alignment(0, encuadreBanner),
+                        placeholder: (_, _) => degradado,
+                        errorWidget: (_, _, _) => degradado,
+                      ),
+                    ),
+            ),
+          ),
+        ),
+        Positioned(
+          left: AppSpacing.lg,
+          bottom: 0,
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              shape: BoxShape.circle,
+            ),
+            child: GestureDetector(
+              onTap: urlLogo == null
+                  ? null
+                  : () => abrirVisorDeImagenes(context, urls: [urlLogo!]),
+              child: AppUserAvatar(
+                key: const Key('perfil_publico_avatar'),
+                urlFoto: urlLogo,
+                nombre: nombre,
+                radius: _radioLogo,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Nombre, especialidad, calificación, municipio y las dos acciones.
+class _Encabezado extends StatelessWidget {
+  final _PerfilPublico perfil;
+  final AppColors colors;
+
+  const _Encabezado({required this.perfil, required this.colors});
+
+  @override
+  Widget build(BuildContext context) {
+    final lugar = [
+      if ((perfil.municipioTaller ?? '').isNotEmpty) perfil.municipioTaller!,
+      if ((perfil.departamento ?? '').isNotEmpty) perfil.departamento!,
+    ].join(', ');
+    final telefono = perfil.telefono;
+    final ubicacion = perfil.ubicacion;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            perfil.nombre,
+            key: const Key('perfil_publico_nombre'),
+            style: AppTextStyles.headlineSmall.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Wrap(
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.xs,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.build_outlined, color: colors.primary),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
+                  Icon(Icons.build_outlined, color: colors.primary, size: 18),
+                  const SizedBox(width: AppSpacing.xs),
+                  Flexible(
                     child: Text(
                       perfil.especialidad ?? 'General',
                       key: const Key('perfil_publico_especialidad'),
@@ -246,9 +486,29 @@ class _MecanicoDetalle extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.sm),
+              if (perfil.tiposAtendidos.isNotEmpty)
+                Row(
+                  key: const Key('perfil_publico_tipos'),
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final id in perfil.tiposAtendidos) ...[
+                      Tooltip(
+                        message: TipoVehiculo.desdeId(
+                          id,
+                        ).etiqueta(context.l10n),
+                        child: Icon(
+                          TipoVehiculo.desdeId(id).icono,
+                          size: 18,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                    ],
+                  ],
+                ),
               Row(
                 key: const Key('perfil_publico_calificacion'),
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.star, color: colors.warning, size: 18),
                   const SizedBox(width: AppSpacing.xs),
@@ -267,67 +527,190 @@ class _MecanicoDetalle extends StatelessWidget {
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.xl),
-        if (perfil.resenias!.isNotEmpty) ...[
-          Text('Reseñas', style: AppTextStyles.titleMedium),
-          const SizedBox(height: AppSpacing.sm),
-          ...perfil.resenias!.map(
-            (r) => AppCard(
-              margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: List.generate(
-                      5,
-                      (i) => Icon(
-                        i < ((r['estrellas'] as num?)?.round() ?? 0)
-                            ? Icons.star
-                            : Icons.star_border,
-                        size: 16,
-                        color: colors.warning,
+              if (lugar.isNotEmpty)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.location_on_outlined,
+                      color: colors.textSecondary,
+                      size: 18,
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Flexible(
+                      child: Text(
+                        lugar,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: colors.textSecondary,
+                        ),
                       ),
                     ),
-                  ),
-                  if ((r['comentario'] as String?)?.isNotEmpty == true) ...[
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      r['comentario'] as String,
-                      style: AppTextStyles.bodySmall,
-                    ),
                   ],
-                ],
-              ),
-            ),
+                ),
+            ],
           ),
+          if (telefono != null || ubicacion != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: [
+                if (telefono != null)
+                  FilledButton.icon(
+                    key: const Key('perfil_publico_llamar'),
+                    onPressed: () => UiUtils.openExternalUrl(
+                      'tel:${telefono.replaceAll(RegExp(r'[^0-9+]'), '')}',
+                    ),
+                    icon: const Icon(Icons.call_outlined, size: 18),
+                    label: const Text('Llamar'),
+                  ),
+                if (ubicacion != null)
+                  OutlinedButton.icon(
+                    key: const Key('perfil_publico_como_llegar'),
+                    onPressed: () => UiUtils.openExternalUrl(
+                      'https://www.google.com/maps/dir/?api=1&destination='
+                      '${ubicacion.latitude},${ubicacion.longitude}',
+                    ),
+                    icon: const Icon(Icons.directions_outlined, size: 18),
+                    label: const Text('Cómo llegar'),
+                  ),
+              ],
+            ),
+          ],
         ],
-        if (perfil.direccion != null ||
-            perfil.departamento != null ||
-            perfil.ubicacion != null) ...[
-          const SizedBox(height: AppSpacing.xl),
+      ),
+    );
+  }
+}
+
+/// Una sección con su título, siempre presente.
+class _Seccion extends StatelessWidget {
+  final String titulo;
+  final Widget child;
+  final Key? claveContenido;
+
+  const _Seccion({
+    required this.titulo,
+    required this.child,
+    this.claveContenido,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+      child: Column(
+        key: claveContenido,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(titulo, style: AppTextStyles.titleMedium),
+          const SizedBox(height: AppSpacing.sm),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+/// Lo que se dice cuando una sección no tiene nada.
+class _Vacio extends StatelessWidget {
+  final String texto;
+
+  const _Vacio(this.texto);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      texto,
+      style: AppTextStyles.bodyMedium.copyWith(
+        color: context.appColors.textSecondary,
+      ),
+    );
+  }
+}
+
+class _ContactoSection extends StatelessWidget {
+  final _PerfilPublico perfil;
+  final AppColors colors;
+
+  const _ContactoSection({required this.perfil, required this.colors});
+
+  @override
+  Widget build(BuildContext context) {
+    final telefono = perfil.telefono;
+    return AppCard(
+      margin: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.phone_outlined, color: colors.primary),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  telefono ?? 'Sin teléfono publicado',
+                  key: const Key('perfil_publico_telefono'),
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: telefono == null
+                        ? colors.textSecondary
+                        : colors.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
           _UbicacionSection(perfil: perfil, colors: colors),
         ],
-        if (perfil.galeria.archivoLogo != null ||
-            perfil.galeria.archivosDelLocal.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.xl),
-          _GaleriaSection(
-            uid: uid,
-            galeria: perfil.galeria,
-            colors: colors,
-            storageBucket: storageBucket,
+      ),
+    );
+  }
+}
+
+class _ReseniasSection extends StatelessWidget {
+  final List<Map<String, dynamic>> resenias;
+
+  const _ReseniasSection({required this.resenias});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    if (resenias.isEmpty) {
+      return const _Vacio('Este taller aún no tiene reseñas.');
+    }
+    return Column(
+      key: const Key('perfil_publico_resenias'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final r in resenias)
+          AppCard(
+            margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: List.generate(
+                    5,
+                    (i) => Icon(
+                      i < ((r['estrellas'] as num?)?.round() ?? 0)
+                          ? Icons.star
+                          : Icons.star_border,
+                      size: 16,
+                      color: colors.warning,
+                    ),
+                  ),
+                ),
+                if ((r['comentario'] as String?)?.isNotEmpty == true) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    r['comentario'] as String,
+                    style: AppTextStyles.bodySmall,
+                  ),
+                ],
+              ],
+            ),
           ),
-        ],
-        if (perfil.catalogo.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.xl),
-          _CatalogoSection(items: perfil.catalogo, colors: colors),
-        ],
-        if (perfil.empleados.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.xl),
-          _EmpleadosSection(empleados: perfil.empleados, colors: colors),
-        ],
       ],
     );
   }
@@ -354,37 +737,37 @@ class _UbicacionSection extends StatelessWidget {
     final texto = partes.isNotEmpty ? partes.join(', ') : null;
     final ubicacion = perfil.ubicacion;
 
-    return AppCard(
+    if (texto == null && ubicacion == null) {
+      return const _Vacio('Sin dirección registrada');
+    }
+    return Column(
       key: const Key('perfil_publico_ubicacion'),
-      margin: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.location_on_outlined, color: colors.primary),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  texto ?? 'Ubicación registrada',
-                  style: AppTextStyles.bodyMedium,
-                ),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.location_on_outlined, color: colors.primary),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                texto ?? 'Ubicación registrada',
+                style: AppTextStyles.bodyMedium,
               ),
-            ],
-          ),
-          if (ubicacion != null) ...[
-            const SizedBox(height: AppSpacing.sm),
-            TextButton.icon(
-              key: const Key('perfil_publico_abrir_mapa'),
-              onPressed: () => UiUtils.openExternalUrl(
-                'https://www.google.com/maps/search/?api=1&query=${ubicacion.latitude},${ubicacion.longitude}',
-              ),
-              icon: const Icon(Icons.map_outlined),
-              label: const Text('Abrir en Maps'),
             ),
           ],
+        ),
+        if (ubicacion != null) ...[
+          const SizedBox(height: AppSpacing.sm),
+          TextButton.icon(
+            key: const Key('perfil_publico_abrir_mapa'),
+            onPressed: () => UiUtils.openExternalUrl(
+              'https://www.google.com/maps/search/?api=1&query=${ubicacion.latitude},${ubicacion.longitude}',
+            ),
+            icon: const Icon(Icons.map_outlined),
+            label: const Text('Abrir en Maps'),
+          ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -408,10 +791,7 @@ class _GaleriaSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final archivos = [
-      if (galeria.archivoLogo != null) galeria.archivoLogo!,
-      ...galeria.archivosDelLocal,
-    ];
+    final archivos = galeria.archivosDelLocal;
     final urls = archivos
         .map(
           (a) => GaleriaTaller.urlDe(
@@ -422,14 +802,14 @@ class _GaleriaSection extends StatelessWidget {
         )
         .whereType<String>()
         .toList();
-    if (urls.isEmpty) return const SizedBox.shrink();
+    if (urls.isEmpty) {
+      return const _Vacio('Este taller aún no ha subido fotos del local.');
+    }
 
     return Column(
       key: const Key('perfil_publico_galeria'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Galería', style: AppTextStyles.titleMedium),
-        const SizedBox(height: AppSpacing.sm),
         SizedBox(
           height: 96,
           child: ListView.separated(
@@ -437,36 +817,45 @@ class _GaleriaSection extends StatelessWidget {
             itemCount: urls.length,
             separatorBuilder: (context, i) =>
                 const SizedBox(width: AppSpacing.sm),
-            itemBuilder: (context, i) => ClipRRect(
+            // Observación del 2026-09-20: las fotos públicas tienen que
+            // poder verse grandes. La miniatura mide 96 px; el visor abre
+            // TODAS las del local y empieza por la que se tocó.
+            itemBuilder: (context, i) => InkWell(
+              key: Key('perfil_publico_foto_$i'),
+              onTap: () =>
+                  abrirVisorDeImagenes(context, urls: urls, inicial: i),
               borderRadius: BorderRadius.circular(12),
-              // Mismo contrato que la tarjeta del directorio
-              // (`workshop_directory_screen.dart`): esqueleto mientras carga
-              // y un icono de reemplazo si falla. Un taller cuyo `galeria`
-              // sigue listando un archivo que ya no esta en Storage pintaba
-              // un hueco de 96x96 sin nada, ni durante la carga ni tras el
-              // fallo.
-              child: CachedNetworkImage(
-                imageUrl: urls[i],
-                width: 96,
-                height: 96,
-                fit: BoxFit.cover,
-                // Placeholder estatico y no `AppSkeleton`: el esqueleto usa
-                // `Shimmer`, que anima sin fin, y una animacion perpetua deja
-                // el arbol sin asentar — cualquier test que llegue aqui con
-                // `pumpAndSettle` se cuelga hasta el timeout. Para una
-                // miniatura de 96 no aporta nada frente a un bloque de color.
-                placeholder: (ctx, url) => Container(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                // Mismo contrato que la tarjeta del directorio
+                // (`workshop_directory_screen.dart`): esqueleto mientras carga
+                // y un icono de reemplazo si falla. Un taller cuyo `galeria`
+                // sigue listando un archivo que ya no esta en Storage pintaba
+                // un hueco de 96x96 sin nada, ni durante la carga ni tras el
+                // fallo.
+                child: CachedNetworkImage(
+                  imageUrl: urls[i],
                   width: 96,
                   height: 96,
-                  color: colors.surfaceContainer,
-                ),
-                errorWidget: (ctx, url, err) => Container(
-                  width: 96,
-                  height: 96,
-                  color: colors.surfaceContainer,
-                  child: Icon(
-                    Icons.broken_image_outlined,
-                    color: colors.textSecondary,
+                  fit: BoxFit.cover,
+                  // Placeholder estatico y no `AppSkeleton`: el esqueleto usa
+                  // `Shimmer`, que anima sin fin, y una animacion perpetua deja
+                  // el arbol sin asentar — cualquier test que llegue aqui con
+                  // `pumpAndSettle` se cuelga hasta el timeout. Para una
+                  // miniatura de 96 no aporta nada frente a un bloque de color.
+                  placeholder: (ctx, url) => Container(
+                    width: 96,
+                    height: 96,
+                    color: colors.surfaceContainer,
+                  ),
+                  errorWidget: (ctx, url, err) => Container(
+                    width: 96,
+                    height: 96,
+                    color: colors.surfaceContainer,
+                    child: Icon(
+                      Icons.broken_image_outlined,
+                      color: colors.textSecondary,
+                    ),
                   ),
                 ),
               ),
@@ -490,26 +879,35 @@ class _CatalogoSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return const _Vacio('Este taller aún no ha publicado sus servicios.');
+    }
     return Column(
       key: const Key('perfil_publico_catalogo'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Catálogo', style: AppTextStyles.titleMedium),
+        Text(
+          'Mano de obra estimada, para cualquier vehículo. Los repuestos se '
+          'cotizan aparte.',
+          style: AppTextStyles.bodySmall.copyWith(color: colors.textSecondary),
+        ),
         const SizedBox(height: AppSpacing.sm),
         ...items.map((item) {
           // `.toString()` y no un cast duro: `CatalogoItemModel.fromMap`
           // ya tolera un `nombre` numerico (escrito por el Admin SDK o por
           // una importacion), y un cast aqui reventaria dentro de `build`,
           // tumbando la pantalla entera del perfil.
-          final nombre = (item['nombre'] ?? '').toString();
-          final precio = (item['precio'] as num?)?.toDouble() ?? 0.0;
+          final modelo = CatalogoItemModel.fromMap(item, '');
           return AppCard(
             margin: const EdgeInsets.only(bottom: AppSpacing.sm),
             child: Row(
               children: [
-                Expanded(child: Text(nombre, style: AppTextStyles.bodyMedium)),
+                Expanded(
+                  child: Text(modelo.nombre, style: AppTextStyles.bodyMedium),
+                ),
+                const SizedBox(width: AppSpacing.sm),
                 Text(
-                  '\$${precio.toStringAsFixed(2)}',
+                  modelo.rangoTexto,
                   style: AppTextStyles.bodyMedium.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -538,12 +936,13 @@ class _EmpleadosSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (empleados.isEmpty) {
+      return const _Vacio('Sin personal publicado.');
+    }
     return Column(
       key: const Key('perfil_publico_empleados'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Equipo', style: AppTextStyles.titleMedium),
-        const SizedBox(height: AppSpacing.sm),
         ...empleados.map((e) {
           final nombre = (e['nombre_completo'] as String?) ?? 'Empleado';
           final rol = (e['rol'] as String?) ?? '';
@@ -625,6 +1024,15 @@ class _PerfilPublico {
   final String? departamento;
   final List<Map<String, dynamic>> catalogo;
   final List<Map<String, dynamic>> empleados;
+  final String? telefono;
+  final String? municipioTaller;
+
+  /// `banner_encuadre` de la ficha pública: qué franja del banner enseñar.
+  final double encuadreBanner;
+
+  /// `TipoVehiculo.id` que el taller declaró atender. Vacío = no lo ha dicho,
+  /// y entonces no se enseña nada (mejor callar que afirmar «atiende todo»).
+  final List<String> tiposAtendidos;
 
   // Solo cliente:
   final String? municipio;
@@ -644,6 +1052,10 @@ class _PerfilPublico {
     this.departamento,
     this.catalogo = const [],
     this.empleados = const [],
+    this.telefono,
+    this.municipioTaller,
+    this.encuadreBanner = 0,
+    this.tiposAtendidos = const [],
     this.municipio,
   });
 
@@ -674,7 +1086,23 @@ class _PerfilPublico {
       departamento: data['departamento'] as String?,
       catalogo: catalogo,
       empleados: empleados,
+      telefono: _textoONulo(data['telefono']),
+      municipioTaller: _textoONulo(data['municipio']),
+      // Fuera de [-1, 1] no significa nada: se recorta en vez de pintar un
+      // alineamiento absurdo.
+      encuadreBanner: ((data['banner_encuadre'] as num?)?.toDouble() ?? 0)
+          .clamp(-1.0, 1.0),
+      tiposAtendidos:
+          (data['tipos_atendidos'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
     );
+  }
+
+  static String? _textoONulo(Object? valor) {
+    final texto = valor?.toString().trim() ?? '';
+    return texto.isEmpty ? null : texto;
   }
 
   factory _PerfilPublico.cliente(Map<String, dynamic> data) {

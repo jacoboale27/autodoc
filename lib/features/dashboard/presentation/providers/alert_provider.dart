@@ -41,7 +41,54 @@ class AlertProvider extends ChangeNotifier {
     _maintenanceTasks = [];
     _error = null;
     _isLoading = false;
+    _huellaCargada = null;
+    _huellaEnCurso = null;
+    _cargaEnCurso = null;
     notifyListeners();
+  }
+
+  /// Huella del ultimo juego de vehiculos consultado, y la consulta en vuelo
+  /// si la hay. Los usa [asegurarAlertasCargadas].
+  String? _huellaCargada;
+  String? _huellaEnCurso;
+  Future<void>? _cargaEnCurso;
+
+  static String _huella(List<VehicleModel> vehiculos) =>
+      (vehiculos.map((v) => v.idVehiculo).toList()..sort()).join(',');
+
+  /// Calcula las alertas de [vehiculos] solo si no estan ya calculadas.
+  ///
+  /// Hermano de `VehicleProvider.asegurarVehiculosCargados`, y por el mismo
+  /// motivo: `/alerts` no pedia sus datos, los leia. Con un F5 encima de esa
+  /// ruta el provider esta recien construido y la pantalla salia vacia.
+  ///
+  /// La huella son los IDs, no el contenido de los vehiculos. Es deliberado
+  /// y tiene un limite que conviene conocer: si cambia el odometro de un
+  /// coche sin cambiar la lista, este metodo NO recalcula. No lo hace peor
+  /// que antes —quien actualiza el odometro pasa por pantallas que llaman a
+  /// [fetchAlerts] o [fetchAlertsForVehicles] directamente— y a cambio evita
+  /// releer todo el garaje en cada navegacion.
+  Future<void> asegurarAlertasCargadas(List<VehicleModel> vehiculos) {
+    final huella = _huella(vehiculos);
+    if (_huellaCargada == huella) return Future.value();
+
+    final enCurso = _cargaEnCurso;
+    if (enCurso != null && _huellaEnCurso == huella) return enCurso;
+
+    // Se memoriza el INTENTO, no el exito. Ver el mismo razonamiento en
+    // `VehicleProvider.asegurarVehiculosCargados`: memorizar solo el exito
+    // convierte un fallo persistente en un bucle de lecturas, porque el
+    // `notifyListeners` del fallo reconstruye la pantalla que vuelve a pedir.
+    _huellaEnCurso = huella;
+    _huellaCargada = huella;
+    final futuro = fetchAlertsForVehicles(vehiculos).whenComplete(() {
+      if (_huellaEnCurso == huella) {
+        _huellaEnCurso = null;
+        _cargaEnCurso = null;
+      }
+    });
+    _cargaEnCurso = futuro;
+    return futuro;
   }
 
   Future<void> fetchAlerts(String vehicleId, VehicleModel vehicle) async {
@@ -147,34 +194,86 @@ class AlertProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Días de CALENDARIO hasta [vencimiento], contados en la zona local.
+  ///
+  /// **No es `difference(now).inDays`, y la diferencia es un defecto que se
+  /// veía en producción.** `Duration.inDays` trunca hacia cero, así que un
+  /// documento que venció hace dos horas daba `0` — ni negativo ni vencido—,
+  /// y la app decía *«por vencer, vence en 0 días»* sobre un documento **ya
+  /// vencido**, durante las 24 h siguientes. Es justo la alerta en la que la
+  /// persona necesita creerle a la app.
+  ///
+  /// Un vencimiento es una FECHA, no un instante: lo que importa es en qué
+  /// día del calendario cae respecto a hoy, no cuántos períodos de 24 h
+  /// caben en medio. Es el mismo criterio que usa la agenda del asistente
+  /// (`functions/src/agenda.js`).
+  static int _diasDeCalendarioHasta(DateTime vencimiento, DateTime ahora) {
+    final hoy = DateTime(ahora.year, ahora.month, ahora.day);
+    final dia = DateTime(vencimiento.year, vencimiento.month, vencimiento.day);
+    return dia.difference(hoy).inDays;
+  }
+
+  /// Umbral a partir del cual un documento del vehículo entra en alertas.
+  static const int _diasDeAvisoDeDocumento = 15;
+
+  /// Alerta de un documento con fecha de vencimiento (SOAT o tarjeta).
+  ///
+  /// El texto visible **no se arma aquí**: el provider no tiene
+  /// `BuildContext` ni locale, así que viajan el tipo y los días en
+  /// `metadata` y cada pantalla los localiza, igual que ya hacía
+  /// `MantenimientoInconsistente`. Bakear la prosa en español era lo que
+  /// convertía estas alertas en literales sin traducir.
+  AlertModel? _alertaDeDocumento({
+    required VehicleModel vehicle,
+    required DateTime? vencimiento,
+    required String tipoAlerta,
+    required String prefijoId,
+    required DateTime ahora,
+  }) {
+    if (vencimiento == null) return null;
+
+    final dias = _diasDeCalendarioHasta(vencimiento, ahora);
+    if (dias > _diasDeAvisoDeDocumento) return null;
+
+    return AlertModel(
+      idAlerta: '${prefijoId}_${vehicle.idVehiculo}',
+      idVehiculo: vehicle.idVehiculo,
+      tipoAlerta: tipoAlerta,
+      titulo: '',
+      descripcion: '',
+      fechaLimite: vencimiento,
+      metadata: {'placa': vehicle.placa, 'dias_restantes': dias},
+      prioridad: dias < 0 ? AlertPriority.high : AlertPriority.medium,
+    );
+  }
+
   Future<void> _generateSmartAlerts(VehicleModel vehicle) async {
     final now = DateTime.now();
 
-    // --- 1. Alerta de Seguro (SOAT) ---
-    if (vehicle.vencimientoSoat != null) {
-      final daysToExpire = vehicle.vencimientoSoat!.difference(now).inDays;
-      if (daysToExpire <= 15) {
-        _addOrUpdateLocalAlert(
-          AlertModel(
-            idAlerta: 'soat_${vehicle.idVehiculo}',
-            idVehiculo: vehicle.idVehiculo,
-            tipoAlerta: 'SOAT',
-            // El título tiene que concordar con el cuerpo: "Seguro por
-            // vencer" encabezando "Tu SOAT venció hace 38 días" se lee como
-            // un dato equivocado, y es justo la alerta en la que el usuario
-            // necesita creerle a la app.
-            titulo: daysToExpire < 0 ? 'Seguro vencido' : 'Seguro por vencer',
-            descripcion: daysToExpire < 0
-                ? 'Tu SOAT venció hace ${daysToExpire.abs()} días.'
-                : 'Tu SOAT vence en $daysToExpire días.',
-            fechaLimite: vehicle.vencimientoSoat,
-            metadata: {'placa': vehicle.placa},
-            prioridad: daysToExpire < 0
-                ? AlertPriority.high
-                : AlertPriority.medium,
-          ),
-        );
-      }
+    // --- 1. Documentos con fecha de vencimiento (SOAT y tarjeta) ---
+    //
+    // La tarjeta de circulación llevaba desde siempre sin generar nada: se le
+    // pedía la fecha a la persona, se guardaba, se dejaba editar en la ficha
+    // del vehículo **al lado de la del SOAT y con el mismo aspecto**, y no se
+    // avisaba jamás. Ver `test/features/dashboard/alerta_tarjeta_test.dart`.
+    final documentos = [
+      _alertaDeDocumento(
+        vehicle: vehicle,
+        vencimiento: vehicle.vencimientoSoat,
+        tipoAlerta: 'SOAT',
+        prefijoId: 'soat',
+        ahora: now,
+      ),
+      _alertaDeDocumento(
+        vehicle: vehicle,
+        vencimiento: vehicle.vencimientoTarjeta,
+        tipoAlerta: 'Tarjeta',
+        prefijoId: 'tarjeta',
+        ahora: now,
+      ),
+    ];
+    for (final alerta in documentos) {
+      if (alerta != null) _addOrUpdateLocalAlert(alerta);
     }
 
     // Nota: La alerta de Aceite se ha migrado a MaintenanceTasks
@@ -579,129 +678,28 @@ class AlertProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> tallerUpdateService({
-    required String taskId,
-    required int nuevoKilometraje,
-    required String tallerId,
-    required String descripcion,
-    double? costo,
-    double? manoDeObra,
-    List<Map<String, dynamic>>? materiales,
-    XFile? receiptImage,
-  }) async {
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      final now = DateTime.now();
-
-      // 1. Actualizar la tarea de mantenimiento principal
-      await _firestore
-          .collection(FirestoreCollections.mantenimientos)
-          .doc(taskId)
-          .update({
-            'ultimo_km': nuevoKilometraje,
-            'fecha_ultimo_servicio': Timestamp.fromDate(now),
-          });
-
-      // 2. Obtener info de la tarea
-      final taskIndex = _maintenanceTasks.indexWhere((t) => t.id == taskId);
-      final task = taskIndex != -1 ? _maintenanceTasks[taskIndex] : null;
-      final vehicleId = task?.vehicleId ?? 'desconocido';
-
-      String? receiptUrl;
-      if (receiptImage != null) {
-        final metadataInfo = InvoiceUploadService.getFileMetadata(
-          receiptImage.name,
-        );
-        final extension = metadataInfo['extension']!;
-        final contentType = metadataInfo['contentType']!;
-
-        final ref = _storage
-            .ref()
-            .child(StoragePaths.facturas)
-            .child(vehicleId)
-            .child(InvoiceUploadService.nombreDeArchivo(extension));
-        final bytes = await receiptImage.readAsBytes();
-        final metadata = SettableMetadata(contentType: contentType);
-        await ref.putData(bytes, metadata);
-        receiptUrl = await ref.getDownloadURL();
-      }
-
-      // 3. Registrar en colección servicios (tabla Servicios del esquema)
-      await _firestore.collection(FirestoreCollections.servicios).add({
-        'id_vehiculo': vehicleId,
-        'id_taller': tallerId,
-        'tipo_servicio': task?.nombre ?? 'Servicio General',
-        'fecha': Timestamp.fromDate(now),
-        'kilometraje_servicio': nuevoKilometraje,
-        'descripcion': descripcion,
-        'costo': costo,
-        'mano_de_obra': manoDeObra,
-        'materiales': materiales,
-        'foto_factura_url': receiptUrl,
-      });
-
-      // 4. Registrar en historial_mantenimientos
-      await _firestore
-          .collection(FirestoreCollections.historialMantenimientos)
-          .add({
-            'id_taller': tallerId,
-            'id_vehiculo': vehicleId,
-            'id_tarea': taskId,
-            'nombre_tarea': task?.nombre ?? 'Servicio General',
-            'kilometraje_registro': nuevoKilometraje,
-            'fecha': Timestamp.fromDate(now),
-            'descripcion': descripcion,
-          });
-
-      // 5. El kilometraje del vehículo lo actualiza la Cloud Function
-      // requestReviewOnServiceComplete (trigger onCreate de 'servicios'),
-      // que corre con privilegios de Admin SDK justo después del paso 3.
-      // Evita que el cliente necesite leer/escribir el vehículo aquí, lo
-      // cual podría chocar con la propagación del vínculo taller-vehículo
-      // en la primera visita de un cliente nuevo.
-
-      // 6. Actualizar la tarea local
-      if (taskIndex != -1) {
-        _maintenanceTasks[taskIndex] = MaintenanceTask(
-          id: task!.id,
-          vehicleId: task.vehicleId,
-          nombre: task.nombre,
-          ultimoKm: nuevoKilometraje,
-          fechaUltimoServicio: now,
-          frecuenciaKm: task.frecuenciaKm,
-          frecuenciaMeses: task.frecuenciaMeses,
-        );
-      }
-
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      _error = mensajeSeguroDeError(e);
-      _isLoading = false;
-      notifyListeners();
-      rethrow;
-    }
-  }
-
-  /// Registra un servicio cerrado por el taller cuando el vehiculo NO tiene
-  /// ninguna tarea de mantenimiento configurada.
+  /// Cierra un servicio del taller: escribe **un solo** documento en
+  /// `servicios`, marque las tareas de mantenimiento que marque.
   ///
-  /// `tallerUpdateService` escribe una vez POR TAREA marcada, asi que con la
-  /// lista de tareas vacia no escribia nada en absoluto: la pantalla decia
-  /// "Servicio registrado exitosamente" y no quedaba rastro ni en el
-  /// historial del taller (`servicios` filtrado por `id_taller`) ni en el del
-  /// propietario (`servicios` filtrado por `id_vehiculo`), y el trigger
-  /// `requestReviewOnServiceComplete` — que es quien actualiza el kilometraje
-  /// del vehiculo y pide la resena — nunca llegaba a dispararse.
+  /// Observaciones del 2026-09-19. Antes había dos caminos:
+  /// `tallerUpdateService`, que se llamaba UNA VEZ POR TAREA marcada y
+  /// escribía un `servicios` completo en cada vuelta —tres tareas en un
+  /// servicio de $588 salían en el historial como tres servicios de $588, con
+  /// tres reseñas posibles y tres avisos del trigger—, y
+  /// `tallerRegistrarServicioSinTarea` para cuando no había tareas. Además la
+  /// pantalla exigía marcar al menos una, cuando lo que se cobra es lo de la
+  /// cotización.
   ///
-  /// No toca `mantenimientos` (no hay tarea que poner al dia) ni
-  /// `historial_mantenimientos` (esa coleccion se indexa por `id_tarea` y hoy
-  /// no la lee nadie en la app). El documento de `servicios` lleva los mismos
-  /// campos que el de `tallerUpdateService`, para que las dos rutas produzcan
-  /// registros indistinguibles al leerlos.
-  Future<void> tallerRegistrarServicioSinTarea({
+  /// Las [tareasRealizadas] ya no son el servicio: solo ponen al día el
+  /// calendario de mantenimiento del cliente (`mantenimientos` y
+  /// `historial_mantenimientos`). Si alguna no se puede poner al día, el
+  /// servicio YA quedó registrado y no se deshace ni se repite: se devuelve
+  /// cuántas fallaron para que la pantalla lo avise. Repetir el cierre por un
+  /// fallo aquí duplicaría el servicio.
+  ///
+  /// [tipoServicio] es el título con que sale en el historial; sin él, los
+  /// nombres de las tareas marcadas, y sin tareas, «Servicio General».
+  Future<int> tallerCerrarServicio({
     required String vehiculoId,
     required int nuevoKilometraje,
     required String tallerId,
@@ -710,12 +708,23 @@ class AlertProvider extends ChangeNotifier {
     double? manoDeObra,
     List<Map<String, dynamic>>? materiales,
     XFile? receiptImage,
+    Iterable<String> tareasRealizadas = const [],
+    String? tipoServicio,
   }) async {
     _isLoading = true;
     notifyListeners();
 
     try {
       final now = DateTime.now();
+      final tareas = tareasRealizadas
+          .map((id) => maintenanceTasks.where((t) => t.id == id).firstOrNull)
+          .whereType<MaintenanceTask>()
+          .toList();
+      final titulo = (tipoServicio != null && tipoServicio.trim().isNotEmpty)
+          ? tipoServicio.trim()
+          : tareas.isNotEmpty
+          ? tareas.map((t) => t.nombre).join(', ')
+          : 'Servicio General';
 
       Reference? receiptRef;
       String? receiptUrl;
@@ -738,10 +747,13 @@ class AlertProvider extends ChangeNotifier {
       }
 
       try {
+        // El kilometraje del vehículo lo pone al día el trigger
+        // `requestReviewOnServiceComplete` (onCreate de `servicios`), con
+        // Admin SDK: el taller puede no tener permiso para escribir el coche.
         await _firestore.collection(FirestoreCollections.servicios).add({
           'id_vehiculo': vehiculoId,
           'id_taller': tallerId,
-          'tipo_servicio': 'Servicio General',
+          'tipo_servicio': titulo,
           'fecha': Timestamp.fromDate(now),
           'kilometraje_servicio': nuevoKilometraje,
           'descripcion': descripcion,
@@ -751,8 +763,8 @@ class AlertProvider extends ChangeNotifier {
           'foto_factura_url': receiptUrl,
         });
       } catch (e) {
-        // Misma limpieza que `userCompleteTask`: la factura ya esta en
-        // Storage pero el documento que la referencia no llego a existir.
+        // La factura ya está en Storage pero el documento que la referencia
+        // no llegó a existir.
         if (receiptRef != null) {
           try {
             await receiptRef.delete();
@@ -763,8 +775,48 @@ class AlertProvider extends ChangeNotifier {
         rethrow;
       }
 
+      var fallidas = 0;
+      for (final tarea in tareas) {
+        try {
+          await _firestore
+              .collection(FirestoreCollections.mantenimientos)
+              .doc(tarea.id)
+              .update({
+                'ultimo_km': nuevoKilometraje,
+                'fecha_ultimo_servicio': Timestamp.fromDate(now),
+              });
+          await _firestore
+              .collection(FirestoreCollections.historialMantenimientos)
+              .add({
+                'id_taller': tallerId,
+                'id_vehiculo': vehiculoId,
+                'id_tarea': tarea.id,
+                'nombre_tarea': tarea.nombre,
+                'kilometraje_registro': nuevoKilometraje,
+                'fecha': Timestamp.fromDate(now),
+                'descripcion': descripcion,
+              });
+          final i = _maintenanceTasks.indexWhere((t) => t.id == tarea.id);
+          if (i != -1) {
+            _maintenanceTasks[i] = MaintenanceTask(
+              id: tarea.id,
+              vehicleId: tarea.vehicleId,
+              nombre: tarea.nombre,
+              ultimoKm: nuevoKilometraje,
+              fechaUltimoServicio: now,
+              frecuenciaKm: tarea.frecuenciaKm,
+              frecuenciaMeses: tarea.frecuenciaMeses,
+            );
+          }
+        } catch (e) {
+          fallidas++;
+          debugPrint('No se pudo poner al día la tarea ${tarea.id}: $e');
+        }
+      }
+
       _isLoading = false;
       notifyListeners();
+      return fallidas;
     } catch (e) {
       _error = mensajeSeguroDeError(e);
       _isLoading = false;

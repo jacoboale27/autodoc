@@ -7,6 +7,7 @@ import 'package:autodoc/core/theme/app_colors.dart';
 import 'package:autodoc/core/theme/app_text_styles.dart';
 import 'package:autodoc/core/providers/user_profile_provider.dart';
 import 'package:autodoc/core/providers/auth_session_provider.dart';
+import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
 import 'package:autodoc/core/widgets/app_button.dart';
 import 'package:autodoc/core/widgets/app_empty_state.dart';
 import 'package:autodoc/core/widgets/app_page_body.dart';
@@ -68,7 +69,14 @@ class _ConversacionesListScreenState extends State<ConversacionesListScreen> {
       // pantalla. El corte pasa de 800 px (el sistema de breakpoints
       // anterior, TABLET) a 840 px (AppBreakpoints.expanded), que es el
       // del resto de la app.
-      appBar: AppBreakpoints.of(context).isAtLeastExpanded
+      //
+      // Observaciones del 2026-09-19: el taller ya tiene esa barra en TODOS
+      // los anchos (esta pantalla le llega envuelta en `MechanicScaffold`,
+      // con título y acciones), así que en móvil se le pintaban dos barras
+      // «Mensajes» seguidas. El propietario, en cambio, solo la tiene en
+      // `large` (`AppTopNavBar`): en el resto esta es su única barra, y
+      // lleva las acciones comunes.
+      appBar: isMecanico || AppBreakpoints.of(context).isLarge
           ? null
           : AppBar(
               title: Text(
@@ -79,6 +87,7 @@ class _ConversacionesListScreenState extends State<ConversacionesListScreen> {
               ),
               backgroundColor: Colors.transparent,
               elevation: 0,
+              actions: const [AccionesDeCabecera()],
             ),
       body: AppPageBody(
         maxWidth: AppBreakpoints.maxReadingWidth,

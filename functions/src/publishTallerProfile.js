@@ -31,11 +31,28 @@ const { reabrirSiCambioLaIdentidad } = require('./reabrirVerificacion');
 // 'galeria' no guarda URLs sino nombres de archivo de un whitelist; la ruta se
 // reconstruye en el cliente a partir del uid y del nombre (ver GaleriaTaller),
 // asi que no hay nada que un taller pueda apuntar a otro sitio.
+// Observaciones del 2026-09-19: 'telefono' y 'municipio'. La pantalla de
+// ajustes del taller los presenta dentro de «Informacion Publica — estos datos
+// seran visibles en el directorio de talleres», pero nunca se publicaban, asi
+// que el perfil del taller no tenia ni como llamarle. Solo se proyectan las
+// cuentas de TALLER (las de empleado se retiran abajo), nunca las de un
+// propietario.
 const CAMPOS_PUBLICOS = [
   'nombre', 'especialidad', 'ubicacion', 'direccion',
   'foto_perfil_url', 'foto_url', 'galeria',
   'calificacion_promedio', 'total_resenias', 'estado', 'departamento',
+  'telefono', 'municipio', 'banner_encuadre', 'tipos_atendidos',
 ];
+
+// Campos de CONTACTO: solo se publican con el taller aprobado. `talleres` es
+// de lectura anonima para la coleccion entera (la landing la descarga por
+// REST y filtra por estado en el navegador), asi que publicarlos antes de la
+// aprobacion ponia al alcance de cualquiera el telefono y la direccion de
+// cada solicitante, de los rechazados y de los suspendidos (revision de gate
+// del 2026-09-19). Al aprobar, el cambio de `estado` vuelve a disparar el
+// trigger y se publican; al suspender, el `set` sin merge los retira.
+const CAMPOS_DE_CONTACTO = ['telefono', 'direccion'];
+const ESTADOS_PUBLICABLES = ['aprobado', 'activo'];
 
 function esMecanico(rol) {
   const r = String(rol || '').trim().toLowerCase();
@@ -59,8 +76,10 @@ function esMecanico(rol) {
 function construirPerfilPublico(uid, data, opciones) {
   const GeoPoint = (opciones && opciones.GeoPoint) || admin.firestore.GeoPoint;
 
+  const aprobado = ESTADOS_PUBLICABLES.includes(data.estado);
   const perfil = { id_taller: uid };
   for (const campo of CAMPOS_PUBLICOS) {
+    if (!aprobado && CAMPOS_DE_CONTACTO.includes(campo)) continue;
     if (data[campo] !== undefined) perfil[campo] = data[campo];
   }
   perfil.nombre = perfil.nombre || data.nombre_completo || 'Taller sin nombre';
@@ -69,7 +88,11 @@ function construirPerfilPublico(uid, data, opciones) {
   perfil.total_resenias = perfil.total_resenias || 0;
   perfil.estado = perfil.estado || 'pendiente';
 
-  if (typeof data.latitud === 'number' && typeof data.longitud === 'number') {
+  if (
+    aprobado &&
+    typeof data.latitud === 'number' &&
+    typeof data.longitud === 'number'
+  ) {
     perfil.ubicacion = new GeoPoint(data.latitud, data.longitud);
   }
 

@@ -18,6 +18,24 @@ class UserModel {
   final String? fcmToken;
   final String? departamento;
   final String? municipio;
+
+  /// Qué tipos de vehículo atiende este taller (`TipoVehiculo.id`).
+  ///
+  /// Observación del 2026-09-20: «los mecánicos deberían poder poner si su
+  /// especialidad son los carros, o las motos, e igual con los otros 4, y
+  /// según eso tener sugerencias del catálogo». Vacío = no lo ha dicho, y
+  /// entonces se le trata como taller general (el catálogo sugiere lo común
+  /// a todos).
+  final List<String> tiposAtendidos;
+
+  /// Qué franja vertical del banner se ve, de -1 (arriba del todo) a 1
+  /// (abajo del todo); 0 es el centro. Es el `alignment` de un `BoxFit.cover`.
+  ///
+  /// Observación del 2026-09-20: «el mecánico debería poder ajustar la parte
+  /// del banner que quiere que se vea, porque se encuadra como quiere la
+  /// vd». Un banner es 3.2:1 y casi ninguna foto lo es, así que sin esto el
+  /// recorte se lo lleva siempre el centro.
+  final double? bannerEncuadre;
   final double? latitud;
   final double? longitud;
   final double calificacionPromedio;
@@ -75,6 +93,8 @@ class UserModel {
     this.fcmToken,
     this.departamento,
     this.municipio,
+    this.tiposAtendidos = const [],
+    this.bannerEncuadre,
     this.latitud,
     this.longitud,
     this.calificacionPromedio = 0.0,
@@ -99,6 +119,8 @@ class UserModel {
     String? fcmToken,
     String? departamento,
     String? municipio,
+    List<String>? tiposAtendidos,
+    double? bannerEncuadre,
     double? latitud,
     double? longitud,
     double? calificacionPromedio,
@@ -122,6 +144,8 @@ class UserModel {
       fcmToken: fcmToken ?? this.fcmToken,
       departamento: departamento ?? this.departamento,
       municipio: municipio ?? this.municipio,
+      tiposAtendidos: tiposAtendidos ?? this.tiposAtendidos,
+      bannerEncuadre: bannerEncuadre ?? this.bannerEncuadre,
       latitud: latitud ?? this.latitud,
       longitud: longitud ?? this.longitud,
       calificacionPromedio: calificacionPromedio ?? this.calificacionPromedio,
@@ -149,6 +173,8 @@ class UserModel {
       if (fcmToken != null) 'fcmToken': fcmToken,
       if (departamento != null) 'departamento': departamento,
       if (municipio != null) 'municipio': municipio,
+      if (tiposAtendidos.isNotEmpty) 'tipos_atendidos': tiposAtendidos,
+      if (bannerEncuadre != null) 'banner_encuadre': bannerEncuadre,
       if (latitud != null) 'latitud': latitud,
       if (longitud != null) 'longitud': longitud,
       'calificacion_promedio': calificacionPromedio,
@@ -223,6 +249,12 @@ class UserModel {
       fcmToken: map['fcmToken']?.toString(),
       departamento: map['departamento']?.toString(),
       municipio: map['municipio']?.toString(),
+      tiposAtendidos:
+          (map['tipos_atendidos'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      bannerEncuadre: (map['banner_encuadre'] as num?)?.toDouble(),
       latitud:
           parseDouble(map['latitud']) ??
           (map['ubicacion'] is GeoPoint
