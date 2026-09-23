@@ -14,6 +14,7 @@ import 'package:autodoc/core/widgets/app_dialog_content.dart';
 import 'package:autodoc/core/widgets/app_text_field.dart';
 import 'package:autodoc/core/utils/l10n_extension.dart';
 import 'package:autodoc/core/utils/mensaje_de_error.dart';
+import 'package:autodoc/core/utils/ui_utils.dart';
 
 class AddVehicleForm extends StatefulWidget {
   final Function(VehicleModel) onFinish;
@@ -964,7 +965,40 @@ class _AddVehicleFormState extends State<AddVehicleForm> {
                       try {
                         await widget.onFinish(vehicle);
                       } catch (e) {
-                        // Si falla, permitimos reintentar
+                        // **Un `catch` que solo apaga el spinner miente.**
+                        //
+                        // Antes aqui solo se hacia `_isFinishing = false`: el
+                        // boton volvia a su sitio y no se decia nada, asi que
+                        // un fallo al guardar era indistinguible del exito
+                        // para quien lo estuviera usando. Medido en
+                        // produccion el 2026-09-22: el vehiculo se escribio,
+                        // el paso no avanzo y la pantalla no dijo una palabra.
+                        //
+                        // `onFinish` puede fallar DESPUES de haber escrito
+                        // (los dos llamadores crean ademas las tareas de
+                        // mantenimiento y cierran la hoja), asi que el texto
+                        // no promete que no se haya guardado nada: dice que
+                        // no se pudo completar.
+                        if (mounted) {
+                          // `mensajeDeError` y no `mensajeSeguroDeError`: este
+                          // si tiene `BuildContext`, asi que el aviso se
+                          // traduce. El otro helper existe para los providers,
+                          // que no lo tienen, y devuelve castellano fijo.
+                          UiUtils.showErrorSnackbar(
+                            context,
+                            mensajeDeError(context.l10n, e),
+                          );
+                        }
+                      } finally {
+                        // **Sin esto queda un spinner eterno.** El camino
+                        // normal de fallo de los dos llamadores NO lanza:
+                        // `addVehicle` devuelve `false`, ellos pintan su
+                        // aviso y vuelven sin cerrar la hoja. Como el
+                        // `catch` no se ejecuta, `_isFinishing` se quedaba
+                        // en `true` para siempre y el boton no se podia
+                        // volver a pulsar. En el camino bueno la hoja ya se
+                        // cerro, asi que `mounted` es false y esto no hace
+                        // nada. Lo levanto la revision del diff.
                         if (mounted) {
                           setState(() => _isFinishing = false);
                         }

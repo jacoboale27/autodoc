@@ -522,8 +522,8 @@
   "addVehicleCardExp": "Vencimiento Tarjeta",
   "addVehicleSoatExp": "Vencimiento SOAT",
   "addVehicleFinish": "Finalizar Registro",
-  "addVehicleSuccess": "¡Vehículo Registrado!",
-  "addVehicleSuccessDesc": "Tu {brand} {model} ya está en el garaje.",
+  "addVehicleSuccess": "Todo listo para guardar",
+  "addVehicleSuccessDesc": "Revisa tu {brand} {model} y guárdalo en el garaje.",
   "@addVehicleSuccessDesc": {
     "placeholders": {
       "brand": {
@@ -534,7 +534,7 @@
       }
     }
   },
-  "addVehicleGoDashboard": "Ir al Dashboard",
+  "addVehicleGoDashboard": "Guardar vehículo",
   "addVehicleSelectDate": "Seleccionar fecha",
   "histTotalSpent": "Total gastado",
   "histServicesCount": "Servicios",

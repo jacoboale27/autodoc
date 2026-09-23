@@ -134,7 +134,7 @@ void main() {
       );
       // ...submission did not proceed past the Details step...
       expect(find.text('Número de Placa'), findsOneWidget);
-      expect(find.text('¡Vehículo Registrado!'), findsNothing);
+      expect(find.text('Todo listo para guardar'), findsNothing);
       // ...and onFinish was never invoked.
       expect(finishedVehicle, isNull);
     }, _emptyResultsClientFactory);
@@ -180,19 +180,66 @@ void main() {
         find.text('Formato inválido. Ej: P123-456 o P12-345'),
         findsNothing,
       );
-      expect(find.text('¡Vehículo Registrado!'), findsOneWidget);
+      expect(find.text('Todo listo para guardar'), findsOneWidget);
 
       // Completing the success step's CTA invokes onFinish with the
       // correctly-formatted plate. The button shows an indefinite spinner
       // afterwards (the caller is expected to dismiss the widget on
       // success), so pump a bounded number of frames instead of
       // pumpAndSettle to avoid hanging on that animation.
-      await tester.tap(find.text('Ir al Dashboard'));
+      await tester.tap(find.text('Guardar vehículo'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
       expect(finishedVehicle, isNotNull);
       expect(finishedVehicle!.placa, 'P123-00A');
+    }, _emptyResultsClientFactory);
+  });
+
+  testWidgets('si guardar FALLA, el formulario lo dice en vez de callarse', (
+    tester,
+  ) async {
+    // El `catch` de la pantalla de guardado solo apagaba el spinner: el boton
+    // volvia a su sitio y no se decia una palabra, asi que un fallo al
+    // guardar era indistinguible del exito. Medido en produccion el
+    // 2026-09-22.
+    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await http.runWithClient(() async {
+      await tester.pumpWidget(
+        _wrap(
+          AddVehicleForm(
+            onFinish: (v) async => throw Exception('firestore se cayo'),
+            primaryColor: Colors.blue,
+          ),
+        ),
+      );
+
+      await _advanceToDetailsStep(tester);
+      await tester.enterText(find.byType(TextFormField).at(0), 'P12300A');
+      await _fillYear(tester, '2026');
+      await tester.enterText(find.byType(TextFormField).at(1), 'Rojo');
+      await tester.enterText(find.byType(TextFormField).at(2), '15000');
+      await tester.pump();
+      await tester.tap(find.text('Finalizar Registro'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.text('Guardar vehiculo'.replaceAll('vehiculo', 'vehículo')),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(
+        find.byType(SnackBar),
+        findsOneWidget,
+        reason:
+            'guardar fallo y la pantalla no lo dijo: para quien lo usa, eso es '
+            'indistinguible de haberlo guardado',
+      );
     }, _emptyResultsClientFactory);
   });
 
@@ -230,9 +277,9 @@ void main() {
       await tester.tap(find.text('Finalizar Registro'));
       await tester.pumpAndSettle();
 
-      expect(find.text('¡Vehículo Registrado!'), findsOneWidget);
+      expect(find.text('Todo listo para guardar'), findsOneWidget);
 
-      await tester.tap(find.text('Ir al Dashboard'));
+      await tester.tap(find.text('Guardar vehículo'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
@@ -279,9 +326,9 @@ void main() {
       await tester.tap(find.text('Finalizar Registro'));
       await tester.pumpAndSettle();
 
-      expect(find.text('¡Vehículo Registrado!'), findsOneWidget);
+      expect(find.text('Todo listo para guardar'), findsOneWidget);
 
-      await tester.tap(find.text('Ir al Dashboard'));
+      await tester.tap(find.text('Guardar vehículo'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
@@ -366,7 +413,7 @@ void main() {
         await tester.pump();
         await tester.tap(find.text('Finalizar Registro'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Ir al Dashboard'));
+        await tester.tap(find.text('Guardar vehículo'));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 50));
 
@@ -400,8 +447,8 @@ void main() {
       await tester.pump();
       await tester.tap(find.text('Finalizar Registro'));
       await tester.pumpAndSettle();
-      expect(find.text('¡Vehículo Registrado!'), findsOneWidget);
-      await tester.tap(find.text('Ir al Dashboard'));
+      expect(find.text('Todo listo para guardar'), findsOneWidget);
+      await tester.tap(find.text('Guardar vehículo'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 

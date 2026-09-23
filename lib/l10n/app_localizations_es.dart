@@ -1033,15 +1033,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get addVehicleFinish => 'Finalizar Registro';
 
   @override
-  String get addVehicleSuccess => '¡Vehículo Registrado!';
+  String get addVehicleSuccess => 'Todo listo para guardar';
 
   @override
   String addVehicleSuccessDesc(String brand, String model) {
-    return 'Tu $brand $model ya está en el garaje.';
+    return 'Revisa tu $brand $model y guárdalo en el garaje.';
   }
 
   @override
-  String get addVehicleGoDashboard => 'Ir al Dashboard';
+  String get addVehicleGoDashboard => 'Guardar vehículo';
 
   @override
   String get addVehicleSelectDate => 'Seleccionar fecha';

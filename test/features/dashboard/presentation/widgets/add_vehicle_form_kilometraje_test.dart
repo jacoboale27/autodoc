@@ -109,7 +109,7 @@ void main() {
         // No avanza (correcto), pero el usuario debe ver POR QUÉ, en el
         // campo. Hoy solo se dispara un SnackBar que en la app real queda
         // detrás del modal bottom sheet a pantalla completa.
-        expect(find.text('¡Vehículo Registrado!'), findsNothing);
+        expect(find.text('Todo listo para guardar'), findsNothing);
         expect(finishedVehicle, isNull);
         expect(
           find.text('Kilometraje inválido'),
@@ -161,7 +161,7 @@ void main() {
       await tester.tap(find.text('Finalizar Registro'));
       await tester.pumpAndSettle();
 
-      expect(find.text('¡Vehículo Registrado!'), findsNothing);
+      expect(find.text('Todo listo para guardar'), findsNothing);
       expect(finishedVehicle, isNull);
       expect(
         find.text('El kilometraje debe ser un número entero de 0 o más'),
@@ -196,7 +196,7 @@ void main() {
       await tester.tap(find.text('Finalizar Registro'));
       await tester.pumpAndSettle();
 
-      expect(find.text('¡Vehículo Registrado!'), findsOneWidget);
+      expect(find.text('Todo listo para guardar'), findsOneWidget);
     }, _emptyResultsClientFactory);
   });
 

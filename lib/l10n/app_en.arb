@@ -522,8 +522,8 @@
   "addVehicleCardExp": "Card Expiration",
   "addVehicleSoatExp": "SOAT Expiration",
   "addVehicleFinish": "Finish Registration",
-  "addVehicleSuccess": "Vehicle Registered!",
-  "addVehicleSuccessDesc": "Your {brand} {model} is now in the garage.",
+  "addVehicleSuccess": "Ready to save",
+  "addVehicleSuccessDesc": "Check your {brand} {model} and save it to your garage.",
   "@addVehicleSuccessDesc": {
     "placeholders": {
       "brand": {
@@ -534,7 +534,7 @@
       }
     }
   },
-  "addVehicleGoDashboard": "Go to Dashboard",
+  "addVehicleGoDashboard": "Save vehicle",
   "addVehicleSelectDate": "Select date",
   "histTotalSpent": "Total spent",
   "histServicesCount": "Services",

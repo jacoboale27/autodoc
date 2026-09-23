@@ -70,6 +70,32 @@ const FUERA_DE_ALCANCE = 'fuera_de_alcance';
 const MAX_TOKENS_ETIQUETA =
   4 * INTENCIONES.reduce((mayor, etiqueta) => Math.max(mayor, etiqueta.length), 0);
 
+/**
+ * Presupuesto del clasificador **cuando el razonamiento va encendido**.
+ *
+ * `MAX_TOKENS_ETIQUETA` esta calculado para un modelo que no piensa: solo
+ * tiene que caber la etiqueta. Si el proveedor rechaza `thinkingConfig` y hay
+ * que degradarlo (ver `clasificar`), los tokens de pensamiento vuelven a
+ * competir por el mismo presupuesto, y quedarse corto devuelve una respuesta
+ * VACIA — el defecto exacto que `sinRazonar` vino a cerrar.
+ *
+ * Medido contra `gemini-3.5-flash-lite` el 2026-09-22 con el enum puesto y el
+ * razonamiento encendido: 64, 256, 512 y 1024 tokens dan todos 4/4 aciertos y
+ * cero vacias. O sea que **64 habria bastado en ESTE modelo**, y eso dice algo
+ * mas: si el razonamiento se comiera el presupuesto de verdad, 64 habria dado
+ * vacias. El margen que queda cubre el doble de lo medido como suficiente, y
+ * no mas: `maxOutputTokens` es un techo, pero Gemini factura los tokens de
+ * pensamiento como salida, asi que un techo alto es el limite de un descontrol,
+ * no una holgura gratis. El incidente de las respuestas vacias se midio sobre
+ * `gemini-3.5-flash`, que es otro modelo, y por eso el margen no es cero.
+ *
+ * **Ojo con leer esto como una rama rara.** Con el modelo configurado hoy, el
+ * proveedor rechaza `thinkingConfig` SIEMPRE, asi que toda instancia cae al
+ * escalon degradado en su primera consulta y se queda ahi: este presupuesto es
+ * el del 100% de las clasificaciones en produccion, no el de un caso raro.
+ */
+const MAX_TOKENS_ETIQUETA_PENSANDO = 2 * MAX_TOKENS_ETIQUETA;
+
 const COLECCION_CUOTA = 'consultas_ia_control';
 const COLECCION_CACHE = 'explicaciones_ia';
 const DOC_CONFIGURACION = 'configuracion/asistente_ia';
@@ -604,20 +630,21 @@ const CODIGOS_QUE_SUBEN = [
  * comian el presupuesto de salida antes de emitir la etiqueta. Son las dos
  * mitades del gap de `maxOutputTokens`.
  */
-function pedirEtiqueta(cliente, pregunta, conEsquema) {
+function pedirEtiqueta(cliente, pregunta, conEsquema, sinRazonar) {
   const peticion = {
     sistema: SISTEMA_CLASIFICADOR,
     usuario: pregunta,
-    maxTokens: MAX_TOKENS_ETIQUETA,
+    // El presupuesto depende de si se razona o no; ver
+    // `MAX_TOKENS_ETIQUETA_PENSANDO`.
+    maxTokens: sinRazonar ? MAX_TOKENS_ETIQUETA : MAX_TOKENS_ETIQUETA_PENSANDO,
     temperatura: 0,
-    // **`sinRazonar` va SIEMPRE, tambien en el reintento sin esquema.** Lo
-    // levanto el gate de rendimiento: la primera version las acoplaba bajo el
-    // mismo flag, asi que el reintento tiraba tambien el presupuesto de
-    // razonamiento a cero y volvia a exponerse al defecto que el esquema vino
-    // a cerrar — respuestas VACIAS porque los tokens de pensamiento se comen
-    // el presupuesto de salida. Son dos features independientes del proveedor
-    // y se tratan como tales.
-    sinRazonar: true,
+    // **`sinRazonar` y el esquema son dos features INDEPENDIENTES del
+    // proveedor**, y por eso viajan en dos parametros. Lo levanto el gate de
+    // rendimiento: la primera version las acoplaba bajo el mismo flag, asi
+    // que degradar una tiraba la otra. Que cada una se degrade por separado
+    // es justo lo que permite que el fallo de una no se lleve a la otra por
+    // delante.
+    sinRazonar,
   };
   if (conEsquema) {
     peticion.enumeracion = INTENCIONES;
@@ -642,40 +669,96 @@ function pedirEtiqueta(cliente, pregunta, conEsquema) {
  */
 let esquemaRechazado = false;
 
+/**
+ * Hermano del anterior para `thinkingConfig`, y **el que faltaba**.
+ *
+ * Medido contra produccion el 2026-09-22: `gemini-3.5-flash-lite` rechaza con
+ * 400 cualquier peticion que lleve `thinkingConfig`, con esquema o sin el. La
+ * escalera anterior solo sabia degradar el esquema, asi que el reintento
+ * reenviaba el campo venenoso y fallaba igual — y el asistente llevaba caido
+ * al 100% desde el despliegue, con usuarios reales chocando contra el 400.
+ * Un campo no soportado tiene que degradar la calidad, nunca la
+ * disponibilidad.
+ */
+let razonamientoRechazado = false;
+
 /** Solo para los tests: devuelve la memoria a su estado inicial. */
 function olvidarRechazoDeEsquema() {
   esquemaRechazado = false;
+  razonamientoRechazado = false;
 }
 
 async function clasificar(cliente, pregunta) {
   let bruto;
   try {
-    try {
-      bruto = await pedirEtiqueta(cliente, pregunta, !esquemaRechazado);
-    } catch (e) {
-      // **Caida blanda, y no es pesimismo.** `responseSchema` y
-      // `thinkingConfig` son superficie del proveedor que este repositorio no
-      // puede verificar sin gastar cuota: el emulador usa un doble y el eval
-      // se corre a mano. Si Gemini rechaza el mimetype o el esquema devuelve
-      // 400 —que mapea a `failed-precondition`— y esto no se reintentara sin
-      // esquema, **toda** clasificacion fallaria y el asistente moriria
-      // entero por una mejora de robustez. Seria cambiar un gap por una
-      // averia.
-      //
-      // Solo se reintenta la configuracion rechazada. Una caida del proveedor
-      // o un timeout NO se reintentan: ahi repetir es gastar cuota dos veces
-      // para el mismo fallo.
-      // Si ya iba sin esquema, no hay nada que degradar: sube.
-      if (!e || e.code !== 'failed-precondition' || esquemaRechazado) throw e;
-      esquemaRechazado = true;
-      console.error(
-        'asistente: el proveedor rechazo el esquema del clasificador. Se ' +
-          'reintenta sin el y NO se volvera a pedir en esta instancia. Si la ' +
-          'causa fuera la configuracion (clave o GEMINI_MODELO), el reintento ' +
-          'fallara igual y el codigo subira:',
-        e.code
-      );
-      bruto = await pedirEtiqueta(cliente, pregunta, false);
+    // **Escalera de degradacion, y el orden no es arbitrario.** Se tira
+    // primero el razonamiento y se conserva el enum porque el enum es la
+    // mitad valiosa —OBLIGA, no PIDE— y porque la medicion del 2026-09-22
+    // dice que `thinkingConfig` es lo que este proveedor rechaza: con el enum
+    // puesto y el razonamiento encendido la clasificacion acierta 4/4.
+    // Degradar el esquema primero, que es lo que hacia la version anterior,
+    // no arreglaba nada y ademas perdia la restriccion de decodificacion.
+    // El tope es estructural y no solo argumental: las banderas son monotonas
+    // dentro del bucle, pero eso es una propiedad que se puede perder al anadir
+    // un tercer eje de degradacion. Con el contador, olvidarse de la
+    // monotonia cuesta un `failed-precondition`, no un bucle infinito.
+    for (let intento = 0; intento < 3; intento += 1) {
+      try {
+        bruto = await pedirEtiqueta(
+          cliente,
+          pregunta,
+          !esquemaRechazado,
+          !razonamientoRechazado
+        );
+        break;
+      } catch (e) {
+        // **Caida blanda, y no es pesimismo.** `responseSchema` y
+        // `thinkingConfig` son superficie del proveedor que este repositorio no
+        // puede verificar sin gastar cuota: el emulador usa un doble y el eval
+        // se corre a mano. Si Gemini rechaza el mimetype o el esquema devuelve
+        // 400 —que mapea a `failed-precondition`— y esto no se reintentara sin
+        // esquema, **toda** clasificacion fallaria y el asistente moriria
+        // entero por una mejora de robustez. Seria cambiar un gap por una
+        // averia.
+        //
+        // Solo se reintenta la configuracion rechazada. Una caida del proveedor
+        // o un timeout NO se reintentan: ahi repetir es gastar cuota dos veces
+        // para el mismo fallo.
+        // Cuando ya no queda nada que degradar, sube.
+        if (!e || e.code !== 'failed-precondition') throw e;
+        if (!razonamientoRechazado) {
+          razonamientoRechazado = true;
+          console.error(
+            'asistente: el proveedor rechazo `thinkingConfig` en el ' +
+              'clasificador. Se reintenta razonando y NO se volvera a pedir ' +
+              'en esta instancia.',
+            e.code
+          );
+          continue;
+        }
+        if (!esquemaRechazado) {
+          esquemaRechazado = true;
+          console.error(
+            'asistente: el proveedor rechazo el esquema del clasificador. Se ' +
+              'reintenta sin el y NO se volvera a pedir en esta instancia. Si la ' +
+              'causa fuera la configuracion (clave o GEMINI_MODELO), el reintento ' +
+              'fallara igual y el codigo subira:',
+            e.code
+          );
+          continue;
+        }
+        throw e;
+      }
+    }
+
+    // Inalcanzable con la escalera de hoy —el ultimo escalon o rompe o
+    // sube—, pero si manana se anade un eje y se olvida el `throw`, sin esto
+    // `bruto` saldria `undefined` y la pregunta caeria a `fuera_de_alcance`:
+    // una respuesta equivocada en silencio, que es peor que un error.
+    if (bruto === undefined) {
+      const agotada = new Error('La escalera de degradacion se agoto sin clasificar.');
+      agotada.code = 'failed-precondition';
+      throw agotada;
     }
   } catch (e) {
     // Estos suben: son accionables y la persona los entiende. Tragarselos
@@ -896,15 +979,18 @@ function crearAsistente(opciones) {
 module.exports = {
   INTENCIONES,
   // Los prompts se EXPORTAN para que los evals midan los de verdad.
-  // `spike_gemini.js` lleva una copia propia del clasificador, y esa copia
+  // `spike_gemini.js` LLEVABA una copia propia del clasificador, y esa copia
   // fue exactamente lo que hizo que el arreglo del presupuesto de tokens se
   // quedara a medias: se subio aqui y el spike siguio midiendo con el valor
-  // viejo, o sea siguio dando rojo sobre codigo ya arreglado. Un eval que
-  // mide un prompt copiado no mide nada.
+  // viejo, o sea siguio dando rojo sobre codigo ya arreglado. Desde el
+  // 2026-09-22 el spike los importa de aqui, despues de que la misma
+  // enfermedad escondiera el 400 de `thinkingConfig`. Un eval que mide un
+  // prompt copiado no mide nada.
   SISTEMA_CLASIFICADOR,
   SISTEMA_REDACTOR,
   SISTEMA_EXPLICADOR,
   MAX_TOKENS_ETIQUETA,
+  MAX_TOKENS_ETIQUETA_PENSANDO,
   CODIGOS_QUE_SUBEN,
   CODIGOS_SIN_CARGO_GLOBAL,
   MOTIVOS,

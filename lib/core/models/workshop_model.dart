@@ -1,3 +1,5 @@
+import 'package:autodoc/core/utils/municipio_publicado.dart';
+
 class WorkshopModel {
   final String idTaller;
   final String nombre;
@@ -58,7 +60,10 @@ class WorkshopModel {
     return WorkshopModel(
       idTaller: map['id_taller'] ?? documentId,
       nombre: map['nombre'] ?? '',
-      ubicacionMunicipio: map['ubicacion_municipio'],
+      // La proyeccion publica escribe `municipio`; este modelo leia solo el
+      // otro nombre, asi que el panel de administracion perdia el municipio
+      // —y con el sus filtros y su exportacion— en toda ficha nueva.
+      ubicacionMunicipio: municipioDeTaller(map),
       departamento: map['departamento'] as String?,
       especialidad: map['especialidad'],
       telefono: map['telefono'],

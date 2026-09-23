@@ -186,22 +186,78 @@ function crearClienteGemini(opciones = {}) {
     const control = new AbortController();
     const reloj = setTimeout(() => control.abort(), timeoutMs);
 
-    let respuesta;
+    // **El reloj cubre TAMBIEN la lectura del cuerpo, y eso es el arreglo.**
+    //
+    // `fetch` resuelve al llegar las CABECERAS, no al terminar el cuerpo. Con
+    // el `clearTimeout` en un `finally` que envolvia solo la peticion, un
+    // proveedor que mandara las cabeceras y luego se colgara streameando el
+    // body dejaba la invocacion sin ninguna cota: `TIMEOUT_MS` ya estaba
+    // apagado y lo unico que quedaba era el `timeoutSeconds` del callable, que
+    // devuelve `internal` en vez de `deadline-exceeded`. Lo levanto el gate de
+    // rendimiento, y pesa mas desde que el camino de error tambien lee el
+    // cuerpo: ahora se recorre hasta tres veces por instancia fria.
+    let json;
     try {
-      respuesta = await hacerPeticion(PUNTO_FINAL + '/' + modelo + ':generateContent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // En la cabecera, NUNCA en la URL: una URL acaba en los logs.
-          'x-goog-api-key': apiKey,
-        },
-        body: JSON.stringify(cuerpo),
-        signal: control.signal,
-      });
+      const respuesta = await hacerPeticion(
+        PUNTO_FINAL + '/' + modelo + ':generateContent',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            // En la cabecera, NUNCA en la URL: una URL acaba en los logs.
+            'x-goog-api-key': apiKey,
+          },
+          body: JSON.stringify(cuerpo),
+          signal: control.signal,
+        }
+      );
+
+      if (!respuesta.ok) {
+        // Del cuerpo se rescata SOLO `error.status`, que es un enum cerrado
+        // de la API (`INVALID_ARGUMENT`, `PERMISSION_DENIED`...).
+        // `error.message` NO: puede traer de vuelta parte de la peticion, y la
+        // peticion lleva datos del usuario. Ver el comentario de
+        // `deEstadoHttp`.
+        //
+        // Y se lee **solo donde sirve de algo**: los unicos estados que
+        // consumen `estadoProveedor` son 400/401/403. Para el resto, meterse a
+        // bufferizar un cuerpo sin cota —la pagina HTML de un proxy delante de
+        // Google, por ejemplo— seria gasto sin diagnostico.
+        let estadoProveedor = null;
+        if ([400, 401, 403].indexOf(respuesta.status) !== -1) {
+          try {
+            const datos = await respuesta.json();
+            const bruto = datos && datos.error && datos.error.status;
+            if (typeof bruto === 'string' && /^[A-Z_]{1,40}$/.test(bruto)) {
+              estadoProveedor = bruto;
+            }
+          } catch (e) {
+            // Un cuerpo ilegible no cambia el diagnostico: manda el HTTP.
+          }
+        }
+        throw deEstadoHttp(respuesta.status, estadoProveedor);
+      }
+
+      try {
+        json = await respuesta.json();
+      } catch (e) {
+        // Un aborto sube tal cual para que lo mapee el catch de fuera: no es
+        // que el modelo devolviera basura, es que se acabo el tiempo.
+        if (e && (e.name === 'AbortError' || e.code === 'ABORT_ERR')) throw e;
+        throw errorDeModelo(
+          CODIGOS.proveedor,
+          'El modelo devolvio algo que no es JSON.',
+          'proveedor'
+        );
+      }
     } catch (e) {
       if (e && (e.name === 'AbortError' || e.code === 'ABORT_ERR')) {
         throw errorDeModelo(CODIGOS.timeout, 'El modelo no respondio a tiempo.');
       }
+      // Los errores ya clasificados (`deEstadoHttp`, el JSON ilegible) pasan
+      // sin tocar: envolverlos otra vez los convertiria en «no se pudo hablar
+      // con el modelo», que es justo el diagnostico equivocado.
+      if (e && e.code) throw e;
       throw errorDeModelo(
         CODIGOS.proveedor,
         'No se pudo hablar con el modelo.',
@@ -209,21 +265,6 @@ function crearClienteGemini(opciones = {}) {
       );
     } finally {
       clearTimeout(reloj);
-    }
-
-    if (!respuesta.ok) {
-      throw deEstadoHttp(respuesta.status);
-    }
-
-    let json;
-    try {
-      json = await respuesta.json();
-    } catch (e) {
-      throw errorDeModelo(
-        CODIGOS.proveedor,
-        'El modelo devolvio algo que no es JSON.',
-        'proveedor'
-      );
     }
 
     return textoDeRespuesta(json);
@@ -238,7 +279,7 @@ function crearClienteGemini(opciones = {}) {
  * mandaria a revisar la conexion, que es el defecto que UX-04 documento con
  * `mensajeDeError` y que INNO-01 tuvo que corregir para el pase de historial.
  */
-function deEstadoHttp(estado) {
+function deEstadoHttp(estado, estadoProveedor) {
   if (estado === 429) {
     return errorDeModelo(CODIGOS.cuotaDelProveedor, 'El proveedor agoto la cuota.');
   }
@@ -270,10 +311,24 @@ function deEstadoHttp(estado) {
   }
   if (estado === 400 || estado === 401 || estado === 403) {
     // Sin eco del cuerpo: un 400 de Gemini puede traer de vuelta parte de la
-    // peticion, y la peticion lleva datos del usuario.
+    // peticion, y la peticion lleva datos del usuario. Solo viaja
+    // `error.status`, que es un enum cerrado de la API.
+    //
+    // **Y la lista de sospechosos importa.** Este mensaje decia «revisa
+    // GEMINI_API_KEY y el modelo» y mandaba a buscar donde no estaba: el
+    // 2026-09-22 el asistente llevaba caido al 100% con la clave y el modelo
+    // perfectos, y lo que el proveedor rechazaba era un campo de
+    // `generationConfig`. Costo media investigacion descartar las dos pistas
+    // que este texto sugeria.
     return errorDeModelo(
       CODIGOS.configuracion,
-      'El proveedor rechazo la peticion (' + estado + '): revisa GEMINI_API_KEY y el modelo.'
+      'El proveedor rechazo la peticion (' +
+        estado +
+        (estadoProveedor ? ' ' + estadoProveedor : '') +
+        '): revisa GEMINI_API_KEY, GEMINI_MODELO y los campos de ' +
+        '`generationConfig` que este modelo pueda no soportar ' +
+        '(`thinkingConfig`, `responseSchema`). Aislalos con ' +
+        '`node functions/spike_gemini.js`.'
     );
   }
   return errorDeModelo(

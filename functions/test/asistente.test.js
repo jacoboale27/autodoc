@@ -20,6 +20,7 @@ const assert = require('assert');
 const {
   INTENCIONES,
   MAX_TOKENS_ETIQUETA,
+  MAX_TOKENS_ETIQUETA_PENSANDO,
   CODIGOS_QUE_SUBEN,
   CODIGOS_SIN_CARGO_GLOBAL,
   DEVOLUCIONES_POR_VENTANA,
@@ -940,8 +941,12 @@ describe('asistente / la etiqueta se pide con esquema', () => {
     assert.strictEqual(redactor.sinRazonar, undefined);
   });
 
-  it('si el proveedor RECHAZA el esquema, se reintenta sin el', async () => {
-    const rechazo = new Error('mimetype no soportado');
+  it('la PRIMERA degradacion es el razonamiento, y CONSERVA el enum', async () => {
+    // Medido contra produccion el 2026-09-22: lo que `gemini-3.5-flash-lite`
+    // rechaza es `thinkingConfig`, no el esquema. Degradar el esquema
+    // primero --lo que hacia la version anterior-- no arreglaba nada y encima
+    // perdia la restriccion de decodificacion, que es la mitad valiosa.
+    const rechazo = new Error('Request contains an invalid argument.');
     rechazo.code = 'failed-precondition';
 
     let llamadas = 0;
@@ -957,15 +962,80 @@ describe('asistente / la etiqueta se pide con esquema', () => {
     const { asistente } = crear({ cliente, construirAgenda: agendaVacia });
 
     const r = await preguntar(asistente);
-
-    assert.strictEqual(r.intencion, 'agenda', 'el rechazo del esquema tumbo la clasificacion');
+    assert.strictEqual(r.intencion, 'agenda', 'el rechazo tumbo la clasificacion');
     assert.strictEqual(cliente.peticiones.length, 2);
+    assert.strictEqual(cliente.peticiones[0].sinRazonar, true);
     assert.deepStrictEqual(cliente.peticiones[0].enumeracion, INTENCIONES);
     assert.strictEqual(
-      cliente.peticiones[1].enumeracion,
-      undefined,
-      'el reintento volvio a mandar el esquema que acababan de rechazar'
+      cliente.peticiones[1].sinRazonar,
+      false,
+      'el reintento volvio a mandar el `thinkingConfig` que acababan de rechazar'
     );
+    assert.deepStrictEqual(
+      cliente.peticiones[1].enumeracion,
+      INTENCIONES,
+      'el reintento tiro el enum, que no era lo que el proveedor rechazo'
+    );
+  });
+
+  it('un proveedor que SOLO rechaza `thinkingConfig` sigue clasificando', async () => {
+    // **Este es el caso de produccion, y es el que faltaba.** El asistente
+    // llevaba caido al 100% desde el despliegue del 2026-09-22 porque la
+    // escalera solo sabia degradar el esquema: el reintento reenviaba el
+    // mismo `thinkingConfig` y volvia a recibir 400. Ningun test lo veia
+    // porque todos los dobles fallaban por el esquema, o fallaban siempre.
+    const rechazo = new Error('Request contains an invalid argument.');
+    rechazo.code = 'failed-precondition';
+
+    const cliente = {
+      peticiones: [],
+      async generar(peticion) {
+        this.peticiones.push(peticion);
+        if (peticion.sinRazonar) throw rechazo;
+        return 'agenda';
+      },
+    };
+    const { asistente } = crear({ cliente, construirAgenda: agendaVacia });
+
+    const r = await preguntar(asistente);
+    assert.strictEqual(
+      r.intencion,
+      'agenda',
+      'un proveedor que solo rechaza thinkingConfig tumba el asistente entero'
+    );
+    assert.strictEqual(cliente.peticiones.length, 2);
+    assert.deepStrictEqual(
+      cliente.peticiones[1].enumeracion,
+      INTENCIONES,
+      'se degrado el esquema sin necesidad'
+    );
+  });
+
+  it('al degradar el razonamiento, la etiqueta recibe mas presupuesto', async () => {
+    // Sin esto el clasificador degradado puede devolver VACIO: los tokens de
+    // pensamiento compiten por el mismo `maxOutputTokens` que la etiqueta, y
+    // `MAX_TOKENS_ETIQUETA` esta calculado para un modelo que no piensa.
+    const rechazo = new Error('Request contains an invalid argument.');
+    rechazo.code = 'failed-precondition';
+
+    const cliente = {
+      peticiones: [],
+      async generar(peticion) {
+        this.peticiones.push(peticion);
+        if (peticion.sinRazonar) throw rechazo;
+        return 'agenda';
+      },
+    };
+    const { asistente } = crear({ cliente, construirAgenda: agendaVacia });
+    await preguntar(asistente);
+
+    assert.strictEqual(cliente.peticiones[0].maxTokens, MAX_TOKENS_ETIQUETA);
+    assert.strictEqual(
+      cliente.peticiones[1].maxTokens,
+      MAX_TOKENS_ETIQUETA_PENSANDO,
+      'el camino degradado razona con el presupuesto de un modelo que no razona'
+    );
+    assert.ok(MAX_TOKENS_ETIQUETA_PENSANDO > MAX_TOKENS_ETIQUETA);
   });
 
   it('una caida del proveedor NO se reintenta: seria pagar dos veces', async () => {
@@ -1002,30 +1072,29 @@ describe('asistente / la etiqueta se pide con esquema', () => {
  *      llamadas al proveedor mientras durase.
  */
 describe('asistente / el esquema y su reintento, tras el gate', () => {
-  it('el reintento conserva `sinRazonar`: es otra feature, no la misma', async () => {
-    const rechazo = new Error('mimetype no soportado');
-    rechazo.code = 'failed-precondition';
+  it('si rechaza las DOS, las degrada en orden y despues SUBE', async () => {
+    // Las dos banderas son features independientes del proveedor y se
+    // degradan por separado, en orden de menos a mas valiosa: primero el
+    // razonamiento, despues el enum. Cuando no queda nada que degradar, el
+    // fallo es de configuracion y tiene que llegar a la persona.
+    const averia = new Error('clave invalida');
+    averia.code = 'failed-precondition';
+    const cliente = fakeCliente(averia);
+    const { asistente } = crear({ cliente });
 
-    let llamadas = 0;
-    const cliente = {
-      peticiones: [],
-      async generar(peticion) {
-        this.peticiones.push(peticion);
-        llamadas += 1;
-        if (llamadas === 1) throw rechazo;
-        return 'agenda';
-      },
-    };
-    const { asistente } = crear({ cliente, construirAgenda: agendaVacia });
-    await preguntar(asistente);
+    await assert.rejects(() => preguntar(asistente), (e) => e.code === 'failed-precondition');
 
-    assert.strictEqual(
-      cliente.peticiones[1].sinRazonar,
-      true,
-      'el reintento perdio el presupuesto de razonamiento a cero, que es el ' +
-        'otro defecto que el esquema vino a cerrar'
+    assert.strictEqual(cliente.peticiones.length, 3, 'la escalera no recorrio sus dos escalones');
+    assert.strictEqual(cliente.peticiones[0].sinRazonar, true);
+    assert.deepStrictEqual(cliente.peticiones[0].enumeracion, INTENCIONES);
+    assert.strictEqual(cliente.peticiones[1].sinRazonar, false);
+    assert.deepStrictEqual(
+      cliente.peticiones[1].enumeracion,
+      INTENCIONES,
+      'el primer escalon tiro el enum en vez del razonamiento'
     );
-    assert.strictEqual(cliente.peticiones[1].enumeracion, undefined);
+    assert.strictEqual(cliente.peticiones[2].sinRazonar, false);
+    assert.strictEqual(cliente.peticiones[2].enumeracion, undefined);
   });
 
   it('el rechazo se RECUERDA: no se paga el doble en cada consulta', async () => {
@@ -1050,7 +1119,11 @@ describe('asistente / el esquema y su reintento, tras el gate', () => {
     const trasLaPrimera = cliente.peticiones.length;
     await preguntar(asistente);
 
-    assert.strictEqual(trasLaPrimera, 2, 'la primera consulta deberia pagar el reintento');
+    assert.strictEqual(
+      trasLaPrimera,
+      3,
+      'la primera consulta deberia pagar los dos escalones de la escalera'
+    );
     assert.strictEqual(
       cliente.peticiones.length - trasLaPrimera,
       1,
@@ -1058,7 +1131,7 @@ describe('asistente / el esquema y su reintento, tras el gate', () => {
         'llamadas: la memoria del rechazo no esta funcionando'
     );
     assert.strictEqual(
-      cliente.peticiones[2].enumeracion,
+      cliente.peticiones[3].enumeracion,
       undefined,
       'la segunda consulta reintento con el esquema que ya se sabe rechazado'
     );
@@ -1074,15 +1147,15 @@ describe('asistente / el esquema y su reintento, tras el gate', () => {
     const cliente = fakeCliente(averia);
     const { asistente } = crear({ cliente });
 
-    // Primera: reintenta una vez y sube.
+    // Primera: recorre los dos escalones y sube.
     await assert.rejects(() => preguntar(asistente), (e) => e.code === 'failed-precondition');
-    assert.strictEqual(cliente.peticiones.length, 2);
+    assert.strictEqual(cliente.peticiones.length, 3);
 
     // Segunda: ya sin esquema desde el principio, una sola llamada.
     await assert.rejects(() => preguntar(asistente), (e) => e.code === 'failed-precondition');
     assert.strictEqual(
       cliente.peticiones.length,
-      3,
+      4,
       'la segunda consulta volvio a reintentar sobre una averia ya conocida'
     );
   });

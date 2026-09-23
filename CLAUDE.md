@@ -17,6 +17,76 @@ VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01, FUNC-02, UX-03 / UX-04,
 cerradas: `fix/gaps-02` (residuales de FUNC-02), `fix/gaps-03` (accesibilidad de la landing que
 dejó UX-03) y **`fix/gaps-04`** (lo que quedaba abierto antes de H-01, cerrada el 2026-09-13).
 
+### Pruebas de uso real contra PRODUCCIÓN del 2026-09-22 (rama `fix/pruebas-produccion-2026-09-22`)
+
+Campaña de Playwright contra la app **desplegada** (`autodoc-6ef5a.web.app`), no contra
+emuladores, con dos cuentas reales. Evidencia en
+`docs/evidencia/PRUEBAS-PRODUCCION-2026-09-22.md`. El ciclo propietario↔taller completo
+—contacto, chat, cita, cotización, aceptación, ticket, cobro, entrega, historial, reseña—
+**funciona de punta a punta**, y los tres defectos que el repo daba por arreglados lo están
+de verdad. Salieron cuatro fallos nuevos, los cuatro ya cerrados. Lo que hay que saber:
+
+- **⚠️ EL ASISTENTE DE IA LLEVABA CAÍDO AL 100% DESDE SU DESPLIEGUE, y sigue caído hasta
+  que se desplieguen las Functions.** `gemini-3.5-flash-lite` rechaza con **400
+  INVALID_ARGUMENT** cualquier petición que lleve `thinkingConfig`, con esquema o sin él.
+  La caída blanda solo sabía degradar el `responseSchema`, así que el reintento reenviaba
+  el campo venenoso. En los logs hay un uid ajeno chocando con el mismo 400: había usuarios
+  reales afectados. Ahora la escalera tiene **dos ejes independientes** y degrada primero el
+  razonamiento, **conservando el enum** — que es la mitad valiosa y la que no estaba
+  rechazada. Medido contra la API real: escalón 1 da 400 ×4, escalón 2 da **4/4 aciertos**.
+- **El mensaje de diagnóstico mandaba a buscar donde no estaba.** Decía «revisa
+  GEMINI_API_KEY y el modelo» ante cualquier 400, y las dos cosas estaban perfectas: costó
+  media investigación descartarlas. Ahora incluye el `error.status` del proveedor y nombra
+  los campos de `generationConfig`. **Solo viaja `status`, nunca `message`**: el `message`
+  de Gemini puede devolver parte de la petición, y la petición lleva la pregunta del
+  usuario. Hay tres centinelas nuevos en `modelo_gemini.test.js` que lo fijan.
+- **`spike_gemini.js` daba VERDE sobre un asistente averiado**, y esa es la lección más
+  transferible: llevaba copias congeladas del enum (cinco etiquetas frente a las tres de
+  producción), del prompt y del presupuesto, y **no pasaba `enumeracion` ni `sinRazonar`**,
+  o sea que no tocaba el camino real. Ahora importa las constantes de `asistente.js` y
+  recorre **los dos escalones**. Un eval que mide un prompt copiado no mide nada — el repo
+  ya lo tenía escrito y aun así la copia seguía ahí.
+- **El selector de vehículos del chat no cargaba nada por su cuenta.** `VehiculoPicker` es
+  un `Consumer<VehicleProvider>` que LEE la lista sin dispararla, así que entrando al chat
+  por enlace directo, notificación o F5 decía «No tienes vehículos registrados» con el
+  garaje lleno — esperado tres minutos, no se cura solo. Eso **bloquea la cadena entera**:
+  sin vehículo no hay cita, sin cita no hay cotización, sin cotización no hay ticket. Es la
+  misma familia que el F5 sobre `/garage` y `/alerts` que cerró `asegurarDatosDelGaraje`;
+  al chat nunca se le aplicó.
+- **El alta de vehículo cantaba victoria antes de escribir.** «Finalizar Registro» solo
+  hacía `_nextStep()`; la escritura colgaba de «Ir al Dashboard». Con «¡Vehículo
+  Registrado! / ya está en el garaje» en pantalla, Firestore no tenía nada. **Mover la
+  escritura al primer botón NO es el arreglo:** los dos llamadores hacen `Navigator.pop` al
+  guardar, así que la pantalla de éxito quedaría inalcanzable. Lo que se cambió es que el
+  paso deje de afirmar lo que no ha pasado («Todo listo para guardar» / «Guardar vehículo»).
+- **Y dos defectos de estado en el mismo sitio:** el `catch` solo apagaba el spinner, así
+  que un fallo al guardar era indistinguible del éxito; y el camino de fallo NORMAL —
+  `addVehicle` devuelve `false` y el llamador solo pinta un aviso— no pasa por el `catch`,
+  con lo que `_isFinishing` se quedaba en `true` y el botón moría en un spinner eterno.
+- **Los 16 talleres del directorio decían «Ubicación no especificada»** leyendo
+  `ubicacion_municipio` cuando `publishTallerProfile` publica `municipio`. Estaba en **tres**
+  sitios, no en uno: las dos tarjetas del directorio y `workshop_model.dart`, que alimenta
+  el panel de administración, sus filtros y su exportación. La elección de campo vive ahora
+  en `lib/core/utils/municipio_publicado.dart` — duplicarla es lo que produjo el fallo.
+- **`clearTimeout` corría antes de leer el cuerpo de la respuesta.** `fetch` resuelve al
+  llegar las CABECERAS, así que un `await respuesta.json()` después del `finally` se queda
+  sin ninguna cota: `TIMEOUT_MS` ya está apagado y solo queda el `timeoutSeconds` del
+  callable, que devuelve `internal` en vez de `deadline-exceeded`. Lo levantó el gate de
+  rendimiento sobre código mío.
+- **Trampa del arnés, no de la app:** hacer `page.mouse.click(10, 10)` para «activar la
+  semántica» de Flutter web cae sobre **«Volver»** en cualquier pantalla con `AppBar`, así
+  que cada volcado sale de la pantalla anterior. La app ya llama a `ensureSemantics()` en
+  `main.dart`: `flt-semantics-host` existe desde el arranque y **no hace falta ningún clic**.
+  Eso me hizo dar por rotos el chat, el directorio y un botón que funcionaban.
+- **`e2e/tests-prod/` NO está versionado a propósito:** lleva credenciales de producción
+  incrustadas y escribe contra el proyecto real. Es la vía por la que este repo ya acabó una
+  vez con su suite E2E apuntando a producción.
+- **Cifras:** `flutter analyze` limpio, `flutter test` **1524/1524**, Functions **603/603**.
+  Reglas y Storage sin tocar.
+- **Despliegue pendiente y BLOQUEANTE para el asistente:**
+  `firebase deploy --only functions:asistenteAutoDoc --project production`. Sin `--project`
+  va a staging. La app web puede ir después: los otros tres arreglos son de cliente.
+
 ### Observaciones de uso real del 2026-09-18 (rama `fix/observaciones-2026-09-18`)
 
 Segunda ronda del PDF de chele moskar / chele alonzo + el Inge. Las páginas 1–2 eran el

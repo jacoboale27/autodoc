@@ -80,6 +80,75 @@ describe('modeloGemini / la clave', () => {
     );
   });
 
+  it('del cuerpo de un 400 solo sale `error.status`, nunca `error.message`', async () => {
+    // El `message` de un 400 de Gemini puede traer de vuelta parte de la
+    // peticion, y la peticion lleva la pregunta del usuario. El `status` es un
+    // enum cerrado de la API y por eso si puede viajar al log. Sin este
+    // centinela, manana alguien «mejora» el diagnostico anadiendo el mensaje
+    // del proveedor y ninguna suite se entera.
+    const PRIVADO = 'cuando vence el SOAT de mi placa P123-456';
+    const fetch = fakeFetch({
+      ok: false,
+      status: 400,
+      json: async () => ({
+        error: {
+          status: 'INVALID_ARGUMENT',
+          message: 'Invalid value at generationConfig: ' + PRIVADO,
+        },
+      }),
+    });
+    await assert.rejects(
+      () => cliente(fetch).generar({ sistema: 's', usuario: PRIVADO }),
+      (e) => {
+        assert.strictEqual(e.code, CODIGOS.configuracion);
+        assert.ok(
+          e.message.indexOf('INVALID_ARGUMENT') !== -1,
+          'el diagnostico no dice QUE rechazo el proveedor: ' + e.message
+        );
+        assert.strictEqual(
+          e.message.indexOf(PRIVADO),
+          -1,
+          'FUGA: la pregunta del usuario sale en el error del proveedor'
+        );
+        return true;
+      }
+    );
+  });
+
+  it('un `status` que no es del enum se descarta en vez de propagarse', async () => {
+    const SOSPECHOSO = 'correo del usuario: alguien@ejemplo.com';
+    const fetch = fakeFetch({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: { status: SOSPECHOSO } }),
+    });
+    await assert.rejects(
+      () => cliente(fetch).generar({ sistema: 's', usuario: 'u' }),
+      (e) => {
+        assert.strictEqual(e.message.indexOf(SOSPECHOSO), -1, 'FUGA: paso el filtro');
+        assert.strictEqual(e.message.indexOf('alguien@'), -1);
+        return true;
+      }
+    );
+  });
+
+  it('un 500 no se pone a bufferizar el cuerpo: no hay nada que rescatar', async () => {
+    // Solo 400/401/403 consumen `estadoProveedor`. Para el resto, leer el
+    // cuerpo es bufferizar sin cota —la pagina HTML de un proxy, por
+    // ejemplo— a cambio de ningun diagnostico.
+    let leido = false;
+    const fetch = fakeFetch({
+      ok: false,
+      status: 500,
+      json: async () => {
+        leido = true;
+        return { error: { status: 'INTERNAL' } };
+      },
+    });
+    await assert.rejects(() => cliente(fetch).generar({ sistema: 's', usuario: 'u' }));
+    assert.strictEqual(leido, false, 'se leyo el cuerpo de un 500 sin necesidad');
+  });
+
   it('claveDelEntorno falla con instrucciones, no con `undefined`', () => {
     assert.throws(() => claveDelEntorno({}), /GEMINI_API_KEY/);
     assert.strictEqual(claveDelEntorno({ GEMINI_API_KEY: 'x' }), 'x');

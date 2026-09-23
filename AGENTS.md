@@ -107,6 +107,60 @@ VER-01, ROLE-01, QA-02, QA-01, UX-01, UX-02, FUNC-01, FUNC-02, UX-03 / UX-04,
 (residuales de FUNC-02), `fix/gaps-03` (accesibilidad de la landing que dejó UX-03) y
 **`fix/gaps-04`** (lo que quedaba abierto antes de H-01, cerrada el 2026-09-13).
 
+### Pruebas contra PRODUCCION del 2026-09-22: cuatro fallos, cerrados
+
+Rama `fix/pruebas-produccion-2026-09-22`. Evidencia en
+`docs/evidencia/PRUEBAS-PRODUCCION-2026-09-22.md`. Campana de Playwright contra la app
+DESPLEGADA con cuentas reales, no contra emuladores. El ciclo propietario-taller completo
+funciona de punta a punta. Lo que cambio, y lo que conviene no volver a romper:
+
+- **`functions/src/asistente.js` — la escalera de degradacion tiene DOS ejes.**
+  `gemini-3.5-flash-lite` rechaza con 400 INVALID_ARGUMENT toda peticion que lleve
+  `thinkingConfig`, con esquema o sin el. La version anterior solo degradaba el
+  `responseSchema`, asi que el reintento reenviaba el campo rechazado y el asistente llevaba
+  **caido al 100% desde su despliegue**. Ahora se degrada primero el razonamiento y se
+  CONSERVA el enum (`razonamientoRechazado` y `esquemaRechazado`, ambos memorizados por
+  instancia). Si tocas `clasificar` o `pedirEtiqueta`, manten esa independencia: acoplarlas
+  bajo un solo flag es el defecto que ya cerro un gate anterior, y ahora ademas el orden
+  importa.
+- **`MAX_TOKENS_ETIQUETA_PENSANDO` (2x) solo se usa con el razonamiento encendido**, que
+  hoy es el 100% del trafico de produccion con el modelo configurado. No es una rama rara.
+- **`modeloGemini.js` — del cuerpo de un error sale SOLO `error.status`.** Nunca
+  `error.message`: puede devolver parte de la peticion, y la peticion lleva la pregunta del
+  usuario. Lo fijan tres tests en `functions/test/modelo_gemini.test.js`. El cuerpo se lee
+  solo en 400/401/403 y **dentro** del `AbortController`: `fetch` resuelve al llegar las
+  cabeceras, asi que leer el cuerpo despues del `clearTimeout` lo deja sin cota de tiempo.
+- **`functions/spike_gemini.js` importa las constantes de `asistente.js` y recorre los dos
+  escalones.** Antes llevaba copias congeladas (cinco etiquetas frente a las tres reales) y
+  no pasaba `enumeracion` ni `sinRazonar`, o sea que daba VERDE sobre un asistente averiado.
+  **No le vuelvas a poner una copia local de un prompt, un enum o un presupuesto.** Correrlo
+  hoy da rojo en el escalon 1 a proposito: reproduce el incidente; el verde que cuenta es el
+  escalon 2.
+- **`VehiculoPicker` no carga vehiculos: los LEE.** `chat_screen.dart` llama a
+  `asegurarVehiculosCargados` antes de abrir el selector. Sin eso, entrar al chat por enlace
+  directo o F5 dejaba el selector diciendo «No tienes vehiculos registrados» con el garaje
+  lleno, y eso bloquea cita, cotizacion y ticket. Misma familia que `asegurarDatosDelGaraje`.
+- **`add_vehicle_form.dart` — el paso previo NO afirma que este guardado.** La escritura
+  sigue colgando del ultimo boton («Guardar vehiculo») y eso es deliberado: los dos
+  llamadores hacen `Navigator.pop` al guardar, asi que mover la escritura al boton anterior
+  dejaria la pantalla final inalcanzable. El `catch` avisa con `mensajeDeError` (hay
+  contexto; `mensajeSeguroDeError` es para providers y devuelve castellano fijo) y un
+  `finally` devuelve el boton a su sitio — sin el, el fallo NORMAL (`addVehicle` devuelve
+  `false` sin lanzar) dejaba un spinner eterno.
+- **El municipio del taller se lee con `municipioDeTaller`** (`lib/core/utils/
+  municipio_publicado.dart`), nunca a mano. `publishTallerProfile` publica `municipio`;
+  `UserModel` arrastra tambien `ubicacion_municipio`, y leer solo uno dejaba los 16 talleres
+  del directorio con «Ubicacion no especificada» y al panel de administracion sin municipio.
+- **Arnes de pruebas web:** NO hagas `page.mouse.click(10, 10)` para «activar la semantica».
+  La app llama a `ensureSemantics()` en `main.dart`, el arbol existe desde el arranque, y ese
+  clic cae sobre «Volver» en cualquier pantalla con `AppBar`.
+- **`e2e/tests-prod/` no esta versionado**: lleva credenciales de produccion y escribe en el
+  proyecto real.
+- **Cifras:** `flutter analyze` limpio, `flutter test` 1524/1524, Functions 603/603. Reglas y
+  Storage sin tocar.
+- **Despliegue pendiente:** `firebase deploy --only functions:asistenteAutoDoc --project
+  production`. El asistente sigue caido hasta entonces.
+
 ### GAPS-07 (2026-09-15): el doble envio en formularios, cerrado
 
 Rama `fix/gaps-07a`. Evidencia en `docs/evidencia/GAPS-07-doble-envio.md`. Cierra los 15 grupos

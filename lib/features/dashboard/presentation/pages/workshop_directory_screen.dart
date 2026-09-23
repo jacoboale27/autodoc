@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:autodoc/core/utils/municipio_publicado.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/features/dashboard/data/services/workshop_service.dart';
 import 'package:autodoc/core/models/user_model.dart';
@@ -867,7 +868,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
     final spec = data['especialidad'] ?? context.l10n.wdGeneralMechanics;
     final rating = data['calificacion_promedio']?.toDouble() ?? 0.0;
     final reviewsCount = data['total_resenias'] ?? 0;
-    final location = data['ubicacion_municipio'] ?? '';
+    final location = municipioDeTaller(data) ?? '';
     final ratingLabel = reviewsCount > 0
         ? '${rating.toStringAsFixed(1)} de 5 estrellas'
         : 'Taller nuevo, sin calificación';
@@ -1002,7 +1003,7 @@ class _WorkshopDirectoryScreenState extends State<WorkshopDirectoryScreen> {
     final rating = data['calificacion_promedio']?.toDouble() ?? 0.0;
     final reviewsCount = data['total_resenias'] ?? 0;
     final location =
-        data['ubicacion_municipio'] ?? context.l10n.wdLocationNotSpecified;
+        municipioDeTaller(data) ?? context.l10n.wdLocationNotSpecified;
 
     return AppCard(
       margin: const EdgeInsets.only(bottom: 16),

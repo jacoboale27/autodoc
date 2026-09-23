@@ -50,6 +50,7 @@ import 'package:autodoc/features/chat/presentation/widgets/adjunto_preview_sheet
 import 'package:autodoc/features/mechanic/data/services/verificacion_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:autodoc/core/widgets/acciones_de_cabecera.dart';
+import 'package:autodoc/features/dashboard/presentation/providers/vehicle_provider.dart';
 
 /// Firma del selector de imagen, con el origen (`gallery`/`camera`) ya
 /// resuelto por quien llama. Misma costura que `SelectorDeArchivo` en
@@ -364,6 +365,31 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     required String receptorId,
   }) {
     if (_creandoReserva) return;
+
+    // **Pedir el garaje ANTES de enseñar el selector.**
+    //
+    // `VehiculoPicker` es un `Consumer<VehicleProvider>`: LEE la lista, pero
+    // no dispara ninguna carga. Quien poblaba el provider era el dashboard al
+    // montarse, asi que navegando por las pestañas todo funcionaba y entrando
+    // al chat por un enlace directo, una notificacion o un F5 el selector
+    // decia «No tienes vehiculos registrados» con el garaje lleno — medido en
+    // produccion el 2026-09-22, y sin arreglarse solo: se espero tres minutos.
+    // Como sin vehiculo no hay cita, sin cita no hay cotizacion y sin
+    // cotizacion no hay ticket, eso bloquea la cadena propietario-taller
+    // entera.
+    //
+    // Es la misma familia que el F5 sobre `/garage` y `/alerts` que cerro
+    // `asegurarDatosDelGaraje`; a esta pantalla no se le habia aplicado. Aqui
+    // basta con los vehiculos —las alertas no pintan nada en el chat—, asi
+    // que se llama al `asegurar*` del propio provider en vez de al utilitario
+    // completo: no arrastra `AlertProvider` a un arbol que no lo necesita.
+    //
+    // `asegurarVehiculosCargados` es idempotente y memoriza el intento, asi
+    // que abrir el selector dos veces no cuesta dos lecturas; y marca
+    // `isLoading` de forma sincrona, con lo que el selector se pinta cargando
+    // en vez de afirmar que no hay vehiculos.
+    context.read<VehicleProvider>().asegurarVehiculosCargados(userId);
+
     // El cliente debe indicar a qué vehículo de su cuenta es el servicio.
     // Usamos el context del propio State (this.context), que se mantiene
     // válido mientras la pantalla de chat siga montada — a diferencia del

@@ -30,32 +30,20 @@
 
 const { claveDelEntorno, crearClienteGemini, MODELO_POR_DEFECTO } = require('./src/modeloGemini');
 
-const INTENCIONES = ['agenda', 'explicar', 'estado', 'historial', 'fuera_de_alcance'];
-
 /**
- * Mismo presupuesto derivado que `asistente.js`, y por la misma razon: con 10
- * tokens el modelo devolvia `fuera_de_alc` —doce de los dieciseis caracteres
- * de `fuera_de_alcance`— y el spike lo marcaba como FUERA DEL ENUM. El
- * defecto era del presupuesto, no del modelo.
+ * **El enum, el presupuesto y el prompt del clasificador se IMPORTAN.**
  *
- * Que este numero estuviera duplicado a mano aqui y en produccion es lo que
- * hizo que el primer arreglo se quedara a medias: se subio en `asistente.js`
- * y el spike siguio midiendo con el valor viejo, o sea siguio dando rojo
- * sobre codigo ya arreglado.
+ * Aqui habia una copia a mano, y no era inocua: llevaba cinco etiquetas
+ * cuando produccion tiene tres, su propio prompt y su propio presupuesto. Un
+ * eval que mide un prompt copiado no mide nada — el propio `asistente.js` lo
+ * dice en sus exports, y aun asi la copia seguia aqui.
  */
-const MAX_TOKENS_ETIQUETA =
-  4 * INTENCIONES.reduce((mayor, etiqueta) => Math.max(mayor, etiqueta.length), 0);
-
-const SISTEMA_CLASIFICADOR =
-  'Clasifica la pregunta del usuario en UNA de estas etiquetas, y responde ' +
-  'SOLO con la etiqueta, sin puntuacion ni explicacion:\n' +
-  INTENCIONES.join('\n') +
-  '\n\nagenda: vencimientos, citas o mantenimientos proximos.\n' +
-  'explicar: que es un tramite o un documento del vehiculo.\n' +
-  'estado: como esta el vehiculo en general.\n' +
-  'historial: que servicios se le han hecho.\n' +
-  'fuera_de_alcance: cualquier otra cosa, y SIEMPRE que pidan diagnosticar ' +
-  'una averia por sintomas.';
+const {
+  INTENCIONES,
+  MAX_TOKENS_ETIQUETA,
+  MAX_TOKENS_ETIQUETA_PENSANDO,
+  SISTEMA_CLASIFICADOR,
+} = require('./src/asistente');
 
 const SISTEMA_REDACTOR =
   'Eres el asistente de AutoDoc. Te doy los compromisos del vehiculo del ' +
@@ -259,15 +247,33 @@ async function main() {
 
   let fallos = 0;
 
-  console.log('--- 1. CLASIFICAR ---------------------------------------------');
+  // **Los DOS escalones de la escalera, no solo el primero.**
+  //
+  // El escalon 1 es la peticion que produjo el 400 del 2026-09-22, asi que
+  // sirve para reproducir el incidente. Pero el que atiende el trafico es el
+  // 2 —`clasificar` degrada el razonamiento y conserva el enum—, y sin
+  // medirlo aqui no hay ninguna comprobacion contra la API real del camino
+  // que de verdad corre en produccion. Lo levanto el gate de rendimiento.
+  const ESCALONES = [
+    { nombre: '1. CLASIFICAR (escalon 1: enum + sinRazonar)', sinRazonar: true, maxTokens: MAX_TOKENS_ETIQUETA },
+    { nombre: '1b. CLASIFICAR (escalon 2: enum, razonando)', sinRazonar: false, maxTokens: MAX_TOKENS_ETIQUETA_PENSANDO },
+  ];
+  for (const escalon of ESCALONES) {
+  console.log('--- ' + escalon.nombre + ' ---------------');
   for (const [pregunta, esperada] of PREGUNTAS) {
     const t0 = Date.now();
     try {
+      // **Llama EXACTAMENTE como produccion.** Sin `enumeracion` ni
+      // `sinRazonar` este spike no tocaba el camino real, y por ese hueco
+      // paso el 400 de `thinkingConfig` que dejo el asistente caido al 100%
+      // el 2026-09-22: el spike daba verde sobre un asistente averiado.
       const bruto = await cliente.generar({
         sistema: SISTEMA_CLASIFICADOR,
         usuario: pregunta,
-        maxTokens: MAX_TOKENS_ETIQUETA,
+        maxTokens: escalon.maxTokens,
         temperatura: 0,
+        enumeracion: INTENCIONES,
+        sinRazonar: escalon.sinRazonar,
       });
       const etiqueta = bruto.trim().toLowerCase();
       // En produccion, cualquier cosa fuera del enum cae a
@@ -283,6 +289,8 @@ async function main() {
       fallos += 1;
       console.log('  [ERROR ' + (e.code || '?') + '] ' + e.message);
     }
+  }
+
   }
 
   console.log('');

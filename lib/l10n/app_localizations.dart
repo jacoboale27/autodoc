@@ -1961,19 +1961,19 @@ abstract class AppLocalizations {
   /// No description provided for @addVehicleSuccess.
   ///
   /// In en, this message translates to:
-  /// **'Vehicle Registered!'**
+  /// **'Ready to save'**
   String get addVehicleSuccess;
 
   /// No description provided for @addVehicleSuccessDesc.
   ///
   /// In en, this message translates to:
-  /// **'Your {brand} {model} is now in the garage.'**
+  /// **'Check your {brand} {model} and save it to your garage.'**
   String addVehicleSuccessDesc(String brand, String model);
 
   /// No description provided for @addVehicleGoDashboard.
   ///
   /// In en, this message translates to:
-  /// **'Go to Dashboard'**
+  /// **'Save vehicle'**
   String get addVehicleGoDashboard;
 
   /// No description provided for @addVehicleSelectDate.
